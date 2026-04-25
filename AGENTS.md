@@ -24,6 +24,7 @@ authoring work. Every persona and contract MUST cite them.
 | `/memory/handbook/persona-spec.md` | Anthropic Claude Agent SDK 16-field YAML reference + the Cursor `.mdc` shim recipe. |
 | `/memory/handbook/contract-format.md` | Wrapper schema, kind registry, runner adapter, failure shape, quorum policy. |
 | `/memory/handbook/contract-style.md` | The 5-layer style discipline (RFC 2119, EARS, atomic, no weasel words, glossary, dual-anchor). |
+| `/memory/handbook/documentation-impact-contract.md` | Global post-task decision contract for documentation/reference impact, required updates, and deferral tracking. |
 | `/memory/handbook/contract-templates/` | The 6 MVP slot-driven scaffolds for common clause shapes. |
 | `BOOTSTRAP.md` | The phase-by-phase bootstrap plan; the human is the in-loop reviewer at every phase boundary. |
 | `PRD.md` | The product spec. The line-anchored citation target until handbook seeds are promoted to canonical. |
@@ -84,6 +85,10 @@ your response.
   EARS templates, atomic clauses, active voice, present tense, quantified
   numerics, glossary-resolved nouns, and no weasel words. See
   `/memory/handbook/contract-style.md`.
+- **Documentation impact check is mandatory per task.** Every agent SHALL
+  evaluate documentation/reference impact after each task and SHALL either
+  apply required updates or record deferral rationale with backlog linkage per
+  `/memory/handbook/documentation-impact-contract.md`.
 - **Stage exit criteria are non-negotiable.** Mirrors the PRD's R-class
   circuit-breaker pattern. The bootstrap correctness ratchet is its own
   contract.
