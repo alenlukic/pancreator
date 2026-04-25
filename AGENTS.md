@@ -36,14 +36,17 @@ authoring work. Every persona and contract MUST cite them.
 - `skills/<name>/SKILL.md` — reusable procedures conforming to the Agent
   Skills open spec.
 - `/ensembles/<name>.yaml` — persona ensemble configurations (M4+; not
-  populated in the bootstrap).
+  populated with executable definitions yet).
 - `/pipelines/<name>.yaml` — pipeline definitions (M1+; not populated until
-  Phase 4).
+  the runtime wiring lands in this repo).
 
-The bootstrap-canonical roster is two meta-personas:
+The bootstrap-canonical seed roster is two meta-personas:
 
 - `personas/persona-designer.md` — authors persona specs.
 - `personas/contract-writer.md` — authors contract clauses.
+
+The repo now also carries the full Phase-1 MVP persona roster, corresponding
+Cursor shims, and MVP skills.
 
 Both meta-personas are self-protected: no agent and no persona MAY modify
 either file without explicit human ratification.
@@ -135,14 +138,15 @@ your response.
 
 ## 8 — Bootstrap status (live)
 
-**Current phase.** Phase 0b (handbook seeds) and Phase 0c (meta-personas +
-meta-skills) are landing in parallel. The round-trip verification gate is the
-authoring of `personas/tech-writer.md` by `persona-designer`; once green, the
-bootstrap moves to Phase 1 (the rest of the MVP roster).
+**Current state.** Handbook seeds under `/memory/handbook/` are present.
+Meta-personas and meta-skills are present. The full Phase-1 MVP persona roster
+is present, with corresponding Cursor shims and MVP skills. Backlog tracking
+foundation is present through ADR-0001, backlog format, and backlog index.
+`tess` CLI/runtime execution is not wired in this repo yet. `/pipelines/` and
+`/ensembles/` are not populated with executable definitions yet.
 
-**Known TBD.** Several PRD line-range citations carry `contentHash:
-TBD-on-commit`. After the next PRD revision, run a content-hash refresh pass
-across every citation under `/personas/`, `/skills/`, and `/memory/handbook/`.
+**Next phase focus.** Per `BOOTSTRAP.md`, the next meaningful implementation
+phase is the contract corpus and substrate/runtime execution wiring.
 
 ## 9 — Stability
 
