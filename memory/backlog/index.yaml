@@ -48,6 +48,22 @@ items:
     evidence: "Current bootstrap context requests explicit PR-body structure ownership."
     notes: "Ratify where PR-body templates live and who maintains them."
 
+  - id: bootstrap-inbox-archive-automation
+    title: Implement explicit inbox archive automation command
+    source: memory/adr/0003-inbox-lifecycle-and-archival.md
+    owner: coder
+    milestone: phase-3
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-25T23:27:00Z"
+    links:
+      - /memory/adr/0003-inbox-lifecycle-and-archival.md
+      - /memory/handbook/inbox-lifecycle.md
+      - /inbox/in/
+      - /inbox/archive/in/
+    evidence: "ADR-0003 ratifies manual archival now and requires a future runtime/CLI archive mechanism."
+    notes: "Add `tess inbox archive` (or equivalent) that validates responded state and performs deterministic move."
+
   - id: bootstrap-coder-skills-array-hardening
     title: Harden coder skills array constraints
     source: bootstrap-chat
