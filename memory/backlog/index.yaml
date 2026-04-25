@@ -1,0 +1,91 @@
+metadata:
+  schema_version: 1
+  generated_at: "2026-04-25T22:55:00Z"
+  owners: [tech-lead, librarian]
+  source_of_truth: /memory/backlog/index.yaml
+  schema_ref: /memory/handbook/backlog-format.md
+
+items:
+  - id: bootstrap-prd-eng-spec-reconcile
+    title: Reconcile eng-spec.md versus spec.md references in PRD
+    source: bootstrap-chat
+    owner: tech-writer
+    milestone: phase-1
+    status: open
+    priority: high
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /PRD.md
+      - /memory/adr/0001-backlog-tracking.md
+    evidence: "Bootstrap notes flagged naming drift between eng-spec.md and spec.md mentions."
+    notes: "Resolve canonical term in PRD and update dependent docs."
+
+  - id: bootstrap-content-hash-refresh
+    title: Replace TBD-on-commit citation hashes across seeded artifacts
+    source: memory/adr/0001-backlog-tracking.md
+    owner: librarian
+    milestone: phase-1
+    status: open
+    priority: high
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /memory/adr/0001-backlog-tracking.md
+      - /AGENTS.md
+    evidence: "Known TBD-on-commit placeholders remain in handbook, persona, and ADR references."
+    notes: "Run one pass after next PRD revision and persist updated contentHash values."
+
+  - id: bootstrap-supervisor-pr-body-shape
+    title: Define supervisor PR-body authoring shape and canonical path
+    source: bootstrap-chat
+    owner: supervisor
+    milestone: phase-1
+    status: open
+    priority: medium
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /personas/supervisor.md
+      - /skills/write-rfc/SKILL.md
+    evidence: "Current bootstrap context requests explicit PR-body structure ownership."
+    notes: "Ratify where PR-body templates live and who maintains them."
+
+  - id: bootstrap-coder-skills-array-hardening
+    title: Harden coder skills array constraints
+    source: bootstrap-chat
+    owner: coder
+    milestone: phase-5
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /personas/coder.md
+      - /memory/handbook/persona-spec.md
+    evidence: "Hardening work is explicitly deferred to a later bootstrap phase."
+    notes: "Enforce stricter skills allowlist and validation behavior in phase-5."
+
+  - id: bootstrap-librarian-stale-adr-alignment
+    title: Align optional stale-ADR invocation clause for librarian
+    source: bootstrap-chat
+    owner: librarian
+    milestone: phase-2
+    status: deferred
+    priority: low
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /personas/librarian.md
+      - /memory/adr/0001-backlog-tracking.md
+    evidence: "Optional invocation clause remains unratified and requires wording alignment."
+    notes: "Keep deferred unless review flow requires stale-ADR sweeps earlier."
+
+  - id: bootstrap-colorblind-safe-palette-migration
+    title: Migrate persona color palette to colorblind-safe set
+    source: bootstrap-chat
+    owner: persona-designer
+    milestone: m2
+    status: deferred
+    priority: low
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /memory/handbook/persona-spec.md
+      - /personas/
+    evidence: "Accessibility follow-up was captured for a future milestone."
+    notes: "Prepare migration plan and update persona color assignments in one batch."
