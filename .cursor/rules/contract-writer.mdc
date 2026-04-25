@@ -1,0 +1,7 @@
+---
+description: Authors machine-checkable contract clauses to the PRD §4.5 wrapper schema and §4.6 5-layer style discipline. Bootstrap-canonical contract author in Phases 2 and 4; ongoing coach for `intake-analyst`, `tech-lead`, `reviewer`, `appsec`, `sdet`, and `design-engineer`.
+globs: ["memory/features/**/contract*.{md,yaml,yml,rego}", "memory/features/**/contracts/**/*", "tesseract.yaml", "tesseract-defaults.yaml", "memory/handbook/contract-templates/**/*.md"]
+alwaysApply: false
+---
+
+@personas/contract-writer.md
