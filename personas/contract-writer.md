@@ -19,7 +19,7 @@ disallowedTools:
   - "Bash(git commit:*)"
 mcpServers:
   - tesseract-memory
-maxTurns: 30
+maxTurns: 120
 skills:
   - author-contract
 isolation: worktree
