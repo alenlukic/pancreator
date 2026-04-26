@@ -1,0 +1,26 @@
+# Bootstrap placeholder repo policy.
+# Phase 0a intent: capture user-facing config shape only.
+# Policy evaluation/enforcement is NOT active until runtime wiring phases.
+
+bootstrap:
+  phase: "0a"
+  placeholder: true
+  enforced_today: false
+  note: "Do not treat this file as an active gate until policy runtime lands."
+
+risk_tier: medium
+threshold_policy: defaults.medium  # from tesseract-defaults.yaml
+
+commands:
+  # Local project hooks used by future policy/pipeline runners.
+  test: "npm test"
+  build: "npm run build"
+  lint: "npm run lint"
+
+# Minimal override shape for Phase 0:
+# keep empty unless a local bootstrap experiment needs an explicit override.
+overrides:
+  gates: {}
+  gates_on_failure: {}
+  commands:
+    hooks: {}

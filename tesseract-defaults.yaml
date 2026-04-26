@@ -1,0 +1,71 @@
+# Bootstrap placeholder defaults for threshold policy.
+# Phase 0a intent: establish file shape only.
+# Enforcement is NOT active yet; runtime wiring lands in later phases.
+
+bootstrap:
+  phase: "0a"
+  placeholder: true
+  enforced_today: false
+  note: "Conservative seed values; replace with measured per-tier bundles in Phase 2."
+
+defaults:
+  low:
+    risk_tier: low
+    gates:
+      coverage:
+        statement: { op: ">=", value: 0, severity: warn }
+        branch: { op: ">=", value: 0, severity: warn }
+        new_lines_only: true
+      regression:
+        suites: []
+        flake_tolerance: { op: "==", value: 0, severity: warn }
+      contracts: from_feature
+    gates_on_failure:
+      default: route_back_to_implement
+    commands:
+      hooks:
+        test: null
+        build: null
+        lint: null
+
+  medium:
+    risk_tier: medium
+    gates:
+      coverage:
+        statement: { op: ">=", value: 0, severity: warn }
+        branch: { op: ">=", value: 0, severity: warn }
+        new_lines_only: true
+      regression:
+        suites: []
+        flake_tolerance: { op: "==", value: 0, severity: warn }
+      contracts: from_feature
+    gates_on_failure:
+      default: route_back_to_implement
+      coverage: route_back_to_implement_with_uncovered_diff
+    commands:
+      hooks:
+        test: null
+        build: null
+        lint: null
+
+  high:
+    risk_tier: high
+    gates:
+      coverage:
+        statement: { op: ">=", value: 0, severity: warn }
+        branch: { op: ">=", value: 0, severity: warn }
+        new_lines_only: true
+      regression:
+        suites: []
+        flake_tolerance: { op: "==", value: 0, severity: warn }
+      security:
+        new_cves_max: { op: "==", value: 0, severity: warn }
+      contracts: from_feature
+    gates_on_failure:
+      default: route_back_to_implement
+      security: route_to_appsec_review
+    commands:
+      hooks:
+        test: null
+        build: null
+        lint: null
