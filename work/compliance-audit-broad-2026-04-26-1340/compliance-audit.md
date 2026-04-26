@@ -103,6 +103,42 @@ documentation_impact:
   - `risk_note`: A broad metadata rewrite can produce large diffs and may require staged rollout by domain.
   - `owner_recommendation`: `contract-writer` with `librarian` coordination.
   - `backlog_routing_result`: No backlog item created in non-interactive mode without explicit human request.
+  - `contract_clause`:
+
+```yaml
+id: tesseract.governance.normalize-dual-anchor-contenthash-corpus
+kind: rego
+severity: block
+applies_to:
+  kind: file-path
+  glob: "{AGENTS.md,memory/handbook/**/*.md,personas/**/*.md,.cursor/agents/**/*.md,memory/features/**/contracts/**/*.{yaml,yml,md}}"
+owner: contract-writer
+description: |
+  When a governance document or contract artifact carries a `references[]` anchor, the contract-runner SHALL report a block-level failure unless every `contentHash` value is a concrete lowercase SHA-256 digest and no `contentHash` equals `TBD-on-commit`.
+references:
+  - kind: lines
+    path: AGENTS.md
+    range: [89, 104]
+    contentHash: 3dd1213204e134b7c6e6091e1a421403cd37be95823196c4ab1353be5cda3e14
+    note: "Working-agreement requirement for dual-anchor citations and policy discipline."
+  - kind: lines
+    path: memory/handbook/constitution.md
+    range: [108, 116]
+    contentHash: 00874481f8aaaa6618a4b6ab4d3d115ebfffd5dcf61d3d2ef38bb2076ed17432
+    note: "Constitutional governance obligations for machine-checkable policy controls."
+  - kind: lines
+    path: memory/handbook/policy-compliance-contract.md
+    range: [49, 55]
+    contentHash: 6a7a1e5d27a3c1c0dec59b19c5267e817ea03dcef969b2eba3d6c11cc42a228a
+    note: "Governed-commit policy artifact gate expectations."
+spec: /work/compliance-audit-broad-2026-04-26-1340/normalize-dual-anchor-contenthash-corpus.rego
+runtime:
+  package: tesseract.governance.dual_anchor_contenthash
+  query: data.tesseract.governance.dual_anchor_contenthash.deny
+metadata:
+  tesseract.contract_id: tesseract.governance.normalize-dual-anchor-contenthash-corpus
+  tesseract.applies_to: file-path:{AGENTS.md,memory/handbook/**/*.md,personas/**/*.md,.cursor/agents/**/*.md,memory/features/**/contracts/**/*.{yaml,yml,md}}
+```
 
 ## 7) Gate recommendation
 
