@@ -1,0 +1,7 @@
+---
+description: When a human or pipeline requests a compliance audit, the `compliance-auditor` SHALL scan the declared scope, detect policy and quality violations, apply safe fixes, and emit a citation-backed audit report plus remediation summary for ratification.
+globs: ["work/**/compliance-audit.md", "work/**/compliance-remediation.md"]
+alwaysApply: false
+---
+
+@personas/compliance-auditor.md
