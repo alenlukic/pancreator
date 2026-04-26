@@ -13,22 +13,22 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [83, 110]
-    contentHash: TBD-on-commit
+    contentHash: 3dd1213204e134b7c6e6091e1a421403cd37be95823196c4ab1353be5cda3e14
     note: "Working agreement defines mandatory bootstrap governance discipline."
   - kind: lines
     path: memory/handbook/constitution.md
     range: [106, 138]
-    contentHash: TBD-on-commit
+    contentHash: 00874481f8aaaa6618a4b6ab4d3d115ebfffd5dcf61d3d2ef38bb2076ed17432
     note: "Constitution requires documentation/reference stewardship and recorded obligations."
   - kind: lines
     path: PRD.md
     range: [83, 89]
-    contentHash: TBD-on-commit
+    contentHash: 6a838ec1879ea8c1c83dc5c4dd24618637ff3f7522043775cc123f3751b18f37
     note: "PRD goals define baseline operating outcomes for governance alignment."
   - kind: lines
     path: memory/handbook/documentation-impact-contract.md
     range: [56, 101]
-    contentHash: TBD-on-commit
+    contentHash: 38ed8213e11f7aa1f53d46588cc55cad7da746016c52aa1747f03d8b97d16248
     note: "Documentation-impact decision schema supplies required post-task fields."
 related:
   - /AGENTS.md

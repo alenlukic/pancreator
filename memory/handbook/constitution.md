@@ -13,27 +13,27 @@ references:
   - kind: lines
     path: PRD.md
     range: [83, 89]
-    contentHash: TBD-on-commit
+    contentHash: 6a838ec1879ea8c1c83dc5c4dd24618637ff3f7522043775cc123f3751b18f37
     note: "PRD goals G1-G7 define Tesseract's intended operating outcomes."
   - kind: lines
     path: PRD.md
     range: [378, 380]
-    contentHash: TBD-on-commit
+    contentHash: 6a838ec1879ea8c1c83dc5c4dd24618637ff3f7522043775cc123f3751b18f37
     note: "PRD memory and inbox architecture define organizational operating surfaces."
   - kind: lines
     path: AGENTS.md
     range: [73, 100]
-    contentHash: TBD-on-commit
+    contentHash: 3dd1213204e134b7c6e6091e1a421403cd37be95823196c4ab1353be5cda3e14
     note: "AGENTS working agreement defines bootstrap-era operating discipline."
   - kind: lines
     path: memory/adr/0004-documentation-impact-contract.md
     range: [51, 75]
-    contentHash: TBD-on-commit
+    contentHash: d77cc5cf38a61e2dafc65da2672914ad5bf6fd55295f49786c9b213670085f57
     note: "ADR-0004 ratifies mandatory per-task documentation-impact decisions."
   - kind: lines
     path: memory/handbook/documentation-impact-contract.md
     range: [46, 101]
-    contentHash: TBD-on-commit
+    contentHash: 38ed8213e11f7aa1f53d46588cc55cad7da746016c52aa1747f03d8b97d16248
     note: "Handbook contract defines trigger conditions and decision record shape."
 related:
   - /AGENTS.md

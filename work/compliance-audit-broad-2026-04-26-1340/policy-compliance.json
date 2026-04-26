@@ -1,0 +1,32 @@
+{
+  "task_id": "compliance-audit-broad-2026-04-26-1340",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "memory/handbook/constitution.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The audit remediated governance reference hashes in handbook policy surfaces and generated new compliance artifacts.",
+    "changed_surfaces": [
+      "memory/handbook/documentation-impact-contract.md",
+      "memory/handbook/constitution.md",
+      "memory/handbook/policy-compliance-contract.md",
+      "work/compliance-audit-broad-2026-04-26-1340/compliance-audit.md",
+      "work/compliance-audit-broad-2026-04-26-1340/compliance-remediation.md"
+    ],
+    "deferred_items": []
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The audit enforces dual-anchor citation integrity and validates governed-commit gate requirements.",
+    "constitution_alignment": "The audit preserves constitutional documentation stewardship by hardening reference evidence in handbook policy pages.",
+    "prd_alignment": "The audit improves traceability and governance reliability for operator-ratified bootstrap execution.",
+    "required_updates": [
+      "memory/handbook/documentation-impact-contract.md",
+      "memory/handbook/constitution.md",
+      "memory/handbook/policy-compliance-contract.md",
+      "work/compliance-audit-broad-2026-04-26-1340/compliance-audit.md",
+      "work/compliance-audit-broad-2026-04-26-1340/compliance-remediation.md"
+    ]
+  }
+}
