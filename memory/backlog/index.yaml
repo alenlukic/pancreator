@@ -79,6 +79,22 @@ items:
     evidence: "ADR-0004 requires per-task documentation-impact decisions but does not provide automated lint/gate enforcement."
     notes: "Implement a lint/tooling gate that verifies applies decision records and deferral backlog linkage."
 
+  - id: bootstrap-artifact-changelog-unification
+    title: Define and implement unified artifact changelog contract
+    source: bootstrap-chat
+    owner: librarian
+    milestone: phase-3
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-26T00:09:00Z"
+    links:
+      - /PRD.md
+      - /memory/handbook/documentation-impact-contract.md
+      - /memory/handbook/inbox-lifecycle.md
+      - /memory/backlog/index.yaml
+    evidence: "Current artifact-history surfaces are fragmented across run-log, ADRs, feature index, inbox lifecycle, and debt/SME histories; no single unified artifact changelog contract exists."
+    notes: "Author ADR + handbook spec for a cross-artifact changelog model and backlog-track automation/enforcement in a future phase."
+
   - id: bootstrap-coder-skills-array-hardening
     title: Harden coder skills array constraints
     source: bootstrap-chat
