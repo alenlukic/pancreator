@@ -7,8 +7,9 @@ phase: 0b
 owners: [persona-designer, librarian]
 purpose: |
   The Anthropic Claude Agent SDK 16-field YAML reference, the Tesseract
-  metadata extension map, and the Cursor `.cursor/rules/<name>.mdc` shim
-  recipe. The canonical reference for `persona-designer` and the
+  metadata extension map, and the Cursor projection contract
+  (`.cursor/agents/<name>.md` mirror + `.cursor/rules/<name>.mdc` rule-layer
+  projection where required). The canonical reference for `persona-designer` and the
   `author-persona` skill.
 references:
   - kind: lines
@@ -43,9 +44,10 @@ YAML conforming to the Anthropic Claude Agent SDK 16-field per-agent format
 plus a Tesseract `metadata` extension map. Body prose is RFC-2119-disciplined
 second-person.
 
-A build step emits a Cursor `.cursor/rules/<name>.mdc` shim from the same
-source. The persona file is canonical; the shim is a round-trip-stable
-projection.
+The target integration contract is a Cursor mirror under
+`.cursor/agents/<name>.md` from the same source persona. Where rule-layer
+loading still requires it, a `.cursor/rules/<name>.mdc` projection is also
+maintained. The persona file remains canonical.
 
 ## 1 — File anatomy
 
@@ -135,13 +137,31 @@ The body uses second-person voice ("You author..."). RFC 2119 obligation
 keywords appear on every normative statement. Style discipline is enumerated
 in `/memory/handbook/contract-style.md` Layer 1.
 
-## 5 — The Cursor `.mdc` shim recipe
+## 5 — Cursor integration projections
 
-The shim lives at `.cursor/rules/<name>.mdc` and projects the persona into
-Cursor's stable per-rule format (`description`, `globs`, `alwaysApply`).
-Cursor 2.x has no per-agent file format; the shim is the only stable surface.
+The primary Cursor analogue of a persona spec is the mirror file
+`.cursor/agents/<name>.md`, projected from `personas/<name>.md`.
 
-The shim is exactly five non-blank lines plus the body include line:
+When rule-layer context loading requires a rule file, maintain a secondary
+projection at `.cursor/rules/<name>.mdc`.
+
+### 5.1 — `.cursor/agents` mirror (primary)
+
+Rules:
+
+- `personas/<name>.md` MUST remain canonical for authoring and review.
+- `.cursor/agents/<name>.md` SHOULD be emitted as a mirror projection of the
+  canonical persona without semantic drift.
+- Until emitter tooling is wired in this repo, maintainers MAY update the
+  mirror manually, but they MUST preserve canonical parity.
+
+### 5.2 — `.mdc` rule-layer projection (where required)
+
+The `.mdc` projection uses Cursor's per-rule format (`description`, `globs`,
+`alwaysApply`) and is retained only where rule-layer loading still requires it.
+
+The projection shape is exactly five non-blank lines plus the body include
+line:
 
 ```
 ---
@@ -153,7 +173,7 @@ alwaysApply: <true | false>
 @personas/<name>.md
 ```
 
-Rules:
+Projection rules:
 
 - `description` MUST equal the persona's `description` field exactly. The
   parser refuses any divergence.
@@ -164,9 +184,9 @@ Rules:
 - The body MUST be a single `@personas/<name>.md` import line. Cursor expands
   the import at activation time.
 
-The shim emitter (`@tesseract/persona`'s `emitMdc`) is round-trip-stable: a
-parse-then-emit cycle MUST produce a byte-identical file. Phase 3 step 5 lands
-the parser; until then, hand-checked.
+The emitter target (`@tesseract/persona`) SHOULD remain round-trip-stable:
+parse-then-emit SHOULD produce a byte-identical `.mdc` file once tooling is
+wired. Until then, this projection remains hand-checked.
 
 ## 6 — Color palette
 
@@ -283,8 +303,9 @@ The Phase 0c verification gate uses `persona-designer` to author
 2. The `description` is EARS and at most 50 words.
 3. The body's three required sections are present.
 4. Layer 1 lint passes by hand-checklist.
-5. The emitted `.cursor/rules/tech-writer.mdc` shim is exactly five non-blank
-   lines plus the body include.
+5. The `.cursor/agents/tech-writer.md` mirror matches canonical persona
+   semantics, and any required `.cursor/rules/tech-writer.mdc` projection is
+   exactly five non-blank lines plus the body include.
 
 A clean round-trip discharges BR1 (persona format drift) before Phase 1
 multiplies the error.

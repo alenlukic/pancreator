@@ -136,3 +136,31 @@ items:
       - /personas/
     evidence: "Accessibility follow-up was captured for a future milestone."
     notes: "Prepare migration plan and update persona color assignments in one batch."
+
+  - id: ratification-q21-ensemble-runtime-comparative-eval
+    title: Run Q21 comparative ensemble-runtime evaluation before M4 lock
+    source: memory/adr/0001-q-ratification.md
+    owner: tech-lead
+    milestone: m4
+    status: deferred
+    priority: high
+    opened_at: "2026-04-26T02:16:00Z"
+    links:
+      - /memory/adr/0001-q-ratification.md
+      - /PRD.md
+    evidence: "Q21 ratification defers default selection pending comparative quality/cost evaluation of AutoGen, CrewAI, and LangGraph supervisor."
+    notes: "Produce comparative report before M4 scope lock and submit ratification delta for LocalUserAuthorizer review."
+
+  - id: ratification-q22-a2a-default-posture-brief
+    title: Publish Q22 A2A default-posture decision brief
+    source: memory/adr/0001-q-ratification.md
+    owner: tech-lead
+    milestone: m7
+    status: open
+    priority: high
+    opened_at: "2026-04-26T02:16:00Z"
+    links:
+      - /memory/adr/0001-q-ratification.md
+      - /PRD.md
+    evidence: "Q22 remains open and requires an explicit decision brief on threat model, default exposure posture, and operator UX trade-offs."
+    notes: "Draft decision brief before framework-mode A2A lands; route to LocalUserAuthorizer for final default-posture ratification."

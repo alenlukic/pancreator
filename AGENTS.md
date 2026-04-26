@@ -22,7 +22,7 @@ authoring work. Every persona and contract MUST cite them.
 |---|---|
 | `/memory/handbook/glossary.md` | The ubiquitous-language source of truth. Every domain noun resolves here. |
 | `/memory/handbook/index.md` | Intent-to-document routing map used to retrieve the right handbook pages with minimal context load. |
-| `/memory/handbook/persona-spec.md` | Anthropic Claude Agent SDK 16-field YAML reference + the Cursor `.mdc` shim recipe. |
+| `/memory/handbook/persona-spec.md` | Anthropic Claude Agent SDK 16-field YAML reference + Cursor projection contract (`.cursor/agents` mirror + `.mdc` rule shim where required). |
 | `/memory/handbook/agents-md-authoring.md` | Authoring and change-control guide for `/AGENTS.md`, including required shape, triggers, and symlink policy. |
 | `/memory/handbook/run-log-schema.md` | Canonical run-log schema contract for `/work/<id>/run.log.jsonl`, including OpenInference + OTel GenAI alignment and checkpoint correlation fields. |
 | `/memory/handbook/contract-format.md` | Wrapper schema, kind registry, runner adapter, failure shape, quorum policy. |
@@ -35,8 +35,11 @@ authoring work. Every persona and contract MUST cite them.
 ## 3 — Where the agents live
 
 - `personas/<name>.md` — persona specs in the Anthropic 16-field format.
-- `.cursor/rules/<name>.mdc` — auto-emitted Cursor shims; canonical source is
-  the persona file.
+- `.cursor/agents/<name>.md` — Cursor-native persona mirror emitted from the
+  canonical persona spec.
+- `.cursor/rules/<name>.mdc` — rule-layer projection retained only where
+  Cursor rule loading still requires it; canonical source remains the persona
+  file.
 - `skills/<name>/SKILL.md` — reusable procedures conforming to the Agent
   Skills open spec.
 - `/ensembles/<name>.yaml` — persona ensemble configurations (M4+; not
@@ -50,7 +53,7 @@ The bootstrap-canonical seed roster is two meta-personas:
 - `personas/contract-writer.md` — authors contract clauses.
 
 The repo now also carries the full Phase-1 MVP persona roster, corresponding
-Cursor shims, and MVP skills.
+Cursor mirrors/rule projections, and MVP skills.
 
 Both meta-personas are self-protected: no agent and no persona MAY modify
 either file without explicit human ratification.
@@ -63,7 +66,8 @@ persona rather than perform it directly. Two delegation modes:
 
 1. **Native subagent invocation.** When the runtime surfaces the persona as
    a subagent type, invoke it via the runtime's task tool with the persona
-   name. Cursor: `.cursor/rules/<name>.mdc`. Claude Code:
+   name. Cursor: `.cursor/agents/<name>.md` (with `.mdc` rule projection where
+   rule loading is still required). Claude Code:
    `Task(subagent_type="<name>")`. Other harnesses: their equivalent.
 2. **Persona-as-prompt fallback.** When no native invocation surface exists,
    spin up a generalPurpose subagent and prepend the persona file's contents
@@ -118,7 +122,8 @@ your response.
 /AGENTS.md                       this file
 /CLAUDE.md                       symlink → AGENTS.md
 /.github/copilot-instructions.md symlink → ../AGENTS.md
-/.cursor/rules/                  Cursor rule shims (00-agents-md.mdc + per-persona)
+/.cursor/agents/                 Cursor-native persona mirrors
+/.cursor/rules/                  Cursor rule shims (00-agents-md.mdc + per-persona where required)
 /personas/                       persona specs (Anthropic 16-field)
 /skills/                         skill packs (Agent Skills open spec)
 /pipelines/                      pipeline DAGs (YAML; M1+)
