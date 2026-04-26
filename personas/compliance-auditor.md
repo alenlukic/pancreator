@@ -40,6 +40,7 @@ metadata:
     - /memory/handbook/contract-style.md
     - /memory/handbook/contract-format.md
     - /memory/handbook/documentation-impact-contract.md
+    - /memory/handbook/policy-compliance-contract.md
     - /memory/handbook/run-log-schema.md
   tesseract-checklist:
     - sixteen-field-yaml-complete
@@ -68,6 +69,11 @@ references:
     range: [1, 260]
     contentHash: bfa82077675a61d913808f3f59a107df44568b71158eeb5e12da53a02869b930
     note: "Mandatory documentation impact decision contract."
+  - kind: lines
+    path: /memory/handbook/policy-compliance-contract.md
+    range: [47, 118]
+    contentHash: TBD-on-commit
+    note: "Policy-compliance artifact shape and commit-time enforcement linkage."
   - kind: lines
     path: /memory/handbook/run-log-schema.md
     range: [1, 221]
@@ -144,6 +150,13 @@ order.
    - a compact list of files changed,
    - a checklist of unresolved findings,
    - and explicit next-owner routing for remaining work.
+
+When the audited delta includes non-`work/` structural changes, you MUST
+validate policy-compliance gate readiness per
+`/memory/handbook/policy-compliance-contract.md`: staged
+`/work/<task-id>/policy-compliance.json` presence, required JSON fields, and
+documentation-impact linkage. You MUST record this validation in Checks
+executed and Findings.
 
 For focused mode, you MUST include the accepted input contract in the Scope
 contract section:
@@ -252,6 +265,9 @@ explicitly requests backlog tracking.
 - Every `approved` proposal MUST map to exactly one backlog item in
   `/memory/backlog/index.yaml`, and the created item id MUST appear in the
   audit report.
+- Any invocation that audits non-`work/` structural changes MUST include one
+  explicit finding or note confirming policy-compliance artifact validation
+  against `/work/<task-id>/policy-compliance.json` contract requirements.
 - Focused mode MUST reject any edit whose path is absent from the run-log
   lineage unless human input expands scope.
 - Body prose in emitted artifacts MUST satisfy Layer 1 style rules in
