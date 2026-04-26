@@ -13,17 +13,17 @@ references:
   - kind: lines
     path: BOOTSTRAP.md
     range: [63, 77]
-    contentHash: TBD-on-commit
+    contentHash: 5d6792095dc7a91d3400f7d8dfdc9c6c1276e026c3b78b53cf96461c6da6e1d5
     note: "Phase 0b handbook seed list requires `/memory/handbook/index.md` as the MemoryRouter routing table."
   - kind: lines
     path: memory/handbook/glossary.md
     range: [216, 218]
-    contentHash: TBD-on-commit
+    contentHash: 2ee2cbabbe214b431626882fe3247dd26700641142a40f741264a0531b503632
     note: "Glossary defines MemoryRouter behavior against this file."
   - kind: lines
     path: AGENTS.md
     range: [18, 30]
-    contentHash: TBD-on-commit
+    contentHash: fbc85e1edf1c9d1205cb54861601842060f5d112626374684c6f64aaba986d52
     note: "Canon table declares handbook pages that this index routes by intent."
 related:
   - /memory/handbook/glossary.md

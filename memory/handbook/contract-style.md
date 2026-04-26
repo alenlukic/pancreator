@@ -15,17 +15,17 @@ references:
   - kind: lines
     path: PRD.md
     range: [260, 260]
-    contentHash: TBD-on-commit
+    contentHash: cabf0e8d6d856ae0c4f0f7dd47c2af307914a2ff21ebb8970928ebaca7efd9ab
     note: "PRD §4 glossary — Spec Contract definition."
   - kind: lines
     path: PRD.md
     range: [839, 839]
-    contentHash: TBD-on-commit
+    contentHash: 7a4bcdb4204669475079412aac07361a069d0d5c2365b2831d7be240b0d09499
     note: "PRD §7 — `Spec contracts are gates, not suggestions` paragraph."
   - kind: lines
     path: PRD.md
     range: [1190, 1190]
-    contentHash: TBD-on-commit
+    contentHash: d8c189973863c51ea760bde16af12099a925764081ff2ae8ef8e1d35585fbd8a
     note: "PRD §13 R11 — spec-contract over-fitting risk."
 related:
   - /memory/handbook/glossary.md

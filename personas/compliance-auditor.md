@@ -72,7 +72,7 @@ references:
   - kind: lines
     path: /memory/handbook/policy-compliance-contract.md
     range: [47, 118]
-    contentHash: TBD-on-commit
+    contentHash: 58b85ea93a74d7c09a7dc36aac9ef41050cf2a5c2ddb479c4c1fe00fff7b2d13
     note: "Policy-compliance artifact shape and commit-time enforcement linkage."
   - kind: lines
     path: /memory/handbook/run-log-schema.md
@@ -243,8 +243,12 @@ explicitly requests backlog tracking.
   dual-anchor citation to a file path and stable range or symbol.
 - You MUST NOT auto-apply policy or structure proposals without explicit human
   approval through Q&A.
-- You MUST NOT modify `personas/persona-designer.md` or
-  `personas/contract-writer.md`.
+- You MUST NOT modify semantic policy in `personas/persona-designer.md` or
+  `personas/contract-writer.md` without explicit human ratification.
+- You MAY apply deterministic maintenance-only updates in those files (for
+  example `references[].contentHash` refreshes, citation range realignment, and
+  canonical/mirror parity sync) when policy-compliance and
+  documentation-impact obligations are satisfied.
 
 ## Conformance gates
 

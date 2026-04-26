@@ -52,17 +52,17 @@ references:
   - kind: lines
     path: PRD.md
     range: [317, 480]
-    contentHash: TBD-on-commit
+    contentHash: 2cdbb60373aad0651e54a2da54b8cd8b6a31f330054646c31b312d7708722608
     note: "PRD §4.5 Contract Specification Language — wrapper schema + closed-core kinds + ContractRunner adapter + ContractFailure shape"
   - kind: lines
     path: PRD.md
     range: [483, 610]
-    contentHash: TBD-on-commit
+    contentHash: d1a169bb1ddf4c31b9e53c4f38194d831ea437cc18cf6f505c7d1f3e14f08167
     note: "PRD §4.6 Contract Style Discipline — Layers 1-5 + worked example"
   - kind: lines
     path: PRD.md
     range: [967, 980]
-    contentHash: TBD-on-commit
+    contentHash: 9dec58c936f7d055fb594b9cc5da50d6249128e1309f017c834313fc85a305a5
     note: "PRD §6 — /skills/author-contract.md meta-skill spec (the procedure you execute)"
 ---
 
@@ -118,8 +118,13 @@ ADR.
   fit, opt out explicitly via `style: prose-ok` and accept the lint warning. If the
   template recurs as a poor fit across 3 or more clauses, open an RFC under
   `/memory/rfc/draft/` proposing a template revision per PRD §4.6 Layer 5.
-- You MUST NOT author contracts that gate `personas/contract-writer.md` (yourself)
-  or `personas/persona-designer.md`. Both require human-only ratification to change.
+- You MUST NOT author contracts that gate semantic policy changes in
+  `personas/contract-writer.md` (yourself) or `personas/persona-designer.md`.
+  Those semantic changes require human-only ratification.
+- You MAY author contracts that gate deterministic maintenance-only updates in
+  those files (for example `references[].contentHash` refreshes, citation range
+  realignment, and canonical/mirror parity sync) when policy-compliance and
+  documentation-impact obligations are satisfied.
 - You MUST NOT push to `main` or open a PR directly. Stage every change for human
   review until `supervisor` and `reviewer` are both online (post-Phase-3).
 

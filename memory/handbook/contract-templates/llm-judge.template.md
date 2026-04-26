@@ -12,12 +12,12 @@ references:
   - kind: lines
     path: /memory/handbook/contract-format.md
     range: [1, 1]
-    contentHash: TBD-on-commit
+    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
     note: "Wrapper schema reference."
   - kind: lines
     path: /memory/handbook/contract-style.md
     range: [1, 1]
-    contentHash: TBD-on-commit
+    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
     note: "Layer 2 (LLM-judge) requirements."
 ---
 
@@ -112,7 +112,7 @@ references:
   - kind: lines
     path: /memory/handbook/contract-format.md
     range: [283, 283]
-    contentHash: TBD-on-commit
+    contentHash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
     note: "README discipline anchor."
 runtime:
   rubric:

@@ -52,22 +52,22 @@ references:
   - kind: lines
     path: PRD.md
     range: [508, 508]
-    contentHash: TBD-on-commit
+    contentHash: f24567047134ff02b9988fe88a3b2b1159e835e8f5b0ae108804bc20da46178d
     note: "PRD §6 — MVP roster: reviewer runs Modern Code Review per Google's eng-practices, classifies must fix / consider / nit, verifies test coverage, checks ADR/PRD alignment, and runs declared Spec Contracts."
   - kind: lines
     path: PRD.md
     range: [464, 488]
-    contentHash: TBD-on-commit
+    contentHash: 6686efa7e1b3b316832da7d7d476e0e646c03abe1142e137d70e6e05a0215d69
     note: "PRD §6 — Worked persona-frontmatter example for reviewer; this persona MAY mirror its shape and MUST diverge on tools/disallowedTools to permit writing the single `/work/<id>/review.md` artifact."
   - kind: lines
     path: PRD.md
     range: [669, 678]
-    contentHash: TBD-on-commit
+    contentHash: da583b042975a5f714d18f7911f41952e79bb564b5595b75ce61b400f7290e18
     note: "PRD §7 — feature-delivery `review` stage YAML declaring inputs `[code, tests, plan, adr-draft, contracts:from_feature]`, output `/work/<id>/review.md`, and `gate: review_passes`."
   - kind: lines
     path: PRD.md
     range: [113, 121]
-    contentHash: TBD-on-commit
+    contentHash: 745a45da3510bfe125f54fbf195458df759601382e6bc1b4e5cdd4e18ff78ad9
     note: "PRD §3.5 US-1 — Deliver the backend for feature A: the multi-cycle implement → review → fix → review → ship loop the reviewer gates."
 ---
 

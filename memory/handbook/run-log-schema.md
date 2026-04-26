@@ -15,27 +15,27 @@ references:
   - kind: lines
     path: BOOTSTRAP.md
     range: [75, 76]
-    contentHash: TBD-on-commit
+    contentHash: 87ba148945f68978219584d390d21685817468b62879f5397f299275cf43136b
     note: "Phase 0b requires `/memory/handbook/run-log-schema.md` as the run-logger contract seed."
   - kind: lines
     path: BOOTSTRAP.md
     range: [181, 183]
-    contentHash: TBD-on-commit
+    contentHash: e32bcd21ec6b952739869a30836277ef92af167aa0b32bdbdc0da0a3d53a03f0
     note: "Bootstrap observability requirement sets OpenInference + OTel GenAI conformance expectation."
   - kind: lines
     path: PRD.md
     range: [838, 840]
-    contentHash: TBD-on-commit
+    contentHash: 9ac3ed1d5e8a62d8e57e611b31f25246bb7a24581ce760ccb18ed285c64c5348
     note: "PRD defines run-log path, semantic-convention fields, and checkpoint linkage through run-log offset."
   - kind: lines
     path: PRD.md
     range: [1080, 1084]
-    contentHash: TBD-on-commit
+    contentHash: 39fb71b647d0f60d5adf5eaa9fd55f11a2ea6549a32bc9443d18517395b2b004
     note: "PRD requires OTLP/OpenInference + OTel GenAI compatible spans and JSONL local sink."
   - kind: lines
     path: PRD.md
     range: [1088, 1088]
-    contentHash: TBD-on-commit
+    contentHash: 566895748e897dc7893dc315be63ce4c8a9f58cd2abc964785d04fee37229467
     note: "PRD requires stage-boundary checkpoints and LangGraph-compatible saver shape."
 related:
   - /PRD.md

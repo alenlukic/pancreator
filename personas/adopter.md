@@ -49,22 +49,22 @@ references:
   - kind: lines
     path: PRD.md
     range: [504, 504]
-    contentHash: TBD-on-commit
+    contentHash: 8981f5d3b9e02c63acbb12b15b6d93c09ad91fbedd0d3ad5ebdb4f0af04c8610
     note: "PRD §6 — MVP roster: adopter runs at first install on existing repos via the `adopt` sub-pipeline; read-only on existing files; write-only to Tesseract-prefixed paths."
   - kind: lines
     path: PRD.md
     range: [207, 223]
-    contentHash: TBD-on-commit
+    contentHash: 99a7a31dbd0ccc27200d7ceba7ccad7705d7055433bb70c637ca78863d1290dd
     note: "PRD §3.5 US-9 — Greenfield AND existing projects: the user story declaring non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md/.cursor/rules/CLAUDE.md, and seeded threshold policy."
   - kind: lines
     path: PRD.md
     range: [701, 701]
-    contentHash: TBD-on-commit
+    contentHash: 57b310f26f7de1c84e1d2c18e367f7e789c5c9dada95b821735dc597e47e6820
     note: "PRD §7 — `adopt` pipeline definition: drives the adopter through codebase scan, conflict-checks every write, surfaces a per-file diff before applying, writes `scan-<date>.md`, and posts inbox proposals."
   - kind: lines
     path: PRD.md
     range: [946, 947]
-    contentHash: TBD-on-commit
+    contentHash: 88faa7f527ddcf085d0ff423b02698b3c4a0596c87e636e9b3fa2917094acf70
     note: "PRD §8 — Memory architecture: `/memory/adoption/scan-<date>.md` is a citation-bearing artifact, replayable on `tess re-adopt`."
 ---
 

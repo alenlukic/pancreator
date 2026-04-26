@@ -13,37 +13,37 @@ references:
   - kind: lines
     path: memory/adr/0003-inbox-lifecycle-and-archival.md
     range: [74, 95]
-    contentHash: TBD-on-commit
+    contentHash: aa84cf148c94698899c74f51be5255337290b1ef08e84aedf916b89f19e757fd
     note: "ADR-0003 decision defines the required lifecycle states and manual-versus-future automation boundary."
   - kind: lines
     path: PRD.md
     range: [267, 267]
-    contentHash: TBD-on-commit
+    contentHash: e7226f12abc886237b6ac1510e8ce51f9aaaf0e24c11376107d50bd468359c59
     note: "PRD glossary defines Inbox as a bidirectional queue with in/out/thread locations."
   - kind: lines
     path: PRD.md
     range: [1037, 1037]
-    contentHash: TBD-on-commit
+    contentHash: 1b196129be3b8ea9d2f52cee6ea204bcbcbb0d970f0de6810e4dd0b8ae627b1e
     note: "PRD CLI surface includes inbox management verbs."
   - kind: lines
     path: AGENTS.md
     range: [101, 103]
-    contentHash: TBD-on-commit
+    contentHash: 6fc43bd7967303a348658906c91b158737259088f5200c9e9d3ea420afb08ce6
     note: "AGENTS defines `/inbox/in/` and `/inbox/out/` as canonical operational queue paths."
   - kind: lines
     path: AGENTS.md
     range: [130, 130]
-    contentHash: TBD-on-commit
+    contentHash: 84615919c53e378e2649c695bb306d0e08903a59e843af757757cfa1b54b7d3f
     note: "AGENTS workspace map defines `inbox/{in,out,threads}/`."
   - kind: lines
     path: BOOTSTRAP.md
     range: [49, 53]
-    contentHash: TBD-on-commit
+    contentHash: 214aec65730e2b02accc8be23f009a16d98509e930d3bff9bbc1389cd612a582
     note: "Bootstrap scaffold includes inbox directories in the required repository substrate."
   - kind: lines
     path: memory/handbook/contract-style.md
     range: [60, 65]
-    contentHash: TBD-on-commit
+    contentHash: 6ea08ca23f1241425af057fc20324c9d18c456de7eaf1e25c5b0b56c4fcdb4d4
     note: "Layer 1 requires RFC 2119 keywords in normative prose."
 related:
   - /memory/adr/0003-inbox-lifecycle-and-archival.md

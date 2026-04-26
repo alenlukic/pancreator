@@ -13,12 +13,12 @@ references:
   - kind: lines
     path: BOOTSTRAP.md
     range: [131, 134]
-    contentHash: TBD-on-commit
+    contentHash: d0608f94986442b80034c82a022a7514ecbf2741090adc1cf4b0fe147d75f7c2
     note: "Phase 2 allows llm-judge for README and DX quality gates."
   - kind: lines
     path: PRD.md
     range: [438, 438]
-    contentHash: TBD-on-commit
+    contentHash: dfce0a36c0d3252b61b7d73becc2f7f83429e1a982c2ea71c0610edc9fb69f00
     note: "Primitive README discipline for standalone usage."
 runtime:
   rubric:

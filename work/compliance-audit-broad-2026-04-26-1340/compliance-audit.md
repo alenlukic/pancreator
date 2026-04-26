@@ -151,3 +151,22 @@ Predicate summary: localized governance fixes succeeded, but unresolved major ci
 - Deferred decision: `normalize-dual-anchor-contenthash-corpus`.
   - Owner routing: `contract-writer` (primary), `librarian` (secondary).
   - Rerun trigger: after owner-scoped corpus normalization PR is staged, rerun `/compliance-auditor` broad sweep in `non_interactive` mode.
+
+## 9) Contract execution result (2026-04-26)
+
+- `contract_id`: `tesseract.governance.normalize-dual-anchor-contenthash-corpus`
+- `execution_owner`: `tesseract-engineer`
+- `status`: `partial-fail` (blocked by protected persona constraints)
+- `execution_summary`:
+  - Executed a repository-scope normalization pass across the clause `applies_to` set and replaced `references[].contentHash: TBD-on-commit` with concrete lowercase SHA-256 digests where deterministic line anchors were available.
+  - Applied 205 reference-hash replacements across 76 files in scope (`memory/handbook/**`, `personas/**` except protected files, `.cursor/agents/**`, and `memory/features/**/contracts/**`).
+  - Residual violations are limited to 5 placeholders in protected files that this invocation MUST NOT modify: `personas/contract-writer.md` and `personas/persona-designer.md`.
+- `evidence_anchors`:
+  - `{kind: lines, path: "personas/contract-writer.md", range: [55, 65], contentHash: "TBD-on-commit"}`
+  - `{kind: lines, path: "personas/persona-designer.md", range: [49, 54], contentHash: "TBD-on-commit"}`
+  - `{kind: lines, path: "work/compliance-audit-broad-2026-04-26-1340/normalize-dual-anchor-contenthash-corpus.rego", range: [34, 40], contentHash: "d0176e487d76f4159a7e6e93ffcd097de91ea53ec57ff4f29e6b8c46ece579c7"}`
+- `owner_routing`:
+  - Primary: `contract-writer` (self-protected persona content update ratification).
+  - Secondary: `persona-designer` (authorized update pathway for protected persona references).
+- `rerun_trigger`:
+  - After ratified updates to the 5 protected placeholders are staged, rerun this clause (`tesseract.governance.normalize-dual-anchor-contenthash-corpus`) and verify zero `references[].contentHash: TBD-on-commit` in clause scope.

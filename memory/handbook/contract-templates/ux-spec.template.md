@@ -12,12 +12,12 @@ references:
   - kind: lines
     path: /memory/handbook/contract-format.md
     range: [1, 1]
-    contentHash: TBD-on-commit
+    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
     note: "Wrapper schema reference."
   - kind: lines
     path: /memory/handbook/contract-style.md
     range: [1, 1]
-    contentHash: TBD-on-commit
+    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
     note: "Layer 2 (axe + playwright) requirements."
 external:
   - https://www.w3.org/WAI/standards-guidelines/wcag/

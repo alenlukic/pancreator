@@ -11,12 +11,12 @@ references:
   - kind: lines
     path: BOOTSTRAP.md
     range: [122, 159]
-    contentHash: TBD-on-commit
+    contentHash: f54eb5ec342d97598e20c567f2300a8e55f983d8eb60ad17f7925a410d255ec1
     note: "Bootstrap Phase 2 package contract requirement and dependency order."
   - kind: lines
     path: PRD.md
     range: [1116, 1126]
-    contentHash: TBD-on-commit
+    contentHash: 6e43642f6ebbc2a83dd5af82390ab9e4ce935d8d5fc98b4229cac128454a422d
     note: "M1 substrate package scope and interfaces."
 spec: /memory/features/tesseract-mcp-server/contracts/tesseract.mcp_server.package_shape.rego
 runtime:

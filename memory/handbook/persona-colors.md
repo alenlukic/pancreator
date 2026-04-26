@@ -14,7 +14,7 @@ references:
   - kind: lines
     path: /memory/handbook/persona-spec.md
     range: [180, 210]
-    contentHash: TBD-on-commit
+    contentHash: 7bceb8256dc271a7f5351eda578262767f477ab24efb552f7adba38bf5883762
     note: "Persona Spec Format §6 — palette table; this file is the canonical alias."
 related:
   - /memory/handbook/persona-spec.md

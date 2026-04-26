@@ -56,8 +56,12 @@ The bootstrap-canonical seed roster is two meta-personas:
 The repo now also carries the full Phase-1 MVP persona roster, corresponding
 Cursor mirrors/rule projections, and MVP skills.
 
-Both meta-personas are self-protected: no agent and no persona MAY modify
-either file without explicit human ratification.
+Both meta-personas are self-protected for semantic changes: no agent and no
+persona MUST NOT modify role semantics, authority boundaries, tool grants, or
+safety constraints unless explicit human ratification is recorded. Deterministic
+maintenance-only updates (for example `references[].contentHash` refreshes,
+citation range realignment, and canonical/mirror parity sync) MAY proceed
+when policy-compliance and documentation-impact obligations are satisfied.
 
 ## 4 — Pipeline-step delegation rule
 
