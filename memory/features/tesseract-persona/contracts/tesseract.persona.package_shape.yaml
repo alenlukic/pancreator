@@ -1,0 +1,27 @@
+id: tesseract.persona.package_shape
+kind: rego
+severity: block
+applies_to:
+  kind: file-path
+  glob: "packages/@tesseract/persona/**"
+owner: contract-writer
+description: |
+  When the Phase 2 scaffold for `packages/@tesseract/persona` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
+references:
+  - kind: lines
+    path: BOOTSTRAP.md
+    range: [122, 159]
+    contentHash: TBD-on-commit
+    note: "Bootstrap Phase 2 package contract requirement and dependency order."
+  - kind: lines
+    path: PRD.md
+    range: [1116, 1126]
+    contentHash: TBD-on-commit
+    note: "M1 substrate package scope and interfaces."
+spec: /memory/features/tesseract-persona/contracts/tesseract.persona.package_shape.rego
+runtime:
+  package: tesseract.phase2.persona
+  query: data.tesseract.phase2.persona.deny
+metadata:
+  tesseract.contract_id: tesseract.persona.package_shape
+  tesseract.applies_to: file-path:packages/@tesseract/persona/**

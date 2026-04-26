@@ -1,0 +1,47 @@
+id: tesseract.inbox.readme_ergonomics
+kind: llm-judge
+severity: block
+applies_to:
+  kind: artifact-symbol
+  path: packages/@tesseract/inbox/README.md
+  symbol: "# Quickstart"
+  contentHash: TBD-on-commit
+owner: contract-writer
+description: |
+  When `README.md` under `packages/@tesseract/inbox` is evaluated for MVP library-mode onboarding, the judge panel SHALL return a mean score of at least 0.75 for command clarity and first-run completeness within 5 commands.
+references:
+  - kind: lines
+    path: BOOTSTRAP.md
+    range: [131, 134]
+    contentHash: TBD-on-commit
+    note: "Phase 2 allows llm-judge for README and DX quality gates."
+  - kind: lines
+    path: PRD.md
+    range: [438, 438]
+    contentHash: TBD-on-commit
+    note: "Primitive README discipline for standalone usage."
+runtime:
+  rubric:
+    scale: [1.0, 0.5, 0.0]
+    threshold: 0.75
+    examples:
+      good:
+        - text: |
+            npm install @tesseract/inbox
+            npm run build
+            npm test
+          rationale: The sequence uses explicit commands and names a verification step.
+      bad:
+        - text: |
+            Install this package and follow the standard setup.
+          rationale: The sentence uses weasel wording and omits executable commands.
+    references:
+      - /memory/handbook/contract-templates/llm-judge.template.md
+  panel:
+    quorum: 2-of-3
+    judges: [haiku, haiku, sonnet]
+    seed: 42
+    cost_ceiling_usd: 0.50
+metadata:
+  tesseract.contract_id: tesseract.inbox.readme_ergonomics
+  tesseract.applies_to: artifact-symbol:packages/@tesseract/inbox/README.md#Quickstart
