@@ -33,6 +33,7 @@ references:
     note: "Backlog index schema defines required fields for deferred follow-up items."
 related:
   - /memory/adr/0004-documentation-impact-contract.md
+  - /memory/handbook/policy-compliance-contract.md
   - /memory/backlog/index.yaml
   - /memory/handbook/backlog-format.md
   - /AGENTS.md
@@ -100,7 +101,14 @@ task boundary. When deferring, the agent SHALL:
 When `applies=false`, the record MUST include a rationale that states why no
 documentation/reference surface changed and why no follow-up is required.
 
-## 6 - Stability
+## 6 - Enforcement linkage
+
+This contract defines required decision content. Commit-time enforcement SHALL
+be routed through `/memory/handbook/policy-compliance-contract.md`, which
+binds documentation-impact decisions to machine-checkable
+`/work/<task-id>/policy-compliance.json` artifacts.
+
+## 7 - Stability
 
 This file is bootstrap-canonical for task-level documentation-impact decisions.
 Promotion to `stability: stable` requires ratified enforcement automation and

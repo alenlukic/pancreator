@@ -28,6 +28,7 @@ authoring work. Every persona and contract MUST cite them.
 | `/memory/handbook/contract-format.md` | Wrapper schema, kind registry, runner adapter, failure shape, quorum policy. |
 | `/memory/handbook/contract-style.md` | The 5-layer style discipline (RFC 2119, EARS, atomic, no weasel words, glossary, dual-anchor). |
 | `/memory/handbook/documentation-impact-contract.md` | Global post-task decision contract for documentation/reference impact, required updates, and deferral tracking. |
+| `/memory/handbook/policy-compliance-contract.md` | Machine-checkable per-task policy alignment artifact contract used by commit-time enforcement hooks. |
 | `/memory/handbook/contract-templates/` | The 6 MVP slot-driven scaffolds for common clause shapes. |
 | `BOOTSTRAP.md` | The phase-by-phase bootstrap plan; the human is the in-loop reviewer at every phase boundary. |
 | `PRD.md` | The product spec. The line-anchored citation target until handbook seeds are promoted to canonical. |
@@ -96,6 +97,11 @@ your response.
   evaluate documentation/reference impact after each task and SHALL either
   apply required updates or record deferral rationale with backlog linkage per
   `/memory/handbook/documentation-impact-contract.md`.
+- **Policy-compliance artifact gate is mandatory for governed commits.** Tasks
+  that stage non-`work/` structural changes SHALL stage
+  `/work/<task-id>/policy-compliance.json` per
+  `/memory/handbook/policy-compliance-contract.md`; commit-time hooks enforce
+  fail-closed behavior when the artifact is missing or invalid.
 - **Stage exit criteria are non-negotiable.** Mirrors the PRD's R-class
   circuit-breaker pattern. The bootstrap correctness ratchet is its own
   contract.

@@ -33,6 +33,7 @@ related:
   - /memory/handbook/agents-md-authoring.md
   - /memory/handbook/constitution.md
   - /memory/handbook/documentation-impact-contract.md
+  - /memory/handbook/policy-compliance-contract.md
   - /memory/handbook/inbox-lifecycle.md
   - /memory/handbook/run-log-schema.md
   - /memory/handbook/backlog-format.md
@@ -59,6 +60,7 @@ lands, operators SHOULD apply this table manually.
 | Author or update `/AGENTS.md` | `/memory/handbook/agents-md-authoring.md` | `/memory/handbook/constitution.md`, `/memory/handbook/documentation-impact-contract.md` | Follow AGENTS change-control and trigger rules; include governance and documentation-impact checks. |
 | Interpret governance and organizational rules | `/memory/handbook/constitution.md` | `/AGENTS.md`, `/PRD.md` | Use constitution for charter-level governance. Use AGENTS/PRD only as supporting context when needed. |
 | Decide documentation-impact updates or deferrals | `/memory/handbook/documentation-impact-contract.md` | `/memory/handbook/backlog-format.md`, `/memory/handbook/agents-md-authoring.md` | Required post-task decision flow lives in documentation-impact contract; use backlog-format for deferral recording schema. |
+| Prepare commit-time policy-compliance artifact and enforcement evidence | `/memory/handbook/policy-compliance-contract.md` | `/memory/handbook/documentation-impact-contract.md`, `/memory/handbook/constitution.md` | Use policy-compliance contract for machine-checkable `work/<task-id>/policy-compliance.json` artifacts and fail-closed commit gate behavior. |
 | Process inbox lifecycle and archival flow | `/memory/handbook/inbox-lifecycle.md` | `/AGENTS.md` | Inbox state model and manual archival procedure are defined in inbox-lifecycle. |
 | Validate run-log schema and observability fields | `/memory/handbook/run-log-schema.md` | `/memory/handbook/glossary.md` | Run-log contract is canonical for `/work/<id>/run.log.jsonl`; glossary resolves shared telemetry nouns. |
 | Track backlog items and documentation deferrals | `/memory/handbook/backlog-format.md` | `/memory/handbook/documentation-impact-contract.md` | Backlog index schema is canonical; documentation-impact defines when and why deferrals are allowed. |
