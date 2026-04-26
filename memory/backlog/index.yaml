@@ -1,6 +1,6 @@
 metadata:
   schema_version: 1
-  generated_at: "2026-04-25T22:55:00Z"
+  generated_at: "2026-04-26T05:59:39Z"
   owners: [tech-lead, librarian]
   source_of_truth: /memory/backlog/index.yaml
   schema_ref: /memory/handbook/backlog-format.md
@@ -150,6 +150,22 @@ items:
       - /PRD.md
     evidence: "Q21 ratification defers default selection pending comparative quality/cost evaluation of AutoGen, CrewAI, and LangGraph supervisor."
     notes: "Produce comparative report before M4 scope lock and submit ratification delta for LocalUserAuthorizer review."
+
+  - id: ratification-q17-persona-projection-complete
+    title: Record Q17 persona projection implementation completion
+    source: memory/adr/0001-q-ratification.md
+    owner: tech-lead
+    milestone: phase-1
+    status: done
+    priority: high
+    opened_at: "2026-04-26T05:59:39Z"
+    links:
+      - /PRD.md
+      - /memory/adr/0001-q-ratification.md
+      - /AGENTS.md
+      - /.cursor/agents/
+    evidence: "Q17 ratified personas as canonical with required Cursor mirror projections, and implementation now includes .cursor/agents mirrors for all current personas."
+    notes: "Backlog item is closed to reflect completed implementation and policy conformance."
 
   - id: ratification-q22-a2a-default-posture-brief
     title: Publish Q22 A2A default-posture decision brief
