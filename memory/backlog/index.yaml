@@ -1,6 +1,6 @@
 metadata:
   schema_version: 1
-  generated_at: "2026-04-26T05:59:39Z"
+  generated_at: "2026-04-26T17:26:00Z"
   owners: [tech-lead, librarian]
   source_of_truth: /memory/backlog/index.yaml
   schema_ref: /memory/handbook/backlog-format.md
@@ -75,9 +75,11 @@ items:
     links:
       - /memory/adr/0004-documentation-impact-contract.md
       - /memory/handbook/documentation-impact-contract.md
+      - /memory/handbook/policy-compliance-contract.md
+      - /.cursor/hooks/enforce-policy-compliance.sh
       - /AGENTS.md
-    evidence: "ADR-0004 requires per-task documentation-impact decisions but does not provide automated lint/gate enforcement."
-    notes: "Implement a lint/tooling gate that verifies applies decision records and deferral backlog linkage."
+    evidence: "ADR-0004 requires per-task documentation-impact decisions; current enforcement is a local Cursor commit hook and is not yet a repository-level git pre-commit or CI gate."
+    notes: "Operationalize policy-compliance enforcement as shared git/CI controls that verify applies decision records, changed-surface linkage, and deferral backlog linkage outside Cursor-local environments."
 
   - id: bootstrap-artifact-changelog-unification
     title: Define and implement unified artifact changelog contract

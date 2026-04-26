@@ -93,6 +93,8 @@ flowchart TB
       BACKLOG["memory/backlog/\nCURRENT"]
       HANDBOOK["memory/handbook/\nCURRENT"]
       PERSONAS["personas/*.md\nCURRENT"]
+      COMPLIANCE["personas/compliance-auditor.md\nCURRENT"]
+      TENGINEER["personas/tesseract-engineer.md\nCURRENT"]
       SKILLS["skills/*/SKILL.md\nCURRENT"]
       BOOT["BOOTSTRAP.md + PRD.md\nCURRENT"]
     end
@@ -108,6 +110,8 @@ flowchart TB
 
     Human --> INBOX
     INBOX --> PERSONAS
+    PERSONAS --> COMPLIANCE
+    PERSONAS --> TENGINEER
     PERSONAS --> SKILLS
     PERSONAS --> ADR
     PERSONAS --> BACKLOG
@@ -125,9 +129,10 @@ flowchart TB
     ENSEMBLES -. planned multi-agent review .-> PIPELINES
 ```
 
-The current repository already contains authoritative docs, persona specs,
-skills, inbox queues, ADR memory, and backlog memory. The current repository
-does not yet run those assets through a fully implemented pipeline runtime.
+The current repository already contains authoritative docs, persona specs
+(including `compliance-auditor` and `tesseract-engineer`), skills, inbox
+queues, ADR memory, and backlog memory. The current repository does not yet run
+those assets through a fully implemented pipeline runtime.
 
 ## Decision
 
