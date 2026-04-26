@@ -21,6 +21,7 @@ authoring work. Every persona and contract MUST cite them.
 | File | Purpose |
 |---|---|
 | `/memory/handbook/glossary.md` | The ubiquitous-language source of truth. Every domain noun resolves here. |
+| `/memory/handbook/index.md` | Intent-to-document routing map used to retrieve the right handbook pages with minimal context load. |
 | `/memory/handbook/persona-spec.md` | Anthropic Claude Agent SDK 16-field YAML reference + the Cursor `.mdc` shim recipe. |
 | `/memory/handbook/agents-md-authoring.md` | Authoring and change-control guide for `/AGENTS.md`, including required shape, triggers, and symlink policy. |
 | `/memory/handbook/run-log-schema.md` | Canonical run-log schema contract for `/work/<id>/run.log.jsonl`, including OpenInference + OTel GenAI alignment and checkpoint correlation fields. |
