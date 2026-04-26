@@ -23,6 +23,7 @@ authoring work. Every persona and contract MUST cite them.
 | `/memory/handbook/glossary.md` | The ubiquitous-language source of truth. Every domain noun resolves here. |
 | `/memory/handbook/persona-spec.md` | Anthropic Claude Agent SDK 16-field YAML reference + the Cursor `.mdc` shim recipe. |
 | `/memory/handbook/agents-md-authoring.md` | Authoring and change-control guide for `/AGENTS.md`, including required shape, triggers, and symlink policy. |
+| `/memory/handbook/run-log-schema.md` | Canonical run-log schema contract for `/work/<id>/run.log.jsonl`, including OpenInference + OTel GenAI alignment and checkpoint correlation fields. |
 | `/memory/handbook/contract-format.md` | Wrapper schema, kind registry, runner adapter, failure shape, quorum policy. |
 | `/memory/handbook/contract-style.md` | The 5-layer style discipline (RFC 2119, EARS, atomic, no weasel words, glossary, dual-anchor). |
 | `/memory/handbook/documentation-impact-contract.md` | Global post-task decision contract for documentation/reference impact, required updates, and deferral tracking. |
