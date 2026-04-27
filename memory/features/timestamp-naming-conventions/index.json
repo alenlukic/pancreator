@@ -2,7 +2,7 @@
   "feature_id": "timestamp-naming-conventions",
   "status": "intake-closed",
   "title": "Timestamp naming conventions",
-  "current_stage": "plan",
+  "current_stage": "implement",
   "intake": {
     "round": 1,
     "open_questions": 0,
@@ -11,11 +11,11 @@
     "last_processed_thread_item": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md"
   },
   "handoff": {
-    "decision": "plan-complete",
-    "next_owner": "coder",
-    "next_stage": "implement",
-    "next_stage_owner": "coder",
-    "handoff_note": "Plan stage resolved migration timestamp-source precedence as git commit timestamp, then frontmatter created_at, then filesystem mtime, then operator override. Implementation must encode policy before migration writes."
+    "decision": "implement-complete",
+    "next_owner": "reviewer",
+    "next_stage": "review",
+    "next_stage_owner": "reviewer",
+    "handoff_note": "Policy descriptor, Spec Contracts, migration script with dry-run manifest, ADR 0005 acceptance, and inbox-lifecycle rule are staged for review. Migration write mode stays gated by TESSERACT_MIGRATION_GO=1 and runs only after human_approval."
   },
   "artifact_index": {
     "feature_folder": {
@@ -25,6 +25,87 @@
           "kind": "lines",
           "path": "memory/features/timestamp-naming-conventions/spec.md",
           "range": [1, 92],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "policy_descriptor": {
+        "path": "tests/compliance/timestamp-naming-conventions.yaml",
+        "citation": {
+          "kind": "lines",
+          "path": "tests/compliance/timestamp-naming-conventions.yaml",
+          "range": [1, 30],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "contract_policy_descriptor": {
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+          "range": [1, 40],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "contract_migration_precedence": {
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+          "range": [1, 40],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "contract_reference_audit": {
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
+          "range": [1, 45],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "migration_script": {
+        "path": "tools/migrate-timestamp-naming.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "tools/migrate-timestamp-naming.mjs",
+          "range": [1, 80],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "migration_tests": {
+        "path": "tools/migrate-timestamp-naming.test.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "tools/migrate-timestamp-naming.test.mjs",
+          "range": [1, 60],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "migration_manifest_dry_run": {
+        "path": "work/timestamp-naming-conventions/migration-manifest.dry-run.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/timestamp-naming-conventions/migration-manifest.dry-run.json",
+          "range": [1, 40],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "adr_0005": {
+        "path": "memory/adr/0005-timestamp-naming-conventions.md",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/adr/0005-timestamp-naming-conventions.md",
+          "range": [1, 50],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "inbox_lifecycle_update": {
+        "path": "memory/handbook/inbox-lifecycle.md",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/handbook/inbox-lifecycle.md",
+          "range": [135, 149],
           "contentHash": "TBD-on-commit"
         }
       }
@@ -60,12 +141,6 @@
     }
   },
   "plan_deferred_decisions": [
-    {
-      "topic": "migration-timestamp-source-precedence",
-      "status": "resolved-in-plan",
-      "note": "Plan stage selected a deterministic order for artifacts that lack an authoritative creation timestamp.",
-      "resolution": "When migration derives an artifact timestamp, the migration MUST use git commit timestamp first, frontmatter created_at second, filesystem mtime third, and operator override fourth."
-    },
     {
       "topic": "post-2500-rollover",
       "status": "operator-deferred",

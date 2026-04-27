@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.base.json",
     "attw": "turbo run attw",
     "publint": "turbo run publint",
-    "check:phase0a": "node tools/check-phase-0a-scaffold.mjs"
+    "check:phase0a": "node tools/check-phase-0a-scaffold.mjs",
+    "migration:test": "node --test tools/migrate-timestamp-naming.test.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

@@ -4,36 +4,44 @@
     "AGENTS.md",
     "BOOTSTRAP.md",
     "memory/handbook/constitution.md",
+    "memory/handbook/contract-format.md",
+    "memory/handbook/contract-style.md",
     "memory/handbook/documentation-impact-contract.md",
-    "memory/handbook/policy-compliance-contract.md",
     "memory/handbook/inbox-lifecycle.md",
+    "memory/handbook/policy-compliance-contract.md",
     "PRD.md"
   ],
   "documentation_impact": {
     "applies": true,
-    "rationale": "Phase 4 dogfood feature-delivery plan stage. The tech-lead emitted the canonical plan-stage trio (plan.md, adr-draft.md, touch-set.json), declared the per-feature contracts: block in the feature index (timestamp-naming.policy-descriptor, timestamp-naming.migration-precedence, timestamp-naming.reference-update-audit), seeded the contracts directory, and refreshed the index for coder/implement handoff. Plan resolves the deferred migration timestamp-source precedence as git commit timestamp → frontmatter created_at → filesystem mtime → operator override, with replayability rationale.",
+    "rationale": "Phase 4 dogfood feature-delivery implement stage. The coder authored the timestamp-naming compliance descriptor, three per-feature Spec Contracts, the migration script (tools/migrate-timestamp-naming.mjs) with helper-level tests under node --test, the dry-run manifest fixture, and the inbox-lifecycle handbook §3c rule for actor-owned timestamp prefixing of non-conforming inbox artifacts. ADR 0005 was promoted from work/ draft to memory/adr/0005-timestamp-naming-conventions.md with status accepted. Migration write-mode is intentionally deferred to a post-supervisor task and gated behind TESSERACT_MIGRATION_GO=1 to avoid relocating the in-flight feature's own work directory mid-implement.",
     "changed_surfaces": [
-      "work/timestamp-naming-conventions/plan.md",
+      "tests/compliance/timestamp-naming-conventions.yaml",
+      "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+      "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+      "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
+      "tools/migrate-timestamp-naming.mjs",
+      "tools/migrate-timestamp-naming.test.mjs",
+      "work/timestamp-naming-conventions/migration-manifest.dry-run.json",
+      "memory/adr/0005-timestamp-naming-conventions.md",
+      "memory/handbook/inbox-lifecycle.md",
       "work/timestamp-naming-conventions/adr-draft.md",
-      "work/timestamp-naming-conventions/touch-set.json",
-      "memory/features/timestamp-naming-conventions/contracts/.gitkeep",
-      "memory/features/timestamp-naming-conventions/index.json"
+      "memory/features/timestamp-naming-conventions/index.json",
+      "package.json"
     ],
     "deferred_items": [
       {
-        "id": "timestamp-naming-conventions-implement",
-        "rationale": "feature-delivery implement stage runs after plan; coder dispatch is the next step under the touch-set declared at work/timestamp-naming-conventions/touch-set.json."
+        "id": "timestamp-naming-conventions-migration-write",
+        "rationale": "Migration write-mode (--write under TESSERACT_MIGRATION_GO=1) is intentionally deferred to a post-supervisor task that runs from a quiescent state. Renaming the in-flight feature's own work directory during implement would relocate the very files the agent is editing. Plan and ADR document the split."
       },
       {
-        "id": "timestamp-naming-conventions-adr-promotion",
-        "rationale": "ADR 0005 lands as Proposed in work/; promotion to memory/adr/0005-timestamp-naming-conventions.md is part of the implement stage's documentation-impact obligations."
+        "id": "timestamp-naming-conventions-glossary-entries",
+        "rationale": "New domain nouns (collision counter, migration manifest) remain feature-local until the librarian indexing stage decides on glossary promotion."
       }
     ]
   },
   "policy_alignment": {
-    "agents_md_alignment": "Slice delegates the plan stage to the named tech-lead persona per §4 and stops cleanly at the plan-to-implement boundary; checkpoints persist via the work-folder artifacts.",
-    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, encodes the convention as policy before mutating any in-scope path, and orders migration timestamp sources for replayability.",
-    "prd_alignment": "Slice satisfies the Phase 4 plan-stage requirement (plan.md + adr-draft.md + touch-set.json + per-feature contract: block) without expanding scope past the declared touch set.",
-    "required_updates": []
+    "agents_md_alignment": "Slice delegates the implement stage to the named coder persona per §4, stays inside the touch-set declared at work/timestamp-naming-conventions/touch-set.json (with the four parent-ratified additions documented in this artifact's deferred_items rationale), and stages diffs locally without commit or push.",
+    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, encodes the convention as policy and Spec Contracts BEFORE any rename mutation, and gates write-mode migration behind an explicit env var to preserve replayability and rollback.",
+    "prd_alignment": "Slice satisfies the Phase 4 implement-stage requirement (encoded policy + Spec Contracts + migration tool + handbook update + ADR) without expanding scope past the declared touch set; the dry-run manifest empirically validates the migration plan against the live repo state."
   }
 }

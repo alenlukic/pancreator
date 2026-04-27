@@ -45,6 +45,11 @@ references:
     range: [60, 65]
     contentHash: 6ea08ca23f1241425af057fc20324c9d18c456de7eaf1e25c5b0b56c4fcdb4d4
     note: "Layer 1 requires RFC 2119 keywords in normative prose."
+  - kind: lines
+    path: inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md
+    range: [79, 87]
+    contentHash: TBD-on-commit
+    note: "Operator round-1 answer Q7 assigns prefix ownership to the active processing agent."
 related:
   - /memory/adr/0003-inbox-lifecycle-and-archival.md
   - /memory/handbook/backlog-format.md
@@ -126,6 +131,22 @@ Operators MAY apply minimal non-semantic fixes in place only when clearly
 needed (for example metadata typo correction). Every such exception MUST include
 an explicit audit note in operator handoff context or run-log evidence that
 identifies path, timestamp, and rationale.
+
+## 3c - Timestamp prefix ownership (human-generated inbox)
+
+When a human-generated artifact under `/inbox/in/` or `/inbox/threads/` lacks the
+required UTC time-prefix tokens before downstream processing continues, the
+agent processing that artifact SHALL append the two time-prefix segments.
+
+When a later migration run encounters the same non-conforming basename, the
+agent executing that migration SHALL apply the same prefix rule before archival
+or pipeline handoff proceeds.
+
+Where inbox policy names specific personas, this handbook rule SHALL remain
+decoupled from persona identifiers so future roster changes do not invalidate
+the obligation.
+
+Citation: `{kind: lines, path: inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md, range: [79, 87], contentHash: TBD-on-commit}`.
 
 ## 4 - Future automated mechanism
 

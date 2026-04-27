@@ -1,6 +1,28 @@
-> Promoted to `memory/adr/0005-timestamp-naming-conventions.md`; this file stays for the work audit trail.
-
-# ADR 0005: Timestamp Naming Conventions
+---
+title: Ratify Timestamp Naming Conventions
+seq: "0005"
+status: accepted
+date: 2026-04-27T00:00:00Z
+deciders: [tech-lead, LocalUserAuthorizer]
+supersedes: null
+superseded-by: null
+references:
+  - kind: lines
+    path: memory/features/timestamp-naming-conventions/spec.md
+    range: [50, 112]
+    contentHash: TBD-on-commit
+    note: "Engineering Spec acceptance criteria for UTC naming, migration, and handbook updates."
+  - kind: lines
+    path: memory/adr/0003-inbox-lifecycle-and-archival.md
+    range: [52, 109]
+    contentHash: TBD-on-commit
+    note: "ADR-0003 inbox lifecycle boundary this ADR extends with naming rules."
+  - kind: lines
+    path: memory/adr/0004-documentation-impact-contract.md
+    range: [49, 75]
+    contentHash: TBD-on-commit
+    note: "Documentation-impact discipline for reference updates after path migration."
+---
 
 ## Context
 
@@ -11,8 +33,6 @@ ADR 0003 defines the inbox lifecycle and archive boundary. This ADR builds on th
 ADR 0004 defines the documentation-impact check. This ADR uses that decision by requiring reference updates after path migration. Citation: `{kind: lines, path: memory/adr/0004-documentation-impact-contract.md, range: [49, 75], contentHash: TBD-on-commit}`.
 
 ## Decision
-
-Status: Proposed.
 
 When Tesseract creates or processes an in-scope temporal artifact, Tesseract SHALL use UTC as the only time zone. Citation: `{kind: lines, path: memory/features/timestamp-naming-conventions/spec.md, range: [54, 59], contentHash: TBD-on-commit}`.
 
@@ -38,3 +58,7 @@ When bootstrap migration logic is authored, the coder MUST mark migration-only a
 - Negative: The migration touches many `work/` and `inbox/` paths and therefore requires a manifest-based rollback.
 - Negative: Existing references to migrated paths must be rewritten in the same delivery slice.
 - Neutral: The post-`2500-01-01T00:00:00Z` rollover rule remains deferred outside this ADR.
+
+## Status
+
+This ADR is accepted on 2026-04-27 (UTC). The ratified Engineering Spec and committed plan record the intake closure inputs.
