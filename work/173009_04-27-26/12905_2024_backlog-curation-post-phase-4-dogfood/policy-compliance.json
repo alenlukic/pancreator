@@ -1,0 +1,30 @@
+{
+  "task_id": "backlog-curation-post-phase-4-dogfood",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "memory/handbook/constitution.md",
+    "memory/handbook/policy-compliance-contract.md",
+    "memory/handbook/backlog-format.md",
+    "memory/adr/0001-backlog-tracking.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Slice promotes 10 previously-untracked deferrals and known issues from per-slice policy-compliance.json deferred_items[], the timestamp-naming-conventions citation-rot scan, the BOOTSTRAP.md Phase 4 exit criteria, and the round-1 intake clarifications into the canonical /memory/backlog/index.yaml as required by ADR 0001 and memory/handbook/backlog-format.md. Slice also refreshes the bootstrap-content-hash-refresh entry with the empirical 501 TBD-on-commit count observed at commit b4332c8 and re-targets it to phase-5 alongside the new citation-range-realignment-pass entry so both passes can be batched. Backlog curation is the canonical surface for tracking deferred work; these promotions close a process-defect gap discovered during Phase 4 -> Phase 5 boundary review.",
+    "changed_surfaces": [
+      "memory/backlog/index.yaml"
+    ],
+    "deferred_items": [
+      {
+        "id": "librarian-backlog-promotion-duty",
+        "rationale": "This slice promotes accumulated backlog gaps inline rather than via a librarian dispatch because the librarian persona's contracted index-stage scope did not include backlog-promotion. The persona update itself is now backlog-tracked under id librarian-backlog-promotion-duty so a future persona-designer slice can ratify the new duty and prevent regression."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Slice satisfies AGENTS.md §5 'Documentation impact check is mandatory per task' by updating the canonical backlog rather than leaving deferrals scattered across per-slice policy-compliance.json deferred_items[] and per-feature index.json open_followups[]. Slice satisfies AGENTS.md §5 'Stage diffs locally; never push' by remaining a local commit. No persona role semantics, authority boundaries, tool grants, or safety constraints are modified.",
+    "constitution_alignment": "Slice is mechanical maintenance per the deterministic-maintenance carve-out: backlog updates do not touch protected persona surfaces and do not require runtime ratification beyond the human commit gate.",
+    "prd_alignment": "Slice keeps the LocalUserAuthorizer working-agreement intact (PRD §10) and lands without a persona dispatch because the operator instructed inline curation. The updated backlog feeds the PRD's R-class circuit-breaker pattern by preserving stage exit criteria as auditable backlog entries rather than implicit per-slice notes.",
+    "required_updates": []
+  }
+}
