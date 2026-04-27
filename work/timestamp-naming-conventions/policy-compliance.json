@@ -13,26 +13,25 @@
   ],
   "documentation_impact": {
     "applies": true,
-    "rationale": "Phase 4 dogfood feature-delivery review stage. The reviewer ran modern-code-review against commit 7d7b62a and emitted work/timestamp-naming-conventions/review.md with verdict pass-with-conditions: five verification gates green, all five migration safety properties pass, every spec acceptance clause maps to an executable surface, and the strict-references dry run reports zero stale rows. Two warn-severity findings landed: L1 a citation line range mismatch in the migration-precedence Spec Contract (now realigned per AGENTS.md §3 deterministic maintenance), and L2 a contentHash mixing pattern in inbox-lifecycle.md (deferred to librarian indexing for the global contentHash refresh pass). Index advanced to current_stage review with handoff to tech-writer / report.",
+    "rationale": "Phase 4 dogfood feature-delivery report stage. The tech-writer authored memory/features/timestamp-naming-conventions/delivery-report.md as the canonical delivery report for the feature, lineage-anchored to commits 90f6110, d26d4e1, f2263fc, 1ca2afd, 7d7b62a, and 635e5bb. The report cites the spec, plan, ADR 0005, review verdict (pass-with-conditions), the dry-run manifest (renames=35, referenceUpdates=451, collisionWarnings=0), and the four declared deferrals (migration write, contentHash mix, runner-not-wired, post-2500 rollover). The feature index advances current_stage to report with handoff to supervisor / ship. The supervisor's notifier post-run step will stage the report to inbox/out/.",
     "changed_surfaces": [
-      "work/timestamp-naming-conventions/review.md",
-      "memory/features/timestamp-naming-conventions/index.json",
-      "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml"
+      "memory/features/timestamp-naming-conventions/delivery-report.md",
+      "memory/features/timestamp-naming-conventions/index.json"
     ],
     "deferred_items": [
       {
-        "id": "timestamp-naming-conventions-l2-contenthash-mix",
-        "rationale": "inbox-lifecycle.md frontmatter mixes the new TBD-on-commit citation with computed sha256 hashes from prior passes. The librarian SHALL refresh all contentHash placeholders in a single dedicated pass; ad-hoc partial refreshes would recreate the same drift downstream."
+        "id": "timestamp-naming-conventions-ship",
+        "rationale": "Supervisor stages the PR (no auto-push per Q3); the supervisor invocation runs after this commit and stops at the human_approval gate."
       },
       {
-        "id": "timestamp-naming-conventions-runner-not-wired",
-        "rationale": "Spec Contract execution depends on the contract-runner-rego and contract-runner-llm-judge runners being fully wired into a panel; the implement slice ships the structural surfaces; runner integration is M2 per Q18 (mcp-server) and the Phase 5 contract corpus pass."
+        "id": "timestamp-naming-conventions-inbox-out-stage",
+        "rationale": "The supervisor's notifier post-run step stages the delivery-report.md to inbox/out/; that staging is part of the ship stage, not the report stage."
       }
     ]
   },
   "policy_alignment": {
-    "agents_md_alignment": "Slice delegates the review stage to the named reviewer persona per §4 and applies the §3 deterministic-maintenance carveout for the L1 citation realignment. No spec, plan, ADR, or implement-stage source was modified outside the maintenance carveout.",
-    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, surfaces every Layer-1 finding loudly, and defers the cross-feature contentHash refresh to the librarian's dedicated pass to avoid drift.",
-    "prd_alignment": "Slice satisfies the Phase 4 review-stage requirement (modern-code-review + Spec Contract pass) and emits the canonical review.md artifact for the report stage."
+    "agents_md_alignment": "Slice delegates the report stage to the named tech-writer persona per §4 and produces only descriptive reportage; no new contracts, packages, or specs were authored.",
+    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, surfaces the four open deferrals, and preserves the auditable commit lineage that future readers can replay end-to-end.",
+    "prd_alignment": "Slice satisfies the Phase 4 report-stage requirement (delivery-report.md authored under memory/features/<id>/) and prepares the supervisor for the human_approval ship gate per Q3."
   }
 }

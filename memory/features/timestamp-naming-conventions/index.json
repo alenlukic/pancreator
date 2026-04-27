@@ -2,7 +2,7 @@
   "feature_id": "timestamp-naming-conventions",
   "status": "intake-closed",
   "title": "Timestamp naming conventions",
-  "current_stage": "review",
+  "current_stage": "report",
   "intake": {
     "round": 1,
     "open_questions": 0,
@@ -13,9 +13,9 @@
   "handoff": {
     "decision": "review-complete",
     "verdict": "pass-with-conditions",
-    "next_owner": "tech-writer",
-    "next_stage": "report",
-    "next_stage_owner": "tech-writer",
+    "next_owner": "supervisor",
+    "next_stage": "ship",
+    "next_stage_owner": "supervisor",
     "handoff_note": "Reviewer verdict pass-with-conditions. Five verification gates green (typecheck, lint, check:phase0a, migration:test, pnpm -r run test). Strict-references dry-run reports zero uncovered legacy hits. Three Spec Contracts marked deferred-runner-not-wired with structural/test/script evidence per the runner-panel deferral. Carry forward review findings L1 (citation range mismatch in timestamp-naming.migration-precedence.yaml), L2 (mixed contentHash discipline in inbox-lifecycle.md), L3 (manifest self-amplification on re-run), and L4 (run.log.jsonl basename-preservation note) into the delivery report. Migration write-mode remains gated by TESSERACT_MIGRATION_GO=1 and runs after human ratification."
   },
   "review": {
@@ -134,6 +134,15 @@
           "kind": "lines",
           "path": "work/timestamp-naming-conventions/review.md",
           "range": [1, 220],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "delivery_report": {
+        "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
+          "range": [1, 200],
           "contentHash": "TBD-on-commit"
         }
       }
