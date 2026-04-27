@@ -186,7 +186,7 @@ test("migrateTargetForInboxPath: snapshot for thread round file", () => {
 
 test("inventoryReferences: finds a known path string in repo", () => {
   const repoRoot = path.resolve(__dirname, "..");
-  const hits = inventoryReferences("work/compliance-tests", repoRoot, [
+  const hits = inventoryReferences("work/173009_04-27-26/68576_0457_compliance-tests", repoRoot, [
     "memory",
     "work",
   ]);

@@ -1,0 +1,54 @@
+{
+  "task_id": "bootstrap-phase-0a-closure",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "BOOTSTRAP.md",
+    "memory/handbook/constitution.md",
+    "memory/handbook/documentation-impact-contract.md",
+    "memory/handbook/policy-compliance-contract.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Phase 0a adds and updates repository structural artifacts, package scaffolding, and verification records that affect bootstrap documentation and reference surfaces.",
+    "changed_surfaces": [
+      "package.json",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml",
+      "turbo.json",
+      "tsconfig.base.json",
+      "eslint.config.mjs",
+      ".changeset/config.json",
+      ".github/workflows/phase-0a-scaffold.yml",
+      ".gitignore",
+      "tools/eslint-rules/no-horizontal-primitive-deps.mjs",
+      "tools/check-phase-0a-scaffold.mjs",
+      "packages/@tesseract/*/package.json",
+      "packages/@tesseract/*/README.md",
+      "packages/@tesseract/*/src/index.ts",
+      "packages/@tesseract/*/tsconfig.json",
+      "packages/tesseract/package.json",
+      "packages/tesseract/README.md",
+      "packages/tesseract/src/index.ts",
+      "packages/tesseract/tsconfig.json",
+      "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "memory/features/bootstrap-phase-0a-closure/spec.md",
+      "memory/features/bootstrap-phase-0a-closure/index.json",
+      "memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md",
+      "work/173009_04-27-26/60714_0708_bootstrap-phase-0a-closure/plan.md",
+      "work/173009_04-27-26/60714_0708_bootstrap-phase-0a-closure/adr-draft.md",
+      "work/173009_04-27-26/60714_0708_bootstrap-phase-0a-closure/touch-set.json"
+    ],
+    "deferred_items": [
+      "Phase 3 runtime implementation for @tesseract/* packages",
+      "Phase 0b handbook refinements",
+      "Phase 0c persona and skill evolution"
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The slice stages diffs locally, preserves the in-loop review gate, and uses the bootstrap artifact trail required by AGENTS.md.",
+    "constitution_alignment": "The slice keeps bootstrap artifacts traceable and reviewable without claiming runtime completeness.",
+    "prd_alignment": "The slice limits itself to the workspace scaffold and package boundary baseline needed before later bootstrap phases.",
+    "required_updates": []
+  }
+}

@@ -1,0 +1,2748 @@
+{
+  "schema": "tesseract.timestamp-migration-manifest.v1",
+  "mode": "dry-run",
+  "generatedAt": "2026-04-27T18:49:15.837Z",
+  "repoRoot": "/Users/alen/Dev/tesseract",
+  "summary": {
+    "plannedRenames": 17,
+    "referenceUpdateRows": 322,
+    "collisionWarnings": 0
+  },
+  "renames": [
+    {
+      "sourceRel": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "targetRel": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T05:49:00.000Z",
+        "source": "frontmatter"
+      }
+    },
+    {
+      "sourceRel": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "targetRel": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T18:49:12.014Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "targetRel": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T18:49:12.015Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "targetRel": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T18:49:12.011Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "targetRel": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T18:49:12.015Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/archive/in/2174_2323_2026-04-25-2259-architecture-system-map-v1.md",
+      "targetRel": "inbox/archive/in/3616_2259_2174_2323_2026-04-25-2259-architecture-system-map-v1.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-25T22:59:44.465Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/archive/in/2174_2323_2026-04-25-2259-docs-operator-readme-v1.md",
+      "targetRel": "inbox/archive/in/3611_2259_2174_2323_2026-04-25-2259-docs-operator-readme-v1.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-25T22:59:49.376Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/archive/in/2174_2323_2026-04-25-2259-governance-agents-status-v1.md",
+      "targetRel": "inbox/archive/in/3607_2259_2174_2323_2026-04-25-2259-governance-agents-status-v1.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-25T22:59:53.948Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/archive/in/68576_0457_2026-04-26-2021-reviewer-missing-input.md",
+      "targetRel": "inbox/archive/in/85140_0021_68576_0457_2026-04-26-2021-reviewer-missing-input.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:21:00.000Z",
+        "source": "frontmatter"
+      }
+    },
+    {
+      "sourceRel": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "targetRel": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T04:12:10.859Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "targetRel": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-26T23:51:05.271Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "targetRel": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-26T23:55:07.750Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "targetRel": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T04:12:10.859Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "targetRel": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T18:49:12.011Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "targetRel": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T04:17:46.020Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "targetRel": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T05:12:48.665Z",
+        "source": "mtime"
+      }
+    },
+    {
+      "sourceRel": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "targetRel": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md",
+      "kind": "inbox-file",
+      "timestamp": {
+        "iso": "2026-04-27T09:46:03.000Z",
+        "source": "frontmatter"
+      }
+    }
+  ],
+  "referenceUpdates": [
+    {
+      "file": "memory/features/bootstrap-phase-0a-closure/index.json",
+      "line": 7,
+      "column": 27,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "memory/features/bootstrap-phase-0a-closure/spec.md",
+      "line": 7,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "memory/features/bootstrap-phase-0a-closure/spec.md",
+      "line": 11,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 21,
+      "column": 71,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 194,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 4945,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 4953,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 4961,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 4969,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 4977,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 194,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 4945,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 4953,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 4961,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 4969,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 4977,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "work/173009_04-27-26/60714_0708_bootstrap-phase-0a-closure/policy-compliance.json",
+      "line": 34,
+      "column": 8,
+      "jsonPointer": null,
+      "before": "inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "after": "inbox/in/65460_0549_60714_0708_bootstrap-phase-0a-closure.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 14,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 14,
+      "column": 241,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 15,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 15,
+      "column": 244,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/index.json",
+      "line": 258,
+      "column": 16,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/index.json",
+      "line": 261,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/index.json",
+      "line": 486,
+      "column": 26,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 230,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5073,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5081,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5089,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5097,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5105,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5113,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5121,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5129,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 230,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5073,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5081,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5089,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5097,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5105,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5113,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5121,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5129,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
+      "line": 2,
+      "column": 795,
+      "jsonPointer": null,
+      "before": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "inbox/out/18648_1849_27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 198,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 201,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 221,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5049,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5057,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5065,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 221,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5049,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5057,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5065,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "line": 49,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "inbox/out/18648_1849_65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 203,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 4985,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 4993,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5001,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5009,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 203,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 4985,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 4993,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5001,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5009,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
+      "line": 27,
+      "column": 8,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 60,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 111,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "line": 3,
+      "column": 14,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 207,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 210,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 212,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5017,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5025,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5033,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5041,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 212,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5017,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5025,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5033,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5041,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "line": 3,
+      "column": 14,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "line": 50,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "inbox/out/18648_1849_68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 239,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/2174_2323_2026-04-25-2259-architecture-system-map-v1.md",
+      "after": "inbox/archive/in/3616_2259_2174_2323_2026-04-25-2259-architecture-system-map-v1.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 239,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/2174_2323_2026-04-25-2259-architecture-system-map-v1.md",
+      "after": "inbox/archive/in/3616_2259_2174_2323_2026-04-25-2259-architecture-system-map-v1.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 248,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/2174_2323_2026-04-25-2259-docs-operator-readme-v1.md",
+      "after": "inbox/archive/in/3611_2259_2174_2323_2026-04-25-2259-docs-operator-readme-v1.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 248,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/2174_2323_2026-04-25-2259-docs-operator-readme-v1.md",
+      "after": "inbox/archive/in/3611_2259_2174_2323_2026-04-25-2259-docs-operator-readme-v1.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 257,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/2174_2323_2026-04-25-2259-governance-agents-status-v1.md",
+      "after": "inbox/archive/in/3607_2259_2174_2323_2026-04-25-2259-governance-agents-status-v1.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 257,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/2174_2323_2026-04-25-2259-governance-agents-status-v1.md",
+      "after": "inbox/archive/in/3607_2259_2174_2323_2026-04-25-2259-governance-agents-status-v1.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 266,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_2026-04-26-2021-reviewer-missing-input.md",
+      "after": "inbox/archive/in/85140_0021_68576_0457_2026-04-26-2021-reviewer-missing-input.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 266,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_2026-04-26-2021-reviewer-missing-input.md",
+      "after": "inbox/archive/in/85140_0021_68576_0457_2026-04-26-2021-reviewer-missing-input.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 8,
+      "column": 27,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 7,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 16,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 64,
+      "column": 30,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 275,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5137,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5145,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5153,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5161,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5169,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5177,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5185,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5193,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5201,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 275,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5137,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5145,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5153,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5161,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5169,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5177,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5185,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5193,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5201,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
+      "line": 23,
+      "column": 8,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "line": 20,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 13,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 54,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "line": 20,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "inbox/archive/in/71270_0412_68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 31,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 17,
+      "column": 61,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 284,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5209,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5217,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5225,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5233,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5241,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5249,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5257,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5265,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5273,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5281,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5289,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5297,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 284,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5209,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5217,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5225,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5233,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5241,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5249,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5257,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5265,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5273,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5281,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5289,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5297,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+      "line": 33,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
+      "line": 24,
+      "column": 8,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 6,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 20,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 57,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 77,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "line": 9,
+      "column": 131,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "line": 11,
+      "column": 170,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "line": 12,
+      "column": 155,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "line": 13,
+      "column": 159,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "inbox/threads/compliance-tests/535_2351_68576_0457_round-01.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 36,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 18,
+      "column": 61,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 293,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5305,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5313,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5321,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5329,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5337,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5345,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 293,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5305,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5313,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5321,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5329,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5337,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5345,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
+      "line": 25,
+      "column": 8,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 8,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 22,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 58,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "inbox/threads/compliance-tests/293_2355_68576_0457_round-02.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 15,
+      "column": 35,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 234,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 237,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 11,
+      "column": 28,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 41,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 19,
+      "column": 61,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 302,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5353,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5361,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5369,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5377,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5385,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5393,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5401,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5409,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5417,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5425,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5433,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 302,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5353,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5361,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5369,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5377,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5385,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5393,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5401,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5409,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5417,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5425,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5433,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
+      "line": 26,
+      "column": 8,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 10,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 24,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 43,
+      "column": 25,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 59,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "inbox/threads/compliance-tests/71270_0412_68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 16,
+      "column": 28,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 243,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 246,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 12,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 46,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 20,
+      "column": 61,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 25,
+      "column": 82,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 26,
+      "column": 77,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 311,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5441,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5449,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5457,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5465,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5473,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5481,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5489,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5497,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5505,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5513,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5521,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 311,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5441,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5449,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5457,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5465,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5473,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5481,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5489,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5497,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5505,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5513,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5521,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+      "line": 32,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+      "line": 38,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 66,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "inbox/threads/compliance-tests/18648_1849_68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 14,
+      "column": 33,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 225,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 228,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 10,
+      "column": 26,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 51,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 320,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5529,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5537,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5545,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5553,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5561,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5569,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5577,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5585,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5593,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 320,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5529,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5537,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5545,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5553,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5561,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5569,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5577,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5585,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5593,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+      "line": 37,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+      "line": 8,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+      "line": 43,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "line": 7,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "inbox/threads/compliance-tests/70934_0417_68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 9,
+      "column": 36,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 13,
+      "column": 27,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 216,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/index.json",
+      "line": 219,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 9,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "memory/features/compliance-tests/spec.md",
+      "line": 56,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 329,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5601,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5609,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5617,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5625,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5633,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5641,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5649,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 329,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5601,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5609,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5617,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5625,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5633,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5641,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5649,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "line": 7,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "inbox/threads/compliance-tests/67632_0512_68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 12,
+      "column": 84,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 14,
+      "column": 100,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 23,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 23,
+      "column": 224,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "memory/features/timestamp-naming-conventions/delivery-report.md",
+      "line": 10,
+      "column": 164,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 338,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5657,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5665,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5673,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5681,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5689,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5697,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "line": 5705,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 338,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5657,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5665,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5673,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5681,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5689,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5697,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+      "line": 5705,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/intake-round-01.md",
+      "line": 7,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "line": 10,
+      "column": 164,
+      "jsonPointer": null,
+      "before": "inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "inbox/threads/timestamp-naming-conventions/51237_0946_50991_0950_round-01-clarify.md"
+    }
+  ],
+  "collisions": [],
+  "strictReferenceAudit": {
+    "staleRows": []
+  }
+}

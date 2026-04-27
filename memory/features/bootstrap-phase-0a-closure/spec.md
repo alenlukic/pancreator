@@ -4,11 +4,11 @@ feature_id: bootstrap-phase-0a-closure
 status: ready-for-plan
 next_owner: tech-lead
 next_stage: plan
-source_inbox_item: inbox/in/bootstrap-phase-0a-closure.md
+source_inbox_item: inbox/in/60714_0708_bootstrap-phase-0a-closure.md
 intake_round: 1
 references:
   - kind: lines
-    path: inbox/in/bootstrap-phase-0a-closure.md
+    path: inbox/in/60714_0708_bootstrap-phase-0a-closure.md
     range: [1, 33]
     contentHash: cdc36ec05574db3ab5ed513e5a4144ca613ed1bad0ef12d8ac4a5ea6ba8ff0a1
     note: Human directive that opens the Phase 0a closure slice and constrains scope.
