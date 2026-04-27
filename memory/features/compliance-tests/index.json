@@ -1,0 +1,40 @@
+{
+  "feature_id": "compliance-tests",
+  "status": "intake-approved-for-plan",
+  "current_stage": "plan",
+  "intake": {
+    "round": 5,
+    "open_questions": 0,
+    "source_inbox_item": "inbox/archive/in/compliance-tests.md",
+    "last_processed_thread_item": "inbox/threads/compliance-tests/round-05-human-approve.md"
+  },
+  "handoff": {
+    "decision": "approved-for-plan-after-remediation",
+    "approval_artifact": "inbox/threads/compliance-tests/round-05-human-approve.md",
+    "prior_approval_artifact": "inbox/threads/compliance-tests/round-03-approval.md",
+    "rejection_artifact": "inbox/threads/compliance-tests/round-04-human-reject.md",
+    "next_owner": "tech-lead",
+    "next_stage": "plan",
+    "next_stage_owner": "tech-lead"
+  },
+  "artifacts": {
+    "spec": "memory/features/compliance-tests/spec.md",
+    "processing_report": "inbox/out/2026-04-27-intake-processing-report-round-05.md",
+    "prior_processing_report": "inbox/out/2026-04-26-intake-processing-report.md",
+    "schema_latest": "tests/compliance/schemas/latest.yaml",
+    "schema_v1": "tests/compliance/schemas/v1.yaml",
+    "seed_tests": [
+      "tests/compliance/high-remediation-blocking.yaml",
+      "tests/compliance/medium-backlog-default-off.yaml",
+      "tests/compliance/low-warning-emission.yaml"
+    ],
+    "manual_runbook": "memory/features/compliance-tests/manual-runbook.md",
+    "run_template": "memory/features/compliance-tests/run-template.json",
+    "severity_routing": "memory/features/compliance-tests/severity-routing.md",
+    "remediation_inputs": [
+      "inbox/threads/compliance-tests/round-01.md",
+      "inbox/threads/compliance-tests/round-04-human-reject.md",
+      "work/compliance-tests/plan.md"
+    ]
+  }
+}

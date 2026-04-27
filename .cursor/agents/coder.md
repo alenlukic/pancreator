@@ -1,7 +1,7 @@
 ---
 name: coder
 description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL implement one task within the touch-set declared at `/work/<id>/touch-set.json`, write tests for every public symbol it adds or modifies, and stage the diff for the `review` stage.
-model: inherit
+model: composer-2
 permissionMode: default
 tools:
   - Read

@@ -1,0 +1,14 @@
+schema_ref: "tests/compliance/schemas/latest.yaml"
+id: "low-warning-emission"
+severity: "low"
+trigger_modes:
+  - operator-on-demand
+  - scheduled-cadence
+scope:
+  surface: "warning-and-backlog-routing"
+  artifacts:
+    - "memory/backlog/index.yaml"
+    - "inbox/out/"
+assertion:
+  statement: "Low findings create backlog items and emit warnings to console and inbox/out."
+  pass_criteria: "Run output records backlog id plus warning emissions for both required channels."

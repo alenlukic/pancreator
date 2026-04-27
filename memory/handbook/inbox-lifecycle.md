@@ -98,6 +98,35 @@ completed inbound item:
 
 Operators SHALL execute archival moves only after the response artifact exists.
 
+## 3a - Responding to outbox artifacts
+
+When an outbox artifact in `/inbox/out/` requests operator answers for an
+active thread, operators SHALL post replies under the referenced thread path in
+`/inbox/threads/<thread-id>/`.
+
+Operators MUST NOT move outbox artifacts into `/inbox/in/`.
+
+Only inbound source items are archived by moving from `/inbox/in/` to
+`/inbox/archive/in/` after completion criteria are satisfied.
+
+## 3b - Semantic immutability and correction policy
+
+Semantic content in `/inbox/in/`, `/inbox/out/`, and `/inbox/threads/` SHALL be
+immutable once created.
+
+When operators need to correct or add meaning-bearing content, they MUST use
+append-only artifacts rather than in-place semantic rewrites. Valid mechanisms
+are:
+
+- a new thread round under the same thread path,
+- a superseding outbox report under `/inbox/out/`, or
+- a new inbound directive under `/inbox/in/`.
+
+Operators MAY apply minimal non-semantic fixes in place only when clearly
+needed (for example metadata typo correction). Every such exception MUST include
+an explicit audit note in operator handoff context or run-log evidence that
+identifies path, timestamp, and rationale.
+
 ## 4 - Future automated mechanism
 
 The runtime SHOULD expose an explicit archival operation (`tess inbox archive`

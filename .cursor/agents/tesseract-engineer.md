@@ -1,7 +1,7 @@
 ---
 name: tesseract-engineer
 description: When a human or pipeline submits Tesseract-internal engineering work, the `tesseract-engineer` SHALL normalize non-contract inputs through `contract-writer`, then execute implementation or remediation inside the internal corpus and emit ratification-ready execution artifacts.
-model: inherit
+model: claude-4.6-sonnet-medium-thinking
 permissionMode: default
 tools:
   - Read

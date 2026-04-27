@@ -1,7 +1,7 @@
 ---
 name: compliance-auditor
 description: When a human or pipeline requests a compliance audit, the `compliance-auditor` SHALL scan the declared scope, detect policy and quality violations, apply safe fixes, and emit a citation-backed audit report plus remediation summary for ratification.
-model: inherit
+model: claude-4.6-sonnet-medium-thinking
 permissionMode: default
 tools:
   - Read

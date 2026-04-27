@@ -29,6 +29,7 @@ authoring work. Every persona and contract MUST cite them.
 | `/memory/handbook/contract-style.md` | The 5-layer style discipline (RFC 2119, EARS, atomic, no weasel words, glossary, dual-anchor). |
 | `/memory/handbook/documentation-impact-contract.md` | Global post-task decision contract for documentation/reference impact, required updates, and deferral tracking. |
 | `/memory/handbook/policy-compliance-contract.md` | Machine-checkable per-task policy alignment artifact contract used by commit-time enforcement hooks. |
+| `/memory/handbook/inbox-lifecycle.md` | Canonical lifecycle and semantic immutability rules for `inbox/{in,out,threads}` artifacts and archival usage. |
 | `/memory/handbook/contract-templates/` | The 6 MVP slot-driven scaffolds for common clause shapes. |
 | `BOOTSTRAP.md` | The phase-by-phase bootstrap plan; the human is the in-loop reviewer at every phase boundary. |
 | `PRD.md` | The product spec. The line-anchored citation target until handbook seeds are promoted to canonical. |
@@ -125,6 +126,19 @@ your response.
 3. Check `/inbox/out/` for staged delivery reports awaiting human review.
 4. When a directive maps to a persona's
    `metadata.tesseract-pipeline-stages`, follow §4 above to delegate.
+
+## 6.1 — Compliance-run trigger guidance
+
+- During automation-deferred phases, agents SHALL support manual invocation via
+  `operator-on-demand` and SHALL run descriptors under `tests/compliance/`
+  against `tests/compliance/schemas/latest.yaml`.
+- Agents SHALL trigger a compliance run after create, modify, or delete changes
+  that affect personas, skills, pipeline definitions, documented operational
+  primitives, testing infrastructure, operator interfaces, or milestone
+  ratification artifacts.
+- Scheduled cadence remains backlog-tracked automation work until runtime
+  scheduler wiring lands; agents SHALL NOT assume automatic cadence execution in
+  the first slice.
 
 ## 7 — Workspace map
 

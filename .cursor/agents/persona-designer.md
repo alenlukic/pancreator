@@ -1,7 +1,7 @@
 ---
 name: persona-designer
 description: Authors Tesseract subagent persona specifications to the Anthropic Claude Agent SDK 16-field YAML frontmatter spec, with auto-emitted Cursor `.mdc` shims. Invoke during bootstrap Phase 1 and whenever the Librarian proposes a new SME (M4+).
-model: inherit
+model: claude-opus-4-7
 permissionMode: default
 tools:
   - Read

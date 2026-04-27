@@ -182,3 +182,18 @@ items:
       - /PRD.md
     evidence: "Q22 remains open and requires an explicit decision brief on threat model, default exposure posture, and operator UX trade-offs."
     notes: "Draft decision brief before framework-mode A2A lands; route to LocalUserAuthorizer for final default-posture ratification."
+
+  - id: compliance-tests-automation-wiring
+    title: Automate compliance scheduler and structure-change triggers
+    source: work/compliance-tests/plan.md
+    owner: coder
+    milestone: phase-3
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-26T20:30:00Z"
+    links:
+      - /work/compliance-tests/plan.md
+      - /memory/features/compliance-tests/manual-runbook.md
+      - /memory/features/compliance-tests/spec.md
+    evidence: "Current compliance-tests slice is manual-first and defers default 4-hour scheduler enforcement plus structure-change auto-trigger wiring."
+    notes: "Implement runtime automation that enforces the default 4-hour cadence when no schedule override exists and runs compliance checks on qualifying structure changes."

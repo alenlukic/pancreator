@@ -1,0 +1,22 @@
+---
+title: Reviewer Missing Input - compliance-tests
+feature_id: compliance-tests
+stage: review
+owner: reviewer
+status: blocked
+created_at: 2026-04-26T20:21:00-04:00
+missing_artifacts:
+  - work/compliance-tests/test-report.md
+references:
+  - kind: lines
+    path: skills/modern-code-review/SKILL.md
+    range: [183, 187]
+    contentHash: TBD-on-commit
+    note: Reviewer failure handling requires opening an inbox item when test-report.md is missing.
+---
+
+The review stage is blocked for feature `compliance-tests` because
+`work/compliance-tests/test-report.md` is missing.
+
+Upstream test-stage output is required before the reviewer can complete coverage
+delta verification and gate evaluation.

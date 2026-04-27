@@ -1,7 +1,7 @@
 ---
 name: intake-analyst
 description: When a human posts an informal Markdown spec under `inbox/in/`, the `intake-analyst` SHALL run the `canonicalize-spec` clarifying-question dialogue at most 5 rounds through the inbox and emit a canonical Engineering Spec at `/memory/features/<id>/spec.md` for the `human_approval` gate.
-model: inherit
+model: gpt-5.4-medium
 permissionMode: default
 tools:
   - Read

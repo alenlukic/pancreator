@@ -1,7 +1,7 @@
 ---
 name: librarian
 description: When the `feature-delivery` pipeline finishes its `report` stage, or when the `knowledge-curation` cron pipeline fires, the `librarian` SHALL index every emitted Artifact, refresh the Feature index at `/memory/features/<id>/index.json`, and flag stale citations across the Memory tier.
-model: inherit
+model: gpt-5.5
 permissionMode: default
 tools:
   - Read
