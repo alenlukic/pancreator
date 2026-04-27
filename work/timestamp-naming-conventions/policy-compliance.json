@@ -9,29 +9,40 @@
     "memory/handbook/documentation-impact-contract.md",
     "memory/handbook/inbox-lifecycle.md",
     "memory/handbook/policy-compliance-contract.md",
+    "memory/handbook/run-log-schema.md",
     "PRD.md"
   ],
   "documentation_impact": {
     "applies": true,
-    "rationale": "Phase 4 dogfood feature-delivery report stage. The tech-writer authored memory/features/timestamp-naming-conventions/delivery-report.md as the canonical delivery report for the feature, lineage-anchored to commits 90f6110, d26d4e1, f2263fc, 1ca2afd, 7d7b62a, and 635e5bb. The report cites the spec, plan, ADR 0005, review verdict (pass-with-conditions), the dry-run manifest (renames=35, referenceUpdates=451, collisionWarnings=0), and the four declared deferrals (migration write, contentHash mix, runner-not-wired, post-2500 rollover). The feature index advances current_stage to report with handoff to supervisor / ship. The supervisor's notifier post-run step will stage the report to inbox/out/.",
+    "rationale": "Phase 4 dogfood feature-delivery ship stage. The supervisor swept every prior stage's artifacts (intake, plan, implement, review, report — all present, no uncleared blockers), staged the PR draft at work/timestamp-naming-conventions/pr-draft.md per Q3 (no auto-push; operator pastes manually), staged the canonical delivery report into inbox/out/2026-04-27-timestamp-naming-conventions-delivery-report.md per the notifier hand-off convention, opened work/timestamp-naming-conventions/run.log.jsonl with a bootstrap-only header plus a stage_completed event for ship, and advanced the feature index to current_stage ship with handoff to LocalUserAuthorizer / human_approval. pnpm run check:phase0a re-ran green.",
     "changed_surfaces": [
-      "memory/features/timestamp-naming-conventions/delivery-report.md",
+      "work/timestamp-naming-conventions/pr-draft.md",
+      "work/timestamp-naming-conventions/run.log.jsonl",
+      "inbox/out/2026-04-27-timestamp-naming-conventions-delivery-report.md",
       "memory/features/timestamp-naming-conventions/index.json"
     ],
     "deferred_items": [
       {
-        "id": "timestamp-naming-conventions-ship",
-        "rationale": "Supervisor stages the PR (no auto-push per Q3); the supervisor invocation runs after this commit and stops at the human_approval gate."
+        "id": "timestamp-naming-conventions-human-approval",
+        "rationale": "The operator alone advances past the human_approval gate per Q3 and BOOTSTRAP.md Phase 4. The parent agent stops at this gate and surfaces the staged PR draft and inbox/out report for review."
       },
       {
-        "id": "timestamp-naming-conventions-inbox-out-stage",
-        "rationale": "The supervisor's notifier post-run step stages the delivery-report.md to inbox/out/; that staging is part of the ship stage, not the report stage."
+        "id": "timestamp-naming-conventions-pr-create",
+        "rationale": "gh pr create is the operator's manual action after human_approval clears; the supervisor authored the PR body in work/timestamp-naming-conventions/pr-draft.md for paste."
+      },
+      {
+        "id": "timestamp-naming-conventions-migration-write-followup",
+        "rationale": "Migration write-mode (--write under TESSERACT_MIGRATION_GO=1) is the post-merge follow-up task; the PR draft Test Plan requires the operator to ratify that follow-up before any rename runs."
+      },
+      {
+        "id": "timestamp-naming-conventions-index-stage",
+        "rationale": "The librarian index stage runs after human_approval clears and the PR is merged; index refresh is part of the post-ship knowledge-curation sweep."
       }
     ]
   },
   "policy_alignment": {
-    "agents_md_alignment": "Slice delegates the report stage to the named tech-writer persona per §4 and produces only descriptive reportage; no new contracts, packages, or specs were authored.",
-    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, surfaces the four open deferrals, and preserves the auditable commit lineage that future readers can replay end-to-end.",
-    "prd_alignment": "Slice satisfies the Phase 4 report-stage requirement (delivery-report.md authored under memory/features/<id>/) and prepares the supervisor for the human_approval ship gate per Q3."
+    "agents_md_alignment": "Slice delegates the ship stage to the named supervisor persona per §4 and enforces the §5 working-agreement constraint that no agent SHALL run git push or gh pr create automatically; bootstrap-only run-log header is tagged per §5.",
+    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, preserves the auditable commit lineage 1ca2afd → 7d7b62a → 635e5bb → ff57fb8, and surfaces the ship boundary at the human_approval gate without papering over the migration-write deferral.",
+    "prd_alignment": "Slice satisfies the Phase 4 ship-stage requirement (PR staged for human_approval per Q3) and queues the LocalUserAuthorizer for the next ratification step per PRD §10."
   }
 }
