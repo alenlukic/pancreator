@@ -244,6 +244,9 @@ importers:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
         version: 0.17.4
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.17
       publint:
         specifier: 'catalog:'
         version: 0.2.12
@@ -253,6 +256,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
   packages/@tesseract/inbox:
     dependencies:
@@ -501,6 +507,9 @@ importers:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
         version: 0.17.4
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.17
       publint:
         specifier: 'catalog:'
         version: 0.2.12
@@ -510,6 +519,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
   packages/tesseract:
     dependencies:

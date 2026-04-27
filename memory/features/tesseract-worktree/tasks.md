@@ -1,7 +1,6 @@
 # Task List - @tesseract/worktree
 
-- [ ] T1: Confirm package scaffold and exported surface satisfy `tesseract.worktree.package_shape`.
-- [ ] T2: Confirm README Quickstart satisfies `tesseract.worktree.readme_ergonomics`.
-- [ ] T3: Run package conformance checks and capture failures.
-- [ ] T4: Resolve contract failures with minimal, scoped package edits.
-- [ ] T5: Re-run contract checks and record green status for Phase 2 completion.
+- [x] T1: `GitWorktreePool` + `WorktreePool` interface; path validation under `.tess/worktrees/`; `acquire` / `release` / `list`; persisted `pool-state.json`; Q7 single-pipeline lease; injectable `GitOps` with `createNodeGitOps` and `createMemoryGitOps`.
+- [x] T2: README Quickstart with explicit `pnpm --filter` commands (package shape + ergonomics intent).
+- [x] T3: Vitest coverage for lease conflict, idempotent acquire, persistence across pool instances, release, invalid root, unknown release.
+- [ ] T4: **Deferred:** real-git integration test in CI; cross-process file locking for `pool-state.json`; automatic orphan worktree GC.
