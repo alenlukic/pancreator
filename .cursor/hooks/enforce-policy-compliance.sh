@@ -71,7 +71,11 @@ fi
 
 artifacts=()
 for path in "${staged_files[@]}"; do
-  if [[ "$path" =~ ^work/[^/]+/policy-compliance\.json$ ]]; then
+  # Accept both the legacy two-level shape (work/<task>/policy-compliance.json)
+  # and the timestamp-naming three-level shape (work/<day>/<task>/policy-compliance.json)
+  # encoded by ADR 0005. Other depths remain rejected.
+  if [[ "$path" =~ ^work/[^/]+/policy-compliance\.json$ ]] \
+    || [[ "$path" =~ ^work/[^/]+/[^/]+/policy-compliance\.json$ ]]; then
     artifacts+=("$path")
   fi
 done
