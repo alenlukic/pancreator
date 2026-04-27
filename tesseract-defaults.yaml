@@ -1,0 +1,85 @@
+# Bootstrap defaults for threshold policy.
+# Phase 2 intent: seed one working contract bundle per risk tier.
+
+bootstrap:
+  phase: "2"
+  placeholder: false
+  enforced_today: false
+  note: "Phase 2 contract bundles use rego telemetry gates for coverage, bundle size, and feature-contract pull."
+
+defaults:
+  low:
+    risk_tier: low
+    gates:
+      coverage:
+        statement: { op: ">=", value: 70, severity: deny }
+        branch: { op: ">=", value: 60, severity: warn }
+        new_lines_only: true
+      bundle:
+        size_delta_max: { op: "<=", value: "+5%", severity: warn }
+      regression:
+        suites: []
+        flake_tolerance: { op: "==", value: 0, severity: warn }
+      contracts: from_feature
+      contract_bundle:
+        kind: rego
+        telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]
+    gates_on_failure:
+      default: route_back_to_implement
+    commands:
+      hooks:
+        test: null
+        build: null
+        lint: null
+
+  medium:
+    risk_tier: medium
+    gates:
+      coverage:
+        statement: { op: ">=", value: 80, severity: deny }
+        branch: { op: ">=", value: 70, severity: deny }
+        new_lines_only: true
+      bundle:
+        size_delta_max: { op: "<=", value: "+3%", severity: deny }
+      regression:
+        suites: []
+        flake_tolerance: { op: "==", value: 0, severity: warn }
+      contracts: from_feature
+      contract_bundle:
+        kind: rego
+        telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]
+    gates_on_failure:
+      default: route_back_to_implement
+      coverage: route_back_to_implement_with_uncovered_diff
+    commands:
+      hooks:
+        test: null
+        build: null
+        lint: null
+
+  high:
+    risk_tier: high
+    gates:
+      coverage:
+        statement: { op: ">=", value: 90, severity: deny }
+        branch: { op: ">=", value: 80, severity: deny }
+        new_lines_only: true
+      bundle:
+        size_delta_max: { op: "<=", value: "+2%", severity: deny }
+      regression:
+        suites: []
+        flake_tolerance: { op: "==", value: 0, severity: warn }
+      security:
+        new_cves_max: { op: "==", value: 0, severity: warn }
+      contracts: from_feature
+      contract_bundle:
+        kind: rego
+        telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]
+    gates_on_failure:
+      default: route_back_to_implement
+      security: route_to_appsec_review
+    commands:
+      hooks:
+        test: null
+        build: null
+        lint: null

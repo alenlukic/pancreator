@@ -1,0 +1,28 @@
+# Bootstrap repo policy.
+# Phase 2 intent: activate default contract-bundle references.
+
+bootstrap:
+  phase: "2"
+  placeholder: false
+  enforced_today: false
+  note: "Phase 2 defaults seed rego telemetry gates and per-feature contract pulls."
+
+risk_tier: medium
+threshold_policy: defaults.medium  # from tesseract-defaults.yaml
+contract_bundle:
+  kind: rego
+  telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]
+
+commands:
+  # Local project hooks used by future policy/pipeline runners.
+  test: "npm test"
+  build: "npm run build"
+  lint: "npm run lint"
+
+# Minimal override shape for Phase 0:
+# keep empty unless a local bootstrap experiment needs an explicit override.
+overrides:
+  gates: {}
+  gates_on_failure: {}
+  commands:
+    hooks: {}

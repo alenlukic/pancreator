@@ -1,0 +1,266 @@
+{
+  "paths": [
+    {
+      "path": ".",
+      "operation": "add-root-scaffold",
+      "plannedFiles": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "turbo.json",
+        "tsconfig.base.json",
+        "eslint.config.mjs",
+        ".changeset/config.json",
+        "tools/eslint-rules/no-horizontal-primitive-deps.mjs",
+        "tools/check-phase-0a-scaffold.mjs"
+      ]
+    },
+    {
+      "path": ".github",
+      "operation": "add-ci-check",
+      "plannedFiles": [
+        ".github/workflows/phase-0a-scaffold.yml"
+      ]
+    },
+    {
+      "path": "memory/features/bootstrap-phase-0a-closure",
+      "operation": "update-feature-record",
+      "plannedFiles": [
+        "memory/features/bootstrap-phase-0a-closure/index.json",
+        "memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md"
+      ]
+    },
+    {
+      "path": "packages",
+      "operation": "add-meta-package",
+      "plannedFiles": [
+        "packages/tesseract/package.json",
+        "packages/tesseract/README.md",
+        "packages/tesseract/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/adopter-scan",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/adopter-scan/package.json",
+        "packages/@tesseract/adopter-scan/README.md",
+        "packages/@tesseract/adopter-scan/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/checkpointer-fs",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/checkpointer-fs/package.json",
+        "packages/@tesseract/checkpointer-fs/README.md",
+        "packages/@tesseract/checkpointer-fs/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/cli",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/cli/package.json",
+        "packages/@tesseract/cli/README.md",
+        "packages/@tesseract/cli/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/contract",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/contract/package.json",
+        "packages/@tesseract/contract/README.md",
+        "packages/@tesseract/contract/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/contract-runner-llm-judge",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/contract-runner-llm-judge/package.json",
+        "packages/@tesseract/contract-runner-llm-judge/README.md",
+        "packages/@tesseract/contract-runner-llm-judge/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/contract-runner-rego",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/contract-runner-rego/package.json",
+        "packages/@tesseract/contract-runner-rego/README.md",
+        "packages/@tesseract/contract-runner-rego/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/contract-style",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/contract-style/package.json",
+        "packages/@tesseract/contract-style/README.md",
+        "packages/@tesseract/contract-style/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/core",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/core/package.json",
+        "packages/@tesseract/core/README.md",
+        "packages/@tesseract/core/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/env-isolation",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/env-isolation/package.json",
+        "packages/@tesseract/env-isolation/README.md",
+        "packages/@tesseract/env-isolation/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/inbox",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/inbox/package.json",
+        "packages/@tesseract/inbox/README.md",
+        "packages/@tesseract/inbox/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/intervention",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/intervention/package.json",
+        "packages/@tesseract/intervention/README.md",
+        "packages/@tesseract/intervention/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/mcp-server",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/mcp-server/package.json",
+        "packages/@tesseract/mcp-server/README.md",
+        "packages/@tesseract/mcp-server/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/memory",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/memory/package.json",
+        "packages/@tesseract/memory/README.md",
+        "packages/@tesseract/memory/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/notifier",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/notifier/package.json",
+        "packages/@tesseract/notifier/README.md",
+        "packages/@tesseract/notifier/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/persona",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/persona/package.json",
+        "packages/@tesseract/persona/README.md",
+        "packages/@tesseract/persona/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/pipeline",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/pipeline/package.json",
+        "packages/@tesseract/pipeline/README.md",
+        "packages/@tesseract/pipeline/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/policy",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/policy/package.json",
+        "packages/@tesseract/policy/README.md",
+        "packages/@tesseract/policy/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/run-logger",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/run-logger/package.json",
+        "packages/@tesseract/run-logger/README.md",
+        "packages/@tesseract/run-logger/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/runner-cursor",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/runner-cursor/package.json",
+        "packages/@tesseract/runner-cursor/README.md",
+        "packages/@tesseract/runner-cursor/src/index.ts"
+      ]
+    },
+    {
+      "path": "packages/@tesseract/worktree",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "packages/@tesseract/worktree/package.json",
+        "packages/@tesseract/worktree/README.md",
+        "packages/@tesseract/worktree/src/index.ts"
+      ]
+    }
+  ],
+  "symbols": [],
+  "tests": [
+    {
+      "kind": "command",
+      "name": "install",
+      "command": "pnpm install"
+    },
+    {
+      "kind": "command",
+      "name": "build",
+      "command": "pnpm build"
+    },
+    {
+      "kind": "command",
+      "name": "lint",
+      "command": "pnpm lint"
+    },
+    {
+      "kind": "command",
+      "name": "dependency-boundary",
+      "command": "pnpm lint:deps"
+    },
+    {
+      "kind": "command",
+      "name": "typecheck",
+      "command": "pnpm typecheck"
+    },
+    {
+      "kind": "command",
+      "name": "are-the-types-wrong",
+      "command": "pnpm attw"
+    },
+    {
+      "kind": "command",
+      "name": "publint",
+      "command": "pnpm publint"
+    },
+    {
+      "kind": "command",
+      "name": "phase-0a-scaffold",
+      "command": "pnpm check:phase0a"
+    }
+  ]
+}

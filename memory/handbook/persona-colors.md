@@ -1,0 +1,72 @@
+---
+title: Persona Color Palette
+slug: persona-colors
+stability: experimental
+bootstrap-only: false
+phase: 0b
+owners: [persona-designer, librarian]
+purpose: |
+  The canonical UX-color palette for the persona `color` field. Resolves the
+  dangling pointer in `skills/author-persona/SKILL.md` Step 3 and projects
+  the palette table from `/memory/handbook/persona-spec.md` §6 into a
+  dedicated handbook file so future personas have a stable lookup target.
+references:
+  - kind: lines
+    path: /memory/handbook/persona-spec.md
+    range: [180, 210]
+    contentHash: 7bceb8256dc271a7f5351eda578262767f477ab24efb552f7adba38bf5883762
+    note: "Persona Spec Format §6 — palette table; this file is the canonical alias."
+related:
+  - /memory/handbook/persona-spec.md
+  - /memory/handbook/glossary.md
+---
+
+# Persona Color Palette
+
+The `color` field on every persona is a UX hint shown in pipeline timelines,
+inbox threads, and ensemble transcripts. The palette below is the canonical
+allocation. Pick the next unused color when authoring a new persona; reserve
+`red` for `ombudsperson`-class personas to preserve operator legibility.
+
+## Palette table
+
+| Color | Reserved for | Status |
+|---|---|---|
+| `violet` | `persona-designer` | used |
+| `amber` | `contract-writer` | used |
+| `slate` | `tech-writer` | used |
+| `blue` | review-class personas (`reviewer`, `appsec`) | guideline |
+| `green` | implementation-class personas (`coder`, `frontend-eng`) | guideline |
+| `cyan` | planning-class personas (`tech-lead`, `intake-analyst`) | guideline |
+| `purple` | `pm`, `groomer` | guideline |
+| `teal` | `librarian`-class | guideline |
+| `orange` | scout-class | guideline |
+| `magenta` | `supervisor`, orchestrator-class | used |
+| `red` | `ombudsperson`, watchdog | reserved |
+
+> **Accessibility backlog item.** This palette has not yet been validated against
+> the eight common forms of color-vision deficiency (deuteranopia, protanopia,
+> tritanopia, achromatopsia, plus their anomalous variants). A future PRD revision
+> SHALL adopt a colorblind-safe palette (e.g., the Okabe–Ito 8-color set or
+> ColorBrewer "qualitative" ramps) and any UI surface that renders persona color
+> SHALL pair the swatch with an icon or short label so personas remain
+> distinguishable without color discrimination. Tracked under the M5+ docs queue.
+
+## How to extend
+
+When the palette runs out, append a row above this section. Do not improvise
+a color outside the documented palette; the runtime UI surfaces SHALL render
+unknown colors as `slate` and emit a Layer 1 warning during `tess persona
+validate`.
+
+When two personas need the same color (e.g., a long-lived SME family),
+namespace the color in the persona file via `metadata.tesseract-color-suffix`
+(e.g., `cyan-100`, `cyan-200`). The base color then matches at the runtime
+filter level.
+
+## Stability
+
+This file is the Phase 0b handbook seed. The palette table mirrors the inline
+table in `/memory/handbook/persona-spec.md` §6 verbatim. Source of truth is
+this file from M1 onward; persona-spec.md §6 SHALL link to this file when its
+next revision lands.

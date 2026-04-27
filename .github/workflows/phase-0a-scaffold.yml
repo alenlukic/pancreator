@@ -1,0 +1,70 @@
+name: Phase 0a scaffold
+
+on:
+  push:
+    paths:
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "turbo.json"
+      - "tsconfig.base.json"
+      - "eslint.config.mjs"
+      - "tools/**"
+      - "packages/**"
+      - ".github/workflows/phase-0a-scaffold.yml"
+  pull_request:
+    paths:
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "turbo.json"
+      - "tsconfig.base.json"
+      - "eslint.config.mjs"
+      - "tools/**"
+      - "packages/**"
+      - ".github/workflows/phase-0a-scaffold.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: phase-0a-scaffold-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Dependency boundary (package.json)
+        run: pnpm run lint:deps
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: are-the-types-wrong
+        run: pnpm run attw
+
+      - name: publint
+        run: pnpm run publint
+
+      - name: Phase 0a scaffold script
+        run: pnpm run check:phase0a

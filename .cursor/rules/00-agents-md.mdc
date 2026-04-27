@@ -1,0 +1,7 @@
+---
+description: Tesseract repo briefing per the LF Agentic AI Foundation AGENTS.md standard. Always-on priority rule that loads the canonical agent contract on every Cursor invocation.
+globs: ["**/*"]
+alwaysApply: true
+---
+
+@AGENTS.md

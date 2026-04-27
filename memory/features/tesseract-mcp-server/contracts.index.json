@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "tesseract.mcp_server.package_shape",
+      "path": "/memory/features/tesseract-mcp-server/contracts/tesseract.mcp_server.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "packages/@tesseract/mcp-server/**"
+      }
+    },
+    {
+      "id": "tesseract.mcp_server.readme_ergonomics",
+      "path": "/memory/features/tesseract-mcp-server/contracts/tesseract.mcp_server.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "packages/@tesseract/mcp-server/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  ]
+}

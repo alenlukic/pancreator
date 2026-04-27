@@ -1,0 +1,26 @@
+{
+  "name": "tesseract",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "eslint .",
+    "lint:deps": "node tools/check-phase-0a-scaffold.mjs",
+    "typecheck": "tsc -p tsconfig.base.json",
+    "attw": "turbo run attw",
+    "publint": "turbo run publint",
+    "check:phase0a": "node tools/check-phase-0a-scaffold.mjs",
+    "migration:test": "node --test tools/migrate-timestamp-naming.test.mjs"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@changesets/cli": "catalog:",
+    "@eslint/js": "catalog:",
+    "eslint": "catalog:",
+    "publint": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
+  }
+}

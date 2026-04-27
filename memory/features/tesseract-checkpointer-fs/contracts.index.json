@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "tesseract.checkpointer_fs.package_shape",
+      "path": "/memory/features/tesseract-checkpointer-fs/contracts/tesseract.checkpointer_fs.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "packages/@tesseract/checkpointer-fs/**"
+      }
+    },
+    {
+      "id": "tesseract.checkpointer_fs.readme_ergonomics",
+      "path": "/memory/features/tesseract-checkpointer-fs/contracts/tesseract.checkpointer_fs.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "packages/@tesseract/checkpointer-fs/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  ]
+}

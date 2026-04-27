@@ -1,0 +1,34 @@
+{
+  "task_id": "task-bootstrap-policy-gate",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "memory/handbook/constitution.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The task changed governance enforcement and added a new handbook contract surface.",
+    "changed_surfaces": [
+      "AGENTS.md",
+      "memory/handbook/documentation-impact-contract.md",
+      "memory/handbook/index.md",
+      "memory/handbook/policy-compliance-contract.md"
+    ],
+    "deferred_items": [
+      {
+        "id": "BL-BOOTSTRAP-POLICY-GATE-HARDENING",
+        "rationale": "Schema-level validation and CI replay tests are deferred to the next hardening pass."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The change enforces per-task governance and documentation-impact obligations before commit.",
+    "constitution_alignment": "The artifact preserves traceable decisions and reference stewardship during bootstrap.",
+    "prd_alignment": "The gate improves reliability and auditability for policy-constrained autonomous delivery.",
+    "required_updates": [
+      "memory/handbook/policy-compliance-contract.md",
+      ".cursor/hooks.json",
+      ".cursor/hooks/enforce-policy-compliance.sh"
+    ]
+  }
+}

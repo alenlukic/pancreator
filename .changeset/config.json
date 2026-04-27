@@ -1,0 +1,32 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@2.0.0/schema.json",
+  "changelog": true,
+  "access": "public",
+  "baseBranch": "main",
+  "linked": [
+    [
+      "tesseract",
+      "@tesseract/adopter-scan",
+      "@tesseract/checkpointer-fs",
+      "@tesseract/cli",
+      "@tesseract/contract",
+      "@tesseract/contract-runner-llm-judge",
+      "@tesseract/contract-runner-rego",
+      "@tesseract/contract-style",
+      "@tesseract/core",
+      "@tesseract/env-isolation",
+      "@tesseract/inbox",
+      "@tesseract/intervention",
+      "@tesseract/mcp-server",
+      "@tesseract/memory",
+      "@tesseract/notifier",
+      "@tesseract/persona",
+      "@tesseract/pipeline",
+      "@tesseract/policy",
+      "@tesseract/run-logger",
+      "@tesseract/runner-cursor",
+      "@tesseract/worktree"
+    ]
+  ],
+  "commit": false
+}
