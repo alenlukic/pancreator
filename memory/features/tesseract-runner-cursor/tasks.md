@@ -1,7 +1,13 @@
 # Task List - @tesseract/runner-cursor
 
-- [ ] T1: Confirm package scaffold and exported surface satisfy `tesseract.runner_cursor.package_shape`.
-- [ ] T2: Confirm README Quickstart satisfies `tesseract.runner_cursor.readme_ergonomics`.
-- [ ] T3: Run package conformance checks and capture failures.
-- [ ] T4: Resolve contract failures with minimal, scoped package edits.
-- [ ] T5: Re-run contract checks and record green status for Phase 2 completion.
+- [x] T1: Confirm package scaffold and exported surface satisfy `tesseract.runner_cursor.package_shape`.
+- [x] T2: Confirm README Quickstart satisfies `tesseract.runner_cursor.readme_ergonomics` (manual review; LLM-judge contract deferred to CI).
+- [x] T3: Implement `Runner` interface, `CursorRunner`, `RunnerInvocationEnvelope`, and `RunnerPersonaInput` (structural; no import of `@tesseract/persona`).
+- [x] T4: Vitest for dry-run envelope fields and generated `requestId`.
+- [x] T5: `build`, `test`, `typecheck`, `attw`, and `publint` green on Phase 3 step 5 slice.
+
+## Deferred
+
+- Real LLM, Cursor API, or MCP transport.
+- Cross-package integration test with `@tesseract/persona` (avoided in-package to keep ESLint horizontal-deps clean; callers compose at a higher layer).
+- Byte-equivalent harness replay (BR4) once CLI `tess` lands.
