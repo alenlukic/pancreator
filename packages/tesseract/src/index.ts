@@ -2,12 +2,16 @@
  * @packageDocumentation Unscoped `tesseract` meta package. Re-exports provide linked installs;
  * a fuller surface lands in Phase 3+.
  */
+import { TESSERACT_CHECKPOINTER_FS_VERSION } from "@tesseract/checkpointer-fs";
+import { TESSERACT_RUN_LOGGER_VERSION } from "@tesseract/run-logger";
+
 export { TESSERACT_CORE_VERSION } from "@tesseract/core";
 export { TESSERACT_ADOPTER_SCAN_STUB, adopterScanStubVersion } from "@tesseract/adopter-scan";
-export {
-  TESSERACT_CHECKPOINTER_FS_STUB,
-  checkpointerFsStubVersion,
-} from "@tesseract/checkpointer-fs";
+export { TESSERACT_CHECKPOINTER_FS_VERSION };
+export const TESSERACT_CHECKPOINTER_FS_STUB = "checkpointer-fs" as const;
+export function checkpointerFsStubVersion(): string {
+  return TESSERACT_CHECKPOINTER_FS_VERSION;
+}
 export { TESSERACT_CLI_STUB, cliStubVersion } from "@tesseract/cli";
 export { TESSERACT_CONTRACT_STUB, contractStubVersion } from "@tesseract/contract";
 export {
@@ -28,7 +32,11 @@ export { TESSERACT_NOTIFIER_STUB, notifierStubVersion } from "@tesseract/notifie
 export { TESSERACT_PERSONA_STUB, personaStubVersion } from "@tesseract/persona";
 export { TESSERACT_PIPELINE_STUB, pipelineStubVersion } from "@tesseract/pipeline";
 export { TESSERACT_POLICY_STUB, policyStubVersion } from "@tesseract/policy";
-export { TESSERACT_RUN_LOGGER_STUB, runLoggerStubVersion } from "@tesseract/run-logger";
+export { TESSERACT_RUN_LOGGER_VERSION };
+export const TESSERACT_RUN_LOGGER_STUB = "run-logger" as const;
+export function runLoggerStubVersion(): string {
+  return TESSERACT_RUN_LOGGER_VERSION;
+}
 export { TESSERACT_RUNNER_CURSOR_STUB, runnerCursorStubVersion } from "@tesseract/runner-cursor";
 export { TESSERACT_WORKTREE_STUB, worktreeStubVersion } from "@tesseract/worktree";
 
