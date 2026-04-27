@@ -1,7 +1,7 @@
 # Task List - @tesseract/policy
 
-- [ ] T1: Confirm package scaffold and exported surface satisfy `tesseract.policy.package_shape`.
-- [ ] T2: Confirm README Quickstart satisfies `tesseract.policy.readme_ergonomics`.
-- [ ] T3: Run package conformance checks and capture failures.
-- [ ] T4: Resolve contract failures with minimal, scoped package edits.
-- [ ] T5: Re-run contract checks and record green status for Phase 2 completion.
+- [x] T1: Implement `loadLegacyPolicyConfig` (JSON/YAML) with stderr deprecation referencing Bootstrap Phase 3 policy migration / Q23; implement `upgradePolicyConfig` returning `PolicyConfigV1` without FS write.
+- [x] T2: README Quickstart + migration contract section (`tesseract.policy.readme_ergonomics`).
+- [x] T3: `yaml` runtime dependency; `vitest` for upgrade + legacy warning behavior.
+- [x] T4: `typecheck`, `test`, `attw`, `publint` scripts aligned with other primitives.
+- [ ] T5 (deferred): Rego/Conftest evaluation, Cedar `Authorizer` adapter, and CLI `tess upgrade --apply` persistence (Phase 4 / M2 per plan).

@@ -2,7 +2,11 @@
  * @file Local ESLint plugin for Phase 0a horizontal-dependency policy.
  * Files under `packages/@tesseract/<name>/` SHALL NOT import or re-export
  * another primitive package except `core` and the current package.
+ *
+ * Carveout: `packages/@tesseract/cli` is the workspace composer for `tess`.
+ * It MAY import any `@tesseract/*` package (BOOTSTRAP.md Phase 3 step 8).
  */
+const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli"]);
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,6 +49,9 @@ function checkSourceString(context, sourceNode, value) {
   if (primitive == null) {
     return;
   }
+  if (WORKSPACE_COMPOSER_PRIMITIVE_IDS.has(primitive)) {
+    return;
+  }
   const target = tesseractPackageId(value);
   if (target == null) {
     return;
@@ -63,7 +70,7 @@ const noHorizontalPrimitiveDeps = {
     type: "problem",
     docs: {
       description:
-        "Disallow horizontal @tesseract/* dependencies between primitive packages; only @tesseract/core and the same package are allowed.",
+        "Disallow horizontal @tesseract/* dependencies between primitive packages; only @tesseract/core and the same package are allowed. @tesseract/cli is exempt as the workspace composer.",
     },
     schema: [],
   },

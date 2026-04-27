@@ -3,7 +3,11 @@
  * @file Phase 0a scaffold check: `package.json` dependency boundaries
  * and required files. Source imports are covered by
  * @tesseract/no-horizontal-primitive-deps in ESLint.
+ *
+ * Carveout: `@tesseract/cli` is the workspace composer (`tess`); it MAY list any
+ * workspace `@tesseract/*` dependency (BOOTSTRAP.md Phase 3 step 8).
  */
+const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli"]);
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,6 +78,9 @@ function checkDepSection(
       continue;
     }
     if (name === "core" || name === ownerName) {
+      continue;
+    }
+    if (WORKSPACE_COMPOSER_PRIMITIVE_IDS.has(ownerName)) {
       continue;
     }
     err(
