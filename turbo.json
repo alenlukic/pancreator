@@ -10,6 +10,10 @@
     },
     "publint": {
       "dependsOn": ["build"]
-    }
+    },
+    "test": {
+      "dependsOn": ["build"]
+    },
+    "typecheck": {}
   }
 }

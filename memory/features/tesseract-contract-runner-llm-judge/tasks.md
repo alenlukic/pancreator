@@ -1,7 +1,7 @@
 # Task List - @tesseract/contract-runner-llm-judge
 
-- [ ] T1: Confirm package scaffold and exported surface satisfy `tesseract.contract_runner_llm_judge.package_shape`.
-- [ ] T2: Confirm README Quickstart satisfies `tesseract.contract_runner_llm_judge.readme_ergonomics`.
-- [ ] T3: Run package conformance checks and capture failures.
-- [ ] T4: Resolve contract failures with minimal, scoped package edits.
-- [ ] T5: Re-run contract checks and record green status for Phase 2 completion.
+- [x] T1: Confirm package scaffold and exported surface satisfy `tesseract.contract_runner_llm_judge.package_shape`.
+- [x] T2: Confirm README Quickstart satisfies `tesseract.contract_runner_llm_judge.readme_ergonomics` (## Quickstart; panel defaults exported; full llm-judge run deferred).
+- [x] T3: Run package conformance checks and capture failures.
+- [x] T4: Resolve contract failures with minimal, scoped package edits.
+- [x] T5: Re-run contract checks and record green status for Phase 2 completion.

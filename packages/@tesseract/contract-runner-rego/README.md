@@ -1,3 +1,13 @@
 # @tesseract/contract-runner-rego
 
-Rego / Conftest contract evaluation runner (Phase 2+). This package is a Phase 0a stub: it depends only on `@tesseract/core`, not on other primitives.
+Helpers for Rego-shaped `input` objects that Phase 2 policies read. OPA and Conftest stay out-of-process; this package only types the JSON surface.
+
+## Quickstart
+
+From the repository root:
+
+1. `pnpm install`
+2. `pnpm --filter @tesseract/contract-runner-rego build`
+3. `pnpm --filter @tesseract/contract-runner-rego typecheck`
+4. `pnpm --filter @tesseract/contract-runner-rego test`
+5. `pnpm --filter @tesseract/contract-runner-rego publint`

@@ -1,3 +1,13 @@
 # @tesseract/contract
 
-Contract wrapper types and load paths (Phase 2+). This package is a Phase 0a stub: it depends only on `@tesseract/core`, not on other primitives.
+Kind-agnostic contract wrapper types and structural checks for Tesseract Spec Contracts. The full normative schema lives in `/memory/handbook/contract-format.md`.
+
+## Quickstart
+
+From the repository root:
+
+1. `pnpm install`
+2. `pnpm --filter @tesseract/contract build`
+3. `pnpm --filter @tesseract/contract typecheck`
+4. `pnpm --filter @tesseract/contract test`
+5. `pnpm --filter @tesseract/contract publint`

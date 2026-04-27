@@ -14,6 +14,8 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
     "attw": "attw --pack . --profile esm-only",
     "publint": "publint"
   },
@@ -24,6 +26,7 @@
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
     "tsup": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
