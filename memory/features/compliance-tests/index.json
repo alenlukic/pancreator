@@ -1,40 +1,253 @@
 {
   "feature_id": "compliance-tests",
-  "status": "intake-approved-for-plan",
-  "current_stage": "plan",
+  "status": "indexed",
+  "current_stage": "index",
   "intake": {
-    "round": 5,
+    "round": 6,
     "open_questions": 0,
     "source_inbox_item": "inbox/archive/in/compliance-tests.md",
-    "last_processed_thread_item": "inbox/threads/compliance-tests/round-05-human-approve.md"
+    "last_processed_thread_item": "inbox/threads/compliance-tests/round-06-human-approve.md"
   },
   "handoff": {
-    "decision": "approved-for-plan-after-remediation",
-    "approval_artifact": "inbox/threads/compliance-tests/round-05-human-approve.md",
-    "prior_approval_artifact": "inbox/threads/compliance-tests/round-03-approval.md",
+    "decision": "delivery-reported",
+    "approval_artifact": "inbox/threads/compliance-tests/round-06-human-approve.md",
+    "prior_approval_artifact": "inbox/threads/compliance-tests/round-05-human-approve.md",
+    "initial_approval_artifact": "inbox/threads/compliance-tests/round-03-approval.md",
     "rejection_artifact": "inbox/threads/compliance-tests/round-04-human-reject.md",
-    "next_owner": "tech-lead",
-    "next_stage": "plan",
-    "next_stage_owner": "tech-lead"
+    "delivery_report": "memory/features/compliance-tests/delivery-report.md",
+    "next_owner": "librarian",
+    "next_stage": "index",
+    "next_stage_owner": "librarian",
+    "handoff_note": "Round 06 and the delivery report complete the implementation/reporting flow. Librarian should index the emitted feature artifacts and preserve the round-04 remediation constraints in the feature index."
   },
-  "artifacts": {
-    "spec": "memory/features/compliance-tests/spec.md",
-    "processing_report": "inbox/out/2026-04-27-intake-processing-report-round-05.md",
-    "prior_processing_report": "inbox/out/2026-04-26-intake-processing-report.md",
-    "schema_latest": "tests/compliance/schemas/latest.yaml",
-    "schema_v1": "tests/compliance/schemas/v1.yaml",
-    "seed_tests": [
-      "tests/compliance/high-remediation-blocking.yaml",
-      "tests/compliance/medium-backlog-default-off.yaml",
-      "tests/compliance/low-warning-emission.yaml"
-    ],
-    "manual_runbook": "memory/features/compliance-tests/manual-runbook.md",
-    "run_template": "memory/features/compliance-tests/run-template.json",
-    "severity_routing": "memory/features/compliance-tests/severity-routing.md",
-    "remediation_inputs": [
-      "inbox/threads/compliance-tests/round-01.md",
-      "inbox/threads/compliance-tests/round-04-human-reject.md",
-      "work/compliance-tests/plan.md"
-    ]
+  "artifact_index": {
+    "feature_folder": {
+      "spec": {
+        "path": "memory/features/compliance-tests/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/compliance-tests/spec.md",
+          "range": [1, 113],
+          "contentHash": "3f2adf4781bf1f7d4e247a7bb08c1fd889e925a15388760cb314332b7d44f17e"
+        }
+      },
+      "delivery_report": {
+        "path": "memory/features/compliance-tests/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/compliance-tests/delivery-report.md",
+          "range": [1, 34],
+          "contentHash": "e2a7dff0342868a6524a2318b5995d6160f660302e5019615b6acab27dc7ae33"
+        }
+      },
+      "manual_runbook": {
+        "path": "memory/features/compliance-tests/manual-runbook.md",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/compliance-tests/manual-runbook.md",
+          "range": [1, 60],
+          "contentHash": "38ac47b1107b4da57dcbd07d6592770e7f14e5cdfd8220bae70b496337172170"
+        }
+      },
+      "run_template": {
+        "path": "memory/features/compliance-tests/run-template.json",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/compliance-tests/run-template.json",
+          "range": [1, 54],
+          "contentHash": "b0128b967b4cac26318cae1ba675cafcda7735773ff60c2e3bf2a1b207756b4f"
+        }
+      },
+      "severity_routing": {
+        "path": "memory/features/compliance-tests/severity-routing.md",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/compliance-tests/severity-routing.md",
+          "range": [1, 26],
+          "contentHash": "3a0ba3e55e5305abd6822365d4b7da466dfff30324f9e2cc7ffa6a58117667e2"
+        }
+      }
+    },
+    "canonical_compliance_surface": {
+      "schemas": {
+        "latest": {
+          "path": "tests/compliance/schemas/latest.yaml",
+          "citation": {
+            "kind": "lines",
+            "path": "tests/compliance/schemas/latest.yaml",
+            "range": [1, 63],
+            "contentHash": "8bbb8a715d1badc1f8c67a19cd7ddbeccef406c735e6547c77478ca513b1e7e1"
+          }
+        },
+        "v1": {
+          "path": "tests/compliance/schemas/v1.yaml",
+          "citation": {
+            "kind": "lines",
+            "path": "tests/compliance/schemas/v1.yaml",
+            "range": [1, 63],
+            "contentHash": "1f05abc2b45479d21a4b53a493bee1677cc7b49dc97b13909ab7cbc0221b343a"
+          }
+        }
+      },
+      "seed_tests": {
+        "high_remediation_blocking": {
+          "path": "tests/compliance/high-remediation-blocking.yaml",
+          "citation": {
+            "kind": "lines",
+            "path": "tests/compliance/high-remediation-blocking.yaml",
+            "range": [1, 14],
+            "contentHash": "b7fc8bb86974ed15d5594362330eab2acc69e7b929c0c50ff07cdea07862c90b"
+          }
+        },
+        "medium_backlog_default_off": {
+          "path": "tests/compliance/medium-backlog-default-off.yaml",
+          "citation": {
+            "kind": "lines",
+            "path": "tests/compliance/medium-backlog-default-off.yaml",
+            "range": [1, 14],
+            "contentHash": "27d0103dbe89d9c4d87bdf02d302113bd368f7c80db9976cc01021ca76eaf42e"
+          }
+        },
+        "low_warning_emission": {
+          "path": "tests/compliance/low-warning-emission.yaml",
+          "citation": {
+            "kind": "lines",
+            "path": "tests/compliance/low-warning-emission.yaml",
+            "range": [1, 14],
+            "contentHash": "d6a60287c765aa2e94918e0baee7ec3830eab25fc82cbd93d685c58300072a52"
+          }
+        }
+      }
+    },
+    "pipeline_artifacts": {
+      "plan": {
+        "path": "work/compliance-tests/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/compliance-tests/plan.md",
+          "range": [1, 94],
+          "contentHash": "7386e384cb994d453f2c779ec375bc0d5fa6de6837c9f9352b474fa9ef74ff78"
+        }
+      },
+      "adr_draft": {
+        "path": "work/compliance-tests/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/compliance-tests/adr-draft.md",
+          "range": [1, 92],
+          "contentHash": "e97e7b585cae50200f7b897807616650b1a0eaaa0ef71d9dc0861707141232ec"
+        }
+      },
+      "touch_set": {
+        "path": "work/compliance-tests/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/compliance-tests/touch-set.json",
+          "range": [1, 48],
+          "contentHash": "500cd9b9d0dea4585e22a80639a743df013db4e81d70824a355593b00fc768ee"
+        }
+      },
+      "test_report": {
+        "path": "work/compliance-tests/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/compliance-tests/test-report.md",
+          "range": [1, 35],
+          "contentHash": "503899789cc67b8397305975677890b9d30b609c499facc6698e8d1ce40e7350"
+        }
+      },
+      "review": {
+        "path": "work/compliance-tests/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/compliance-tests/review.md",
+          "range": [1, 92],
+          "contentHash": "21a91b4482eed3024a2621b9536d3796e88e47b25b5a8f1a34d295e40a8e52f3"
+        }
+      },
+      "compliance_audit": {
+        "path": "work/compliance-tests/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/compliance-tests/compliance-audit.md",
+          "range": [1, 179],
+          "contentHash": "ad5565fbe55e271771b03dfd159a2e0564c268c9a8a5185e6cab73c88d58dce6"
+        }
+      },
+      "compliance_remediation": {
+        "path": "work/compliance-tests/compliance-remediation.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/compliance-tests/compliance-remediation.md",
+          "range": [1, 36],
+          "contentHash": "563288b5ffc08f7ae686d1039f58ec867c61d24f0c0661a7d802e0f5116c9455"
+        }
+      },
+      "policy_compliance": {
+        "path": "work/compliance-tests/policy-compliance.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/compliance-tests/policy-compliance.json",
+          "range": [1, 39],
+          "contentHash": "155e78c533ba220cd0d0110b7a183ebafc55cec614d146739e3ed9515611a7ca"
+        }
+      }
+    },
+    "lineage": {
+      "processing_report": {
+        "path": "inbox/out/2026-04-27-intake-processing-report-round-06.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/out/2026-04-27-intake-processing-report-round-06.md",
+          "range": [1, 51],
+          "contentHash": "31f62635e2678920cccd1f99c9d516cc20800f9bc8e6ea6fe4ee99834194d78b"
+        }
+      },
+      "prior_processing_report": {
+        "path": "inbox/out/2026-04-27-intake-processing-report-round-05.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/out/2026-04-27-intake-processing-report-round-05.md",
+          "range": [1, 52],
+          "contentHash": "ace49ba1cda89d6307fc196e56bb95cb544971f2764faf2abcdd417e09645055"
+        }
+      },
+      "approval_artifact": {
+        "path": "inbox/threads/compliance-tests/round-06-human-approve.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/threads/compliance-tests/round-06-human-approve.md",
+          "range": [1, 3],
+          "contentHash": "0cabf5918bb2579237b66b49684790342e72ead53fc82e64c428aa69246cfdf7"
+        }
+      },
+      "prior_approval_artifact": {
+        "path": "inbox/threads/compliance-tests/round-05-human-approve.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/threads/compliance-tests/round-05-human-approve.md",
+          "range": [1, 3],
+          "contentHash": "0cabf5918bb2579237b66b49684790342e72ead53fc82e64c428aa69246cfdf7"
+        }
+      },
+      "initial_approval_artifact": {
+        "path": "inbox/threads/compliance-tests/round-03-approval.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/threads/compliance-tests/round-03-approval.md",
+          "range": [1, 7],
+          "contentHash": "d6dbb555da1d1bcdb437f94b299a1b70143688bd857eb4a80f2354ac327c54db"
+        }
+      },
+      "rejection_artifact": {
+        "path": "inbox/threads/compliance-tests/round-04-human-reject.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/threads/compliance-tests/round-04-human-reject.md",
+          "range": [1, 16],
+          "contentHash": "bd497cd333a520ddae16eea0f780efad2a33317d71fcd3f40a6b78c83afb3aff"
+        }
+      }
+    }
   }
 }

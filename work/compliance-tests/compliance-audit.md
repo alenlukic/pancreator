@@ -1,12 +1,18 @@
-# Compliance Audit - compliance-tests (focused pre-approval)
+# Compliance Audit — compliance-tests (post-review gate)
 
 ## 1. Scope contract
 
-- Trigger: focused compliance gate pass after `review_passes: true`.
-- `audit_interaction.mode`: `non_interactive` (effective default).
-- Run-log selector: none provided.
-- Exact path set audited:
-  - Staged implementation touch-set paths from `work/compliance-tests/touch-set.json`:
+```yaml
+audit_interaction:
+  mode: non_interactive   # effective value after default
+```
+
+- **Trigger:** focused compliance gate pass after `review_passes: true`; `operator-on-demand`
+  invocation per AGENTS.md §6.1.
+- **Run-log selector:** none provided; broad focused sweep over declared touch-set and
+  supporting artifacts.
+- **Exact path set audited:**
+  - Touch-set paths from `work/compliance-tests/touch-set.json`:
     - `tests/compliance/schemas/latest.yaml`
     - `tests/compliance/schemas/v1.yaml`
     - `tests/compliance/high-remediation-blocking.yaml`
@@ -23,17 +29,27 @@
     - `work/compliance-tests/compliance-audit.md`
     - `work/compliance-tests/compliance-remediation.md`
     - `work/compliance-tests/policy-compliance.json`
+    - `work/compliance-tests/touch-set.json`
+
+---
 
 ## 2. Checks executed
 
-- `scope-inventory`: Verified all declared touch-set and supporting artifact paths exist.
-- `focused-policy-read`: Checked `AGENTS.md`, `memory/handbook/policy-compliance-contract.md`, `memory/handbook/documentation-impact-contract.md`, and `memory/handbook/contract-style.md`.
-- `review-gate-check`: Verified `work/compliance-tests/review.md` records `review_passes: true`.
-- `descriptor-shape-check`: Verified required descriptor keys and `schema_ref` alignment for three files under `tests/compliance/`.
-- `touch-set-integrity-check`: Verified `work/compliance-tests/touch-set.json` path inventory is complete and present on disk.
-- `policy-compliance-gate-readiness`: Verified `work/compliance-tests/policy-compliance.json` exists and contains required top-level shape and required governing sources for non-`work/` structural changes.
-- `lint-pass`: Ran `ReadLints` on all touched files in declared scope and supporting artifacts.
-- `validation-script`: Ran local validator (`python3` one-shot) to confirm touch-set presence, review gate state, descriptor structure, AGENTS compliance-trigger section, backlog item presence, and policy-compliance shape.
+| id | procedure | outcome |
+|---|---|---|
+| `scope-inventory` | Verified all declared touch-set paths exist on disk. | pass |
+| `staged-deletion-check` | Verified 5 duplicate `memory/features/compliance-tests/contracts/` files are absent from working tree. | pass |
+| `review-gate-check` | Verified `work/compliance-tests/review.md` records `review_passes: true`. | pass |
+| `descriptor-shape-check` | Verified required keys (`schema_ref`, `id`, `severity`, `trigger_modes`, `scope`, `assertion`) and `schema_ref` value for three files under `tests/compliance/`. | pass |
+| `schema-presence-check` | Verified `tests/compliance/schemas/latest.yaml` and `v1.yaml` exist and contain required JSON Schema fields. | pass |
+| `agents-trigger-check` | Verified AGENTS.md §6.1 covers all three invocation modes: `operator-on-demand` (literal), structure-change (prose), and scheduled cadence (prose-deferred). | pass |
+| `backlog-item-check` | Verified `compliance-tests-automation-wiring` exists with `status: deferred` in `memory/backlog/index.yaml`. | pass |
+| `policy-compliance-gate-readiness` | Verified `work/compliance-tests/policy-compliance.json` exists, governing sources enumerate AGENTS.md/PRD.md, and `changed_surfaces` post-remediation lists only active (non-deleted) paths. | pass (post-fix) |
+| `test-report-citation-check` | Verified `work/compliance-tests/test-report.md` cites canonical `tests/compliance/` descriptor paths, not deleted `memory/features/...` paths. | pass (post-fix) |
+| `layer-1-prose-check` | Verified body prose in emitted artifacts uses RFC 2119 keywords, EARS-style clauses, active voice, present tense, and glossary-resolved nouns. | pass |
+| `tbd-hash-check` | Catalogued `TBD-on-commit` contentHash placeholders across touched files; confirmed all are tracked by existing backlog item `bootstrap-content-hash-refresh`. | note |
+
+---
 
 ## 3. Findings
 
@@ -47,16 +63,69 @@
 
 ### minor
 
-- None.
+- **[MINOR-01]** `work/compliance-tests/test-report.md` lines 27–29 cited
+  `memory/features/compliance-tests/contracts/tests/*.yaml` paths that no longer exist
+  after staged deletion. Auto-remediated in this pass.
+  Anchor A: `{kind: lines, path: work/compliance-tests/test-report.md, range: [27, 29],
+  contentHash: TBD-on-commit}`.
+  Anchor B: `{kind: lines, path: tests/compliance/high-remediation-blocking.yaml,
+  range: [1, 14], contentHash: TBD-on-commit}`.
+
+- **[MINOR-02]** `work/compliance-tests/policy-compliance.json` `changed_surfaces`
+  (prior lines 17–21) listed 5 paths staged for deletion. These paths are no longer
+  active working-tree artifacts. Auto-remediated: replaced with canonical
+  `tests/compliance/` paths. Anchor A: `{kind: lines,
+  path: work/compliance-tests/policy-compliance.json, range: [11, 30],
+  contentHash: TBD-on-commit}`. Anchor B: `{kind: lines,
+  path: work/compliance-tests/touch-set.json, range: [3, 14],
+  contentHash: TBD-on-commit}`.
 
 ### note
 
-- Policy-compliance gate readiness is satisfied for this focused pass because `work/compliance-tests/policy-compliance.json` is present and its required governing-source set matches the contract requirements. Anchor A: `{kind: lines, path: work/compliance-tests/policy-compliance.json, range: [1, 39], contentHash: TBD-on-commit}`. Anchor B: `{kind: lines, path: memory/handbook/policy-compliance-contract.md, range: [49, 98], contentHash: 8c6cc8b31b8b3296ae11160b0d4a4f8570e0e1462786283067ecf825fbd3968a}`.
-- `work/compliance-tests/review.md` still contains `TBD-on-commit` placeholders in evidence anchors; this remains non-blocking for the requested gate because `review_passes: true` is already established and no citation-refresh requirement was declared in this run scope. Anchor A: `{kind: lines, path: work/compliance-tests/review.md, range: [1, 4], contentHash: TBD-on-commit}`. Anchor B: `{kind: lines, path: work/compliance-tests/review.md, range: [29, 29], contentHash: TBD-on-commit}`.
+- **[NOTE-01]** AGENTS.md §6.1 uses prose equivalents of the `structure-change` and
+  `scheduled-cadence` enum identifiers rather than backtick-quoted literals. All three
+  invocation modes are semantically covered. `review_passes: true` confirms this
+  satisfies the reviewer's acceptance check. No code change required.
+  Anchor A: `{kind: lines, path: AGENTS.md, range: [130, 141], contentHash:
+  TBD-on-commit}`. Anchor B: `{kind: lines,
+  path: memory/features/compliance-tests/spec.md, range: [70, 75],
+  contentHash: TBD-on-commit}`.
+
+- **[NOTE-02]** `work/compliance-tests/review.md` carries `TBD-on-commit`
+  contentHash placeholders in evidence anchors and remains unstaged in the working
+  tree. The `review_passes: true` verdict is established and non-blocking. Tracked
+  by `bootstrap-content-hash-refresh` in `memory/backlog/index.yaml`.
+  Anchor A: `{kind: lines, path: work/compliance-tests/review.md, range: [1, 10],
+  contentHash: TBD-on-commit}`. Anchor B: `{kind: lines,
+  path: memory/backlog/index.yaml, range: [23, 35], contentHash: TBD-on-commit}`.
+
+- **[NOTE-03]** `plan.md`, `adr-draft.md`, and `spec.md` carry multiple
+  `TBD-on-commit` contentHash values in `references[]` arrays. All are tracked
+  by backlog item `bootstrap-content-hash-refresh`. No gate impact in this slice.
+  Anchor A: `{kind: lines, path: work/compliance-tests/plan.md, range: [11, 56],
+  contentHash: TBD-on-commit}`. Anchor B: `{kind: lines,
+  path: memory/backlog/index.yaml, range: [23, 35], contentHash: TBD-on-commit}`.
+
+---
 
 ## 4. Auto-remediations applied
 
-- None in this invocation. Existing focused-scope artifacts already satisfy gate requirements.
+- **Fix MINOR-01** — `work/compliance-tests/test-report.md` lines 27–29: replaced
+  three stale `memory/features/compliance-tests/contracts/tests/*.yaml` PASS lines
+  with canonical `tests/compliance/*.yaml` PASS lines. Risk: none; the replacement
+  paths are canonical and all three files pass schema validation. Changed paths:
+  `work/compliance-tests/test-report.md`.
+
+- **Fix MINOR-02** — `work/compliance-tests/policy-compliance.json`
+  `changed_surfaces`: removed 5 deleted `memory/features/...contracts/...` entries;
+  added `tests/compliance/schemas/latest.yaml`, `tests/compliance/schemas/v1.yaml`,
+  `tests/compliance/high-remediation-blocking.yaml`,
+  `tests/compliance/medium-backlog-default-off.yaml`, and
+  `tests/compliance/low-warning-emission.yaml` in their place. Risk: none; these are
+  the canonical paths already listed in `touch-set.json`. Changed paths:
+  `work/compliance-tests/policy-compliance.json`.
+
+---
 
 ## 5. Documentation-impact decision
 
@@ -65,18 +134,46 @@ Documentation-impact evaluation: **pass**.
 ```yaml
 documentation_impact:
   applies: true
-  rationale: This focused pass refreshed compliance decision artifacts under work/compliance-tests.
-  changed-surfaces:
+  rationale: >
+    This compliance pass updated two supporting artifacts under work/compliance-tests
+    to remove stale path citations, refreshed the audit artifacts, and emitted
+    compliance-remediation.md.
+  changed_surfaces:
     - work/compliance-tests/compliance-audit.md
     - work/compliance-tests/compliance-remediation.md
-  deferred-items: []
+    - work/compliance-tests/test-report.md
+    - work/compliance-tests/policy-compliance.json
+  deferred_items: []
 ```
+
+---
 
 ## 6. Proposal decisions
 
-- No policy/structure proposals emitted in this pass.
+No policy or structure proposals are emitted in this pass. All observed gaps
+(TBD-on-commit hashes, automation wiring) are already tracked through existing
+backlog items. No repeatable control gap is untracked.
+
+---
 
 ## 7. Gate recommendation
 
-- `compliance_passes: true`
-- Predicate summary: The declared focused scope is complete, no block/major findings remain, policy-compliance artifact checks pass for non-`work/` structural changes, and touched files lint cleanly.
+**`compliance_passes: true`**
+
+The declared focused scope is complete. All touch-set artifacts are present. The
+three canonical compliance descriptors pass schema-shape validation and `schema_ref`
+alignment. Duplicate paths under `memory/features/compliance-tests/contracts/` are
+absent from the working tree. AGENTS.md §6.1 covers all three invocation modes.
+`memory/backlog/index.yaml` carries the required deferred automation item. The two
+minor stale-citation findings were auto-remediated. No block or major findings
+remain. Policy-compliance and documentation-impact obligations are satisfied.
+
+---
+
+## 8. Deferred decisions
+
+| id | deferred item | next owner | rerun trigger |
+|---|---|---|---|
+| NOTE-01 | AGENTS.md enum-literal alignment for trigger-mode identifiers | tech-lead | next AGENTS.md structural edit requiring §6.1 update |
+| NOTE-02 | Refresh `TBD-on-commit` hashes in `review.md` | librarian | `bootstrap-content-hash-refresh` execution pass |
+| NOTE-03 | Refresh `TBD-on-commit` hashes in `plan.md`, `adr-draft.md`, `spec.md` | librarian | `bootstrap-content-hash-refresh` execution pass |

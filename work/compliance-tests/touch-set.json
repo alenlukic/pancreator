@@ -6,11 +6,6 @@
     "tests/compliance/high-remediation-blocking.yaml",
     "tests/compliance/medium-backlog-default-off.yaml",
     "tests/compliance/low-warning-emission.yaml",
-    "memory/features/compliance-tests/contracts/schemas/latest.yaml",
-    "memory/features/compliance-tests/contracts/schemas/v1.yaml",
-    "memory/features/compliance-tests/contracts/tests/high-remediation-blocking.yaml",
-    "memory/features/compliance-tests/contracts/tests/medium-backlog-default-off.yaml",
-    "memory/features/compliance-tests/contracts/tests/low-warning-emission.yaml",
     "memory/features/compliance-tests/manual-runbook.md",
     "memory/features/compliance-tests/severity-routing.md",
     "memory/features/compliance-tests/run-template.json",
@@ -29,7 +24,7 @@
       "id": "rejected-duplicate-location-cleanup",
       "type": "artifact-validation",
       "target": "memory/features/compliance-tests/contracts/",
-      "expectation": "Rejected duplicate compliance descriptors and schemas are removed or excluded from staged output."
+      "expectation": "No duplicate compliance descriptors or schemas remain under the feature contracts path; canonical assets live only under tests/compliance/."
     },
     {
       "id": "manual-agent-invocation-policy",

@@ -1,14 +1,16 @@
 ---
 title: Compliance Tests Intake Spec
 feature_id: compliance-tests
-status: intake-approved-for-plan
-next_owner: tech-lead
-next_stage: plan
+status: delivery-reported
+next_owner: librarian
+next_stage: index
 source_inbox_item: inbox/archive/in/compliance-tests.md
-intake_round: 5
-approval_artifact: inbox/threads/compliance-tests/round-05-human-approve.md
-prior_approval_artifact: inbox/threads/compliance-tests/round-03-approval.md
+intake_round: 6
+approval_artifact: inbox/threads/compliance-tests/round-06-human-approve.md
+prior_approval_artifact: inbox/threads/compliance-tests/round-05-human-approve.md
+initial_approval_artifact: inbox/threads/compliance-tests/round-03-approval.md
 rejection_artifact: inbox/threads/compliance-tests/round-04-human-reject.md
+delivery_report: memory/features/compliance-tests/delivery-report.md
 references:
   - kind: lines
     path: inbox/archive/in/compliance-tests.md
@@ -39,7 +41,7 @@ references:
     path: inbox/threads/compliance-tests/round-03-approval.md
     range: [1, 8]
     contentHash: bff1c881dfd10428cf5a4d3a4c74f7399e6dcb5b42ec97595b172687a9bf8452
-    note: Human approval artifact that authorizes intake exit to plan.
+    note: Initial human approval artifact that authorizes intake exit to plan.
   - kind: lines
     path: inbox/threads/compliance-tests/round-04-human-reject.md
     range: [1, 17]
@@ -50,14 +52,20 @@ references:
     range: [1, 3]
     contentHash: TBD-on-commit
     note: Human approval artifact that closes intake remediation and reaffirms plan handoff.
+  - kind: lines
+    path: inbox/threads/compliance-tests/round-06-human-approve.md
+    range: [1, 3]
+    contentHash: TBD-on-commit
+    note: Human approval artifact that supersedes round 05 and confirms the plan handoff remains approved.
 ---
 
 # Spec
 
 This spec canonicalizes the `inbox/archive/in/compliance-tests.md` directive into a
 governed compliance-test capability for Tesseract. The round-04 rejection
-artifact reopened this feature for plan-stage remediation, and the round-05
-approval artifact ratified remediation closure and handoff to planning.
+artifact reopened this feature for plan-stage remediation, the round-05
+approval artifact ratified remediation closure, and the round-06 approval
+artifact confirmed the handoff to planning remains in force.
 
 ## Acceptance criteria
 

@@ -24,9 +24,9 @@ PASS: MUST create one backlog item per `low` finding
 PASS: MUST emit warning output to `console`
 PASS: MUST emit warning output to `inbox/out`
 CHECK: test descriptors include schema_ref/severity/assertion
-PASS: memory/features/compliance-tests/contracts/tests/high-remediation-blocking.yaml
-PASS: memory/features/compliance-tests/contracts/tests/medium-backlog-default-off.yaml
-PASS: memory/features/compliance-tests/contracts/tests/low-warning-emission.yaml
+PASS: tests/compliance/high-remediation-blocking.yaml
+PASS: tests/compliance/medium-backlog-default-off.yaml
+PASS: tests/compliance/low-warning-emission.yaml
 ```
 
 ## Notes
