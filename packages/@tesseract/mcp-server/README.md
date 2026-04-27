@@ -1,3 +1,3 @@
 # @tesseract/mcp-server
 
-This is a bootstrap placeholder scaffold for Phase 2 dependency unblocking. It is intentionally non-functional.
+MCP tools, resources, and elicitations (Phase 3+). This package is a Phase 0a stub: it depends only on `@tesseract/core`, not on other primitives.

@@ -1,3 +1,3 @@
 # @tesseract/contract-runner-rego
 
-This is a bootstrap placeholder scaffold for Phase 2 dependency unblocking. It is intentionally non-functional.
+Rego / Conftest contract evaluation runner (Phase 2+). This package is a Phase 0a stub: it depends only on `@tesseract/core`, not on other primitives.

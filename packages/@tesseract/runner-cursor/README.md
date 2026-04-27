@@ -1,3 +1,3 @@
 # @tesseract/runner-cursor
 
-This is a bootstrap placeholder scaffold for Phase 2 dependency unblocking. It is intentionally non-functional.
+Cursor-native agent runner (Phase 3+). This package is a Phase 0a stub: it depends only on `@tesseract/core`, not on other primitives.
