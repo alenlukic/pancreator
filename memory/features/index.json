@@ -1,0 +1,637 @@
+{
+  "metadata": {
+    "tesseract-bootstrap-only": true,
+    "generated_by": "librarian",
+    "completed_at": "2026-04-27T18:10:00Z",
+    "note": "This global feature index is bootstrap-only until runtime feature indexing ships."
+  },
+  "features": [
+    {
+      "feature_id": "bootstrap-phase-0a-closure",
+      "title": "Bootstrap Phase 0a closure",
+      "current_stage": "ratification",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/bootstrap-phase-0a-closure/index.json",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "compliance-tests",
+      "title": "Compliance Tests",
+      "current_stage": "index",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/compliance-tests/index.json",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-adopter-scan",
+      "title": "Engineering Spec - @tesseract/adopter-scan",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-adopter-scan/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-checkpointer-fs",
+      "title": "Engineering Spec - @tesseract/checkpointer-fs",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-checkpointer-fs/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-cli",
+      "title": "Engineering Spec - @tesseract/cli",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-cli/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-contract",
+      "title": "Engineering Spec - @tesseract/contract",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-contract/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-contract-runner-llm-judge",
+      "title": "Engineering Spec - @tesseract/contract-runner-llm-judge",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-contract-runner-llm-judge/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-contract-runner-rego",
+      "title": "Engineering Spec - @tesseract/contract-runner-rego",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-contract-runner-rego/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-contract-style",
+      "title": "Engineering Spec - @tesseract/contract-style",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-contract-style/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-core",
+      "title": "Engineering Spec - @tesseract/core",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-core/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-env-isolation",
+      "title": "Engineering Spec - @tesseract/env-isolation",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-env-isolation/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-inbox",
+      "title": "Engineering Spec - @tesseract/inbox",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-inbox/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-intervention",
+      "title": "Engineering Spec - @tesseract/intervention",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-intervention/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-mcp-server",
+      "title": "Engineering Spec - @tesseract/mcp-server",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-mcp-server/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-memory",
+      "title": "Engineering Spec - @tesseract/memory",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-memory/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-notifier",
+      "title": "Engineering Spec - @tesseract/notifier",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-notifier/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-persona",
+      "title": "Engineering Spec - @tesseract/persona",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-persona/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-pipeline",
+      "title": "Engineering Spec - @tesseract/pipeline",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-pipeline/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-policy",
+      "title": "Engineering Spec - @tesseract/policy",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-policy/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-run-logger",
+      "title": "Engineering Spec - @tesseract/run-logger",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-run-logger/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-runner-cursor",
+      "title": "Engineering Spec - @tesseract/runner-cursor",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-runner-cursor/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "tesseract-worktree",
+      "title": "Engineering Spec - @tesseract/worktree",
+      "current_stage": "contracts-authored",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-worktree/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "per_feature_index_missing": true
+    },
+    {
+      "feature_id": "timestamp-naming-conventions",
+      "title": "Timestamp naming conventions",
+      "current_stage": "index",
+      "last_commit": "d472d02",
+      "path": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/index.json",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  ],
+  "coverage_gaps": [
+    {
+      "feature_id": "tesseract-adopter-scan",
+      "missing": "memory/features/tesseract-adopter-scan/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-adopter-scan/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-checkpointer-fs",
+      "missing": "memory/features/tesseract-checkpointer-fs/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-checkpointer-fs/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-cli",
+      "missing": "memory/features/tesseract-cli/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-cli/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-contract",
+      "missing": "memory/features/tesseract-contract/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-contract/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-contract-runner-llm-judge",
+      "missing": "memory/features/tesseract-contract-runner-llm-judge/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-contract-runner-llm-judge/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-contract-runner-rego",
+      "missing": "memory/features/tesseract-contract-runner-rego/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-contract-runner-rego/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-contract-style",
+      "missing": "memory/features/tesseract-contract-style/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-contract-style/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-core",
+      "missing": "memory/features/tesseract-core/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-core/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-env-isolation",
+      "missing": "memory/features/tesseract-env-isolation/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-env-isolation/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-inbox",
+      "missing": "memory/features/tesseract-inbox/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-inbox/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-intervention",
+      "missing": "memory/features/tesseract-intervention/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-intervention/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-mcp-server",
+      "missing": "memory/features/tesseract-mcp-server/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-mcp-server/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-memory",
+      "missing": "memory/features/tesseract-memory/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-memory/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-notifier",
+      "missing": "memory/features/tesseract-notifier/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-notifier/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-persona",
+      "missing": "memory/features/tesseract-persona/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-persona/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-pipeline",
+      "missing": "memory/features/tesseract-pipeline/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-pipeline/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-policy",
+      "missing": "memory/features/tesseract-policy/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-policy/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-run-logger",
+      "missing": "memory/features/tesseract-run-logger/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-run-logger/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-runner-cursor",
+      "missing": "memory/features/tesseract-runner-cursor/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-runner-cursor/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    {
+      "feature_id": "tesseract-worktree",
+      "missing": "memory/features/tesseract-worktree/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/tesseract-worktree/spec.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  ]
+}

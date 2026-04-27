@@ -2,7 +2,10 @@
   "feature_id": "timestamp-naming-conventions",
   "status": "intake-closed",
   "title": "Timestamp naming conventions",
-  "current_stage": "ship",
+  "current_stage": "index",
+  "pipeline_state": "delivery_complete_pending_post_merge",
+  "pipeline_state_note": "The ship gate cleared human_approval at HEAD d472d02. The index stage is complete, and the migration write remains a post-merge follow-up guarded by TESSERACT_MIGRATION_GO=1.",
+  "last_commit": "d472d02",
   "intake": {
     "round": 1,
     "open_questions": 0,
@@ -11,12 +14,460 @@
     "last_processed_thread_item": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md"
   },
   "handoff": {
-    "decision": "ship-staged",
+    "decision": "index-complete",
     "verdict": "pass-with-conditions",
-    "next_owner": "LocalUserAuthorizer",
-    "next_stage": "human_approval",
-    "next_stage_owner": "LocalUserAuthorizer",
-    "handoff_note": "Supervisor staged the ship artifacts at HEAD ff57fb8 without executing git push, gh pr create, git commit, or migration write. PR draft body lives at work/timestamp-naming-conventions/pr-draft.md; the operator pastes the title and body into gh pr create only after the human_approval gate clears. Delivery report staged to inbox/out/2026-04-27-timestamp-naming-conventions-delivery-report.md per the notifier post-run convention. Verification: pnpm run check:phase0a replayed green at HEAD ff57fb8 (exit 0); the remaining gates (pnpm typecheck, pnpm lint, pnpm migration:test, pnpm -r run test, dry-run --strict-references) were exercised at review per the ship-stage rule. Reviewer verdict pass-with-conditions: zero block findings; L1 resolved at report (chooseTimestamp citation range now [163, 193]); L2 deferred to librarian content-hash refresh; L3 (manifest self-amplification) and L4 (run.log.jsonl basename preservation) carried in the delivery report. Migration write-mode (--write under TESSERACT_MIGRATION_GO=1) is intentionally deferred to a single quiescent post-merge commit."
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-04-27T18:10:00Z",
+    "next_owner": "tech-lead",
+    "next_stage": "implement",
+    "followup_task": "timestamp-naming-conventions-migration-write-followup",
+    "handoff_note": "When the migration-write follow-up starts, the tech-lead MUST plan an implement task that preserves the dry-run manifest and requires TESSERACT_MIGRATION_GO=1 before any rename write occurs."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-04-27T18:10:00Z",
+    "artifacts_indexed": 20,
+    "stale_citations_flagged": {
+      "block": 0,
+      "warn": 19,
+      "info": 1,
+      "total": 20
+    },
+    "tbd_on_commit_placeholders_observed": 501,
+    "content_hash_refresh_performed": false,
+    "renames_performed": false,
+    "metadata": {
+      "tesseract-bootstrap-only": true
+    },
+    "references": [
+      {
+        "kind": "lines",
+        "path": "memory/handbook/glossary.md",
+        "range": [
+          216,
+          218
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      {
+        "kind": "lines",
+        "path": "memory/handbook/run-log-schema.md",
+        "range": [
+          83,
+          162
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    ]
+  },
+  "artifact_index": {
+    "engineering_spec": {
+      "path": "memory/features/timestamp-naming-conventions/spec.md",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/spec.md",
+        "range": [
+          1,
+          133
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "adr_0005": {
+      "path": "memory/adr/0005-timestamp-naming-conventions.md",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/adr/0005-timestamp-naming-conventions.md",
+        "range": [
+          1,
+          64
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "plan": {
+      "path": "work/timestamp-naming-conventions/plan.md",
+      "citation": {
+        "kind": "lines",
+        "path": "work/timestamp-naming-conventions/plan.md",
+        "range": [
+          1,
+          35
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "adr_draft": {
+      "path": "work/timestamp-naming-conventions/adr-draft.md",
+      "citation": {
+        "kind": "lines",
+        "path": "work/timestamp-naming-conventions/adr-draft.md",
+        "range": [
+          1,
+          40
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "touch_set": {
+      "path": "work/timestamp-naming-conventions/touch-set.json",
+      "citation": {
+        "kind": "lines",
+        "path": "work/timestamp-naming-conventions/touch-set.json",
+        "range": [
+          1,
+          130
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "contract_policy_descriptor": {
+      "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+        "range": [
+          1,
+          27
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "contract_migration_precedence": {
+      "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+        "range": [
+          1,
+          27
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "contract_reference_update_audit": {
+      "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
+        "range": [
+          1,
+          30
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "compliance_descriptor": {
+      "path": "tests/compliance/timestamp-naming-conventions.yaml",
+      "citation": {
+        "kind": "lines",
+        "path": "tests/compliance/timestamp-naming-conventions.yaml",
+        "range": [
+          1,
+          17
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "migration_script": {
+      "path": "tools/migrate-timestamp-naming.mjs",
+      "citation": {
+        "kind": "lines",
+        "path": "tools/migrate-timestamp-naming.mjs",
+        "range": [
+          1,
+          943
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "migration_tests": {
+      "path": "tools/migrate-timestamp-naming.test.mjs",
+      "citation": {
+        "kind": "lines",
+        "path": "tools/migrate-timestamp-naming.test.mjs",
+        "range": [
+          1,
+          196
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "dry_run_manifest": {
+      "path": "work/timestamp-naming-conventions/migration-manifest.dry-run.json",
+      "citation": {
+        "kind": "lines",
+        "path": "work/timestamp-naming-conventions/migration-manifest.dry-run.json",
+        "range": [
+          1,
+          3939
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "review_report": {
+      "path": "work/timestamp-naming-conventions/review.md",
+      "citation": {
+        "kind": "lines",
+        "path": "work/timestamp-naming-conventions/review.md",
+        "range": [
+          1,
+          229
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "delivery_report": {
+      "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
+        "range": [
+          1,
+          71
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "pr_draft": {
+      "path": "work/timestamp-naming-conventions/pr-draft.md",
+      "citation": {
+        "kind": "lines",
+        "path": "work/timestamp-naming-conventions/pr-draft.md",
+        "range": [
+          1,
+          86
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "run_log": {
+      "path": "work/timestamp-naming-conventions/run.log.jsonl",
+      "citation": {
+        "kind": "lines",
+        "path": "work/timestamp-naming-conventions/run.log.jsonl",
+        "range": [
+          1,
+          3
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "outbound_delivery_report": {
+      "path": "inbox/out/2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "citation": {
+        "kind": "lines",
+        "path": "inbox/out/2026-04-27-timestamp-naming-conventions-delivery-report.md",
+        "range": [
+          1,
+          71
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "per_feature_index": {
+      "path": "memory/features/timestamp-naming-conventions/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/index.json",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "inbox_lifecycle_update": {
+      "path": "memory/handbook/inbox-lifecycle.md",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/handbook/inbox-lifecycle.md",
+        "range": [
+          135,
+          149
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "citation_rot_scan": {
+      "path": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+        "range": [
+          1,
+          1
+        ],
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  },
+  "open_followups": [
+    {
+      "id": "migration-write",
+      "owner": "tech-lead",
+      "task": "timestamp-naming-conventions-migration-write-followup",
+      "status": "deferred",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
+        "range": [
+          26,
+          27
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "note": "When write-mode runs, the task MUST require TESSERACT_MIGRATION_GO=1."
+    },
+    {
+      "id": "contenthash-mix",
+      "owner": "librarian",
+      "task": "timestamp-naming-conventions-l2-contenthash-mix",
+      "status": "deferred",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
+        "range": [
+          28,
+          28
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "note": "When the dedicated L2 pass runs, the task MUST refresh mixed contentHash values."
+    },
+    {
+      "id": "runner-not-wired",
+      "owner": "tech-lead",
+      "task": "timestamp-naming-conventions-runner-not-wired",
+      "status": "deferred",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
+        "range": [
+          29,
+          29
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "note": "When Phase 5 runner wiring starts, the task MUST connect Spec Contract execution to the contract-runner panel."
+    },
+    {
+      "id": "post-2500-rollover",
+      "owner": "tech-lead",
+      "task": "timestamp-naming-conventions-post-2500-rollover",
+      "status": "operator-deferred",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
+        "range": [
+          30,
+          30
+        ],
+        "contentHash": "TBD-on-commit"
+      },
+      "note": "When rollover policy resumes, the task MUST capture the operator decision before implementation."
+    }
+  ],
+  "contracts": {
+    "clauses": [
+      {
+        "id": "timestamp-naming.policy-descriptor",
+        "kind": "tests",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+        "owner": "coder",
+        "requirement": "When the coder encodes timestamp naming policy, the contract MUST verify that the compliance descriptor gates the in-scope work and inbox naming rules.",
+        "appliesTo": {
+          "kind": "file-path",
+          "glob": "tests/compliance/timestamp-naming-conventions.yaml"
+        },
+        "references": [
+          {
+            "kind": "lines",
+            "path": "memory/features/timestamp-naming-conventions/spec.md",
+            "range": [
+              54,
+              103
+            ],
+            "contentHash": "TBD-on-commit"
+          },
+          {
+            "kind": "lines",
+            "path": "tests/compliance/schemas/latest.yaml",
+            "range": [
+              1,
+              63
+            ],
+            "contentHash": "TBD-on-commit"
+          }
+        ]
+      },
+      {
+        "id": "timestamp-naming.migration-precedence",
+        "kind": "tests",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+        "owner": "coder",
+        "requirement": "When the migration derives a timestamp, the contract MUST verify the source order git commit timestamp, frontmatter created_at, filesystem mtime, then operator override.",
+        "appliesTo": {
+          "kind": "file-path",
+          "glob": "tools/migrate-timestamp-naming.mjs"
+        },
+        "references": [
+          {
+            "kind": "lines",
+            "path": "memory/features/timestamp-naming-conventions/spec.md",
+            "range": [
+              123,
+              129
+            ],
+            "contentHash": "TBD-on-commit"
+          },
+          {
+            "kind": "lines",
+            "path": "work/timestamp-naming-conventions/plan.md",
+            "range": [
+              17,
+              17
+            ],
+            "contentHash": "TBD-on-commit"
+          }
+        ]
+      },
+      {
+        "id": "timestamp-naming.reference-update-audit",
+        "kind": "tests",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
+        "owner": "coder",
+        "requirement": "When the migration renames an in-scope artifact, the contract MUST verify that reference artifacts and documentation artifacts name the migrated path.",
+        "appliesTo": {
+          "kind": "file-path",
+          "glob": "**/*"
+        },
+        "references": [
+          {
+            "kind": "lines",
+            "path": "memory/features/timestamp-naming-conventions/spec.md",
+            "range": [
+              104,
+              109
+            ],
+            "contentHash": "TBD-on-commit"
+          },
+          {
+            "kind": "lines",
+            "path": "memory/adr/0004-documentation-impact-contract.md",
+            "range": [
+              67,
+              75
+            ],
+            "contentHash": "TBD-on-commit"
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "tesseract-bootstrap-only": true
   },
   "ship": {
     "pr_draft": {
@@ -28,7 +479,8 @@
         "1ca2afd",
         "7d7b62a",
         "635e5bb",
-        "ff57fb8"
+        "ff57fb8",
+        "d472d02"
       ]
     },
     "staged_inbox_out": "inbox/out/2026-04-27-timestamp-naming-conventions-delivery-report.md",
@@ -42,12 +494,13 @@
     "human_approval_gate": {
       "owner": "LocalUserAuthorizer",
       "stage": "human_approval",
+      "status": "cleared",
+      "cleared_at_head": "d472d02",
       "operator_actions_required": [
-        "Run gh pr create with the title and body from work/timestamp-naming-conventions/pr-draft.md.",
         "Approve the post-merge migration-write task before it runs with TESSERACT_MIGRATION_GO=1."
       ]
     },
-    "pipeline_state": "awaiting_human_approval",
+    "pipeline_state": "human_approval_cleared",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -77,173 +530,38 @@
       "migration_dry_run_strict_references": "pass"
     }
   },
-  "artifact_index": {
-    "feature_folder": {
-      "spec": {
-        "path": "memory/features/timestamp-naming-conventions/spec.md",
-        "citation": {
-          "kind": "lines",
-          "path": "memory/features/timestamp-naming-conventions/spec.md",
-          "range": [1, 92],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "policy_descriptor": {
-        "path": "tests/compliance/timestamp-naming-conventions.yaml",
-        "citation": {
-          "kind": "lines",
-          "path": "tests/compliance/timestamp-naming-conventions.yaml",
-          "range": [1, 30],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "contract_policy_descriptor": {
-        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
-        "citation": {
-          "kind": "lines",
-          "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
-          "range": [1, 40],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "contract_migration_precedence": {
-        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
-        "citation": {
-          "kind": "lines",
-          "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
-          "range": [1, 40],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "contract_reference_audit": {
-        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
-        "citation": {
-          "kind": "lines",
-          "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
-          "range": [1, 45],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "migration_script": {
-        "path": "tools/migrate-timestamp-naming.mjs",
-        "citation": {
-          "kind": "lines",
-          "path": "tools/migrate-timestamp-naming.mjs",
-          "range": [1, 80],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "migration_tests": {
-        "path": "tools/migrate-timestamp-naming.test.mjs",
-        "citation": {
-          "kind": "lines",
-          "path": "tools/migrate-timestamp-naming.test.mjs",
-          "range": [1, 60],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "migration_manifest_dry_run": {
-        "path": "work/timestamp-naming-conventions/migration-manifest.dry-run.json",
-        "citation": {
-          "kind": "lines",
-          "path": "work/timestamp-naming-conventions/migration-manifest.dry-run.json",
-          "range": [1, 40],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "adr_0005": {
-        "path": "memory/adr/0005-timestamp-naming-conventions.md",
-        "citation": {
-          "kind": "lines",
-          "path": "memory/adr/0005-timestamp-naming-conventions.md",
-          "range": [1, 50],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "inbox_lifecycle_update": {
-        "path": "memory/handbook/inbox-lifecycle.md",
-        "citation": {
-          "kind": "lines",
-          "path": "memory/handbook/inbox-lifecycle.md",
-          "range": [135, 149],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "review_report": {
-        "path": "work/timestamp-naming-conventions/review.md",
-        "citation": {
-          "kind": "lines",
-          "path": "work/timestamp-naming-conventions/review.md",
-          "range": [1, 220],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "delivery_report": {
-        "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
-        "citation": {
-          "kind": "lines",
-          "path": "memory/features/timestamp-naming-conventions/delivery-report.md",
-          "range": [1, 200],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "pr_draft": {
-        "path": "work/timestamp-naming-conventions/pr-draft.md",
-        "citation": {
-          "kind": "lines",
-          "path": "work/timestamp-naming-conventions/pr-draft.md",
-          "range": [1, 80],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "ship_run_log": {
-        "path": "work/timestamp-naming-conventions/run.log.jsonl",
-        "citation": {
-          "kind": "lines",
-          "path": "work/timestamp-naming-conventions/run.log.jsonl",
-          "range": [1, 2],
-          "contentHash": "TBD-on-commit"
-        }
-      }
-    },
-    "lineage": {
-      "directive": {
+  "lineage": {
+    "intake_commits": [
+      "90f6110",
+      "d26d4e1",
+      "f2263fc"
+    ],
+    "persona_ratification": "85edfcb",
+    "plan": "1ca2afd",
+    "implement": "7d7b62a",
+    "review": "635e5bb",
+    "report": "ff57fb8",
+    "ship": "d472d02",
+    "citations": [
+      {
+        "kind": "lines",
         "path": "inbox/in/timestamp_naming_conventions.md",
-        "citation": {
-          "kind": "lines",
-          "path": "inbox/in/timestamp_naming_conventions.md",
-          "range": [1, 59],
-          "contentHash": "TBD-on-commit"
-        }
+        "range": [
+          1,
+          59
+        ],
+        "contentHash": "TBD-on-commit"
       },
-      "round_01_clarification": {
-        "path": "inbox/threads/timestamp-naming-conventions/round-01-clarify.md",
-        "citation": {
-          "kind": "lines",
-          "path": "inbox/threads/timestamp-naming-conventions/round-01-clarify.md",
-          "range": [1, 97],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "round_01_operator_response": {
+      {
+        "kind": "lines",
         "path": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
-        "citation": {
-          "kind": "lines",
-          "path": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
-          "range": [1, 87],
-          "contentHash": "TBD-on-commit"
-        }
-      },
-      "staged_delivery_report": {
-        "path": "inbox/out/2026-04-27-timestamp-naming-conventions-delivery-report.md",
-        "citation": {
-          "kind": "lines",
-          "path": "inbox/out/2026-04-27-timestamp-naming-conventions-delivery-report.md",
-          "range": [1, 72],
-          "contentHash": "TBD-on-commit"
-        }
+        "range": [
+          1,
+          87
+        ],
+        "contentHash": "TBD-on-commit"
       }
-    }
+    ]
   },
   "plan_deferred_decisions": [
     {
@@ -251,84 +569,5 @@
       "status": "operator-deferred",
       "note": "Operator deferred the rollover rule beyond this delivery slice."
     }
-  ],
-  "contracts": {
-    "clauses": [
-      {
-        "id": "timestamp-naming.policy-descriptor",
-        "kind": "tests",
-        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
-        "owner": "coder",
-        "requirement": "When the coder encodes timestamp naming policy, the contract MUST verify that the compliance descriptor gates the in-scope work and inbox naming rules.",
-        "appliesTo": {
-          "kind": "file-path",
-          "glob": "tests/compliance/timestamp-naming-conventions.yaml"
-        },
-        "references": [
-          {
-            "kind": "lines",
-            "path": "memory/features/timestamp-naming-conventions/spec.md",
-            "range": [54, 103],
-            "contentHash": "TBD-on-commit"
-          },
-          {
-            "kind": "lines",
-            "path": "tests/compliance/schemas/latest.yaml",
-            "range": [1, 63],
-            "contentHash": "TBD-on-commit"
-          }
-        ]
-      },
-      {
-        "id": "timestamp-naming.migration-precedence",
-        "kind": "tests",
-        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
-        "owner": "coder",
-        "requirement": "When the migration derives a timestamp, the contract MUST verify the source order git commit timestamp, frontmatter created_at, filesystem mtime, then operator override.",
-        "appliesTo": {
-          "kind": "file-path",
-          "glob": "tools/migrate-timestamp-naming.mjs"
-        },
-        "references": [
-          {
-            "kind": "lines",
-            "path": "memory/features/timestamp-naming-conventions/spec.md",
-            "range": [123, 129],
-            "contentHash": "TBD-on-commit"
-          },
-          {
-            "kind": "lines",
-            "path": "work/timestamp-naming-conventions/plan.md",
-            "range": [17, 17],
-            "contentHash": "TBD-on-commit"
-          }
-        ]
-      },
-      {
-        "id": "timestamp-naming.reference-update-audit",
-        "kind": "tests",
-        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
-        "owner": "coder",
-        "requirement": "When the migration renames an in-scope artifact, the contract MUST verify that reference artifacts and documentation artifacts name the migrated path.",
-        "appliesTo": {
-          "kind": "file-path",
-          "glob": "**/*"
-        },
-        "references": [
-          {
-            "kind": "lines",
-            "path": "memory/features/timestamp-naming-conventions/spec.md",
-            "range": [104, 109],
-            "contentHash": "TBD-on-commit"
-          },
-          {
-            "kind": "lines",
-            "path": "memory/adr/0004-documentation-impact-contract.md",
-            "range": [67, 75],
-            "contentHash": "TBD-on-commit"
-          }
-        ]
-      }
-    ]
-  }
+  ]
 }
