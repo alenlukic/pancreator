@@ -1,1 +1,74 @@
-{}
+{
+  "feature_id": "timestamp-naming-conventions",
+  "status": "intake-closed",
+  "title": "Timestamp naming conventions",
+  "current_stage": "intake",
+  "intake": {
+    "round": 1,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "inbox/in/timestamp_naming_conventions.md",
+    "last_processed_thread_item": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md"
+  },
+  "handoff": {
+    "decision": "intake-closed",
+    "next_owner": "tech-lead",
+    "next_stage": "plan",
+    "next_stage_owner": "tech-lead",
+    "handoff_note": "Round 01 closed intake. Planning should preserve the per-feature thread parent folder, include inbox-lifecycle handbook updates in the touch set, and choose a deterministic timestamp-source precedence for migration where authoritative creation time is absent."
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "spec": {
+        "path": "memory/features/timestamp-naming-conventions/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "memory/features/timestamp-naming-conventions/spec.md",
+          "range": [1, 92],
+          "contentHash": "TBD-on-commit"
+        }
+      }
+    },
+    "lineage": {
+      "directive": {
+        "path": "inbox/in/timestamp_naming_conventions.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/in/timestamp_naming_conventions.md",
+          "range": [1, 59],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "round_01_clarification": {
+        "path": "inbox/threads/timestamp-naming-conventions/round-01-clarify.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/threads/timestamp-naming-conventions/round-01-clarify.md",
+          "range": [1, 97],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "round_01_operator_response": {
+        "path": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
+        "citation": {
+          "kind": "lines",
+          "path": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
+          "range": [1, 87],
+          "contentHash": "TBD-on-commit"
+        }
+      }
+    }
+  },
+  "plan_deferred_decisions": [
+    {
+      "topic": "migration-timestamp-source-precedence",
+      "status": "defer-to-plan",
+      "note": "Plan stage should choose a deterministic precedence for artifacts that lack an authoritative creation timestamp."
+    },
+    {
+      "topic": "post-2500-rollover",
+      "status": "operator-deferred",
+      "note": "Operator deferred the rollover rule beyond this delivery slice."
+    }
+  ]
+}
