@@ -13,35 +13,26 @@
   ],
   "documentation_impact": {
     "applies": true,
-    "rationale": "Phase 4 dogfood feature-delivery implement stage. The coder authored the timestamp-naming compliance descriptor, three per-feature Spec Contracts, the migration script (tools/migrate-timestamp-naming.mjs) with helper-level tests under node --test, the dry-run manifest fixture, and the inbox-lifecycle handbook §3c rule for actor-owned timestamp prefixing of non-conforming inbox artifacts. ADR 0005 was promoted from work/ draft to memory/adr/0005-timestamp-naming-conventions.md with status accepted. Migration write-mode is intentionally deferred to a post-supervisor task and gated behind TESSERACT_MIGRATION_GO=1 to avoid relocating the in-flight feature's own work directory mid-implement.",
+    "rationale": "Phase 4 dogfood feature-delivery review stage. The reviewer ran modern-code-review against commit 7d7b62a and emitted work/timestamp-naming-conventions/review.md with verdict pass-with-conditions: five verification gates green, all five migration safety properties pass, every spec acceptance clause maps to an executable surface, and the strict-references dry run reports zero stale rows. Two warn-severity findings landed: L1 a citation line range mismatch in the migration-precedence Spec Contract (now realigned per AGENTS.md §3 deterministic maintenance), and L2 a contentHash mixing pattern in inbox-lifecycle.md (deferred to librarian indexing for the global contentHash refresh pass). Index advanced to current_stage review with handoff to tech-writer / report.",
     "changed_surfaces": [
-      "tests/compliance/timestamp-naming-conventions.yaml",
-      "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
-      "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
-      "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
-      "tools/migrate-timestamp-naming.mjs",
-      "tools/migrate-timestamp-naming.test.mjs",
-      "work/timestamp-naming-conventions/migration-manifest.dry-run.json",
-      "memory/adr/0005-timestamp-naming-conventions.md",
-      "memory/handbook/inbox-lifecycle.md",
-      "work/timestamp-naming-conventions/adr-draft.md",
+      "work/timestamp-naming-conventions/review.md",
       "memory/features/timestamp-naming-conventions/index.json",
-      "package.json"
+      "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml"
     ],
     "deferred_items": [
       {
-        "id": "timestamp-naming-conventions-migration-write",
-        "rationale": "Migration write-mode (--write under TESSERACT_MIGRATION_GO=1) is intentionally deferred to a post-supervisor task that runs from a quiescent state. Renaming the in-flight feature's own work directory during implement would relocate the very files the agent is editing. Plan and ADR document the split."
+        "id": "timestamp-naming-conventions-l2-contenthash-mix",
+        "rationale": "inbox-lifecycle.md frontmatter mixes the new TBD-on-commit citation with computed sha256 hashes from prior passes. The librarian SHALL refresh all contentHash placeholders in a single dedicated pass; ad-hoc partial refreshes would recreate the same drift downstream."
       },
       {
-        "id": "timestamp-naming-conventions-glossary-entries",
-        "rationale": "New domain nouns (collision counter, migration manifest) remain feature-local until the librarian indexing stage decides on glossary promotion."
+        "id": "timestamp-naming-conventions-runner-not-wired",
+        "rationale": "Spec Contract execution depends on the contract-runner-rego and contract-runner-llm-judge runners being fully wired into a panel; the implement slice ships the structural surfaces; runner integration is M2 per Q18 (mcp-server) and the Phase 5 contract corpus pass."
       }
     ]
   },
   "policy_alignment": {
-    "agents_md_alignment": "Slice delegates the implement stage to the named coder persona per §4, stays inside the touch-set declared at work/timestamp-naming-conventions/touch-set.json (with the four parent-ratified additions documented in this artifact's deferred_items rationale), and stages diffs locally without commit or push.",
-    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, encodes the convention as policy and Spec Contracts BEFORE any rename mutation, and gates write-mode migration behind an explicit env var to preserve replayability and rollback.",
-    "prd_alignment": "Slice satisfies the Phase 4 implement-stage requirement (encoded policy + Spec Contracts + migration tool + handbook update + ADR) without expanding scope past the declared touch set; the dry-run manifest empirically validates the migration plan against the live repo state."
+    "agents_md_alignment": "Slice delegates the review stage to the named reviewer persona per §4 and applies the §3 deterministic-maintenance carveout for the L1 citation realignment. No spec, plan, ADR, or implement-stage source was modified outside the maintenance carveout.",
+    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, surfaces every Layer-1 finding loudly, and defers the cross-feature contentHash refresh to the librarian's dedicated pass to avoid drift.",
+    "prd_alignment": "Slice satisfies the Phase 4 review-stage requirement (modern-code-review + Spec Contract pass) and emits the canonical review.md artifact for the report stage."
   }
 }

@@ -2,7 +2,7 @@
   "feature_id": "timestamp-naming-conventions",
   "status": "intake-closed",
   "title": "Timestamp naming conventions",
-  "current_stage": "implement",
+  "current_stage": "review",
   "intake": {
     "round": 1,
     "open_questions": 0,
@@ -11,11 +11,30 @@
     "last_processed_thread_item": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md"
   },
   "handoff": {
-    "decision": "implement-complete",
-    "next_owner": "reviewer",
-    "next_stage": "review",
-    "next_stage_owner": "reviewer",
-    "handoff_note": "Policy descriptor, Spec Contracts, migration script with dry-run manifest, ADR 0005 acceptance, and inbox-lifecycle rule are staged for review. Migration write mode stays gated by TESSERACT_MIGRATION_GO=1 and runs only after human_approval."
+    "decision": "review-complete",
+    "verdict": "pass-with-conditions",
+    "next_owner": "tech-writer",
+    "next_stage": "report",
+    "next_stage_owner": "tech-writer",
+    "handoff_note": "Reviewer verdict pass-with-conditions. Five verification gates green (typecheck, lint, check:phase0a, migration:test, pnpm -r run test). Strict-references dry-run reports zero uncovered legacy hits. Three Spec Contracts marked deferred-runner-not-wired with structural/test/script evidence per the runner-panel deferral. Carry forward review findings L1 (citation range mismatch in timestamp-naming.migration-precedence.yaml), L2 (mixed contentHash discipline in inbox-lifecycle.md), L3 (manifest self-amplification on re-run), and L4 (run.log.jsonl basename-preservation note) into the delivery report. Migration write-mode remains gated by TESSERACT_MIGRATION_GO=1 and runs after human ratification."
+  },
+  "review": {
+    "verdict": "pass-with-conditions",
+    "report": "work/timestamp-naming-conventions/review.md",
+    "implement_commit": "7d7b62a1cbf1903def541c968dffacfd2c8744a5",
+    "block_findings": 0,
+    "warn_findings": 2,
+    "info_findings": 4,
+    "spec_contracts_executed": 3,
+    "spec_contracts_deferred_runner": 3,
+    "verification_gates": {
+      "typecheck": "pass",
+      "lint": "pass",
+      "check_phase0a": "pass",
+      "migration_test": "pass",
+      "pnpm_recursive_test": "pass",
+      "migration_dry_run_strict_references": "pass"
+    }
   },
   "artifact_index": {
     "feature_folder": {
@@ -106,6 +125,15 @@
           "kind": "lines",
           "path": "memory/handbook/inbox-lifecycle.md",
           "range": [135, 149],
+          "contentHash": "TBD-on-commit"
+        }
+      },
+      "review_report": {
+        "path": "work/timestamp-naming-conventions/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/timestamp-naming-conventions/review.md",
+          "range": [1, 220],
           "contentHash": "TBD-on-commit"
         }
       }

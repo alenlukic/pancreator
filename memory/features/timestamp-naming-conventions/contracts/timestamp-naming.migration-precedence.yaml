@@ -15,9 +15,9 @@ references:
     note: "Deferral note closed in plan; precedence encoded in migration tooling."
   - kind: lines
     path: tools/migrate-timestamp-naming.mjs
-    range: [1, 120]
+    range: [163, 193]
     contentHash: TBD-on-commit
-    note: "chooseTimestamp and git log integration."
+    note: "chooseTimestamp implements the ratified precedence (git, frontmatter, mtime, override)."
 runtime:
   entry: "tools/migrate-timestamp-naming.mjs"
   exported_symbol: "chooseTimestamp"
