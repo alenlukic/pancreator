@@ -45,6 +45,8 @@ Three sub-phases; do them in order. None of them require an LLM.
   fails on any horizontal dep between `@tesseract/<primitive>` packages, except
   `@tesseract/cli`, which MAY depend on other primitives as the workspace composer
   for `tess` (Phase 3 step 8).
+- `@tesseract/mcp-server` uses the same composer carveout as `@tesseract/cli` so it
+  MAY compose other workspace primitives for the MCP bridge (Phase 3 step 9).
 - Empty package skeletons (just `package.json` + `README.md` + `src/index.ts` stub) for
   every M1 `@tesseract/*` listed in PRD §11. Boundaries from day 1; rich features
   ratchet up later (PRD R13).

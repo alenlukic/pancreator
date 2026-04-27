@@ -4,10 +4,11 @@
  * and required files. Source imports are covered by
  * @tesseract/no-horizontal-primitive-deps in ESLint.
  *
- * Carveout: `@tesseract/cli` is the workspace composer (`tess`); it MAY list any
- * workspace `@tesseract/*` dependency (BOOTSTRAP.md Phase 3 step 8).
+ * Carveout: `@tesseract/cli` and `@tesseract/mcp-server` are workspace
+ * composers (`tess` / MCP); they MAY list any workspace `@tesseract/*`
+ * dependency (BOOTSTRAP.md Phase 3 steps 8 and 9).
  */
-const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli"]);
+const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli", "mcp-server"]);
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

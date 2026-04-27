@@ -3,10 +3,11 @@
  * Files under `packages/@tesseract/<name>/` SHALL NOT import or re-export
  * another primitive package except `core` and the current package.
  *
- * Carveout: `packages/@tesseract/cli` is the workspace composer for `tess`.
- * It MAY import any `@tesseract/*` package (BOOTSTRAP.md Phase 3 step 8).
+ * Carveout: `packages/@tesseract/cli` and `packages/@tesseract/mcp-server` are
+ * workspace composers for `tess` (BOOTSTRAP.md Phase 3 steps 8 and 9). These
+ * packages MAY import any `@tesseract/*` package.
  */
-const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli"]);
+const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli", "mcp-server"]);
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -70,7 +71,7 @@ const noHorizontalPrimitiveDeps = {
     type: "problem",
     docs: {
       description:
-        "Disallow horizontal @tesseract/* dependencies between primitive packages; only @tesseract/core and the same package are allowed. @tesseract/cli is exempt as the workspace composer.",
+        "Disallow horizontal @tesseract/* dependencies between primitive packages; only @tesseract/core and the same package are allowed. @tesseract/cli and @tesseract/mcp-server are exempt as workspace composers.",
     },
     schema: [],
   },
