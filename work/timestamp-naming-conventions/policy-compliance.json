@@ -11,32 +11,29 @@
   ],
   "documentation_impact": {
     "applies": true,
-    "rationale": "Phase 4 dogfood feature-delivery intake closure. The intake-analyst folded the operator's round-1 answers into the canonical Engineering Spec, refreshed the feature index for the tech-lead handoff, and updated the intake handoff note. The operator response file is committed alongside as the canonical, semantically immutable input cited by the closed spec. No round-2 dialogue is opened: the intake-analyst resolved residual ambiguities from context (inbox/threads parent folders, collision counter format, handbook surface, work subdirectory naming) and deferred the migration timestamp-source ordering to the plan stage. Spec status is intake-closed, awaiting the human_approval ratification gate that gates dispatch of tech-lead.",
+    "rationale": "Phase 4 dogfood feature-delivery plan stage. The tech-lead emitted the canonical plan-stage trio (plan.md, adr-draft.md, touch-set.json), declared the per-feature contracts: block in the feature index (timestamp-naming.policy-descriptor, timestamp-naming.migration-precedence, timestamp-naming.reference-update-audit), seeded the contracts directory, and refreshed the index for coder/implement handoff. Plan resolves the deferred migration timestamp-source precedence as git commit timestamp → frontmatter created_at → filesystem mtime → operator override, with replayability rationale.",
     "changed_surfaces": [
-      "memory/features/timestamp-naming-conventions/spec.md",
-      "memory/features/timestamp-naming-conventions/index.json",
-      "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
-      "work/timestamp-naming-conventions/intake-round-01.md"
+      "work/timestamp-naming-conventions/plan.md",
+      "work/timestamp-naming-conventions/adr-draft.md",
+      "work/timestamp-naming-conventions/touch-set.json",
+      "memory/features/timestamp-naming-conventions/contracts/.gitkeep",
+      "memory/features/timestamp-naming-conventions/index.json"
     ],
     "deferred_items": [
       {
-        "id": "timestamp-naming-conventions-post-2500-rollover",
-        "rationale": "Operator deferred the post-2500-01-01 sentinel rollover rule by explicit decision; the spec records it under Deferrals and removes the corresponding open clarify marker."
+        "id": "timestamp-naming-conventions-implement",
+        "rationale": "feature-delivery implement stage runs after plan; coder dispatch is the next step under the touch-set declared at work/timestamp-naming-conventions/touch-set.json."
       },
       {
-        "id": "timestamp-naming-conventions-migration-timestamp-source",
-        "rationale": "Selecting between filesystem mtime, first git commit timestamp, content-frontmatter created_at, or operator override for artifacts that lack an authoritative creation time is a plan-stage implementation choice and does not block intake closure."
-      },
-      {
-        "id": "timestamp-naming-conventions-tech-lead-plan",
-        "rationale": "feature-delivery plan stage is gated on the human_approval ratification of the closed Engineering Spec; tech-lead dispatch is deferred until that gate clears."
+        "id": "timestamp-naming-conventions-adr-promotion",
+        "rationale": "ADR 0005 lands as Proposed in work/; promotion to memory/adr/0005-timestamp-naming-conventions.md is part of the implement stage's documentation-impact obligations."
       }
     ]
   },
   "policy_alignment": {
-    "agents_md_alignment": "Slice delegates the intake stage to the named intake-analyst persona per §4 and stops cleanly at the human_approval gate that follows spec emission per the working agreement.",
-    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, preserves inbox lifecycle semantic-immutability rules, and bundles the canonical operator response file with the spec that cites it.",
-    "prd_alignment": "Slice closes the dogfood-us1 todo's intake stage by emitting a canonical Engineering Spec for tech-lead handoff without expanding scope past the intake artifact set.",
+    "agents_md_alignment": "Slice delegates the plan stage to the named tech-lead persona per §4 and stops cleanly at the plan-to-implement boundary; checkpoints persist via the work-folder artifacts.",
+    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, encodes the convention as policy before mutating any in-scope path, and orders migration timestamp sources for replayability.",
+    "prd_alignment": "Slice satisfies the Phase 4 plan-stage requirement (plan.md + adr-draft.md + touch-set.json + per-feature contract: block) without expanding scope past the declared touch set.",
     "required_updates": []
   }
 }

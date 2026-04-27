@@ -2,7 +2,7 @@
   "feature_id": "timestamp-naming-conventions",
   "status": "intake-closed",
   "title": "Timestamp naming conventions",
-  "current_stage": "intake",
+  "current_stage": "plan",
   "intake": {
     "round": 1,
     "open_questions": 0,
@@ -11,11 +11,11 @@
     "last_processed_thread_item": "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md"
   },
   "handoff": {
-    "decision": "intake-closed",
-    "next_owner": "tech-lead",
-    "next_stage": "plan",
-    "next_stage_owner": "tech-lead",
-    "handoff_note": "Round 01 closed intake. Planning should preserve the per-feature thread parent folder, include inbox-lifecycle handbook updates in the touch set, and choose a deterministic timestamp-source precedence for migration where authoritative creation time is absent."
+    "decision": "plan-complete",
+    "next_owner": "coder",
+    "next_stage": "implement",
+    "next_stage_owner": "coder",
+    "handoff_note": "Plan stage resolved migration timestamp-source precedence as git commit timestamp, then frontmatter created_at, then filesystem mtime, then operator override. Implementation must encode policy before migration writes."
   },
   "artifact_index": {
     "feature_folder": {
@@ -62,13 +62,93 @@
   "plan_deferred_decisions": [
     {
       "topic": "migration-timestamp-source-precedence",
-      "status": "defer-to-plan",
-      "note": "Plan stage should choose a deterministic precedence for artifacts that lack an authoritative creation timestamp."
+      "status": "resolved-in-plan",
+      "note": "Plan stage selected a deterministic order for artifacts that lack an authoritative creation timestamp.",
+      "resolution": "When migration derives an artifact timestamp, the migration MUST use git commit timestamp first, frontmatter created_at second, filesystem mtime third, and operator override fourth."
     },
     {
       "topic": "post-2500-rollover",
       "status": "operator-deferred",
       "note": "Operator deferred the rollover rule beyond this delivery slice."
     }
-  ]
+  ],
+  "contracts": {
+    "clauses": [
+      {
+        "id": "timestamp-naming.policy-descriptor",
+        "kind": "tests",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+        "owner": "coder",
+        "requirement": "When the coder encodes timestamp naming policy, the contract MUST verify that the compliance descriptor gates the in-scope work and inbox naming rules.",
+        "appliesTo": {
+          "kind": "file-path",
+          "glob": "tests/compliance/timestamp-naming-conventions.yaml"
+        },
+        "references": [
+          {
+            "kind": "lines",
+            "path": "memory/features/timestamp-naming-conventions/spec.md",
+            "range": [54, 103],
+            "contentHash": "TBD-on-commit"
+          },
+          {
+            "kind": "lines",
+            "path": "tests/compliance/schemas/latest.yaml",
+            "range": [1, 63],
+            "contentHash": "TBD-on-commit"
+          }
+        ]
+      },
+      {
+        "id": "timestamp-naming.migration-precedence",
+        "kind": "tests",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+        "owner": "coder",
+        "requirement": "When the migration derives a timestamp, the contract MUST verify the source order git commit timestamp, frontmatter created_at, filesystem mtime, then operator override.",
+        "appliesTo": {
+          "kind": "file-path",
+          "glob": "tools/migrate-timestamp-naming.mjs"
+        },
+        "references": [
+          {
+            "kind": "lines",
+            "path": "memory/features/timestamp-naming-conventions/spec.md",
+            "range": [123, 129],
+            "contentHash": "TBD-on-commit"
+          },
+          {
+            "kind": "lines",
+            "path": "work/timestamp-naming-conventions/plan.md",
+            "range": [17, 17],
+            "contentHash": "TBD-on-commit"
+          }
+        ]
+      },
+      {
+        "id": "timestamp-naming.reference-update-audit",
+        "kind": "tests",
+        "path": "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
+        "owner": "coder",
+        "requirement": "When the migration renames an in-scope artifact, the contract MUST verify that reference artifacts and documentation artifacts name the migrated path.",
+        "appliesTo": {
+          "kind": "file-path",
+          "glob": "**/*"
+        },
+        "references": [
+          {
+            "kind": "lines",
+            "path": "memory/features/timestamp-naming-conventions/spec.md",
+            "range": [104, 109],
+            "contentHash": "TBD-on-commit"
+          },
+          {
+            "kind": "lines",
+            "path": "memory/adr/0004-documentation-impact-contract.md",
+            "range": [67, 75],
+            "contentHash": "TBD-on-commit"
+          }
+        ]
+      }
+    ]
+  }
 }
