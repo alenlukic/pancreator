@@ -1,0 +1,18 @@
+id: chat-with-persona
+version: "1"
+metadata:
+  tesseract-bootstrap-only: true
+  description: >-
+    PRD §11 MVP pipeline skeleton. Single-stage dispatch to a named persona for
+    a non-delivery conversation. Persona Ensemble runtime lands at M4 per
+    PRD §13; the bootstrap registration carries an ordered single-stage shape
+    that the `chat-with-persona` ensemble will replace once M4 wiring lands.
+  references:
+    - kind: lines
+      path: PRD.md
+      range: [1, 80]
+      contentHash: TBD-on-commit
+      note: Cited for product context; pipeline structure derives from PRD §11.
+stages:
+  - id: dispatch
+    label: Dispatch the message to the named persona
