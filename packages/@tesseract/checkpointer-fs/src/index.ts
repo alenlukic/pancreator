@@ -1,10 +1,13 @@
-import { TESSERACT_CORE_VERSION } from "@tesseract/core";
-
 /**
- * @packageDocumentation Phase 0a scaffold. Checkpointer implementation is deferred to Phase 3+.
+ * @packageDocumentation
+ * File-backed checkpoint records aligned with the run-log offset contract; LangGraph saver wiring is scheduled separately.
  */
-export const TESSERACT_CHECKPOINTER_FS_STUB = "checkpointer-fs" as const;
 
-export function checkpointerFsStubVersion(): string {
-  return TESSERACT_CORE_VERSION;
-}
+export { FsCheckpointStore } from "./fs-checkpoint-store.js";
+export {
+  isCheckpointEnvelopeV1,
+  type CheckpointEnvelopeV1,
+  type CheckpointMetadata,
+} from "./envelope.js";
+
+export const TESSERACT_CHECKPOINTER_FS_VERSION = "0.0.0" as const;
