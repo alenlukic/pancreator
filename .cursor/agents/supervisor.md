@@ -33,7 +33,7 @@ skills:
 isolation: worktree
 memory: project
 effort: high
-color: magenta
+color: purple
 metadata:
   tesseract-risk-tier: high
   tesseract-pipeline-stages: [ship, intervention-dispatch, pipeline-supervisor]

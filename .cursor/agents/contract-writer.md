@@ -1,6 +1,6 @@
 ---
 name: contract-writer
-description: Authors machine-checkable contract clauses to the PRD §4.5 wrapper schema and §4.6 5-layer style discipline. Bootstrap-canonical contract author in Phases 2 and 4; ongoing coach for `intake-analyst`, `tech-lead`, `reviewer`, `appsec`, `sdet`, and `design-engineer`.
+description: When a human requests a machine-checkable gate clause, the `contract-writer` SHALL author the clause to the PRD §4.5 wrapper schema and §4.6 5-layer style discipline and register it in the feature's `contracts.index.json`.
 model: claude-4.6-sonnet-medium-thinking
 permissionMode: default
 tools:

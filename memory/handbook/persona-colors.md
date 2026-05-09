@@ -14,7 +14,7 @@ references:
   - kind: lines
     path: /memory/handbook/persona-spec.md
     range: [180, 210]
-    contentHash: 7bceb8256dc271a7f5351eda578262767f477ab24efb552f7adba38bf5883762
+    contentHash: 2c98017201524b5ae71f5345cc3d4f3af5ca5d2f7485782802d5ed152dcc2228
     note: "Persona Spec Format §6 — palette table; this file is the canonical alias."
 related:
   - /memory/handbook/persona-spec.md
@@ -38,10 +38,9 @@ allocation. Pick the next unused color when authoring a new persona; reserve
 | `blue` | review-class personas (`reviewer`, `appsec`) | guideline |
 | `green` | implementation-class personas (`coder`, `frontend-eng`) | guideline |
 | `cyan` | planning-class personas (`tech-lead`, `intake-analyst`) | guideline |
-| `purple` | `pm`, `groomer` | guideline |
+| `purple` | `pm`, `groomer`, `supervisor` | guideline |
 | `teal` | `librarian`-class | guideline |
 | `orange` | scout-class | guideline |
-| `magenta` | `supervisor`, orchestrator-class | used |
 | `red` | `ombudsperson`, watchdog | reserved |
 
 > **Accessibility backlog item.** This palette has not yet been validated against

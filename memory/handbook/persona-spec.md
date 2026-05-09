@@ -201,7 +201,7 @@ preserve operator legibility.
 | `blue` | review-class personas (`reviewer`, `appsec`) | guideline |
 | `green` | implementation-class personas (`coder`, `frontend-eng`) | guideline |
 | `cyan` | planning-class personas (`tech-lead`, `intake-analyst`) | guideline |
-| `purple` | pm and backlog (`pm`, `groomer`) | guideline |
+| `purple` | pm, backlog, and pipeline orchestration (`pm`, `groomer`, `supervisor`) | guideline |
 | `teal` | librarian-class | guideline |
 | `slate` | tech-writer-class | guideline |
 | `orange` | scout-class | guideline |

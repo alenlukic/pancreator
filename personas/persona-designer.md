@@ -1,6 +1,6 @@
 ---
 name: persona-designer
-description: Authors Tesseract subagent persona specifications to the Anthropic Claude Agent SDK 16-field YAML frontmatter spec, with auto-emitted Cursor `.mdc` shims. Invoke during bootstrap Phase 1 and whenever the Librarian proposes a new SME (M4+).
+description: When a human invokes the persona-designer during bootstrap Phase 1 or when the Librarian proposes a new SME (M4+), the `persona-designer` SHALL author a conforming Tesseract subagent persona specification to the Anthropic Claude Agent SDK 16-field YAML frontmatter spec and emit matching Cursor `.mdc` shims.
 model: claude-opus-4-7
 permissionMode: default
 tools:

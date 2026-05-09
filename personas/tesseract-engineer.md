@@ -59,7 +59,7 @@ references:
   - kind: lines
     path: /memory/handbook/persona-spec.md
     range: [42, 189]
-    contentHash: f8907beb5b0981e771b4a42aa067d67d2852631b68279ea89d7f26dd8044a8cc
+    contentHash: dd7848651c23fe65c8fafe6de4f0b31d3c52ea2b32b0cba66947a75c0f7500a9
     note: "Persona format, required sections, and Cursor projection contract."
   - kind: lines
     path: /memory/handbook/contract-format.md
