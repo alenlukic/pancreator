@@ -1,0 +1,60 @@
+{
+  "feature_id": "cursor-token-economy",
+  "title": "Cursor Token Economy and Default Context Budget",
+  "status": "report-complete",
+  "current_stage": "ship",
+  "pipeline_state": "awaiting_supervisor",
+  "review": {
+    "review_passes": true,
+    "artifact": "work/173009_05-09-26/50909_1000_cursor-token-economy/review.md",
+    "human_ratification_note": "Operator ratified protected-surface merge intent before reviewer invocation."
+  },
+  "delivery_report": {
+    "path": "memory/features/cursor-token-economy/delivery-report.md",
+    "staged_to_inbox_out": "inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+    "notifier_simulated": true
+  },
+  "plan": {
+    "work_path": "work/173009_05-09-26/50909_1000_cursor-token-economy",
+    "plan_artifact": "work/173009_05-09-26/50909_1000_cursor-token-economy/plan.md",
+    "adr_draft": "work/173009_05-09-26/50909_1000_cursor-token-economy/adr-draft.md",
+    "touch_set": "work/173009_05-09-26/50909_1000_cursor-token-economy/touch-set.json",
+    "implement_note": "Orchestrator applied the touch-set because personas/coder.md forbids edits under memory/ and .cursor/rules/, which this feature requires."
+  },
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "inbox/in/token_economy.md",
+    "clarifying_rounds_posted": 0,
+    "clarifying_skip_rationale": "Source directive is fully actionable and the lines 299-305 implementation guidance authorizes the no-clarifying-questions intake path.",
+    "human_approval_gate": "cleared",
+    "human_approval_date": "2026-05-09",
+    "human_approval_channel": "operator_cursor_chat"
+  },
+  "artifact_index": {
+    "engineering_spec": {
+      "path": "memory/features/cursor-token-economy/spec.md",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/cursor-token-economy/spec.md",
+        "range": [1, 1],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "per_feature_index": {
+      "path": "memory/features/cursor-token-economy/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "memory/features/cursor-token-economy/index.json",
+        "range": [1, 1],
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  },
+  "metadata": {
+    "tesseract-bootstrap-only": false,
+    "scaffold_only": true,
+    "scaffold_note": "Librarian populates the full index at the post_run stage per persona obligation."
+  }
+}

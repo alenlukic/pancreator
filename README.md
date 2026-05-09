@@ -22,7 +22,8 @@ the current manual workflow.
 - **Handbook canon (`memory/handbook/`)** is the source of truth for glossary,
   persona spec, contract format, and contract style.
 - **Inbox (`inbox/in`, `inbox/out`, `inbox/threads`)** is the operator control
-  plane for requests and staged responses.
+  plane for requests and staged responses. `inbox/notes/` is a human-only
+  scratch area; agents MUST NOT read or modify it.
 - **Memory (`memory/`)** holds architecture decisions, backlog, RFCs, runbooks,
   checkpoints, and other long-lived organizational state.
 
@@ -30,7 +31,11 @@ the current manual workflow.
 
 Operators SHALL run bootstrap work manually until runtime automation is wired:
 
-1. Read `AGENTS.md` and `BOOTSTRAP.md` before starting any task.
+1. Read `AGENTS.md` and `BOOTSTRAP.md` before starting any task. For product
+   context, read `PRD.summary.md` first; open full `PRD.md` when the task needs
+   detailed requirements or line-anchored citations (`PRD.index.md` lists
+   triggers). Read `memory/handbook/context-economy.md` when tuning what loads
+   into AI context versus explicit reads.
 2. Treat `inbox/in/` as the canonical incoming work queue.
 3. Execute the requested work directly in this repository and stage local diffs.
 4. Place delivery artifacts or status reports in `inbox/out/` for review.
@@ -58,7 +63,8 @@ treated as currently available behavior.
 - `skills/` — reusable procedures.
 - `memory/handbook/` — canonical authoring references.
 - `memory/adr/` — architecture decision records.
-- `inbox/` — human-to-org request and response queue.
+- `inbox/` — human-to-org request and response queue. `inbox/notes/` is a
+  human-only sandbox excluded from agent traversal.
 - `work/` — ephemeral task workspaces.
 
 ## 6) Architecture and core docs

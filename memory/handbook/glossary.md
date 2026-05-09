@@ -229,7 +229,9 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   SMEs, seeds threshold policy from existing baselines, writes
   `/memory/adoption/scan-<date>.md`.
 - **Inbox** — bidirectional message queue between humans and the org under
-  `inbox/in/`, `inbox/out/`, and `inbox/threads/`.
+  `inbox/in/`, `inbox/out/`, and `inbox/threads/`. The `inbox/notes/`
+  subdirectory is a human-operator-only sandbox; agents MUST NOT read or
+  modify it (see `/memory/handbook/inbox-lifecycle.md` §1a).
 - **Spec Kit alignment** — `/memory/features/<id>/` paths align with GitHub
   Spec Kit v0.8 conventions: `spec.md`, `plan.md`, `tasks.md`. The repo-level
   constitution lives at `/memory/handbook/constitution.md`.

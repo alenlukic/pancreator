@@ -11,7 +11,9 @@
     "attw": "turbo run attw",
     "publint": "turbo run publint",
     "check:phase0a": "node tools/check-phase-0a-scaffold.mjs",
-    "migration:test": "node --test tools/migrate-timestamp-naming.test.mjs"
+    "migration:test": "node --test tools/migrate-timestamp-naming.test.mjs",
+    "context:budget": "node tools/context-budget-report.mjs",
+    "context:budget:test": "node --test tools/context-budget-report.test.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

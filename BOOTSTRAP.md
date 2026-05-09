@@ -53,7 +53,10 @@ Three sub-phases; do them in order. None of them require an LLM.
 - Top-level dirs: `AGENTS.md` (with `CLAUDE.md` and `.github/copilot-instructions.md`
   as symlinks per PRD §4 glossary), `.cursor/rules/`, `personas/`, `skills/`,
   `pipelines/`, `ensembles/`, `memory/{handbook,adr,rfc,prd,features,smes,backlog,debt,checkpoints,adoption,runbooks,postmortems,research}/`,
-  `inbox/{in,out,threads}/`, `work/`, `.tess/{worktrees,sandboxes,scheduler}/`.
+  `inbox/{in,out,threads,notes}/` (where `inbox/notes/` is a human-only
+  operator sandbox excluded from agent traversal per
+  `/memory/handbook/inbox-lifecycle.md` §1a), `work/`,
+  `.tess/{worktrees,sandboxes,scheduler}/`.
 - `tesseract.yaml` + `tesseract-defaults.yaml` placeholders (one working default
   contract bundle per risk tier lands in Phase 2).
 - `.cursor/rules/00-agents-md.mdc` with `alwaysApply: true` referencing `AGENTS.md`.
