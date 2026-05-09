@@ -56,6 +56,7 @@ related:
   - /inbox/in/
   - /inbox/out/
   - /inbox/threads/
+  - /inbox/notes/
 ---
 
 # Inbox Lifecycle
@@ -71,8 +72,32 @@ Operators SHALL use these canonical paths:
 - Responses: `/inbox/out/`
 - Threads: `/inbox/threads/`
 - Archive: `/inbox/archive/in/`
+- Operator sandbox: `/inbox/notes/` (human-only; see Section 1a)
 
 Operators MUST NOT treat ad hoc directories as inbox sources of truth.
+
+## 1a - Operator sandbox (`/inbox/notes/`)
+
+`/inbox/notes/` is a human-operator-only scratch area for drafts, working
+notes, and pre-intake material that is not yet ready for the active queue.
+
+The following rules SHALL apply:
+
+- Agents MUST NOT read, traverse, ingest, summarize, cite, or otherwise
+  consume content from `/inbox/notes/`.
+- Agents MUST NOT write to, move into, move out of, rename, or delete any
+  file under `/inbox/notes/`.
+- Agents MUST NOT treat `/inbox/notes/` as a directive source; only
+  `/inbox/in/` is the canonical incoming work queue.
+- Operators promote a notes draft into the active queue by manually moving
+  the file from `/inbox/notes/` to `/inbox/in/`. Promotion MUST occur before
+  any agent processes the content.
+- Tools that scan inbox content (search indexers, citation resolvers,
+  compliance descriptors, librarian crawlers) SHALL exclude `/inbox/notes/`
+  from their traversal scope.
+
+Semantic immutability and timestamp-prefix obligations defined elsewhere in
+this contract do not apply to `/inbox/notes/` because it is operator-owned.
 
 ## 2 - Lifecycle states
 

@@ -350,3 +350,32 @@ items:
       - /memory/backlog/index.yaml
     evidence: "Phase 4 dogfood revealed that deferrals recorded inside policy-compliance.json deferred_items[] and per-feature index.json open_followups[] were never promoted into /memory/backlog/index.yaml. The librarian's index-stage scope included citation-rot scans but did not include backlog-promotion, so 10 deferrals accumulated unbacklogged across Phase 3 and Phase 4."
     notes: "Update the librarian persona spec (and Cursor mirror) to require backlog-parity scans on every index-stage run, with explicit promotion rules for policy-compliance deferred_items and feature index open_followups. Treat this as a process gate before the next feature-delivery run."
+
+  - id: cursor-token-economy-persona-designer-glob-review
+    title: Ratify narrowing persona-designer Cursor rule globs after mirror review
+    source: work/173009_05-09-26/50909_1000_cursor-token-economy/rule-audit.md
+    owner: persona-designer
+    milestone: phase-1
+    status: open
+    priority: medium
+    opened_at: "2026-05-09T12:00:00Z"
+    links:
+      - /.cursor/rules/persona-designer.mdc
+      - /personas/persona-designer.md
+      - /memory/features/cursor-token-economy/spec.md
+    evidence: "Context-economy rule audit deferred narrowing persona-designer.mdc because it spans persona specs and Cursor mirrors."
+    notes: "If glob tightening is desired, update persona spec and .mdc together with explicit human ratification."
+
+  - id: cursor-token-economy-cursorignore-future-slice
+    title: Evaluate root .cursorignore after proving explicit-read access for excluded paths
+    source: memory/features/cursor-token-economy/spec.md
+    owner: tech-lead
+    milestone: phase-2
+    status: open
+    priority: low
+    opened_at: "2026-05-09T12:00:00Z"
+    links:
+      - /memory/handbook/context-economy.md
+      - /.cursorindexingignore
+    evidence: "Engineering Spec lists .cursorignore as out of scope until explicit-read guarantees exist."
+    notes: "Ship a follow-up slice that proves @-attachment and editor reads still reach every excluded path before adding .cursorignore rules."

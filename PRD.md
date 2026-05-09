@@ -264,7 +264,7 @@ Implies:
 - **Touch-set** — declared set of paths/symbols a task may write to; conflicts with sibling touch-sets force serialization or re-planning.
 - **Artifact** — a durable file produced by a pipeline or conversation (PRD, ADR, RFC, UX Spec, test plan, runbook, postmortem, delivery report) — committed to the repo, citation-bearing, anti-rot-tracked.
 - **Memory** — the union of `/memory/` (semantic + procedural), `/memory/smes/` (per-SME), `/memory/features/` (per-feature), `/memory/backlog/`, `/inbox/` (episodic), and the codebase itself.
-- **Inbox** — bidirectional message queue between humans and the org (`inbox/in/`, `inbox/out/`, `inbox/threads/`).
+- **Inbox** — bidirectional message queue between humans and the org (`inbox/in/`, `inbox/out/`, `inbox/threads/`). `inbox/notes/` is a human-operator-only sandbox excluded from agent traversal (canonical rule in `/memory/handbook/inbox-lifecycle.md` §1a).
 - **Control Plane** — thin orchestration layer (`AgentRunner`, `MemoryStore`, `Inbox`, `Notifier`, `WorktreePool`, `Scheduler`, `Intervention`, `Authorizer` interfaces) that abstracts the underlying harness.
 - **Skill** — a reusable procedure (Cursor `SKILL.md`-compatible) shared across personas — e.g. "write an ADR," "run a STRIDE threat model."
 - **Framework Mode** — opinionated install of the entire ecosystem (full org, conventions, CLI, scheduler, watchdog). Default install path. (US-8)
@@ -956,6 +956,7 @@ The "GitLab handbook for agents" — the system's durable substrate.
   in/               # incoming messages from humans (markdown files)
   out/              # outgoing notifications/asks (incl. delivery reports)
   threads/<id>/     # conversation threads (Conversation Mode)
+  notes/            # human-operator-only sandbox; agents MUST NOT read or modify
 /work/
   <task-id>/        # ephemeral pipeline workspace; PRs reference these
   cohort-<id>/      # cohort-level plans (parallel-feature-delivery)

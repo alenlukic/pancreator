@@ -1,0 +1,31 @@
+# Cursor semantic indexing policy for this repository.
+# Operators SHOULD restart or reindex Cursor after changes.
+# Explicit @-mentions and intentional reads still reach excluded paths.
+
+# Historical/generated agent artifacts
+work/**
+inbox/out/**
+inbox/threads/**
+
+# Generated manifests / bulky machine outputs
+**/migration-manifest*.json
+**/*.dry-run.json
+**/*.post-write.json
+**/*.write.json
+
+# Generated or low-signal durable indexes/reports
+memory/**/*.json
+memory/**/delivery-report.md
+memory/**/index.json
+
+# Lockfile rarely needed for semantic repo reasoning
+pnpm-lock.yaml
+
+# Duplicate agent-instruction surfaces (symlinks resolve to AGENTS.md)
+CLAUDE.md
+.github/copilot-instructions.md
+
+# Cursor-native mirrors are runtime surfaces, not semantic source of truth.
+# OPERATOR MUST confirm Cursor still discovers every custom agent under
+# .cursor/agents/ before merging any change that keeps this exclusion.
+.cursor/agents/**

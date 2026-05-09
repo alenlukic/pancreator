@@ -38,6 +38,7 @@ related:
   - /memory/handbook/run-log-schema.md
   - /memory/handbook/backlog-format.md
   - /memory/handbook/persona-colors.md
+  - /memory/handbook/context-economy.md
 ---
 
 # Handbook Routing Index
@@ -65,6 +66,7 @@ lands, operators SHOULD apply this table manually.
 | Validate run-log schema and observability fields | `/memory/handbook/run-log-schema.md` | `/memory/handbook/glossary.md` | Run-log contract is canonical for `/work/<id>/run.log.jsonl`; glossary resolves shared telemetry nouns. |
 | Track backlog items and documentation deferrals | `/memory/handbook/backlog-format.md` | `/memory/handbook/documentation-impact-contract.md` | Backlog index schema is canonical; documentation-impact defines when and why deferrals are allowed. |
 | Choose persona color assignments | `/memory/handbook/persona-colors.md` | `/memory/handbook/persona-spec.md` | Persona-colors is the canonical palette table; persona-spec provides field-level context. |
+| Reduce default AI context load and decide what to index versus explicit-read | `/memory/handbook/context-economy.md` | `/memory/handbook/index.md`, `/PRD.summary.md`, `/PRD.index.md` | Context-economy defines indexing policy, PRD summary-first discipline, and operator verification expectations. |
 
 ## Retrieval discipline
 

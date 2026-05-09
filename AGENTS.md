@@ -11,7 +11,10 @@ Tesseract is a simulated product-org agentic development ecosystem. The
 deliverables are personas, skills, pipelines, and contracts that compose into
 a self-hosting Delivery Pipeline. The repo is currently in the **bootstrap
 phase**: see `BOOTSTRAP.md` for the phase-by-phase plan and the current
-status. The product spec is `PRD.md`.
+status. The product spec is `PRD.md`. For routine orientation, agents SHOULD
+read `PRD.summary.md` first and SHOULD read full `PRD.md` only when the task
+requires product-spec detail, citation repair, or line-anchored requirements
+per `PRD.index.md` and `memory/handbook/context-economy.md`.
 
 ## 2 — Where the canon lives
 
@@ -22,6 +25,9 @@ authoring work. Every persona and contract MUST cite them.
 |---|---|
 | `/memory/handbook/glossary.md` | The ubiquitous-language source of truth. Every domain noun resolves here. |
 | `/memory/handbook/index.md` | Intent-to-document routing map used to retrieve the right handbook pages with minimal context load. |
+| `/memory/handbook/context-economy.md` | Default AI context, Cursor indexing boundaries, and explicit-read versus indexed surfaces. |
+| `/PRD.summary.md` | Compact PRD orientation; read before full `PRD.md` on routine tasks. |
+| `/PRD.index.md` | Maps major PRD sections to task triggers; use to open targeted `PRD.md` ranges. |
 | `/memory/handbook/persona-spec.md` | Anthropic Claude Agent SDK 16-field YAML reference + Cursor projection contract (`.cursor/agents` mirror + `.mdc` rule shim where required). |
 | `/memory/handbook/agents-md-authoring.md` | Authoring and change-control guide for `/AGENTS.md`, including required shape, triggers, and symlink policy. |
 | `/memory/handbook/run-log-schema.md` | Canonical run-log schema contract for `/work/<id>/run.log.jsonl`, including OpenInference + OTel GenAI alignment and checkpoint correlation fields. |
@@ -88,6 +94,11 @@ your response.
 - **Stage diffs locally; never push.** No agent SHALL run `git push` or
   `git commit --no-verify`. Every persona's `disallowedTools` enforces this;
   AGENTS.md restates it for any out-of-band tooling.
+- **Operator sandbox is off-limits.** `/inbox/notes/` is a human-operator-only
+  scratch area. No agent SHALL read, traverse, ingest, cite, or modify any
+  file under `/inbox/notes/`. Only `/inbox/in/` is the canonical incoming work
+  queue; operators manually promote a notes draft into `/inbox/in/` before any
+  agent acts on it. See `/memory/handbook/inbox-lifecycle.md` §1a.
 - **Human is the in-loop reviewer at every phase boundary.** The bootstrap
   authorizer is `LocalUserAuthorizer` (PRD §10). The human ratifies each
   phase exit before the next phase starts.
@@ -120,11 +131,14 @@ your response.
 ## 6 — How to discover what to do next
 
 1. Read `BOOTSTRAP.md` for the phase-by-phase plan and the current exit
-   criteria.
+   criteria. When the task is not phase-boundary work, agents SHOULD skim
+   `PRD.summary.md` before loading full `PRD.md`.
 2. Check `/inbox/in/` for human directives. Files there are the canonical
    work queue at every phase boundary.
 3. Check `/inbox/out/` for staged delivery reports awaiting human review.
-4. When a directive maps to a persona's
+4. Do NOT read `/inbox/notes/`; it is a human-only operator sandbox per
+   `/memory/handbook/inbox-lifecycle.md` §1a.
+5. When a directive maps to a persona's
    `metadata.tesseract-pipeline-stages`, follow §4 above to delegate.
 
 ## 6.1 — Compliance-run trigger guidance
@@ -165,6 +179,7 @@ your response.
 /memory/postmortems/             blameless RCAs
 /memory/research/                founding research lineage
 /inbox/{in,out,threads}/         human ↔ org message queue
+/inbox/notes/                    human-only operator sandbox (agents MUST NOT read or write)
 /work/<task-id>/                 ephemeral pipeline workspace
 /.tess/{worktrees,sandboxes,scheduler}/  control-plane state
 /PRD.md                          product spec

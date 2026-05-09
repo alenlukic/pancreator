@@ -1,6 +1,18 @@
 ---
 description: When a human or pipeline submits Tesseract-internal engineering work, the `tesseract-engineer` SHALL normalize non-contract inputs through `contract-writer`, then execute implementation or remediation inside the internal corpus and emit ratification-ready execution artifacts.
-globs: ["AGENTS.md", "BOOTSTRAP.md", "memory/**/*", "personas/**/*", "skills/**/*", "work/**/*", ".cursor/agents/**/*", ".cursor/rules/**/*"]
+globs:
+  - "inbox/in/**/*.md"
+  - "packages/@tesseract/**"
+  - "packages/tesseract/**"
+  - "tools/**/*.mjs"
+  - "tests/**/*.ts"
+  - "tests/**/*.mjs"
+  - "tesseract.yaml"
+  - "tesseract-defaults.yaml"
+  - "memory/handbook/**/*.md"
+  - "personas/**/*.md"
+  - "skills/**/SKILL.md"
+  - ".cursor/rules/*.mdc"
 alwaysApply: false
 ---
 
