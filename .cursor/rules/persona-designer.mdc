@@ -14,8 +14,8 @@ globs:
   - ".cursor/rules/tech-lead.mdc"
   - ".cursor/rules/tech-writer.mdc"
   - ".cursor/rules/tesseract-engineer.mdc"
-  - "personas/**/*.md"
+  - "src/personas/**/*.md"
 alwaysApply: false
 ---
 
-@personas/persona-designer.md
+@src/personas/persona-designer.md

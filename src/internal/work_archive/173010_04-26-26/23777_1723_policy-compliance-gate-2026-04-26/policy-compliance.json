@@ -1,0 +1,33 @@
+{
+  "task_id": "policy-compliance-gate-2026-04-26",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "src/memory/handbook/constitution.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The change introduces a commit-time enforcement mechanism and a new canonical handbook contract that alters operator and agent workflow expectations.",
+    "changed_surfaces": [
+      "AGENTS.md",
+      "src/memory/handbook/documentation-impact-contract.md",
+      "src/memory/handbook/index.md",
+      "src/memory/handbook/policy-compliance-contract.md"
+    ],
+    "deferred_items": []
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The change enforces mandatory documentation-impact and governance checks before governed commits can proceed.",
+    "constitution_alignment": "The change improves reference integrity and traceable governance decisions during bootstrap by requiring a machine-checkable policy artifact.",
+    "prd_alignment": "The change strengthens reliable, auditable operator controls for autonomous repository updates.",
+    "required_updates": [
+      "AGENTS.md",
+      "src/memory/handbook/documentation-impact-contract.md",
+      "src/memory/handbook/index.md",
+      "src/memory/handbook/policy-compliance-contract.md",
+      ".cursor/hooks.json",
+      ".cursor/hooks/enforce-policy-compliance.sh",
+      "src/internal/work_archive/173010_04-26-26/23777_1723_templates/policy-compliance.example.json"
+    ]
+  }
+}

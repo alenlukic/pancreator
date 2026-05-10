@@ -1,0 +1,23 @@
+id: init-greenfield
+version: "1"
+metadata:
+  tesseract-bootstrap-only: false
+  description: >-
+    PRD §11 MVP pipeline. Greenfield repo bootstrap: scaffold the AGENTS.md +
+    handbook seeds + persona roster, draft the inaugural feature spec, and
+    author the first plan. Adopter scan is omitted (no prior state).
+  references:
+    - kind: lines
+      path: docs/PRD.md
+      range: [1, 80]
+      contentHash: TBD-on-commit
+      note: Cited for product context; pipeline structure derives from PRD §11.
+stages:
+  - id: scaffold
+    label: Emit AGENTS.md, handbook seeds, persona roster, and skill packs
+  - id: spec
+    persona: intake-analyst
+    label: Author the inaugural Engineering Spec from the seed directive
+  - id: plan
+    persona: tech-lead
+    label: Author the first plan, ADR, and touch-set

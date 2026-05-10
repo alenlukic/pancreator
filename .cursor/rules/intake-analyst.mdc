@@ -1,10 +1,10 @@
 ---
-description: When a human posts an informal Markdown spec under `inbox/in/`, the `intake-analyst` SHALL run the `canonicalize-spec` clarifying-question dialogue at most 5 rounds through the inbox and emit a canonical Engineering Spec at `/memory/features/<id>/spec.md` for the `human_approval` gate.
+description: When a human posts an informal Markdown spec under `src/inbox/in/`, the `intake-analyst` SHALL run the `canonicalize-spec` clarifying-question dialogue at most 5 rounds through the inbox and emit a canonical Engineering Spec at `/src/memory/features/<id>/spec.md` for the `human_approval` gate.
 globs:
-  - "memory/features/**/spec.md"
-  - "inbox/in/**/*.md"
-  - "inbox/threads/**/*.md"
+  - "src/memory/features/**/spec.md"
+  - "src/inbox/in/**/*.md"
+  - "src/inbox/threads/**/*.md"
 alwaysApply: false
 ---
 
-@personas/intake-analyst.md
+@src/personas/intake-analyst.md

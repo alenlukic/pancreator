@@ -13,56 +13,56 @@
     "resolveJsonModule": true,
     "paths": {
       "@tesseract/adopter-scan": [
-        "packages/@tesseract/adopter-scan/src/index.ts"
+        "src/internal/packages/@tesseract/adopter-scan/src/index.ts"
       ],
       "@tesseract/checkpointer-fs": [
-        "packages/@tesseract/checkpointer-fs/src/index.ts"
+        "src/internal/packages/@tesseract/checkpointer-fs/src/index.ts"
       ],
-      "@tesseract/cli": ["packages/@tesseract/cli/src/index.ts"],
-      "@tesseract/contract": ["packages/@tesseract/contract/src/index.ts"],
+      "@tesseract/cli": ["src/internal/packages/@tesseract/cli/src/index.ts"],
+      "@tesseract/contract": ["src/internal/packages/@tesseract/contract/src/index.ts"],
       "@tesseract/contract-runner-llm-judge": [
-        "packages/@tesseract/contract-runner-llm-judge/src/index.ts"
+        "src/internal/packages/@tesseract/contract-runner-llm-judge/src/index.ts"
       ],
       "@tesseract/contract-runner-rego": [
-        "packages/@tesseract/contract-runner-rego/src/index.ts"
+        "src/internal/packages/@tesseract/contract-runner-rego/src/index.ts"
       ],
       "@tesseract/contract-style": [
-        "packages/@tesseract/contract-style/src/index.ts"
+        "src/internal/packages/@tesseract/contract-style/src/index.ts"
       ],
-      "@tesseract/core": ["packages/@tesseract/core/src/index.ts"],
+      "@tesseract/core": ["src/internal/packages/@tesseract/core/src/index.ts"],
       "@tesseract/env-isolation": [
-        "packages/@tesseract/env-isolation/src/index.ts"
+        "src/internal/packages/@tesseract/env-isolation/src/index.ts"
       ],
-      "@tesseract/inbox": ["packages/@tesseract/inbox/src/index.ts"],
+      "@tesseract/inbox": ["src/internal/packages/@tesseract/inbox/src/index.ts"],
       "@tesseract/intervention": [
-        "packages/@tesseract/intervention/src/index.ts"
+        "src/internal/packages/@tesseract/intervention/src/index.ts"
       ],
       "@tesseract/mcp-server": [
-        "packages/@tesseract/mcp-server/src/index.ts"
+        "src/internal/packages/@tesseract/mcp-server/src/index.ts"
       ],
-      "@tesseract/memory": ["packages/@tesseract/memory/src/index.ts"],
+      "@tesseract/memory": ["src/internal/packages/@tesseract/memory/src/index.ts"],
       "@tesseract/notifier": [
-        "packages/@tesseract/notifier/src/index.ts"
+        "src/internal/packages/@tesseract/notifier/src/index.ts"
       ],
-      "@tesseract/persona": ["packages/@tesseract/persona/src/index.ts"],
+      "@tesseract/persona": ["src/internal/packages/@tesseract/persona/src/index.ts"],
       "@tesseract/pipeline": [
-        "packages/@tesseract/pipeline/src/index.ts"
+        "src/internal/packages/@tesseract/pipeline/src/index.ts"
       ],
-      "@tesseract/policy": ["packages/@tesseract/policy/src/index.ts"],
+      "@tesseract/policy": ["src/internal/packages/@tesseract/policy/src/index.ts"],
       "@tesseract/run-logger": [
-        "packages/@tesseract/run-logger/src/index.ts"
+        "src/internal/packages/@tesseract/run-logger/src/index.ts"
       ],
       "@tesseract/runner-cursor": [
-        "packages/@tesseract/runner-cursor/src/index.ts"
+        "src/internal/packages/@tesseract/runner-cursor/src/index.ts"
       ],
       "@tesseract/worktree": [
-        "packages/@tesseract/worktree/src/index.ts"
+        "src/internal/packages/@tesseract/worktree/src/index.ts"
       ]
     }
   },
   "include": [
-    "packages/tesseract/src/**/*.ts",
-    "packages/@tesseract/*/src/**/*.ts"
+    "src/internal/packages/tesseract/src/**/*.ts",
+    "src/internal/packages/@tesseract/*/src/**/*.ts"
   ],
   "exclude": ["node_modules", "**/dist", "**/node_modules"]
 }

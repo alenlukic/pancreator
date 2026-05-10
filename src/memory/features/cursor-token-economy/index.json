@@ -1,0 +1,82 @@
+{
+  "feature_id": "cursor-token-economy",
+  "title": "Cursor Token Economy and Default Context Budget",
+  "status": "shipped",
+  "current_stage": "shipped",
+  "next_owner": "librarian",
+  "next_stage": "knowledge-curation",
+  "pipeline_state": "shipped",
+  "review": {
+    "review_passes": true,
+    "artifact": "src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/review.md",
+    "human_ratification_note": "Operator ratified protected-surface merge intent before reviewer invocation."
+  },
+  "delivery_report": {
+    "path": "src/memory/features/cursor-token-economy/delivery-report.md",
+    "staged_to_inbox_out": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+    "notifier_simulated": true
+  },
+  "plan": {
+    "work_path": "src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy",
+    "plan_artifact": "src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/plan.md",
+    "adr_draft": "src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/adr-draft.md",
+    "touch_set": "src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/touch-set.json",
+    "implement_note": "Orchestrator applied the touch-set because src/personas/coder.md forbids edits under src/memory/ and .cursor/rules/, which this feature requires."
+  },
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "src/inbox/in/token_economy.md",
+    "clarifying_rounds_posted": 0,
+    "clarifying_skip_rationale": "Source directive is fully actionable and the lines 299-305 implementation guidance authorizes the no-clarifying-questions intake path.",
+    "human_approval_gate": "cleared",
+    "human_approval_date": "2026-05-09",
+    "human_approval_channel": "operator_cursor_chat"
+  },
+  "notifier": {
+    "outbox_artifact": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+    "manual_step_executed_by": "operator_cursor_chat (prior session)",
+    "inbox_lifecycle_state": "archived",
+    "inbox_source_archived_at_utc": "2026-05-10T03:16:00Z",
+    "inbox_source_archived_to": "src/inbox/archive/in/11951_2040_token_economy.md",
+    "inbox_source_archive_method": "git mv (rename detected; history preserved)",
+    "inbox_source_rename_rule": "src/memory/handbook/inbox-lifecycle.md \u00a73c with timestamp prefix derived from first git commit timestamp 2026-05-09T20:40:49Z per ADR-0005 \u00a747 derivation order",
+    "stale_citation_followup": "src/memory/features/cursor-token-economy/spec.md and src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/plan.md retain point-in-time citations to the original src/inbox/in/ path; contentHash placeholders remain TBD-on-commit; librarian knowledge-curation sweep SHOULD flag and propose updates per src/personas/librarian.md \u00a7\"What you MUST produce\" item 3"
+  },
+  "shipped": {
+    "shipped_at_utc": "2026-05-10T03:16:00Z",
+    "shipped_by": "operator_cursor_chat",
+    "ship_authority": "operator_override (runtime ship stage and notifier post_run not wired in this repo per AGENTS.md \u00a78; pass-1 had been at pipeline_state awaiting_supervisor since the delivery report was staged on 2026-05-09)",
+    "outbox_artifact": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+    "archived_inbox_source": "src/inbox/archive/in/11951_2040_token_economy.md",
+    "backlog_shipped_entry_id": "cursor-token-economy-shipped",
+    "successor_feature": "active-memory-context-economy-pass-2",
+    "successor_relationship": "extends-deferred-scope (pass-2 incorporated pass-1's deferred scope and shipped on 2026-05-10T03:02:00Z)"
+  },
+  "artifact_index": {
+    "engineering_spec": {
+      "path": "src/memory/features/cursor-token-economy/spec.md",
+      "citation": {
+        "kind": "lines",
+        "path": "src/memory/features/cursor-token-economy/spec.md",
+        "range": [1, 1],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "per_feature_index": {
+      "path": "src/memory/features/cursor-token-economy/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "src/memory/features/cursor-token-economy/index.json",
+        "range": [1, 1],
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  },
+  "metadata": {
+    "tesseract-bootstrap-only": false,
+    "scaffold_only": true,
+    "scaffold_note": "Librarian populates the full index at the post_run stage per persona obligation."
+  }
+}

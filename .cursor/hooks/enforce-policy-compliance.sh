@@ -38,10 +38,10 @@ fi
 is_docs_metadata_path() {
   local path="$1"
   case "$path" in
-    AGENTS.md|PRD.md|BOOTSTRAP.md|CLAUDE.md|.github/copilot-instructions.md)
+    AGENTS.md|docs/PRD.md|docs/BOOTSTRAP.md|CLAUDE.md|.github/copilot-instructions.md)
       return 0
       ;;
-    memory/*|inbox/*|docs/*)
+    src/memory/*|src/inbox/*|docs/*)
       case "$path" in
         *.md|*.mdc|*.txt|*.yaml|*.yml|*.json)
           return 0
@@ -54,7 +54,7 @@ is_docs_metadata_path() {
 
 requires_artifact=0
 for path in "${staged_files[@]}"; do
-  if [[ "$path" == work/* ]]; then
+  if [[ "$path" == src/work/* ]]; then
     continue
   fi
   if is_docs_metadata_path "$path"; then
@@ -71,18 +71,18 @@ fi
 
 artifacts=()
 for path in "${staged_files[@]}"; do
-  # Accept both the legacy two-level shape (work/<task>/policy-compliance.json)
-  # and the timestamp-naming three-level shape (work/<day>/<task>/policy-compliance.json)
+  # Accept both the legacy two-level shape (src/work/<task>/policy-compliance.json)
+  # and the timestamp-naming three-level shape (src/work/<day>/<task>/policy-compliance.json)
   # encoded by ADR 0005. Other depths remain rejected.
-  if [[ "$path" =~ ^work/[^/]+/policy-compliance\.json$ ]] \
-    || [[ "$path" =~ ^work/[^/]+/[^/]+/policy-compliance\.json$ ]]; then
+  if [[ "$path" =~ ^src/work/[^/]+/policy-compliance\.json$ ]] \
+    || [[ "$path" =~ ^src/work/[^/]+/[^/]+/policy-compliance\.json$ ]]; then
     artifacts+=("$path")
   fi
 done
 
 if [[ ${#artifacts[@]} -eq 0 ]]; then
   cat <<'JSON'
-{"permission":"deny","user_message":"Commit blocked: stage at least one work/<task-id>/policy-compliance.json artifact for non-work structural changes.","agent_message":"Policy-compliance gate failed because no staged policy-compliance artifact was found."}
+{"permission":"deny","user_message":"Commit blocked: stage at least one src/work/<task-id>/policy-compliance.json artifact for non-work structural changes.","agent_message":"Policy-compliance gate failed because no staged policy-compliance artifact was found."}
 JSON
   exit 0
 fi
@@ -98,15 +98,15 @@ staged_files = set(json.loads(sys.argv[1]))
 artifact_paths = sys.argv[2:]
 required_sources = {
     "AGENTS.md",
-    "memory/handbook/constitution.md",
-    "PRD.md",
+    "src/memory/handbook/constitution.md",
+    "docs/PRD.md",
 }
 
-doc_prefixes = ("memory/", "docs/", "inbox/")
+doc_prefixes = ("src/memory/", "docs/", "src/inbox/")
 doc_root_names = {
     "AGENTS.md",
-    "PRD.md",
-    "BOOTSTRAP.md",
+    "docs/PRD.md",
+    "docs/BOOTSTRAP.md",
     "CLAUDE.md",
     ".github/copilot-instructions.md",
 }

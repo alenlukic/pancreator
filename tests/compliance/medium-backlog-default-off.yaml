@@ -7,7 +7,7 @@ trigger_modes:
 scope:
   surface: "backlog-and-escalation-policy"
   artifacts:
-    - "memory/backlog/index.yaml"
+    - "src/memory/backlog/index.yaml"
     - "tesseract.yaml"
 assertion:
   statement: "Medium findings create backlog items with operator escalation off by default."

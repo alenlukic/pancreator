@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "tesseract.notifier.package_shape",
+      "path": "/src/memory/features/tesseract-notifier/contracts/tesseract.notifier.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "src/internal/packages/@tesseract/notifier/**"
+      }
+    },
+    {
+      "id": "tesseract.notifier.readme_ergonomics",
+      "path": "/src/memory/features/tesseract-notifier/contracts/tesseract.notifier.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "src/internal/packages/@tesseract/notifier/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  ]
+}

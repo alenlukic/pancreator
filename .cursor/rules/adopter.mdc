@@ -1,7 +1,7 @@
 ---
-description: When a human runs `npx tesseract init` in an existing repository, the `adopter` SHALL scan languages, frameworks, test infrastructure, continuous-integration configuration, dependency manifests, and conventions, then emit `/memory/adoption/scan-<date>.md` plus paired inbox items for human ratification.
-globs: ["memory/adoption/scan-*.md", "inbox/in/*-adopter-*.md", "tesseract.yaml"]
+description: When a human runs `npx tesseract init` in an existing repository, the `adopter` SHALL scan languages, frameworks, test infrastructure, continuous-integration configuration, dependency manifests, and conventions, then emit `/src/memory/adoption/scan-<date>.md` plus paired inbox items for human ratification.
+globs: ["src/memory/adoption/scan-*.md", "src/inbox/in/*-adopter-*.md", "tesseract.yaml"]
 alwaysApply: false
 ---
 
-@personas/adopter.md
+@src/personas/adopter.md

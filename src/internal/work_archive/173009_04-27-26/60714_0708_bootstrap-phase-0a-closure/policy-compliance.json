@@ -1,0 +1,54 @@
+{
+  "task_id": "bootstrap-phase-0a-closure",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "BOOTSTRAP.md",
+    "src/memory/handbook/constitution.md",
+    "src/memory/handbook/documentation-impact-contract.md",
+    "src/memory/handbook/policy-compliance-contract.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Phase 0a adds and updates repository structural artifacts, package scaffolding, and verification records that affect bootstrap documentation and reference surfaces.",
+    "changed_surfaces": [
+      "package.json",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml",
+      "turbo.json",
+      "tsconfig.base.json",
+      "eslint.config.mjs",
+      ".changeset/config.json",
+      ".github/workflows/phase-0a-scaffold.yml",
+      ".gitignore",
+      "tools/eslint-rules/no-horizontal-primitive-deps.mjs",
+      "src/internal/tools/check-phase-0a-scaffold.mjs",
+      "src/internal/packages/@tesseract/*/package.json",
+      "src/internal/packages/@tesseract/*/README.md",
+      "src/internal/packages/@tesseract/*/src/index.ts",
+      "src/internal/packages/@tesseract/*/tsconfig.json",
+      "src/internal/packages/tesseract/package.json",
+      "src/internal/packages/tesseract/README.md",
+      "src/internal/packages/tesseract/src/index.ts",
+      "src/internal/packages/tesseract/tsconfig.json",
+      "src/inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
+      "src/memory/features/bootstrap-phase-0a-closure/spec.md",
+      "src/memory/features/bootstrap-phase-0a-closure/index.json",
+      "src/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md",
+      "src/internal/work_archive/173009_04-27-26/60714_0708_bootstrap-phase-0a-closure/plan.md",
+      "src/internal/work_archive/173009_04-27-26/60714_0708_bootstrap-phase-0a-closure/adr-draft.md",
+      "src/internal/work_archive/173009_04-27-26/60714_0708_bootstrap-phase-0a-closure/touch-set.json"
+    ],
+    "deferred_items": [
+      "Phase 3 runtime implementation for @tesseract/* packages",
+      "Phase 0b handbook refinements",
+      "Phase 0c persona and skill evolution"
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The slice stages diffs locally, preserves the in-loop review gate, and uses the bootstrap artifact trail required by AGENTS.md.",
+    "constitution_alignment": "The slice keeps bootstrap artifacts traceable and reviewable without claiming runtime completeness.",
+    "prd_alignment": "The slice limits itself to the workspace scaffold and package boundary baseline needed before later bootstrap phases.",
+    "required_updates": []
+  }
+}

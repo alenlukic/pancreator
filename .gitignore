@@ -212,4 +212,4 @@ __marimo__/
 node_modules/
 .turbo/
 
-inbox/notes/
+src/inbox/notes/

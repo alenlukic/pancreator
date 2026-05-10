@@ -1,0 +1,42 @@
+id: feature-delivery
+version: "1"
+metadata:
+  tesseract-bootstrap-only: false
+  description: >-
+    PRD §11 MVP pipeline. Walks a semi-formal directive in src/inbox/in/ through
+    canonicalization, planning, implementation, review, delivery report, and
+    ship. Mirrors PRD §3.5 US-1. Each stage is owned by a named persona; the
+    supervisor enforces gates and dispatches Intervention actions.
+  references:
+    - kind: lines
+      path: docs/PRD.md
+      range: [1, 80]
+      contentHash: TBD-on-commit
+      note: Cited for product context; pipeline structure derives from PRD §11.
+    - kind: lines
+      path: docs/BOOTSTRAP.md
+      range: [223, 243]
+      contentHash: TBD-on-commit
+      note: BOOTSTRAP Phase 4 names this pipeline as the US-1 dogfood entry point.
+stages:
+  - id: intake
+    persona: intake-analyst
+    label: Canonicalize the human directive
+  - id: plan
+    persona: tech-lead
+    label: Draft plan, ADR, and touch-set
+  - id: implement
+    persona: coder
+    label: Implement against the declared touch-set
+  - id: review
+    persona: reviewer
+    label: Run modern-code-review and contracts pass
+  - id: report
+    persona: tech-writer
+    label: Author the delivery report
+  - id: ship
+    persona: supervisor
+    label: Stage the PR (no auto-push, Q3)
+  - id: index
+    persona: librarian
+    label: Index emitted artifacts and refresh the feature index

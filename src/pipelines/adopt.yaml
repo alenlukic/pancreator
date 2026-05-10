@@ -1,0 +1,21 @@
+id: adopt
+version: "1"
+metadata:
+  tesseract-bootstrap-only: false
+  description: >-
+    PRD §11 MVP pipeline. Non-destructive adoption of an existing repo.
+    `adopter` scans languages, frameworks, test infrastructure, CI, and
+    conventions, then emits a paired inbox directive that the human ratifies
+    before any structural change.
+  references:
+    - kind: lines
+      path: docs/PRD.md
+      range: [1, 80]
+      contentHash: TBD-on-commit
+      note: Cited for product context; pipeline structure derives from PRD §11.
+stages:
+  - id: scan
+    persona: adopter
+    label: Scan the repository surface and emit a scan report
+  - id: ratify
+    label: Pause for human ratification of the scan report

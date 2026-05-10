@@ -1,0 +1,50 @@
+{
+  "feature_id": "bootstrap-phase-0a-closure",
+  "status": "ready-for-review",
+  "title": "Bootstrap Phase 0a closure",
+  "intake": {
+    "round": 1,
+    "source_inbox_item": "src/inbox/in/60714_0708_bootstrap-phase-0a-closure.md"
+  },
+  "handoff": {
+    "next_owner": "human",
+    "next_stage": "ratification",
+    "note": "Phase 0a scaffold, CI, and verification record are in-tree; human ratifies before Phase 0b per docs/BOOTSTRAP.md."
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "spec": {
+        "path": "src/memory/features/bootstrap-phase-0a-closure/spec.md"
+      },
+      "verification": {
+        "path": "src/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md"
+      }
+    }
+  },
+  "scaffold": {
+    "package_count": 20,
+    "primitives": [
+      "@tesseract/adopter-scan",
+      "@tesseract/checkpointer-fs",
+      "@tesseract/cli",
+      "@tesseract/contract",
+      "@tesseract/contract-runner-llm-judge",
+      "@tesseract/contract-runner-rego",
+      "@tesseract/contract-style",
+      "@tesseract/core",
+      "@tesseract/env-isolation",
+      "@tesseract/inbox",
+      "@tesseract/intervention",
+      "@tesseract/mcp-server",
+      "@tesseract/memory",
+      "@tesseract/notifier",
+      "@tesseract/persona",
+      "@tesseract/pipeline",
+      "@tesseract/policy",
+      "@tesseract/run-logger",
+      "@tesseract/runner-cursor",
+      "@tesseract/worktree"
+    ],
+    "meta": "tesseract"
+  }
+}

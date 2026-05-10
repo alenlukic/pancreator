@@ -1,0 +1,233 @@
+{
+  "feature_id": "active-memory-context-economy-pass-2",
+  "title": "Active Memory Separation and Cursor Context Economy Pass 2",
+  "status": "shipped",
+  "current_stage": "shipped",
+  "next_owner": "librarian",
+  "next_stage": "knowledge-curation",
+  "pipeline_state": "shipped",
+  "created_at_utc": "2026-05-09T20:58:00Z",
+  "extends_feature": "cursor-token-economy",
+  "extends_relationship": "extends-deferred-scope",
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "src/inbox/in/token-economy-enhanced.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "src/inbox/in/token-economy-enhanced.md",
+      "range": [1, 535],
+      "contentHash": "fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051"
+    },
+    "intake_thread": null,
+    "clarifying_rounds_posted": 0,
+    "clarifying_skip_rationale": "Source directive enumerates 12 implementation sections, 20 acceptance criteria, 7 manual-validation actions, explicit non-goals, and explicit plan-stage latitude points. The intake-analyst surfaces remaining latitude as `## Plan-stage decisions required` rather than as open intake questions per the cursor-token-economy precedent.",
+    "human_approval_gate": "ratified",
+    "human_approval_channel": "operator_cursor_chat",
+    "human_approval_request_note": "Operator ratification is required because the spec edits AGENTS.md, the .cursor/rules/*.mdc mirror layer, and routing pointers for documentation-impact and policy-compliance contracts.",
+    "human_approval_at_utc": "2026-05-09T22:55:00Z",
+    "human_approval_recorded_by": "operator_cursor_chat",
+    "human_approval_response": "ratified"
+  },
+  "implement": {
+    "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
+    "completed_at_utc": "2026-05-09T23:59:00Z",
+    "dispatch_summary": "Seven waves completed: memory-tier handbook and active-memory files; ADR-0006; AGENTS.md slimming; Cursor rule audit and six narrowed .mdc projections; .cursorindexingignore plus context-budget tool and tests; slice-7 governance (backlog verify, feature index, documentation-impact, policy-compliance, delivery-report scaffold, README pointer).",
+    "waves": [
+      {
+        "id": "wave-1",
+        "description": "Handbook memory-tier taxonomy, glossary nouns, index and context-economy routes, soft budgets, simple task mode, escalation guidance.",
+        "paths": [
+          "src/memory/handbook/memory-tiers.md",
+          "src/memory/handbook/glossary.md",
+          "src/memory/handbook/index.md",
+          "src/memory/handbook/context-economy.md"
+        ]
+      },
+      {
+        "id": "wave-2",
+        "description": "Active-memory orientation files under src/memory/active/.",
+        "paths": [
+          "src/memory/active/README.md",
+          "src/memory/active/current.md",
+          "src/memory/active/runs.md"
+        ]
+      },
+      {
+        "id": "wave-3",
+        "description": "ADR-0006 active versus archival memory decision record.",
+        "paths": ["src/memory/adr/0006-active-vs-archival-memory.md"]
+      },
+      {
+        "id": "wave-4",
+        "description": "AGENTS.md slimming and route pointers to handbook and memory tiers.",
+        "paths": ["AGENTS.md"]
+      },
+      {
+        "id": "wave-5",
+        "description": "Cursor rule audit artifact and six narrowed rule projections (supervisor kept as audited).",
+        "paths": [
+          "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
+          ".cursor/rules/00-agents-md.mdc",
+          ".cursor/rules/tesseract-engineer.mdc",
+          ".cursor/rules/persona-designer.mdc",
+          ".cursor/rules/intake-analyst.mdc",
+          ".cursor/rules/tech-lead.mdc",
+          ".cursor/rules/tech-writer.mdc"
+        ]
+      },
+      {
+        "id": "wave-6",
+        "description": "Indexing policy and context-budget report with tests.",
+        "paths": [
+          ".cursorindexingignore",
+          "src/internal/tools/context-budget-report.mjs",
+          "tests/context-budget-report.test.mjs"
+        ]
+      },
+      {
+        "id": "wave-7",
+        "description": "Governance slice: backlog refinement, feature index routing, task documentation-impact and policy-compliance refresh, optional delivery-report scaffold, README key-path pointer.",
+        "paths": [
+          "src/memory/backlog/index.yaml",
+          "src/memory/features/active-memory-context-economy-pass-2/index.json",
+          "README.md",
+          "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+          "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+          "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md"
+        ]
+      }
+    ],
+    "verification_gates": {
+      "pnpm_lint": "pass",
+      "pnpm_typecheck": "pass",
+      "pnpm_check_phase0a": "pass",
+      "pnpm_context_budget_test": "pass (6 tests)",
+      "node_context_budget_report": "pass (exit 0; headline numbers in delivery summary)",
+      "no_historical_deletions": "pass (git status short list contains no D entries for src/work/**, src/memory/**, src/inbox/out/**, src/inbox/threads/**)"
+    },
+    "operator_manual_validation_requests": [
+      "Restart or reindex Cursor.",
+      "Confirm custom agents under `.cursor/agents/**` are still discoverable if that path remains excluded from indexing.",
+      "Run `pnpm run context:budget`.",
+      "Run 3–5 comparable simple Cursor tasks and record cache-read totals.",
+      "Compare against the previous post-pass-1 result of approximately 770K cache-read tokens.",
+      "Confirm explicit references to `@docs/PRD.md`, `@docs/BOOTSTRAP.md`, selected `src/work/**` artifacts, and selected durable memory files still work when intentionally requested.",
+      "Confirm `src/memory/active/current.md` gives a clear operator-facing picture of active context without requiring traversal of archival memory."
+    ],
+    "deferred_backlog_ids": [
+      "active-memory-physical-tier-migration",
+      "active-memory-budget-warning-tool",
+      "active-memory-rule-glob-ratification"
+    ]
+  },
+  "artifact_index": {
+    "engineering_spec": {
+      "path": "src/memory/features/active-memory-context-economy-pass-2/spec.md",
+      "citation": {
+        "kind": "lines",
+        "path": "src/memory/features/active-memory-context-economy-pass-2/spec.md",
+        "range": [1, 1],
+        "contentHash": "e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d"
+      }
+    },
+    "per_feature_index": {
+      "path": "src/memory/features/active-memory-context-economy-pass-2/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "src/memory/features/active-memory-context-economy-pass-2/index.json",
+        "range": [1, 1],
+        "contentHash": "TBD-on-commit"
+      }
+    },
+    "intake_governance": {
+      "task_id": "173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2",
+      "policy_compliance": "src/internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/policy-compliance.json",
+      "documentation_impact": "src/internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/documentation-impact.json"
+    }
+  },
+  "plan": {
+    "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
+    "work_path": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
+    "plan_artifact": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+    "adr_draft": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/adr-draft.md",
+    "touch_set": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/touch-set.json",
+    "policy_compliance": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+    "documentation_impact": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+    "adr_number": "0006",
+    "pipeline_state": "ready_for_review",
+    "decisions": {
+      "D1": "src/memory/handbook/context-economy.md is canonical for simple task mode.",
+      "D2": "ADR 0006 is the next available sequence.",
+      "D3": "Active-memory budget-warning tooling is deferred to backlog.",
+      "D4": "src/memory/handbook/context-economy.md is canonical for model and context escalation guidance.",
+      "D5": "AGENTS.md slimming proceeds, but the 900-word target is not a hard gate."
+    }
+  },
+  "review": {
+    "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
+    "review_artifact": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+    "reviewed_at_utc": "2026-05-10T01:00:00Z",
+    "verdict": "approve",
+    "review_passes": true,
+    "must_fix_count": 0,
+    "consider_count": 3,
+    "nit_count": 1,
+    "acceptance_criteria_pass_count": 20,
+    "acceptance_criteria_concern_count": 0,
+    "acceptance_criteria_fail_count": 0,
+    "spec_contracts_evaluated": 0,
+    "spec_contracts_set_state": "empty (contracts:from_feature returns no clauses)",
+    "verification_gates_reproduced_by_reviewer": [
+      "pnpm run context:budget:test (6/6)",
+      "node src/internal/tools/context-budget-report.mjs (exit 0)"
+    ],
+    "next_handoff": "tech-writer at the report stage",
+    "pipeline_state": "report_drafted"
+  },
+  "delivery_report": {
+    "path": "src/memory/features/active-memory-context-economy-pass-2/delivery-report.md",
+    "contentHash": "TBD-on-commit"
+  },
+  "notifier": {
+    "staged_at_utc": "2026-05-10T01:26:00Z",
+    "outbox_artifact": "src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md",
+    "outbox_artifact_byte_identical_to_canonical": true,
+    "manual_step_executed_by": "operator_cursor_chat",
+    "inbox_lifecycle_state": "archived",
+    "inbox_source_archived_at_utc": "2026-05-10T03:02:00Z",
+    "inbox_source_archived_to": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+    "inbox_source_archive_method": "git mv (rename detected; history preserved)",
+    "inbox_source_rename_rule": "src/memory/handbook/inbox-lifecycle.md \u00a73c (timestamp prefix ownership: agent performing migration appends two time prefixes derived from archive-time UTC under operator override per ADR-0005 \u00a747)",
+    "stale_citation_followup": "src/memory/features/active-memory-context-economy-pass-2/spec.md retains point-in-time citations to the original src/inbox/in/ path; contentHash still verifies; librarian knowledge-curation sweep SHOULD flag and propose updates per src/personas/librarian.md \u00a7\"What you MUST produce\" item 3"
+  },
+  "shipped": {
+    "shipped_at_utc": "2026-05-10T03:02:00Z",
+    "shipped_by": "operator_cursor_chat",
+    "ship_authority": "operator_override (runtime ship stage and notifier post_run not wired in this repo per AGENTS.md \u00a78)",
+    "outbox_artifact": "src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md",
+    "archived_inbox_source": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+    "backlog_shipped_entry_id": "active-memory-context-economy-pass-2-shipped",
+    "active_memory_rotated": true,
+    "active_memory_rotation_authority": "operator_override (no persona currently owns src/memory/active/** post-ship rotation; gap noted in delivery report follow-ups)",
+    "verification_gates_passed": [
+      "pnpm lint",
+      "pnpm typecheck",
+      "pnpm run check:phase0a",
+      "pnpm run context:budget:test",
+      "node src/internal/tools/context-budget-report.mjs",
+      "no historical artifact deletions"
+    ],
+    "review_verdict": "approve",
+    "acceptance_criteria": "20 pass / 0 concern / 0 fail"
+  },
+  "ratification_required": true,
+  "librarian_populated": true,
+  "librarian_populated_authority": "operator_override (runtime feature-delivery post_run hook not wired; operator manually executed librarian's index_artifacts and update_backlog actions per src/personas/librarian.md \u00a7\"What you MUST produce\" items 1\u20132)",
+  "metadata": {
+    "tesseract-bootstrap-only": false,
+    "scaffold_only": true,
+    "scaffold_note": "Intake-analyst writes the spec and per-feature index scaffold. Librarian populates the full index at the post_run stage per persona obligation."
+  }
+}

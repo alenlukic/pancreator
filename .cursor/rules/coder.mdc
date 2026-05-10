@@ -1,7 +1,7 @@
 ---
-description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL implement one task within the touch-set declared at `/work/<id>/touch-set.json`, write tests for every public symbol it adds or modifies, and stage the diff for the `review` stage.
-globs: ["packages/**/src/**/*", "packages/**/test/**/*", "packages/**/__tests__/**/*", "src/**/*", "tests/**/*", "work/**/touch-set.json"]
+description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL implement one task within the touch-set declared at `/src/work/<day>/<id>/touch-set.json`, write tests for every public symbol it adds or modifies, and stage the diff for the `review` stage.
+globs: ["src/internal/packages/**/src/**/*", "src/internal/packages/**/test/**/*", "src/internal/packages/**/__tests__/**/*", "src/**/*", "tests/**/*", "src/work/**/touch-set.json"]
 alwaysApply: false
 ---
 
-@personas/coder.md
+@src/personas/coder.md

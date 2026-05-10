@@ -1,0 +1,47 @@
+{
+  "task_id": "timestamp-naming-conventions-migration-write",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "src/memory/handbook/constitution.md",
+    "PRD.md",
+    "src/memory/handbook/policy-compliance-contract.md",
+    "src/memory/adr/0005-timestamp-naming-conventions.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The migration-write task renamed flat work task directories into day-scoped paths, renamed inbox artifacts, and rewrote cross-references across memory, work, inbox, tests, tools, personas, skills, pipelines, and .cursor surfaces. The feature index and run log record the migration-write stage per librarian and supervisor obligations.",
+    "changed_surfaces": [
+      "src/internal/work_archive/173009_04-27-26/**",
+      "src/inbox/in/*.md (timestamp-prefixed basenames; excluded ratification sources unchanged)",
+      "src/inbox/out/*.md",
+      "src/inbox/archive/in/*.md",
+      "src/inbox/threads/**/*.md (excluded round-01-clarify-human-responses.md path unchanged)",
+      "src/memory/backlog/index.yaml",
+      "src/memory/features/bootstrap-phase-0a-closure/{index.json,spec.md}",
+      "src/memory/features/compliance-tests/{delivery-report.md,index.json,spec.md}",
+      "src/memory/features/timestamp-naming-conventions/{citation-rot-scan.md,delivery-report.md,index.json}",
+      "src/memory/handbook/policy-compliance-contract.md",
+      "src/internal/tools/migrate-timestamp-naming.test.mjs",
+      "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/{migration-manifest.dry-run.json,migration-manifest.write.json,migration-manifest.post-write.json,migration-write.stdout.log,migration-write.stderr.log,policy-compliance.json}"
+    ],
+    "deferred_items": [
+      {
+        "id": "timestamp-naming-migration-inbox-idempotency",
+        "rationale": "Post-write dry-run still plans 17 inbox-file renames because migrateTargetForInboxPath uses the full filename stem as semantic text; a follow-up SHALL make dry-run idempotent or normalize stems without stacking sid_hm tokens."
+      },
+      {
+        "id": "timestamp-naming-migration-write-ordering",
+        "rationale": "Stock applyReferenceUpdatesFromManifest runs after renames and fails on legacy paths; a follow-up SHALL reorder or remap paths in src/internal/tools/migrate-timestamp-naming.mjs without operator recovery scripts."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The task staged diffs locally, avoided git commit and git push, recorded bootstrap-only metadata on the run-log event, and satisfied documentation-impact and policy-compliance obligations for governed changes.",
+    "constitution_alignment": "The artifact preserves traceable migration decisions, cites handbook and ADR sources, and lists deferred follow-ups for idempotency and tooling ordering.",
+    "prd_alignment": "The task advanced the timestamp naming delivery slice, refreshed references for replay, and kept verification gates runnable after correcting a migration test assertion.",
+    "required_updates": [
+      "src/memory/features/timestamp-naming-conventions/index.json",
+      "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl"
+    ]
+  }
+}

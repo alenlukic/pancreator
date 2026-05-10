@@ -2,16 +2,17 @@
 # Operators SHOULD restart or reindex Cursor after changes.
 # Explicit @-mentions and intentional reads still reach excluded paths.
 
-# Historical/generated agent artifacts
-work/**
-inbox/out/**
-inbox/archive/**
-inbox/threads/**
-inbox/notes/**
+# Active and archived run artifacts
+src/work/**
+src/internal/work_archive/**
+src/inbox/out/**
+src/inbox/archive/**
+src/inbox/threads/**
+src/inbox/notes/**
 
 # Full high-volume specs; use compact route docs first
-PRD.md
-BOOTSTRAP.md
+docs/PRD.md
+docs/BOOTSTRAP.md
 
 # Generated manifests / bulky machine outputs
 **/migration-manifest*.json
@@ -20,9 +21,9 @@ BOOTSTRAP.md
 **/*.write.json
 
 # Generated or low-signal durable indexes/reports
-memory/**/*.json
-memory/**/delivery-report.md
-memory/**/index.json
+src/memory/**/*.json
+src/memory/**/delivery-report.md
+src/memory/**/index.json
 
 # Lockfile rarely needed for semantic repo reasoning
 pnpm-lock.yaml
@@ -32,9 +33,9 @@ CLAUDE.md
 .github/copilot-instructions.md
 
 # Internal operating content: narrow default semantic sweeps; route reads via handbook index and personas when needed.
-memory/handbook/**
-personas/**
-skills/**
+src/memory/handbook/**
+src/personas/**
+src/skills/**
 .cursor/rules/**
 
 # Cursor-native mirrors are runtime surfaces, not semantic source of truth.
