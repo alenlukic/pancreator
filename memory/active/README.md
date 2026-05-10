@@ -15,10 +15,10 @@ references:
     contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d
     note: "Spec acceptance criteria require README scope and soft budgets."
   - kind: lines
-    path: inbox/in/token-economy-enhanced.md
+    path: inbox/archive/in/75480_0302_token-economy-enhanced.md
     range: [231, 251]
     contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
-    note: "Directive §2 defines README behavior and soft budgets."
+    note: "Directive §2 defines README behavior and soft budgets. Source archived from inbox/in/ per inbox-lifecycle handbook §3."
 related:
   - /memory/handbook/memory-tiers.md
   - /memory/handbook/context-economy.md

@@ -426,3 +426,57 @@ items:
       - /work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md
     evidence: "Implement pass 2 narrowed six mirrored Cursor rule files per rule-audit.md; supervisor.mdc stayed unchanged after audit. This backlog item remains the ratification umbrella when a rule owner must still approve a proposed glob or when mirror parity risk is not closed in review."
     notes: "Close this item only after persona-designer (or delegate) records explicit ratification for any rule the audit flagged, or after review confirms no remaining activation-risk gap."
+
+  - id: cursor-token-economy-shipped
+    title: Cursor token economy and default context budget pass 1 delivered
+    source: memory/features/cursor-token-economy/delivery-report.md
+    owner: librarian
+    milestone: phase-1
+    status: done
+    priority: high
+    opened_at: "2026-05-10T03:16:00Z"
+    delivered_at: "2026-05-10T03:16:00Z"
+    links:
+      - /memory/features/cursor-token-economy/delivery-report.md
+      - /memory/features/cursor-token-economy/spec.md
+      - /memory/features/cursor-token-economy/index.json
+      - /inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md
+      - /inbox/archive/in/11951_2040_token_economy.md
+    evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, PRD.summary.md plus PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring is not implemented per AGENTS.md \u00a78."
+    notes: "Closed in the same operator session that shipped pass-2 because pass-2 extends pass-1 deferred scope (extends_relationship: extends-deferred-scope per memory/features/active-memory-context-economy-pass-2/index.json)."
+
+  - id: active-memory-context-economy-pass-2-shipped
+    title: Active memory separation and Cursor context economy pass 2 delivered
+    source: memory/features/active-memory-context-economy-pass-2/delivery-report.md
+    owner: librarian
+    milestone: phase-1
+    status: done
+    priority: high
+    opened_at: "2026-05-10T03:02:00Z"
+    delivered_at: "2026-05-10T03:02:00Z"
+    links:
+      - /memory/features/active-memory-context-economy-pass-2/delivery-report.md
+      - /memory/features/active-memory-context-economy-pass-2/spec.md
+      - /memory/features/active-memory-context-economy-pass-2/index.json
+      - /memory/adr/0006-active-vs-archival-memory.md
+      - /inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md
+      - /inbox/archive/in/75480_0302_token-economy-enhanced.md
+    evidence: "Feature shipped under operator override authority. Active-memory tier created, ADR-0006 promoted, AGENTS.md slimmed (1458 to 1178 raw words; 900 prose-only), six Cursor rules narrowed, .cursorindexingignore aligned with the new tier model, context-budget reporter emits the seven tier groups, all six verification gates green, reviewer verdict approve at 20 pass / 0 concern / 0 fail across acceptance criteria, delivery report staged to inbox/out/, inbound source archived to inbox/archive/in/."
+    notes: "Operator manually executed the librarian post_run actions because runtime feature-delivery wiring is not yet implemented per AGENTS.md \u00a78. Active-memory rotation also performed under operator override; see follow-up backlog item active-memory-post-ship-ownership for the underlying ownership gap."
+
+  - id: active-memory-post-ship-ownership
+    title: Define owner for memory/active/** post-ship rotation
+    source: memory/features/active-memory-context-economy-pass-2/delivery-report.md
+    owner: persona-designer
+    milestone: phase-1
+    status: open
+    priority: medium
+    opened_at: "2026-05-10T03:02:00Z"
+    links:
+      - /memory/active/current.md
+      - /memory/active/runs.md
+      - /personas/librarian.md
+      - /memory/handbook/inbox-lifecycle.md
+      - /PRD.md
+    evidence: "The active-memory tier landed in pass-2 without naming an owner for post-ship rotation. Librarian's write scope explicitly excludes memory/active/** per personas/librarian.md lines 117 to 120, and the PRD \u00a77 feature-delivery post_run block does not contain an active-memory rotation action. The pass-2 ship cycle therefore required operator override to keep the tier from going stale immediately after the first Feature shipped."
+    notes: "Pick one of: extend librarian write scope plus add a fourth post_run action rotate_active_memory; add a manual operator step to memory/handbook/inbox-lifecycle.md \u00a73; or assign tech-lead an explicit rotation obligation at the start of each plan stage. Inbox-lifecycle handbook update is the lowest-risk first move while runtime remains unwired."

@@ -10,10 +10,15 @@ purpose: |
   embedding durable or archival artifacts.
 references:
   - kind: lines
-    path: memory/features/active-memory-context-economy-pass-2/spec.md
-    range: [237, 244]
-    contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d
-    note: "Spec requires current.md summaries with pointers only."
+    path: memory/features/active-memory-context-economy-pass-2/delivery-report.md
+    range: [1, 120]
+    contentHash: TBD-on-commit
+    note: "Most recent shipped Feature delivery report."
+  - kind: lines
+    path: memory/handbook/inbox-lifecycle.md
+    range: [60, 130]
+    contentHash: TBD-on-commit
+    note: "Inbox lifecycle drives the next-Feature pickup procedure."
 related:
   - /memory/handbook/context-economy.md
   - /memory/handbook/memory-tiers.md
@@ -29,16 +34,26 @@ read per `memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- Feature identifier: `active-memory-context-economy-pass-2`
-- Engineering Spec:
-  `{kind: lines, path: memory/features/active-memory-context-economy-pass-2/spec.md, range: [191, 210], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`
-- Plan workspace pointer:
-  `{kind: lines, path: work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [30, 43], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`
+- None. The repository is between Features.
+- Operators SHALL pick the next Feature from `inbox/in/` per
+  `memory/handbook/inbox-lifecycle.md` §1 and SHALL update this section before
+  the new Feature enters the `intake` stage.
+
+## Most recent shipped Features
+
+| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
+|---|---|---|---|---|
+| `active-memory-context-economy-pass-2` | `2026-05-10T03:02:00Z` | `memory/features/active-memory-context-economy-pass-2/delivery-report.md` | `inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md` | `inbox/archive/in/75480_0302_token-economy-enhanced.md` |
+| `cursor-token-economy` | `2026-05-10T03:16:00Z` (operator close-out; delivery report staged 2026-05-09) | `memory/features/cursor-token-economy/delivery-report.md` | `inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md` | `inbox/archive/in/11951_2040_token_economy.md` |
+
+Pass-2 extends pass-1 deferred scope; both close as a single operator session.
 
 ## Risks and blockers
 
-- None recorded here yet.
+- None recorded.
 
 ## Operator notes
 
 - Maintainers SHALL refresh `contentHash` fields when cited files change.
+- Active-memory rotation has no automated owner yet; operators MUST update this
+  file when a new Feature enters intake or when the active Feature ships.
