@@ -379,3 +379,50 @@ items:
       - /.cursorindexingignore
     evidence: "Engineering Spec lists .cursorignore as out of scope until explicit-read guarantees exist."
     notes: "Ship a follow-up slice that proves @-attachment and editor reads still reach every excluded path before adding .cursorignore rules."
+
+  - id: active-memory-physical-tier-migration
+    title: Plan safe physical migration for memory and work tiers
+    source: memory/features/active-memory-context-economy-pass-2/spec.md
+    owner: tech-lead
+    milestone: phase-2
+    status: deferred
+    priority: high
+    opened_at: "2026-05-09T22:55:00Z"
+    links:
+      - /memory/features/active-memory-context-economy-pass-2/spec.md
+      - /work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
+      - /memory/adr/0005-timestamp-naming-conventions.md
+    evidence: "Pass-2 plan confirms physical migration of work/** and existing memory/** requires shims, tests, manifest, reference updates, and rollback notes."
+    notes: "Prepare a dedicated migration slice before moving any historical path."
+
+  - id: active-memory-budget-warning-tool
+    title: Add active-memory soft-budget warning tooling
+    source: memory/features/active-memory-context-economy-pass-2/spec.md
+    owner: coder
+    milestone: phase-2
+    status: deferred
+    priority: medium
+    opened_at: "2026-05-09T22:55:00Z"
+    links:
+      - /memory/features/active-memory-context-economy-pass-2/spec.md
+      - /tools/context-budget-report.mjs
+      - /memory/active/
+    evidence: "Pass-2 plan ships documented active-memory budgets and tier reporting while deferring executable threshold warnings."
+    notes: "Extend the budget report or add a small checker that warns when any active-memory file exceeds 1000 words or the tier exceeds 5000 words."
+
+  - id: active-memory-rule-glob-ratification
+    title: Ratify any unsafe Cursor rule glob narrowing
+    source: memory/features/active-memory-context-economy-pass-2/spec.md
+    owner: persona-designer
+    milestone: phase-1
+    status: deferred
+    priority: medium
+    opened_at: "2026-05-09T22:55:00Z"
+    links:
+      - /memory/features/active-memory-context-economy-pass-2/spec.md
+      - /.cursor/rules/persona-designer.mdc
+      - /.cursor/rules/tesseract-engineer.mdc
+      - /work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
+      - /work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md
+    evidence: "Implement pass 2 narrowed six mirrored Cursor rule files per rule-audit.md; supervisor.mdc stayed unchanged after audit. This backlog item remains the ratification umbrella when a rule owner must still approve a proposed glob or when mirror parity risk is not closed in review."
+    notes: "Close this item only after persona-designer (or delegate) records explicit ratification for any rule the audit flagged, or after review confirms no remaining activation-risk gap."

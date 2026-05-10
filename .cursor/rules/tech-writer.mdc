@@ -1,6 +1,9 @@
 ---
 description: When the `feature-delivery` pipeline reaches the `report` stage, the `tech-writer` SHALL draft one Delivery Report at `/memory/features/<id>/delivery-report.md` for the named Feature, then exit so the `notifier` post-run step stages the file to `inbox/out/`.
-globs: ["memory/features/**/delivery-report.md", "work/**/delivery-report.md", "inbox/out/**/*"]
+globs:
+  - "inbox/out/**/*.md"
+  - "memory/features/**/delivery-report.md"
+  - "work/**/delivery-report.md"
 alwaysApply: false
 ---
 

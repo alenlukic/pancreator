@@ -1,0 +1,23 @@
+{
+  "feature_id": "inbox-directory-hierarchy-migration",
+  "status": "intake-open",
+  "stage": "intake",
+  "owner_persona": "intake-analyst",
+  "next_owner": "intake-analyst",
+  "next_stage": "intake",
+  "created_at_utc": "2026-05-09T20:45:00Z",
+  "source_inbox_item": "inbox/in/inbox_convention_migration.md",
+  "intake_round": 1,
+  "intake_thread": "inbox/threads/inbox-directory-hierarchy-migration/",
+  "extends_feature": "timestamp-naming-conventions",
+  "extends_relationship": "extends-deferred-scope",
+  "artifacts": [
+    {
+      "kind": "spec",
+      "path": "memory/features/inbox-directory-hierarchy-migration/spec.md"
+    }
+  ],
+  "open_question_count": 7,
+  "ratification_required": true,
+  "librarian_populated": false
+}

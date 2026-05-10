@@ -17,8 +17,8 @@ references:
     note: "Phase 0b handbook seed list requires `/memory/handbook/index.md` as the MemoryRouter routing table."
   - kind: lines
     path: memory/handbook/glossary.md
-    range: [216, 218]
-    contentHash: 2ee2cbabbe214b431626882fe3247dd26700641142a40f741264a0531b503632
+    range: [229, 231]
+    contentHash: 31546d19f1cabd2d82e88353fbc8a3d67f1b5b5a97f2b28734841d7103b5446f
     note: "Glossary defines MemoryRouter behavior against this file."
   - kind: lines
     path: AGENTS.md
@@ -39,6 +39,7 @@ related:
   - /memory/handbook/backlog-format.md
   - /memory/handbook/persona-colors.md
   - /memory/handbook/context-economy.md
+  - /memory/handbook/memory-tiers.md
 ---
 
 # Handbook Routing Index
@@ -66,7 +67,9 @@ lands, operators SHOULD apply this table manually.
 | Validate run-log schema and observability fields | `/memory/handbook/run-log-schema.md` | `/memory/handbook/glossary.md` | Run-log contract is canonical for `/work/<id>/run.log.jsonl`; glossary resolves shared telemetry nouns. |
 | Track backlog items and documentation deferrals | `/memory/handbook/backlog-format.md` | `/memory/handbook/documentation-impact-contract.md` | Backlog index schema is canonical; documentation-impact defines when and why deferrals are allowed. |
 | Choose persona color assignments | `/memory/handbook/persona-colors.md` | `/memory/handbook/persona-spec.md` | Persona-colors is the canonical palette table; persona-spec provides field-level context. |
-| Reduce default AI context load and decide what to index versus explicit-read | `/memory/handbook/context-economy.md` | `/memory/handbook/index.md`, `/PRD.summary.md`, `/PRD.index.md` | Context-economy defines indexing policy, PRD summary-first discipline, and operator verification expectations. |
+| Active-memory pointers and current coordination | `/memory/active/current.md` | `/memory/handbook/context-economy.md`, `/memory/handbook/memory-tiers.md` | Active-memory holds summaries only; durable and archival artifacts stay on their own tiers. |
+| Memory-tier taxonomy and default retrieval classes | `/memory/handbook/memory-tiers.md` | `/memory/handbook/context-economy.md`, `/memory/handbook/glossary.md` | Defines **active-memory**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
+| Reduce default AI context load and decide what to index versus explicit-read | `/memory/handbook/context-economy.md` | `/memory/handbook/index.md`, `/memory/active/current.md`, `/memory/handbook/memory-tiers.md`, `/PRD.summary.md`, `/PRD.index.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, PRD summary-first discipline, and operator verification expectations. |
 
 ## Retrieval discipline
 

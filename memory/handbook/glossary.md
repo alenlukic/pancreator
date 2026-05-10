@@ -211,6 +211,19 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `/skills/` — the rules), *semantic* (`/memory/adr|rfc|prd|runbooks/` — the
   facts and decisions), *episodic* (`/inbox/threads/`, `/work/*/run.log.jsonl`
   — the experiences).
+- **active-memory** — the short-term operator-facing tier under `memory/active/`
+  that holds concise summaries and pointers; canonical policy lives at
+  `/memory/handbook/memory-tiers.md`.
+- **durable-memory** — long-term ratified memory under `memory/features/`,
+  `memory/adr/`, and `memory/backlog/` loaded by explicit route.
+- **archival-memory** — historical execution artifacts under `work/`,
+  `inbox/out/`, and `inbox/threads/` treated as explicit-read by default.
+- **internal-operating-content** — handbook pages, persona specs, skills,
+  Cursor rules, and Cursor agent mirrors loaded by narrow routes rather than
+  wholesale sweeps.
+- **generated-machine-artifact** — machine-oriented JSON, manifests, dry-run
+  outputs, compliance bundles, and structured logs excluded from default
+  semantic indexing unless a task documents inclusion.
 - **MemoryStore** — the runtime adapter that exposes Mem0-shaped CRUD plus a
   Letta-shaped tier overlay plus Tesseract-native dual-anchor citations.
 - **MemoryRouter** — reads `/memory/handbook/index.md` and loads top-K topic
