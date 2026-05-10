@@ -25,6 +25,12 @@ pnpm-lock.yaml
 CLAUDE.md
 .github/copilot-instructions.md
 
+# Internal operating content: narrow default semantic sweeps; route reads via handbook index and personas when needed.
+memory/handbook/**
+personas/**
+skills/**
+.cursor/rules/**
+
 # Cursor-native mirrors are runtime surfaces, not semantic source of truth.
 # OPERATOR MUST confirm Cursor still discovers every custom agent under
 # .cursor/agents/ before merging any change that keeps this exclusion.

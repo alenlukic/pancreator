@@ -1,125 +1,114 @@
-# AGENTS.md — Tesseract repo briefing
+# AGENTS.md — Tesseract operating card
 
-> Read this file first. It is the primary cross-tool contract per the Linux
-> Foundation Agentic AI Foundation standard. `CLAUDE.md` and
-> `.github/copilot-instructions.md` are symlinks to this file. Cursor reads
-> this file via `.cursor/rules/00-agents-md.mdc` (`alwaysApply: true`).
+> Cross-tool entry contract (Linux Foundation Agentic AI Foundation). `CLAUDE.md`
+> and `.github/copilot-instructions.md` symlink here. Cursor loads this file via
+> `.cursor/rules/00-agents-md.mdc` (`alwaysApply: true`).
 
-## 1 — What this repo is
+## 1 — Repo identity
 
-Tesseract is a simulated product-org agentic development ecosystem. The
-deliverables are personas, skills, pipelines, and contracts that compose into
-a self-hosting Delivery Pipeline. The repo is currently in the **bootstrap
-phase**: see `BOOTSTRAP.md` for the phase-by-phase plan and the current
-status. The product spec is `PRD.md`. For routine orientation, agents SHOULD
-read `PRD.summary.md` first and SHOULD read full `PRD.md` only when the task
-requires product-spec detail, citation repair, or line-anchored requirements
-per `PRD.index.md` and `memory/handbook/context-economy.md`.
+Tesseract is a simulated product-org agentic Delivery Pipeline (personas,
+skills, pipelines, contracts). The repo is in **bootstrap**; see `BOOTSTRAP.md`.
+Product requirements live in `PRD.md`. Routine tasks SHOULD read
+`PRD.summary.md` first; agents SHOULD read full `PRD.md` only when the task
+needs product-spec depth, citation repair, or line-anchored requirements per
+`PRD.index.md` and `memory/handbook/context-economy.md`.
 
-## 2 — Where the canon lives
+## 2 — Routing map (canon and contracts)
 
-The handbook seeds under `/memory/handbook/` are the canonical references for
-authoring work. Every persona and contract MUST cite them.
+Authoring canon sits under `memory/handbook/`; every persona and contract MUST
+cite handbook seeds. Quick routes: intent → `memory/handbook/index.md`;
+language → `memory/handbook/glossary.md`; persona YAML and Cursor projection →
+`memory/handbook/persona-spec.md`; AGENTS change control →
+`memory/handbook/agents-md-authoring.md`.
 
-| File | Purpose |
+| Topic | Path |
 |---|---|
-| `/memory/handbook/glossary.md` | The ubiquitous-language source of truth. Every domain noun resolves here. |
-| `/memory/handbook/index.md` | Intent-to-document routing map used to retrieve the right handbook pages with minimal context load. |
-| `/memory/handbook/context-economy.md` | Default AI context, Cursor indexing boundaries, and explicit-read versus indexed surfaces. |
-| `/PRD.summary.md` | Compact PRD orientation; read before full `PRD.md` on routine tasks. |
-| `/PRD.index.md` | Maps major PRD sections to task triggers; use to open targeted `PRD.md` ranges. |
-| `/memory/handbook/persona-spec.md` | Anthropic Claude Agent SDK 16-field YAML reference + Cursor projection contract (`.cursor/agents` mirror + `.mdc` rule shim where required). |
-| `/memory/handbook/agents-md-authoring.md` | Authoring and change-control guide for `/AGENTS.md`, including required shape, triggers, and symlink policy. |
-| `/memory/handbook/run-log-schema.md` | Canonical run-log schema contract for `/work/<id>/run.log.jsonl`, including OpenInference + OTel GenAI alignment and checkpoint correlation fields. |
-| `/memory/handbook/contract-format.md` | Wrapper schema, kind registry, runner adapter, failure shape, quorum policy. |
-| `/memory/handbook/contract-style.md` | The 5-layer style discipline (RFC 2119, EARS, atomic, no weasel words, glossary, dual-anchor). |
-| `/memory/handbook/documentation-impact-contract.md` | Global post-task decision contract for documentation/reference impact, required updates, and deferral tracking. |
-| `/memory/handbook/policy-compliance-contract.md` | Machine-checkable per-task policy alignment artifact contract used by commit-time enforcement hooks. |
-| `/memory/handbook/inbox-lifecycle.md` | Canonical lifecycle and semantic immutability rules for `inbox/{in,out,threads}` artifacts and archival usage. |
-| `/memory/handbook/contract-templates/` | The 6 MVP slot-driven scaffolds for common clause shapes. |
-| `BOOTSTRAP.md` | The phase-by-phase bootstrap plan; the human is the in-loop reviewer at every phase boundary. |
-| `PRD.md` | The product spec. The line-anchored citation target until handbook seeds are promoted to canonical. |
+| Default AI context, indexing boundaries, explicit-read rules | `memory/handbook/context-economy.md` |
+| Memory-tier taxonomy and tier rules | `memory/handbook/memory-tiers.md` |
+| `simple task mode` | `memory/handbook/context-economy.md` |
+| Model and context escalation | `memory/handbook/context-economy.md` |
+| Active-memory orientation | `memory/active/current.md` |
+| Active-memory layout | `memory/active/README.md` |
+| Post-task documentation impact | `memory/handbook/documentation-impact-contract.md` |
+| Governed-commit policy compliance artifact | `memory/handbook/policy-compliance-contract.md` |
+| Inbox lifecycle and operator sandbox | `memory/handbook/inbox-lifecycle.md` |
+| Layer 1 normative style | `memory/handbook/contract-style.md` |
+| Clause wrapper schema | `memory/handbook/contract-format.md` |
+| Run log schema | `memory/handbook/run-log-schema.md` |
+| Contract templates | `memory/handbook/contract-templates/` |
+| Compact PRD orientation | `PRD.summary.md` |
+| PRD section triggers | `PRD.index.md` |
+| Phase gate human reviewer | `BOOTSTRAP.md`, `PRD.md` |
 
-## 3 — Where the agents live
+## 3 — Where agents live
 
-- `personas/<name>.md` — persona specs in the Anthropic 16-field format.
-- `.cursor/agents/<name>.md` — Cursor-native persona mirror emitted from the
-  canonical persona spec.
-- `.cursor/rules/<name>.mdc` — rule-layer projection retained only where
-  Cursor rule loading still requires it; canonical source remains the persona
-  file.
-- `skills/<name>/SKILL.md` — reusable procedures conforming to the Agent
-  Skills open spec.
-- `/ensembles/<name>.yaml` — persona ensemble configurations (M4+; not
-  populated with executable definitions yet).
-- `/pipelines/<name>.yaml` — pipeline definitions (M1+; not populated until
-  the runtime wiring lands in this repo).
+- `personas/<name>.md` — Anthropic 16-field persona specs.
+- `.cursor/agents/<name>.md` — Cursor mirrors of persona specs.
+- `.cursor/rules/<name>.mdc` — Rule-layer projection where Cursor still
+  requires it; persona files remain canonical.
+- `skills/<name>/SKILL.md` — Agent Skills open-spec packs.
+- `/ensembles/<name>.yaml` — M4+ ensembles (no executable definitions yet).
+- `/pipelines/<name>.yaml` — M1+ pipeline DAGs (no executable definitions until
+  runtime wiring lands).
 
-The bootstrap-canonical seed roster is two meta-personas:
-
-- `personas/persona-designer.md` — authors persona specs.
-- `personas/contract-writer.md` — authors contract clauses.
-
-The repo now also carries the full Phase-1 MVP persona roster, corresponding
-Cursor mirrors/rule projections, and MVP skills.
-
-Both meta-personas are self-protected for semantic changes: no agent and no
-persona MUST NOT modify role semantics, authority boundaries, tool grants, or
-safety constraints unless explicit human ratification is recorded. Deterministic
-maintenance-only updates (for example `references[].contentHash` refreshes,
-citation range realignment, and canonical/mirror parity sync) MAY proceed
-when policy-compliance and documentation-impact obligations are satisfied.
+Bootstrap seeds: `personas/persona-designer.md`, `personas/contract-writer.md`.
+Phase-1 MVP roster, Cursor mirrors, rule shims, and MVP skills are present.
+Both meta-personas are self-protected: no agent and no persona SHALL modify role
+semantics, authority boundaries, tool grants, or safety constraints unless
+explicit human ratification is recorded. Deterministic maintenance-only updates
+(for example `references[].contentHash` refreshes, citation range realignment,
+canonical or mirror parity sync) MAY proceed when policy-compliance and
+documentation-impact obligations are satisfied.
 
 ## 4 — Pipeline-step delegation rule
 
-When the work assigned to you maps to a named persona's
-`metadata.tesseract-pipeline-stages`, you SHALL delegate the work to that
-persona rather than perform it directly. Two delegation modes:
+When work maps to a persona’s `metadata.tesseract-pipeline-stages`, you SHALL
+delegate to that persona rather than perform it directly.
 
-1. **Native subagent invocation.** When the runtime surfaces the persona as
-   a subagent type, invoke it via the runtime's task tool with the persona
-   name. Cursor: `.cursor/agents/<name>.md` (with `.mdc` rule projection where
-   rule loading is still required). Claude Code:
-   `Task(subagent_type="<name>")`. Other harnesses: their equivalent.
-2. **Persona-as-prompt fallback.** When no native invocation surface exists,
-   spin up a generalPurpose subagent and prepend the persona file's contents
-   to its system prompt, naming the persona explicitly in the first message.
+1. **Native subagent invocation.** When the runtime exposes the persona as a
+   subagent type, invoke it via the task tool with the persona name. Cursor:
+   `.cursor/agents/<name>.md` (plus `.mdc` projection where rule loading still
+   requires it). Claude Code: `Task(subagent_type="<name>")`. Other harnesses:
+   their equivalent.
+2. **Persona-as-prompt fallback.** When no native invocation exists, start a
+   generalPurpose subagent, prepend the persona file contents to its system
+   prompt, and name the persona in the first message.
 
-When no persona owns the work (e.g., bootstrap-only handbook authoring,
-configuration scaffolding), perform it directly and cite this section in
-your response.
+When no persona owns the work (for example bootstrap-only handbook authoring or
+configuration scaffolding), perform it directly and cite this section in your
+response.
 
 ## 5 — Working agreement
 
 - **Stage diffs locally; never push.** No agent SHALL run `git push` or
-  `git commit --no-verify`. Every persona's `disallowedTools` enforces this;
-  AGENTS.md restates it for any out-of-band tooling.
-- **Operator sandbox is off-limits.** `/inbox/notes/` is a human-operator-only
-  scratch area. No agent SHALL read, traverse, ingest, cite, or modify any
-  file under `/inbox/notes/`. Only `/inbox/in/` is the canonical incoming work
-  queue; operators manually promote a notes draft into `/inbox/in/` before any
-  agent acts on it. See `/memory/handbook/inbox-lifecycle.md` §1a.
+  `git commit --no-verify`. Persona `disallowedTools` enforces this; AGENTS.md
+  restates it for out-of-band tooling.
+- **Operator sandbox is off-limits.** `/inbox/notes/` is human-operator-only.
+  No agent SHALL read, traverse, ingest, cite, or modify any file under
+  `/inbox/notes/`. Only `/inbox/in/` is the canonical incoming queue; operators
+  SHALL promote a notes draft into `/inbox/in/` before any agent acts on it.
+  See `memory/handbook/inbox-lifecycle.md` section 1a.
 - **Human is the in-loop reviewer at every phase boundary.** The bootstrap
-  authorizer is `LocalUserAuthorizer` (PRD §10). The human ratifies each
+  authorizer is `LocalUserAuthorizer` (PRD section 10). The human ratifies each
   phase exit before the next phase starts.
 - **Dual-anchor citations everywhere.** Every cross-reference is
   `{kind: 'symbol' | 'lines', path, contentHash}`. URLs without an anchored
   citation fail Layer 1 lint at `severity: block`.
-- **Layer 1 lint is non-negotiable.** Body prose uses RFC 2119 keywords,
-  EARS templates, atomic clauses, active voice, present tense, quantified
-  numerics, glossary-resolved nouns, and no weasel words. See
-  `/memory/handbook/contract-style.md`.
+- **Layer 1 lint is non-negotiable.** Body prose uses RFC 2119 keywords, EARS
+  templates, atomic clauses, active voice, present tense, quantified numerics,
+  glossary-resolved nouns, and no weasel words. See
+  `memory/handbook/contract-style.md`.
 - **Documentation impact check is mandatory per task.** Every agent SHALL
-  evaluate documentation/reference impact after each task and SHALL either
+  evaluate documentation or reference impact after each task and SHALL either
   apply required updates or record deferral rationale with backlog linkage per
-  `/memory/handbook/documentation-impact-contract.md`.
+  `memory/handbook/documentation-impact-contract.md`.
 - **Policy-compliance artifact gate is mandatory for governed commits.** Tasks
   that stage non-`work/` structural changes SHALL stage
   `/work/<task-id>/policy-compliance.json` per
-  `/memory/handbook/policy-compliance-contract.md`; commit-time hooks enforce
+  `memory/handbook/policy-compliance-contract.md`; commit-time hooks enforce
   fail-closed behavior when the artifact is missing or invalid.
-- **Stage exit criteria are non-negotiable.** Mirrors the PRD's R-class
-  circuit-breaker pattern. The bootstrap correctness ratchet is its own
+- **Stage exit criteria are non-negotiable.** This mirrors the PRD R-class
+  circuit-breaker pattern; the bootstrap correctness ratchet is its own
   contract.
 - **Bootstrap-only affordances are tagged.** Anything pulled forward (manual
   phase boundaries before the runner exists, hand-checked lints) carries
@@ -128,31 +117,29 @@ your response.
 - **Commit trailer.** Every bootstrap commit MUST carry
   `Bootstrap-Phase: <N>` so the bootstrap is replayable end-to-end.
 
-## 6 — How to discover what to do next
+## 6 — What to do next
 
-1. Read `BOOTSTRAP.md` for the phase-by-phase plan and the current exit
-   criteria. When the task is not phase-boundary work, agents SHOULD skim
-   `PRD.summary.md` before loading full `PRD.md`.
-2. Check `/inbox/in/` for human directives. Files there are the canonical
-   work queue at every phase boundary.
-3. Check `/inbox/out/` for staged delivery reports awaiting human review.
-4. Do NOT read `/inbox/notes/`; it is a human-only operator sandbox per
-   `/memory/handbook/inbox-lifecycle.md` §1a.
-5. When a directive maps to a persona's
-   `metadata.tesseract-pipeline-stages`, follow §4 above to delegate.
+1. Read `BOOTSTRAP.md` for phase plan and exit criteria. When the task is not a
+   phase boundary, agents SHOULD skim `PRD.summary.md` before loading full
+   `PRD.md`.
+2. Check `/inbox/in/` for directives (canonical queue every phase boundary).
+3. Check `/inbox/out/` for staged delivery reports.
+4. Do NOT read `/inbox/notes/`; it remains human-only per
+   `memory/handbook/inbox-lifecycle.md` section 1a.
+5. When a directive maps to `metadata.tesseract-pipeline-stages`, follow
+   section 4.
 
-## 6.1 — Compliance-run trigger guidance
+### 6.1 — Compliance-run trigger guidance
 
 - During automation-deferred phases, agents SHALL support manual invocation via
   `operator-on-demand` and SHALL run descriptors under `tests/compliance/`
   against `tests/compliance/schemas/latest.yaml`.
 - Agents SHALL trigger a compliance run after create, modify, or delete changes
-  that affect personas, skills, pipeline definitions, documented operational
+  that touch personas, skills, pipeline definitions, documented operational
   primitives, testing infrastructure, operator interfaces, or milestone
   ratification artifacts.
-- Scheduled cadence remains backlog-tracked automation work until runtime
-  scheduler wiring lands; agents SHALL NOT assume automatic cadence execution in
-  the first slice.
+- Scheduled cadence stays backlog-tracked until runtime scheduler wiring lands;
+  agents SHALL NOT assume automatic cadence execution in the first slice.
 
 ## 7 — Workspace map
 
@@ -167,6 +154,7 @@ your response.
 /pipelines/                      pipeline DAGs (YAML; M1+)
 /ensembles/                      ensemble configurations (M4+)
 /memory/handbook/                canonical reference: glossary, persona-spec, contract-format, contract-style, templates
+/memory/active/                  active-memory tier (orientation and layout)
 /memory/adr/                     architecture decision records (Nygard format)
 /memory/rfc/{draft,accepted,rejected}/
 /memory/features/<id>/           per-feature artifacts (Spec-Kit aligned)
@@ -190,15 +178,11 @@ your response.
 
 ## 8 — Bootstrap status (live)
 
-**Current state.** Handbook seeds under `/memory/handbook/` are present.
-Meta-personas and meta-skills are present. The full Phase-1 MVP persona roster
-is present, with corresponding Cursor shims and MVP skills. Backlog tracking
-foundation is present through ADR-0001, backlog format, and backlog index.
-`tess` CLI/runtime execution is not wired in this repo yet. `/pipelines/` and
-`/ensembles/` are not populated with executable definitions yet.
-
-**Next phase focus.** Per `BOOTSTRAP.md`, the next meaningful implementation
-phase is the contract corpus and substrate/runtime execution wiring.
+Handbook seeds, meta-personas, meta-skills, Phase-1 MVP roster, Cursor shims,
+and backlog foundation (ADR-0001, format, index) are present. `tess`
+CLI or runtime execution is not wired; `/pipelines/` and `/ensembles/` hold no
+executable definitions yet. Next meaningful implementation phase per
+`BOOTSTRAP.md`: contract corpus plus substrate or runtime execution wiring.
 
 ## 9 — Stability
 

@@ -62,6 +62,7 @@ treated as currently available behavior.
 - `personas/` — role definitions.
 - `skills/` — reusable procedures.
 - `memory/handbook/` — canonical authoring references.
+- `memory/active/current.md` — active-memory orientation (small, current context).
 - `memory/adr/` — architecture decision records.
 - `inbox/` — human-to-org request and response queue. `inbox/notes/` is a
   human-only sandbox excluded from agent traversal.
