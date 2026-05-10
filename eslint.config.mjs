@@ -10,6 +10,17 @@ export default tseslint.config(
   { ignores: ["**/dist", "**/node_modules", "pnpm-lock.yaml", "src/internal/tools/**/*.mjs"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+    {
+    files: ["tests/**/*.mjs", "*.config.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
   {
     files: [
       "src/internal/packages/tesseract/src/**/*.ts",
