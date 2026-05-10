@@ -111,7 +111,7 @@ tier as system machinery and operating doctrine distinct from **active-memory**.
 
 Expected path prefixes include `src/memory/handbook/`, `src/personas/`, `src/skills/`,
 `.cursor/rules/`, `.cursor/agents/`, and the implementation corpus under
-`src/internal/packages/`, `src/internal/tests/`, and `src/internal/tools/`. Cursor agent projections SHALL stay
+`src/internal/packages/`, `tests/`, and `src/internal/tools/`. Cursor agent projections SHALL stay
 compact and route to canonical personas rather than duplicate persona bodies.
 
 When an agent retrieves internal operating content, the agent SHALL load only

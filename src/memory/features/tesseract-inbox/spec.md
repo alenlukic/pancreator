@@ -6,7 +6,7 @@ This feature folder captures Phase 2 delivery requirements for `@tesseract/inbox
 ## Requirements
 - The package implementation MUST satisfy contract `tesseract.inbox.package_shape` for `src/internal/packages/@tesseract/inbox/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.inbox.readme_ergonomics`.
-- Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 9 of 20.
+- Work sequencing MUST preserve the docs/BOOTSTRAP.md Phase 2 dependency order position 9 of 20.
 
 ## Non-Goals
 - Defining M2+ scope for new contract kinds.

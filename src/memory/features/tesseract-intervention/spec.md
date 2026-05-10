@@ -6,7 +6,7 @@ This feature folder captures Phase 2 delivery requirements for `@tesseract/inter
 ## Requirements
 - The package implementation MUST satisfy contract `tesseract.intervention.package_shape` for `src/internal/packages/@tesseract/intervention/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.intervention.readme_ergonomics`.
-- Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 16 of 20.
+- Work sequencing MUST preserve the docs/BOOTSTRAP.md Phase 2 dependency order position 16 of 20.
 
 ## Non-Goals
 - Defining M2+ scope for new contract kinds.

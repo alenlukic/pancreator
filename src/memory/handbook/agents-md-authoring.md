@@ -12,7 +12,7 @@ purpose: |
   quality checks for AGENTS changes.
 references:
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [57, 71]
     contentHash: 51973c1e32036385d02d823c1e19393494fbbd2d0741be12aa8e4d55660de80e
     note: "Phase 0b requires `/src/memory/handbook/agents-md-authoring.md` as a handbook seed."
@@ -43,7 +43,7 @@ references:
     note: "AGENTS changes require inbox item plus explicit human ratification."
 related:
   - /AGENTS.md
-  - /BOOTSTRAP.md
+  - /docs/BOOTSTRAP.md
   - /src/memory/handbook/glossary.md
   - /src/memory/handbook/constitution.md
   - /src/memory/handbook/documentation-impact-contract.md
@@ -94,8 +94,8 @@ Authors SHALL update `/AGENTS.md` when any trigger below occurs:
    ownership boundaries change.
 5. **Bootstrap-state drift.** The live status no longer matches repository
    reality.
-6. **Cross-file contradiction.** AGENTS text conflicts with `PRD.md`,
-   `BOOTSTRAP.md`, or handbook canon.
+6. **Cross-file contradiction.** AGENTS text conflicts with `docs/PRD.md`,
+   `docs/BOOTSTRAP.md`, or handbook canon.
 
 When a trigger fires, the author SHALL update AGENTS in the same change set as
 the source change, or SHALL record a deferral with backlog linkage.
@@ -134,8 +134,8 @@ Before merge, the author SHALL verify:
    precise and current.
 3. **Reference integrity.** Frontmatter references use dual-anchor shape with
    `contentHash` populated or explicitly `TBD-on-commit`.
-4. **Policy coherence.** AGENTS introduces no contradiction with `PRD.md`,
-   `BOOTSTRAP.md`, constitution, glossary, and handbook contracts.
+4. **Policy coherence.** AGENTS introduces no contradiction with `docs/PRD.md`,
+   `docs/BOOTSTRAP.md`, constitution, glossary, and handbook contracts.
 5. **Delegation coherence.** Delegation rules in AGENTS remain consistent with
    persona metadata ownership boundaries.
 6. **Symlink integrity.** `CLAUDE.md` and `.github/copilot-instructions.md`
@@ -148,7 +148,7 @@ Before merge, the author SHALL verify:
 - [ ] Required AGENTS sections preserved and coherent.
 - [ ] Canon table updated for any handbook/spec drift.
 - [ ] Symlink policy validated (`CLAUDE.md`, `.github/copilot-instructions.md`).
-- [ ] Cross-file contradiction check passed (`PRD.md`, `BOOTSTRAP.md`, handbook).
+- [ ] Cross-file contradiction check passed (`docs/PRD.md`, `docs/BOOTSTRAP.md`, handbook).
 - [ ] Deferrals, if any, recorded with backlog linkage.
 - [ ] Human ratification requested before policy activation.
 

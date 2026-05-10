@@ -1,8 +1,8 @@
 # PRD summary (orientation)
 
 This file is a **compact orientation** for agents and operators. It MUST NOT
-replace `PRD.md` for line-anchored citations, contract authoring, or detailed
-MVP scope. Read full `PRD.md` when the task requires those surfaces.
+replace `docs/PRD.md` for line-anchored citations, contract authoring, or detailed
+MVP scope. Read full `docs/PRD.md` when the task requires those surfaces.
 
 ## What Tesseract is
 
@@ -27,18 +27,18 @@ control plane (`tess` CLI is not wired in this repository yet).
 
 Handbook seeds, personas, skills, and backlog tracking exist. Executable
 pipeline YAML and `tess` runtime are still future work; operators follow
-`BOOTSTRAP.md` and `AGENTS.md` for manual phase boundaries.
+`docs/BOOTSTRAP.md` and `AGENTS.md` for manual phase boundaries.
 
 ## Where to go next
 
-- M1/bootstrap routing: `M1.index.md`
-- Section map and deep topics: `PRD.index.md`
-- Full normative spec: `PRD.md` only for exact requirements or citations
-- Phase plan: `BOOTSTRAP.md` only when `M1.index.md` is insufficient
+- M1/bootstrap routing: `docs/M1.index.md`
+- Section map and deep topics: `docs/PRD.index.md`
+- Full normative spec: `docs/PRD.md` only for exact requirements or citations
+- Phase plan: `docs/BOOTSTRAP.md` only when `docs/M1.index.md` is insufficient
 - Context and indexing policy: `src/memory/handbook/context-economy.md`
 
 ## Token-economy rule
 
-For M1 work, agents SHOULD read `M1.index.md` before full `BOOTSTRAP.md` or
-`PRD.md`. Full-source reads require a task-specific reason: scope change, exact
+For M1 work, agents SHOULD read `docs/M1.index.md` before full `docs/BOOTSTRAP.md` or
+`docs/PRD.md`. Full-source reads require a task-specific reason: scope change, exact
 wording, or dual-anchor citation repair.

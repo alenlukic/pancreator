@@ -1,7 +1,7 @@
 import { readPolicyDocument } from "./read-document.js";
 
 const DEPRECATION_LINE =
-  "[@tesseract/policy] DEPRECATED: loadLegacyPolicyConfig() reads legacy JSON/YAML threshold-policy files. Migrate with upgradePolicyConfig() and persist via `tess upgrade --apply` (BOOTSTRAP.md Phase 3 step 8 policy migration; internal tracker Q23).\n";
+  "[@tesseract/policy] DEPRECATED: loadLegacyPolicyConfig() reads legacy JSON/YAML threshold-policy files. Migrate with upgradePolicyConfig() and persist via `tess upgrade --apply` (docs/BOOTSTRAP.md Phase 3 step 8 policy migration; internal tracker Q23).\n";
 
 export interface LegacyPolicyLoadOptions {
   /** Receives the deprecation line; defaults to `process.stderr.write`. */

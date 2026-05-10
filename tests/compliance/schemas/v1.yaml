@@ -1,4 +1,4 @@
-$id: "src/internal/tests/compliance/schemas/v1.yaml"
+$id: "tests/compliance/schemas/v1.yaml"
 $schema: "https://json-schema.org/draft/2020-12/schema"
 title: "Compliance Test Descriptor Schema v1"
 description: "Validates manual-first compliance test descriptors."
@@ -14,7 +14,7 @@ required:
 properties:
   schema_ref:
     type: string
-    const: "src/internal/tests/compliance/schemas/latest.yaml"
+    const: "tests/compliance/schemas/latest.yaml"
   id:
     type: string
     pattern: "^[a-z0-9][a-z0-9-]{2,63}$"

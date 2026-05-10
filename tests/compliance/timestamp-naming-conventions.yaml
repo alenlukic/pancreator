@@ -1,4 +1,4 @@
-schema_ref: "src/internal/tests/compliance/schemas/latest.yaml"
+schema_ref: "tests/compliance/schemas/latest.yaml"
 id: "timestamp-naming-conventions"
 severity: "high"
 trigger_modes:
@@ -7,7 +7,7 @@ trigger_modes:
 scope:
   surface: "timestamp-naming-policy-and-migration"
   artifacts:
-    - "src/internal/tests/compliance/timestamp-naming-conventions.yaml"
+    - "tests/compliance/timestamp-naming-conventions.yaml"
     - "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml"
     - "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml"
     - "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml"

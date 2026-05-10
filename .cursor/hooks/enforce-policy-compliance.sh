@@ -38,7 +38,7 @@ fi
 is_docs_metadata_path() {
   local path="$1"
   case "$path" in
-    AGENTS.md|PRD.md|BOOTSTRAP.md|CLAUDE.md|.github/copilot-instructions.md)
+    AGENTS.md|docs/PRD.md|docs/BOOTSTRAP.md|CLAUDE.md|.github/copilot-instructions.md)
       return 0
       ;;
     src/memory/*|src/inbox/*|docs/*)
@@ -99,14 +99,14 @@ artifact_paths = sys.argv[2:]
 required_sources = {
     "AGENTS.md",
     "src/memory/handbook/constitution.md",
-    "PRD.md",
+    "docs/PRD.md",
 }
 
 doc_prefixes = ("src/memory/", "docs/", "src/inbox/")
 doc_root_names = {
     "AGENTS.md",
-    "PRD.md",
-    "BOOTSTRAP.md",
+    "docs/PRD.md",
+    "docs/BOOTSTRAP.md",
     "CLAUDE.md",
     ".github/copilot-instructions.md",
 }

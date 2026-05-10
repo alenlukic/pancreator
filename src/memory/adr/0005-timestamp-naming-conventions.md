@@ -46,7 +46,7 @@ When an agent processes a non-conforming human-generated artifact under `src/inb
 
 When Tesseract migrates existing artifacts, the migration MUST derive timestamps in this order: first git commit timestamp, then frontmatter `created_at`, then filesystem `mtime`, then operator override. Git commit time is deterministic and replayable across clones; frontmatter is explicit but sparse; `mtime` is mutable; operator override is last because it is manual. Citation: `{kind: lines, path: src/memory/features/timestamp-naming-conventions/spec.md, range: [123, 129], contentHash: TBD-on-commit}`.
 
-When Tesseract encodes the policy, the coder SHOULD use the existing compliance descriptor shape in `src/internal/tests/compliance/` and MAY add Conftest/Rego or an equivalent runner when the descriptor requires executable path validation. Citation: `{kind: lines, path: src/internal/tests/compliance/schemas/latest.yaml, range: [1, 63], contentHash: TBD-on-commit}`.
+When Tesseract encodes the policy, the coder SHOULD use the existing compliance descriptor shape in `tests/compliance/` and MAY add Conftest/Rego or an equivalent runner when the descriptor requires executable path validation. Citation: `{kind: lines, path: tests/compliance/schemas/latest.yaml, range: [1, 63], contentHash: TBD-on-commit}`.
 
 When bootstrap migration logic is authored, the coder MUST mark migration-only affordances with `metadata.tesseract-bootstrap-only: true` where contract wrappers or descriptors support metadata. The persistent naming policy SHALL use `metadata.tesseract-bootstrap-only: false`. Citation: `{kind: lines, path: AGENTS.md, range: [87, 89], contentHash: TBD-on-commit}`.
 

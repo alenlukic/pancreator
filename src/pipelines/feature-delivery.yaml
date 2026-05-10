@@ -9,12 +9,12 @@ metadata:
     supervisor enforces gates and dispatches Intervention actions.
   references:
     - kind: lines
-      path: PRD.md
+      path: docs/PRD.md
       range: [1, 80]
       contentHash: TBD-on-commit
       note: Cited for product context; pipeline structure derives from PRD §11.
     - kind: lines
-      path: BOOTSTRAP.md
+      path: docs/BOOTSTRAP.md
       range: [223, 243]
       contentHash: TBD-on-commit
       note: BOOTSTRAP Phase 4 names this pipeline as the US-1 dogfood entry point.

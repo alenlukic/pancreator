@@ -11,8 +11,8 @@ src/inbox/threads/**
 src/inbox/notes/**
 
 # Full high-volume specs; use compact route docs first
-PRD.md
-BOOTSTRAP.md
+docs/PRD.md
+docs/BOOTSTRAP.md
 
 # Generated manifests / bulky machine outputs
 **/migration-manifest*.json

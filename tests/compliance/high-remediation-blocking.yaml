@@ -1,4 +1,4 @@
-schema_ref: "src/internal/tests/compliance/schemas/latest.yaml"
+schema_ref: "tests/compliance/schemas/latest.yaml"
 id: "high-remediation-blocking"
 severity: "high"
 trigger_modes:

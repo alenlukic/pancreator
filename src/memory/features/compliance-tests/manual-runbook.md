@@ -18,13 +18,13 @@ automation and automatic structure-change execution remain deferred.
 - Trigger surface: run after create, modify, or delete events across required
   structure classes.
 - First-slice action: operator or agent manually runs descriptors in
-  `src/internal/tests/compliance/` immediately after the structure change lands.
+  `tests/compliance/` immediately after the structure change lands.
 
 ### `operator-on-demand`
 
 - Trigger: operator or agent requests an ad hoc compliance run.
 - First-slice action: operator or agent manually runs all descriptors in
-  `src/internal/tests/compliance/`.
+  `tests/compliance/`.
 
 ## Structure-Change Trigger Matrix
 
@@ -44,8 +44,8 @@ automation and automatic structure-change execution remain deferred.
 2. Select trigger mode: `structure-change` or `operator-on-demand`; keep
    `scheduled-cadence` as backlog-deferred automation until scheduler wiring
    lands.
-3. Evaluate each descriptor in `src/internal/tests/compliance/*.yaml` against
-   `src/internal/tests/compliance/schemas/latest.yaml`.
+3. Evaluate each descriptor in `tests/compliance/*.yaml` against
+   `tests/compliance/schemas/latest.yaml`.
 4. For each test, record pass or fail outcome and supporting evidence.
 5. Route failures by severity using `high`/`medium`/`low` policy from the spec.
 6. Record run completion in a run log document using

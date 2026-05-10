@@ -46,7 +46,7 @@ This Feature shipped a five-tier memory model, an `src/memory/active/` operator 
 | 12 | pass | The rule audit covers every named Cursor rule file. `{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md, range: [52, 121], contentHash: 1e5299f4619e68a992e6dfc776c00c7315bdc2d77c7500cd67d4618a4bc17f33}` |
 | 13 | pass | `tesseract-engineer.mdc` no longer broad-loads persona specs. `{kind: lines, path: .cursor/rules/tesseract-engineer.mdc, range: [3, 27], contentHash: ee7f81873daf0c08e2f6c0f20946e61e46bbf0cbe5d8b1e96936a032e77e5693}` |
 | 14 | pass | `src/internal/tools/context-budget-report.mjs` emits seven tier groups. `{kind: lines, path: src/internal/tools/context-budget-report.mjs, range: [216, 360], contentHash: 4b8635212a64910b3217b532b615bf56fea0f7fd088c2ac44f4e88fb5ddd8e3b}` |
-| 15 | pass | `src/internal/tools/context-budget-report.test.mjs` covers the new grouping behavior. `{kind: lines, path: src/internal/tools/context-budget-report.test.mjs, range: [26, 79], contentHash: 8eb383df77fa837794745c48672d70401a8f0326eb35ef0b9063246cbad79208}` |
+| 15 | pass | `tests/context-budget-report.test.mjs` covers the new grouping behavior. `{kind: lines, path: tests/context-budget-report.test.mjs, range: [26, 79], contentHash: 8eb383df77fa837794745c48672d70401a8f0326eb35ef0b9063246cbad79208}` |
 | 16 | pass | `.cursorindexingignore` aligns with the tier model. `{kind: lines, path: .cursorindexingignore, range: [1, 38], contentHash: 4288f2ec8d67e4c8099bfc89c689c10831468791213f1335b3cc3fad959675b0}` |
 | 17 | pass | No historical artifact was deleted. `{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md, range: [118, 120], contentHash: ec473714dee6f250f59b5f211a56ec843ae633c472204baafcb181ec8df10df5}` |
 | 18 | pass | `active-memory-physical-tier-migration` stays deferred with backlog linkage. `{kind: lines, path: src/memory/backlog/index.yaml, range: [383, 396], contentHash: 72d0d473a846afca79cd9bd989fdb4fa4805556c9425afc3944c8e32c3f3c093}` |
@@ -106,7 +106,7 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 3. Run `pnpm run context:budget`.
 4. Run 3–5 comparable simple Cursor tasks and record cache-read totals.
 5. Compare against the previous post-pass-1 result of approximately 770K cache-read tokens.
-6. Confirm explicit references to `@PRD.md`, `@BOOTSTRAP.md`, selected `src/work/**` artifacts, and selected durable memory files still work when intentionally requested.
+6. Confirm explicit references to `@docs/PRD.md`, `@docs/BOOTSTRAP.md`, selected `src/work/**` artifacts, and selected durable memory files still work when intentionally requested.
 7. Confirm `src/memory/active/current.md` gives a clear operator-facing picture of active context without requiring traversal of archival memory.
 
 ## Risks / rollback notes

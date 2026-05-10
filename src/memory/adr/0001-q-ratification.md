@@ -8,12 +8,12 @@ supersedes: null
 superseded-by: null
 references:
   - kind: symbol
-    path: PRD.md
+    path: docs/PRD.md
     symbol: "## 13. Open Questions / Risks"
     contentHash: TBD-on-commit
     note: "PRD defines the Q1-Q22 ratification surface."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [1151, 1176]
     contentHash: TBD-on-commit
     note: "PRD lists Q1-Q22 defaults that require ratification or override."

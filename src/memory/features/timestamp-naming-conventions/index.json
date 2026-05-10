@@ -159,10 +159,10 @@
       }
     },
     "compliance_descriptor": {
-      "path": "src/internal/tests/compliance/timestamp-naming-conventions.yaml",
+      "path": "tests/compliance/timestamp-naming-conventions.yaml",
       "citation": {
         "kind": "lines",
-        "path": "src/internal/tests/compliance/timestamp-naming-conventions.yaml",
+        "path": "tests/compliance/timestamp-naming-conventions.yaml",
         "range": [
           1,
           17
@@ -183,10 +183,10 @@
       }
     },
     "migration_tests": {
-      "path": "src/internal/tools/migrate-timestamp-naming.test.mjs",
+      "path": "tests/migrate-timestamp-naming.test.mjs",
       "citation": {
         "kind": "lines",
-        "path": "src/internal/tools/migrate-timestamp-naming.test.mjs",
+        "path": "tests/migrate-timestamp-naming.test.mjs",
         "range": [
           1,
           196
@@ -379,7 +379,7 @@
         "requirement": "When the coder encodes timestamp naming policy, the contract MUST verify that the compliance descriptor gates the in-scope work and inbox naming rules.",
         "appliesTo": {
           "kind": "file-path",
-          "glob": "src/internal/tests/compliance/timestamp-naming-conventions.yaml"
+          "glob": "tests/compliance/timestamp-naming-conventions.yaml"
         },
         "references": [
           {
@@ -393,7 +393,7 @@
           },
           {
             "kind": "lines",
-            "path": "src/internal/tests/compliance/schemas/latest.yaml",
+            "path": "tests/compliance/schemas/latest.yaml",
             "range": [
               1,
               63

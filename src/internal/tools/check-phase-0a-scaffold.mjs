@@ -6,7 +6,7 @@
  *
  * Carveout: `@tesseract/cli` and `@tesseract/mcp-server` are workspace
  * composers (`tess` / MCP); they MAY list any workspace `@tesseract/*`
- * dependency (BOOTSTRAP.md Phase 3 steps 8 and 9).
+ * dependency (docs/BOOTSTRAP.md Phase 3 steps 8 and 9).
  */
 const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli", "mcp-server"]);
 import { readFileSync, readdirSync, existsSync } from "node:fs";

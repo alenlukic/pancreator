@@ -83,7 +83,7 @@
         "paths": [
           ".cursorindexingignore",
           "src/internal/tools/context-budget-report.mjs",
-          "src/internal/tools/context-budget-report.test.mjs"
+          "tests/context-budget-report.test.mjs"
         ]
       },
       {
@@ -113,7 +113,7 @@
       "Run `pnpm run context:budget`.",
       "Run 3–5 comparable simple Cursor tasks and record cache-read totals.",
       "Compare against the previous post-pass-1 result of approximately 770K cache-read tokens.",
-      "Confirm explicit references to `@PRD.md`, `@BOOTSTRAP.md`, selected `src/work/**` artifacts, and selected durable memory files still work when intentionally requested.",
+      "Confirm explicit references to `@docs/PRD.md`, `@docs/BOOTSTRAP.md`, selected `src/work/**` artifacts, and selected durable memory files still work when intentionally requested.",
       "Confirm `src/memory/active/current.md` gives a clear operator-facing picture of active context without requiring traversal of archival memory."
     ],
     "deferred_backlog_ids": [

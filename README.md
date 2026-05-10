@@ -17,7 +17,7 @@ the current manual workflow.
 
 ## 2) System overview
 
-The root directory is the operator entry point. The `src/` directory contains the operating corpus and implementation surfaces.
+The root directory is the operator entry point. The `docs/` directory contains high-level product/bootstrap documents. The `tests/` directory contains repository-level tests and compliance fixtures. The `src/` directory contains the operating corpus and implementation surfaces.
 
 - **Personas (`src/personas/`)** define agent roles and constraints.
 - **Skills (`src/skills/`)** define reusable operating procedures.
@@ -28,7 +28,7 @@ The root directory is the operator entry point. The `src/` directory contains th
   scratch area; agents MUST NOT read or modify it.
 - **Memory (`src/memory/`)** holds architecture decisions, backlog, RFCs, runbooks,
   checkpoints, and other long-lived organizational state.
-- **Internal (`src/internal/`)** holds implementation packages, tests, tools, and
+- **Internal (`src/internal/`)** holds implementation packages, tools, and
   completed work archives that operators do not need for routine operation.
 
 ## 3) How operators use it now (manual bootstrap workflow)
@@ -37,8 +37,8 @@ Operators SHALL run bootstrap work manually until runtime automation is wired:
 
 1. Read `AGENTS.md` before starting any task. For active context, read
    `src/memory/active/current.md` unless simple task mode applies. For M1/bootstrap
-   routing, read `M1.index.md` before full `BOOTSTRAP.md`. For product context,
-   read `PRD.summary.md` and `PRD.index.md` before full `PRD.md`; open full
+   routing, read `docs/M1.index.md` before full `docs/BOOTSTRAP.md`. For product context,
+   read `docs/PRD.summary.md` and `docs/PRD.index.md` before full `docs/PRD.md`; open full
    sources only when the task needs detailed requirements or line-anchored
    citations. Read `src/memory/handbook/context-economy.md` when tuning what loads
    into AI context versus explicit reads.
@@ -63,10 +63,10 @@ treated as currently available behavior.
 ## 5) Key paths map
 
 - `AGENTS.md` — cross-tool operating contract and live bootstrap status.
-- `M1.index.md` — compact M1/bootstrap route map.
-- `BOOTSTRAP.md` — full phase plan, sequencing, and exit criteria.
-- `PRD.summary.md` and `PRD.index.md` — compact PRD orientation and routing.
-- `PRD.md` — full product requirements and MVP scope.
+- `docs/M1.index.md` — compact M1/bootstrap route map.
+- `docs/BOOTSTRAP.md` — full phase plan, sequencing, and exit criteria.
+- `docs/PRD.summary.md` and `docs/PRD.index.md` — compact PRD orientation and routing.
+- `docs/PRD.md` — full product requirements and MVP scope.
 - `src/README.md` — map of the source corpus under `src/`.
 - `src/personas/` — role definitions.
 - `src/skills/` — reusable procedures.
@@ -77,17 +77,18 @@ treated as currently available behavior.
   human-only sandbox excluded from agent traversal.
 - `src/work/` — active task workspaces. Completed runs move to `src/internal/work_archive/`.
 - `src/internal/packages/` — TypeScript workspace packages.
-- `src/internal/tests/` — repository-level tests and compliance fixtures.
+- `tests/` — repository-level tests and compliance fixtures.
 - `src/internal/tools/` — validation and maintenance scripts.
+- `docs/README.md` — guide to product/bootstrap document routing.
 - `src/internal/work_archive/` — completed run artifacts; explicit-read only.
 
 ## 6) Architecture and core docs
 
 - System architecture ADR: [`src/memory/adr/0002-system-architecture-map.md`](src/memory/adr/0002-system-architecture-map.md)
 - Backlog tracking ADR: [`src/memory/adr/0001-backlog-tracking.md`](src/memory/adr/0001-backlog-tracking.md)
-- M1 route map: [`M1.index.md`](M1.index.md)
-- Bootstrap plan: [`BOOTSTRAP.md`](BOOTSTRAP.md)
-- Product requirements summary: [`PRD.summary.md`](PRD.summary.md)
-- Product requirements index: [`PRD.index.md`](PRD.index.md)
-- Full product requirements: [`PRD.md`](PRD.md)
+- M1 route map: [`docs/M1.index.md`](docs/M1.index.md)
+- Bootstrap plan: [`docs/BOOTSTRAP.md`](docs/BOOTSTRAP.md)
+- Product requirements summary: [`docs/PRD.summary.md`](docs/PRD.summary.md)
+- Product requirements index: [`docs/PRD.index.md`](docs/PRD.index.md)
+- Full product requirements: [`docs/PRD.md`](docs/PRD.md)
 - Operating contract: [`AGENTS.md`](AGENTS.md)

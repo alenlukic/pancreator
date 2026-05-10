@@ -11,10 +11,10 @@
     "attw": "turbo run attw",
     "publint": "turbo run publint",
     "check:phase0a": "node src/internal/tools/check-phase-0a-scaffold.mjs",
-    "migration:test": "node --test src/internal/tools/migrate-timestamp-naming.test.mjs",
+    "migration:test": "node --test tests/migrate-timestamp-naming.test.mjs",
     "context:budget": "node src/internal/tools/context-budget-report.mjs",
-    "context:budget:test": "node --test src/internal/tools/context-budget-report.test.mjs",
-    "repo:structure:test": "node --test src/internal/tools/repo-structure.test.mjs"
+    "context:budget:test": "node --test tests/context-budget-report.test.mjs",
+    "repo:structure:test": "node --test tests/repo-structure.test.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

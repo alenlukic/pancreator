@@ -317,7 +317,7 @@ export function inventoryReferences(legacyPath, repoRoot, scanRoots) {
       "src/memory",
       "src/work",
       "src/inbox",
-      "src/internal/tests",
+      "tests",
       "src/internal/tools",
       "src/personas",
       ".cursor",
@@ -336,7 +336,7 @@ export function inventoryReferences(legacyPath, repoRoot, scanRoots) {
       fileRoots.push(abs);
     }
   }
-  for (const f of ["BOOTSTRAP.md", "AGENTS.md", "PRD.md"]) {
+  for (const f of ["docs/BOOTSTRAP.md", "AGENTS.md", "docs/PRD.md"]) {
     const abs = path.join(repoRoot, f);
     if (existsSync(abs)) {
       fileRoots.push(abs);

@@ -49,22 +49,22 @@ metadata:
     - human-ratified-at-phase-boundary
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [509, 509]
     contentHash: f243dcc581d0113893ecf32eb3f7bac62046b345ff11908a4b48f1f17a4014ea
     note: "PRD §6 — MVP roster: librarian as continuous memory curator that maintains the Feature index at `/src/memory/features/<id>/index.json` and generates the handbook diff."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [691, 694]
     contentHash: b47f6f07b41a006d4424aa6edcbedb357fda72f021be5e163e54cd316f62840f
     note: "PRD §7 — feature-delivery `post_run` block declaring librarian's `[index_artifacts, update_feature_index, update_backlog]` actions."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [711, 711]
     contentHash: 1dc271b54dde720604396036ef7be11c0d753ab20f3e9994d469ff63a5ef5019
     note: "PRD §7 — knowledge-curation cron pipeline: librarian sweep for stale ADRs, broken doc links, dedupe, feature-index rebuild."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [921, 924]
     contentHash: b01852fdba954932ea8eb587f85f8929b62ba7516710386dd8cd1be24b6ff509
     note: "PRD §8 — Memory architecture: per-Feature folder layout with `index.json` linking spec, plan, tasks, ADR(s), code paths, tests, runbook, postmortems."

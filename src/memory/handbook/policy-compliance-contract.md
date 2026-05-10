@@ -21,7 +21,7 @@ references:
     contentHash: 00874481f8aaaa6618a4b6ab4d3d115ebfffd5dcf61d3d2ef38bb2076ed17432
     note: "Constitution requires documentation/reference stewardship and recorded obligations."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [83, 89]
     contentHash: 6a838ec1879ea8c1c83dc5c4dd24618637ff3f7522043775cc123f3751b18f37
     note: "PRD goals define baseline operating outcomes for governance alignment."
@@ -33,7 +33,7 @@ references:
 related:
   - /AGENTS.md
   - /src/memory/handbook/constitution.md
-  - /PRD.md
+  - /docs/PRD.md
   - /src/memory/handbook/documentation-impact-contract.md
   - /src/internal/work_archive/173010_04-26-26/23777_1723_templates/policy-compliance.example.json
 ---
@@ -63,7 +63,7 @@ Every `policy-compliance.json` artifact MUST match this shape:
   "governing_sources_checked": [
     "AGENTS.md",
     "src/memory/handbook/constitution.md",
-    "PRD.md"
+    "docs/PRD.md"
   ],
   "documentation_impact": {
     "applies": true,
@@ -90,7 +90,7 @@ Field constraints:
 - `task_id` MUST be a non-empty string.
 - `governing_sources_checked` MUST include all three required sources exactly as
   canonical paths: `AGENTS.md`, `src/memory/handbook/constitution.md`, and
-  `PRD.md`.
+  `docs/PRD.md`.
 - `documentation_impact` MUST follow the decision spirit and required fields
   from `/src/memory/handbook/documentation-impact-contract.md`.
 - `policy_alignment` MUST contain concise rationale entries for AGENTS,

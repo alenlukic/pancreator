@@ -20,17 +20,17 @@ metadata:
     - /src/memory/features/<id>/contracts.index.json entry
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [317, 480]
     contentHash: TBD-on-commit
     note: "PRD §4.5 — wrapper schema, closed-core kind registry, ContractRunner adapter, ContractFailure, quorum policy"
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [483, 610]
     contentHash: TBD-on-commit
     note: "PRD §4.6 — Layers 1-5 + worked example"
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [967, 980]
     contentHash: TBD-on-commit
     note: "PRD §6 — meta-skill spec this file implements"

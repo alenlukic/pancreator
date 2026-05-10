@@ -15,7 +15,7 @@ items:
     priority: high
     opened_at: "2026-04-25T22:55:00Z"
     links:
-      - /PRD.md
+      - /docs/PRD.md
       - /src/memory/adr/0001-backlog-tracking.md
     evidence: "Bootstrap notes flagged naming drift between eng-spec.md and spec.md mentions."
     notes: "Resolve canonical term in PRD and update dependent docs."
@@ -91,7 +91,7 @@ items:
     priority: medium
     opened_at: "2026-04-26T00:09:00Z"
     links:
-      - /PRD.md
+      - /docs/PRD.md
       - /src/memory/handbook/documentation-impact-contract.md
       - /src/memory/handbook/inbox-lifecycle.md
       - /src/memory/backlog/index.yaml
@@ -150,7 +150,7 @@ items:
     opened_at: "2026-04-26T02:16:00Z"
     links:
       - /src/memory/adr/0001-q-ratification.md
-      - /PRD.md
+      - /docs/PRD.md
     evidence: "Q21 ratification defers default selection pending comparative quality/cost evaluation of AutoGen, CrewAI, and LangGraph supervisor."
     notes: "Produce comparative report before M4 scope lock and submit ratification delta for LocalUserAuthorizer review."
 
@@ -163,7 +163,7 @@ items:
     priority: high
     opened_at: "2026-04-26T05:59:39Z"
     links:
-      - /PRD.md
+      - /docs/PRD.md
       - /src/memory/adr/0001-q-ratification.md
       - /AGENTS.md
       - /.cursor/agents/
@@ -180,7 +180,7 @@ items:
     opened_at: "2026-04-26T02:16:00Z"
     links:
       - /src/memory/adr/0001-q-ratification.md
-      - /PRD.md
+      - /docs/PRD.md
     evidence: "Q22 remains open and requires an explicit decision brief on threat model, default exposure posture, and operator UX trade-offs."
     notes: "Draft decision brief before framework-mode A2A lands; route to LocalUserAuthorizer for final default-posture ratification."
 
@@ -276,32 +276,32 @@ items:
 
   - id: bootstrap-external-observability-phoenix-langfuse
     title: Wire run.log.jsonl into Phoenix or Langfuse for dogfood ratification
-    source: BOOTSTRAP.md
+    source: docs/BOOTSTRAP.md
     owner: coder
     milestone: m2
     status: deferred
     priority: medium
     opened_at: "2026-04-27T20:25:00Z"
     links:
-      - /BOOTSTRAP.md
+      - /docs/BOOTSTRAP.md
       - /src/memory/handbook/run-log-schema.md
       - /src/internal/packages/@tesseract/run-log/
-    evidence: "BOOTSTRAP.md Phase 4 names a clean run-log trace in Phoenix or Langfuse as part of the Phase-4 dogfood exit criterion. Operator deferred external observability to M2 during Phase 3 exit ratification."
+    evidence: "docs/BOOTSTRAP.md Phase 4 names a clean run-log trace in Phoenix or Langfuse as part of the Phase-4 dogfood exit criterion. Operator deferred external observability to M2 during Phase 3 exit ratification."
     notes: "Wire run.log.jsonl emission into Phoenix or Langfuse and re-run the timestamp-naming-conventions dogfood as the ratification trace. Track alongside M2 contract-corpus work."
 
   - id: bootstrap-pause-resume-dogfood-exercise
     title: Empirically exercise tess pause/resume/abort against a feature dogfood
-    source: BOOTSTRAP.md
+    source: docs/BOOTSTRAP.md
     owner: coder
     milestone: phase-5
     status: open
     priority: medium
     opened_at: "2026-04-27T20:25:00Z"
     links:
-      - /BOOTSTRAP.md
+      - /docs/BOOTSTRAP.md
       - /src/internal/packages/@tesseract/intervention/
       - /src/internal/packages/@tesseract/cli/
-    evidence: "BOOTSTRAP.md Phase 4 calls for manually exercising tess pause mid-implement, tess resume, and tess abort on a second feature-delivery run. The Phase 4 dogfood used direct subagent delegation rather than runtime persona dispatch, so in-flight pause and resume against a real feature is not yet exercised empirically."
+    evidence: "docs/BOOTSTRAP.md Phase 4 calls for manually exercising tess pause mid-implement, tess resume, and tess abort on a second feature-delivery run. The Phase 4 dogfood used direct subagent delegation rather than runtime persona dispatch, so in-flight pause and resume against a real feature is not yet exercised empirically."
     notes: "Land runtime persona dispatch first; rerun the dogfood with pause-resume-abort scripted; persist the trace as the ratification artifact."
 
   - id: timestamp-naming-post-2500-rollover-rule
@@ -442,7 +442,7 @@ items:
       - /src/memory/features/cursor-token-economy/index.json
       - /src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md
       - /src/inbox/archive/in/11951_2040_token_economy.md
-    evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, PRD.summary.md plus PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to src/inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring is not implemented per AGENTS.md \u00a78."
+    evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, docs/PRD.summary.md plus docs/PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to src/inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring is not implemented per AGENTS.md \u00a78."
     notes: "Closed in the same operator session that shipped pass-2 because pass-2 extends pass-1 deferred scope (extends_relationship: extends-deferred-scope per src/memory/features/active-memory-context-economy-pass-2/index.json)."
 
   - id: active-memory-context-economy-pass-2-shipped
@@ -477,6 +477,6 @@ items:
       - /src/memory/active/runs.md
       - /src/personas/librarian.md
       - /src/memory/handbook/inbox-lifecycle.md
-      - /PRD.md
+      - /docs/PRD.md
     evidence: "The active-memory tier landed in pass-2 without naming an owner for post-ship rotation. Librarian's write scope explicitly excludes src/memory/active/** per src/personas/librarian.md lines 117 to 120, and the PRD \u00a77 feature-delivery post_run block does not contain an active-memory rotation action. The pass-2 ship cycle therefore required operator override to keep the tier from going stale immediately after the first Feature shipped."
     notes: "Pick one of: extend librarian write scope plus add a fourth post_run action rotate_active_memory; add a manual operator step to src/memory/handbook/inbox-lifecycle.md \u00a73; or assign tech-lead an explicit rotation obligation at the start of each plan stage. Inbox-lifecycle handbook update is the lowest-risk first move while runtime remains unwired."

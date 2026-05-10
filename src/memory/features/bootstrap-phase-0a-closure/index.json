@@ -9,7 +9,7 @@
   "handoff": {
     "next_owner": "human",
     "next_stage": "ratification",
-    "note": "Phase 0a scaffold, CI, and verification record are in-tree; human ratifies before Phase 0b per BOOTSTRAP.md."
+    "note": "Phase 0a scaffold, CI, and verification record are in-tree; human ratifies before Phase 0b per docs/BOOTSTRAP.md."
   },
   "artifact_index": {
     "feature_folder": {

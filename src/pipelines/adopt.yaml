@@ -9,7 +9,7 @@ metadata:
     before any structural change.
   references:
     - kind: lines
-      path: PRD.md
+      path: docs/PRD.md
       range: [1, 80]
       contentHash: TBD-on-commit
       note: Cited for product context; pipeline structure derives from PRD §11.

@@ -8,22 +8,22 @@ supersedes: null
 superseded-by: null
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [3, 3]
     contentHash: TBD-on-commit
     note: "PRD overview defines the four-axis architecture: roles, pipelines, memory, and process."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [12, 12]
     contentHash: TBD-on-commit
     note: "PRD scaffold todo defines the canonical repository substrate and top-level directories."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [17, 21]
     contentHash: TBD-on-commit
     note: "PRD MVP scope defines persona and skill inventories."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [26, 30]
     contentHash: TBD-on-commit
     note: "PRD roadmap defines pipelines and control-plane runtime as distinct implementation layers."
@@ -43,17 +43,17 @@ references:
     contentHash: TBD-on-commit
     note: "AGENTS bootstrap status records the currently active phases."
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [49, 53]
     contentHash: TBD-on-commit
     note: "Bootstrap Phase 0 scaffolds directories that represent the present implemented repository state."
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [57, 61]
     contentHash: TBD-on-commit
     note: "Bootstrap Phase 0b defines handbook seeds as canonical authoring substrate."
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [273, 275]
     contentHash: TBD-on-commit
     note: "Bootstrap conventions require a human-in-the-loop phase-gate reviewer."
@@ -96,7 +96,7 @@ flowchart TB
       COMPLIANCE["src/personas/compliance-auditor.md\nCURRENT"]
       TENGINEER["src/personas/tesseract-engineer.md\nCURRENT"]
       SKILLS["src/skills/*/SKILL.md\nCURRENT"]
-      BOOT["BOOTSTRAP.md + PRD.md\nCURRENT"]
+      BOOT["docs/BOOTSTRAP.md + docs/PRD.md\nCURRENT"]
     end
 
     subgraph Runtime["Runtime and Orchestration (FUTURE / NOT YET IMPLEMENTED)"]

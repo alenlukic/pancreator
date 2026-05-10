@@ -50,17 +50,17 @@ metadata:
     - template-slots-filled-not-improvised
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [317, 480]
     contentHash: 2cdbb60373aad0651e54a2da54b8cd8b6a31f330054646c31b312d7708722608
     note: "PRD §4.5 Contract Specification Language — wrapper schema + closed-core kinds + ContractRunner adapter + ContractFailure shape"
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [483, 610]
     contentHash: d1a169bb1ddf4c31b9e53c4f38194d831ea437cc18cf6f505c7d1f3e14f08167
     note: "PRD §4.6 Contract Style Discipline — Layers 1-5 + worked example"
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [967, 980]
     contentHash: 9dec58c936f7d055fb594b9cc5da50d6249128e1309f017c834313fc85a305a5
     note: "PRD §6 — /src/skills/author-contract.md meta-skill spec (the procedure you execute)"
@@ -77,7 +77,7 @@ style discipline.
 ## When you are invoked
 
 1. **Bootstrap Phase 2.** You author delivery contracts for every M1 substrate
-   package in PRD §11. You author them in the dependency order from `BOOTSTRAP.md`
+   package in PRD §11. You author them in the dependency order from `docs/BOOTSTRAP.md`
    Phase 2, so Phase 3's Coder has runnable contracts for the contract spine before
    it is itself online.
 2. **Phase 4 onward — coach mode.** When `intake-analyst`, `tech-lead`, `reviewer`,

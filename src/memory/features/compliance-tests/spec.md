@@ -18,7 +18,7 @@ references:
     contentHash: d1c2765a013eb9296690f516031f8e04dc1228b355a9dc97b92f83b289988a64
     note: Human directive that defines compliance-test scope and severity routing.
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [633, 649]
     contentHash: 6a838ec1879ea8c1c83dc5c4dd24618637ff3f7522043775cc123f3751b18f37
     note: Intake-stage loop cap and human-approval gate constraints.
@@ -70,8 +70,8 @@ artifact confirmed the handoff to planning remains in force.
 ## Acceptance criteria
 
 - WHEN a maintainer defines a compliance test suite, the system MUST store
-  compliance tests under `src/internal/tests/compliance/` and MUST validate each test file
-  against a schema under `src/internal/tests/compliance/schemas/`.
+  compliance tests under `tests/compliance/` and MUST validate each test file
+  against a schema under `tests/compliance/schemas/`.
 - WHEN a maintainer versions schemas, the system MUST require the newest schema
   file to be named `latest.yaml` and SHOULD keep version snapshots such as
   `v0.yaml` and `v1.yaml` in the same directory.

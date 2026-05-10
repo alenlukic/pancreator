@@ -6,7 +6,7 @@ This feature folder captures Phase 2 delivery requirements for `@tesseract/mcp-s
 ## Requirements
 - The package implementation MUST satisfy contract `tesseract.mcp_server.package_shape` for `src/internal/packages/@tesseract/mcp-server/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.mcp_server.readme_ergonomics`.
-- Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 20 of 20.
+- Work sequencing MUST preserve the docs/BOOTSTRAP.md Phase 2 dependency order position 20 of 20.
 
 ## Non-Goals
 - Defining M2+ scope for new contract kinds.

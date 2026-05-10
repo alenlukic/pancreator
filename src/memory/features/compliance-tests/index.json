@@ -71,19 +71,19 @@
     "canonical_compliance_surface": {
       "schemas": {
         "latest": {
-          "path": "src/internal/tests/compliance/schemas/latest.yaml",
+          "path": "tests/compliance/schemas/latest.yaml",
           "citation": {
             "kind": "lines",
-            "path": "src/internal/tests/compliance/schemas/latest.yaml",
+            "path": "tests/compliance/schemas/latest.yaml",
             "range": [1, 63],
             "contentHash": "8bbb8a715d1badc1f8c67a19cd7ddbeccef406c735e6547c77478ca513b1e7e1"
           }
         },
         "v1": {
-          "path": "src/internal/tests/compliance/schemas/v1.yaml",
+          "path": "tests/compliance/schemas/v1.yaml",
           "citation": {
             "kind": "lines",
-            "path": "src/internal/tests/compliance/schemas/v1.yaml",
+            "path": "tests/compliance/schemas/v1.yaml",
             "range": [1, 63],
             "contentHash": "1f05abc2b45479d21a4b53a493bee1677cc7b49dc97b13909ab7cbc0221b343a"
           }
@@ -91,28 +91,28 @@
       },
       "seed_tests": {
         "high_remediation_blocking": {
-          "path": "src/internal/tests/compliance/high-remediation-blocking.yaml",
+          "path": "tests/compliance/high-remediation-blocking.yaml",
           "citation": {
             "kind": "lines",
-            "path": "src/internal/tests/compliance/high-remediation-blocking.yaml",
+            "path": "tests/compliance/high-remediation-blocking.yaml",
             "range": [1, 14],
             "contentHash": "b7fc8bb86974ed15d5594362330eab2acc69e7b929c0c50ff07cdea07862c90b"
           }
         },
         "medium_backlog_default_off": {
-          "path": "src/internal/tests/compliance/medium-backlog-default-off.yaml",
+          "path": "tests/compliance/medium-backlog-default-off.yaml",
           "citation": {
             "kind": "lines",
-            "path": "src/internal/tests/compliance/medium-backlog-default-off.yaml",
+            "path": "tests/compliance/medium-backlog-default-off.yaml",
             "range": [1, 14],
             "contentHash": "27d0103dbe89d9c4d87bdf02d302113bd368f7c80db9976cc01021ca76eaf42e"
           }
         },
         "low_warning_emission": {
-          "path": "src/internal/tests/compliance/low-warning-emission.yaml",
+          "path": "tests/compliance/low-warning-emission.yaml",
           "citation": {
             "kind": "lines",
-            "path": "src/internal/tests/compliance/low-warning-emission.yaml",
+            "path": "tests/compliance/low-warning-emission.yaml",
             "range": [1, 14],
             "contentHash": "d6a60287c765aa2e94918e0baee7ec3830eab25fc82cbd93d685c58300072a52"
           }

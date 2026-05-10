@@ -29,12 +29,12 @@ references:
     contentHash: TBD-on-commit
     note: Operator answers resolve scope, collision, tie-break, migration, start-day, and inbox-owner questions, and defer the post-2500 rollover rule.
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [223, 243]
     contentHash: TBD-on-commit
     note: Bootstrap Phase 4 requires the intake-analyst dogfood path to emit a canonical feature spec for downstream planning.
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [641, 648]
     contentHash: TBD-on-commit
     note: Intake-stage loop control caps the clarifying dialogue at 5 rounds and requires the human-approval gate.

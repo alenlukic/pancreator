@@ -35,9 +35,9 @@ related:
   - /src/memory/handbook/memory-tiers.md
   - /src/memory/handbook/glossary.md
   - /src/memory/active/current.md
-  - /PRD.summary.md
-  - /PRD.index.md
-  - /M1.index.md
+  - /docs/PRD.summary.md
+  - /docs/PRD.index.md
+  - /docs/M1.index.md
   - /src/memory/handbook/subagent-model-tiers.md
   - /src/memory/handbook/context-cost-audit.md
 ---
@@ -51,16 +51,16 @@ Agents and operators SHOULD load the smallest surface that resolves the task:
 1. Read `AGENTS.md` first for the working agreement and workspace map.
 2. Read `src/memory/active/current.md` when the task needs current Feature pointers
    inside **active-memory** and `simple task mode` does not apply.
-3. Read `M1.index.md` for M1/bootstrap routing before full `BOOTSTRAP.md`.
-4. Read `PRD.summary.md` and `PRD.index.md` for product orientation before full
-   `PRD.md`.
+3. Read `docs/M1.index.md` for M1/bootstrap routing before full `docs/BOOTSTRAP.md`.
+4. Read `docs/PRD.summary.md` and `docs/PRD.index.md` for product orientation before full
+   `docs/PRD.md`.
 5. Read `src/memory/handbook/index.md` and follow at most one primary route plus
    stated secondaries.
-6. Read full `PRD.md` or `BOOTSTRAP.md` only when the task requires
+6. Read full `docs/PRD.md` or `docs/BOOTSTRAP.md` only when the task requires
    authoritative wording, scope change, citation repair, line-anchored
    requirements, or phase-exit detail.
 
-`PRD.summary.md`, `PRD.index.md`, and `M1.index.md` remain the default
+`docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md` remain the default
 low-detail product and milestone orientation surfaces.
 
 Agents MUST NOT read, traverse, ingest, cite, or modify files under
@@ -95,7 +95,7 @@ trees without justification.
 When an agent expands context into **durable-memory** Feature specs, the agent
 SHALL record task-specific justification in the operator thread or run log.
 
-When an agent reads full `PRD.md`, `BOOTSTRAP.md`, or archival run artifacts,
+When an agent reads full `docs/PRD.md`, `docs/BOOTSTRAP.md`, or archival run artifacts,
 the agent SHALL record task-specific justification in the operator thread or
 run log.
 
@@ -110,8 +110,8 @@ attachments when the task requires them.
 
 Typical explicit-read surfaces include:
 
-- Full `PRD.md` for deep spec work after `PRD.summary.md` and `PRD.index.md`.
-- Full `BOOTSTRAP.md` for bootstrap phase gates after `M1.index.md`.
+- Full `docs/PRD.md` for deep spec work after `docs/PRD.summary.md` and `docs/PRD.index.md`.
+- Full `docs/BOOTSTRAP.md` for bootstrap phase gates after `docs/M1.index.md`.
 - Selected `src/work/**` artifacts for active-run handling.
 - Selected `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`,
   and `src/inbox/threads/**` artifacts for historical reconstruction.
@@ -132,9 +132,9 @@ invocations, typecheck invocations, build invocations, test invocations,
 dependency inspection, file lookup, mechanical refactors, formatting fixes, and
 repository maintenance that requires no product reasoning.
 
-While `simple task mode` applies, an agent MUST NOT read `PRD.md`.
+While `simple task mode` applies, an agent MUST NOT read `docs/PRD.md`.
 
-While `simple task mode` applies, an agent MUST NOT read `BOOTSTRAP.md`.
+While `simple task mode` applies, an agent MUST NOT read `docs/BOOTSTRAP.md`.
 
 While `simple task mode` applies, an agent MUST NOT traverse `src/memory/**`.
 
@@ -214,12 +214,12 @@ for human decisions unless debugging a specific generator.
 | Routing handbook pages | `src/memory/handbook/index.md` | Avoid loading the full handbook tree by default. |
 | Memory-tier taxonomy | `src/memory/handbook/memory-tiers.md` | Defines **active-memory**, **active-work**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
 | Active-memory pointers | `src/memory/active/current.md` | Summaries only; follow links into durable or archival tiers. |
-| Product intent at low detail | `PRD.summary.md` | Orientation only; not a substitute for `PRD.md` when citations need line anchors. |
-| Section-level PRD routing | `PRD.index.md` | Picks which `PRD.md` section to open next. |
-| M1 and bootstrap routing | `M1.index.md` | Prefer this before full `BOOTSTRAP.md` or full `PRD.md` for M1 work. |
+| Product intent at low detail | `docs/PRD.summary.md` | Orientation only; not a substitute for `docs/PRD.md` when citations need line anchors. |
+| Section-level PRD routing | `docs/PRD.index.md` | Picks which `docs/PRD.md` section to open next. |
+| M1 and bootstrap routing | `docs/M1.index.md` | Prefer this before full `docs/BOOTSTRAP.md` or full `docs/PRD.md` for M1 work. |
 | Subagent model tiering | `src/memory/handbook/subagent-model-tiers.md` | Defines standard (`model: auto`) and complex variants. |
 | Feature implementation | `src/memory/features/<id>/spec.md` | Canonical Engineering Spec for that Feature. |
-| Bootstrap phase authority | `BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |
+| Bootstrap phase authority | `docs/BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |
 | Governance and policy artifacts | `src/memory/handbook/policy-compliance-contract.md`, `src/memory/handbook/documentation-impact-contract.md` | Required for governed commits and post-task documentation decisions. |
 
 ## Operator maintenance

@@ -37,4 +37,4 @@ pnpm --filter @tesseract/mcp-server run typecheck
 ## See also
 
 - `@tesseract/cli` for the matching `tess` CLI verbs.
-- `BOOTSTRAP.md` Phase 3 step 9 for the bootstrap scope statement.
+- `docs/BOOTSTRAP.md` Phase 3 step 9 for the bootstrap scope statement.

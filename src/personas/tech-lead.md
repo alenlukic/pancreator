@@ -49,22 +49,22 @@ metadata:
     - human-ratified-at-phase-boundary
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [506, 506]
     contentHash: 8e0272a1110f7be1f82c0485d4521dcc1a54eb6e6be4e520fc5dd428dc8fd944
     note: "PRD §6 — MVP roster: tech-lead drafts the plan/RFC for any non-trivial change, decomposes into tasks with declared touch-sets, and owns the ADR."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [649, 658]
     contentHash: 147147aa910dca8f18cb8a3e26f42836910089dd90fb0dcb6a342b40a4d8cf3f
     note: "PRD §7 — feature-delivery `plan` stage YAML declaring inputs (`spec.md`, handbook, ADR corpus) and outputs (`plan.md`, `adr-draft.md`, `touch-set.json`)."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [113, 121]
     contentHash: 745a45da3510bfe125f54fbf195458df759601382e6bc1b4e5cdd4e18ff78ad9
     note: "PRD §3.5 US-1 — Deliver the backend for feature A: the user story whose intake → plan → implement → review → ship sequence the tech-lead anchors at the plan boundary."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [801, 806]
     contentHash: 795854275bb49d19c6a3d4816a8ea69cf4c88302fd59cdc377ea843390185bba
     note: "PRD §7 — touch-set declaration and the conflict-planner interference graph the tech-lead's `touch-set.json` feeds at M2."

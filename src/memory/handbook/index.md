@@ -11,7 +11,7 @@ purpose: |
   question, and SHALL avoid broad handbook loading when a narrow route exists.
 references:
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [63, 77]
     contentHash: 5d6792095dc7a91d3400f7d8dfdc9c6c1276e026c3b78b53cf96461c6da6e1d5
     note: "Phase 0b handbook seed list requires `/src/memory/handbook/index.md` as the MemoryRouter routing table."
@@ -62,7 +62,7 @@ lands, operators SHOULD apply this table manually.
 | Author or update contract clauses | `/src/memory/handbook/contract-format.md` | `/src/memory/handbook/contract-style.md`, `/src/memory/handbook/contract-templates/` | Wrapper schema and kind registry come from contract-format; style and template constraints gate authoring quality. |
 | Run contract style lint checks | `/src/memory/handbook/contract-style.md` | `/src/memory/handbook/glossary.md` | Layer 1/2/3 checks are defined in contract-style; glossary resolves noun validity. |
 | Author or update `/AGENTS.md` | `/src/memory/handbook/agents-md-authoring.md` | `/src/memory/handbook/constitution.md`, `/src/memory/handbook/documentation-impact-contract.md` | Follow AGENTS change-control and trigger rules; include governance and documentation-impact checks. |
-| Interpret governance and organizational rules | `/src/memory/handbook/constitution.md` | `/AGENTS.md`, `/PRD.md` | Use constitution for charter-level governance. Use AGENTS/PRD only as supporting context when needed. |
+| Interpret governance and organizational rules | `/src/memory/handbook/constitution.md` | `/AGENTS.md`, `/docs/PRD.md` | Use constitution for charter-level governance. Use AGENTS/PRD only as supporting context when needed. |
 | Decide documentation-impact updates or deferrals | `/src/memory/handbook/documentation-impact-contract.md` | `/src/memory/handbook/backlog-format.md`, `/src/memory/handbook/agents-md-authoring.md` | Required post-task decision flow lives in documentation-impact contract; use backlog-format for deferral recording schema. |
 | Prepare commit-time policy-compliance artifact and enforcement evidence | `/src/memory/handbook/policy-compliance-contract.md` | `/src/memory/handbook/documentation-impact-contract.md`, `/src/memory/handbook/constitution.md` | Use policy-compliance contract for machine-checkable `src/work/<day>/<task-id>/policy-compliance.json` artifacts and fail-closed commit gate behavior. |
 | Process inbox lifecycle and archival flow | `/src/memory/handbook/inbox-lifecycle.md` | `/AGENTS.md` | Inbox state model and manual archival procedure are defined in inbox-lifecycle. |
@@ -71,9 +71,9 @@ lands, operators SHOULD apply this table manually.
 | Choose persona color assignments | `/src/memory/handbook/persona-colors.md` | `/src/memory/handbook/persona-spec.md` | Persona-colors is the canonical palette table; persona-spec provides field-level context. |
 | Active-memory pointers and current coordination | `/src/memory/active/current.md` | `/src/memory/handbook/context-economy.md`, `/src/memory/handbook/memory-tiers.md` | Active-memory holds summaries only; durable and archival artifacts stay on their own tiers. |
 | Memory-tier taxonomy and default retrieval classes | `/src/memory/handbook/memory-tiers.md` | `/src/memory/handbook/context-economy.md`, `/src/memory/handbook/glossary.md` | Defines **active-memory**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
-| Reduce default AI context load and decide what to index versus explicit-read | `/src/memory/handbook/context-economy.md` | `/src/memory/handbook/index.md`, `/src/memory/active/current.md`, `/src/memory/handbook/memory-tiers.md`, `/src/memory/handbook/context-cost-audit.md`, `/PRD.summary.md`, `/PRD.index.md`, `/M1.index.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, PRD/M1 summary-first discipline, and operator verification expectations. |
+| Reduce default AI context load and decide what to index versus explicit-read | `/src/memory/handbook/context-economy.md` | `/src/memory/handbook/index.md`, `/src/memory/active/current.md`, `/src/memory/handbook/memory-tiers.md`, `/src/memory/handbook/context-cost-audit.md`, `/docs/PRD.summary.md`, `/docs/PRD.index.md`, `/docs/M1.index.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, PRD/M1 summary-first discipline, and operator verification expectations. |
 | Choose standard versus complex Cursor subagents | `/src/memory/handbook/subagent-model-tiers.md` | `/src/memory/handbook/context-economy.md`, `/AGENTS.md` | Use standard variants by default; escalate to complex only for documented triggers. |
-| Audit likely token cost sinks | `/src/memory/handbook/context-cost-audit.md` | `/src/memory/handbook/context-economy.md`, `/src/memory/handbook/subagent-model-tiers.md`, `/M1.index.md` | Records current cost sinks and practical controls. |
+| Audit likely token cost sinks | `/src/memory/handbook/context-cost-audit.md` | `/src/memory/handbook/context-economy.md`, `/src/memory/handbook/subagent-model-tiers.md`, `/docs/M1.index.md` | Records current cost sinks and practical controls. |
 
 ## Retrieval discipline
 

@@ -15,7 +15,7 @@ import {
   migrateTargetForWorkPath,
   migrateTargetForInboxPath,
   inventoryReferences,
-} from "./migrate-timestamp-naming.mjs";
+} from "../src/internal/tools/migrate-timestamp-naming.mjs";
 
 test("daysToFds: FDS calendar day yields 0", () => {
   const d = new Date(Date.UTC(2500, 0, 1, 15, 0, 0));
@@ -186,7 +186,7 @@ test("migrateTargetForInboxPath: snapshot for thread round file", () => {
 });
 
 test("inventoryReferences: finds a known path string in repo", () => {
-  const repoRoot = path.resolve(__dirname, "..", "..", "..");
+  const repoRoot = path.resolve(__dirname, "..");
   const hits = inventoryReferences("src/internal/work_archive/173009_04-27-26/68576_0457_compliance-tests", repoRoot, [
     "src/memory",
     "src/work",

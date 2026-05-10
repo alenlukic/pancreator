@@ -12,7 +12,7 @@ related:
   - /src/memory/handbook/context-economy.md
   - /src/memory/handbook/memory-tiers.md
   - /src/memory/handbook/subagent-model-tiers.md
-  - /M1.index.md
+  - /docs/M1.index.md
 ---
 
 # Context cost audit
@@ -24,7 +24,7 @@ controls used to reduce default load.
 
 | Cost sink | Control |
 |---|---|
-| Full `PRD.md` and full `BOOTSTRAP.md` loaded for routing questions | Keep full files explicit-read by default; route through `PRD.summary.md`, `PRD.index.md`, and `M1.index.md`. |
+| Full `docs/PRD.md` and full `docs/BOOTSTRAP.md` loaded for routing questions | Keep full files explicit-read by default; route through `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md`. |
 | Active and archival execution artifacts under `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, and `src/inbox/threads/**` | Exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
 | Human-only operator notes | Exclude `src/inbox/notes/**` from Cursor indexing and preserve AGENTS prohibition on agent traversal. |
 | Cursor subagent projections duplicating canonical persona prose and PRD citations | Keep `.cursor/agents/**` compact and point to `src/personas/<name>.md` as canonical source. |
@@ -39,7 +39,7 @@ controls used to reduce default load.
   files outside this repository's direct control.
 - `.cursor/agents/**` remains excluded from semantic indexing. Operators MUST
   verify custom agent discovery after changes.
-- Full `PRD.md` and `BOOTSTRAP.md` remain explicitly readable. Agents MUST cite
+- Full `docs/PRD.md` and `docs/BOOTSTRAP.md` remain explicitly readable. Agents MUST cite
   exact ranges when they rely on authoritative source wording.
 
 ## Manual validation

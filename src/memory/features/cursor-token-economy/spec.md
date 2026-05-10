@@ -50,7 +50,7 @@ references:
     path: src/inbox/in/token_economy.md
     range: [179, 194]
     contentHash: TBD-on-commit
-    note: Directive §4 specifies PRD.summary.md and PRD.index.md as summary-first retrieval surfaces.
+    note: Directive §4 specifies docs/PRD.summary.md and docs/PRD.index.md as summary-first retrieval surfaces.
   - kind: lines
     path: src/inbox/in/token_economy.md
     range: [196, 214]
@@ -87,12 +87,12 @@ references:
     contentHash: TBD-on-commit
     note: Directive Implementation guidance authorizes the no-clarifying-questions intake path the analyst followed.
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [641, 648]
     contentHash: TBD-on-commit
     note: PRD §7 declares loop.max_rounds 5 and gate human_approval for the feature-delivery intake stage.
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [921, 931]
     contentHash: TBD-on-commit
     note: PRD §8 declares the per-Feature folder layout aligned with Spec Kit v0.8 (spec.md, plan.md, tasks.md).
@@ -124,11 +124,11 @@ This Feature SHALL reduce default Cursor cache-read token volume on routine
 repository invocations through five staged changes: a root
 `.cursorindexingignore` file, narrower `.cursor/rules/*.mdc` glob surfaces,
 a new `src/memory/handbook/context-economy.md` page, summary-first PRD retrieval
-surfaces (`PRD.summary.md` and `PRD.index.md`), and a
+surfaces (`docs/PRD.summary.md` and `docs/PRD.index.md`), and a
 `src/internal/tools/context-budget-report.mjs` estimator. The Feature SHALL preserve
 every Persona, Skill, Pipeline, Spec Contract, documentation-impact,
 policy-compliance, and inbox-lifecycle obligation. The Feature SHALL keep
-`PRD.md`, `BOOTSTRAP.md`, the `src/memory/` tree, and the `src/work/` tree
+`docs/PRD.md`, `docs/BOOTSTRAP.md`, the `src/memory/` tree, and the `src/work/` tree
 reachable for explicit human and agent reads.
 
 ## Acceptance criteria
@@ -183,13 +183,13 @@ reachable for explicit human and agent reads.
   one routing entry for context-budgeting decisions in
   `src/memory/handbook/index.md`.
 - When the Feature splits PRD access, the Feature MUST create one
-  `PRD.summary.md` file as a compact orientation document for routine
+  `docs/PRD.summary.md` file as a compact orientation document for routine
   agent reads.
 - When the Feature splits PRD access, the Feature MUST create one
-  `PRD.index.md` file as a section-to-trigger routing map for full
-  `PRD.md` reads.
+  `docs/PRD.index.md` file as a section-to-trigger routing map for full
+  `docs/PRD.md` reads.
 - When the Feature updates retrieval guidance, the Feature MUST instruct
-  agents to read `PRD.summary.md` first and to read `PRD.md` only when
+  agents to read `docs/PRD.summary.md` first and to read `docs/PRD.md` only when
   the task requires product-spec detail, citation repair, or
   line-anchored requirements.
 - When the Feature ships the context-budget tool, the Feature MUST add
@@ -228,11 +228,11 @@ reachable for explicit human and agent reads.
 - This Feature SHALL NOT delete historical artifacts under `src/work/**`.
 - This Feature SHALL NOT weaken policy-compliance, documentation-impact,
   inbox-lifecycle, or human-ratification requirements.
-- This Feature SHALL NOT hide `PRD.md`, `BOOTSTRAP.md`, the `src/memory/`
+- This Feature SHALL NOT hide `docs/PRD.md`, `docs/BOOTSTRAP.md`, the `src/memory/`
   tree, or the `src/work/` tree from explicit human or agent reads.
 - This Feature SHALL NOT add a root `.cursorignore` file in this
   delivery slice.
-- This Feature SHALL NOT delete or rewrite the full `PRD.md` body
+- This Feature SHALL NOT delete or rewrite the full `docs/PRD.md` body
   except for references this Feature edits.
 - This Feature SHALL NOT modify Persona spec semantics, role
   boundaries, tool grants, or safety constraints.

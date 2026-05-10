@@ -8,12 +8,12 @@ supersedes: null
 superseded-by: null
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [267, 267]
     contentHash: TBD-on-commit
     note: "PRD glossary defines Inbox as the bidirectional queue with in/out/thread paths."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [1037, 1037]
     contentHash: TBD-on-commit
     note: "PRD CLI surface includes `tess inbox` management verbs."
@@ -33,7 +33,7 @@ references:
     contentHash: TBD-on-commit
     note: "AGENTS bootstrap status records that runtime/CLI execution wiring is not landed."
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [49, 53]
     contentHash: TBD-on-commit
     note: "Bootstrap scaffold includes `src/inbox/{in,out,threads}/` as a required repository substrate."

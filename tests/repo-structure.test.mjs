@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-const ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
+const ROOT = path.resolve(import.meta.dirname, "..");
 const FDS_UTC_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
 
 function read(rel) {
@@ -23,15 +23,21 @@ function daysToFdsForSuffix(mmDdYy) {
   return Math.floor((FDS_UTC_MS - dayMs) / 86400000);
 }
 
-test("operator-facing root keeps implementation directories under internal", () => {
+test("operator-facing root keeps implementation under internal while tests and docs stay at root", () => {
   assert.ok(exists("src/internal/packages"));
-  assert.ok(exists("src/internal/tests"));
   assert.ok(exists("src/internal/tools"));
   assert.ok(exists("src/internal/work_archive"));
+  assert.ok(exists("tests/compliance/schemas/latest.yaml"));
+  assert.ok(exists("docs/PRD.md"));
+  assert.ok(exists("docs/BOOTSTRAP.md"));
+  assert.ok(exists("docs/M1.index.md"));
   assert.ok(exists("src/work/README.md"));
   assert.equal(exists("packages"), false);
-  assert.equal(exists("tests"), false);
+  assert.equal(exists("src/internal/tests"), false);
   assert.equal(exists("tools"), false);
+  assert.equal(exists("PRD.md"), false);
+  assert.equal(exists("BOOTSTRAP.md"), false);
+  assert.equal(exists("M1.index.md"), false);
 });
 
 test("archived work day-directory prefixes match days from UTC day to Jan 1 2500", () => {
@@ -56,7 +62,7 @@ test("active work contains no completed timestamp day directories", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("workspace, scripts, and workflow use internal implementation paths", () => {
+test("workspace, scripts, and workflow use conventional test and docs paths", () => {
   const workspace = read("pnpm-workspace.yaml");
   assert.match(workspace, /src\/internal\/packages\/\*/);
   assert.match(workspace, /src\/internal\/packages\/@tesseract\/\*/);
@@ -64,12 +70,13 @@ test("workspace, scripts, and workflow use internal implementation paths", () =>
   const pkg = JSON.parse(read("package.json"));
   assert.match(pkg.scripts["check:phase0a"], /^node src\/internal\/tools\//);
   assert.match(pkg.scripts["context:budget"], /^node src\/internal\/tools\//);
-  assert.match(pkg.scripts["repo:structure:test"], /^node --test src\/internal\/tools\//);
+  assert.match(pkg.scripts["repo:structure:test"], /^node --test tests\//);
 
   const workflow = read(".github/workflows/phase-0a-scaffold.yml");
   assert.match(workflow, /src\/internal\/packages\/\*\*/);
   assert.match(workflow, /src\/internal\/tools\/\*\*/);
-  assert.match(workflow, /src\/internal\/tests\/\*\*/);
+  assert.match(workflow, /docs\/\*\*/);
+  assert.match(workflow, /tests\/\*\*/);
   assert.match(workflow, /pnpm run migration:test/);
   assert.match(workflow, /pnpm run context:budget:test/);
   assert.match(workflow, /pnpm run repo:structure:test/);

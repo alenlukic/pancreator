@@ -17,7 +17,7 @@ references:
     contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
     note: "Wrapper schema reference."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [715, 715]
     contentHash: 52b0ae27bfc401fe4b1644636d33106e4d856de5f68b632fa8bc5a6e4a15972a
     note: "PRD §7 — `behavior-preservation` 5-tier composite definition."
@@ -86,7 +86,7 @@ references:
     contentHash: <sha256>
     note: "Refactor RFC."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [715, 715]
     contentHash: 52b0ae27bfc401fe4b1644636d33106e4d856de5f68b632fa8bc5a6e4a15972a
     note: "PRD §7 — behavior-preservation 5-tier definition."

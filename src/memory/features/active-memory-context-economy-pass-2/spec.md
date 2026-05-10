@@ -204,7 +204,7 @@ documentation-impact, policy-compliance, and inbox-lifecycle obligation cited
 at
 `{kind: lines, path: AGENTS.md, range: [92, 130], contentHash: a29b04a32dc62da25ff1af024cca7ff74cc5fe3c76a2be301a7e391c4b56a0e1}`.
 
-This Feature SHALL keep `PRD.md`, `BOOTSTRAP.md`, the `src/memory/` tree, the
+This Feature SHALL keep `docs/PRD.md`, `docs/BOOTSTRAP.md`, the `src/memory/` tree, the
 `src/work/` tree, the `src/personas/` tree, and the `.cursor/agents/` tree reachable
 for explicit human and agent reads per the non-goals at
 `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [89, 97], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
@@ -302,7 +302,7 @@ for explicit human and agent reads per the non-goals at
 - When the Feature updates the context-economy page, the page MUST state that
   internal operating content loads by route rather than by wholesale sweep.
 - When the Feature updates the context-economy page, the page MUST state that
-  full `PRD.md`, `BOOTSTRAP.md`, durable feature memory, and archival run
+  full `docs/PRD.md`, `docs/BOOTSTRAP.md`, durable feature memory, and archival run
   artifacts require task-specific justification.
 - When the Feature updates the handbook routing index, the Feature MUST add
   one row to `src/memory/handbook/index.md` that routes active-memory questions
@@ -323,9 +323,9 @@ for explicit human and agent reads per the non-goals at
   inspection, file lookup, mechanical refactor, formatting fix, and
   maintenance task classes that `simple task mode` applies to.
 - When the Feature defines `simple task mode` default behavior, the page MUST
-  instruct agents not to read `PRD.md` while `simple task mode` applies.
+  instruct agents not to read `docs/PRD.md` while `simple task mode` applies.
 - When the Feature defines `simple task mode` default behavior, the page MUST
-  instruct agents not to read `BOOTSTRAP.md` while `simple task mode` applies.
+  instruct agents not to read `docs/BOOTSTRAP.md` while `simple task mode` applies.
 - When the Feature defines `simple task mode` default behavior, the page MUST
   instruct agents not to traverse `src/memory/**` while `simple task mode`
   applies.
@@ -411,8 +411,8 @@ for explicit human and agent reads per the non-goals at
   `src/memory/handbook/**`, `src/personas/**`, `src/skills/**`, `.cursor/rules/**`, and
   `.cursor/agents/**`.
 - When the Feature extends the context-budget report, the report MUST emit a
-  per-tier footprint group for product context covering `PRD.md`,
-  `PRD.summary.md`, `PRD.index.md`, and `BOOTSTRAP.md`.
+  per-tier footprint group for product context covering `docs/PRD.md`,
+  `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/BOOTSTRAP.md`.
 - When the Feature extends the context-budget report, the report MUST emit a
   per-tier footprint group for source code covering `packages/**`,
   `tools/**`, and the test suites named under those trees.
@@ -426,7 +426,7 @@ for explicit human and agent reads per the non-goals at
   `chars / 4` value as approximate per the directive at
   `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [422, 426], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
 - When the Feature ships the report extensions, the Feature MUST update or
-  add tests at `src/internal/tools/context-budget-report.test.mjs` that cover the new
+  add tests at `tests/context-budget-report.test.mjs` that cover the new
   per-tier grouping behavior.
 
 ### `.cursorindexingignore` alignment
@@ -524,7 +524,7 @@ for explicit human and agent reads per the non-goals at
   `src/memory/**`, `src/inbox/out/**`, or `src/inbox/threads/**`.
 - This Feature SHALL NOT weaken policy-compliance, documentation-impact,
   inbox-lifecycle, or human-ratification requirements.
-- This Feature SHALL NOT hide `PRD.md`, `BOOTSTRAP.md`, the `src/memory/` tree,
+- This Feature SHALL NOT hide `docs/PRD.md`, `docs/BOOTSTRAP.md`, the `src/memory/` tree,
   the `src/work/` tree, the `src/personas/` tree, or the `.cursor/agents/` tree from
   explicit human or agent reads.
 - This Feature SHALL NOT modify Persona spec semantics, Persona role

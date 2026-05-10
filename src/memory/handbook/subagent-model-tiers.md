@@ -66,6 +66,6 @@ Every Cursor subagent projection SHALL stay compact. Cursor projection files
 SHALL point to canonical persona files under `src/personas/` instead of duplicating
 persona prose, PRD references, or handbook excerpts.
 
-A subagent SHALL read full `PRD.md`, `BOOTSTRAP.md`, durable Feature memory, or
+A subagent SHALL read full `docs/PRD.md`, `docs/BOOTSTRAP.md`, durable Feature memory, or
 archival run artifacts only when the task-specific trigger is present per
-`src/memory/handbook/context-economy.md` and `M1.index.md`.
+`src/memory/handbook/context-economy.md` and `docs/M1.index.md`.

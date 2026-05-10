@@ -7,10 +7,10 @@
 ## 1 — Repo identity
 
 Tesseract is a simulated product-org agentic Delivery Pipeline (personas,
-skills, pipelines, contracts). The repo is in **bootstrap**; see `BOOTSTRAP.md`.
-Product requirements live in `PRD.md`, but routine work SHOULD route through
-`PRD.summary.md`, `PRD.index.md`, and `M1.index.md` first. Agents SHOULD read
-full `PRD.md` or `BOOTSTRAP.md` only when the task needs authoritative wording,
+skills, pipelines, contracts). The repo is in **bootstrap**; see `docs/BOOTSTRAP.md`.
+Product requirements live in `docs/PRD.md`, but routine work SHOULD route through
+`docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md` first. Agents SHOULD read
+full `docs/PRD.md` or `docs/BOOTSTRAP.md` only when the task needs authoritative wording,
 phase-exit detail, citation repair, or line-anchored requirements per
 `src/memory/handbook/context-economy.md`.
 
@@ -27,7 +27,7 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | Default AI context, indexing boundaries, explicit-read rules | `src/memory/handbook/context-economy.md` |
 | Memory-tier taxonomy and tier rules | `src/memory/handbook/memory-tiers.md` |
 | `simple task mode` | `src/memory/handbook/context-economy.md` |
-| M1/bootstrap routing before full PRD/BOOTSTRAP reads | `M1.index.md` |
+| M1/bootstrap routing before full PRD/BOOTSTRAP reads | `docs/M1.index.md` |
 | Subagent standard/complex model tiers | `src/memory/handbook/subagent-model-tiers.md` |
 | Current context cost audit | `src/memory/handbook/context-cost-audit.md` |
 | Model and context escalation | `src/memory/handbook/context-economy.md` |
@@ -40,9 +40,9 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | Clause wrapper schema | `src/memory/handbook/contract-format.md` |
 | Run log schema | `src/memory/handbook/run-log-schema.md` |
 | Contract templates | `src/memory/handbook/contract-templates/` |
-| Compact PRD orientation | `PRD.summary.md` |
-| PRD section triggers | `PRD.index.md` |
-| Full-source phase/spec authority | `BOOTSTRAP.md`, `PRD.md` |
+| Compact PRD orientation | `docs/PRD.summary.md` |
+| PRD section triggers | `docs/PRD.index.md` |
+| Full-source phase/spec authority | `docs/BOOTSTRAP.md`, `docs/PRD.md` |
 
 ## 3 — Where agents live
 
@@ -131,9 +131,9 @@ response.
 ## 6 — What to do next
 
 1. Read `src/memory/active/current.md` for current pointers unless `simple task
-   mode` applies. For M1/bootstrap routing, read `M1.index.md` before full
-   `BOOTSTRAP.md`. Agents SHOULD skim `PRD.summary.md` and `PRD.index.md`
-   before loading full `PRD.md`.
+   mode` applies. For M1/bootstrap routing, read `docs/M1.index.md` before full
+   `docs/BOOTSTRAP.md`. Agents SHOULD skim `docs/PRD.summary.md` and `docs/PRD.index.md`
+   before loading full `docs/PRD.md`.
 2. Check `/src/inbox/in/` for directives (canonical queue every phase boundary).
 3. Check `/src/inbox/out/` for staged delivery reports.
 4. Do NOT read `/src/inbox/notes/`; it remains human-only per
@@ -144,8 +144,8 @@ response.
 ### 6.1 — Compliance-run trigger guidance
 
 - During automation-deferred phases, agents SHALL support manual invocation via
-  `operator-on-demand` and SHALL run descriptors under `src/internal/tests/compliance/`
-  against `src/internal/tests/compliance/schemas/latest.yaml`.
+  `operator-on-demand` and SHALL run descriptors under `tests/compliance/`
+  against `tests/compliance/schemas/latest.yaml`.
 - Agents SHALL trigger a compliance run after create, modify, or delete changes
   that touch personas, skills, pipeline definitions, documented operational
   primitives, testing infrastructure, operator interfaces, or milestone
@@ -183,13 +183,15 @@ response.
 /src/work/<day>/<task-id>/           active pipeline workspace; completed runs move to /src/internal/work_archive/
 /src/internal/                        implementation corpus hidden from routine operator surface
 /src/internal/packages/               TypeScript workspace packages
-/src/internal/tests/                  repository-level tests and compliance fixtures
+/tests/                  repository-level tests and compliance fixtures
 /src/internal/tools/                  validation and maintenance scripts
 /src/internal/work_archive/           completed run artifacts; explicit-read only
 /.tess/{worktrees,sandboxes,scheduler}/  control-plane state
-/PRD.md                          product spec
-/M1.index.md                      compact M1/bootstrap route map
-/BOOTSTRAP.md                    phase-by-phase bootstrap plan
+/docs/                         high-level product and bootstrap documents
+/docs/README.md                  docs directory guide
+/docs/PRD.md                     product spec
+/docs/M1.index.md                 compact M1/bootstrap route map
+/docs/BOOTSTRAP.md                phase-by-phase bootstrap plan
 /tesseract.yaml                  org-level threshold policy (M2+)
 /tesseract-defaults.yaml         risk-tier defaults (M2+)
 ```
@@ -200,7 +202,7 @@ Handbook seeds, meta-personas, meta-skills, Phase-1 MVP roster, Cursor shims,
 and backlog foundation (ADR-0001, format, index) are present. `tess`
 CLI or runtime execution is not wired; `/src/pipelines/` and `/src/ensembles/` hold no
 executable definitions yet. Next meaningful implementation phase per
-`BOOTSTRAP.md`: contract corpus plus substrate or runtime execution wiring.
+`docs/BOOTSTRAP.md`: contract corpus plus substrate or runtime execution wiring.
 
 ## 9 — Stability
 

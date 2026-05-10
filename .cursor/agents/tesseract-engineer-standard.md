@@ -66,7 +66,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 1. Read `AGENTS.md` for the live operating contract.
 2. Read `src/personas/tesseract-engineer.md` for role semantics before performing persona-owned work.
 3. Read `src/memory/handbook/context-economy.md` only when the task requires context-budget decisions.
-4. Read `M1.index.md`, `PRD.index.md`, or `PRD.summary.md` before full `PRD.md` or `BOOTSTRAP.md`.
+4. Read `docs/M1.index.md`, `docs/PRD.index.md`, or `docs/PRD.summary.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md`.
 5. Do not traverse `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, or `src/inbox/threads/**` unless the task explicitly requires active-run handling or archival reconstruction.
 
 ## Tier guidance

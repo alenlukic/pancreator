@@ -15,22 +15,22 @@ metadata:
     - /src/work/<id>/adr-draft.md
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [506, 506]
     contentHash: TBD-on-commit
     note: "PRD §6 — MVP roster: tech-lead drafts the plan/RFC for any non-trivial change and owns the ADR."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [649, 658]
     contentHash: TBD-on-commit
     note: "PRD §7 — feature-delivery `plan` stage YAML declaring `/src/work/<id>/adr-draft.md` as a required output of the plan stage."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [915, 915]
     contentHash: TBD-on-commit
     note: "PRD §8 — Memory architecture: `/src/memory/adr/` holds immutable architecture decision records in Nygard format."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [1004, 1010]
     contentHash: TBD-on-commit
     note: "PRD §8 — Anti-rot: dual-anchor citations on every ADR/RFC/PRD, ADR immutability, supersession via a new ADR with `supersedes:` link."

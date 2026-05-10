@@ -10,9 +10,9 @@ import {
   isIndexingExcluded,
   matcherForIndexingPatternLine,
   posixRel,
-} from "./context-budget-report.mjs";
+} from "../src/internal/tools/context-budget-report.mjs";
 
-const ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
+const ROOT = path.resolve(import.meta.dirname, "..");
 
 function eachIndexingPatternLine(cb) {
   const text = fs.readFileSync(path.join(ROOT, ".cursorindexingignore"), "utf8");
@@ -37,7 +37,7 @@ test("classifyExclusiveTier separates handbook, active work, archival, durable J
   assert.equal(classifyExclusiveTier("src/internal/work_archive/172997_05-09-26/example/plan.md"), "archival_memory");
   assert.equal(classifyExclusiveTier("src/internal/packages/@tesseract/core/src/index.ts"), "source_code");
   assert.equal(
-    classifyExclusiveTier("src/internal/tests/compliance/schemas/latest.yaml"),
+    classifyExclusiveTier("tests/compliance/schemas/latest.yaml"),
     "source_code",
   );
 });
@@ -69,15 +69,15 @@ test("indexing policy excludes archival, full specs, and agent projections while
   assert.ok(isIndexingExcluded("src/work/active-run/plan.md", matchers));
   assert.ok(isIndexingExcluded("src/internal/work_archive/172997_05-09-26/run/plan.md", matchers));
   assert.ok(isIndexingExcluded("src/inbox/notes/private.md", matchers));
-  assert.ok(isIndexingExcluded("PRD.md", matchers));
-  assert.ok(isIndexingExcluded("BOOTSTRAP.md", matchers));
+  assert.ok(isIndexingExcluded("docs/PRD.md", matchers));
+  assert.ok(isIndexingExcluded("docs/BOOTSTRAP.md", matchers));
   assert.ok(!isIndexingExcluded("src/memory/active/README.md", matchers));
-  assert.ok(!isIndexingExcluded("PRD.summary.md", matchers));
-  assert.ok(!isIndexingExcluded("M1.index.md", matchers));
+  assert.ok(!isIndexingExcluded("docs/PRD.summary.md", matchers));
+  assert.ok(!isIndexingExcluded("docs/M1.index.md", matchers));
 });
 
 test("CLI exits zero with eight tiers and aggregate labels", () => {
-  const script = path.join(import.meta.dirname, "context-budget-report.mjs");
+  const script = path.join(ROOT, "src", "internal", "tools", "context-budget-report.mjs");
   const r = spawnSync(process.execPath, [script], { encoding: "utf8", cwd: ROOT });
   assert.equal(r.status, 0, r.stderr);
   const out = r.stdout;

@@ -28,7 +28,7 @@ references:
     contentHash: TBD-on-commit
     note: "Layer 1 style forbids weasel words and requires atomic language."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [839, 839]
     contentHash: TBD-on-commit
     note: "PRD contract discipline requires gates to be enforceable and explicit."

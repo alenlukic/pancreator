@@ -4,7 +4,7 @@
  * another primitive package except `core` and the current package.
  *
  * Carveout: `src/internal/packages/@tesseract/cli` and `src/internal/packages/@tesseract/mcp-server` are
- * workspace composers for `tess` (BOOTSTRAP.md Phase 3 steps 8 and 9). These
+ * workspace composers for `tess` (docs/BOOTSTRAP.md Phase 3 steps 8 and 9). These
  * packages MAY import any `@tesseract/*` package.
  */
 const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli", "mcp-server"]);

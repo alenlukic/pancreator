@@ -13,17 +13,17 @@ purpose: |
   `author-contract` skill.
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [260, 260]
     contentHash: cabf0e8d6d856ae0c4f0f7dd47c2af307914a2ff21ebb8970928ebaca7efd9ab
     note: "PRD §4 glossary — Spec Contract definition."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [839, 839]
     contentHash: 7a4bcdb4204669475079412aac07361a069d0d5c2365b2831d7be240b0d09499
     note: "PRD §7 — `Spec contracts are gates, not suggestions` paragraph."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [435, 435]
     contentHash: 429c1082eb901a94ddf9358f08b8ac63ce3d419af4b3da31bcc871a974f0f711
     note: "PRD §5.5 — conformance-target list (Conftest/Rego, Cedar, etc.)."
@@ -371,7 +371,7 @@ description: |
   package and the forbidden dependency.
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [434, 434]
     contentHash: 79e92d6a6e07045fea4e99afe1714620609d8172e95673e162496155fc76a0c0
     note: "PRD §5.5 — `no horizontal dependencies between primitives` rule."
@@ -405,7 +405,7 @@ description: |
   values, and run the first example in at most 5 commands.
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [438, 438]
     contentHash: dfce0a36c0d3252b61b7d73becc2f7f83429e1a982c2ea71c0610edc9fb69f00
     note: "PRD §5.5 — README discipline (5-line minimum example)."

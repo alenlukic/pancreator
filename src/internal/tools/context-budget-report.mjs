@@ -202,16 +202,17 @@ export function classifyExclusiveTier(rel) {
   if (internal) return "internal_operating";
 
   const prod =
-    r === "PRD.md" ||
-    r === "PRD.summary.md" ||
-    r === "PRD.index.md" ||
-    r === "BOOTSTRAP.md";
+    r === "docs/PRD.md" ||
+    r === "docs/PRD.summary.md" ||
+    r === "docs/PRD.index.md" ||
+    r === "docs/M1.index.md" ||
+    r === "docs/BOOTSTRAP.md";
   if (prod) return "product_context";
 
   const src =
     /^src\/internal\/packages(?:\/|$)/.test(r) ||
     /^src\/internal\/tools(?:\/|$)/.test(r) ||
-    /^src\/internal\/tests(?:\/|$)/.test(r);
+    /^tests(?:\/|$)/.test(r);
   if (src) return "source_code";
 
   return "other";
@@ -234,9 +235,9 @@ const TIER_META = /** @type {const} */ ({
   },
   product_context: {
     label: "6 product context",
-    dir: "`PRD.md`, `PRD.summary.md`, `PRD.index.md`, `BOOTSTRAP.md`",
+    dir: "`docs/PRD.md`, `docs/PRD.summary.md`, `docs/PRD.index.md`, `docs/M1.index.md`, `docs/BOOTSTRAP.md`",
   },
-  source_code: { label: "7 source code & tests", dir: "`src/internal/packages/**`, `src/internal/tools/**`, `src/internal/tests/**`" },
+  source_code: { label: "7 source code & tests", dir: "`src/internal/packages/**`, `src/internal/tools/**`, `tests/**`" },
   generated_machine: {
     label: "8 generated machine artifacts",
     dir: "JSON manifests, `.dry-run|.write|.post-write.json`, `src/memory/**`/index/report JSON, lockfile",

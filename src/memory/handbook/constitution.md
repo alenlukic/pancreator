@@ -11,12 +11,12 @@ purpose: |
   rules that apply across personas, skills, pipelines, and handbook contracts.
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [83, 89]
     contentHash: 6a838ec1879ea8c1c83dc5c4dd24618637ff3f7522043775cc123f3751b18f37
     note: "PRD goals G1-G7 define Tesseract's intended operating outcomes."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [378, 380]
     contentHash: 6a838ec1879ea8c1c83dc5c4dd24618637ff3f7522043775cc123f3751b18f37
     note: "PRD memory and inbox architecture define organizational operating surfaces."
@@ -37,7 +37,7 @@ references:
     note: "Handbook contract defines trigger conditions and decision record shape."
 related:
   - /AGENTS.md
-  - /PRD.md
+  - /docs/PRD.md
   - /src/memory/handbook/glossary.md
   - /src/memory/handbook/documentation-impact-contract.md
   - /src/memory/handbook/inbox-lifecycle.md
@@ -57,12 +57,12 @@ contracts.
 
 ## 2 - Authority model
 
-The constitution and `PRD.md` are peer authorities. They SHALL be read
+The constitution and `docs/PRD.md` are peer authorities. They SHALL be read
 together.
 
 When they conflict, operators SHALL temporarily follow this constitution and
 MUST open an ADR plus human ratification workflow to resolve the conflict. The
-resolution change set MUST update any affected policy surfaces (`PRD.md`,
+resolution change set MUST update any affected policy surfaces (`docs/PRD.md`,
 `AGENTS.md`, and impacted handbook pages).
 
 ## 3 - Foundational principles
@@ -101,7 +101,7 @@ At minimum, a constitutional change MUST include:
 1. A proposed ADR stating what changes and why.
 2. Human ratification before the new rule is treated as active.
 3. Policy-surface synchronization when affected (`AGENTS.md`, relevant
-   handbook files, and `PRD.md` where normative alignment is required).
+   handbook files, and `docs/PRD.md` where normative alignment is required).
 
 ## 6 - Documentation and reference stewardship
 

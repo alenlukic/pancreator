@@ -9,7 +9,7 @@ metadata:
     that the `chat-with-persona` ensemble will replace once M4 wiring lands.
   references:
     - kind: lines
-      path: PRD.md
+      path: docs/PRD.md
       range: [1, 80]
       contentHash: TBD-on-commit
       note: Cited for product context; pipeline structure derives from PRD §11.

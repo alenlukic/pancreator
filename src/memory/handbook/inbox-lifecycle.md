@@ -16,12 +16,12 @@ references:
     contentHash: aa84cf148c94698899c74f51be5255337290b1ef08e84aedf916b89f19e757fd
     note: "ADR-0003 decision defines the required lifecycle states and manual-versus-future automation boundary."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [267, 267]
     contentHash: e7226f12abc886237b6ac1510e8ce51f9aaaf0e24c11376107d50bd468359c59
     note: "PRD glossary defines Inbox as a bidirectional queue with in/out/thread locations."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [1037, 1037]
     contentHash: 1b196129be3b8ea9d2f52cee6ea204bcbcbb0d970f0de6810e4dd0b8ae627b1e
     note: "PRD CLI surface includes inbox management verbs."
@@ -36,7 +36,7 @@ references:
     contentHash: 84615919c53e378e2649c695bb306d0e08903a59e843af757757cfa1b54b7d3f
     note: "AGENTS workspace map defines `src/inbox/{in,out,threads}/`."
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [49, 53]
     contentHash: 214aec65730e2b02accc8be23f009a16d98509e930d3bff9bbc1389cd612a582
     note: "Bootstrap scaffold includes inbox directories in the required repository substrate."

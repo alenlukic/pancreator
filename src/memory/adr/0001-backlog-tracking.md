@@ -8,12 +8,12 @@ supersedes: null
 superseded-by: null
 references:
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [259, 259]
     contentHash: TBD-on-commit
     note: "PRD glossary defines backlog as `/src/memory/backlog/`, the live ranked roadmap."
   - kind: lines
-    path: PRD.md
+    path: docs/PRD.md
     range: [378, 378]
     contentHash: TBD-on-commit
     note: "PRD memory layer includes backlog and requires dual-anchor cross-references."
@@ -33,12 +33,12 @@ references:
     contentHash: TBD-on-commit
     note: "AGENTS workspace map allocates `/src/memory/backlog/` as the backlog memory tier."
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [51, 51]
     contentHash: TBD-on-commit
     note: "Bootstrap scaffolds `/src/memory/backlog/` as a required memory directory."
   - kind: lines
-    path: BOOTSTRAP.md
+    path: docs/BOOTSTRAP.md
     range: [264, 270]
     contentHash: TBD-on-commit
     note: "Bootstrap cross-cutting conventions require dual-anchor citations in artifacts."
