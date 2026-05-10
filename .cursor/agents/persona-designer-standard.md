@@ -1,6 +1,6 @@
 ---
-name: persona-designer
-description: "Backward-compatible standard alias for `persona-designer-standard`. Use for routine persona-designer work; invoke `persona-designer-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
+name: persona-designer-standard
+description: "Standard economical `persona-designer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
 model: auto
 permissionMode: default
 tools:
@@ -43,11 +43,11 @@ metadata:
     - layer-1-lint-clean
     - human-ratified-at-phase-boundary
   tesseract-base-persona: persona-designer
-  tesseract-model-tier: standard-alias
+  tesseract-model-tier: standard
   tesseract-canonical-persona: personas/persona-designer.md
 ---
 
-# persona-designer
+# persona-designer-standard
 
 This file is a compact Cursor projection for the canonical persona at
 `personas/persona-designer.md`. It intentionally avoids duplicating persona prose,

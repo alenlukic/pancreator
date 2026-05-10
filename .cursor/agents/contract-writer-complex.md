@@ -1,7 +1,7 @@
 ---
-name: contract-writer
-description: "Backward-compatible standard alias for `contract-writer-standard`. Use for routine contract-writer work; invoke `contract-writer-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: auto
+name: contract-writer-complex
+description: "Complex high-effort `contract-writer` subagent. Use only when standard mode is insufficient: ambiguous architecture, policy/compliance reasoning, broad repo audit, historical reconstruction, or high-risk cross-cutting work."
+model: claude-4.6-sonnet-medium-thinking
 permissionMode: default
 tools:
   - Read
@@ -24,7 +24,7 @@ skills:
 maxTurns: 120
 isolation: worktree
 memory: project
-effort: medium
+effort: high
 color: amber
 metadata:
   tesseract-risk-tier: medium
@@ -49,11 +49,11 @@ metadata:
     - dual-anchor-citations-on-every-external-standard
     - template-slots-filled-not-improvised
   tesseract-base-persona: contract-writer
-  tesseract-model-tier: standard-alias
+  tesseract-model-tier: complex
   tesseract-canonical-persona: personas/contract-writer.md
 ---
 
-# contract-writer
+# contract-writer-complex
 
 This file is a compact Cursor projection for the canonical persona at
 `personas/contract-writer.md`. It intentionally avoids duplicating persona prose,

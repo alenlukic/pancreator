@@ -8,8 +8,8 @@ owners: [persona-designer, librarian]
 purpose: |
   The Anthropic Claude Agent SDK 16-field YAML reference, the Tesseract
   metadata extension map, and the Cursor projection contract
-  (`.cursor/agents/<name>.md` mirror + `.cursor/rules/<name>.mdc` rule-layer
-  projection where required). The canonical reference for `persona-designer` and the
+  (`.cursor/agents/<name>.md` compact projection plus standard/complex variants
+  and `.cursor/rules/<name>.mdc` rule-layer projection where required). The canonical reference for `persona-designer` and the
   `author-persona` skill.
 references:
   - kind: lines
@@ -44,10 +44,11 @@ YAML conforming to the Anthropic Claude Agent SDK 16-field per-agent format
 plus a Tesseract `metadata` extension map. Body prose is RFC-2119-disciplined
 second-person.
 
-The target integration contract is a Cursor mirror under
-`.cursor/agents/<name>.md` from the same source persona. Where rule-layer
-loading still requires it, a `.cursor/rules/<name>.mdc` projection is also
-maintained. The persona file remains canonical.
+The target integration contract is a compact Cursor projection under
+`.cursor/agents/<name>.md` plus standard and complex variants from the same
+source persona. Where rule-layer loading still requires it, a
+`.cursor/rules/<name>.mdc` projection is also maintained. The persona file
+remains canonical.
 
 ## 1 — File anatomy
 
@@ -139,21 +140,31 @@ in `/memory/handbook/contract-style.md` Layer 1.
 
 ## 5 — Cursor integration projections
 
-The primary Cursor analogue of a persona spec is the mirror file
-`.cursor/agents/<name>.md`, projected from `personas/<name>.md`.
+The primary Cursor analogue of a persona spec is a compact projection family
+under `.cursor/agents/`, projected from `personas/<name>.md`.
 
 When rule-layer context loading requires a rule file, maintain a secondary
 projection at `.cursor/rules/<name>.mdc`.
 
-### 5.1 — `.cursor/agents` mirror (primary)
+### 5.1 — `.cursor/agents` compact projections (primary)
 
 Rules:
 
 - `personas/<name>.md` MUST remain canonical for authoring and review.
-- `.cursor/agents/<name>.md` SHOULD be emitted as a mirror projection of the
-  canonical persona without semantic drift.
-- Until emitter tooling is wired in this repo, maintainers MAY update the
-  mirror manually, but they MUST preserve canonical parity.
+- `.cursor/agents/<name>.md` MUST remain a backward-compatible standard alias
+  that uses `model: auto`.
+- `.cursor/agents/<name>-standard.md` MUST use `model: auto` for bounded and
+  routine work.
+- `.cursor/agents/<name>-complex.md` MUST preserve the prior fixed model for
+  reasoning-heavy work unless a human ratifies a model-policy change.
+- Cursor projection bodies SHOULD point to `personas/<name>.md` instead of
+  duplicating persona prose, PRD references, or handbook excerpts.
+- Until emitter tooling is wired in this repo, maintainers MAY update
+  projections manually, but they MUST preserve canonical persona semantics and
+  tier metadata.
+
+Subagent tier selection policy lives in
+`/memory/handbook/subagent-model-tiers.md`.
 
 ### 5.2 — `.mdc` rule-layer projection (where required)
 
@@ -303,9 +314,12 @@ The Phase 0c verification gate uses `persona-designer` to author
 2. The `description` is EARS and at most 50 words.
 3. The body's three required sections are present.
 4. Layer 1 lint passes by hand-checklist.
-5. The `.cursor/agents/tech-writer.md` mirror matches canonical persona
-   semantics, and any required `.cursor/rules/tech-writer.mdc` projection is
-   exactly five non-blank lines plus the body include.
+5. The `.cursor/agents/tech-writer.md`,
+   `.cursor/agents/tech-writer-standard.md`, and
+   `.cursor/agents/tech-writer-complex.md` projections match canonical persona
+   semantics without duplicating the canonical body, and any required
+   `.cursor/rules/tech-writer.mdc` projection is exactly five non-blank lines
+   plus the body include.
 
 A clean round-trip discharges BR1 (persona format drift) before Phase 1
 multiplies the error.

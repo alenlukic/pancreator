@@ -40,6 +40,8 @@ related:
   - /memory/handbook/persona-colors.md
   - /memory/handbook/context-economy.md
   - /memory/handbook/memory-tiers.md
+  - /memory/handbook/subagent-model-tiers.md
+  - /memory/handbook/context-cost-audit.md
 ---
 
 # Handbook Routing Index
@@ -69,7 +71,9 @@ lands, operators SHOULD apply this table manually.
 | Choose persona color assignments | `/memory/handbook/persona-colors.md` | `/memory/handbook/persona-spec.md` | Persona-colors is the canonical palette table; persona-spec provides field-level context. |
 | Active-memory pointers and current coordination | `/memory/active/current.md` | `/memory/handbook/context-economy.md`, `/memory/handbook/memory-tiers.md` | Active-memory holds summaries only; durable and archival artifacts stay on their own tiers. |
 | Memory-tier taxonomy and default retrieval classes | `/memory/handbook/memory-tiers.md` | `/memory/handbook/context-economy.md`, `/memory/handbook/glossary.md` | Defines **active-memory**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
-| Reduce default AI context load and decide what to index versus explicit-read | `/memory/handbook/context-economy.md` | `/memory/handbook/index.md`, `/memory/active/current.md`, `/memory/handbook/memory-tiers.md`, `/PRD.summary.md`, `/PRD.index.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, PRD summary-first discipline, and operator verification expectations. |
+| Reduce default AI context load and decide what to index versus explicit-read | `/memory/handbook/context-economy.md` | `/memory/handbook/index.md`, `/memory/active/current.md`, `/memory/handbook/memory-tiers.md`, `/memory/handbook/context-cost-audit.md`, `/PRD.summary.md`, `/PRD.index.md`, `/M1.index.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, PRD/M1 summary-first discipline, and operator verification expectations. |
+| Choose standard versus complex Cursor subagents | `/memory/handbook/subagent-model-tiers.md` | `/memory/handbook/context-economy.md`, `/AGENTS.md` | Use standard variants by default; escalate to complex only for documented triggers. |
+| Audit likely token cost sinks | `/memory/handbook/context-cost-audit.md` | `/memory/handbook/context-economy.md`, `/memory/handbook/subagent-model-tiers.md`, `/M1.index.md` | Records current cost sinks and practical controls. |
 
 ## Retrieval discipline
 

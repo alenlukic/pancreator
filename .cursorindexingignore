@@ -5,7 +5,13 @@
 # Historical/generated agent artifacts
 work/**
 inbox/out/**
+inbox/archive/**
 inbox/threads/**
+inbox/notes/**
+
+# Full high-volume specs; use compact route docs first
+PRD.md
+BOOTSTRAP.md
 
 # Generated manifests / bulky machine outputs
 **/migration-manifest*.json

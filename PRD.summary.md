@@ -31,7 +31,14 @@ pipeline YAML and `tess` runtime are still future work; operators follow
 
 ## Where to go next
 
+- M1/bootstrap routing: `M1.index.md`
 - Section map and deep topics: `PRD.index.md`
-- Full normative spec: `PRD.md`
-- Phase plan: `BOOTSTRAP.md`
+- Full normative spec: `PRD.md` only for exact requirements or citations
+- Phase plan: `BOOTSTRAP.md` only when `M1.index.md` is insufficient
 - Context and indexing policy: `memory/handbook/context-economy.md`
+
+## Token-economy rule
+
+For M1 work, agents SHOULD read `M1.index.md` before full `BOOTSTRAP.md` or
+`PRD.md`. Full-source reads require a task-specific reason: scope change, exact
+wording, or dual-anchor citation repair.

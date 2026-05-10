@@ -27,7 +27,7 @@ disallowedTools:
 mcpServers:
   - tesseract-memory
   - tesseract-intervention
-maxTurns: 60                                   # raised from 30: supervisor dispatches one Task per stage across a 7-stage DAG plus interventions per PRD §7 lines 633-696
+maxTurns: 60
 skills:
   - blameless-postmortem
 isolation: worktree

@@ -8,10 +8,11 @@
 
 Tesseract is a simulated product-org agentic Delivery Pipeline (personas,
 skills, pipelines, contracts). The repo is in **bootstrap**; see `BOOTSTRAP.md`.
-Product requirements live in `PRD.md`. Routine tasks SHOULD read
-`PRD.summary.md` first; agents SHOULD read full `PRD.md` only when the task
-needs product-spec depth, citation repair, or line-anchored requirements per
-`PRD.index.md` and `memory/handbook/context-economy.md`.
+Product requirements live in `PRD.md`, but routine work SHOULD route through
+`PRD.summary.md`, `PRD.index.md`, and `M1.index.md` first. Agents SHOULD read
+full `PRD.md` or `BOOTSTRAP.md` only when the task needs authoritative wording,
+phase-exit detail, citation repair, or line-anchored requirements per
+`memory/handbook/context-economy.md`.
 
 ## 2 — Routing map (canon and contracts)
 
@@ -26,6 +27,9 @@ language → `memory/handbook/glossary.md`; persona YAML and Cursor projection �
 | Default AI context, indexing boundaries, explicit-read rules | `memory/handbook/context-economy.md` |
 | Memory-tier taxonomy and tier rules | `memory/handbook/memory-tiers.md` |
 | `simple task mode` | `memory/handbook/context-economy.md` |
+| M1/bootstrap routing before full PRD/BOOTSTRAP reads | `M1.index.md` |
+| Subagent standard/complex model tiers | `memory/handbook/subagent-model-tiers.md` |
+| Current context cost audit | `memory/handbook/context-cost-audit.md` |
 | Model and context escalation | `memory/handbook/context-economy.md` |
 | Active-memory orientation | `memory/active/current.md` |
 | Active-memory layout | `memory/active/README.md` |
@@ -38,12 +42,13 @@ language → `memory/handbook/glossary.md`; persona YAML and Cursor projection �
 | Contract templates | `memory/handbook/contract-templates/` |
 | Compact PRD orientation | `PRD.summary.md` |
 | PRD section triggers | `PRD.index.md` |
-| Phase gate human reviewer | `BOOTSTRAP.md`, `PRD.md` |
+| Full-source phase/spec authority | `BOOTSTRAP.md`, `PRD.md` |
 
 ## 3 — Where agents live
 
 - `personas/<name>.md` — Anthropic 16-field persona specs.
-- `.cursor/agents/<name>.md` — Cursor mirrors of persona specs.
+- `.cursor/agents/<name>.md` — backward-compatible standard Cursor projection.
+- `.cursor/agents/<name>-standard.md` and `<name>-complex.md` — economical and escalated Cursor variants.
 - `.cursor/rules/<name>.mdc` — Rule-layer projection where Cursor still
   requires it; persona files remain canonical.
 - `skills/<name>/SKILL.md` — Agent Skills open-spec packs.
@@ -52,7 +57,7 @@ language → `memory/handbook/glossary.md`; persona YAML and Cursor projection �
   runtime wiring lands).
 
 Bootstrap seeds: `personas/persona-designer.md`, `personas/contract-writer.md`.
-Phase-1 MVP roster, Cursor mirrors, rule shims, and MVP skills are present.
+Phase-1 MVP roster, compact Cursor projections, rule shims, and MVP skills are present.
 Both meta-personas are self-protected: no agent and no persona SHALL modify role
 semantics, authority boundaries, tool grants, or safety constraints unless
 explicit human ratification is recorded. Deterministic maintenance-only updates
@@ -63,16 +68,22 @@ documentation-impact obligations are satisfied.
 ## 4 — Pipeline-step delegation rule
 
 When work maps to a persona’s `metadata.tesseract-pipeline-stages`, you SHALL
-delegate to that persona rather than perform it directly.
+delegate to that persona rather than perform it directly unless `simple task
+mode` forbids delegation.
 
-1. **Native subagent invocation.** When the runtime exposes the persona as a
-   subagent type, invoke it via the task tool with the persona name. Cursor:
-   `.cursor/agents/<name>.md` (plus `.mdc` projection where rule loading still
-   requires it). Claude Code: `Task(subagent_type="<name>")`. Other harnesses:
-   their equivalent.
+1. **Native subagent invocation.** Cursor exposes standard and complex variants:
+   `.cursor/agents/<name>-standard.md` uses `model: auto`;
+   `.cursor/agents/<name>-complex.md` preserves the prior fixed model for that
+   persona; `.cursor/agents/<name>.md` is a backward-compatible standard alias.
+   Use standard by default. Use complex only for the escalation triggers in
+   `memory/handbook/subagent-model-tiers.md`. Claude Code and other harnesses
+   SHALL use their equivalent tiering when available.
 2. **Persona-as-prompt fallback.** When no native invocation exists, start a
    generalPurpose subagent, prepend the persona file contents to its system
-   prompt, and name the persona in the first message.
+   prompt, and name the persona plus intended tier in the first message.
+3. **Cost discipline.** Subagents isolate parent context; they do not guarantee
+   lower total tokens. Avoid fan-out when multiple subagents would reload the
+   same PRD, handbook, or archival context.
 
 When no persona owns the work (for example bootstrap-only handbook authoring or
 configuration scaffolding), perform it directly and cite this section in your
@@ -119,9 +130,10 @@ response.
 
 ## 6 — What to do next
 
-1. Read `BOOTSTRAP.md` for phase plan and exit criteria. When the task is not a
-   phase boundary, agents SHOULD skim `PRD.summary.md` before loading full
-   `PRD.md`.
+1. Read `memory/active/current.md` for current pointers unless `simple task
+   mode` applies. For M1/bootstrap routing, read `M1.index.md` before full
+   `BOOTSTRAP.md`. Agents SHOULD skim `PRD.summary.md` and `PRD.index.md`
+   before loading full `PRD.md`.
 2. Check `/inbox/in/` for directives (canonical queue every phase boundary).
 3. Check `/inbox/out/` for staged delivery reports.
 4. Do NOT read `/inbox/notes/`; it remains human-only per
@@ -147,13 +159,13 @@ response.
 /AGENTS.md                       this file
 /CLAUDE.md                       symlink → AGENTS.md
 /.github/copilot-instructions.md symlink → ../AGENTS.md
-/.cursor/agents/                 Cursor-native persona mirrors
+/.cursor/agents/                 Cursor-native compact projections and standard/complex variants
 /.cursor/rules/                  Cursor rule shims (00-agents-md.mdc + per-persona where required)
 /personas/                       persona specs (Anthropic 16-field)
 /skills/                         skill packs (Agent Skills open spec)
 /pipelines/                      pipeline DAGs (YAML; M1+)
 /ensembles/                      ensemble configurations (M4+)
-/memory/handbook/                canonical reference: glossary, persona-spec, contract-format, contract-style, templates
+/memory/handbook/                canonical reference: glossary, persona-spec, context economy, subagent tiers
 /memory/active/                  active-memory tier (orientation and layout)
 /memory/adr/                     architecture decision records (Nygard format)
 /memory/rfc/{draft,accepted,rejected}/
@@ -171,6 +183,7 @@ response.
 /work/<task-id>/                 ephemeral pipeline workspace
 /.tess/{worktrees,sandboxes,scheduler}/  control-plane state
 /PRD.md                          product spec
+/M1.index.md                      compact M1/bootstrap route map
 /BOOTSTRAP.md                    phase-by-phase bootstrap plan
 /tesseract.yaml                  org-level threshold policy (M2+)
 /tesseract-defaults.yaml         risk-tier defaults (M2+)

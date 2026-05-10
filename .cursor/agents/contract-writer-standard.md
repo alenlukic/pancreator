@@ -1,6 +1,6 @@
 ---
-name: contract-writer
-description: "Backward-compatible standard alias for `contract-writer-standard`. Use for routine contract-writer work; invoke `contract-writer-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
+name: contract-writer-standard
+description: "Standard economical `contract-writer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
 model: auto
 permissionMode: default
 tools:
@@ -49,11 +49,11 @@ metadata:
     - dual-anchor-citations-on-every-external-standard
     - template-slots-filled-not-improvised
   tesseract-base-persona: contract-writer
-  tesseract-model-tier: standard-alias
+  tesseract-model-tier: standard
   tesseract-canonical-persona: personas/contract-writer.md
 ---
 
-# contract-writer
+# contract-writer-standard
 
 This file is a compact Cursor projection for the canonical persona at
 `personas/contract-writer.md`. It intentionally avoids duplicating persona prose,
