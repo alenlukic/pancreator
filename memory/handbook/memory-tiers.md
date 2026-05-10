@@ -6,7 +6,7 @@ bootstrap-only: false
 phase: bootstrap
 owners: [tech-lead, supervisor]
 purpose: |
-  Canonical five-tier taxonomy for classifying repository knowledge by default
+  Canonical six-tier taxonomy for classifying repository knowledge by default
   retrieval cost, durability, and operator-facing intent.
 references:
   - kind: lines
@@ -27,7 +27,7 @@ related:
 
 # Memory tiers for Cursor context economy
 
-This page defines the five memory tiers agents use when they classify default
+This page defines the six context tiers agents use when they classify default
 versus explicit-read context. The Feature cites this taxonomy at
 `{kind: lines, path: memory/features/active-memory-context-economy-pass-2/spec.md, range: [212, 312], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`.
 
@@ -56,6 +56,20 @@ reachable by explicit read.
 When an operator expires stale active-memory prose, the operator SHALL delete
 or replace summaries so `memory/active/**` does not become an archival mirror.
 
+
+## Active work
+
+When an agent names **active-work**, the agent SHALL treat `work/**` as the
+short-lived active run workspace, not as long-term memory.
+
+When a run is active, blocked, or awaiting human ratification, the run SHALL
+stay under `work/<day>/<task-id>/` and SHALL remain explicit-read only by
+default.
+
+When a run completes, the `librarian` SHALL move the run to
+`internal/work_archive/<day>/<task-id>/` during maintenance, update references,
+and leave only a small pointer in `memory/active/runs.md` when useful.
+
 ## Durable memory
 
 When an agent names **durable-memory**, the agent SHALL treat the tier as
@@ -77,7 +91,7 @@ unless the task requires them.
 When an agent names **archival-memory**, the agent SHALL treat the tier as
 historical execution artifacts and completed conversational material.
 
-Expected path prefixes include `work/`, `inbox/out/`, `inbox/archive/`, and `inbox/threads/`.
+Expected path prefixes include `internal/work_archive/`, `inbox/out/`, `inbox/archive/`, and `inbox/threads/`.
 
 When an agent loads archival memory by default, the agent SHALL treat archival
 memory as explicit-read only. `inbox/notes/` is not archival memory; it is a
@@ -96,7 +110,8 @@ When an agent names **internal-operating-content**, the agent SHALL treat the
 tier as system machinery and operating doctrine distinct from **active-memory**.
 
 Expected path prefixes include `memory/handbook/`, `personas/`, `skills/`,
-`.cursor/rules/`, and `.cursor/agents/`. Cursor agent projections SHALL stay
+`.cursor/rules/`, `.cursor/agents/`, and the implementation corpus under
+`internal/packages/`, `internal/tests/`, and `internal/tools/`. Cursor agent projections SHALL stay
 compact and route to canonical personas rather than duplicate persona bodies.
 
 When an agent retrieves internal operating content, the agent SHALL load only

@@ -71,19 +71,19 @@
     "canonical_compliance_surface": {
       "schemas": {
         "latest": {
-          "path": "tests/compliance/schemas/latest.yaml",
+          "path": "internal/tests/compliance/schemas/latest.yaml",
           "citation": {
             "kind": "lines",
-            "path": "tests/compliance/schemas/latest.yaml",
+            "path": "internal/tests/compliance/schemas/latest.yaml",
             "range": [1, 63],
             "contentHash": "8bbb8a715d1badc1f8c67a19cd7ddbeccef406c735e6547c77478ca513b1e7e1"
           }
         },
         "v1": {
-          "path": "tests/compliance/schemas/v1.yaml",
+          "path": "internal/tests/compliance/schemas/v1.yaml",
           "citation": {
             "kind": "lines",
-            "path": "tests/compliance/schemas/v1.yaml",
+            "path": "internal/tests/compliance/schemas/v1.yaml",
             "range": [1, 63],
             "contentHash": "1f05abc2b45479d21a4b53a493bee1677cc7b49dc97b13909ab7cbc0221b343a"
           }
@@ -91,28 +91,28 @@
       },
       "seed_tests": {
         "high_remediation_blocking": {
-          "path": "tests/compliance/high-remediation-blocking.yaml",
+          "path": "internal/tests/compliance/high-remediation-blocking.yaml",
           "citation": {
             "kind": "lines",
-            "path": "tests/compliance/high-remediation-blocking.yaml",
+            "path": "internal/tests/compliance/high-remediation-blocking.yaml",
             "range": [1, 14],
             "contentHash": "b7fc8bb86974ed15d5594362330eab2acc69e7b929c0c50ff07cdea07862c90b"
           }
         },
         "medium_backlog_default_off": {
-          "path": "tests/compliance/medium-backlog-default-off.yaml",
+          "path": "internal/tests/compliance/medium-backlog-default-off.yaml",
           "citation": {
             "kind": "lines",
-            "path": "tests/compliance/medium-backlog-default-off.yaml",
+            "path": "internal/tests/compliance/medium-backlog-default-off.yaml",
             "range": [1, 14],
             "contentHash": "27d0103dbe89d9c4d87bdf02d302113bd368f7c80db9976cc01021ca76eaf42e"
           }
         },
         "low_warning_emission": {
-          "path": "tests/compliance/low-warning-emission.yaml",
+          "path": "internal/tests/compliance/low-warning-emission.yaml",
           "citation": {
             "kind": "lines",
-            "path": "tests/compliance/low-warning-emission.yaml",
+            "path": "internal/tests/compliance/low-warning-emission.yaml",
             "range": [1, 14],
             "contentHash": "d6a60287c765aa2e94918e0baee7ec3830eab25fc82cbd93d685c58300072a52"
           }
@@ -121,73 +121,73 @@
     },
     "pipeline_artifacts": {
       "plan": {
-        "path": "work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+        "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+          "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/plan.md",
           "range": [1, 94],
           "contentHash": "7386e384cb994d453f2c779ec375bc0d5fa6de6837c9f9352b474fa9ef74ff78"
         }
       },
       "adr_draft": {
-        "path": "work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+        "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+          "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
           "range": [1, 92],
           "contentHash": "e97e7b585cae50200f7b897807616650b1a0eaaa0ef71d9dc0861707141232ec"
         }
       },
       "touch_set": {
-        "path": "work/173009_04-27-26/68576_0457_compliance-tests/touch-set.json",
+        "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/173009_04-27-26/68576_0457_compliance-tests/touch-set.json",
+          "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/touch-set.json",
           "range": [1, 48],
           "contentHash": "500cd9b9d0dea4585e22a80639a743df013db4e81d70824a355593b00fc768ee"
         }
       },
       "test_report": {
-        "path": "work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+        "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+          "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
           "range": [1, 35],
           "contentHash": "503899789cc67b8397305975677890b9d30b609c499facc6698e8d1ce40e7350"
         }
       },
       "review": {
-        "path": "work/173009_04-27-26/68576_0457_compliance-tests/review.md",
+        "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/173009_04-27-26/68576_0457_compliance-tests/review.md",
+          "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/review.md",
           "range": [1, 92],
           "contentHash": "21a91b4482eed3024a2621b9536d3796e88e47b25b5a8f1a34d295e40a8e52f3"
         }
       },
       "compliance_audit": {
-        "path": "work/173009_04-27-26/68576_0457_compliance-tests/compliance-audit.md",
+        "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/compliance-audit.md",
         "citation": {
           "kind": "lines",
-          "path": "work/173009_04-27-26/68576_0457_compliance-tests/compliance-audit.md",
+          "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/compliance-audit.md",
           "range": [1, 179],
           "contentHash": "ad5565fbe55e271771b03dfd159a2e0564c268c9a8a5185e6cab73c88d58dce6"
         }
       },
       "compliance_remediation": {
-        "path": "work/173009_04-27-26/68576_0457_compliance-tests/compliance-remediation.md",
+        "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/compliance-remediation.md",
         "citation": {
           "kind": "lines",
-          "path": "work/173009_04-27-26/68576_0457_compliance-tests/compliance-remediation.md",
+          "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/compliance-remediation.md",
           "range": [1, 36],
           "contentHash": "563288b5ffc08f7ae686d1039f58ec867c61d24f0c0661a7d802e0f5116c9455"
         }
       },
       "policy_compliance": {
-        "path": "work/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
+        "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
+          "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/policy-compliance.json",
           "range": [1, 39],
           "contentHash": "155e78c533ba220cd0d0110b7a183ebafc55cec614d146739e3ed9515611a7ca"
         }

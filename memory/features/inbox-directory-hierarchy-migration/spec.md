@@ -153,7 +153,7 @@ This Feature picks up the deferred organizational philosophy that the prior
 
 - When the Feature ships migration logic, the Feature MUST stage that
   logic under `tools/` as either an extension to
-  `tools/migrate-timestamp-naming.mjs` or a sibling
+  `internal/tools/migrate-timestamp-naming.mjs` or a sibling
   `tools/migrate-inbox-directory-hierarchy.mjs` per the round-1 dialogue
   resolution under `## Open questions` Q3.
 - When the Feature ships migration logic, the migration tool MUST
@@ -168,7 +168,7 @@ This Feature picks up the deferred organizational philosophy that the prior
 ### Compliance and contracts
 
 - When the Feature encodes the directory-hierarchy policy, the Feature
-  MUST land a compliance descriptor under `tests/compliance/` that
+  MUST land a compliance descriptor under `internal/tests/compliance/` that
   asserts directory-hierarchy conformance after a `structure-change` or
   `operator-on-demand` trigger.
 - When the Feature encodes the policy, the Feature MUST author or extend
@@ -243,12 +243,12 @@ to one open question below.
   remains intact. Tied to Q2.
 - A3. The Feature ships migration logic as a new
   `tools/migrate-inbox-directory-hierarchy.mjs` rather than extending
-  `tools/migrate-timestamp-naming.mjs` so the new tool can encode the
+  `internal/tools/migrate-timestamp-naming.mjs` so the new tool can encode the
   hierarchy precedence cleanly without complicating the prior tool's
   contract. Tied to Q3.
 - A4. The Feature lands a sibling compliance descriptor at
-  `tests/compliance/inbox-directory-hierarchy.yaml` rather than amending
-  `tests/compliance/timestamp-naming-conventions.yaml` so the prior
+  `internal/tests/compliance/inbox-directory-hierarchy.yaml` rather than amending
+  `internal/tests/compliance/timestamp-naming-conventions.yaml` so the prior
   descriptor's surface remains stable. Tied to Q4.
 - A5. The Feature authors one new ADR `0006-inbox-directory-hierarchy.md`
   that extends ADR-0005 by reference. Tied to Q5.
@@ -272,11 +272,11 @@ round-1 thread message lives at
 - Q2. Threads layout: day-bucket inside the feature folder (A2),
   feature-folder inside the day bucket, or feature-folder remains flat at
   threads top-level with no day buckets at all?
-- Q3. Migration tool: extend `tools/migrate-timestamp-naming.mjs` or ship
+- Q3. Migration tool: extend `internal/tools/migrate-timestamp-naming.mjs` or ship
   a sibling `tools/migrate-inbox-directory-hierarchy.mjs` (A3)?
 - Q4. Compliance descriptor: extend
-  `tests/compliance/timestamp-naming-conventions.yaml` or land a sibling
-  `tests/compliance/inbox-directory-hierarchy.yaml` (A4)?
+  `internal/tests/compliance/timestamp-naming-conventions.yaml` or land a sibling
+  `internal/tests/compliance/inbox-directory-hierarchy.yaml` (A4)?
 - Q5. ADR shape: new ADR `0006-inbox-directory-hierarchy.md` extending
   ADR-0005 (A5), or amend ADR-0005 in place?
 - Q6. Migration ordering: one atomic migration manifest covering

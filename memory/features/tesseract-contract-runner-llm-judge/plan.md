@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/contract-runner-llm-judge
 
 ## Touch Set
-- `packages/@tesseract/contract-runner-llm-judge/**`
+- `internal/packages/@tesseract/contract-runner-llm-judge/**`
 - `memory/features/tesseract-contract-runner-llm-judge/contracts/**`
 - `memory/features/tesseract-contract-runner-llm-judge/spec.md`
 - `memory/features/tesseract-contract-runner-llm-judge/plan.md`

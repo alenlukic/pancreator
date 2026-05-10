@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/notifier`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.notifier.package_shape` for `packages/@tesseract/notifier/**`.
+- The package implementation MUST satisfy contract `tesseract.notifier.package_shape` for `internal/packages/@tesseract/notifier/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.notifier.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 10 of 20.
 

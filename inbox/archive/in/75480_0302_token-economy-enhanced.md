@@ -22,7 +22,7 @@ references:
     path: memory/handbook/context-economy.md
     note: Existing context-economy policy from pass 1.
   - kind: path
-    path: tools/context-budget-report.mjs
+    path: internal/tools/context-budget-report.mjs
     note: Existing rough corpus-size reporting tool.
   - kind: path
     path: work/
@@ -61,7 +61,7 @@ This creates both token-economy problems and operator-clarity problems.
 
 ## Problem
 
-The repo currently has useful context controls, including `.cursorindexingignore`, `PRD.summary.md`, `PRD.index.md`, `memory/handbook/context-economy.md`, and `tools/context-budget-report.mjs`.
+The repo currently has useful context controls, including `.cursorindexingignore`, `PRD.summary.md`, `PRD.index.md`, `memory/handbook/context-economy.md`, and `internal/tools/context-budget-report.mjs`.
 
 However, the underlying memory model is still too implicit.
 
@@ -402,7 +402,7 @@ Emit or update a rule-audit artifact for this pass.
 
 ### 9. Expand context-budget reporting by tier
 
-Update `tools/context-budget-report.mjs` so it reports approximate footprint by memory tier.
+Update `internal/tools/context-budget-report.mjs` so it reports approximate footprint by memory tier.
 
 Minimum required groups:
 
@@ -494,7 +494,7 @@ This task is complete when all of the following are true:
 11. `AGENTS.md` is slimmed further if safe, or the decision not to slim it further is documented.
 12. `.cursor/rules/*.mdc` have been audited for remaining broad triggers.
 13. `tesseract-engineer` no longer broadly activates persona/handbook context unless justified.
-14. `tools/context-budget-report.mjs` reports approximate footprint by tier.
+14. `internal/tools/context-budget-report.mjs` reports approximate footprint by tier.
 15. Context-budget tests are updated or added.
 16. `.cursorindexingignore` aligns with the new tier model.
 17. No historical artifacts are deleted.

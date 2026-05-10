@@ -4,7 +4,7 @@
   "title": "Timestamp naming conventions",
   "current_stage": "delivered",
   "pipeline_state": "delivery_complete",
-  "pipeline_state_note": "The migration-write task applied the ADR 0005 rename and reference-update manifest at work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/. Stock --write failed after renames when reference updates targeted legacy paths; a one-off post-rename reference apply completed the manifest. Post-write dry-run still plans 17 inbox-file renames (idempotency gap: semantic stem includes prior sid_hm tokens).",
+  "pipeline_state_note": "The migration-write task applied the ADR 0005 rename and reference-update manifest at internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/. Stock --write failed after renames when reference updates targeted legacy paths; a one-off post-rename reference apply completed the manifest. Post-write dry-run still plans 17 inbox-file renames (idempotency gap: semantic stem includes prior sid_hm tokens).",
   "last_commit": "d472d02",
   "intake": {
     "round": 1,
@@ -87,10 +87,10 @@
       }
     },
     "plan": {
-      "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+      "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
       "citation": {
         "kind": "lines",
-        "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+        "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
         "range": [
           1,
           35
@@ -99,10 +99,10 @@
       }
     },
     "adr_draft": {
-      "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
+      "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
       "citation": {
         "kind": "lines",
-        "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
+        "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
         "range": [
           1,
           40
@@ -111,10 +111,10 @@
       }
     },
     "touch_set": {
-      "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
+      "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
       "citation": {
         "kind": "lines",
-        "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
+        "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
         "range": [
           1,
           130
@@ -159,10 +159,10 @@
       }
     },
     "compliance_descriptor": {
-      "path": "tests/compliance/timestamp-naming-conventions.yaml",
+      "path": "internal/tests/compliance/timestamp-naming-conventions.yaml",
       "citation": {
         "kind": "lines",
-        "path": "tests/compliance/timestamp-naming-conventions.yaml",
+        "path": "internal/tests/compliance/timestamp-naming-conventions.yaml",
         "range": [
           1,
           17
@@ -171,10 +171,10 @@
       }
     },
     "migration_script": {
-      "path": "tools/migrate-timestamp-naming.mjs",
+      "path": "internal/tools/migrate-timestamp-naming.mjs",
       "citation": {
         "kind": "lines",
-        "path": "tools/migrate-timestamp-naming.mjs",
+        "path": "internal/tools/migrate-timestamp-naming.mjs",
         "range": [
           1,
           943
@@ -183,10 +183,10 @@
       }
     },
     "migration_tests": {
-      "path": "tools/migrate-timestamp-naming.test.mjs",
+      "path": "internal/tools/migrate-timestamp-naming.test.mjs",
       "citation": {
         "kind": "lines",
-        "path": "tools/migrate-timestamp-naming.test.mjs",
+        "path": "internal/tools/migrate-timestamp-naming.test.mjs",
         "range": [
           1,
           196
@@ -195,10 +195,10 @@
       }
     },
     "dry_run_manifest": {
-      "path": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "path": "internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
       "citation": {
         "kind": "lines",
-        "path": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+        "path": "internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
         "range": [
           1,
           1
@@ -207,10 +207,10 @@
       }
     },
     "review_report": {
-      "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+      "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
       "citation": {
         "kind": "lines",
-        "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+        "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
         "range": [
           1,
           229
@@ -231,10 +231,10 @@
       }
     },
     "pr_draft": {
-      "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
+      "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
       "citation": {
         "kind": "lines",
-        "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
+        "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
         "range": [
           1,
           86
@@ -243,10 +243,10 @@
       }
     },
     "run_log": {
-      "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
+      "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
       "citation": {
         "kind": "lines",
-        "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
+        "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
         "range": [
           1,
           4
@@ -311,7 +311,7 @@
       "status": "completed",
       "citation": {
         "kind": "lines",
-        "path": "work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+        "path": "internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
         "range": [
           1,
           1
@@ -379,7 +379,7 @@
         "requirement": "When the coder encodes timestamp naming policy, the contract MUST verify that the compliance descriptor gates the in-scope work and inbox naming rules.",
         "appliesTo": {
           "kind": "file-path",
-          "glob": "tests/compliance/timestamp-naming-conventions.yaml"
+          "glob": "internal/tests/compliance/timestamp-naming-conventions.yaml"
         },
         "references": [
           {
@@ -393,7 +393,7 @@
           },
           {
             "kind": "lines",
-            "path": "tests/compliance/schemas/latest.yaml",
+            "path": "internal/tests/compliance/schemas/latest.yaml",
             "range": [
               1,
               63
@@ -410,7 +410,7 @@
         "requirement": "When the migration derives a timestamp, the contract MUST verify the source order git commit timestamp, frontmatter created_at, filesystem mtime, then operator override.",
         "appliesTo": {
           "kind": "file-path",
-          "glob": "tools/migrate-timestamp-naming.mjs"
+          "glob": "internal/tools/migrate-timestamp-naming.mjs"
         },
         "references": [
           {
@@ -424,7 +424,7 @@
           },
           {
             "kind": "lines",
-            "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+            "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
             "range": [
               17,
               17
@@ -471,7 +471,7 @@
   },
   "ship": {
     "pr_draft": {
-      "path": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
+      "path": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
       "title": "[bootstrap-phase-4] timestamp naming conventions: encode policy + tooling (write deferred)",
       "branch": "bootstrap",
       "head_commit": "ff57fb856e752d61f1b0457eab014cf3c39b798b",
@@ -484,7 +484,7 @@
       ]
     },
     "staged_inbox_out": "inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
-    "run_log": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
+    "run_log": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
     "verification_replay": {
       "command": "pnpm run check:phase0a",
       "result": "pass",
@@ -514,7 +514,7 @@
   },
   "review": {
     "verdict": "pass-with-conditions",
-    "report": "work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+    "report": "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
     "implement_commit": "7d7b62a1cbf1903def541c968dffacfd2c8744a5",
     "block_findings": 0,
     "warn_findings": 2,

@@ -46,14 +46,14 @@ the intake-analyst contract.
   `inbox/threads/{days-to-FDS}_{MM-DD-YY}/<feature-slug>/`; or (c)
   feature-folder remains flat at the threads top level with no day buckets.
   Assumption A2 picks option (a).
-- Q3. Migration tool surface. Extend `tools/migrate-timestamp-naming.mjs`
+- Q3. Migration tool surface. Extend `internal/tools/migrate-timestamp-naming.mjs`
   with hierarchy logic, or ship a sibling
   `tools/migrate-inbox-directory-hierarchy.mjs`? Assumption A3 picks the
   sibling tool.
 - Q4. Compliance descriptor surface. Extend
-  `tests/compliance/timestamp-naming-conventions.yaml` with hierarchy
+  `internal/tests/compliance/timestamp-naming-conventions.yaml` with hierarchy
   clauses, or land a sibling
-  `tests/compliance/inbox-directory-hierarchy.yaml`? Assumption A4 picks
+  `internal/tests/compliance/inbox-directory-hierarchy.yaml`? Assumption A4 picks
   the sibling descriptor.
 - Q5. ADR shape. New ADR `memory/adr/0006-inbox-directory-hierarchy.md`
   extending ADR-0005 by reference, or amend ADR-0005 in place? Assumption

@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/persona`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.persona.package_shape` for `packages/@tesseract/persona/**`.
+- The package implementation MUST satisfy contract `tesseract.persona.package_shape` for `internal/packages/@tesseract/persona/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.persona.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 11 of 20.
 

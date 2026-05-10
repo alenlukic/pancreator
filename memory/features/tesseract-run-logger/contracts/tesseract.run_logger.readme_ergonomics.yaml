@@ -3,12 +3,12 @@ kind: llm-judge
 severity: block
 applies_to:
   kind: artifact-symbol
-  path: packages/@tesseract/run-logger/README.md
+  path: internal/packages/@tesseract/run-logger/README.md
   symbol: "# Quickstart"
   contentHash: TBD-on-commit
 owner: contract-writer
 description: |
-  When `README.md` under `packages/@tesseract/run-logger` is evaluated for MVP library-mode onboarding, the judge panel SHALL return a mean score of at least 0.75 for command clarity and first-run completeness within 5 commands.
+  When `README.md` under `internal/packages/@tesseract/run-logger` is evaluated for MVP library-mode onboarding, the judge panel SHALL return a mean score of at least 0.75 for command clarity and first-run completeness within 5 commands.
 references:
   - kind: lines
     path: BOOTSTRAP.md
@@ -44,4 +44,4 @@ runtime:
     cost_ceiling_usd: 0.50
 metadata:
   tesseract.contract_id: tesseract.run_logger.readme_ergonomics
-  tesseract.applies_to: artifact-symbol:packages/@tesseract/run-logger/README.md#Quickstart
+  tesseract.applies_to: artifact-symbol:internal/packages/@tesseract/run-logger/README.md#Quickstart

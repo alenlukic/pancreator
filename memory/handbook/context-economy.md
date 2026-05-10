@@ -81,9 +81,12 @@ When an agent selects default memory orientation, the agent SHALL treat
 `memory/active/**` as the only **active-memory** tier intended for routine
 default orientation among Memory paths.
 
-When an agent selects **archival-memory**, the agent SHALL treat `work/**`,
-`inbox/out/**`, `inbox/archive/**`, and `inbox/threads/**` as archival memory
-and explicit-read only.
+When an agent selects **active-work**, the agent SHALL treat `work/**` as
+active run workspace and explicit-read only by default.
+
+When an agent selects **archival-memory**, the agent SHALL treat
+`internal/work_archive/**`, `inbox/out/**`, `inbox/archive/**`, and
+`inbox/threads/**` as archival memory and explicit-read only.
 
 When an agent loads **internal-operating-content**, the agent SHALL load named
 routes only and SHALL NOT sweep entire handbook, persona, skill, or Cursor rule
@@ -109,8 +112,9 @@ Typical explicit-read surfaces include:
 
 - Full `PRD.md` for deep spec work after `PRD.summary.md` and `PRD.index.md`.
 - Full `BOOTSTRAP.md` for bootstrap phase gates after `M1.index.md`.
-- Selected `work/**`, `inbox/out/**`, `inbox/archive/**`, and
-  `inbox/threads/**` artifacts for historical reconstruction.
+- Selected `work/**` artifacts for active-run handling.
+- Selected `internal/work_archive/**`, `inbox/out/**`, `inbox/archive/**`,
+  and `inbox/threads/**` artifacts for historical reconstruction.
 - `memory/features/**` for Feature specs, contracts, and delivery reports when
   the named Feature is in scope.
 
@@ -118,7 +122,7 @@ Typical explicit-read surfaces include:
 
 This subsection is the canonical definition for `simple task mode` per plan
 decision D1 at
-`{kind: lines, path: work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
+`{kind: lines, path: internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
 
 When a task executes under `simple task mode`, agents SHALL treat the posture as
 the default for low-risk mechanical work.
@@ -134,7 +138,8 @@ While `simple task mode` applies, an agent MUST NOT read `BOOTSTRAP.md`.
 
 While `simple task mode` applies, an agent MUST NOT traverse `memory/**`.
 
-While `simple task mode` applies, an agent MUST NOT traverse `work/**`.
+While `simple task mode` applies, an agent MUST NOT traverse `work/**` or
+`internal/work_archive/**`.
 
 While `simple task mode` applies, an agent MUST NOT load persona specs beyond
 the persona the operator invoked.
@@ -159,7 +164,7 @@ before expanding context or upgrading models:
 1. The task changes product behavior.
 2. The task changes pipeline or persona semantics.
 3. The task touches policy or compliance behavior.
-4. The task requires historical artifact reconstruction.
+4. The task requires active run artifact handling or historical artifact reconstruction.
 5. Tests fail in a way that demands broader architectural diagnosis.
 6. The operator explicitly requests broad repository analysis.
 
@@ -170,7 +175,7 @@ the operator-visible response body.
 ## Model and context escalation guidance
 
 This subsection is the canonical escalation guidance per plan decision D4 at
-`{kind: lines, path: work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
+`{kind: lines, path: internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
 
 When an agent selects models for routine mechanical work, the agent MUST NOT
 treat Opus-class models as the default.
@@ -207,7 +212,7 @@ for human decisions unless debugging a specific generator.
 |------|----------------|-------|
 | Ubiquitous language | `memory/handbook/glossary.md` | Resolve every domain noun before authoring contracts or specs. |
 | Routing handbook pages | `memory/handbook/index.md` | Avoid loading the full handbook tree by default. |
-| Memory-tier taxonomy | `memory/handbook/memory-tiers.md` | Defines **active-memory**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
+| Memory-tier taxonomy | `memory/handbook/memory-tiers.md` | Defines **active-memory**, **active-work**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
 | Active-memory pointers | `memory/active/current.md` | Summaries only; follow links into durable or archival tiers. |
 | Product intent at low detail | `PRD.summary.md` | Orientation only; not a substitute for `PRD.md` when citations need line anchors. |
 | Section-level PRD routing | `PRD.index.md` | Picks which `PRD.md` section to open next. |
@@ -221,4 +226,4 @@ for human decisions unless debugging a specific generator.
 
 When `.cursorindexingignore` changes, the operator SHOULD restart or reindex Cursor and SHOULD verify custom agent discovery if `.cursor/agents/**` remains excluded. The operator SHOULD also verify `*-standard` and `*-complex` subagent variants appear in Cursor.
 
-The operator SHOULD run `pnpm run context:budget` (or `node tools/context-budget-report.mjs`) before and after policy changes to capture directional corpus size estimates.
+The operator SHOULD run `pnpm run context:budget` (or `node internal/tools/context-budget-report.mjs`) before and after policy changes to capture directional corpus size estimates.

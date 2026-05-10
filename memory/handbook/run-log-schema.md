@@ -7,7 +7,7 @@ phase: 0b
 owners: [tech-lead, librarian, supervisor]
 purpose: |
   Canonical schema and behavior contract for run-log emission under
-  `/work/<id>/run.log.jsonl`. This file defines the OpenInference + OpenTelemetry
+  `/work/<day>/<id>/run.log.jsonl`. This file defines the OpenInference + OpenTelemetry
   GenAI-aligned record shape, identity and correlation fields, outcome
   conventions, integrity constraints, and validation checklist that
   `@tesseract/run-logger` SHALL implement in a later phase.
@@ -66,7 +66,7 @@ The contract scope covers:
 
 The local default run-log sink SHALL be:
 
-- `/work/<task-id>/run.log.jsonl`
+- `/work/<day>/<task-id>/run.log.jsonl`
 
 The file SHALL use JSON Lines (`.jsonl`) encoding where each line is one record.
 
@@ -191,7 +191,7 @@ Run-log writers SHALL satisfy all constraints below:
 
 Before a run-log producer is accepted, the implementer SHALL verify:
 
-- [ ] File path is `/work/<task-id>/run.log.jsonl`.
+- [ ] File path is `/work/<day>/<task-id>/run.log.jsonl`.
 - [ ] Output is valid JSONL with one record per line.
 - [ ] Required fields in Sections 3-6 are present and typed correctly.
 - [ ] Required OpenInference + OTel fields are emitted when applicable.

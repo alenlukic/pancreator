@@ -35,7 +35,7 @@ related:
   - /memory/handbook/constitution.md
   - /PRD.md
   - /memory/handbook/documentation-impact-contract.md
-  - /work/173010_04-26-26/23777_1723_templates/policy-compliance.example.json
+  - /internal/work_archive/173010_04-26-26/23777_1723_templates/policy-compliance.example.json
 ---
 
 # Policy Compliance Contract
@@ -48,7 +48,7 @@ machine-checkable shape without requiring an exhaustive if/then policy matrix.
 
 Each task SHALL stage at least one artifact at:
 
-- `/work/<task-id>/policy-compliance.json`
+- `/work/<day>/<task-id>/policy-compliance.json`
 
 This artifact MUST be staged for commits that include changes outside `work/`
 and outside docs-only metadata surfaces governed by repository policy.

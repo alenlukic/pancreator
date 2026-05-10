@@ -2,7 +2,7 @@
 
 The `pipelines/` directory carries the PRD §11 MVP pipeline definitions. Each
 file is a YAML document loaded by `@tesseract/pipeline`'s `loadPipelineYaml`
-(see `packages/@tesseract/pipeline/src/load-yaml.ts`). Each pipeline declares
+(see `internal/packages/@tesseract/pipeline/src/load-yaml.ts`). Each pipeline declares
 an `id`, an optional `version`, an ordered list of `stages` with optional
 `persona` routing, and an open `metadata` map for forwards-compatible fields.
 
@@ -19,7 +19,7 @@ an `id`, an optional `version`, an ordered list of `stages` with optional
 ## Bootstrap status
 
 The pipelines are registered through `loadPipelineYaml` for now; LangGraph
-`StateGraph` compilation is stubbed in `packages/@tesseract/pipeline/src/compile.ts`
+`StateGraph` compilation is stubbed in `internal/packages/@tesseract/pipeline/src/compile.ts`
 and lands during the Phase 5 self-hosted milestone. Until then, stages execute
 in order through `executePipeline` with delegation to named persona subagents
 per `AGENTS.md` §4.

@@ -6,7 +6,7 @@
       "owner": "contract-writer",
       "appliesTo": {
         "kind": "file-path",
-        "glob": "packages/@tesseract/contract-runner-llm-judge/**"
+        "glob": "internal/packages/@tesseract/contract-runner-llm-judge/**"
       }
     },
     {
@@ -15,7 +15,7 @@
       "owner": "contract-writer",
       "appliesTo": {
         "kind": "artifact-symbol",
-        "path": "packages/@tesseract/contract-runner-llm-judge/README.md",
+        "path": "internal/packages/@tesseract/contract-runner-llm-judge/README.md",
         "symbol": "# Quickstart",
         "contentHash": "TBD-on-commit"
       }

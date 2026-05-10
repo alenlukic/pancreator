@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/run-logger
 
 ## Touch Set
-- `packages/@tesseract/run-logger/**`
+- `internal/packages/@tesseract/run-logger/**`
 - `memory/features/tesseract-run-logger/contracts/**`
 - `memory/features/tesseract-run-logger/spec.md`
 - `memory/features/tesseract-run-logger/plan.md`

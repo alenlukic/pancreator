@@ -6,14 +6,15 @@
   "scripts": {
     "build": "turbo run build",
     "lint": "eslint .",
-    "lint:deps": "node tools/check-phase-0a-scaffold.mjs",
+    "lint:deps": "node internal/tools/check-phase-0a-scaffold.mjs",
     "typecheck": "tsc -p tsconfig.base.json",
     "attw": "turbo run attw",
     "publint": "turbo run publint",
-    "check:phase0a": "node tools/check-phase-0a-scaffold.mjs",
-    "migration:test": "node --test tools/migrate-timestamp-naming.test.mjs",
-    "context:budget": "node tools/context-budget-report.mjs",
-    "context:budget:test": "node --test tools/context-budget-report.test.mjs"
+    "check:phase0a": "node internal/tools/check-phase-0a-scaffold.mjs",
+    "migration:test": "node --test internal/tools/migrate-timestamp-naming.test.mjs",
+    "context:budget": "node internal/tools/context-budget-report.mjs",
+    "context:budget:test": "node --test internal/tools/context-budget-report.test.mjs",
+    "repo:structure:test": "node --test internal/tools/repo-structure.test.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

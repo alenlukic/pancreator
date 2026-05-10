@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/env-isolation
 
 ## Touch Set
-- `packages/@tesseract/env-isolation/**`
+- `internal/packages/@tesseract/env-isolation/**`
 - `memory/features/tesseract-env-isolation/contracts/**`
 - `memory/features/tesseract-env-isolation/spec.md`
 - `memory/features/tesseract-env-isolation/plan.md`

@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/checkpointer-fs
 
 ## Touch Set
-- `packages/@tesseract/checkpointer-fs/**`
+- `internal/packages/@tesseract/checkpointer-fs/**`
 - `memory/features/tesseract-checkpointer-fs/contracts/**`
 - `memory/features/tesseract-checkpointer-fs/spec.md`
 - `memory/features/tesseract-checkpointer-fs/plan.md`

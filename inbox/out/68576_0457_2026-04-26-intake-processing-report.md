@@ -69,7 +69,7 @@ documentation_impact:
 ## Required corrections extracted from rejection
 
 - Plan directives MUST target compliance schemas and test descriptors under
-  `tests/compliance/` and `tests/compliance/schemas/`, not
+  `internal/tests/compliance/` and `internal/tests/compliance/schemas/`, not
   `memory/features/compliance-tests/contracts/tests/`.
 - The first remediation slice MUST preserve agent-invokable compliance runs
   alongside operator invocation while scheduled automation remains deferred.
@@ -83,13 +83,13 @@ documentation_impact:
 - Intake status is now `intake-remediation-required` for `compliance-tests`.
 - Next owner is `tech-lead` at `plan` stage for remediation planning.
 - Required outputs for remediation handoff:
-  1. Replace incorrect path instructions in `work/173009_04-27-26/68576_0457_compliance-tests/plan.md`
-     with canonical `tests/compliance/` targets.
+  1. Replace incorrect path instructions in `internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/plan.md`
+     with canonical `internal/tests/compliance/` targets.
   2. Add explicit agent-invocation policy clauses and structure-change trigger
      coverage to the plan artifact.
   3. Add `AGENTS.md` update tasks and acceptance checks so policy changes ship
      in the same remediation slice.
-  4. Reissue `work/173009_04-27-26/68576_0457_compliance-tests/touch-set.json` so the coder scope includes
+  4. Reissue `internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/touch-set.json` so the coder scope includes
      canonical test paths and policy-document updates.
 
 ## Clarification state

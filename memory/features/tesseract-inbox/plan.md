@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/inbox
 
 ## Touch Set
-- `packages/@tesseract/inbox/**`
+- `internal/packages/@tesseract/inbox/**`
 - `memory/features/tesseract-inbox/contracts/**`
 - `memory/features/tesseract-inbox/spec.md`
 - `memory/features/tesseract-inbox/plan.md`

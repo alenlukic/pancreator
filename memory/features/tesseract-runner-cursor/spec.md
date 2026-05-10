@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/runner-cursor`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.runner_cursor.package_shape` for `packages/@tesseract/runner-cursor/**`.
+- The package implementation MUST satisfy contract `tesseract.runner_cursor.package_shape` for `internal/packages/@tesseract/runner-cursor/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.runner_cursor.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 13 of 20.
 

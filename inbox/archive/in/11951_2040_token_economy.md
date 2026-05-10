@@ -132,8 +132,8 @@ with narrower triggers such as:
 ```yaml
 globs:
   - "inbox/in/**/*.md"
-  - "packages/@tesseract/**"
-  - "packages/tesseract/**"
+  - "internal/packages/@tesseract/**"
+  - "internal/packages/tesseract/**"
   - "tools/**/*.mjs"
   - "tests/**/*.ts"
   - "tests/**/*.mjs"
@@ -232,7 +232,7 @@ Add a script or documented command that estimates repository context footprint b
 Suggested artifact:
 
 ```text
-tools/context-budget-report.mjs
+internal/tools/context-budget-report.mjs
 ```
 
 Minimum output SHOULD include approximate character counts and rough token estimates for:

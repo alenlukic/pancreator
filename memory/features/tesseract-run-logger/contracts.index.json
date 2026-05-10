@@ -6,7 +6,7 @@
       "owner": "contract-writer",
       "appliesTo": {
         "kind": "file-path",
-        "glob": "packages/@tesseract/run-logger/**"
+        "glob": "internal/packages/@tesseract/run-logger/**"
       }
     },
     {
@@ -15,7 +15,7 @@
       "owner": "contract-writer",
       "appliesTo": {
         "kind": "artifact-symbol",
-        "path": "packages/@tesseract/run-logger/README.md",
+        "path": "internal/packages/@tesseract/run-logger/README.md",
         "symbol": "# Quickstart",
         "contentHash": "TBD-on-commit"
       }

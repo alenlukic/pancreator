@@ -6,7 +6,7 @@
       "owner": "contract-writer",
       "appliesTo": {
         "kind": "file-path",
-        "glob": "packages/@tesseract/adopter-scan/**"
+        "glob": "internal/packages/@tesseract/adopter-scan/**"
       }
     },
     {
@@ -15,7 +15,7 @@
       "owner": "contract-writer",
       "appliesTo": {
         "kind": "artifact-symbol",
-        "path": "packages/@tesseract/adopter-scan/README.md",
+        "path": "internal/packages/@tesseract/adopter-scan/README.md",
         "symbol": "# Quickstart",
         "contentHash": "TBD-on-commit"
       }

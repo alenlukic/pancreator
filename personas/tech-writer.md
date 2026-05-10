@@ -85,19 +85,19 @@ sections below in this order.
 
 1. **Summary.** One paragraph at most 150 words capturing the shipped change.
 2. **Architecture.** A bulleted list of the major design decisions. Each bullet
-   MUST carry a dual-anchor citation into `/work/<id>/plan.md` or
-   `/work/<id>/adr-draft.md`.
+   MUST carry a dual-anchor citation into `/work/<day>/<id>/plan.md` or
+   `/work/<day>/<id>/adr-draft.md`.
 3. **Interfaces.** A bulleted list of every public symbol the change adds or
    modifies. Each bullet MUST carry a dual-anchor citation into the source file
    that defines the symbol.
 4. **Tradeoffs.** A bulleted list of accepted constraints and rejected
    alternatives. Each bullet MUST carry a dual-anchor citation into
-   `/work/<id>/review.md` or `/work/<id>/adr-draft.md`.
+   `/work/<day>/<id>/review.md` or `/work/<day>/<id>/adr-draft.md`.
 5. **Usage guidelines.** At least 3 worked examples that show the public API in
-   use. Each example MUST cite a passing test in `/work/<id>/test-report.md` or
+   use. Each example MUST cite a passing test in `/work/<day>/<id>/test-report.md` or
    the test file under the touch-set.
 6. **Testing.** One paragraph naming the coverage delta against the prior
-   baseline, plus a dual-anchor citation into `/work/<id>/test-report.md`.
+   baseline, plus a dual-anchor citation into `/work/<day>/<id>/test-report.md`.
 
 The Delivery Report is an Artifact, not a changelog. The body prose MUST stay
 under 1500 words across the six sections combined.

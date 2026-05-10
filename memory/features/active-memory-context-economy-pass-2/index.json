@@ -68,7 +68,7 @@
         "id": "wave-5",
         "description": "Cursor rule audit artifact and six narrowed rule projections (supervisor kept as audited).",
         "paths": [
-          "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
+          "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
           ".cursor/rules/00-agents-md.mdc",
           ".cursor/rules/tesseract-engineer.mdc",
           ".cursor/rules/persona-designer.mdc",
@@ -82,8 +82,8 @@
         "description": "Indexing policy and context-budget report with tests.",
         "paths": [
           ".cursorindexingignore",
-          "tools/context-budget-report.mjs",
-          "tools/context-budget-report.test.mjs"
+          "internal/tools/context-budget-report.mjs",
+          "internal/tools/context-budget-report.test.mjs"
         ]
       },
       {
@@ -93,9 +93,9 @@
           "memory/backlog/index.yaml",
           "memory/features/active-memory-context-economy-pass-2/index.json",
           "README.md",
-          "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
-          "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
-          "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md"
+          "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+          "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+          "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md"
         ]
       }
     ],
@@ -143,18 +143,18 @@
     },
     "intake_governance": {
       "task_id": "173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2",
-      "policy_compliance": "work/173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/policy-compliance.json",
-      "documentation_impact": "work/173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/documentation-impact.json"
+      "policy_compliance": "internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/policy-compliance.json",
+      "documentation_impact": "internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/documentation-impact.json"
     }
   },
   "plan": {
     "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
-    "work_path": "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
-    "plan_artifact": "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
-    "adr_draft": "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/adr-draft.md",
-    "touch_set": "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/touch-set.json",
-    "policy_compliance": "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
-    "documentation_impact": "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+    "work_path": "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
+    "plan_artifact": "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+    "adr_draft": "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/adr-draft.md",
+    "touch_set": "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/touch-set.json",
+    "policy_compliance": "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+    "documentation_impact": "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
     "adr_number": "0006",
     "pipeline_state": "ready_for_review",
     "decisions": {
@@ -167,7 +167,7 @@
   },
   "review": {
     "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
-    "review_artifact": "work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+    "review_artifact": "internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
     "reviewed_at_utc": "2026-05-10T01:00:00Z",
     "verdict": "approve",
     "review_passes": true,
@@ -181,7 +181,7 @@
     "spec_contracts_set_state": "empty (contracts:from_feature returns no clauses)",
     "verification_gates_reproduced_by_reviewer": [
       "pnpm run context:budget:test (6/6)",
-      "node tools/context-budget-report.mjs (exit 0)"
+      "node internal/tools/context-budget-report.mjs (exit 0)"
     ],
     "next_handoff": "tech-writer at the report stage",
     "pipeline_state": "report_drafted"
@@ -216,7 +216,7 @@
       "pnpm typecheck",
       "pnpm run check:phase0a",
       "pnpm run context:budget:test",
-      "node tools/context-budget-report.mjs",
+      "node internal/tools/context-budget-report.mjs",
       "no historical artifact deletions"
     ],
     "review_verdict": "approve",

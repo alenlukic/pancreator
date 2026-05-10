@@ -64,7 +64,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 2. Read `personas/coder.md` for role semantics before performing persona-owned work.
 3. Read `memory/handbook/context-economy.md` only when the task requires context-budget decisions.
 4. Read `M1.index.md`, `PRD.index.md`, or `PRD.summary.md` before full `PRD.md` or `BOOTSTRAP.md`.
-5. Do not traverse `work/**`, `inbox/out/**`, `inbox/archive/**`, or `inbox/threads/**` unless the task explicitly requires archival reconstruction.
+5. Do not traverse `work/**`, `internal/work_archive/**`, `inbox/out/**`, `inbox/archive/**`, or `inbox/threads/**` unless the task explicitly requires active-run handling or archival reconstruction.
 
 ## Tier guidance
 

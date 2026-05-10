@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/worktree`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.worktree.package_shape` for `packages/@tesseract/worktree/**`.
+- The package implementation MUST satisfy contract `tesseract.worktree.package_shape` for `internal/packages/@tesseract/worktree/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.worktree.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 14 of 20.
 

@@ -157,7 +157,7 @@ references:
     contentHash: 3130f782fdaf2cadad663c8a00d85d3d5cc71a95aa62e5a0af34fbc349f9276d
     note: "Handbook routing table whose row set pass 2 extends with active-memory and memory-tier intents."
   - kind: lines
-    path: tools/context-budget-report.mjs
+    path: internal/tools/context-budget-report.mjs
     range: [1, 1]
     contentHash: 108ed9fbf0d6efa2115b6170f96ced41ad1b09a34d9a1732eb67c5bd947b2d36
     note: "Existing context-budget reporter pass 2 extends with seven memory-tier groups."
@@ -397,7 +397,7 @@ for explicit human and agent reads per the non-goals at
 
 ### Per-tier context-budget reporting
 
-- When the Feature extends `tools/context-budget-report.mjs`, the report MUST
+- When the Feature extends `internal/tools/context-budget-report.mjs`, the report MUST
   emit a per-tier footprint group for active memory covering
   `memory/active/**`.
 - When the Feature extends the context-budget report, the report MUST emit a
@@ -426,7 +426,7 @@ for explicit human and agent reads per the non-goals at
   `chars / 4` value as approximate per the directive at
   `{kind: lines, path: inbox/in/token-economy-enhanced.md, range: [422, 426], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
 - When the Feature ships the report extensions, the Feature MUST update or
-  add tests at `tools/context-budget-report.test.mjs` that cover the new
+  add tests at `internal/tools/context-budget-report.test.mjs` that cover the new
   per-tier grouping behavior.
 
 ### `.cursorindexingignore` alignment
@@ -605,7 +605,7 @@ slot the directive grants the implementation.
   relationship is `extends-deferred-scope`, recorded in
   `memory/features/active-memory-context-economy-pass-2/index.json`.
 - The `inbox/in/token-economy-enhanced.md` directive cites
-  `tools/context-budget-report.mjs`, `AGENTS.md`,
+  `internal/tools/context-budget-report.mjs`, `AGENTS.md`,
   `.cursor/rules/00-agents-md.mdc`, `.cursor/rules/tesseract-engineer.mdc`,
   `memory/handbook/context-economy.md`, `.cursorindexingignore`, the `work/`
   tree, and the `memory/` tree as the surfaces this Feature edits or

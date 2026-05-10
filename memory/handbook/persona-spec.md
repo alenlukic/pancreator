@@ -247,7 +247,7 @@ field. Use it as a copy-paste starting point.
 ```yaml
 ---
 name: example-persona
-description: When the human runs `tess persona example`, the example-persona SHALL emit a stub artifact under `/work/<id>/example.md` and stage it for review.
+description: When the human runs `tess persona example`, the example-persona SHALL emit a stub artifact under `/work/<day>/<id>/example.md` and stage it for review.
 model: inherit
 permissionMode: default
 tools:
@@ -293,11 +293,11 @@ You author a stub artifact whenever the human invokes the example pipeline.
 ## When you are invoked
 
 1. **Manual.** When a human runs `tess persona example`, you produce one stub
-   artifact under `/work/<id>/example.md`.
+   artifact under `/work/<day>/<id>/example.md`.
 
 ## What you MUST produce, every invocation
 
-You MUST emit a one-paragraph Markdown stub at `/work/<id>/example.md` that
+You MUST emit a one-paragraph Markdown stub at `/work/<day>/<id>/example.md` that
 cites this Persona Spec Format reference and stages the file for human review.
 
 ## What you MUST NOT do

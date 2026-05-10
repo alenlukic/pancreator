@@ -22,7 +22,7 @@ related:
 # Active and recent runs
 
 When an operator tracks runs, the operator SHALL store paths only and SHALL
-keep logs under **archival-memory** prefixes such as `work/<task-id>/`.
+keep active logs under **active-work** prefixes such as `work/<day>/<task-id>/` and completed logs under **archival-memory** prefixes such as `internal/work_archive/<day>/<task-id>/`.
 
 ## Active runs
 
@@ -32,5 +32,5 @@ keep logs under **archival-memory** prefixes such as `work/<task-id>/`.
 
 | Run identifier | Pointer | Feature | Outcome |
 |---|---|---|---|
-| `173009_05-09-26/10920_2058_intake` | `work/173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/` | `active-memory-context-economy-pass-2` | intake closed, ratified |
-| `173009_05-09-26/3900_2255_plan` | `work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/` | `active-memory-context-economy-pass-2` | plan + implement (7 slices, 3 waves) + review (approve) + report drafted |
+| `172997_05-09-26/10920_2058_intake` | `internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/` | `active-memory-context-economy-pass-2` | intake closed, ratified |
+| `172997_05-09-26/3900_2255_plan` | `internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/` | `active-memory-context-economy-pass-2` | plan + implement (7 slices, 3 waves) + review (approve) + report drafted |

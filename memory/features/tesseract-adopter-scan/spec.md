@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/adopter-scan`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.adopter_scan.package_shape` for `packages/@tesseract/adopter-scan/**`.
+- The package implementation MUST satisfy contract `tesseract.adopter_scan.package_shape` for `internal/packages/@tesseract/adopter-scan/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.adopter_scan.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 17 of 20.
 

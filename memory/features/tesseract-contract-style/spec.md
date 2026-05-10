@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/contract-style`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.contract_style.package_shape` for `packages/@tesseract/contract-style/**`.
+- The package implementation MUST satisfy contract `tesseract.contract_style.package_shape` for `internal/packages/@tesseract/contract-style/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.contract_style.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 5 of 20.
 

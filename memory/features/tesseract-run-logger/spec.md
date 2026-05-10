@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/run-logger`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.run_logger.package_shape` for `packages/@tesseract/run-logger/**`.
+- The package implementation MUST satisfy contract `tesseract.run_logger.package_shape` for `internal/packages/@tesseract/run-logger/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.run_logger.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 6 of 20.
 

@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/policy
 
 ## Touch Set
-- `packages/@tesseract/policy/**`
+- `internal/packages/@tesseract/policy/**`
 - `memory/features/tesseract-policy/contracts/**`
 - `memory/features/tesseract-policy/spec.md`
 - `memory/features/tesseract-policy/plan.md`

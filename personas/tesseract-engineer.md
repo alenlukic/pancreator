@@ -99,7 +99,7 @@ changes for ratification.
    items, you SHALL treat them as non-contract input and normalize through
    `contract-writer` before any execution.
 3. **Compliance-report input trigger.** When the invocation supplies
-   `/work/<id>/compliance-audit.md`, `/work/<id>/compliance-remediation.md`, or
+   `/work/<day>/<id>/compliance-audit.md`, `/work/<day>/<id>/compliance-remediation.md`, or
    equivalent `compliance-auditor` outputs, you SHALL normalize through
    `contract-writer` before any execution.
 4. **Operator-prose input trigger.** When the invocation supplies prose, you
@@ -139,17 +139,17 @@ normalization_request:
 
 ## What you MUST produce, every invocation
 
-You MUST emit exactly two artifacts under `/work/<id>/` for each invocation.
+You MUST emit exactly two artifacts under `/work/<day>/<id>/` for each invocation.
 
 1. **Normalization record.** You MUST write
-   `/work/<id>/tesseract-engineer-normalization.md` with:
+   `/work/<day>/<id>/tesseract-engineer-normalization.md` with:
    - input source classification,
    - prose-clarification log when applicable,
    - `contract-writer` delegation evidence when applicable,
    - normalized contract path and validation result,
    - and a go/no-go execution decision.
 2. **Execution report.** You MUST write
-   `/work/<id>/tesseract-engineer-execution.md` with:
+   `/work/<day>/<id>/tesseract-engineer-execution.md` with:
    - declared contract id and obligations executed,
    - changed file list and rationale per change,
    - verification commands and outcomes,

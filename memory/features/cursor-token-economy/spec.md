@@ -65,7 +65,7 @@ references:
     path: inbox/in/token_economy.md
     range: [228, 253]
     contentHash: TBD-on-commit
-    note: Directive §7 specifies the tools/context-budget-report.mjs estimator scope and the chars-over-4 labeling rule.
+    note: Directive §7 specifies the internal/tools/context-budget-report.mjs estimator scope and the chars-over-4 labeling rule.
   - kind: lines
     path: inbox/in/token_economy.md
     range: [255, 268]
@@ -125,7 +125,7 @@ repository invocations through five staged changes: a root
 `.cursorindexingignore` file, narrower `.cursor/rules/*.mdc` glob surfaces,
 a new `memory/handbook/context-economy.md` page, summary-first PRD retrieval
 surfaces (`PRD.summary.md` and `PRD.index.md`), and a
-`tools/context-budget-report.mjs` estimator. The Feature SHALL preserve
+`internal/tools/context-budget-report.mjs` estimator. The Feature SHALL preserve
 every Persona, Skill, Pipeline, Spec Contract, documentation-impact,
 policy-compliance, and inbox-lifecycle obligation. The Feature SHALL keep
 `PRD.md`, `BOOTSTRAP.md`, the `memory/` tree, and the `work/` tree
@@ -193,12 +193,12 @@ reachable for explicit human and agent reads.
   the task requires product-spec detail, citation repair, or
   line-anchored requirements.
 - When the Feature ships the context-budget tool, the Feature MUST add
-  one command at `tools/context-budget-report.mjs`.
-- While the `tools/context-budget-report.mjs` command runs, the command
+  one command at `internal/tools/context-budget-report.mjs`.
+- While the `internal/tools/context-budget-report.mjs` command runs, the command
   MUST emit character counts and `chars / 4` token estimates for the
   ten path scopes the directive enumerates at lines 240 to 249 of
   `inbox/in/token_economy.md`.
-- When the `tools/context-budget-report.mjs` command emits the token
+- When the `internal/tools/context-budget-report.mjs` command emits the token
   estimate, the report MUST label the `chars / 4` value as a rough
   estimate.
 - When the Feature applies the documentation-impact contract, the

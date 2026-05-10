@@ -1,0 +1,47 @@
+{
+  "task_id": "173009_05-09-26/50909_1000_cursor-token-economy",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "memory/handbook/constitution.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Operator-facing contracts, handbook routing, PRD retrieval paths, and bootstrap scripts changed; deferrals recorded for persona-designer globs and future .cursorignore.",
+    "changed_surfaces": [
+      "AGENTS.md",
+      "README.md",
+      "PRD.summary.md",
+      "PRD.index.md",
+      "memory/handbook/index.md",
+      "memory/handbook/context-economy.md",
+      "memory/backlog/index.yaml",
+      ".cursor/rules/00-agents-md.mdc",
+      ".cursor/rules/tesseract-engineer.mdc",
+      ".cursorindexingignore",
+      ".gitignore",
+      "package.json",
+      "internal/tools/context-budget-report.mjs",
+      "internal/tools/context-budget-report.test.mjs"
+    ],
+    "deferred_items": [
+      {
+        "id": "cursor-token-economy-persona-designer-glob-review",
+        "rationale": "Mirror-parity risk defers persona-designer.mdc glob edits."
+      },
+      {
+        "id": "cursor-token-economy-cursorignore-future-slice",
+        "rationale": "Spec defers .cursorignore until explicit-read guarantees exist."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Changes preserve no-push, inbox notes ban, delegation, documentation-impact, policy-compliance, and summary-first PRD guidance without deleting protected semantics.",
+    "constitution_alignment": "Recorded documentation-impact and deferrals; human remains in-loop for ratification-flagged surfaces.",
+    "prd_alignment": "Supports US-1 documentation discipline and future CLI workflow without claiming tess is implemented.",
+    "required_updates": [
+      "memory/handbook/context-economy.md",
+      "internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/documentation-impact.json"
+    ]
+  }
+}

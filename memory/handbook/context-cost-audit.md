@@ -25,12 +25,13 @@ controls used to reduce default load.
 | Cost sink | Control |
 |---|---|
 | Full `PRD.md` and full `BOOTSTRAP.md` loaded for routing questions | Keep full files explicit-read by default; route through `PRD.summary.md`, `PRD.index.md`, and `M1.index.md`. |
-| Archival execution artifacts under `work/**`, `inbox/out/**`, `inbox/archive/**`, and `inbox/threads/**` | Exclude from Cursor semantic indexing; require explicit historical-reconstruction trigger. |
+| Active and archival execution artifacts under `work/**`, `internal/work_archive/**`, `inbox/out/**`, `inbox/archive/**`, and `inbox/threads/**` | Exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
 | Human-only operator notes | Exclude `inbox/notes/**` from Cursor indexing and preserve AGENTS prohibition on agent traversal. |
 | Cursor subagent projections duplicating canonical persona prose and PRD citations | Keep `.cursor/agents/**` compact and point to `personas/<name>.md` as canonical source. |
 | Expensive fixed models used for every subagent invocation | Add standard/complex Cursor subagent variants; standard uses `model: auto`, complex preserves prior fixed model. |
 | Generated machine artifacts | Exclude generated JSON, manifests, dry-run/write outputs, and lockfiles from default semantic indexing. |
 | Broad handbook/persona sweeps | Treat internal operating content as routeable by handbook index, not default-loaded. |
+| Operator-facing root clutter from implementation, tests, tools, and completed work | Move implementation surfaces to `internal/{packages,tests,tools}` and completed runs to `internal/work_archive/`; keep `work/` for active runs only. |
 
 ## Known risks
 

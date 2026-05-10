@@ -1,24 +1,24 @@
 # METADATA
-# title: Phase 2 scaffold contract for packages/@tesseract/env-isolation
-# description: When the Phase 2 scaffold for `packages/@tesseract/env-isolation` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
+# title: Phase 2 scaffold contract for internal/packages/@tesseract/env-isolation
+# description: When the Phase 2 scaffold for `internal/packages/@tesseract/env-isolation` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
 # severity: block
 # references:
 #   - "BOOTSTRAP.md:[122,159]#TBD-on-commit"
 #   - "PRD.md:[1116,1126]#TBD-on-commit"
 # custom:
 #   tesseract.contract_id: tesseract.env_isolation.package_shape
-#   tesseract.applies_to: file-path:packages/@tesseract/env-isolation/**
+#   tesseract.applies_to: file-path:internal/packages/@tesseract/env-isolation/**
 package tesseract.phase2.env_isolation
 
 import rego.v1
 
 required_paths := {
-  "packages/@tesseract/env-isolation/package.json",
-  "packages/@tesseract/env-isolation/README.md",
-  "packages/@tesseract/env-isolation/src/index.ts",
+  "internal/packages/@tesseract/env-isolation/package.json",
+  "internal/packages/@tesseract/env-isolation/README.md",
+  "internal/packages/@tesseract/env-isolation/src/index.ts",
 }
 
-description := "When the Phase 2 scaffold for `packages/@tesseract/env-isolation` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory."
+description := "When the Phase 2 scaffold for `internal/packages/@tesseract/env-isolation` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory."
 
 deny contains msg if {
   some req in required_paths

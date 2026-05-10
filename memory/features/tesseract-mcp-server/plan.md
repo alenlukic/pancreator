@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/mcp-server
 
 ## Touch Set
-- `packages/@tesseract/mcp-server/**`
+- `internal/packages/@tesseract/mcp-server/**`
 - `memory/features/tesseract-mcp-server/contracts/**`
 - `memory/features/tesseract-mcp-server/spec.md`
 - `memory/features/tesseract-mcp-server/plan.md`

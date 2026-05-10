@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/persona
 
 ## Touch Set
-- `packages/@tesseract/persona/**`
+- `internal/packages/@tesseract/persona/**`
 - `memory/features/tesseract-persona/contracts/**`
 - `memory/features/tesseract-persona/spec.md`
 - `memory/features/tesseract-persona/plan.md`

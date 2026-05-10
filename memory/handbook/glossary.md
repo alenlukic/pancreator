@@ -270,7 +270,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   MCP Tools and Resources. Stdio in MVP; HTTP at M5.
 - **A2A (`@tesseract/a2a`)** — Linux-Foundation-hosted Agent-to-Agent v1.x.
   Each Tesseract org serves `/.well-known/agent-card.json`. M5+.
-- **Run-log** — append-only OTLP-encoded stream under `/work/<id>/run.log.jsonl`
+- **Run-log** — append-only OTLP-encoded stream under `/work/<day>/<id>/run.log.jsonl`
   carrying OpenInference primary attributes plus an OTel GenAI semconv parallel
   layer. The basis for Phoenix and Langfuse import.
 

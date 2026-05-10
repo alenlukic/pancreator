@@ -3,10 +3,10 @@ kind: rego
 severity: block
 applies_to:
   kind: file-path
-  glob: "packages/@tesseract/runner-cursor/**"
+  glob: "internal/packages/@tesseract/runner-cursor/**"
 owner: contract-writer
 description: |
-  When the Phase 2 scaffold for `packages/@tesseract/runner-cursor` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
+  When the Phase 2 scaffold for `internal/packages/@tesseract/runner-cursor` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
 references:
   - kind: lines
     path: BOOTSTRAP.md
@@ -24,4 +24,4 @@ runtime:
   query: data.tesseract.phase2.runner_cursor.deny
 metadata:
   tesseract.contract_id: tesseract.runner_cursor.package_shape
-  tesseract.applies_to: file-path:packages/@tesseract/runner-cursor/**
+  tesseract.applies_to: file-path:internal/packages/@tesseract/runner-cursor/**

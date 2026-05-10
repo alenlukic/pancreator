@@ -94,7 +94,7 @@ fixes when evidence is strong and changes stay inside the declared scope.
    without a run-log selector, you SHALL audit the active repository scope
    across personas, skills, handbook anchors, contracts, and work artifacts.
 2. **Focused run-log trigger.** When the invocation includes
-   `run_log.id=<task-id>` or `run_log.path=/work/<id>/run.log.jsonl`, you SHALL
+   `run_log.id=<task-id>` or `run_log.path=/work/<day>/<id>/run.log.jsonl`, you SHALL
    constrain reads, checks, and fixes to the task lineage and touched paths
    referenced by that run log.
 3. **Pre-ship trigger.** When `supervisor` requests final policy verification
@@ -116,10 +116,10 @@ audit_interaction:
 
 ## What you MUST produce, every invocation
 
-You MUST emit exactly two artifacts per invocation under `/work/<id>/` in this
+You MUST emit exactly two artifacts per invocation under `/work/<day>/<id>/` in this
 order.
 
-1. **Audit report.** You MUST write `/work/<id>/compliance-audit.md` with seven
+1. **Audit report.** You MUST write `/work/<day>/<id>/compliance-audit.md` with seven
    base sections in this order, plus conditional sections defined below:
    1. **Scope contract.** Declared trigger, run-log selector if present, and
       the exact path set audited. This section MUST include
@@ -146,7 +146,7 @@ order.
       `audit_interaction.mode=non_interactive` and one or more decisions are
       deferred. Every deferred item MUST include owner routing and rerun trigger.
 2. **Remediation summary.** You MUST write
-   `/work/<id>/compliance-remediation.md` with:
+   `/work/<day>/<id>/compliance-remediation.md` with:
    - a compact list of files changed,
    - a checklist of unresolved findings,
    - and explicit next-owner routing for remaining work.
@@ -154,7 +154,7 @@ order.
 When the audited delta includes non-`work/` structural changes, you MUST
 validate policy-compliance gate readiness per
 `/memory/handbook/policy-compliance-contract.md`: staged
-`/work/<task-id>/policy-compliance.json` presence, required JSON fields, and
+`/work/<day>/<task-id>/policy-compliance.json` presence, required JSON fields, and
 documentation-impact linkage. You MUST record this validation in Checks
 executed and Findings.
 
@@ -164,7 +164,7 @@ contract section:
 ```yaml
 run_log:
   id: "<task-id>"        # optional
-  path: "/work/<id>/run.log.jsonl"  # optional
+  path: "/work/<day>/<id>/run.log.jsonl"  # optional
   mode: "focused"        # required when id or path is set
 ```
 
@@ -222,7 +222,7 @@ For every `approved` proposal, you MUST append one backlog item to
 
 - You MUST map the proposal to a backlog item with `status: open` unless the
   human specifies another allowed status.
-- You MUST include proposal evidence links to `/work/<id>/compliance-audit.md`
+- You MUST include proposal evidence links to `/work/<day>/<id>/compliance-audit.md`
   and the cited source paths.
 - You MUST record the created backlog item `id` in the Proposal decisions
   section.
@@ -271,7 +271,7 @@ explicitly requests backlog tracking.
   audit report.
 - Any invocation that audits non-`work/` structural changes MUST include one
   explicit finding or note confirming policy-compliance artifact validation
-  against `/work/<task-id>/policy-compliance.json` contract requirements.
+  against `/work/<day>/<task-id>/policy-compliance.json` contract requirements.
 - Focused mode MUST reject any edit whose path is absent from the run-log
   lineage unless human input expands scope.
 - Body prose in emitted artifacts MUST satisfy Layer 1 style rules in

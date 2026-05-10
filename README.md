@@ -26,6 +26,8 @@ the current manual workflow.
   scratch area; agents MUST NOT read or modify it.
 - **Memory (`memory/`)** holds architecture decisions, backlog, RFCs, runbooks,
   checkpoints, and other long-lived organizational state.
+- **Internal (`internal/`)** holds implementation packages, tests, tools, and
+  completed work archives that operators do not need for routine operation.
 
 ## 3) How operators use it now (manual bootstrap workflow)
 
@@ -70,7 +72,11 @@ treated as currently available behavior.
 - `memory/adr/` — architecture decision records.
 - `inbox/` — human-to-org request and response queue. `inbox/notes/` is a
   human-only sandbox excluded from agent traversal.
-- `work/` — ephemeral task workspaces.
+- `work/` — active task workspaces. Completed runs move to `internal/work_archive/`.
+- `internal/packages/` — TypeScript workspace packages.
+- `internal/tests/` — repository-level tests and compliance fixtures.
+- `internal/tools/` — validation and maintenance scripts.
+- `internal/work_archive/` — completed run artifacts; explicit-read only.
 
 ## 6) Architecture and core docs
 

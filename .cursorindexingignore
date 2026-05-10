@@ -2,8 +2,9 @@
 # Operators SHOULD restart or reindex Cursor after changes.
 # Explicit @-mentions and intentional reads still reach excluded paths.
 
-# Historical/generated agent artifacts
+# Active and archived run artifacts
 work/**
+internal/work_archive/**
 inbox/out/**
 inbox/archive/**
 inbox/threads/**

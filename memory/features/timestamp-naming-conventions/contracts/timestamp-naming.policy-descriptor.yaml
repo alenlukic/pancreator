@@ -3,10 +3,10 @@ kind: tests
 severity: block
 applies_to:
   kind: file-path
-  glob: "tests/compliance/timestamp-naming-conventions.yaml"
+  glob: "internal/tests/compliance/timestamp-naming-conventions.yaml"
 owner: coder
 description: |
-  When the compliance runner evaluates timestamp naming policy, the runner SHALL emit a block failure unless `tests/compliance/timestamp-naming-conventions.yaml` validates against `tests/compliance/schemas/latest.yaml` and lists `structure-change` plus `operator-on-demand` trigger modes.
+  When the compliance runner evaluates timestamp naming policy, the runner SHALL emit a block failure unless `internal/tests/compliance/timestamp-naming-conventions.yaml` validates against `internal/tests/compliance/schemas/latest.yaml` and lists `structure-change` plus `operator-on-demand` trigger modes.
 references:
   - kind: lines
     path: memory/features/timestamp-naming-conventions/spec.md
@@ -14,14 +14,14 @@ references:
     contentHash: TBD-on-commit
     note: "UTC, FDS, SID, work directory, inbox basename, and collision acceptance criteria."
   - kind: lines
-    path: tests/compliance/schemas/latest.yaml
+    path: internal/tests/compliance/schemas/latest.yaml
     range: [1, 63]
     contentHash: TBD-on-commit
     note: "Descriptor schema envelope."
 runtime:
-  compliance_descriptor: "tests/compliance/timestamp-naming-conventions.yaml"
-  schema_ref: "tests/compliance/schemas/latest.yaml"
+  compliance_descriptor: "internal/tests/compliance/timestamp-naming-conventions.yaml"
+  schema_ref: "internal/tests/compliance/schemas/latest.yaml"
 metadata:
   tesseract.contract_id: tesseract.features.timestamp_naming.policy_descriptor
-  tesseract.applies_to: "file-path:tests/compliance/timestamp-naming-conventions.yaml"
+  tesseract.applies_to: "file-path:internal/tests/compliance/timestamp-naming-conventions.yaml"
   tesseract-bootstrap-only: false

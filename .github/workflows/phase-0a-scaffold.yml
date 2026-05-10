@@ -9,8 +9,19 @@ on:
       - "turbo.json"
       - "tsconfig.base.json"
       - "eslint.config.mjs"
-      - "tools/**"
-      - "packages/**"
+      - "internal/tools/**"
+      - "internal/packages/**"
+      - "internal/tests/**"
+      - "internal/work_archive/**"
+      - "internal/README.md"
+      - "work/**"
+      - ".cursorindexingignore"
+      - "AGENTS.md"
+      - ".github/copilot-instructions.md"
+      - "README.md"
+      - "PRD.md"
+      - "memory/handbook/**"
+      - "personas/librarian.md"
       - ".github/workflows/phase-0a-scaffold.yml"
   pull_request:
     paths:
@@ -20,8 +31,19 @@ on:
       - "turbo.json"
       - "tsconfig.base.json"
       - "eslint.config.mjs"
-      - "tools/**"
-      - "packages/**"
+      - "internal/tools/**"
+      - "internal/packages/**"
+      - "internal/tests/**"
+      - "internal/work_archive/**"
+      - "internal/README.md"
+      - "work/**"
+      - ".cursorindexingignore"
+      - "AGENTS.md"
+      - ".github/copilot-instructions.md"
+      - "README.md"
+      - "PRD.md"
+      - "memory/handbook/**"
+      - "personas/librarian.md"
       - ".github/workflows/phase-0a-scaffold.yml"
   workflow_dispatch: {}
 
@@ -68,3 +90,12 @@ jobs:
 
       - name: Phase 0a scaffold script
         run: pnpm run check:phase0a
+
+      - name: Timestamp migration tests
+        run: pnpm run migration:test
+
+      - name: Context budget tests
+        run: pnpm run context:budget:test
+
+      - name: Repository structure tests
+        run: pnpm run repo:structure:test

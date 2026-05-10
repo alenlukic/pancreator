@@ -70,8 +70,8 @@ artifact confirmed the handoff to planning remains in force.
 ## Acceptance criteria
 
 - WHEN a maintainer defines a compliance test suite, the system MUST store
-  compliance tests under `tests/compliance/` and MUST validate each test file
-  against a schema under `tests/compliance/schemas/`.
+  compliance tests under `internal/tests/compliance/` and MUST validate each test file
+  against a schema under `internal/tests/compliance/schemas/`.
 - WHEN a maintainer versions schemas, the system MUST require the newest schema
   file to be named `latest.yaml` and SHOULD keep version snapshots such as
   `v0.yaml` and `v1.yaml` in the same directory.

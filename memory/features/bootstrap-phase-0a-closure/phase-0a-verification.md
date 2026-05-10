@@ -8,14 +8,14 @@
 
 | Name | Path | Note |
 |------|------|------|
-| 19 M1-scoped packages | `packages/@tesseract/*` | **Keep** existing directory names. Each now has `package.json`, `README.md`, `src/index.ts`, and `tsconfig.json` (extends root `tsconfig.base.json` for `tsup` declaration emit). |
-| Unscoped meta package | `packages/tesseract` | **Add**; lists every primitive as `workspace:*` and re-exports one stub per package from `src/index.ts`. |
+| 19 M1-scoped packages | `internal/packages/@tesseract/*` | **Keep** existing directory names. Each now has `package.json`, `README.md`, `src/index.ts`, and `tsconfig.json` (extends root `tsconfig.base.json` for `tsup` declaration emit). |
+| Unscoped meta package | `internal/packages/tesseract` | **Add**; lists every primitive as `workspace:*` and re-exports one stub per package from `src/index.ts`. |
 | Not in this slice | M2+ names in PRD (e.g. `a2a`, `runner-claude`, sandbox adapters) | **Defer**; not in live `packages/`. |
 
 ## Decisions and deferrals
 
 - **ATTW.** ESM-only packages: each package `attw` script uses `--profile esm-only` so the check matches the ESM + `type: "module"` layout; strict CJS interop is **deferred** until dual-publish is required.
-- **Horizontal deps.** Source: ESLint rule `@tesseract/no-horizontal-primitive-deps`. Manifests: `tools/check-phase-0a-scaffold.mjs` (keys under `dependencies` / `devDependencies` / `peerDependencies` / `optionalDependencies` that are `@tesseract/*`). Meta package `tesseract` may list all primitives; scoped primitives may list only `@tesseract/core` and self.
+- **Horizontal deps.** Source: ESLint rule `@tesseract/no-horizontal-primitive-deps`. Manifests: `internal/tools/check-phase-0a-scaffold.mjs` (keys under `dependencies` / `devDependencies` / `peerDependencies` / `optionalDependencies` that are `@tesseract/*`). Meta package `tesseract` may list all primitives; scoped primitives may list only `@tesseract/core` and self.
 - **Per-package `tsconfig.json`.** Not listed in the original touch-set file list, but **required** so `tsup` DTS picks up the root `compilerOptions.paths` for `@tesseract/*` resolution during build.
 
 ## Observed commands (all exit 0 on this run)

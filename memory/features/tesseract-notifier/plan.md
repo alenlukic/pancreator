@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/notifier
 
 ## Touch Set
-- `packages/@tesseract/notifier/**`
+- `internal/packages/@tesseract/notifier/**`
 - `memory/features/tesseract-notifier/contracts/**`
 - `memory/features/tesseract-notifier/spec.md`
 - `memory/features/tesseract-notifier/plan.md`

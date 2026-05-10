@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/env-isolation`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.env_isolation.package_shape` for `packages/@tesseract/env-isolation/**`.
+- The package implementation MUST satisfy contract `tesseract.env_isolation.package_shape` for `internal/packages/@tesseract/env-isolation/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.env_isolation.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 15 of 20.
 

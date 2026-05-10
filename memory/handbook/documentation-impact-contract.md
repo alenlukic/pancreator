@@ -106,7 +106,7 @@ documentation/reference surface changed and why no follow-up is required.
 This contract defines required decision content. Commit-time enforcement SHALL
 be routed through `/memory/handbook/policy-compliance-contract.md`, which
 binds documentation-impact decisions to machine-checkable
-`/work/<task-id>/policy-compliance.json` artifacts.
+`/work/<day>/<task-id>/policy-compliance.json` artifacts.
 
 ## 7 - Stability
 

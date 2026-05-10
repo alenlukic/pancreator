@@ -4,7 +4,7 @@
 This feature folder captures Phase 2 delivery requirements for `@tesseract/memory`.
 
 ## Requirements
-- The package implementation MUST satisfy contract `tesseract.memory.package_shape` for `packages/@tesseract/memory/**`.
+- The package implementation MUST satisfy contract `tesseract.memory.package_shape` for `internal/packages/@tesseract/memory/**`.
 - The package README Quickstart section MUST satisfy contract `tesseract.memory.readme_ergonomics`.
 - Work sequencing MUST preserve the BOOTSTRAP.md Phase 2 dependency order position 8 of 20.
 

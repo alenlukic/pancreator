@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/adopter-scan
 
 ## Touch Set
-- `packages/@tesseract/adopter-scan/**`
+- `internal/packages/@tesseract/adopter-scan/**`
 - `memory/features/tesseract-adopter-scan/contracts/**`
 - `memory/features/tesseract-adopter-scan/spec.md`
 - `memory/features/tesseract-adopter-scan/plan.md`

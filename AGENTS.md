@@ -114,8 +114,8 @@ response.
   apply required updates or record deferral rationale with backlog linkage per
   `memory/handbook/documentation-impact-contract.md`.
 - **Policy-compliance artifact gate is mandatory for governed commits.** Tasks
-  that stage non-`work/` structural changes SHALL stage
-  `/work/<task-id>/policy-compliance.json` per
+  that stage structural changes outside active run work SHALL stage
+  `/work/<day>/<task-id>/policy-compliance.json` per
   `memory/handbook/policy-compliance-contract.md`; commit-time hooks enforce
   fail-closed behavior when the artifact is missing or invalid.
 - **Stage exit criteria are non-negotiable.** This mirrors the PRD R-class
@@ -144,8 +144,8 @@ response.
 ### 6.1 — Compliance-run trigger guidance
 
 - During automation-deferred phases, agents SHALL support manual invocation via
-  `operator-on-demand` and SHALL run descriptors under `tests/compliance/`
-  against `tests/compliance/schemas/latest.yaml`.
+  `operator-on-demand` and SHALL run descriptors under `internal/tests/compliance/`
+  against `internal/tests/compliance/schemas/latest.yaml`.
 - Agents SHALL trigger a compliance run after create, modify, or delete changes
   that touch personas, skills, pipeline definitions, documented operational
   primitives, testing infrastructure, operator interfaces, or milestone
@@ -180,7 +180,12 @@ response.
 /memory/research/                founding research lineage
 /inbox/{in,out,threads}/         human ↔ org message queue
 /inbox/notes/                    human-only operator sandbox (agents MUST NOT read or write)
-/work/<task-id>/                 ephemeral pipeline workspace
+/work/<day>/<task-id>/           active pipeline workspace; completed runs move to /internal/work_archive/
+/internal/                        implementation corpus hidden from routine operator surface
+/internal/packages/               TypeScript workspace packages
+/internal/tests/                  repository-level tests and compliance fixtures
+/internal/tools/                  validation and maintenance scripts
+/internal/work_archive/           completed run artifacts; explicit-read only
 /.tess/{worktrees,sandboxes,scheduler}/  control-plane state
 /PRD.md                          product spec
 /M1.index.md                      compact M1/bootstrap route map

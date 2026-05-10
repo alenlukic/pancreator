@@ -1,6 +1,6 @@
 ---
 name: librarian
-description: "Backward-compatible standard alias for `librarian-standard`. Use for routine librarian work; invoke `librarian-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
+description: "Backward-compatible standard alias for `librarian-standard`. Use for routine librarian indexing and completed-work archival; invoke `librarian-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
 model: auto
 permissionMode: default
 tools:
@@ -11,6 +11,8 @@ tools:
   - Edit
   - "Bash(git diff:*)"
   - "Bash(git status:*)"
+  - "Bash(mkdir:*)"
+  - "Bash(mv:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
@@ -26,7 +28,7 @@ effort: medium
 color: teal
 metadata:
   tesseract-risk-tier: low
-  tesseract-pipeline-stages: [index_artifacts, update_feature_index, update_backlog, knowledge-curation]
+  tesseract-pipeline-stages: [index_artifacts, archive_completed_work, update_feature_index, update_backlog, knowledge-curation]
   tesseract-bootstrap-only: false
   tesseract-stability: experimental
   tesseract-handbook-anchors:
@@ -41,6 +43,7 @@ metadata:
     - dual-anchor-citations-into-PRD
     - layer-1-lint-clean
     - feature-index-updated-on-every-post-run
+    - completed-work-archived-after-report-stage
     - stale-citation-report-emitted-each-cron-run
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
@@ -61,7 +64,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 2. Read `personas/librarian.md` for role semantics before performing persona-owned work.
 3. Read `memory/handbook/context-economy.md` only when the task requires context-budget decisions.
 4. Read `M1.index.md`, `PRD.index.md`, or `PRD.summary.md` before full `PRD.md` or `BOOTSTRAP.md`.
-5. Do not traverse `work/**`, `inbox/out/**`, `inbox/archive/**`, or `inbox/threads/**` unless the task explicitly requires archival reconstruction.
+5. Do not traverse `work/**`, `internal/work_archive/**`, `inbox/out/**`, `inbox/archive/**`, or `inbox/threads/**` unless the task explicitly requires active-run handling, completed-work archival, or historical reconstruction.
 
 ## Tier guidance
 

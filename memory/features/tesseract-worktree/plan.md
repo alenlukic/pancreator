@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/worktree
 
 ## Touch Set
-- `packages/@tesseract/worktree/**`
+- `internal/packages/@tesseract/worktree/**`
 - `memory/features/tesseract-worktree/contracts/**`
 - `memory/features/tesseract-worktree/spec.md`
 - `memory/features/tesseract-worktree/plan.md`

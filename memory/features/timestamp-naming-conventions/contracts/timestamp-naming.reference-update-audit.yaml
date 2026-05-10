@@ -3,7 +3,7 @@ kind: tests
 severity: block
 applies_to:
   kind: file-path
-  glob: "tools/migrate-timestamp-naming.mjs"
+  glob: "internal/tools/migrate-timestamp-naming.mjs"
 owner: coder
 description: |
   When the migration completes write mode, the repository SHALL contain zero stale legacy path strings for any renamed artifact across scanned roots.
@@ -20,11 +20,11 @@ references:
     contentHash: TBD-on-commit
     note: "Reference integrity actions when artifacts move."
 runtime:
-  entry: "tools/migrate-timestamp-naming.mjs"
+  entry: "internal/tools/migrate-timestamp-naming.mjs"
   exported_symbols:
     - "inventoryReferences"
     - "applyReferenceUpdatesFromManifest"
 metadata:
   tesseract.contract_id: tesseract.features.timestamp_naming.reference_update_audit
-  tesseract.applies_to: "file-path:tools/migrate-timestamp-naming.mjs"
+  tesseract.applies_to: "file-path:internal/tools/migrate-timestamp-naming.mjs"
   tesseract-bootstrap-only: false

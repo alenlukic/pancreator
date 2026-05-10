@@ -1,0 +1,130 @@
+{
+  "paths": [
+    {
+      "path": "tests/compliance",
+      "operation": "add-compliance-descriptor",
+      "plannedFiles": [
+        "internal/tests/compliance/timestamp-naming-conventions.yaml"
+      ]
+    },
+    {
+      "path": "memory/features/timestamp-naming-conventions/contracts",
+      "operation": "add-feature-contracts",
+      "plannedFiles": [
+        "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+        "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+        "memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml"
+      ]
+    },
+    {
+      "path": "tools",
+      "operation": "add-migration-script",
+      "plannedFiles": [
+        "internal/tools/migrate-timestamp-naming.mjs"
+      ]
+    },
+    {
+      "path": "memory/handbook",
+      "operation": "update-inbox-lifecycle-rule",
+      "plannedFiles": [
+        "memory/handbook/inbox-lifecycle.md"
+      ]
+    },
+    {
+      "path": "work",
+      "operation": "migrate-in-scope-work-paths",
+      "plannedGlobs": [
+        "work/*",
+        "work/*/*"
+      ],
+      "excludedGlobs": [
+        "work/*/run.log.jsonl",
+        "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+        "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
+        "internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json"
+      ]
+    },
+    {
+      "path": "inbox",
+      "operation": "migrate-in-scope-inbox-paths",
+      "plannedGlobs": [
+        "inbox/in/*",
+        "inbox/out/*",
+        "inbox/threads/*",
+        "inbox/threads/*/*",
+        "inbox/archive/in/*"
+      ],
+      "excludedGlobs": [
+        "inbox/in/timestamp_naming_conventions.md",
+        "inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md"
+      ]
+    },
+    {
+      "path": "memory/features/compliance-tests",
+      "operation": "update-migrated-path-references",
+      "plannedFiles": [
+        "memory/features/compliance-tests/index.json"
+      ]
+    },
+    {
+      "path": "memory/backlog",
+      "operation": "update-migrated-path-references",
+      "plannedFiles": [
+        "memory/backlog/index.yaml"
+      ]
+    },
+    {
+      "path": "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests",
+      "operation": "update-migrated-path-references",
+      "plannedGlobs": [
+        "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/*.md",
+        "internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/*.json"
+      ]
+    },
+    {
+      "path": "memory/features/timestamp-naming-conventions",
+      "operation": "update-feature-index-after-implementation",
+      "plannedFiles": [
+        "memory/features/timestamp-naming-conventions/index.json"
+      ]
+    }
+  ],
+  "symbols": [],
+  "tests": [
+    {
+      "kind": "command",
+      "name": "typecheck",
+      "command": "pnpm typecheck"
+    },
+    {
+      "kind": "command",
+      "name": "lint",
+      "command": "pnpm lint"
+    },
+    {
+      "kind": "command",
+      "name": "phase-0a-scaffold",
+      "command": "pnpm run check:phase0a"
+    },
+    {
+      "kind": "command",
+      "name": "timestamp-compliance",
+      "command": "pnpm run compliance -- internal/tests/compliance/timestamp-naming-conventions.yaml"
+    },
+    {
+      "kind": "command",
+      "name": "migration-dry-run",
+      "command": "node internal/tools/migrate-timestamp-naming.mjs --dry-run"
+    },
+    {
+      "kind": "command",
+      "name": "migration-write",
+      "command": "node internal/tools/migrate-timestamp-naming.mjs --write"
+    },
+    {
+      "kind": "command",
+      "name": "migration-rollback-check",
+      "command": "node internal/tools/migrate-timestamp-naming.mjs --rollback --dry-run"
+    }
+  ]
+}

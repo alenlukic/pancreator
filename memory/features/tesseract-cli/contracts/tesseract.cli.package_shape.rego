@@ -1,24 +1,24 @@
 # METADATA
-# title: Phase 2 scaffold contract for packages/@tesseract/cli
-# description: When the Phase 2 scaffold for `packages/@tesseract/cli` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
+# title: Phase 2 scaffold contract for internal/packages/@tesseract/cli
+# description: When the Phase 2 scaffold for `internal/packages/@tesseract/cli` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
 # severity: block
 # references:
 #   - "BOOTSTRAP.md:[122,159]#TBD-on-commit"
 #   - "PRD.md:[1116,1126]#TBD-on-commit"
 # custom:
 #   tesseract.contract_id: tesseract.cli.package_shape
-#   tesseract.applies_to: file-path:packages/@tesseract/cli/**
+#   tesseract.applies_to: file-path:internal/packages/@tesseract/cli/**
 package tesseract.phase2.cli
 
 import rego.v1
 
 required_paths := {
-  "packages/@tesseract/cli/package.json",
-  "packages/@tesseract/cli/README.md",
-  "packages/@tesseract/cli/src/index.ts",
+  "internal/packages/@tesseract/cli/package.json",
+  "internal/packages/@tesseract/cli/README.md",
+  "internal/packages/@tesseract/cli/src/index.ts",
 }
 
-description := "When the Phase 2 scaffold for `packages/@tesseract/cli` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory."
+description := "When the Phase 2 scaffold for `internal/packages/@tesseract/cli` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory."
 
 deny contains msg if {
   some req in required_paths

@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/pipeline
 
 ## Touch Set
-- `packages/@tesseract/pipeline/**`
+- `internal/packages/@tesseract/pipeline/**`
 - `memory/features/tesseract-pipeline/contracts/**`
 - `memory/features/tesseract-pipeline/spec.md`
 - `memory/features/tesseract-pipeline/plan.md`

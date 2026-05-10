@@ -6,7 +6,7 @@
       "owner": "contract-writer",
       "appliesTo": {
         "kind": "file-path",
-        "glob": "packages/@tesseract/checkpointer-fs/**"
+        "glob": "internal/packages/@tesseract/checkpointer-fs/**"
       }
     },
     {
@@ -15,7 +15,7 @@
       "owner": "contract-writer",
       "appliesTo": {
         "kind": "artifact-symbol",
-        "path": "packages/@tesseract/checkpointer-fs/README.md",
+        "path": "internal/packages/@tesseract/checkpointer-fs/README.md",
         "symbol": "# Quickstart",
         "contentHash": "TBD-on-commit"
       }

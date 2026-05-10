@@ -155,7 +155,7 @@ pattern.
 ```yaml
 applies_to:
   kind: file-path
-  glob: "packages/*/package.json"
+  glob: "internal/packages/*/package.json"
   contentHash: <sha256 hex of glob-expanded payload, optional>
 ```
 
@@ -196,7 +196,7 @@ is closed per kind; unknown fields raise a Layer 1 error.
 runtime:
   package: tesseract.coverage           # OPA package name
   query: data.tesseract.coverage.deny   # default: data.<package>.deny
-  bundle: packages/policy/rego/         # optional; inherits from /policies/ default
+  bundle: internal/packages/policy/rego/         # optional; inherits from /policies/ default
 spec: /memory/features/<id>/contracts/<id>.rego  # required for non-inline rego
 ```
 
@@ -362,10 +362,10 @@ kind: rego
 severity: block
 applies_to:
   kind: file-path
-  glob: "packages/*/package.json"
+  glob: "internal/packages/*/package.json"
 owner: contract-writer
 description: |
-  When a `packages/<primitive>/package.json` declares a runtime dependency
+  When an `internal/packages/<primitive>/package.json` declares a runtime dependency
   on another `@tesseract/<primitive>` package other than `@tesseract/core`,
   the contract-runner SHALL emit a block-level failure naming the offending
   package and the forbidden dependency.
@@ -381,7 +381,7 @@ runtime:
   query: data.tesseract.deps.deny
 metadata:
   tesseract.contract_id: tesseract.core.no-horizontal-deps
-  tesseract.applies_to: file-path:packages/*/package.json
+  tesseract.applies_to: file-path:internal/packages/*/package.json
 ```
 
 ## 10 — Worked example: `kind: llm-judge`

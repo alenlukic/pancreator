@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/cli
 
 ## Touch Set
-- `packages/@tesseract/cli/**`
+- `internal/packages/@tesseract/cli/**`
 - `memory/features/tesseract-cli/contracts/**`
 - `memory/features/tesseract-cli/spec.md`
 - `memory/features/tesseract-cli/plan.md`

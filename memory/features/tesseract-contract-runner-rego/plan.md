@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/contract-runner-rego
 
 ## Touch Set
-- `packages/@tesseract/contract-runner-rego/**`
+- `internal/packages/@tesseract/contract-runner-rego/**`
 - `memory/features/tesseract-contract-runner-rego/contracts/**`
 - `memory/features/tesseract-contract-runner-rego/spec.md`
 - `memory/features/tesseract-contract-runner-rego/plan.md`

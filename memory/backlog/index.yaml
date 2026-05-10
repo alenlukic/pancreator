@@ -186,14 +186,14 @@ items:
 
   - id: compliance-tests-automation-wiring
     title: Automate compliance scheduler and structure-change triggers
-    source: work/173009_04-27-26/68576_0457_compliance-tests/plan.md
+    source: internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/plan.md
     owner: coder
     milestone: phase-3
     status: deferred
     priority: medium
     opened_at: "2026-04-26T20:30:00Z"
     links:
-      - /work/173009_04-27-26/68576_0457_compliance-tests/plan.md
+      - /internal/work_archive/173009_04-27-26/68576_0457_compliance-tests/plan.md
       - /memory/features/compliance-tests/manual-runbook.md
       - /memory/features/compliance-tests/spec.md
     evidence: "Current compliance-tests slice is manual-first and defers default 4-hour scheduler enforcement plus structure-change auto-trigger wiring."
@@ -201,37 +201,37 @@ items:
 
   - id: migration-script-rename-before-reference-update-bug
     title: Fix migrate-timestamp-naming rename-before-reference-update ordering
-    source: work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-write.stderr.log
+    source: internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-write.stderr.log
     owner: coder
     milestone: phase-5
     status: open
     priority: high
     opened_at: "2026-04-27T20:25:00Z"
     links:
-      - /tools/migrate-timestamp-naming.mjs
-      - /work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-write.stderr.log
+      - /internal/tools/migrate-timestamp-naming.mjs
+      - /internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-write.stderr.log
       - /memory/adr/0005-timestamp-naming-conventions.md
     evidence: "Phase 4 migration write at commit 2a41ca9 failed mid-flight with ENOENT inside applyReferenceUpdatesFromManifest because renames had already moved files off the manifest's pre-rename paths. Coder recovered by manually applying 670 reference edits through a one-off post-rename resolver."
     notes: "Either apply reference updates before renames or remap u.file through the rename map inside applyReferenceUpdatesFromManifest before writing. Required before any future migration --write run."
 
   - id: migration-script-inbox-stem-idempotency-bug
     title: Make migrate-timestamp-naming inbox stem derivation idempotent
-    source: work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.post-write.json
+    source: internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.post-write.json
     owner: coder
     milestone: phase-5
     status: open
     priority: high
     opened_at: "2026-04-27T20:25:00Z"
     links:
-      - /tools/migrate-timestamp-naming.mjs
-      - /work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.post-write.json
+      - /internal/tools/migrate-timestamp-naming.mjs
+      - /internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.post-write.json
       - /memory/adr/0005-timestamp-naming-conventions.md
     evidence: "Post-write dry-run captured 17 residual inbox renames and 322 reference-row edits that would re-prefix already-prefixed stems (for example 27250_1625_x.md restamped to 27250_1625_27250_1625_x.md). Migration write is therefore non-idempotent in its current shape."
     notes: "Strip a ratified SID/HHMM prefix before treating the residual basename as the semantic stem inside migrateTargetForInboxPath. Required before any future migration --write run."
 
   - id: policy-compliance-hook-legacy-shape-removal
     title: Drop legacy two-level path branch from policy-compliance hook
-    source: work/173009_04-27-26/18990_1843_policy-compliance-hook-three-level-fix/policy-compliance.json
+    source: internal/work_archive/173009_04-27-26/18990_1843_policy-compliance-hook-three-level-fix/policy-compliance.json
     owner: coder
     milestone: phase-5
     status: deferred
@@ -240,7 +240,7 @@ items:
     links:
       - /.cursor/hooks/enforce-policy-compliance.sh
       - /memory/adr/0005-timestamp-naming-conventions.md
-      - /work/173009_04-27-26/18990_1843_policy-compliance-hook-three-level-fix/policy-compliance.json
+      - /internal/work_archive/173009_04-27-26/18990_1843_policy-compliance-hook-three-level-fix/policy-compliance.json
     evidence: "Commit d1d68d2 widened the hook regex to admit both the legacy work/<task>/policy-compliance.json shape and the ADR-0005 work/<day>/<task>/policy-compliance.json shape so the migration-write commit could land. Migration write completed at commit 2a41ca9 and every existing work directory now uses the three-level shape."
     notes: "Remove the legacy regex branch from .cursor/hooks/enforce-policy-compliance.sh and verify with one structural-change commit. Defer until at least one independent post-migration commit confirms the three-level path is the only valid shape."
 
@@ -267,8 +267,8 @@ items:
     priority: high
     opened_at: "2026-04-27T20:25:00Z"
     links:
-      - /packages/@tesseract/contract-runner-rego/
-      - /packages/@tesseract/contract-runner-llm-judge/
+      - /internal/packages/@tesseract/contract-runner-rego/
+      - /internal/packages/@tesseract/contract-runner-llm-judge/
       - /memory/handbook/contract-format.md
       - /memory/features/timestamp-naming-conventions/contracts/
     evidence: "Phase 3 and Phase 4 slice policy-compliance.json artifacts repeatedly record a 'spec-contract-runner-not-wired' deferral; Spec Contracts ship structurally but cannot execute end-to-end without a runner panel."
@@ -285,7 +285,7 @@ items:
     links:
       - /BOOTSTRAP.md
       - /memory/handbook/run-log-schema.md
-      - /packages/@tesseract/run-log/
+      - /internal/packages/@tesseract/run-log/
     evidence: "BOOTSTRAP.md Phase 4 names a clean run-log trace in Phoenix or Langfuse as part of the Phase-4 dogfood exit criterion. Operator deferred external observability to M2 during Phase 3 exit ratification."
     notes: "Wire run.log.jsonl emission into Phoenix or Langfuse and re-run the timestamp-naming-conventions dogfood as the ratification trace. Track alongside M2 contract-corpus work."
 
@@ -299,8 +299,8 @@ items:
     opened_at: "2026-04-27T20:25:00Z"
     links:
       - /BOOTSTRAP.md
-      - /packages/@tesseract/intervention/
-      - /packages/@tesseract/cli/
+      - /internal/packages/@tesseract/intervention/
+      - /internal/packages/@tesseract/cli/
     evidence: "BOOTSTRAP.md Phase 4 calls for manually exercising tess pause mid-implement, tess resume, and tess abort on a second feature-delivery run. The Phase 4 dogfood used direct subagent delegation rather than runtime persona dispatch, so in-flight pause and resume against a real feature is not yet exercised empirically."
     notes: "Land runtime persona dispatch first; rerun the dogfood with pause-resume-abort scripted; persist the trace as the ratification artifact."
 
@@ -316,7 +316,7 @@ items:
       - /memory/features/timestamp-naming-conventions/spec.md
       - /memory/adr/0005-timestamp-naming-conventions.md
       - /inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md
-      - /tools/migrate-timestamp-naming.mjs
+      - /internal/tools/migrate-timestamp-naming.mjs
     evidence: "Operator deferred the days-to-FDS=000000 rollover rule during round-1 intake clarifications with the rationale that the boundary is unlikely to surface in practice. Migration script daysToFds helper currently throws FDS_PLUS_ONE as a fail-loud guard for any timestamp at or beyond 2500-01-01T00:00:00Z."
     notes: "Ratify a successor rule at least one calendar year before 2500-01-01T00:00:00Z. Until then the fail-loud guard is the contract."
 
@@ -337,7 +337,7 @@ items:
 
   - id: librarian-backlog-promotion-duty
     title: Add backlog-promotion duty to librarian persona scope
-    source: work/173009_04-27-26/12905_2024_backlog-curation-post-phase-4-dogfood/policy-compliance.json
+    source: internal/work_archive/173009_04-27-26/12905_2024_backlog-curation-post-phase-4-dogfood/policy-compliance.json
     owner: persona-designer
     milestone: phase-5
     status: open
@@ -353,7 +353,7 @@ items:
 
   - id: cursor-token-economy-persona-designer-glob-review
     title: Ratify narrowing persona-designer Cursor rule globs after mirror review
-    source: work/173009_05-09-26/50909_1000_cursor-token-economy/rule-audit.md
+    source: internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/rule-audit.md
     owner: persona-designer
     milestone: phase-1
     status: open
@@ -390,7 +390,7 @@ items:
     opened_at: "2026-05-09T22:55:00Z"
     links:
       - /memory/features/active-memory-context-economy-pass-2/spec.md
-      - /work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
+      - /internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
       - /memory/adr/0005-timestamp-naming-conventions.md
     evidence: "Pass-2 plan confirms physical migration of work/** and existing memory/** requires shims, tests, manifest, reference updates, and rollback notes."
     notes: "Prepare a dedicated migration slice before moving any historical path."
@@ -405,7 +405,7 @@ items:
     opened_at: "2026-05-09T22:55:00Z"
     links:
       - /memory/features/active-memory-context-economy-pass-2/spec.md
-      - /tools/context-budget-report.mjs
+      - /internal/tools/context-budget-report.mjs
       - /memory/active/
     evidence: "Pass-2 plan ships documented active-memory budgets and tier reporting while deferring executable threshold warnings."
     notes: "Extend the budget report or add a small checker that warns when any active-memory file exceeds 1000 words or the tier exceeds 5000 words."
@@ -422,8 +422,8 @@ items:
       - /memory/features/active-memory-context-economy-pass-2/spec.md
       - /.cursor/rules/persona-designer.mdc
       - /.cursor/rules/tesseract-engineer.mdc
-      - /work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
-      - /work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md
+      - /internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
+      - /internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md
     evidence: "Implement pass 2 narrowed six mirrored Cursor rule files per rule-audit.md; supervisor.mdc stayed unchanged after audit. This backlog item remains the ratification umbrella when a rule owner must still approve a proposed glob or when mirror parity risk is not closed in review."
     notes: "Close this item only after persona-designer (or delegate) records explicit ratification for any rule the audit flagged, or after review confirms no remaining activation-risk gap."
 

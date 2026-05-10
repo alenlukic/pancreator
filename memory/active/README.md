@@ -44,7 +44,7 @@ and **archival-memory** paths instead of embedding full specs or run logs.
 
 When an operator classifies bulky artifacts, the operator SHALL keep Feature
 specs under `memory/features/`, ADRs under `memory/adr/`, backlog records under
-`memory/backlog/`, and historical pipeline outputs under `work/`.
+`memory/backlog/`, and active pipeline outputs under `work/`, and completed historical pipeline outputs under `internal/work_archive/`.
 
 When an operator handles generated indexes, manifests, or compliance JSON, the
 operator SHALL treat those objects as **generated-machine-artifact** surfaces

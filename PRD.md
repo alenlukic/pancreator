@@ -42,7 +42,7 @@ todos:
     content: "Implement tess CLI MVP subcommands (Claude-Code-aligned grammar): init (greenfield + adopt), mcp [list|add|remove|status], inbox, run, chat, feature, status, approve, memory query, worktree, policy, pause, resume, abort"
     status: pending
   - id: run-logger-mvp
-    content: Implement @tesseract/run-logger emitting OTLP-encoded spans with OpenInference + OTel GenAI semantic conventions; default JSONL local sink to /work/<task-id>/run.log.jsonl; conformance-tested against Phoenix/Langfuse importers
+    content: Implement @tesseract/run-logger emitting OTLP-encoded spans with OpenInference + OTel GenAI semantic conventions; default JSONL local sink to /work/<day>/<task-id>/run.log.jsonl; conformance-tested against Phoenix/Langfuse importers
     status: pending
   - id: examples
     content: "Author three MVP examples: examples/greenfield-react-app (US-9), examples/existing-monorepo (US-9), examples/library-script (US-8 standalone primitive use); plus examples/library-mcp-driven (Tesseract-as-MCP-server controlled by external Claude Code agent — proves SOTA conformance externally)"
@@ -386,7 +386,7 @@ The four orthogonal layers (the "tesseract"):
 ### Package layout (monorepo) — pnpm workspace + Turborepo + Changesets, modeled on Mastra
 
 ```
-packages/
+internal/packages/
   core/                  # @tesseract/core — shared types only, no logic, zero deps
   persona/               # @tesseract/persona — persona spec parser (Claude Code agent spec) + runner adapter; auto-emits Cursor .mdc shim
   pipeline/              # @tesseract/pipeline — YAML DSL parser + LangGraph.js StateGraph compiler
@@ -653,14 +653,14 @@ stages:
       - /memory/handbook/
       - /memory/adr/
     outputs:
-      - /work/<id>/plan.md
-      - /work/<id>/adr-draft.md
-      - /work/<id>/touch-set.json  # required for parallel/conflict planning
+      - /work/<day>/<id>/plan.md
+      - /work/<day>/<id>/adr-draft.md
+      - /work/<day>/<id>/touch-set.json  # required for parallel/conflict planning
   - id: implement
     persona: coder
     worktree: required  # see "Worktree Parallelism" below
     parallelism: by_task
-    inputs: [/work/<id>/plan.md, /work/<id>/touch-set.json]
+    inputs: [/work/<day>/<id>/plan.md, /work/<day>/<id>/touch-set.json]
     outputs: [code, tests]
     circuit_breaker:
       max_iterations: 25
@@ -671,15 +671,15 @@ stages:
     inputs:
       - code
       - tests
-      - /work/<id>/plan.md
-      - /work/<id>/adr-draft.md
+      - /work/<day>/<id>/plan.md
+      - /work/<day>/<id>/adr-draft.md
       - contracts:from_feature  # pull in all spec contracts for this feature
-    outputs: [/work/<id>/review.md]
+    outputs: [/work/<day>/<id>/review.md]
     gate: review_passes  # all "must fix" resolved AND all contracts pass AND threshold policy met
   - id: test
     persona: qa-tester  # MVP: lightweight version using coder + Bash
     inputs: [code, tests]
-    outputs: [/work/<id>/test-report.md]
+    outputs: [/work/<day>/<id>/test-report.md]
   - id: report
     persona: tech-writer
     inputs: [code, tests, plan, adr-draft, review, test-report]
@@ -764,7 +764,7 @@ warn contains msg if {
 }
 ```
 
-Evaluation pipeline: `conftest test --policy packages/policy/rego/ ./run-output.json`. Standard exit codes; `gates_on_failure` map routes failures back into the pipeline. `**severity: warn` vs `deny**` lets the audit→soft-gate→hard-gate rollout pattern ship without code changes.
+Evaluation pipeline: `conftest test --policy internal/packages/policy/rego/ ./run-output.json`. Standard exit codes; `gates_on_failure` map routes failures back into the pipeline. `**severity: warn` vs `deny**` lets the audit→soft-gate→hard-gate rollout pattern ship without code changes.
 
 ### Worktree Parallelism (covers US-6)
 
@@ -800,10 +800,10 @@ export interface EnvIsolation {
 
 **Pre-fan-out (Conflict Planner):**
 
-1. Each task's `tech-lead` declares a **touch-set** in `/work/<id>/touch-set.json` (paths, glob patterns, symbols).
+1. Each task's `tech-lead` declares a **touch-set** in `/work/<day>/<id>/touch-set.json` (paths, glob patterns, symbols).
 2. The `conflict-planner` builds an interference graph across the cohort. Three-layer derivation: (1) LLM-declared (MVP), (2) **LSP-reference-graph closure** via `@tesseract/lsp-bridge` over `tree-sitter` (M3), (3) **Bazel/Buck `query` rdeps** when a build graph is present (M4). Each upgrade tightens the guarantee.
 3. Tasks with disjoint touch-sets fan out in parallel; tasks with overlapping touch-sets are either *split* (boundary refactored) or *serialized* with a declared dependency edge.
-4. The plan is committed to `/work/cohort-<id>/plan.json` for replay/audit.
+4. The plan is committed to `/work/<day>/cohort-<id>/plan.json` for replay/audit.
 
 **During execution:**
 
@@ -835,7 +835,7 @@ export interface EnvIsolation {
 
 - **Human approval gates by risk tier** — low (default-allow), medium (notify + 24h auto-approve unless objected), high (explicit human ratification required). Borrowed from progressive-delivery thinking.
 - **Code-level circuit breakers** — every pipeline declares max iterations, token budget, consecutive-failure cap, and a deterministic kill-switch. Prompt instructions are *not* trusted as the safety boundary.
-- **Run log** — every pipeline writes `/work/<id>/run.log.jsonl` of OTLP-encoded spans carrying **OpenInference** primary attributes (`openinference.span.kind` ∈ {LLM, AGENT, TOOL, RETRIEVER, RERANKER, EMBEDDING, GUARDRAIL, EVALUATOR, CHAIN, PROMPT}; `input.value`/`output.value`; `llm.input_messages.<i>.message.role|content`; `tool.name|parameters|result`) and **OTel GenAI semconv** parallel layer (`gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens|output_tokens`). Tesseract-specific extensions namespaced as `tesseract.task_id|pipeline|persona|stage_id|checkpoint_seq|intervention.lever|contract.id`. `RunLogger` ships three exporters in MVP: `FileExporter` (default), `OTLPExporter` (Phoenix/Langfuse/Datadog/Honeycomb/New Relic), `LangSmithExporter` (M2). One file format = free integration with the entire OSS LLM-observability stack.
+- **Run log** — every pipeline writes `/work/<day>/<id>/run.log.jsonl` of OTLP-encoded spans carrying **OpenInference** primary attributes (`openinference.span.kind` ∈ {LLM, AGENT, TOOL, RETRIEVER, RERANKER, EMBEDDING, GUARDRAIL, EVALUATOR, CHAIN, PROMPT}; `input.value`/`output.value`; `llm.input_messages.<i>.message.role|content`; `tool.name|parameters|result`) and **OTel GenAI semconv** parallel layer (`gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens|output_tokens`). Tesseract-specific extensions namespaced as `tesseract.task_id|pipeline|persona|stage_id|checkpoint_seq|intervention.lever|contract.id`. `RunLogger` ships three exporters in MVP: `FileExporter` (default), `OTLPExporter` (Phoenix/Langfuse/Datadog/Honeycomb/New Relic), `LangSmithExporter` (M2). One file format = free integration with the entire OSS LLM-observability stack.
 - **Spec contracts are gates, not suggestions** — any artifact under a feature can declare a `contract:` block; downstream pipelines load and enforce them automatically. **Per-artifact `contract:` is Tesseract's deliberate addition over Spec Kit's repo-level `constitution.md`** (Spec Kit has no per-artifact machine-checkable contract concept). M2 contract runners: **Schemathesis v4.8** ([schemathesis.io](https://schemathesis.io), `uvx schemathesis run` — single command, standard exit codes, 1.4–4.5× more bugs than competitors) for API contracts; **Playwright + `@axe-core/playwright`** for UX contracts; **Hypothesis (Python) / fast-check (TS)** for invariant assertions. LLM-judged fallback only when no harness applies.
 - **Stage-boundary checkpointing** *(US-10)* — every supervisor writes a checkpoint at every stage boundary using **LangGraph's `BaseCheckpointSaver` interface and `Checkpoint v1` schema verbatim** (`{v, ts, id, channel_values, channel_versions, versions_seen, pending_sends}`, plus Tesseract-specific `metadata.worktree_commit` and `metadata.run_log_offset`). MVP `FileCheckpointSaver` is a conformant `BaseCheckpointSaver` implementation persisting to `/memory/checkpoints/<task-id>/<seq>.json`. M5+ adapters (`SqliteSaver`, `PostgresSaver`) are LangGraph's own saver classes.
 - **Every pipeline subscribes to the Intervention bus** *(US-10)* — `steer | pause | reroute | snapshot | rollback | abort | quarantine` are honored at the next safe checkpoint; pipelines never opt out.
@@ -887,7 +887,7 @@ Safety invariants:
 
 - **Rollback / abort never destroy uncommitted human edits** — control plane checks the worktree's git status; aborts the abort if dirty; surfaces an inbox conflict.
 - **Quarantine preserves complete state** — context, worktree, run-log, in-flight tool calls — for postmortem.
-- **Abort always emits a `run-summary.md`** to `/work/<id>/` for the Librarian to index; aborted runs are first-class memory.
+- **Abort always emits a `run-summary.md`** to `/work/<day>/<id>/` for the Librarian to index; aborted runs are first-class memory.
 - **Every intervention is itself logged** to the run-log, with operator identity (in framework mode = local user; in library mode = Authorizer caller).
 - **Replayability** — checkpoints + intervention log together let any run be replayed deterministically (modulo LLM non-determinism), which is what makes the M5+ Watchdog's "suggest, don't auto-apply" model useful.
 
@@ -1080,7 +1080,7 @@ Grooming (US-7, M3):
 
 ### Run-log: OpenInference + OTel GenAI (no proprietary schema)
 
-Every persona turn, tool call, ensemble vote, intervention, gate evaluation, checkpoint, and worktree action is emitted as an **OTLP-encoded span** that conforms to **both** the [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, etc.) **and** the [OpenInference attribute set](https://github.com/Arize-ai/openinference) (`llm.input_messages`, `llm.output_messages`, `tool.name`, `tool.parameters`, etc.). This single emit makes every Tesseract run viewable in **Phoenix, Langfuse, LangSmith, Helicone, OpenLLMetry, OTel-native backends (Jaeger, Tempo, Honeycomb)** with zero adapter code, and lets users plug in their existing observability stack instead of paying a Tesseract tax. Local default exporter writes JSONL to `/work/<task-id>/run.log.jsonl` for grep-ability and offline replay.
+Every persona turn, tool call, ensemble vote, intervention, gate evaluation, checkpoint, and worktree action is emitted as an **OTLP-encoded span** that conforms to **both** the [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, etc.) **and** the [OpenInference attribute set](https://github.com/Arize-ai/openinference) (`llm.input_messages`, `llm.output_messages`, `tool.name`, `tool.parameters`, etc.). This single emit makes every Tesseract run viewable in **Phoenix, Langfuse, LangSmith, Helicone, OpenLLMetry, OTel-native backends (Jaeger, Tempo, Honeycomb)** with zero adapter code, and lets users plug in their existing observability stack instead of paying a Tesseract tax. Local default exporter writes JSONL to `/work/<day>/<task-id>/run.log.jsonl` for grep-ability and offline replay.
 
 The supervisor span is the trace root; persona turns, tool calls, and sub-pipeline invocations nest underneath via standard OTel parent/child links. Run-log entries are dual-anchor-citation-bearing where applicable.
 
@@ -1228,7 +1228,7 @@ Measured on the framework's *own* repo (dogfooding) plus 3 pilot installs.
 - **A10 (US-5).** ≥ 1 scout-emitted RFC accepted into the backlog per month; ensemble-debate dissent surfaces ≥ 2 substantive disagreements per RFC on average; no SMEs idle > 30 days without a Librarian-emitted demotion suggestion; scout total cost ≤ Q8 ceiling 100% of weeks.
 - **A11 (US-6).** Parallel-cohort merge-conflict rate < 5% of cohorts after conflict-planner runs (vs. an unplanned baseline TBD on dogfood); zero silent semantic merges; merge-resolver inbox items resolved within 24h median.
 - **A15 (US-7).** In `propose` mode: ≥ 80% of groomer-emitted refactor RFCs receive human-or-ensemble decision (accept/reject/defer) within 7 days. In `auto-pr` mode: zero behavior-regression incidents traceable to a groomer PR; weekly PR budget never exceeded.
-- **A16 (US-8).** Every primitive in `packages/` (a) has a non-Tesseract usage example in `examples/`, (b) passes the conformance test suite at M7, (c) declares an explicit `stability` tier, (d) has zero horizontal package dependencies (CI-enforced from M1).
+- **A16 (US-8).** Every primitive in `internal/packages/` (a) has a non-Tesseract usage example in `examples/`, (b) passes the conformance test suite at M7, (c) declares an explicit `stability` tier, (d) has zero horizontal package dependencies (CI-enforced from M1).
 - **A17 (US-9).** `tess init` on 5 representative existing repos (TS monorepo, Python service, Rust binary, Go API, Next.js app) completes non-destructively (zero overwritten files) and produces an `adoption/scan-*.md` rated ≥ 4/5 by repo owners on accuracy.
 - **A18 (US-10).** Median time from operator-issued `tess pause` to actual pause-acknowledgment ≤ 1 stage boundary; zero rollback/abort actions destroy uncommitted human edits; from M5+, watchdog detects ≥ 80% of stuck-state cases that humans would have flagged manually within 5 turns of the human.
 

@@ -22,17 +22,17 @@ references:
     path: memory/handbook/memory-tiers.md
     range: [34, 122]
     contentHash: a00f149bb18a67b22d897e91ae1c5e6cfda6b49d2f7fda5f96abf757e6430caf
-    note: Five-tier taxonomy, promotion rule, and archival explicit-read defaults.
+    note: Six-tier taxonomy, promotion rule, and archival explicit-read defaults.
   - kind: lines
     path: memory/handbook/glossary.md
     range: [212, 226]
     contentHash: 31546d19f1cabd2d82e88353fbc8a3d67f1b5b5a97f2b28734841d7103b5446f
-    note: Glossary defines active-memory, durable-memory, archival-memory, internal-operating-content, and generated-machine-artifact.
+    note: Glossary defines active-memory, active-work, durable-memory, archival-memory, internal-operating-content, and generated-machine-artifact.
   - kind: lines
     path: memory/handbook/context-economy.md
     range: [64, 108]
     contentHash: 108ea6a48c7e60dc62cbccd8af11af6d211d94f67a16082945437a56f400342e
-    note: Memory-tier routing, work/** explicit-read rule, and explicit-read surface examples.
+    note: Memory-tier routing, active work explicit-read rule, archive boundary, and explicit-read surface examples.
   - kind: lines
     path: memory/active/README.md
     range: [29, 67]
@@ -47,9 +47,9 @@ references:
     path: memory/active/runs.md
     range: [22, 35]
     contentHash: 1cd2565ba3ed1a9507a846512679a159cb56b37e37018b37d780130dfbe51519
-    note: Run-pointer table keeps full logs under archival-memory paths.
+    note: Run-pointer table keeps active logs under work and completed logs under internal/work_archive paths.
   - kind: lines
-    path: work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
+    path: internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
     range: [44, 49]
     contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70
     note: Plan-stage deferrals name backlog linkage and glossary reversal.
@@ -90,8 +90,9 @@ Citations:
 ## Decision
 
 When Tesseract classifies repository memory for default retrieval, Tesseract
-SHALL use five tiers:
+SHALL use six tiers:
 **active-memory**,
+**active-work**,
 **durable-memory**,
 **archival-memory**,
 **internal-operating-content**,
@@ -111,10 +112,13 @@ while keeping linked archival paths reachable by explicit read. Citations:
 `{kind: lines, path: memory/handbook/memory-tiers.md, range: [45, 57], contentHash: a00f149bb18a67b22d897e91ae1c5e6cfda6b49d2f7fda5f96abf757e6430caf}`;
 `{kind: lines, path: memory/active/README.md, range: [36, 67], contentHash: 248cc86b0b3fb0dda938f61108737912251213461398744faa2a97949f710923}`.
 
-When Tesseract classifies `work/**`, `inbox/out/**`, and `inbox/threads/**`,
-Tesseract SHALL treat those prefixes as **archival-memory** because they hold
-historical pipeline workspaces, operator threads, staged responses, plans,
-reviews, and run outputs rather than day-zero orientation. Citation:
+When Tesseract classifies `work/**`, Tesseract SHALL treat that prefix as
+**active-work** because it holds in-progress pipeline workspace artifacts.
+
+When Tesseract classifies `internal/work_archive/**`, `inbox/out/**`, and
+`inbox/threads/**`, Tesseract SHALL treat those prefixes as **archival-memory**
+because they hold historical pipeline workspaces, operator threads, staged
+responses, plans, reviews, and run outputs rather than day-zero orientation. Citation:
 `{kind: lines, path: memory/handbook/memory-tiers.md, range: [75, 80], contentHash: a00f149bb18a67b22d897e91ae1c5e6cfda6b49d2f7fda5f96abf757e6430caf}`.
 
 When Tesseract loads **archival-memory** by default inside Cursor indexing or
@@ -144,30 +148,29 @@ outputs, and lockfiles, Tesseract SHALL treat those artifacts as
 unless one task documents inclusion. Citation:
 `{kind: lines, path: memory/handbook/memory-tiers.md, range: [106, 118], contentHash: a00f149bb18a67b22d897e91ae1c5e6cfda6b49d2f7fda5f96abf757e6430caf}`.
 
-When Tesseract evaluates physical migration of `work/**` or existing `memory/**`
-trees, Tesseract SHALL defer migration until one delivery slice ships reference
-updates, compatibility shims, tests, a migration manifest, and rollback notes;
-backlog item `active-memory-physical-tier-migration` SHALL track that work.
+When Tesseract completes a run under `work/**`, Tesseract SHALL rely on the
+`librarian` maintenance role to move completed run artifacts into
+`internal/work_archive/**`, update references, and leave active runs in `work/**`.
 Citation:
-`{kind: lines, path: work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [46, 46], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
+`{kind: lines, path: internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [46, 46], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
 
 When Tesseract ships executable budget-warning tooling for **active-memory**
 soft caps, Tesseract SHALL defer that tooling to backlog item
 `active-memory-budget-warning-tool` so reporting and enforcement slices stay
 separated. Citation:
-`{kind: lines, path: work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [48, 48], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
+`{kind: lines, path: internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [48, 48], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
 
 When Tesseract narrows Cursor rule globs for mirror-parity risk, Tesseract
 SHALL track ratification work under backlog item
 `active-memory-rule-glob-ratification`. Citation:
-`{kind: lines, path: work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [49, 49], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
+`{kind: lines, path: internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [49, 49], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
 
 When Tesseract records plan-stage glossary policy, Tesseract SHALL treat the
 reversed glossary deferral as closed: tier nouns now live in
 `memory/handbook/glossary.md` per plan deferral list item 2 instead of
 remaining undefined.
 Citation:
-`{kind: lines, path: work/173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [47, 47], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
+`{kind: lines, path: internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [47, 47], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
 
 ## Consequences
 

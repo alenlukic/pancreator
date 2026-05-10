@@ -8,7 +8,7 @@
   "pipeline_state": "shipped",
   "review": {
     "review_passes": true,
-    "artifact": "work/173009_05-09-26/50909_1000_cursor-token-economy/review.md",
+    "artifact": "internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/review.md",
     "human_ratification_note": "Operator ratified protected-surface merge intent before reviewer invocation."
   },
   "delivery_report": {
@@ -17,10 +17,10 @@
     "notifier_simulated": true
   },
   "plan": {
-    "work_path": "work/173009_05-09-26/50909_1000_cursor-token-economy",
-    "plan_artifact": "work/173009_05-09-26/50909_1000_cursor-token-economy/plan.md",
-    "adr_draft": "work/173009_05-09-26/50909_1000_cursor-token-economy/adr-draft.md",
-    "touch_set": "work/173009_05-09-26/50909_1000_cursor-token-economy/touch-set.json",
+    "work_path": "internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy",
+    "plan_artifact": "internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/plan.md",
+    "adr_draft": "internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/adr-draft.md",
+    "touch_set": "internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/touch-set.json",
     "implement_note": "Orchestrator applied the touch-set because personas/coder.md forbids edits under memory/ and .cursor/rules/, which this feature requires."
   },
   "intake": {
@@ -42,7 +42,7 @@
     "inbox_source_archived_to": "inbox/archive/in/11951_2040_token_economy.md",
     "inbox_source_archive_method": "git mv (rename detected; history preserved)",
     "inbox_source_rename_rule": "memory/handbook/inbox-lifecycle.md \u00a73c with timestamp prefix derived from first git commit timestamp 2026-05-09T20:40:49Z per ADR-0005 \u00a747 derivation order",
-    "stale_citation_followup": "memory/features/cursor-token-economy/spec.md and work/173009_05-09-26/50909_1000_cursor-token-economy/plan.md retain point-in-time citations to the original inbox/in/ path; contentHash placeholders remain TBD-on-commit; librarian knowledge-curation sweep SHOULD flag and propose updates per personas/librarian.md \u00a7\"What you MUST produce\" item 3"
+    "stale_citation_followup": "memory/features/cursor-token-economy/spec.md and internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/plan.md retain point-in-time citations to the original inbox/in/ path; contentHash placeholders remain TBD-on-commit; librarian knowledge-curation sweep SHOULD flag and propose updates per personas/librarian.md \u00a7\"What you MUST produce\" item 3"
   },
   "shipped": {
     "shipped_at_utc": "2026-05-10T03:16:00Z",

@@ -1,7 +1,7 @@
 # Implementation Plan - @tesseract/runner-cursor
 
 ## Touch Set
-- `packages/@tesseract/runner-cursor/**`
+- `internal/packages/@tesseract/runner-cursor/**`
 - `memory/features/tesseract-runner-cursor/contracts/**`
 - `memory/features/tesseract-runner-cursor/spec.md`
 - `memory/features/tesseract-runner-cursor/plan.md`
