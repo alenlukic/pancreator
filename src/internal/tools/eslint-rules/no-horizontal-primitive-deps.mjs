@@ -37,7 +37,7 @@ function tesseractPackageId(source) {
  */
 function primitiveNameFromFile(filePath) {
   const rel = path.relative(REPO_ROOT, filePath).split(path.sep).join("/");
-  const m = /^src/internal/packages\/@tesseract\/([^/]+)\//.exec(rel);
+  const m = /^src\/internal\/packages\/@tesseract\/([^/]+)\//.exec(rel);
   if (!m) {
     return null;
   }
