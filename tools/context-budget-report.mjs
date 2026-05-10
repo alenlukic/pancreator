@@ -178,6 +178,7 @@ export function classifyExclusiveTier(rel) {
   const archival =
     /^work(?:\/|$)/.test(r) ||
     /^inbox\/out(?:\/|$)/.test(r) ||
+    /^inbox\/archive(?:\/|$)/.test(r) ||
     /^inbox\/threads(?:\/|$)/.test(r);
   if (archival) return "archival_memory";
 
@@ -221,7 +222,7 @@ const TIER_META = /** @type {const} */ ({
   },
   archival_memory: {
     label: "3 archival memory",
-    dir: "`work/**`, `inbox/out/**`, `inbox/threads/**`",
+    dir: "`work/**`, `inbox/out/**`, `inbox/archive/**`, `inbox/threads/**`",
   },
   internal_operating: {
     label: "4 internal operating content",
@@ -359,6 +360,20 @@ function printReport() {
   );
   console.log(`    (files matching .cursorindexingignore; still reachable via explicit reads)`);
   console.log("");
+
+  const subagentStats = countMatchingChars((rel) => /^\.cursor\/agents\/[^/]+\.md$/.test(posixRel(rel)));
+  const standardStats = countMatchingChars((rel) => /^\.cursor\/agents\/[^/]+-standard\.md$/.test(posixRel(rel)));
+  const complexStats = countMatchingChars((rel) => /^\.cursor\/agents\/[^/]+-complex\.md$/.test(posixRel(rel)));
+  const aliasStats = countMatchingChars((rel) => {
+    const r = posixRel(rel);
+    return /^\.cursor\/agents\/[^/]+\.md$/.test(r) && !/-standard\.md$/.test(r) && !/-complex\.md$/.test(r);
+  });
+
+  console.log("Cursor subagent projections (explicit-read/default-excluded)\n");
+  console.log(`  aliases:   files=${aliasStats.files} chars=${aliasStats.chars} est_tokens~(rough)~${Math.ceil(aliasStats.chars / 4)} (chars/4)`);
+  console.log(`  standard:  files=${standardStats.files} chars=${standardStats.chars} est_tokens~(rough)~${Math.ceil(standardStats.chars / 4)} (chars/4)`);
+  console.log(`  complex:   files=${complexStats.files} chars=${complexStats.chars} est_tokens~(rough)~${Math.ceil(complexStats.chars / 4)} (chars/4)`);
+  console.log(`  all:       files=${subagentStats.files} chars=${subagentStats.chars} est_tokens~(rough)~${Math.ceil(subagentStats.chars / 4)} (chars/4)\n`);
 
   const legacyScopes = [
     { id: "whole_repo_text", label: "Legacy: Whole repo scan (every text file under root)", pred: () => true },

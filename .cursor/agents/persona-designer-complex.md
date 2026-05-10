@@ -1,7 +1,7 @@
 ---
-name: persona-designer
-description: "Backward-compatible standard alias for `persona-designer-standard`. Use for routine persona-designer work; invoke `persona-designer-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: auto
+name: persona-designer-complex
+description: "Complex high-effort `persona-designer` subagent. Use only when standard mode is insufficient: ambiguous architecture, policy/compliance reasoning, broad repo audit, historical reconstruction, or high-risk cross-cutting work."
+model: claude-opus-4-7
 permissionMode: default
 tools:
   - Read
@@ -22,7 +22,7 @@ skills:
 maxTurns: 30
 isolation: worktree
 memory: project
-effort: medium
+effort: high
 color: violet
 metadata:
   tesseract-risk-tier: medium
@@ -43,11 +43,11 @@ metadata:
     - layer-1-lint-clean
     - human-ratified-at-phase-boundary
   tesseract-base-persona: persona-designer
-  tesseract-model-tier: standard-alias
+  tesseract-model-tier: complex
   tesseract-canonical-persona: personas/persona-designer.md
 ---
 
-# persona-designer
+# persona-designer-complex
 
 This file is a compact Cursor projection for the canonical persona at
 `personas/persona-designer.md`. It intentionally avoids duplicating persona prose,

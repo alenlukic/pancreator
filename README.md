@@ -31,10 +31,12 @@ the current manual workflow.
 
 Operators SHALL run bootstrap work manually until runtime automation is wired:
 
-1. Read `AGENTS.md` and `BOOTSTRAP.md` before starting any task. For product
-   context, read `PRD.summary.md` first; open full `PRD.md` when the task needs
-   detailed requirements or line-anchored citations (`PRD.index.md` lists
-   triggers). Read `memory/handbook/context-economy.md` when tuning what loads
+1. Read `AGENTS.md` before starting any task. For active context, read
+   `memory/active/current.md` unless simple task mode applies. For M1/bootstrap
+   routing, read `M1.index.md` before full `BOOTSTRAP.md`. For product context,
+   read `PRD.summary.md` and `PRD.index.md` before full `PRD.md`; open full
+   sources only when the task needs detailed requirements or line-anchored
+   citations. Read `memory/handbook/context-economy.md` when tuning what loads
    into AI context versus explicit reads.
 2. Treat `inbox/in/` as the canonical incoming work queue.
 3. Execute the requested work directly in this repository and stage local diffs.
@@ -57,8 +59,10 @@ treated as currently available behavior.
 ## 5) Key paths map
 
 - `AGENTS.md` — cross-tool operating contract and live bootstrap status.
-- `BOOTSTRAP.md` — phase plan, sequencing, and exit criteria.
-- `PRD.md` — product requirements and MVP scope.
+- `M1.index.md` — compact M1/bootstrap route map.
+- `BOOTSTRAP.md` — full phase plan, sequencing, and exit criteria.
+- `PRD.summary.md` and `PRD.index.md` — compact PRD orientation and routing.
+- `PRD.md` — full product requirements and MVP scope.
 - `personas/` — role definitions.
 - `skills/` — reusable procedures.
 - `memory/handbook/` — canonical authoring references.
@@ -72,6 +76,9 @@ treated as currently available behavior.
 
 - System architecture ADR: [`memory/adr/0002-system-architecture-map.md`](memory/adr/0002-system-architecture-map.md)
 - Backlog tracking ADR: [`memory/adr/0001-backlog-tracking.md`](memory/adr/0001-backlog-tracking.md)
+- M1 route map: [`M1.index.md`](M1.index.md)
 - Bootstrap plan: [`BOOTSTRAP.md`](BOOTSTRAP.md)
-- Product requirements: [`PRD.md`](PRD.md)
+- Product requirements summary: [`PRD.summary.md`](PRD.summary.md)
+- Product requirements index: [`PRD.index.md`](PRD.index.md)
+- Full product requirements: [`PRD.md`](PRD.md)
 - Operating contract: [`AGENTS.md`](AGENTS.md)

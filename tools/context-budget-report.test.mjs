@@ -59,10 +59,17 @@ test("tier char sums reconcile with total corpus and indexable partitioning", ()
   assert.equal(s.activeChars, s.byTier.active_memory.chars);
 });
 
-test(".cursor/agents mirrored paths are indexer-excluded; memory/active markdown is indexer-included", () => {
+test("indexing policy excludes archival, full specs, and agent projections while keeping compact routes", () => {
   const matchers = indexingMatchersFromRoot(ROOT);
   assert.ok(isIndexingExcluded(".cursor/agents/tech-lead.md", matchers));
+  assert.ok(isIndexingExcluded(".cursor/agents/tech-lead-complex.md", matchers));
+  assert.ok(isIndexingExcluded("inbox/archive/in/example.md", matchers));
+  assert.ok(isIndexingExcluded("inbox/notes/private.md", matchers));
+  assert.ok(isIndexingExcluded("PRD.md", matchers));
+  assert.ok(isIndexingExcluded("BOOTSTRAP.md", matchers));
   assert.ok(!isIndexingExcluded("memory/active/README.md", matchers));
+  assert.ok(!isIndexingExcluded("PRD.summary.md", matchers));
+  assert.ok(!isIndexingExcluded("M1.index.md", matchers));
 });
 
 test("CLI exits zero with seven tiers and aggregate labels", () => {
@@ -75,5 +82,39 @@ test("CLI exits zero with seven tiers and aggregate labels", () => {
   assert.match(out, /indexable default context/);
   assert.match(out, /explicit-read-only corpus/);
   assert.match(out, /active memory footprint/);
+  assert.match(out, /Cursor subagent projections/);
+  assert.match(out, /standard:[\s\S]*complex:/);
   assert.match(out, /chars\/4/);
+});
+
+test("Cursor subagent projections expose standard and complex tiers", () => {
+  const dir = path.join(ROOT, ".cursor", "agents");
+  const names = fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.replace(/\.md$/, ""));
+  const bases = names.filter((n) => !n.endsWith("-standard") && !n.endsWith("-complex"));
+  assert.ok(bases.length > 0);
+  for (const base of bases) {
+    const alias = fs.readFileSync(path.join(dir, `${base}.md`), "utf8");
+    const standard = fs.readFileSync(path.join(dir, `${base}-standard.md`), "utf8");
+    const complex = fs.readFileSync(path.join(dir, `${base}-complex.md`), "utf8");
+    assert.match(alias, /^model: auto$/m, `${base} alias should use auto`);
+    assert.match(standard, /^model: auto$/m, `${base}-standard should use auto`);
+    assert.doesNotMatch(complex, /^model: auto$/m, `${base}-complex should preserve a fixed model`);
+    assert.match(alias, new RegExp(`tesseract-base-persona: ${base}`));
+    assert.match(complex, new RegExp(`tesseract-model-tier: complex`));
+  }
+});
+
+test("persona and Cursor agent frontmatter avoids inline maxTurns comments", () => {
+  const files = [
+    ...fs.readdirSync(path.join(ROOT, "personas")).map((f) => path.join(ROOT, "personas", f)),
+    ...fs.readdirSync(path.join(ROOT, ".cursor", "agents")).map((f) => path.join(ROOT, ".cursor", "agents", f)),
+  ].filter((f) => f.endsWith(".md"));
+  for (const file of files) {
+    const rel = posixRel(path.relative(ROOT, file));
+    const text = fs.readFileSync(file, "utf8");
+    assert.doesNotMatch(text, /^maxTurns:\s*[^\n#]+#/m, `${rel} has an inline maxTurns comment`);
+  }
 });

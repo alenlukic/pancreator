@@ -37,6 +37,9 @@ related:
   - /memory/active/current.md
   - /PRD.summary.md
   - /PRD.index.md
+  - /M1.index.md
+  - /memory/handbook/subagent-model-tiers.md
+  - /memory/handbook/context-cost-audit.md
 ---
 
 # Context economy and Cursor retrieval
@@ -46,17 +49,19 @@ related:
 Agents and operators SHOULD load the smallest surface that resolves the task:
 
 1. Read `AGENTS.md` first for the working agreement and workspace map.
-2. Read `PRD.summary.md` for default product orientation on routine tasks.
-3. Read `memory/active/current.md` when the task needs current Feature pointers
-   inside **active-memory**.
-4. Read `memory/handbook/index.md` and follow at most one primary route plus
+2. Read `memory/active/current.md` when the task needs current Feature pointers
+   inside **active-memory** and `simple task mode` does not apply.
+3. Read `M1.index.md` for M1/bootstrap routing before full `BOOTSTRAP.md`.
+4. Read `PRD.summary.md` and `PRD.index.md` for product orientation before full
+   `PRD.md`.
+5. Read `memory/handbook/index.md` and follow at most one primary route plus
    stated secondaries.
-5. Read full `PRD.md` only when the task requires product-spec detail, citation
-   repair, or line-anchored requirements (see `PRD.index.md`).
-6. Read `BOOTSTRAP.md` when the task is phase-boundary, exit-criterion, or
-   bootstrap-sequence work.
+6. Read full `PRD.md` or `BOOTSTRAP.md` only when the task requires
+   authoritative wording, scope change, citation repair, line-anchored
+   requirements, or phase-exit detail.
 
-`PRD.summary.md` remains the default low-detail product orientation surface.
+`PRD.summary.md`, `PRD.index.md`, and `M1.index.md` remain the default
+low-detail product and milestone orientation surfaces.
 
 Agents MUST NOT read, traverse, ingest, cite, or modify files under
 `/inbox/notes/` per inbox lifecycle.
@@ -76,8 +81,9 @@ When an agent selects default memory orientation, the agent SHALL treat
 `memory/active/**` as the only **active-memory** tier intended for routine
 default orientation among Memory paths.
 
-When an agent selects **archival-memory**, the agent SHALL treat `work/**` as
-archival memory and explicit-read only.
+When an agent selects **archival-memory**, the agent SHALL treat `work/**`,
+`inbox/out/**`, `inbox/archive/**`, and `inbox/threads/**` as archival memory
+and explicit-read only.
 
 When an agent loads **internal-operating-content**, the agent SHALL load named
 routes only and SHALL NOT sweep entire handbook, persona, skill, or Cursor rule
@@ -101,9 +107,10 @@ attachments when the task requires them.
 
 Typical explicit-read surfaces include:
 
-- Full `PRD.md` for deep spec work.
-- `BOOTSTRAP.md` for bootstrap phase gates.
-- Selected `work/**` artifacts for plan, review, run logs, and delivery slices.
+- Full `PRD.md` for deep spec work after `PRD.summary.md` and `PRD.index.md`.
+- Full `BOOTSTRAP.md` for bootstrap phase gates after `M1.index.md`.
+- Selected `work/**`, `inbox/out/**`, `inbox/archive/**`, and
+  `inbox/threads/**` artifacts for historical reconstruction.
 - `memory/features/**` for Feature specs, contracts, and delivery reports when
   the named Feature is in scope.
 
@@ -133,7 +140,9 @@ While `simple task mode` applies, an agent MUST NOT load persona specs beyond
 the persona the operator invoked.
 
 While `simple task mode` applies, an agent MUST NOT invoke subagents unless the
-operator request names a subagent explicitly.
+operator request names a subagent explicitly. When a named subagent is required,
+the agent MUST choose the `*-standard` Cursor variant unless the operator names
+the complex tier.
 
 While `simple task mode` applies, an agent MUST inspect only directly relevant
 files.
@@ -180,9 +189,9 @@ work, the agent SHALL cite at least one of these triggers:
 When an agent escalates model class or context breadth, the agent MUST state the
 escalation rationale in the same operator-visible response.
 
-When an agent documents model policy here, the agent MUST NOT embed
-provider-specific model identifiers because the repository lacks runtime model
-selection wiring.
+When an agent documents model policy here, the agent MUST NOT assume runtime
+dynamic model selection for Cursor subagents. The repo exposes fixed standard
+and complex Cursor projection files per `memory/handbook/subagent-model-tiers.md`.
 
 ## Generated manifests and machine outputs
 
@@ -202,12 +211,14 @@ for human decisions unless debugging a specific generator.
 | Active-memory pointers | `memory/active/current.md` | Summaries only; follow links into durable or archival tiers. |
 | Product intent at low detail | `PRD.summary.md` | Orientation only; not a substitute for `PRD.md` when citations need line anchors. |
 | Section-level PRD routing | `PRD.index.md` | Picks which `PRD.md` section to open next. |
+| M1 and bootstrap routing | `M1.index.md` | Prefer this before full `BOOTSTRAP.md` or full `PRD.md` for M1 work. |
+| Subagent model tiering | `memory/handbook/subagent-model-tiers.md` | Defines standard (`model: auto`) and complex variants. |
 | Feature implementation | `memory/features/<id>/spec.md` | Canonical Engineering Spec for that Feature. |
-| Bootstrap sequencing | `BOOTSTRAP.md` | Phase inputs, outputs, and exit criteria. |
+| Bootstrap phase authority | `BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |
 | Governance and policy artifacts | `memory/handbook/policy-compliance-contract.md`, `memory/handbook/documentation-impact-contract.md` | Required for governed commits and post-task documentation decisions. |
 
 ## Operator maintenance
 
-When `.cursorindexingignore` changes, the operator SHOULD restart or reindex Cursor and SHOULD verify custom agent discovery if `.cursor/agents/**` remains excluded.
+When `.cursorindexingignore` changes, the operator SHOULD restart or reindex Cursor and SHOULD verify custom agent discovery if `.cursor/agents/**` remains excluded. The operator SHOULD also verify `*-standard` and `*-complex` subagent variants appear in Cursor.
 
 The operator SHOULD run `pnpm run context:budget` (or `node tools/context-budget-report.mjs`) before and after policy changes to capture directional corpus size estimates.

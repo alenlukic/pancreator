@@ -1,6 +1,6 @@
 ---
-name: persona-designer
-description: "Backward-compatible standard alias for `persona-designer-standard`. Use for routine persona-designer work; invoke `persona-designer-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
+name: supervisor-standard
+description: "Standard economical `supervisor` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
 model: auto
 permissionMode: default
 tools:
@@ -9,62 +9,74 @@ tools:
   - Glob
   - Write
   - Edit
+  - Task
   - "Bash(git diff:*)"
   - "Bash(git status:*)"
+  - "Bash(git log:*)"
+  - "Bash(git branch:*)"
+  - "Bash(git checkout:*)"
+  - "Bash(gh pr create:*)"
+  - "Bash(gh pr view:*)"
+  - "Bash(tess:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
+  - "Bash(git commit --no-verify:*)"
+  - "Bash(git add:*)"
 mcpServers:
   - tesseract-memory
+  - tesseract-intervention
 skills:
-  - author-persona
-maxTurns: 30
+  - blameless-postmortem
+maxTurns: 60
 isolation: worktree
 memory: project
 effort: medium
-color: violet
+color: purple
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [bootstrap-phase-1, sme-spawn]
+  tesseract-risk-tier: high
+  tesseract-pipeline-stages: [ship, intervention-dispatch, pipeline-supervisor]
   tesseract-bootstrap-only: false
   tesseract-stability: experimental
   tesseract-handbook-anchors:
-    - /memory/handbook/persona-spec.md
     - /memory/handbook/glossary.md
+    - /memory/handbook/persona-spec.md
     - /memory/handbook/contract-style.md
   tesseract-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
-    - skills-resolve-to-existing-files
     - tools-allowlist-minimal
     - mdc-shim-emitted-and-round-trips
     - dual-anchor-citations-into-PRD
     - layer-1-lint-clean
+    - never-auto-pushes-at-ship
+    - checkpoint-emitted-at-every-stage-boundary
+    - intervention-action-logged-with-operator-identity
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: persona-designer
-  tesseract-model-tier: standard-alias
-  tesseract-canonical-persona: personas/persona-designer.md
+  tesseract-base-persona: supervisor
+  tesseract-model-tier: standard
+  tesseract-canonical-persona: personas/supervisor.md
 ---
 
-# persona-designer
+# supervisor-standard
 
 This file is a compact Cursor projection for the canonical persona at
-`personas/persona-designer.md`. It intentionally avoids duplicating persona prose,
+`personas/supervisor.md`. It intentionally avoids duplicating persona prose,
 PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 
 ## Retrieval contract
 
 1. Read `AGENTS.md` for the live operating contract.
-2. Read `personas/persona-designer.md` for role semantics before performing persona-owned work.
+2. Read `personas/supervisor.md` for role semantics before performing persona-owned work.
 3. Read `memory/handbook/context-economy.md` only when the task requires context-budget decisions.
 4. Read `M1.index.md`, `PRD.index.md`, or `PRD.summary.md` before full `PRD.md` or `BOOTSTRAP.md`.
 5. Do not traverse `work/**`, `inbox/out/**`, `inbox/archive/**`, or `inbox/threads/**` unless the task explicitly requires archival reconstruction.
 
 ## Tier guidance
 
-- `persona-designer-standard` uses `model: auto` and is the default for bounded or routine work.
-- `persona-designer-complex` preserves the prior fixed model selection for reasoning-heavy work.
-- `persona-designer` is a backward-compatible standard alias unless an operator explicitly asks for the complex tier.
+- `supervisor-standard` uses `model: auto` and is the default for bounded or routine work.
+- `supervisor-complex` preserves the prior fixed model selection for reasoning-heavy work.
+- `supervisor` is a backward-compatible standard alias unless an operator explicitly asks for the complex tier.
 
 When escalating from standard to complex, state the reason in the operator-visible response or run log.
