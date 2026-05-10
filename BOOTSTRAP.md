@@ -18,7 +18,7 @@
 Inputs: PRD v0.5. Outputs: ratified deltas committed to the PRD; locked MVP scope.
 
 - Ratify or override Q1–Q26 (PRD §13). Defaults are reasonable; record any overrides in
-  `/memory/adr/0001-q-ratification.md` so future agents can cite them.
+  `/src/memory/adr/0001-q-ratification.md` so future agents can cite them.
 - Lock the **MVP persona roster as 10**: PRD §6's 8 (`supervisor`, `adopter`,
   `intake-analyst`, `tech-lead`, `coder`, `reviewer`, `librarian`, `tech-writer`) +
   two **bootstrap-canonical meta-personas** added here:
@@ -26,7 +26,7 @@ Inputs: PRD v0.5. Outputs: ratified deltas committed to the PRD; locked MVP scop
     Librarian proposes a new SME or a human wants a fresh persona).
   - `contract-writer` — owns contract authoring against §4.5 + §4.6 (Phase 2; ongoing
     as a coach persona other personas can consult; complements — does not replace —
-    the distributed `/skills/author-contract.md` pattern in PRD §6).
+    the distributed `/src/skills/author-contract.md` pattern in PRD §6).
 - Confirm Q3 = *stage diffs locally; never push without human gate* — phases 4 and 5
   rely on this default.
 
@@ -51,11 +51,11 @@ Three sub-phases; do them in order. None of them require an LLM.
   every M1 `@tesseract/*` listed in PRD §11. Boundaries from day 1; rich features
   ratchet up later (PRD R13).
 - Top-level dirs: `AGENTS.md` (with `CLAUDE.md` and `.github/copilot-instructions.md`
-  as symlinks per PRD §4 glossary), `.cursor/rules/`, `personas/`, `skills/`,
-  `pipelines/`, `ensembles/`, `memory/{handbook,adr,rfc,prd,features,smes,backlog,debt,checkpoints,adoption,runbooks,postmortems,research}/`,
-  `inbox/{in,out,threads,notes}/` (where `inbox/notes/` is a human-only
+  as symlinks per PRD §4 glossary), `.cursor/rules/`, `src/personas/`, `src/skills/`,
+  `src/pipelines/`, `src/ensembles/`, `src/memory/{handbook,adr,rfc,prd,features,smes,backlog,debt,checkpoints,adoption,runbooks,postmortems,research}/`,
+  `src/inbox/{in,out,threads,notes}/` (where `src/inbox/notes/` is a human-only
   operator sandbox excluded from agent traversal per
-  `/memory/handbook/inbox-lifecycle.md` §1a), `work/`,
+  `/src/memory/handbook/inbox-lifecycle.md` §1a), `src/work/`,
   `.tess/{worktrees,sandboxes,scheduler}/`.
 - `tesseract.yaml` + `tesseract-defaults.yaml` placeholders (one working default
   contract bundle per risk tier lands in Phase 2).
@@ -67,30 +67,30 @@ Without these, Phase 0c personas have nothing to anchor to. Each is a small,
 hand-authored Markdown file that subsequent phases will *cite* (dual-anchor) but
 not edit casually.
 
-- `/memory/handbook/constitution.md` — org charter; cites PRD §1, §2 (G1–G7), §3.5.
-- `/memory/handbook/glossary.md` — PRD §4 terms verbatim; the ubiquitous-language
+- `/src/memory/handbook/constitution.md` — org charter; cites PRD §1, §2 (G1–G7), §3.5.
+- `/src/memory/handbook/glossary.md` — PRD §4 terms verbatim; the ubiquitous-language
   source of truth for Layer 1 lint.
-- `/memory/handbook/index.md` — MemoryRouter routing table (≤200 lines, intent → topic
+- `/src/memory/handbook/index.md` — MemoryRouter routing table (≤200 lines, intent → topic
   files; PRD §8 MVP retrieval).
-- `/memory/handbook/persona-spec.md` — Anthropic Claude Agent SDK 16-field YAML
+- `/src/memory/handbook/persona-spec.md` — Anthropic Claude Agent SDK 16-field YAML
   reference + the 5-line Cursor `.mdc` shim recipe (PRD §6).
-- `/memory/handbook/agents-md-authoring.md` — AGENTS.md authoring guide.
-- `/memory/handbook/contract-style.md` — PRD §4.6 Layers 1+2+3 reference.
-- `/memory/handbook/contract-templates/` — the 6 MVP scaffolds verbatim from PRD §4.6
+- `/src/memory/handbook/agents-md-authoring.md` — AGENTS.md authoring guide.
+- `/src/memory/handbook/contract-style.md` — PRD §4.6 Layers 1+2+3 reference.
+- `/src/memory/handbook/contract-templates/` — the 6 MVP scaffolds verbatim from PRD §4.6
   Layer 3: `ux-spec.template.md`, `api-spec.template.md`, `security.template.md`,
   `performance.template.md`, `behavior-preservation.template.md`, `llm-judge.template.md`.
-- `/memory/handbook/run-log-schema.md` — OpenInference + OTel GenAI semconv reference
+- `/src/memory/handbook/run-log-schema.md` — OpenInference + OTel GenAI semconv reference
   (so Phase 3's `@tesseract/run-logger` has a spec to conform to).
-- `/memory/handbook/contract-format.md` — PRD §4.5 wrapper schema reference.
+- `/src/memory/handbook/contract-format.md` — PRD §4.5 wrapper schema reference.
 
 ### 0c. Bootstrap meta-personas + meta-skills  *(hand-authored)*
 
-- `/skills/author-persona/SKILL.md` — Agent Skills open spec; loop: load persona-spec.md
+- `/src/skills/author-persona/SKILL.md` — Agent Skills open spec; loop: load persona-spec.md
   → fill 16-field YAML → emit `.cursor/rules/<name>.mdc` shim → human review.
-- `/skills/author-contract/SKILL.md` — PRD §6's existing meta-skill, authored now.
-- `personas/persona-designer.md` — Anthropic 16-field; `skills: [author-persona]`;
+- `/src/skills/author-contract/SKILL.md` — PRD §6's existing meta-skill, authored now.
+- `src/personas/persona-designer.md` — Anthropic 16-field; `skills: [author-persona]`;
   `metadata.bootstrap-only: false` (persists post-bootstrap for SME spawning).
-- `personas/contract-writer.md` — Anthropic 16-field; `skills: [author-contract]`;
+- `src/personas/contract-writer.md` — Anthropic 16-field; `skills: [author-contract]`;
   `metadata.bootstrap-only: false`.
 - Both auto-emit `.cursor/rules/{persona-designer,contract-writer}.mdc` shims.
 
@@ -106,7 +106,7 @@ the error across 8 personas.**
 
 ## Phase 1 — Persona Designer → MVP roster  *(persona-designer, run in Cursor directly)*
 
-Inputs: handbook from 0b; meta-personas/skills from 0c. Outputs: 8 PRD §6 MVP persona
+Inputs: handbook from 0b; meta-src/personas/skills from 0c. Outputs: 8 PRD §6 MVP persona
 specs + their `.cursor/rules/*.mdc` shims.
 
 - Author each of the 8 PRD MVP personas: `supervisor`, `adopter`, `intake-analyst`,
@@ -116,7 +116,7 @@ specs + their `.cursor/rules/*.mdc` shims.
   + relevant US-* in §3.5); declares `metadata.tesseract-pipeline-stages` so Phase 3's
   pipeline runtime can load it correctly; declares `skills:` referencing only skills
   that exist or are scheduled in the same phase.
-- Auto-emit `.cursor/rules/<persona>.mdc` shims (single-source from `personas/<name>.md`
+- Auto-emit `.cursor/rules/<persona>.mdc` shims (single-source from `src/personas/<name>.md`
   per PRD §6).
 - Author MVP-required skills referenced by these personas (PRD §11): `write-adr`,
   `write-rfc`, `modern-code-review`, `blameless-postmortem`, `canonicalize-spec`,
@@ -132,7 +132,7 @@ Inputs: PRD §5.5 (package layout), §11 (MVP scope), §4.5 (wrapper schema), §
 handbook templates. Outputs: per-package feature folders with delivery contracts.
 
 - For each M1 `@tesseract/*` package in PRD §11, author a feature folder
-  `/memory/features/<package-slug>/` with Spec-Kit-aligned files: `spec.md` (canonical
+  `/src/memory/features/<package-slug>/` with Spec-Kit-aligned files: `spec.md` (canonical
   engineering spec, US-1 shape), `plan.md` (architecture + touch-set), `tasks.md`
   (decomposed task list), and `contracts/` (extracted sidecar contract clauses).
 - Allowed contract `kind`s in M1: `kind: rego` (via Conftest — repo-shape, config
@@ -204,10 +204,10 @@ green (gated by 3.2's runners from step 3.2 onward) before moving to the next:
    `tess pause | resume | abort` (full 7-lever spectrum is M2 per PRD US-10).
 8. **User surface** — `@tesseract/adopter-scan` + `@tesseract/policy` (compat shim
    per Q23 with deprecation warning + `tess upgrade --apply`) + `@tesseract/cli`
-   (`tess init/run/inbox/feature/status/approve/memory/contracts/pause/resume/abort/lint`).
+   (`tess init/run/src/inbox/feature/status/approve/src/memory/contracts/pause/resume/abort/lint`).
 9. **MCP skeleton** — `@tesseract/mcp-server` skeleton (stdio transport; full wire-up
-   is M2 per Q18). Publishes MVP `tess.*` verbs as MCP Tools and `/memory/`,
-   `/inbox/`, `/work/run-log` as MCP Resources.
+   is M2 per Q18). Publishes MVP `tess.*` verbs as MCP Tools and `/src/memory/`,
+   `/src/inbox/`, `/src/work/run-log` as MCP Resources.
 
 **CI conformance gates** (each becomes blocking from the moment its target package
 lands; protects against PRD R18/R19 transitive-dep drift):
@@ -230,8 +230,8 @@ Outputs: a single staged PR with delivery report = the empirical proof Tesseract
 
 - Compile and register the 5 MVP pipelines from PRD §11: `feature-delivery`,
   `chat-with-persona`, `knowledge-curation`, `init-greenfield`, `adopt`.
-- Drop a real semi-formal spec into `inbox/in/`. Walk PRD §3.5 US-1 end-to-end:
-  - `intake-analyst` runs the canonicalization dialogue to `/memory/features/<id>/spec.md`.
+- Drop a real semi-formal spec into `src/inbox/in/`. Walk PRD §3.5 US-1 end-to-end:
+  - `intake-analyst` runs the canonicalization dialogue to `/src/memory/features/<id>/spec.md`.
   - `tech-lead` drafts `plan.md` + `adr-draft.md` + `touch-set.json` + per-feature
     `contract:` block.
   - `coder` implements; `reviewer` runs the `style:contracts` step + contracts-runner
@@ -243,7 +243,7 @@ Outputs: a single staged PR with delivery report = the empirical proof Tesseract
   day one — proves "we conform, not parallel-design" per PRD §5.5).
 
 **Exit criterion** = PRD's `dogfood-us1` todo green: a staged PR + delivery report in
-`inbox/out/` + a clean run-log trace in an external observability tool.
+`src/inbox/out/` + a clean run-log trace in an external observability tool.
 
 
 ## Phase 5 — Rest of M1 (self-hosted)  *(delivery pipeline)*
@@ -260,9 +260,9 @@ tiers / `tesseract.yaml` declare.
     `library-script/` (US-8 standalone-primitive proof), `library-mcp-driven/` (proves
     SOTA conformance externally — PRD §11 last bullet).
 - Optional but recommended: persist the 6 founding research reports (PRD §15) to
-  `/memory/research/` so future agents can cite them.
+  `/src/memory/research/` so future agents can cite them.
 - Baseline KPIs A1–A18 + A22–A27 on the dogfood repo; record gaps in
-  `/memory/adr/0002-m1-baseline.md`.
+  `/src/memory/adr/0002-m1-baseline.md`.
 
 **Exit criterion = M1 done.** PRD §11 MVP scope items closed; CI conformance suite
 green; KPIs baselined; ready for M2 (US-2, US-3, US-6 basic, US-10 full spectrum).

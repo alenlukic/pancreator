@@ -1,11 +1,11 @@
 ---
-description: When the `feature-delivery` pipeline reaches the `plan` stage with a ratified Engineering Spec at `/memory/features/<id>/spec.md`, the `tech-lead` SHALL emit `/work/<day>/<id>/plan.md`, `/work/<day>/<id>/adr-draft.md`, and `/work/<day>/<id>/touch-set.json` for the downstream `implement` stage.
+description: When the `feature-delivery` pipeline reaches the `plan` stage with a ratified Engineering Spec at `/src/memory/features/<id>/spec.md`, the `tech-lead` SHALL emit `/src/work/<day>/<id>/plan.md`, `/src/work/<day>/<id>/adr-draft.md`, and `/src/work/<day>/<id>/touch-set.json` for the downstream `implement` stage.
 globs:
-  - "memory/adr/*.md"
-  - "work/**/adr-draft.md"
-  - "work/**/plan.md"
-  - "work/**/touch-set.json"
+  - "src/memory/adr/*.md"
+  - "src/work/**/adr-draft.md"
+  - "src/work/**/plan.md"
+  - "src/work/**/touch-set.json"
 alwaysApply: false
 ---
 
-@personas/tech-lead.md
+@src/personas/tech-lead.md

@@ -1,0 +1,14 @@
+schema_ref: "src/internal/tests/compliance/schemas/latest.yaml"
+id: "medium-backlog-default-off"
+severity: "medium"
+trigger_modes:
+  - operator-on-demand
+  - scheduled-cadence
+scope:
+  surface: "backlog-and-escalation-policy"
+  artifacts:
+    - "src/memory/backlog/index.yaml"
+    - "tesseract.yaml"
+assertion:
+  statement: "Medium findings create backlog items with operator escalation off by default."
+  pass_criteria: "Run output includes backlog id and escalation flag set to off unless configured on."

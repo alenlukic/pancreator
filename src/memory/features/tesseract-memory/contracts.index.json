@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "tesseract.memory.package_shape",
+      "path": "/src/memory/features/tesseract-src/memory/contracts/tesseract.memory.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "src/internal/packages/@tesseract/memory/**"
+      }
+    },
+    {
+      "id": "tesseract.memory.readme_ergonomics",
+      "path": "/src/memory/features/tesseract-src/memory/contracts/tesseract.memory.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "src/internal/packages/@tesseract/memory/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  ]
+}

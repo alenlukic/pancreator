@@ -1,0 +1,48 @@
+{
+  "task_id": "timestamp-naming-conventions",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "BOOTSTRAP.md",
+    "src/memory/handbook/constitution.md",
+    "src/memory/handbook/contract-format.md",
+    "src/memory/handbook/contract-style.md",
+    "src/memory/handbook/documentation-impact-contract.md",
+    "src/memory/handbook/inbox-lifecycle.md",
+    "src/memory/handbook/policy-compliance-contract.md",
+    "src/memory/handbook/run-log-schema.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Phase 4 dogfood feature-delivery index stage. The librarian indexed 20 emitted Artifacts, refreshed src/memory/features/timestamp-naming-conventions/index.json with the index block and an open_followups array, created the global src/memory/features/index.json (bootstrap-only) listing every feature directory, ran a citation-rot scan emitting src/memory/features/timestamp-naming-conventions/citation-rot-scan.md (0 block, 19 warn, 1 info; 501 TBD-on-commit placeholders observed across the Memory tier), and appended a stage_completed event for index to src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl. The librarian explicitly did not refresh contentHash placeholders (deferred per the L2 deferral) and did not improvise a Decisions family in src/memory/handbook/index.md (surfaced as info finding). pnpm run check:phase0a re-ran green.",
+    "changed_surfaces": [
+      "src/memory/features/timestamp-naming-conventions/index.json",
+      "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "src/memory/features/index.json",
+      "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl"
+    ],
+    "deferred_items": [
+      {
+        "id": "timestamp-naming-conventions-citation-range-realignment",
+        "rationale": "19 warn-severity off-by-one citation-range mismatches landed in citation-rot-scan.md spanning compliance-tests, bootstrap-phase-0a-closure, documentation-impact-contract, compliance-auditor persona/cursor mirror, and 5 newly-introduced ranges in the timestamp-naming-conventions delivery-report.md and review.md. Realignment is deterministic maintenance per AGENTS.md §3 and is its own scoped pass; ad-hoc fixes during index would expand this slice beyond reportage."
+      },
+      {
+        "id": "timestamp-naming-conventions-handbook-decisions-family",
+        "rationale": "src/memory/handbook/index.md lacks a Decisions family for ADR-style entries. The librarian surfaced this as an info finding rather than improvising a new route. A separate scoped pass SHALL ratify the route shape with the operator before authoring."
+      },
+      {
+        "id": "timestamp-naming-conventions-global-contenthash-refresh",
+        "rationale": "501 TBD-on-commit placeholders exist across the Memory tier. A single dedicated pass SHALL refresh every placeholder against committed file contents to avoid drift; partial refreshes during index would recreate the same drift downstream."
+      },
+      {
+        "id": "timestamp-naming-conventions-migration-write-followup",
+        "rationale": "The migration write-mode follow-up task remains the next implement slice for this feature; the env-var guard (TESSERACT_MIGRATION_GO=1) and the manifest-based rollback path are documented in plan.md, ADR 0005, the PR draft, the delivery report, and the refreshed feature index handoff block."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Slice delegates the index stage to the named librarian persona per §4 and respects every constraint in the dispatch (no contentHash refresh, no rename, no commit, no push). The bootstrap-only flag is set on the global feature index header per §5.",
+    "constitution_alignment": "Slice keeps every emitted artifact dual-anchored, surfaces the 19 warn-severity off-by-ones loudly via citation-rot-scan.md, and preserves replayability by deferring deterministic-maintenance passes to scoped follow-ups.",
+    "prd_alignment": "Slice satisfies the Phase 4 index-stage requirement (per-feature and global feature index refreshed; emitted Artifacts indexed; stale citations flagged) and queues the named follow-up tasks for the operator's backlog ranking."
+  }
+}

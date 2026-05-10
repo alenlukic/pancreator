@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "tesseract.run_logger.package_shape",
+      "path": "/src/memory/features/tesseract-run-logger/contracts/tesseract.run_logger.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "src/internal/packages/@tesseract/run-logger/**"
+      }
+    },
+    {
+      "id": "tesseract.run_logger.readme_ergonomics",
+      "path": "/src/memory/features/tesseract-run-logger/contracts/tesseract.run_logger.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "src/internal/packages/@tesseract/run-logger/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "TBD-on-commit"
+      }
+    }
+  ]
+}

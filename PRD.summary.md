@@ -7,7 +7,7 @@ MVP scope. Read full `PRD.md` when the task requires those surfaces.
 ## What Tesseract is
 
 Tesseract is a **simulated product-organization** for agentic software
-delivery: personas, pipelines, durable `/memory/`, a file inbox, and a future
+delivery: personas, pipelines, durable `/src/memory/`, a file inbox, and a future
 control plane (`tess` CLI is not wired in this repository yet).
 
 ## MVP focus (from PRD)
@@ -18,9 +18,9 @@ control plane (`tess` CLI is not wired in this repository yet).
 - **Pipelines:** Declarative stage graphs; flagship `feature-delivery` covers
   intake through ship with human approval gates.
 - **Memory:** Handbook canon, ADRs, backlog, per-Feature folders under
-  `/memory/features/<id>/` with `spec.md` as the Engineering Spec.
+  `/src/memory/features/<id>/` with `spec.md` as the Engineering Spec.
 - **Governance:** Dual-anchor citations, documentation-impact decisions,
-  policy-compliance artifacts for non-`work/` structural changes, local stage
+  policy-compliance artifacts for non-`src/work/` structural changes, local stage
   only (no auto-push).
 
 ## Bootstrap state in this repo
@@ -35,7 +35,7 @@ pipeline YAML and `tess` runtime are still future work; operators follow
 - Section map and deep topics: `PRD.index.md`
 - Full normative spec: `PRD.md` only for exact requirements or citations
 - Phase plan: `BOOTSTRAP.md` only when `M1.index.md` is insufficient
-- Context and indexing policy: `memory/handbook/context-economy.md`
+- Context and indexing policy: `src/memory/handbook/context-economy.md`
 
 ## Token-economy rule
 

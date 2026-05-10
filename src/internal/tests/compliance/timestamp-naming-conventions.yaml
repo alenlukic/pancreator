@@ -1,0 +1,17 @@
+schema_ref: "src/internal/tests/compliance/schemas/latest.yaml"
+id: "timestamp-naming-conventions"
+severity: "high"
+trigger_modes:
+  - operator-on-demand
+  - structure-change
+scope:
+  surface: "timestamp-naming-policy-and-migration"
+  artifacts:
+    - "src/internal/tests/compliance/timestamp-naming-conventions.yaml"
+    - "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml"
+    - "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml"
+    - "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml"
+    - "src/internal/tools/migrate-timestamp-naming.mjs"
+assertion:
+  statement: "When an agent introduces or edits in-scope temporal artifacts under src/work/ or src/inbox/, the agent SHALL conform to the UTC timestamp naming policy encoded by this descriptor and the three Spec Contracts."
+  pass_criteria: "Compliance harness and Spec Contract runners record zero block failures for the policy descriptor, migration precedence, and reference-update audit clauses after a structure-change or operator-on-demand run."

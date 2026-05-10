@@ -1,0 +1,36 @@
+{
+  "task_id": "173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "src/memory/handbook/constitution.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Intake stage adds a new Feature folder, a canonical Engineering Spec, and a per-Feature index under src/memory/features/active-memory-context-economy-pass-2/. The librarian post_run obligation and the global src/memory/features/index.json both depend on the new spec citation, so documentation-impact applies.",
+    "changed_surfaces": [
+      "src/memory/features/active-memory-context-economy-pass-2/spec.md",
+      "src/memory/features/active-memory-context-economy-pass-2/index.json"
+    ],
+    "deferred_items": [
+      {
+        "id": "active-memory-context-economy-pass-2-global-feature-index-update",
+        "rationale": "The global src/memory/features/index.json is a librarian-owned generated artifact; its registration of the new feature_id moves to the librarian post_run stage rather than into the intake commit."
+      },
+      {
+        "id": "active-memory-context-economy-pass-2-glossary-memory-tier-entry",
+        "rationale": "The glossary entry for memory-tier vocabulary is required by Layer 1 noun discipline at implementation time; intake stage records the deferral and binds it to the implementation slice."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Intake-analyst writes only inside src/memory/features/active-memory-context-economy-pass-2/ and src/internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/, preserves the inbox-notes ban, and stages diffs locally without push. Spec preserves AGENTS self-protection, dual-anchor citations, and Layer 1 lint discipline.",
+    "constitution_alignment": "Documentation-impact and deferral entries comply with the documentation-stewardship clause; the human remains in-loop because the spec routes downstream protected-surface edits behind the human_approval gate.",
+    "prd_alignment": "Spec keeps PRD §7 feature-delivery intake stage gates intact, retains the loop.max_rounds=5 ceiling (zero clarifying rounds posted), and binds the human_approval gate to a pending operator ratification.",
+    "required_updates": [
+      "src/memory/features/active-memory-context-economy-pass-2/spec.md",
+      "src/memory/features/active-memory-context-economy-pass-2/index.json",
+      "src/internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/documentation-impact.json"
+    ]
+  }
+}
