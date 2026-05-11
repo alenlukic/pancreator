@@ -42,6 +42,19 @@ Delegation is expensive when several subagents reload the same PRD, handbook,
 archival, or generated context. A parent SHALL avoid fan-out over broad context
 unless the work is genuinely parallel and bounded.
 
+
+## Planning/execution boundary
+
+A parent agent SHOULD treat the boundary between planning and execution as the
+preferred delegation point. The planner emits a compact handoff card; the
+executor receives that handoff path and starts in the standard tier unless a
+complex-tier trigger is present.
+
+A parent SHOULD NOT keep planning, implementation, and review inside one long
+agent loop when a native subagent can execute the next bounded stage. When a
+handoff would cause several agents to reload the same broad context, the parent
+SHALL split the plan into smaller handoff cards or serialize the work.
+
 ## Default selection
 
 A parent SHALL choose the standard tier by default.

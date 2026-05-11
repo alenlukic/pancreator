@@ -39,11 +39,15 @@ short-term operator-facing context with low default token load.
 The canonical path prefix for active memory is `src/memory/active/`.
 
 When an operator maintains active memory, the operator SHOULD store current
-focus, active Feature pointers, active run pointers, current risks or
-blockers, and soon-changing operator notes only.
+focus, active Feature pointers, active run pointers, active handoff pointers,
+current risks or blockers, and soon-changing operator notes only.
 
-When an agent reads active memory, the agent SHALL prefer pointers to durable
-and archival artifacts instead of copying bulky sources.
+When an agent reads active memory, the agent SHALL prefer pointers to durable,
+active-work, and archival artifacts instead of copying bulky sources.
+
+When an operator tracks plan-to-execution state, the operator SHALL keep the
+full handoff card in `src/work/<day>/<task-id>/handoff.md` and SHALL keep only a
+pointer in `src/memory/active/handoffs.md`.
 
 When an agent classifies active memory, the agent SHALL treat active memory as
 safe for routine default inspection and SHALL treat bulky generated output as

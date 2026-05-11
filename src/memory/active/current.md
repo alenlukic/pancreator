@@ -24,6 +24,7 @@ related:
   - /src/memory/handbook/memory-tiers.md
   - /src/memory/active/README.md
   - /src/memory/active/runs.md
+  - /src/memory/active/handoffs.md
 ---
 
 # Current focus
@@ -60,5 +61,8 @@ Pass-2 extends pass-1 deferred scope; both close as a single operator session.
 ## Operator notes
 
 - Maintainers SHALL refresh `contentHash` fields when cited files change.
+- During Phase 4 dogfood, planning stages SHOULD emit a compact handoff card and
+  delegate execution to the next persona instead of continuing implementation in
+  the same parent context.
 - Active-memory rotation has no automated owner yet; operators MUST update this
   file when a new Feature enters intake or when the active Feature ships.

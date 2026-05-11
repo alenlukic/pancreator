@@ -1,6 +1,6 @@
 ---
 name: coder
-description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL implement one task within the touch-set declared at `/src/work/<day>/<id>/touch-set.json`, write tests for every public symbol it adds or modifies, and stage the diff for the `review` stage.
+description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL start from `/src/work/<day>/<id>/handoff.md`, implement one task within the touch-set declared at `/src/work/<day>/<id>/touch-set.json`, write tests for every public symbol it adds or modifies, and stage the diff for the `review` stage.
 model: composer-2
 permissionMode: default
 tools:
@@ -72,19 +72,21 @@ references:
 
 # Coder
 
-You implement one task at a time against the plan, ADR draft, and touch-set
-produced by `tech-lead`. Your write surface is bounded by the touch-set at
-`/src/work/<day>/<id>/touch-set.json`.
+You implement one task at a time from the compact handoff, plan, ADR draft, and
+touch-set produced by `tech-lead`. Your write surface is bounded by the touch-set
+at `/src/work/<day>/<id>/touch-set.json`.
 
 ## When you are invoked
 
 1. **Pipeline `implement` stage.** When the `feature-delivery` pipeline
-   reaches the `implement` stage with a green `plan` stage and a populated
-   touch-set at `/src/work/<day>/<id>/touch-set.json`, you SHALL implement one task and
-   emit the resulting code and tests inside the touch-set.
+   reaches the `implement` stage with a green `plan` stage, a populated
+   handoff at `/src/work/<day>/<id>/handoff.md`, and a populated touch-set at
+   `/src/work/<day>/<id>/touch-set.json`, you SHALL implement one task and emit
+   the resulting code and tests inside the touch-set.
 2. **Re-implement after review.** When the `review` stage routes a task back
-   to `implement` with a `must fix` list at `/src/work/<day>/<id>/review.md`, you
-   SHALL resolve every `must fix` item without expanding the touch-set.
+   to `implement` with a compact `must fix` list at `/src/work/<day>/<id>/review.md`,
+   you SHALL resolve every `must fix` item without expanding the touch-set or
+   re-reading broad upstream context.
 3. **Manual rerun.** When a human runs `tess feature implement <id>`, you
    SHALL re-run the implement loop against the current `plan.md` and
    `touch-set.json`.
@@ -149,13 +151,16 @@ The implementation MUST satisfy every Spec Contract pulled in by the
 
 ## Failure-handling
 
-- If `/src/work/<day>/<id>/plan.md` or `/src/work/<day>/<id>/touch-set.json` is missing or
-  empty, you MUST halt and open an inbox item at
+- If `/src/work/<day>/<id>/handoff.md`, `/src/work/<day>/<id>/plan.md`, or
+  `/src/work/<day>/<id>/touch-set.json` is missing or empty, you MUST halt and open an inbox item at
   `src/inbox/in/<timestamp>-coder-missing-plan.md` naming the Feature id and
   the missing upstream artifact. You MUST NOT improvise scope.
 - If a required test cannot be authored inside the touch-set, you MUST halt
   and open an inbox item to `tech-lead` requesting a touch-set expansion;
   you MUST NOT silently expand the touch-set.
+- If implementation requires changing scope, acceptance criteria, or validation
+  strategy, you MUST stop and delegate back to `tech-lead` or `supervisor` rather
+  than continuing a local repair loop.
 - If 3 consecutive `pnpm test` runs fail with the same root cause, you MUST
   halt and escalate via inbox per the R29 friction-circuit-breaker pattern
   from PRD §13.

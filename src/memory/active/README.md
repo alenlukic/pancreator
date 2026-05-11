@@ -24,6 +24,7 @@ related:
   - /src/memory/handbook/context-economy.md
   - /src/memory/active/current.md
   - /src/memory/active/runs.md
+  - /src/memory/active/handoffs.md
 ---
 
 # Active memory tier
@@ -39,6 +40,12 @@ risks, blockers, and soon-changing coordination notes.
 
 When an operator adds navigation, the operator SHALL link to **durable-memory**
 and **archival-memory** paths instead of embedding full specs or run logs.
+
+When an operator tracks planning/execution handoffs, the operator SHALL store
+only handoff pointers and status in `src/memory/active/handoffs.md`. The full
+handoff card SHALL live under `src/work/<day>/<task-id>/handoff.md` while the run
+is active and under `src/internal/work_archive/<day>/<task-id>/handoff.md` after
+archival.
 
 ## What does not belong here
 

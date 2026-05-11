@@ -44,9 +44,12 @@ Operators SHALL run bootstrap work manually until runtime automation is wired:
    citations. Read `src/memory/handbook/context-economy.md` when tuning what loads
    into AI context versus explicit reads.
 2. Treat `src/inbox/in/` as the canonical incoming work queue.
-3. Execute the requested work directly in this repository and stage local diffs.
-4. Place delivery artifacts or status reports in `src/inbox/out/` for review.
-5. Obtain human ratification at each phase boundary before proceeding.
+3. Separate planning from execution for non-mechanical work: emit a compact
+   `src/work/<day>/<task-id>/handoff.md`, then delegate execution to the owning
+   persona or Cursor subagent.
+4. Execute the requested work directly in this repository and stage local diffs.
+5. Place delivery artifacts or status reports in `src/inbox/out/` for review.
+6. Obtain human ratification at each phase boundary before proceeding.
 
 ## 4) Planned CLI/runtime trigger path (not yet wired)
 
@@ -74,6 +77,7 @@ treated as currently available behavior.
 - `src/skills/` — reusable procedures.
 - `src/memory/handbook/` — canonical authoring references.
 - `src/memory/active/current.md` — active-memory orientation (small, current context).
+- `src/memory/active/handoffs.md` — pointer-only active planning/execution handoff map.
 - `src/memory/adr/` — architecture decision records.
 - `src/inbox/` — human-to-org request and response queue. `src/inbox/notes/` is a
   human-only sandbox excluded from agent traversal.

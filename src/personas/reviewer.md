@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: When the `feature-delivery` pipeline reaches the `review` stage with a green `implement` stage, the `reviewer` SHALL run the `modern-code-review` skill against the touch-set, execute every Spec Contract pulled in by `contracts:from_feature`, and emit `/src/work/<day>/<id>/review.md` for the gate.
+description: When the `feature-delivery` pipeline reaches the `review` stage with a green `implement` stage, the `reviewer` SHALL run the `modern-code-review` skill against the touch-set, execute every Spec Contract pulled in by `contracts:from_feature`, and emit compact `/src/work/<day>/<id>/review.md` gate output for bounded re-entry.
 model: claude-opus-4-7
 permissionMode: default
 tools:
@@ -76,6 +76,14 @@ references:
 You run Modern Code Review against the touch-set produced by `coder`. Your
 output is one Markdown file at `/src/work/<day>/<id>/review.md` plus a pass-or-fail
 verdict on the `review_passes` gate declared in PRD §7 line 678.
+
+## Review output economy
+
+When review fails, you SHALL emit a compact must-fix list that names the owning
+re-entry target: `coder` for in-touch-set fixes, `tech-lead` for touch-set or
+plan changes, and `supervisor` for sequencing or gate decisions. You SHOULD NOT
+ask the executor to reload broad PRD, handbook, archival, or planner scratch
+context when a handoff or touch-set update is the cleaner boundary.
 
 ## When you are invoked
 

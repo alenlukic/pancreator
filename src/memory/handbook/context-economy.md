@@ -35,6 +35,7 @@ related:
   - /src/memory/handbook/memory-tiers.md
   - /src/memory/handbook/glossary.md
   - /src/memory/active/current.md
+  - /src/memory/active/handoffs.md
   - /docs/PRD.summary.md
   - /docs/PRD.index.md
   - /docs/M1.index.md
@@ -172,6 +173,33 @@ When an agent escalates model class or context surface out of `simple task
 mode`, the agent SHALL summarize escalation rationale in `run.log.jsonl` or in
 the operator-visible response body.
 
+
+## Planning/execution handoff discipline
+
+When a task requires both planning and execution, the planning agent SHALL
+produce a bounded handoff card before execution starts. The handoff card SHALL
+live at `src/work/<day>/<task-id>/handoff.md` for active runs, and active memory
+SHALL store only a pointer in `src/memory/active/handoffs.md`.
+
+A handoff card SHOULD include the Feature id, current stage, planner persona,
+executor persona, upstream artifact paths, in-scope paths, explicit non-goals,
+validation commands, known pre-existing failures, and unresolved blockers.
+
+When a parent agent invokes an executor, the parent SHOULD pass the handoff card
+path plus the executor persona name as the initial payload. The parent SHOULD NOT
+paste full PRD sections, handbook pages, archival artifacts, or planner scratch
+notes into the executor prompt.
+
+When execution finds ambiguity that changes scope, touch-set, acceptance
+criteria, or validation strategy, the executor SHALL stop and delegate back to
+`tech-lead`, `reviewer`, or `supervisor` rather than extending a local repair
+loop.
+
+When a reviewer sends work back to implementation, the reviewer SHALL emit a
+compact must-fix list and the supervisor SHALL choose one bounded re-entry target.
+The supervisor SHOULD NOT ask the same executor to repeatedly re-read broad
+context after equivalent failures.
+
 ## Model and context escalation guidance
 
 This subsection is the canonical escalation guidance per plan decision D4 at
@@ -214,6 +242,7 @@ for human decisions unless debugging a specific generator.
 | Routing handbook pages | `src/memory/handbook/index.md` | Avoid loading the full handbook tree by default. |
 | Memory-tier taxonomy | `src/memory/handbook/memory-tiers.md` | Defines **active-memory**, **active-work**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
 | Active-memory pointers | `src/memory/active/current.md` | Summaries only; follow links into durable or archival tiers. |
+| Planning/execution handoffs | `src/memory/active/handoffs.md` | Pointer-only map for active handoff cards under `src/work/<day>/<task-id>/handoff.md`. |
 | Product intent at low detail | `docs/PRD.summary.md` | Orientation only; not a substitute for `docs/PRD.md` when citations need line anchors. |
 | Section-level PRD routing | `docs/PRD.index.md` | Picks which `docs/PRD.md` section to open next. |
 | M1 and bootstrap routing | `docs/M1.index.md` | Prefer this before full `docs/BOOTSTRAP.md` or full `docs/PRD.md` for M1 work. |
