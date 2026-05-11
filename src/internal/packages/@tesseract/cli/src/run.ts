@@ -6,16 +6,22 @@ import {
   InterventionManager,
   type CheckpointId,
 } from "@tesseract/intervention";
+import {
+  readFeatureDeliveryStatusWithInterventions,
+  startFeatureDelivery,
+} from "./feature-delivery-run.js";
 
 export interface CliRunOptions {
   repoRoot?: string;
   writeOut?: (chunk: string) => void;
   writeErr?: (chunk: string) => void;
+  /** Test hook for deterministic timestamped work paths. */
+  clock?: () => Date;
 }
 
 function emit(
   writeOut: (chunk: string) => void,
-  payload: Record<string, unknown>,
+  payload: object,
 ): void {
   writeOut(`${JSON.stringify(payload)}\n`);
 }
@@ -44,12 +50,12 @@ export async function parseAndRun(
 
   const program = new Command();
   program.name("tess");
-  program.description("Tesseract workspace CLI (bootstrap Phase 3).");
+  program.description("Tesseract workspace CLI (bootstrap Phase 4).");
   program.configureOutput({
-    writeOut: (s) => writeOut(s),
-    writeErr: (s) => writeErr(s),
+    writeOut: (s: string) => writeOut(s),
+    writeErr: (s: string) => writeErr(s),
   });
-  program.exitOverride((err) => {
+  program.exitOverride((err: unknown) => {
     throw err;
   });
 
@@ -61,7 +67,37 @@ export async function parseAndRun(
   program
     .command("run")
     .description("Run a pipeline by name")
-    .action(stub(writeOut, "run", "Pipeline execution wires through Phase 4+."));
+    .argument("<pipeline>", "Pipeline id")
+    .argument("[inboxEntry]", "Inbox file under src/inbox/in/ for feature-delivery")
+    .option("--feature <featureId>", "Feature id override")
+    .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
+    .action(async (pipeline: string, inboxEntry: string | undefined, opts: { feature?: string; task?: string }) => {
+      if (pipeline !== "feature-delivery") {
+        emit(writeOut, {
+          command: "run",
+          status: "stub",
+          pipelineId: pipeline,
+          summary: "Only feature-delivery has a wired Phase-4 invocation path in this repo state.",
+        });
+        return;
+      }
+      if (inboxEntry === undefined) {
+        throw new Error("feature-delivery requires an inbox entry under src/inbox/in/.");
+      }
+      emit(
+        writeOut,
+        await startFeatureDelivery(
+          {
+            repoRoot,
+            inboxEntry,
+            featureId: opts.feature,
+            taskId: opts.task,
+            clock: options?.clock,
+          },
+          "run",
+        ),
+      );
+    });
 
   program
     .command("inbox")
@@ -72,17 +108,53 @@ export async function parseAndRun(
       emit(writeOut, { command: "inbox", status: "ok", entries });
     });
 
-  program
+  const feature = program
     .command("feature")
-    .description("Manage feature-delivery artifacts")
-    .action(
-      stub(writeOut, "feature", "Feature workspace commands land with the delivery pipeline."),
-    );
+    .description("Manage feature-delivery artifacts");
+
+  feature
+    .command("new")
+    .description("Start a feature-delivery run from an inbox directive")
+    .argument("<inboxEntry>", "Inbox file under src/inbox/in/")
+    .option("--feature <featureId>", "Feature id override")
+    .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
+    .action(async (inboxEntry: string, opts: { feature?: string; task?: string }) => {
+      emit(
+        writeOut,
+        await startFeatureDelivery(
+          {
+            repoRoot,
+            inboxEntry,
+            featureId: opts.feature,
+            taskId: opts.task,
+            clock: options?.clock,
+          },
+          "feature new",
+        ),
+      );
+    });
 
   program
     .command("status")
     .description("Show pipeline and workspace status")
-    .action(stub(writeOut, "status", "Status aggregation lands with the scheduler."));
+    .argument("[taskId]", "Task id under src/work/")
+    .action(async (taskId: string | undefined) => {
+      if (taskId === undefined) {
+        emit(writeOut, {
+          command: "status",
+          status: "stub",
+          summary: "Pass a task id to inspect a feature-delivery state file.",
+        });
+        return;
+      }
+      const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
+      emit(
+        writeOut,
+        await readFeatureDeliveryStatusWithInterventions(repoRoot, taskId, (id) =>
+          mgr.loadActiveState(id),
+        ),
+      );
+    });
 
   program
     .command("approve")
@@ -153,7 +225,11 @@ export async function parseAndRun(
   try {
     await program.parseAsync(argv, { from: "user" });
     return 0;
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.length > 0 && !message.startsWith("error:")) {
+      emit(writeOut, { command: "error", status: "error", message });
+    }
     return 1;
   }
 }

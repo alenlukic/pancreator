@@ -133,6 +133,12 @@ importers:
       '@tesseract/intervention':
         specifier: workspace:*
         version: link:../intervention
+      '@tesseract/pipeline':
+        specifier: workspace:*
+        version: link:../pipeline
+      '@tesseract/run-logger':
+        specifier: workspace:*
+        version: link:../run-logger
       commander:
         specifier: 'catalog:'
         version: 12.1.0

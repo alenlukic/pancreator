@@ -18,11 +18,7 @@ an `id`, an optional `version`, an ordered list of `stages` with optional
 
 ## Bootstrap status
 
-The pipelines are registered through `loadPipelineYaml` for now; LangGraph
-`StateGraph` compilation is stubbed in `src/internal/packages/@tesseract/pipeline/src/compile.ts`
-and lands during the Phase 5 self-hosted milestone. Until then, stages execute
-in order through `executePipeline` with delegation to named persona subagents
-per `AGENTS.md` §4.
+The pipelines are registered through `loadPipelineYaml`. `tess run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, and run log for the first stage. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@tesseract/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, stages are advanced manually by delegating the emitted handoff to the named persona subagents per `AGENTS.md` §4.
 
 ## Authoring rules
 

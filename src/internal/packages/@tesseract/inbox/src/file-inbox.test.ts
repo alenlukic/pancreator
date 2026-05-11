@@ -9,9 +9,9 @@ describe("FileInbox", () => {
     const tmp = await mkdtemp(path.join(os.tmpdir(), "inbox-"));
     const inbox = new FileInbox(tmp);
     await inbox.writeOutFile("report.md", "done");
-    const out = await readFile(path.join(tmp, "inbox", "out", "report.md"), "utf8");
+    const out = await readFile(path.join(tmp, "src", "inbox", "out", "report.md"), "utf8");
     expect(out).toBe("done");
-    expect(inbox.pathOut("report.md")).toBe(path.join(tmp, "inbox", "out", "report.md"));
+    expect(inbox.pathOut("report.md")).toBe(path.join(tmp, "src", "inbox", "out", "report.md"));
     await rm(tmp, { recursive: true, force: true });
   });
 

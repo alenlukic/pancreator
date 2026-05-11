@@ -26,7 +26,7 @@ export class FileInbox implements Inbox {
    * @param repositoryRoot - Absolute path to the repository root that contains `src/inbox/`.
    */
   constructor(repositoryRoot: string) {
-    this.inboxRoot = path.join(path.resolve(repositoryRoot), "inbox");
+    this.inboxRoot = path.join(path.resolve(repositoryRoot), "src", "inbox");
   }
 
   pathIn(filename = ""): string {

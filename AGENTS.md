@@ -212,9 +212,10 @@ tracking purposes: the repo contains the scaffold, handbook seeds, persona
 roster, Cursor projections, M1 contract feature folders, substrate package
 implementations, and static MVP pipeline definitions. Phase 4 remains open
 until the US-1 dogfood exit gaps are ratified, including external run-log
-observability and an empirical pause/resume/abort exercise. `tess` exists as a
-Phase-3 CLI surface with several stubs; full runtime pipeline execution is not
-yet ratified as complete.
+observability and an empirical pause/resume/abort exercise. `tess run
+feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine,
+handoff card, and run log, but it does not yet automate Cursor/model transport
+or LangGraph execution.
 
 ## 9 — Stability
 

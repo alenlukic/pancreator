@@ -464,7 +464,7 @@ items:
       - /src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md
       - /src/inbox/archive/in/75480_0302_token-economy-enhanced.md
     evidence: "Feature shipped under operator override authority. Active-memory tier created, ADR-0006 promoted, AGENTS.md slimmed (1458 to 1178 raw words; 900 prose-only), six Cursor rules narrowed, .cursorindexingignore aligned with the new tier model, context-budget reporter emits the seven tier groups, all six verification gates green, reviewer verdict approve at 20 pass / 0 concern / 0 fail across acceptance criteria, delivery report staged to src/inbox/out/, inbound source archived to src/inbox/archive/in/."
-    notes: "Operator manually executed the librarian post_run actions because runtime feature-delivery wiring is not yet implemented per AGENTS.md \u00a78. Active-memory rotation also performed under operator override; see follow-up backlog item active-memory-post-ship-ownership for the underlying ownership gap."
+    notes: "Operator manually executed the librarian post_run actions because runtime feature-delivery ship/index automation was not yet implemented at delivery time. Active-memory rotation also performed under operator override; see follow-up backlog item active-memory-post-ship-ownership for the underlying ownership gap."
 
   - id: active-memory-post-ship-ownership
     title: Define owner for src/memory/active/** post-ship rotation
