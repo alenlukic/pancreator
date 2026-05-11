@@ -50,8 +50,8 @@ Three sub-phases; do them in order. None of them require an LLM.
 - Empty package skeletons (just `package.json` + `README.md` + `src/index.ts` stub) for
   every M1 `@tesseract/*` listed in PRD §11. Boundaries from day 1; rich features
   ratchet up later (PRD R13).
-- Top-level dirs: `AGENTS.md` (with `CLAUDE.md` and `.github/copilot-instructions.md`
-  as symlinks per PRD §4 glossary), `.cursor/rules/`, `src/personas/`, `src/skills/`,
+- Top-level dirs: `AGENTS.md` (sole root agent operating card per PRD §4 glossary),
+  `.cursor/rules/`, `src/personas/`, `src/skills/`,
   `src/pipelines/`, `src/ensembles/`, `src/memory/{handbook,adr,rfc,prd,features,smes,backlog,debt,checkpoints,adoption,runbooks,postmortems,research}/`,
   `src/inbox/{in,out,threads,notes}/` (where `src/inbox/notes/` is a human-only
   operator sandbox excluded from agent traversal per
@@ -59,7 +59,6 @@ Three sub-phases; do them in order. None of them require an LLM.
   `.tess/{worktrees,sandboxes,scheduler}/`.
 - `tesseract.yaml` + `tesseract-defaults.yaml` placeholders (one working default
   contract bundle per risk tier lands in Phase 2).
-- `.cursor/rules/00-agents-md.mdc` with `alwaysApply: true` referencing `AGENTS.md`.
 
 ### 0b. Handbook seed (the canon Persona Designer + Contract Writer will read)
 

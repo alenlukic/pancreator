@@ -150,9 +150,6 @@ reachable for explicit human and agent reads.
   `pnpm-lock.yaml` from default Cursor semantic indexing through the
   `.cursorindexingignore` file.
 - When the Feature stages the indexing policy, the Feature MUST exclude
-  `CLAUDE.md` and `.github/copilot-instructions.md` from default Cursor
-  semantic indexing through the `.cursorindexingignore` file.
-- When the Feature stages the indexing policy, the Feature MUST exclude
   `.cursor/agents/**` from default Cursor semantic indexing under one
   comment that requires operator confirmation that Cursor still discovers
   every custom agent before merge.

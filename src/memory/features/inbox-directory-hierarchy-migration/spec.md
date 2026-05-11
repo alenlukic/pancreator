@@ -1,12 +1,14 @@
 ---
 title: Inbox Directory Hierarchy Migration Intake Spec
 feature_id: inbox-directory-hierarchy-migration
-status: intake-open
-next_owner: intake-analyst
-next_stage: intake
+status: human_approval
+next_owner: tech-lead
+next_stage: plan
 source_inbox_item: src/inbox/in/inbox_convention_migration.md
 intake_round: 1
 intake_thread: src/inbox/threads/inbox-directory-hierarchy-migration/
+ratification_source: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md
+ratification_note: Round-1 operator answers are inlined under Questions in the ratification_source thread; no separate human-responses file.
 extends_feature: timestamp-naming-conventions
 extends_relationship: extends-deferred-scope
 references:
@@ -123,14 +125,13 @@ This Feature picks up the deferred organizational philosophy that the prior
 
 ### Threads-subtree handling
 
-- When the Feature migrates `src/inbox/threads/<feature-slug>/`, the Feature
-  MUST preserve the `<feature-slug>` parent folder per the prior-feature
-  obligation cited above.
-- When the Feature places day buckets inside the threads subtree, the
-  Feature MUST nest day buckets under each feature folder as
-  `src/inbox/threads/<feature-slug>/{days-to-FDS}_{MM-DD-YY}/<round-file>.md`
-  unless the round-1 dialogue ratifies a different layout under
-  `## Open questions` Q2.
+- When the Feature migrates the `src/inbox/threads/` subtree, the Feature MUST
+  preserve each `<feature-slug>` directory as the per-feature anchor.
+- When the Feature places day buckets inside the threads subtree, the Feature
+  MUST nest each feature folder under its day bucket as
+  `src/inbox/threads/{days-to-FDS}_{MM-DD-YY}/<feature-slug>/<round-file>.md`
+  per round-1 ratification in
+  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [42, 48], contentHash: TBD-on-commit}`.
 
 ### Migration execution
 
@@ -148,14 +149,20 @@ This Feature picks up the deferred organizational philosophy that the prior
 - When the Feature emits the migration manifest, the migration tool MUST
   enumerate every source path and every destination path so the operator
   rollback procedure remains deterministic.
+- When the Feature executes the hierarchy migration, the Feature MUST
+  include `src/inbox/in/`, `src/inbox/out/`, `src/inbox/threads/`, and
+  `src/inbox/archive/in/` in one atomic manifest for the delivery slice per
+  round-1 ratification in
+  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [61, 63], contentHash: TBD-on-commit}`.
 
 ### Tooling
 
-- When the Feature ships migration logic, the Feature MUST stage that
-  logic under `tools/` as either an extension to
-  `src/internal/tools/migrate-timestamp-naming.mjs` or a sibling
-  `tools/migrate-inbox-directory-hierarchy.mjs` per the round-1 dialogue
-  resolution under `## Open questions` Q3.
+- When the Feature ships migration logic, the Feature MUST stage a sibling
+  script at `src/internal/tools/migrate-inbox-directory-hierarchy.mjs`
+  adjacent to `src/internal/tools/migrate-timestamp-naming.mjs` rather than
+  extending the timestamp migration tool, consistent with ADR-0005 tool layout
+  and
+  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [49, 53], contentHash: TBD-on-commit}`.
 - When the Feature ships migration logic, the migration tool MUST
   default to `--dry-run` and MUST require an explicit
   `TESSERACT_MIGRATION_GO=1` environment guard for write mode, mirroring
@@ -168,9 +175,14 @@ This Feature picks up the deferred organizational philosophy that the prior
 ### Compliance and contracts
 
 - When the Feature encodes the directory-hierarchy policy, the Feature
-  MUST land a compliance descriptor under `tests/compliance/` that
-  asserts directory-hierarchy conformance after a `structure-change` or
-  `operator-on-demand` trigger.
+  MUST land a sibling compliance descriptor at
+  `tests/compliance/inbox-directory-hierarchy.yaml` rather than extending
+  `tests/compliance/timestamp-naming-conventions.yaml`, matching the
+  repository layout at
+  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [54, 57], contentHash: TBD-on-commit}`,
+  and that descriptor MUST include `structure-change` and
+  `operator-on-demand` in `trigger_modes` per
+  `{kind: lines, path: tests/compliance/schemas/latest.yaml, range: [27, 36], contentHash: TBD-on-commit}`.
 - When the Feature encodes the policy, the Feature MUST author or extend
   Spec Contracts under
   `src/memory/features/inbox-directory-hierarchy-migration/contracts/`
@@ -198,8 +210,8 @@ This Feature picks up the deferred organizational philosophy that the prior
   navigable.
 - When the Feature lands the new layout, the Feature MUST author one new
   ADR `src/memory/adr/0006-inbox-directory-hierarchy.md` that extends ADR-0005
-  unless the round-1 dialogue ratifies an in-place ADR-0005 amendment
-  under `## Open questions` Q5.
+  by reference per round-1 ratification in
+  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [58, 60], contentHash: TBD-on-commit}`.
 
 ### Reverse-chronological ordering proof
 
@@ -227,65 +239,46 @@ This Feature picks up the deferred organizational philosophy that the prior
 - This Feature does not redesign the inbox lifecycle states defined at
   `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [142, 158], contentHash: 1a108e8636f13b89cc4fa570ee7bf806c6ce2ea20e05f64af438a6fe5fa3f953}`.
 
-## Assumptions (round-1 working draft)
+## Assumptions (round 1, ratified)
 
-The intake-analyst stages the following assumptions for human ratification.
-Each assumption resolves an underspecified slot in the directive and binds
-to one open question below.
+The operator ratified assumptions A1–A7 inline in
+`{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [37, 67], contentHash: TBD-on-commit}`.
 
 - A1. Single-file artifacts sit directly inside a day bucket with the
   basename shape `{SID-prefix}_{HHMM}_{semantic-suffix}.md`. The Feature
   does not introduce a per-artifact `HHMM` subdirectory because inbox
   items emit one file each, while `src/work/` task directories emit several.
-  Tied to Q1.
-- A2. Day buckets nest inside `src/inbox/threads/<feature-slug>/` so the
-  prior-feature preservation rule for the per-feature parent folder
-  remains intact. Tied to Q2.
-- A3. The Feature ships migration logic as a new
-  `tools/migrate-inbox-directory-hierarchy.mjs` rather than extending
-  `src/internal/tools/migrate-timestamp-naming.mjs` so the new tool can encode the
-  hierarchy precedence cleanly without complicating the prior tool's
-  contract. Tied to Q3.
+- A2. Under `src/inbox/threads/`, day buckets nest above each
+  `<feature-slug>/` directory so the layout reads
+  `src/inbox/threads/{days-to-FDS}_{MM-DD-YY}/<feature-slug>/` while the
+  per-feature folder remains the semantic anchor for thread files.
+- A3. The Feature ships migration logic as
+  `src/internal/tools/migrate-inbox-directory-hierarchy.mjs` adjacent to
+  `src/internal/tools/migrate-timestamp-naming.mjs` rather than extending the
+  timestamp migration tool so hierarchy precedence stays isolated.
 - A4. The Feature lands a sibling compliance descriptor at
   `tests/compliance/inbox-directory-hierarchy.yaml` rather than amending
   `tests/compliance/timestamp-naming-conventions.yaml` so the prior
-  descriptor's surface remains stable. Tied to Q4.
+  descriptor's surface remains stable.
 - A5. The Feature authors one new ADR `0006-inbox-directory-hierarchy.md`
-  that extends ADR-0005 by reference. Tied to Q5.
+  that extends ADR-0005 by reference.
 - A6. The Feature migrates the four in-scope subtrees in one atomic
-  commit with one manifest. Tied to Q6.
+  delivery slice with one manifest.
 - A7. The Feature applies the day-bucket hierarchy retroactively to every
   artifact already in `src/inbox/archive/in/` because reverse-chronological
-  ordering benefits operators reading the archive. Tied to Q7.
+  ordering benefits operators reading the archive.
 
-## Open questions
+## Ratified decisions (round 1)
 
-The intake-analyst MUST receive operator ratification on each item below
-before the spec advances to the `human_approval` gate. The corresponding
-round-1 thread message lives at
-`src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md`.
-
-- Q1. Single-file leaf placement versus per-artifact `HHMM` subdirectory.
-  The directive says "HHMM-oriented subdirectories"; assumption A1 maps
-  `HHMM` to the basename token instead. Does the operator ratify A1, or
-  require strict folder-per-item parity with `src/work/`?
-- Q2. Threads layout: day-bucket inside the feature folder (A2),
-  feature-folder inside the day bucket, or feature-folder remains flat at
-  threads top-level with no day buckets at all?
-- Q3. Migration tool: extend `src/internal/tools/migrate-timestamp-naming.mjs` or ship
-  a sibling `tools/migrate-inbox-directory-hierarchy.mjs` (A3)?
-- Q4. Compliance descriptor: extend
-  `tests/compliance/timestamp-naming-conventions.yaml` or land a sibling
-  `tests/compliance/inbox-directory-hierarchy.yaml` (A4)?
-- Q5. ADR shape: new ADR `0006-inbox-directory-hierarchy.md` extending
-  ADR-0005 (A5), or amend ADR-0005 in place?
-- Q6. Migration ordering: one atomic migration manifest covering
-  `src/inbox/in/`, `src/inbox/out/`, `src/inbox/threads/`, and `src/inbox/archive/in/`
-  (A6), or staged subtree-by-subtree across multiple ratification slices?
-- Q7. Archive subtree handling: apply the day-bucket hierarchy
-  retroactively to every artifact already in `src/inbox/archive/in/` (A7),
-  or freeze the archive in its pre-migration shape and only apply the
-  hierarchy to future archived items?
+The round-1 clarify thread at
+`src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md`
+captures operator answers inlined under **Questions** (Q1–Q7). Each decision
+matches assumptions A1–A7 above: **Q1** → A1 basename `HHMM` token (no per-file
+folder); **Q2** → option **(b)** day bucket above `<feature-slug>/`; **Q3** →
+sibling `src/internal/tools/migrate-inbox-directory-hierarchy.mjs`; **Q4** →
+sibling `tests/compliance/inbox-directory-hierarchy.yaml`; **Q5** → new ADR
+0006; **Q6** → one atomic manifest across all four subtrees; **Q7** →
+retroactive archive hierarchy.
 
 ## Deferrals
 
@@ -304,5 +297,8 @@ round-1 thread message lives at
 - The directive at
   `src/inbox/in/inbox_convention_migration.md` cites
   `src/personas/tesseract-engineer.md` for downstream implementation
-  context; intake-stage produces this spec only and routes downstream
-  execution after the `human_approval` gate clears.
+  context; this spec awaits the `human_approval` gate before the
+  `feature-delivery` pipeline advances to `plan` owned by `tech-lead`.
+  Spec Contracts under
+  `src/memory/features/inbox-directory-hierarchy-migration/contracts/`
+  SHOULD route to `contract-writer` per pipeline contract obligations.

@@ -24,7 +24,7 @@ references:
     path: docs/PRD.md
     range: [207, 223]
     contentHash: TBD-on-commit
-    note: "PRD §3.5 US-9 — Greenfield AND existing projects: non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md/.cursor/rules/CLAUDE.md, and seeded threshold policy."
+    note: "PRD §3.5 US-9 — Greenfield AND existing projects: non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md and .cursor/rules, and seeded threshold policy."
   - kind: lines
     path: docs/PRD.md
     range: [701, 701]
@@ -54,10 +54,8 @@ existing file the human has not ratified.
   scaffolds it on first invocation.
 - `/src/memory/handbook/glossary.md` and `/src/memory/handbook/contract-style.md`
   SHALL exist; the scan report body satisfies Layer 1 lint per PRD §4.6.
-- The skill SHALL NOT require any pre-existing `AGENTS.md`, `CLAUDE.md`,
-  `.cursor/rules/`, `.github/copilot-instructions.md`, or
-  `.github/agents/`; existence of these files routes through the additive
-  merge plan in Step 6.
+- The skill SHALL NOT require any pre-existing `AGENTS.md`,
+  `.cursor/rules/`, or `.github/agents/`; existence of these files routes through the additive merge plan in Step 6.
 
 ## The 7-step adoption loop
 
@@ -131,8 +129,7 @@ opinionation it asserts.
 ### Step 6 — Plan the additive merge for existing agent contracts
 
 Detect every existing agent-contract file the human has authored:
-`AGENTS.md`, `CLAUDE.md`, `.cursor/rules/*.mdc`,
-`.github/copilot-instructions.md`, `.github/agents/*`. For each file, the
+`AGENTS.md`, `.cursor/rules/*.mdc`, `.github/agents/*`. For each file, the
 plan MUST classify the file as exactly one of:
 
 - **`keep`.** The file already aligns with Tesseract's contract; the scan

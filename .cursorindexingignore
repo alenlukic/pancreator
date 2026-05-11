@@ -28,10 +28,6 @@ src/memory/**/index.json
 # Lockfile rarely needed for semantic repo reasoning
 pnpm-lock.yaml
 
-# Duplicate agent-instruction surfaces (symlinks resolve to AGENTS.md)
-CLAUDE.md
-.github/copilot-instructions.md
-
 # Internal operating content: narrow default semantic sweeps; route reads via handbook index and personas when needed.
 src/memory/handbook/**
 src/personas/**

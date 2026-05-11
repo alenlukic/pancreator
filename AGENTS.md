@@ -1,8 +1,7 @@
 # AGENTS.md — Tesseract operating card
 
-> Cross-tool entry contract (Linux Foundation Agentic AI Foundation). `CLAUDE.md`
-> and `.github/copilot-instructions.md` symlink here. Cursor loads this file via
-> `.cursor/rules/00-agents-md.mdc` (`alwaysApply: true`).
+> Cross-tool entry contract (Linux Foundation Agentic AI Foundation).
+> This file is the sole repository root operating card for agent harnesses.
 
 ## 1 — Repo identity
 
@@ -158,10 +157,8 @@ response.
 
 ```
 /AGENTS.md                       this file
-/CLAUDE.md                       symlink → AGENTS.md
-/.github/copilot-instructions.md symlink → ../AGENTS.md
 /.cursor/agents/                 Cursor-native compact projections and standard/complex variants
-/.cursor/rules/                  Cursor rule shims (00-agents-md.mdc + per-persona where required)
+/.cursor/rules/                  Cursor rule shims (per-persona where required)
 /src/personas/                       persona specs (Anthropic 16-field)
 /src/skills/                         skill packs (Agent Skills open spec)
 /src/pipelines/                      pipeline DAGs (YAML; M1+)

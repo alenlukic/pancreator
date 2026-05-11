@@ -1,14 +1,16 @@
 {
   "feature_id": "inbox-directory-hierarchy-migration",
-  "status": "intake-open",
-  "stage": "intake",
+  "status": "human_approval",
+  "stage": "human_approval",
   "owner_persona": "intake-analyst",
-  "next_owner": "intake-analyst",
-  "next_stage": "intake",
+  "next_owner": "tech-lead",
+  "next_stage": "plan",
   "created_at_utc": "2026-05-09T20:45:00Z",
   "source_inbox_item": "src/inbox/in/inbox_convention_migration.md",
   "intake_round": 1,
   "intake_thread": "src/inbox/threads/inbox-directory-hierarchy-migration/",
+  "ratification_round_1": "folded",
+  "ratification_source_inline": "src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md",
   "extends_feature": "timestamp-naming-conventions",
   "extends_relationship": "extends-deferred-scope",
   "artifacts": [
@@ -17,7 +19,7 @@
       "path": "src/memory/features/inbox-directory-hierarchy-migration/spec.md"
     }
   ],
-  "open_question_count": 7,
+  "open_question_count": 0,
   "ratification_required": true,
   "librarian_populated": false
 }

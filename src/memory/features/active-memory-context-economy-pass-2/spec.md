@@ -369,8 +369,6 @@ for explicit human and agent reads per the non-goals at
 - If `AGENTS.md` cannot reach the 900-word soft budget without harming
   operator clarity or repository safety, then the Feature MUST record the
   reason the larger size is retained inside the delivery report.
-- When the Feature audits `.cursor/rules/00-agents-md.mdc`, the Feature MUST
-  keep the rule body minimal and MUST avoid broad trigger surfaces.
 
 ### Narrow remaining Cursor rule triggers
 
@@ -606,7 +604,7 @@ slot the directive grants the implementation.
   `src/memory/features/active-memory-context-economy-pass-2/index.json`.
 - The `src/inbox/in/token-economy-enhanced.md` directive cites
   `src/internal/tools/context-budget-report.mjs`, `AGENTS.md`,
-  `.cursor/rules/00-agents-md.mdc`, `.cursor/rules/tesseract-engineer.mdc`,
+  `.cursor/rules/tesseract-engineer.mdc`,
   `src/memory/handbook/context-economy.md`, `.cursorindexingignore`, the `src/work/`
   tree, and the `src/memory/` tree as the surfaces this Feature edits or
   classifies; intake-stage produces this spec only and routes downstream

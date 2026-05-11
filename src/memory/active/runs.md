@@ -28,11 +28,12 @@ keep active logs under **active-work** prefixes such as `src/work/<day>/<task-id
 
 | Run identifier | Pointer | Feature | Status |
 |---|---|---|---|
-| `172996_05-10-26/68321_1315_bootstrap-state-fast-forward` | `src/work/172996_05-10-26/68321_1315_bootstrap-state-fast-forward/` | `bootstrap-state-fast-forward` | active |
+| *(none)* | *(none)* | *(none)* | *(none)* |
 
 ## Recent runs
 
 | Run identifier | Pointer | Feature | Outcome |
 |---|---|---|---|
+| `172996_05-10-26/68321_1315_bootstrap-state-fast-forward` | *(no retained workspace)* | `bootstrap-state-fast-forward` | complete; operator close-out |
 | `172997_05-09-26/10920_2058_intake` | `src/internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/` | `active-memory-context-economy-pass-2` | intake closed, ratified |
 | `172997_05-09-26/3900_2255_plan` | `src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/` | `active-memory-context-economy-pass-2` | plan + implement (7 slices, 3 waves) + review (approve) + report drafted |
