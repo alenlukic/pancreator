@@ -62,7 +62,7 @@ This Feature SHALL define one UTC-based naming convention for in-scope temporal 
 - When the Feature evaluates naming-policy scope, the Feature MUST include
   artifacts under `src/inbox/in/`, `src/inbox/out/`, `src/inbox/threads/`, and
   `src/inbox/archive/in/`.
-- When the Feature evaluates `src/work/*/run.log.jsonl`, the Feature MUST treat
+- When the Feature evaluates `src/work/*/*/run.log.jsonl`, the Feature MUST treat
   that file path as out of naming-policy scope.
 - When the Feature creates a day directory under `src/work/`, the Feature MUST
   prefix the basename with a 6-digit days-to-`FDS` value.
@@ -118,7 +118,7 @@ This Feature SHALL define one UTC-based naming convention for in-scope temporal 
 - This Feature does not solve operator focus management for agent-only content.
 - This Feature does not rename the intake directive or operator response files
   during intake-stage canonicalization.
-- This Feature does not rename `src/work/*/run.log.jsonl`.
+- This Feature does not rename `src/work/*/*/run.log.jsonl`.
 
 ## Deferrals
 

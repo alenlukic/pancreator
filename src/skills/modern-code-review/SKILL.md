@@ -1,6 +1,6 @@
 ---
 name: modern-code-review
-description: Runs Modern Code Review per Bacchelli/Bird and Google `eng-practices` against one Feature touch-set. Loads the Engineering Spec, plan, and ADR draft; classifies every finding under `must fix`, `consider`, or `nit`; runs every Spec Contract pulled in by `contracts:from_feature`; emits one `/src/work/<id>/review.md` for the `review_passes` gate.
+description: Runs Modern Code Review per Bacchelli/Bird and Google `eng-practices` against one Feature touch-set. Loads the Engineering Spec, plan, and ADR draft; classifies every finding under `must fix`, `consider`, or `nit`; runs every Spec Contract pulled in by `contracts:from_feature`; emits one `/src/work/<day>/<id>/review.md` for the `review_passes` gate.
 license: Apache-2.0
 metadata:
   tesseract-stability: experimental
@@ -12,7 +12,7 @@ metadata:
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
   tesseract-emits:
-    - /src/work/<id>/review.md
+    - /src/work/<day>/<id>/review.md
 references:
   - kind: lines
     path: docs/PRD.md
@@ -23,7 +23,7 @@ references:
     path: docs/PRD.md
     range: [669, 678]
     contentHash: TBD-on-commit
-    note: "PRD §7 — feature-delivery `review` stage YAML declaring inputs `[code, tests, plan, adr-draft, contracts:from_feature]`, output `/src/work/<id>/review.md`, and `gate: review_passes`."
+    note: "PRD §7 — feature-delivery `review` stage YAML declaring inputs `[code, tests, plan, adr-draft, contracts:from_feature]`, output `/src/work/<day>/<id>/review.md`, and `gate: review_passes`."
   - kind: lines
     path: docs/PRD.md
     range: [113, 121]
@@ -48,10 +48,10 @@ skill's classification rubric and adds its own contract bundle.
 ## Prerequisites
 
 - The `review` stage's inputs MUST be present at the paths declared in PRD
-  §7 lines 671 through 676: code, tests, `/src/work/<id>/plan.md`,
-  `/src/work/<id>/adr-draft.md`, and the contracts pulled in by
+  §7 lines 671 through 676: code, tests, `/src/work/<day>/<id>/plan.md`,
+  `/src/work/<day>/<id>/adr-draft.md`, and the contracts pulled in by
   `contracts:from_feature`.
-- `/src/work/<id>/test-report.md` SHALL exist (emitted by the upstream `test`
+- `/src/work/<day>/<id>/test-report.md` SHALL exist (emitted by the upstream `test`
   stage) and SHALL carry a coverage delta the review cites.
 - `/src/memory/handbook/glossary.md`, `/src/memory/handbook/contract-style.md`, and
   `/src/memory/handbook/contract-format.md` SHALL exist; the review body
@@ -64,8 +64,8 @@ Execute these steps in order, once per Feature review.
 
 ### Step 1 — Load the design artifacts before reading the code
 
-Read `/src/memory/features/<id>/spec.md`, `/src/work/<id>/plan.md`, and
-`/src/work/<id>/adr-draft.md` first; do NOT open the diff until the design
+Read `/src/memory/features/<id>/spec.md`, `/src/work/<day>/<id>/plan.md`, and
+`/src/work/<day>/<id>/adr-draft.md` first; do NOT open the diff until the design
 context is loaded. The design-first ordering follows the Bacchelli/Bird
 finding cited at PRD §17 line 1255 that reviewers who skip the design
 artifacts file disproportionately many `nit`-class comments and miss the
@@ -77,7 +77,7 @@ inbox item per the Failure-handling section below.
 ### Step 2 — Walk the diff and classify every finding
 
 Open `git diff` against the touch-set declared at
-`/src/work/<id>/touch-set.json`. For each defect, classify under exactly one
+`/src/work/<day>/<id>/touch-set.json`. For each defect, classify under exactly one
 heading per the rubric below.
 
 - **`must fix`.** A defect that violates a Spec Contract clause, a `plan.md`
@@ -109,14 +109,14 @@ review's Spec Contract results table.
 | `kind` | from the clause's `kind` field |
 | `severity` | from the clause's `severity` field |
 | `result` | runner output: `pass` \| `fail` \| `timeout` \| `error` |
-| `runner output path` | dual-anchor citation to the runner's stdout/stderr capture under `/src/work/<id>/contract-runs/<clause.id>.log` |
+| `runner output path` | dual-anchor citation to the runner's stdout/stderr capture under `/src/work/<day>/<id>/contract-runs/<clause.id>.log` |
 
 Every `severity: block` clause whose `result` is `fail` MUST also appear in
 the `must fix` section under Findings. An omitted clause fails the gate.
 
 ### Step 4 — Verify the coverage delta and the test plan
 
-Read `/src/work/<id>/test-report.md` and record the statement and branch
+Read `/src/work/<day>/<id>/test-report.md` and record the statement and branch
 coverage on the changed lines. The reviewer MUST verify each public symbol
 the diff adds or modifies carries at least one test under the touch-set's
 declared test paths per `src/personas/coder.md`. A missing test routes a
@@ -128,7 +128,7 @@ figure rather than the global coverage figure.
 
 ### Step 5 — Author the four-section review body
 
-Write `/src/work/<id>/review.md` with exactly four `##` sections in the order
+Write `/src/work/<day>/<id>/review.md` with exactly four `##` sections in the order
 declared in `src/personas/reviewer.md`:
 
 1. **Verdict.** One paragraph at most 80 words declaring `review_passes:
@@ -138,7 +138,7 @@ declared in `src/personas/reviewer.md`:
    and `nit`.
 3. **Spec Contract results.** The table built in Step 3.
 4. **Coverage delta.** The figures captured in Step 4 plus a dual-anchor
-   citation into `/src/work/<id>/test-report.md`.
+   citation into `/src/work/<day>/<id>/test-report.md`.
 
 The full body MUST stay at most 1500 words across the four sections.
 
@@ -180,8 +180,8 @@ The MVP loop cap declared in PRD §3.5 US-1 line 120 MUST hold.
 
 ## Failure-handling
 
-- If `/src/work/<id>/plan.md`, `/src/work/<id>/adr-draft.md`, or
-  `/src/work/<id>/test-report.md` is missing, the review MUST halt and open
+- If `/src/work/<day>/<id>/plan.md`, `/src/work/<day>/<id>/adr-draft.md`, or
+  `/src/work/<day>/<id>/test-report.md` is missing, the review MUST halt and open
   one inbox item at `src/inbox/in/<timestamp>-reviewer-missing-input.md`
   naming the Feature id and the missing upstream artifact. The reviewer
   MUST NOT guess the missing content.

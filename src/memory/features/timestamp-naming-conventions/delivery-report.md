@@ -54,7 +54,7 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 | SID = 86400 | `secondsRemainingInDay()` boundary tests |
 | Work day + task scope | `migrateTargetForWorkPath()` snapshot test |
 | Inbox in/out/threads/archive | `migrateTargetForInboxPath()` and inventory scope |
-| `src/work/*/run.log.jsonl` excluded | migration exclusion guard |
+| `src/work/*/*/run.log.jsonl` excluded | migration exclusion guard |
 | Day directory prefix/suffix | `daysToFds()` and `mmDdYySuffix()` helpers |
 | Task subdir SID / HHMM / semantic suffix | `secondsRemainingInDay()`, `hhmm()`, and basename builder |
 | Inbox parent preserved | thread-path snapshot test |

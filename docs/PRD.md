@@ -970,7 +970,7 @@ The "GitLab handbook for agents" — the system's durable substrate.
 
 - **Procedural memory** — `/src/memory/handbook/`, `/src/personas/`, `/src/skills/` — *the rules*. Survives context compression because it's read on demand.
 - **Semantic memory** — `/src/memory/adr|rfc|prd|runbooks/` — *the facts and decisions*. Each artifact has a citation block (file/line links into code).
-- **Episodic memory** — `/src/inbox/threads/`, `/src/work/*/run.log.jsonl` — *the experiences*. Append-only, periodically distilled into semantic memory by the Librarian.
+- **Episodic memory** — `/src/inbox/threads/`, `/src/work/*/*/run.log.jsonl` — *the experiences*. Append-only, periodically distilled into semantic memory by the Librarian.
 
 ### `MemoryStore` interface (Mem0-shaped CRUD + Letta-tier overlay + Tesseract-native citation)
 

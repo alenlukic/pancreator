@@ -12,7 +12,7 @@ metadata:
     - /src/memory/handbook/contract-style.md
   tesseract-emits:
     - /src/memory/adr/<seq>-<slug>.md
-    - /src/work/<id>/adr-draft.md
+    - /src/work/<day>/<id>/adr-draft.md
 references:
   - kind: lines
     path: docs/PRD.md
@@ -23,7 +23,7 @@ references:
     path: docs/PRD.md
     range: [649, 658]
     contentHash: TBD-on-commit
-    note: "PRD §7 — feature-delivery `plan` stage YAML declaring `/src/work/<id>/adr-draft.md` as a required output of the plan stage."
+    note: "PRD §7 — feature-delivery `plan` stage YAML declaring `/src/work/<day>/<id>/adr-draft.md` as a required output of the plan stage."
   - kind: lines
     path: docs/PRD.md
     range: [915, 915]
@@ -67,7 +67,7 @@ Read `/src/memory/adr/` and pick `<seq> = max(existing seq) + 1`, zero-padded to
 4 digits. The slug MUST be lowercase-kebab-case at most 6 words, drawn from
 the decision title. The full filename is
 `/src/memory/adr/<seq>-<slug>.md`. When the ADR drafts under a Feature, the
-`plan` stage MUST also stage `/src/work/<id>/adr-draft.md` per PRD §7
+`plan` stage MUST also stage `/src/work/<day>/<id>/adr-draft.md` per PRD §7
 lines 655 through 658; the file copies forward into `/src/memory/adr/` only on
 human ratification.
 
@@ -158,7 +158,7 @@ When all gates are green, you MUST:
 1. Stage the new file at `/src/memory/adr/<seq>-<slug>.md` with `status:
    proposed`. You MUST NOT commit; you MUST NOT push.
 2. When the ADR drafts under the `feature-delivery` `plan` stage, also stage
-   `/src/work/<id>/adr-draft.md` for the downstream `implement` and `review`
+   `/src/work/<day>/<id>/adr-draft.md` for the downstream `implement` and `review`
    stages per PRD §7 lines 655 through 658.
 3. Open one inbox item at `src/inbox/in/<timestamp>-adr-<seq>-ratification.md`
    summarizing the decision, the alternatives rejected, and any open

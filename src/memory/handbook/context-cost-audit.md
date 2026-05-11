@@ -31,7 +31,8 @@ controls used to reduce default load.
 | Expensive fixed models used for every subagent invocation | Add standard/complex Cursor subagent variants; standard uses `model: auto`, complex preserves prior fixed model. |
 | Generated machine artifacts | Exclude generated JSON, manifests, dry-run/write outputs, and lockfiles from default semantic indexing. |
 | Broad handbook/persona sweeps | Treat internal operating content as routeable by handbook index, not default-loaded. |
-| Operator-facing root clutter from implementation, tests, tools, and completed work | Move implementation surfaces to `src/internal/{packages,tests,tools}` and completed runs to `src/internal/work_archive/`; keep `src/work/` for active runs only. |
+| Broad implementation rule triggers | Keep `coder.mdc` scoped to implementation packages, tests, tools, and explicit touch-set files instead of broad `src/**/*` activation. |
+| Operator-facing root clutter from implementation, tests, tools, and completed work | Move implementation surfaces to `src/internal/packages/` and `src/internal/tools/`, keep repository tests at root `tests/`, and move completed runs to `src/internal/work_archive/`; keep `src/work/` for active runs only. |
 
 ## Known risks
 
