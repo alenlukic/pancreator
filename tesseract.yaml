@@ -9,7 +9,7 @@ bootstrap:
   completed_phases: ["-1", "0", "1", "2", "3"]
   placeholder: false
   enforced_today: false
-  current_focus: "US-1 dogfood verification, runtime execution wiring, and M1 hardening."
+  current_focus: "US-1 dogfood verification, runtime execution wiring, M1 hardening, and compact planning/execution handoffs."
   note: "Fast-forwarded from Phase 2 after Phase 3 substrate packages, Phase 4 dogfood artifacts, and backlog evidence were present. Phase 4 remains in progress until dogfood exit gaps are ratified."
   evidence:
     - docs/BOOTSTRAP.md Phase 4 defines the current dogfood verification gate.

@@ -87,6 +87,32 @@ test("active work day directories use canonical days-to-FDS prefixes", () => {
   }
 });
 
+
+
+test("planning/execution handoff contract is represented across active memory, pipeline, and personas", () => {
+  assert.ok(exists("src/memory/active/handoffs.md"));
+
+  const activeReadme = read("src/memory/active/README.md");
+  assert.match(activeReadme, /src\/memory\/active\/handoffs\.md/);
+  assert.match(activeReadme, /src\/work\/<day>\/<task-id>\/handoff\.md/);
+
+  const contextEconomy = read("src/memory/handbook/context-economy.md");
+  assert.match(contextEconomy, /Planning\/execution handoff discipline/);
+  assert.match(contextEconomy, /src\/memory\/active\/handoffs\.md/);
+
+  const pipeline = read("src/pipelines/feature-delivery.yaml");
+  assert.match(pipeline, /src\/work\/<day>\/<task-id>\/handoff\.md/);
+
+  const techLead = read("src/personas/tech-lead.md");
+  const coder = read("src/personas/coder.md");
+  const supervisor = read("src/personas/supervisor.md");
+  const glossary = read("src/memory/handbook/glossary.md");
+  assert.match(glossary, /Handoff card/);
+  assert.match(techLead, /handoff\.md/);
+  assert.match(coder, /handoff\.md/);
+  assert.match(supervisor, /src\/memory\/active\/handoffs\.md/);
+});
+
 test("workspace, scripts, and workflow use conventional test and docs paths", () => {
   const workspace = read("pnpm-workspace.yaml");
   assert.match(workspace, /src\/internal\/packages\/\*/);

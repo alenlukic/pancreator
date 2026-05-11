@@ -29,6 +29,7 @@ related:
   - /src/memory/handbook/persona-spec.md
   - /src/memory/handbook/contract-format.md
   - /src/memory/handbook/contract-style.md
+  - /src/memory/handbook/context-economy.md
 ---
 
 # Glossary
@@ -105,6 +106,13 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
 - **Touch-set** — the declared set of paths and symbols a coder task MAY write
   to. The Conflict Planner uses touch-sets to fan out parallel work without
   silent collisions.
+- **Planning/execution boundary** — the pipeline transition where a planning
+  persona stops expanding context, emits a bounded handoff card, and delegates
+  execution to the next persona.
+- **Handoff card** — a compact Markdown artifact at
+  `src/work/<day>/<id>/handoff.md` that names the Feature id, stage, planner,
+  executor, upstream artifact paths, in-scope paths, explicit non-goals,
+  validation commands, known failures, blockers, and re-entry rule.
 - **Conflict Planner** — pre-fan-out planner persona. Builds an interference
   graph across the cohort and either splits or serializes overlapping
   touch-sets. M2+.

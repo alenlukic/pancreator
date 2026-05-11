@@ -33,6 +33,7 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | Model and context escalation | `src/memory/handbook/context-economy.md` |
 | Active-memory orientation | `src/memory/active/current.md` |
 | Active-memory layout | `src/memory/active/README.md` |
+| Active planning/execution handoff pointers | `src/memory/active/handoffs.md` |
 | Post-task documentation impact | `src/memory/handbook/documentation-impact-contract.md` |
 | Governed-commit policy compliance artifact | `src/memory/handbook/policy-compliance-contract.md` |
 | Inbox lifecycle and operator sandbox | `src/memory/handbook/inbox-lifecycle.md` |
@@ -71,17 +72,26 @@ When work maps to a persona’s `metadata.tesseract-pipeline-stages`, you SHALL
 delegate to that persona rather than perform it directly unless `simple task
 mode` forbids delegation.
 
-1. **Native subagent invocation.** Cursor exposes standard and complex variants:
+1. **Planning/execution boundary.** When a planning persona emits a plan, touch-set,
+   or ADR draft, the next action SHOULD be a delegated executor invocation with a
+   compact handoff path, not more parent-agent implementation inside the same
+   context window. The handoff card lives at `src/work/<day>/<task-id>/handoff.md`;
+   `src/memory/active/handoffs.md` stores pointers only.
+2. **Native subagent invocation.** Cursor exposes standard and complex variants:
    `.cursor/agents/<name>-standard.md` uses `model: auto`;
    `.cursor/agents/<name>-complex.md` preserves the prior fixed model for that
    persona; `.cursor/agents/<name>.md` is a backward-compatible standard alias.
    Use standard by default. Use complex only for the escalation triggers in
    `src/memory/handbook/subagent-model-tiers.md`. Claude Code and other harnesses
    SHALL use their equivalent tiering when available.
-2. **Persona-as-prompt fallback.** When no native invocation exists, start a
+3. **Persona-as-prompt fallback.** When no native invocation exists, start a
    generalPurpose subagent, prepend the persona file contents to its system
    prompt, and name the persona plus intended tier in the first message.
-3. **Cost discipline.** Subagents isolate parent context; they do not guarantee
+4. **Loop discipline.** A parent SHOULD NOT run multi-round planning plus
+   implementation plus review in one context window. If execution exposes scope
+   ambiguity, missing touch-set entries, or repeated validation failure, delegate
+   back to the owning persona instead of extending the executor loop.
+5. **Cost discipline.** Subagents isolate parent context; they do not guarantee
    lower total tokens. Avoid fan-out when multiple subagents would reload the
    same PRD, handbook, or archival context.
 
