@@ -24,7 +24,7 @@ references:
     path: docs/PRD.md
     range: [207, 223]
     contentHash: TBD-on-commit
-    note: "PRD §3.5 US-9 — Greenfield AND existing projects: non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md/.cursor/rules/CLAUDE.md, and seeded threshold policy."
+    note: "PRD §3.5 US-9 — Greenfield AND existing projects: non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md and .cursor/rules, and seeded threshold policy."
   - kind: lines
     path: docs/PRD.md
     range: [701, 701]
@@ -54,10 +54,8 @@ existing file the human has not ratified.
   scaffolds it on first invocation.
 - `/src/memory/handbook/glossary.md` and `/src/memory/handbook/contract-style.md`
   SHALL exist; the scan report body satisfies Layer 1 lint per PRD §4.6.
-- The skill SHALL NOT require any pre-existing `AGENTS.md`, `CLAUDE.md`,
-  `.cursor/rules/`, `.github/copilot-instructions.md`, or
-  `.github/agents/`; existence of these files routes through the additive
-  merge plan in Step 6.
+- The skill SHALL NOT require any pre-existing `AGENTS.md`,
+  `.cursor/rules/`, or `.github/agents/`; existence of these files routes through the additive merge plan in Step 6.
 
 ## The 7-step adoption loop
 
@@ -69,6 +67,8 @@ Walk every Tesseract-prefixed write target the scan would emit and verify
 no existing file occupies the path. The Tesseract-prefixed write surface
 declared at PRD §3.5 lines 215 through 222 is `/src/memory/`, `/src/personas/`,
 `/src/skills/`, `/src/pipelines/`, `/src/inbox/`, `/.tess/`, and `tesseract.yaml`.
+The proposed `tesseract.yaml` block MUST include `project_root`; use `.` when
+the harness is embedded at the repository root being adopted.
 
 When any target path conflicts with an existing file, the skill MUST exit
 non-zero and post one inbox item at
@@ -129,8 +129,7 @@ opinionation it asserts.
 ### Step 6 — Plan the additive merge for existing agent contracts
 
 Detect every existing agent-contract file the human has authored:
-`AGENTS.md`, `CLAUDE.md`, `.cursor/rules/*.mdc`,
-`.github/copilot-instructions.md`, `.github/agents/*`. For each file, the
+`AGENTS.md`, `.cursor/rules/*.mdc`, `.github/agents/*`. For each file, the
 plan MUST classify the file as exactly one of:
 
 - **`keep`.** The file already aligns with Tesseract's contract; the scan
@@ -161,10 +160,12 @@ section MUST carry a dual-anchor citation per PRD §8.
 8. Proposed threshold policy.
 
 The proposed-threshold-policy block MUST be a YAML block keyed against
-`tesseract.yaml` whose numeric thresholds are seeded from the
-repository's current measured baselines per PRD §3.5 US-9 line 220 (e.g.,
-the current statement-coverage figure becomes the floor, not an
-aspirational number).
+`tesseract.yaml`. It MUST include top-level `project_root` as either an
+absolute path, a path relative to the directory containing `tesseract.yaml`, or
+`.` when the harness is embedded at the adopted repository root. Its numeric
+thresholds are seeded from the repository's current measured baselines per PRD
+§3.5 US-9 line 220 (e.g., the current statement-coverage figure becomes the
+floor, not an aspirational number).
 
 Post one Markdown file per proposed SME at
 `src/inbox/in/<timestamp>-adopter-sme-<name>.md` and one threshold-policy
@@ -218,7 +219,7 @@ supervisor or the human applies the threshold-policy proposal to
 - Per-scan token budget defaults to 80 000 tokens across all 8 sections.
   A budget exhaustion mid-scan MUST trip the breaker and route an inbox
   item; the skill MUST NOT silently truncate sections.
-- The proposed threshold policy MUST seed every numeric gate with the
-  current measured baseline per PRD §3.5 line 220; a baseline the skill
-  cannot measure MUST appear as `value: TBD-measure-on-first-run` rather
-  than as an invented number.
+- The proposed threshold policy MUST include `project_root` and MUST seed
+  every numeric gate with the current measured baseline per PRD §3.5 line 220;
+  a baseline the skill cannot measure MUST appear as
+  `value: TBD-measure-on-first-run` rather than as an invented number.

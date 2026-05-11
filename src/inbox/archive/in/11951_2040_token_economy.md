@@ -96,10 +96,6 @@ src/memory/**/index.json
 # Lockfile rarely needed for semantic repo reasoning
 pnpm-lock.yaml
 
-# Duplicate agent-instruction surfaces
-CLAUDE.md
-.github/copilot-instructions.md
-
 # Cursor-native mirrors are runtime surfaces, not semantic source of truth.
 # Validate Cursor still discovers custom agents before keeping this exclusion.
 .cursor/agents/**

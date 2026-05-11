@@ -69,7 +69,6 @@
         "description": "Cursor rule audit artifact and six narrowed rule projections (supervisor kept as audited).",
         "paths": [
           "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
-          ".cursor/rules/00-agents-md.mdc",
           ".cursor/rules/tesseract-engineer.mdc",
           ".cursor/rules/persona-designer.mdc",
           ".cursor/rules/intake-analyst.mdc",

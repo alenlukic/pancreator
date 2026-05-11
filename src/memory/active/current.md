@@ -34,15 +34,20 @@ read per `src/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- None. The repository is between Features.
-- Operators SHALL pick the next Feature from `src/inbox/in/` per
-  `src/memory/handbook/inbox-lifecycle.md` §1 and SHALL update this section before
-  the new Feature enters the `intake` stage.
+- `inbox-directory-hierarchy-migration` — migrate `src/inbox/` naming and layout
+  to the same day- and time-oriented conventions as `src/work/` (alias:
+  `inbox-convention-migration` from directive filename). **Gate:** engineering
+  spec is at `human_approval` after round-1 clarify answers were folded inline
+  (thread `status: ratified`).
+- Intake sources: `src/inbox/in/inbox_convention_migration.md`;
+  canonical spec `src/memory/features/inbox-directory-hierarchy-migration/spec.md`;
+  round-1 clarify `src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md`.
 
 ## Most recent shipped Features
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `bootstrap-state-fast-forward` | `2026-05-10T14:30:00Z` (operator close-out) | — | — | — |
 | `active-memory-context-economy-pass-2` | `2026-05-10T03:02:00Z` | `src/memory/features/active-memory-context-economy-pass-2/delivery-report.md` | `src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md` | `src/inbox/archive/in/75480_0302_token-economy-enhanced.md` |
 | `cursor-token-economy` | `2026-05-10T03:16:00Z` (operator close-out; delivery report staged 2026-05-09) | `src/memory/features/cursor-token-economy/delivery-report.md` | `src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md` | `src/inbox/archive/in/11951_2040_token_economy.md` |
 

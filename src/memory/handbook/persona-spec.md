@@ -190,8 +190,8 @@ Projection rules:
   parser refuses any divergence.
 - `globs` MUST be a YAML array of strings. The default for an authoring
   persona is the path glob the persona writes to.
-- `alwaysApply: true` is reserved for `00-*.mdc` priority rules (e.g.,
-  `.cursor/rules/00-agents-md.mdc`). Personas use `alwaysApply: false`.
+- `alwaysApply: true` is reserved for `00-*.mdc` priority rules.
+  Personas use `alwaysApply: false`.
 - The body MUST be a single `@src/personas/<name>.md` import line. Cursor expands
   the import at activation time.
 

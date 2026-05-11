@@ -1,11 +1,6 @@
 # Bootstrap defaults for threshold policy.
-# Phase 2 intent: seed one working contract bundle per risk tier.
-
-bootstrap:
-  phase: "2"
-  placeholder: false
-  enforced_today: false
-  note: "Phase 2 contract bundles use rego telemetry gates for coverage, bundle size, and feature-contract pull."
+# These defaults were introduced during Bootstrap Phase 2. The live bootstrap
+# tracking state belongs in tesseract.yaml, not in this defaults file.
 
 defaults:
   low:

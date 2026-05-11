@@ -1,11 +1,21 @@
-# Bootstrap repo policy.
-# Phase 2 intent: activate default contract-bundle references.
+# Bootstrap repo policy and live tracking state.
+# `project_root: "."` is the self-hosting value: this harness is embedded in
+# the same repository it is currently developing.
+project_root: "."
 
 bootstrap:
-  phase: "2"
+  phase: "4"
+  status: phase-4-in-progress
+  completed_phases: ["-1", "0", "1", "2", "3"]
   placeholder: false
   enforced_today: false
-  note: "Phase 2 defaults seed rego telemetry gates and per-feature contract pulls."
+  current_focus: "US-1 dogfood verification, runtime execution wiring, and M1 hardening."
+  note: "Fast-forwarded from Phase 2 after Phase 3 substrate packages, Phase 4 dogfood artifacts, and backlog evidence were present. Phase 4 remains in progress until dogfood exit gaps are ratified."
+  evidence:
+    - docs/BOOTSTRAP.md Phase 4 defines the current dogfood verification gate.
+    - src/internal/packages/@tesseract/** contains the Phase 3 substrate package implementations.
+    - src/pipelines/*.yaml contains the five MVP pipeline definitions named by Phase 4.
+    - src/memory/backlog/index.yaml records Phase 4 dogfood follow-ups and open exit gaps.
 
 risk_tier: medium
 threshold_policy: defaults.medium  # from tesseract-defaults.yaml
@@ -19,7 +29,7 @@ commands:
   build: "npm run build"
   lint: "npm run lint"
 
-# Minimal override shape for Phase 0:
+# Minimal override shape for bootstrap:
 # keep empty unless a local bootstrap experiment needs an explicit override.
 overrides:
   gates: {}

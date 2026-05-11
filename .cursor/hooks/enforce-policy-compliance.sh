@@ -38,7 +38,7 @@ fi
 is_docs_metadata_path() {
   local path="$1"
   case "$path" in
-    AGENTS.md|docs/PRD.md|docs/BOOTSTRAP.md|CLAUDE.md|.github/copilot-instructions.md)
+    AGENTS.md|docs/PRD.md|docs/BOOTSTRAP.md)
       return 0
       ;;
     src/memory/*|src/inbox/*|docs/*)
@@ -105,8 +105,6 @@ doc_root_names = {
     "AGENTS.md",
     "docs/PRD.md",
     "docs/BOOTSTRAP.md",
-    "CLAUDE.md",
-    ".github/copilot-instructions.md",
 }
 
 

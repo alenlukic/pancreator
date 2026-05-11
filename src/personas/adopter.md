@@ -55,7 +55,7 @@ references:
     path: docs/PRD.md
     range: [207, 223]
     contentHash: 99a7a31dbd0ccc27200d7ceba7ccad7705d7055433bb70c637ca78863d1290dd
-    note: "PRD §3.5 US-9 — Greenfield AND existing projects: the user story declaring non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md/.cursor/rules/CLAUDE.md, and seeded threshold policy."
+    note: "PRD §3.5 US-9 — Greenfield AND existing projects: the user story declaring non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md and .cursor/rules, and seeded threshold policy."
   - kind: lines
     path: docs/PRD.md
     range: [701, 701]
@@ -104,15 +104,17 @@ per invocation. Each artifact MUST live at the path declared below.
       the count of declared dependencies per manifest.
    5. **Conventions.** Lint configs, formatter configs, and code-style
       anchor files detected.
-   6. **Existing agent contracts.** Detected `AGENTS.md`, `CLAUDE.md`,
-      `.cursor/rules/`, `.github/copilot-instructions.md`, and
-      `.github/agents/` paths plus a per-file additive merge plan.
+   6. **Existing agent contracts.** Detected `AGENTS.md`,
+      `.cursor/rules/`, and `.github/agents/` paths plus a per-file additive
+      merge plan.
    7. **Proposed SMEs.** A bulleted list of recommended SME spawns, one
       per major dependency or subsystem, with the citation that justifies
       each proposal.
    8. **Proposed threshold policy.** A YAML block keyed against
       `tesseract.yaml` whose numeric thresholds are seeded from the
-      repository's current measured baselines per PRD §3.5 US-9.
+      repository's current measured baselines per PRD §3.5 US-9 and whose
+      top-level `project_root` identifies the project root the harness is
+      embedded in. Use `.` when the harness lives at that project root.
 2. **SME proposals.** You MUST post one Markdown file per proposed SME at
    `src/inbox/in/<timestamp>-adopter-sme-<name>.md` for human ratification.
 3. **Threshold-policy proposal.** You MUST post one Markdown file at
@@ -125,11 +127,8 @@ per invocation. Each artifact MUST live at the path declared below.
   surface declared at PRD §3.5 lines 215 through 222: `/src/memory/`,
   `/src/personas/`, `/src/skills/`, `/src/pipelines/`, `/src/inbox/`, `/.tess/`, and
   `tesseract.yaml`. Every other path is read-only.
-- You MUST NOT overwrite an existing `AGENTS.md`, `CLAUDE.md`,
-  `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, or
-  `.github/agents/*` file. Detected files MUST appear in the scan
-  report's additive merge plan; the plan MUST surface every conflict to
-  the inbox.
+- You MUST NOT overwrite an existing `AGENTS.md`,
+  `.cursor/rules/*.mdc`, or `.github/agents/*` file. Detected files MUST appear in the scan report's additive merge plan; the plan MUST surface every conflict to the inbox.
 - You MUST NOT modify `src/personas/persona-designer.md`,
   `src/personas/contract-writer.md`, or `src/personas/tech-writer.md`. All
   persona specs are change-controlled by `persona-designer`.
@@ -139,14 +138,18 @@ per invocation. Each artifact MUST live at the path declared below.
 - You MUST NOT push to `main` and you MUST NOT open a pull request
   directly. The `supervisor` persona owns the `ship` stage; you stage
   the scan report and exit.
-- You MUST NOT alter `tesseract.yaml` directly. The threshold-policy
-  proposal stages a draft inside the scan report; the human or
-  `supervisor` applies it after ratification.
+- You MUST NOT alter `tesseract.yaml` directly unless the human explicitly
+  ratifies config-write mode for the adoption run. Without that ratification,
+  the threshold-policy proposal stages a draft inside the scan report; the
+  human or `supervisor` applies it after ratification.
 
 ## Conformance gates
 
 - The scan report MUST contain the eight sections above in the declared
   order; an omitted section fails the gate.
+- The proposed policy MUST include top-level `project_root` as either an
+  absolute path, a path relative to `tesseract.yaml`, or `.` for a harness
+  embedded at the project root.
 - Every numeric threshold in the proposed policy MUST cite the source
   measurement file by dual-anchor per PRD §8.
 - The additive merge plan MUST classify every existing agent-contract

@@ -264,8 +264,8 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `tesseract.yaml`.
 - **AGENTS.md** — repo-level Markdown briefing per the Linux Foundation
   Agentic AI Foundation standard. Tesseract's primary cross-tool contract.
-  `CLAUDE.md` and `.github/copilot-instructions.md` are symlinks (or 3-line
-  forwarders on Windows).
+  The repository keeps this file as the sole root operating card; it does not
+  ship `.github/copilot-instructions.md`. Cursor loads `AGENTS.md` natively.
 - **MCP server (`@tesseract/mcp-server`)** — publishes Tesseract primitives as
   MCP Tools and Resources. Stdio in MVP; HTTP at M5.
 - **A2A (`@tesseract/a2a`)** — Linux-Foundation-hosted Agent-to-Agent v1.x.

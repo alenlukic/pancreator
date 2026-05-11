@@ -8,7 +8,7 @@ owners: [supervisor, librarian, tech-lead]
 purpose: |
   Canonical authoring and change-control guidance for `/AGENTS.md`, the
   primary cross-tool contract for this repository. This guide defines required
-  shape, update triggers, governance workflow, symlink policy, and pre-merge
+  shape, update triggers, governance workflow, mirror policy, and pre-merge
   quality checks for AGENTS changes.
 references:
   - kind: lines
@@ -115,14 +115,17 @@ AGENTS changes are governance changes and SHALL follow this sequence:
 5. If any required update is deferred, record rationale and backlog linkage in
    `/src/memory/backlog/index.yaml` per documentation-impact policy.
 
-## 5 - Link and symlink policy
+## 5 - Link policy
 
-`/AGENTS.md` is the single canonical file. `CLAUDE.md` and
-`.github/copilot-instructions.md` SHALL remain symlinks to `AGENTS.md`.
+`/AGENTS.md` is the single canonical root operating card.
 
-Authors MUST NOT maintain duplicate static copies of AGENTS content in those
-surfaces. Any AGENTS edit SHALL preserve working symlink targets in the same
-change set.
+Authors MUST NOT add `.github/copilot-instructions.md`, root `CLAUDE.md`, or
+other duplicate mirrors of AGENTS content. Any tool that expects a separate
+Copilot instruction file SHALL be configured to read `AGENTS.md` when the
+product allows it.
+
+Authors MUST NOT maintain duplicate static copies of AGENTS narrative in any
+mirror surface without an inbox-authorized exception and backlog linkage.
 
 ## 6 - Quality checks before merge
 
@@ -138,8 +141,9 @@ Before merge, the author SHALL verify:
    `docs/BOOTSTRAP.md`, constitution, glossary, and handbook contracts.
 5. **Delegation coherence.** Delegation rules in AGENTS remain consistent with
    persona metadata ownership boundaries.
-6. **Symlink integrity.** `CLAUDE.md` and `.github/copilot-instructions.md`
-   still resolve to AGENTS.
+6. **Entrypoint integrity.** The repository root exposes only `/AGENTS.md` as
+   the operating card; no duplicate instruction symlinks or parallel static
+   copies.
 
 ## 7 - Author checklist (compact)
 
@@ -147,7 +151,7 @@ Before merge, the author SHALL verify:
 - [ ] Inbox directive linked; ADR linked when policy-significant.
 - [ ] Required AGENTS sections preserved and coherent.
 - [ ] Canon table updated for any handbook/spec drift.
-- [ ] Symlink policy validated (`CLAUDE.md`, `.github/copilot-instructions.md`).
+- [ ] Entrypoint policy validated (`AGENTS.md` only at repo root for the operating card).
 - [ ] Cross-file contradiction check passed (`docs/PRD.md`, `docs/BOOTSTRAP.md`, handbook).
 - [ ] Deferrals, if any, recorded with backlog linkage.
 - [ ] Human ratification requested before policy activation.

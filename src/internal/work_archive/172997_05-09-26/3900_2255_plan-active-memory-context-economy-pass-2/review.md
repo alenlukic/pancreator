@@ -128,8 +128,9 @@ pipeline-step delegation (§4), stage-don't-push (§5), operator-sandbox
 off-limits (§5), human-in-the-loop (§5), dual-anchor citations (§5), Layer 1
 lint (§5), documentation-impact mandate (§5), policy-compliance gate (§5),
 stage exit criteria (§5), bootstrap-only tagging (§5), and `Bootstrap-Phase`
-commit trailer (§5). Symlinks `CLAUDE.md` and `.github/copilot-instructions.md`
-both resolve to `AGENTS.md`. Backlog deferrals
+commit trailer (§5). `AGENTS.md` is the canonical root operating card; at
+review time duplicate entrypoints `CLAUDE.md` and `.github/copilot-instructions.md`
+also symlinked to it and were later removed. Backlog deferrals
 `active-memory-physical-tier-migration`,
 `active-memory-budget-warning-tool`, and
 `active-memory-rule-glob-ratification` each carry a `source` and `links` set
