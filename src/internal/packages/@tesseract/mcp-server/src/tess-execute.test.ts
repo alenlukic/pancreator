@@ -15,7 +15,7 @@ async function mktemp(prefix: string): Promise<string> {
 describe("tess.inbox", () => {
   it("lists src/inbox/in entries for a temp repo", async () => {
     const root = await mktemp("tess-mcp-inbox-");
-    const inboxIn = path.join(root, "inbox", "in");
+    const inboxIn = path.join(root, "src", "inbox", "in");
     await fs.mkdir(inboxIn, { recursive: true });
     await fs.writeFile(path.join(inboxIn, "hello.md"), "x", "utf8");
 
@@ -24,6 +24,20 @@ describe("tess.inbox", () => {
       command: "inbox",
       status: "ok",
       entries: ["hello.md"],
+    });
+  });
+
+  it("lists nested inbox/in paths", async () => {
+    const root = await mktemp("tess-mcp-inbox-nested-");
+    const deep = path.join(root, "src", "inbox", "in", "172995_01-01-26", "50909_task");
+    await fs.mkdir(deep, { recursive: true });
+    await fs.writeFile(path.join(deep, "a.md"), "x", "utf8");
+
+    const out = await callTessToolMcp("tess.inbox", {}, { repoRoot: root });
+    expect(out).toEqual({
+      command: "inbox",
+      status: "ok",
+      entries: ["172995_01-01-26/50909_task/a.md"],
     });
   });
 });

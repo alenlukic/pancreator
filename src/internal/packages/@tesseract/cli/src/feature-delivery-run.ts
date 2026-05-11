@@ -98,8 +98,8 @@ export async function startFeatureDelivery(
 ): Promise<StartFeatureDeliveryResult> {
   const repoRoot = path.resolve(input.repoRoot);
   const now = input.clock?.() ?? new Date();
-  const inboxEntry = assertBasename(input.inboxEntry, "inbox entry");
-  const inboxPath = path.join(repoRoot, "src", "inbox", "in", inboxEntry);
+  const inboxRel = assertInboxInRelativePath(input.inboxEntry, "inbox entry");
+  const inboxPath = path.join(repoRoot, "src", "inbox", "in", ...inboxRel.split("/"));
   const directive = await readFile(inboxPath, "utf8");
   const pipelinePath = path.join(repoRoot, "src", "pipelines", "feature-delivery.yaml");
   const pipeline = loadPipelineYaml(pipelinePath);
@@ -107,7 +107,9 @@ export async function startFeatureDelivery(
     throw new Error(`Expected feature-delivery pipeline at ${pipelinePath}; found ${pipeline.id}.`);
   }
 
-  const featureId = sanitizeSlug(input.featureId ?? deriveFeatureId(inboxEntry, directive));
+  const featureId = sanitizeSlug(
+    input.featureId ?? deriveFeatureId(path.posix.basename(inboxRel), directive),
+  );
   const taskId = sanitizeTaskId(input.taskId ?? makeTaskId(now, featureId));
   const dayDir = makeDayDir(now);
   const runDirRel = path.posix.join("src", "work", dayDir, taskId);
@@ -130,8 +132,8 @@ export async function startFeatureDelivery(
     currentStage: "intake",
     createdAtIso: rfc3339UtcMs(now),
     source: {
-      inboxEntry,
-      inboxPath: path.posix.join("src", "inbox", "in", inboxEntry),
+      inboxEntry: inboxRel,
+      inboxPath: path.posix.join("src", "inbox", "in", inboxRel),
     },
     artifacts: {
       runDir: runDirRel,
@@ -190,12 +192,23 @@ export async function readFeatureDeliveryStatusWithInterventions(
   };
 }
 
-function assertBasename(value: string, label: string): string {
-  const base = path.basename(value);
-  if (base !== value || value.includes("..") || value.includes("/") || value.includes("\\")) {
-    throw new Error(`${label} MUST be a single path segment.`);
+/**
+ * Accepts nested `src/inbox/in/`-relative POSIX paths after inbox convention migration.
+ * @param {string} value
+ * @param {string} label
+ */
+function assertInboxInRelativePath(value: string, label: string): string {
+  const norm = value.replace(/\\/gu, "/").replace(/^\/+/u, "");
+  if (norm === "" || norm.includes("\0")) {
+    throw new Error(`${label} MUST be a non-empty relative path.`);
   }
-  return value;
+  const segments = norm.split("/").filter(Boolean);
+  for (const s of segments) {
+    if (s === ".." || s === ".") {
+      throw new Error(`${label} MUST NOT contain dot segments.`);
+    }
+  }
+  return norm;
 }
 
 function sanitizeSlug(raw: string): string {

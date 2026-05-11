@@ -127,6 +127,36 @@ async function listDirNames(dir: string): Promise<string[]> {
   }
 }
 
+async function listInboxNestedFiles(absRoot: string): Promise<string[]> {
+  const out: string[] = [];
+  async function walk(rel: string, dir: string): Promise<void> {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch (e) {
+      const err = e as NodeJS.ErrnoException;
+      if (err.code === "ENOENT") {
+        return;
+      }
+      throw e;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith(".")) {
+        continue;
+      }
+      const r = rel === "" ? e.name : `${rel}/${e.name}`;
+      const abs = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        await walk(r, abs);
+      } else {
+        out.push(r.split(path.sep).join("/"));
+      }
+    }
+  }
+  await walk("", absRoot);
+  return out.sort();
+}
+
 /**
  * `memory://` lists `/src/memory/<area>/` directory names. `inbox://` lists Inbox queue file names.
  * `work-run-log://<taskId>` returns `src/work/<taskId>/run.log.jsonl` as text when present.
@@ -155,9 +185,9 @@ export async function readTesseractResource(
   if (uri === "inbox://") {
     const inbox = new FileInbox(root);
     const [inFiles, outFiles, threadFiles] = await Promise.all([
-      listDirNames(inbox.pathIn()),
-      listDirNames(inbox.pathOut()),
-      listDirNames(inbox.pathThreads()),
+      listInboxNestedFiles(inbox.pathIn()),
+      listInboxNestedFiles(inbox.pathOut()),
+      listInboxNestedFiles(inbox.pathThreads()),
     ]);
     return {
       mimeType: "application/json",

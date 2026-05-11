@@ -1,7 +1,7 @@
 ---
 name: tech-lead-standard
 description: "Standard economical `tech-lead` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
-model: auto
+model: gpt-5.3-codex
 permissionMode: default
 tools:
   - Read

@@ -68,10 +68,10 @@ completed inbound requests out of the active queue.
 
 Operators SHALL use these canonical paths:
 
-- Active queue: `/src/inbox/in/`
-- Responses: `/src/inbox/out/`
-- Threads: `/src/inbox/threads/`
-- Archive: `/src/inbox/archive/in/`
+- Active queue: `/src/inbox/in/` (artifacts MAY nest under work-style `<day>/<task>/` directories mirroring `src/work/` after inbox convention migration)
+- Responses: `/src/inbox/out/` (same nesting convention as the active queue)
+- Threads: `/src/inbox/threads/` (thread artifacts nest under `<day>/<task>/`; primary discovery SHOULD use `src/inbox/artifact-index.json` when present)
+- Archive: `/src/inbox/archive/in/` (same nesting convention as the active queue)
 - Operator sandbox: `/src/inbox/notes/` (human-only; see Section 1a)
 
 Operators MUST NOT treat ad hoc directories as inbox sources of truth.
@@ -121,9 +121,9 @@ completed inbound item:
 2. Mark the inbound item complete by recording `responded` status in the
    operator handoff context (for example the active work note or run log entry
    that references the response artifact path).
-3. Move the inbound source file from `/src/inbox/in/` to `/src/inbox/archive/in/`
-   without changing the file basename.
-4. Verify the source file no longer exists in `/src/inbox/in/` and exists in
+3. Move the inbound source file from its path under `/src/inbox/in/` to the matching nested path under `/src/inbox/archive/in/`
+   without changing the file basename (preserve the `<day>/<task>/` prefix segments when present).
+4. Verify the source file no longer exists under `/src/inbox/in/` and exists under
    `/src/inbox/archive/in/`.
 
 Operators SHALL execute archival moves only after the response artifact exists.
@@ -132,7 +132,7 @@ Operators SHALL execute archival moves only after the response artifact exists.
 
 When an outbox artifact in `/src/inbox/out/` requests operator answers for an
 active thread, operators SHALL post replies under the referenced thread path in
-`/src/inbox/threads/<thread-id>/`.
+`/src/inbox/threads/` (nested paths MUST stay under the same `<day>/<task>/` layout as other inbox queues).
 
 Operators MUST NOT move outbox artifacts into `/src/inbox/in/`.
 

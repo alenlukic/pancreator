@@ -110,6 +110,11 @@ This Feature SHALL define one UTC-based naming convention for in-scope temporal 
 - When the Feature encodes the actor-ownership rule for non-conforming
   human-generated inbox artifacts, the Feature MUST update
   `src/memory/handbook/inbox-lifecycle.md`.
+- When the Feature migrates an artifact under an in-scope inbox subtree, the
+  Feature MUST preserve the existing directory layout.
+- When the Feature migrates an artifact under an in-scope inbox subtree, the
+  Feature MUST NOT create new day directories or new task subdirectories under
+  that inbox subtree.
 
 ## Out of scope
 
@@ -119,6 +124,8 @@ This Feature SHALL define one UTC-based naming convention for in-scope temporal 
 - This Feature does not rename the intake directive or operator response files
   during intake-stage canonicalization.
 - This Feature does not rename `src/work/*/*/run.log.jsonl`.
+- This Feature does not apply work-style day-directory or task-subdirectory
+  nesting under `src/inbox/` subtrees.
 
 ## Deferrals
 

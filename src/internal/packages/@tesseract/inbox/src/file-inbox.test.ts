@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -15,8 +15,21 @@ describe("FileInbox", () => {
     await rm(tmp, { recursive: true, force: true });
   });
 
-  it("rejects multi-segment names", async () => {
+  it("lists nested inbox/in files with POSIX-relative paths", async () => {
+    const tmp = await mkdtemp(path.join(os.tmpdir(), "inbox-"));
+    const inbox = new FileInbox(tmp);
+    const nestedDir = path.join(tmp, "src", "inbox", "in", "172995_01-01-26", "50909_task");
+    await mkdir(nestedDir, { recursive: true });
+    await writeFile(path.join(nestedDir, "a.md"), "x", "utf8");
+    const entries = await inbox.listIn();
+    expect(entries).toContain("172995_01-01-26/50909_task/a.md");
+    const body = await inbox.readInFile("172995_01-01-26/50909_task/a.md");
+    expect(body).toBe("x");
+    await rm(tmp, { recursive: true, force: true });
+  });
+
+  it("rejects path traversal", async () => {
     const inbox = new FileInbox("/tmp");
-    await expect(inbox.writeOutFile("a/b.md", "x")).rejects.toThrow("single path segment");
+    await expect(inbox.writeOutFile("../escape.md", "x")).rejects.toThrow(/dot segments|queue root/u);
   });
 });
