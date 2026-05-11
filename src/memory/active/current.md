@@ -35,14 +35,7 @@ read per `src/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- `inbox-directory-hierarchy-migration` — migrate `src/inbox/` naming and layout
-  to the same day- and time-oriented conventions as `src/work/` (alias:
-  `inbox-convention-migration` from directive filename). **Gate:** engineering
-  spec is at `human_approval` after round-1 clarify answers were folded inline
-  (thread `status: ratified`).
-- Intake sources: `src/inbox/in/inbox_convention_migration.md`;
-  canonical spec `src/memory/features/inbox-directory-hierarchy-migration/spec.md`;
-  round-1 clarify `src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md`.
+- *(none)*. Pick up the next canonical queue item from `src/inbox/in/`.
 
 ## Most recent shipped Features
 
