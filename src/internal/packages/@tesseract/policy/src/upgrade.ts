@@ -19,6 +19,16 @@ function pickString(o: Record<string, unknown>, ...keys: string[]): string | und
   return undefined;
 }
 
+function pickStringArray(o: Record<string, unknown>, ...keys: string[]): string[] | undefined {
+  for (const k of keys) {
+    const v = o[k];
+    if (Array.isArray(v) && v.every((x) => typeof x === "string")) {
+      return [...v];
+    }
+  }
+  return undefined;
+}
+
 function extractBootstrap(raw: unknown): PolicyBootstrapMeta | undefined {
   if (!isRecord(raw)) {
     return undefined;
@@ -29,8 +39,13 @@ function extractBootstrap(raw: unknown): PolicyBootstrapMeta | undefined {
   }
   return {
     phase: pickString(b, "phase"),
+    status: pickString(b, "status"),
+    completedPhases: pickStringArray(b, "completedPhases", "completed_phases"),
     placeholder: typeof b.placeholder === "boolean" ? b.placeholder : undefined,
-    enforcedToday: typeof b.enforcedToday === "boolean" ? b.enforcedToday : undefined,
+    enforcedToday: typeof b.enforcedToday === "boolean" || typeof b.enforced_today === "boolean"
+      ? Boolean(b.enforcedToday ?? b.enforced_today)
+      : undefined,
+    currentFocus: pickString(b, "currentFocus", "current_focus"),
     note: pickString(b, "note"),
   };
 }
@@ -88,6 +103,7 @@ function asV1Already(raw: unknown): PolicyConfigV1 | null {
     pickString(raw, "thresholdPolicy", "threshold_policy") ?? "defaults.medium";
   return {
     schemaVersion: 1,
+    projectRoot: pickString(raw, "projectRoot", "project_root") ?? ".",
     bootstrap: extractBootstrap(raw),
     riskTier,
     thresholdPolicy,
@@ -109,6 +125,7 @@ export function upgradePolicyTree(raw: unknown): PolicyConfigV1 {
   if (!isRecord(raw)) {
     return {
       schemaVersion: 1,
+      projectRoot: ".",
       riskTier: "medium",
       thresholdPolicy: "defaults.medium",
       contractBundle: { kind: "rego", telemetryGates: [] },
@@ -118,6 +135,7 @@ export function upgradePolicyTree(raw: unknown): PolicyConfigV1 {
   }
   return {
     schemaVersion: 1,
+    projectRoot: pickString(raw, "projectRoot", "project_root") ?? ".",
     bootstrap: extractBootstrap(raw),
     riskTier: pickString(raw, "riskTier", "risk_tier") ?? "medium",
     thresholdPolicy:

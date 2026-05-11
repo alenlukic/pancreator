@@ -69,6 +69,8 @@ Walk every Tesseract-prefixed write target the scan would emit and verify
 no existing file occupies the path. The Tesseract-prefixed write surface
 declared at PRD §3.5 lines 215 through 222 is `/src/memory/`, `/src/personas/`,
 `/src/skills/`, `/src/pipelines/`, `/src/inbox/`, `/.tess/`, and `tesseract.yaml`.
+The proposed `tesseract.yaml` block MUST include `project_root`; use `.` when
+the harness is embedded at the repository root being adopted.
 
 When any target path conflicts with an existing file, the skill MUST exit
 non-zero and post one inbox item at
@@ -161,10 +163,12 @@ section MUST carry a dual-anchor citation per PRD §8.
 8. Proposed threshold policy.
 
 The proposed-threshold-policy block MUST be a YAML block keyed against
-`tesseract.yaml` whose numeric thresholds are seeded from the
-repository's current measured baselines per PRD §3.5 US-9 line 220 (e.g.,
-the current statement-coverage figure becomes the floor, not an
-aspirational number).
+`tesseract.yaml`. It MUST include top-level `project_root` as either an
+absolute path, a path relative to the directory containing `tesseract.yaml`, or
+`.` when the harness is embedded at the adopted repository root. Its numeric
+thresholds are seeded from the repository's current measured baselines per PRD
+§3.5 US-9 line 220 (e.g., the current statement-coverage figure becomes the
+floor, not an aspirational number).
 
 Post one Markdown file per proposed SME at
 `src/inbox/in/<timestamp>-adopter-sme-<name>.md` and one threshold-policy
@@ -218,7 +222,7 @@ supervisor or the human applies the threshold-policy proposal to
 - Per-scan token budget defaults to 80 000 tokens across all 8 sections.
   A budget exhaustion mid-scan MUST trip the breaker and route an inbox
   item; the skill MUST NOT silently truncate sections.
-- The proposed threshold policy MUST seed every numeric gate with the
-  current measured baseline per PRD §3.5 line 220; a baseline the skill
-  cannot measure MUST appear as `value: TBD-measure-on-first-run` rather
-  than as an invented number.
+- The proposed threshold policy MUST include `project_root` and MUST seed
+  every numeric gate with the current measured baseline per PRD §3.5 line 220;
+  a baseline the skill cannot measure MUST appear as
+  `value: TBD-measure-on-first-run` rather than as an invented number.

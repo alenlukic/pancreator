@@ -5,15 +5,16 @@ the current manual workflow.
 
 ## 1) Current status
 
-- **Current state:** handbook seeds under `src/memory/handbook/` are present.
-  Meta-personas and meta-skills are present. The full Phase-1 MVP persona
-  roster is present, with corresponding Cursor shims and MVP skills. Backlog
-  tracking foundation is present through ADR-0001, backlog format, and backlog
-  index.
-- **Not implemented yet:** `tess` CLI/runtime execution is not wired in this
-  repo yet.
-- **Not populated yet:** `src/pipelines/` and `src/ensembles/` are not populated with
-  executable definitions yet.
+- **Current phase tracking:** `tesseract.yaml` records Bootstrap Phase 4 with
+  status `phase-4-in-progress`. Phases -1 through 3 are treated as complete
+  for tracking because scaffold, handbook seeds, personas, skills, M1 feature
+  contracts, substrate packages, and static MVP pipeline definitions are
+  present.
+- **Current focus:** Phase 4 US-1 dogfood verification and runtime wiring
+  hardening. Some Phase 4 exit gaps remain open, including external run-log
+  observability and empirical pause/resume/abort exercise coverage.
+- **Runtime caveat:** `tess` exists as a bootstrap CLI surface, but several
+  commands remain stubs and full pipeline execution is not ratified as complete.
 
 ## 2) System overview
 
@@ -63,6 +64,7 @@ treated as currently available behavior.
 ## 5) Key paths map
 
 - `AGENTS.md` — cross-tool operating contract and live bootstrap status.
+- `tesseract.yaml` — live policy, Bootstrap phase tracking, and `project_root`; see `src/memory/handbook/tesseract-config.md`.
 - `docs/M1.index.md` — compact M1/bootstrap route map.
 - `docs/BOOTSTRAP.md` — full phase plan, sequencing, and exit criteria.
 - `docs/PRD.summary.md` and `docs/PRD.index.md` — compact PRD orientation and routing.
@@ -92,3 +94,4 @@ treated as currently available behavior.
 - Product requirements index: [`docs/PRD.index.md`](docs/PRD.index.md)
 - Full product requirements: [`docs/PRD.md`](docs/PRD.md)
 - Operating contract: [`AGENTS.md`](AGENTS.md)
+- Tesseract config guide: [`src/memory/handbook/tesseract-config.md`](src/memory/handbook/tesseract-config.md)

@@ -25,9 +25,12 @@ control plane (`tess` CLI is not wired in this repository yet).
 
 ## Bootstrap state in this repo
 
-Handbook seeds, personas, skills, and backlog tracking exist. Executable
-pipeline YAML and `tess` runtime are still future work; operators follow
-`docs/BOOTSTRAP.md` and `AGENTS.md` for manual phase boundaries.
+`tesseract.yaml` tracks this repo at Bootstrap Phase 4 with status
+`phase-4-in-progress`. Phases -1 through 3 are treated as complete: the repo
+has scaffold, handbook seeds, personas, skills, M1 contract feature folders,
+Phase 3 substrate packages, and the five static MVP pipeline definition files.
+Phase 4 remains open until the dogfood exit gaps are ratified. The `tess` CLI
+surface exists, but full runtime pipeline execution is not yet complete.
 
 ## Where to go next
 
@@ -36,6 +39,7 @@ pipeline YAML and `tess` runtime are still future work; operators follow
 - Full normative spec: `docs/PRD.md` only for exact requirements or citations
 - Phase plan: `docs/BOOTSTRAP.md` only when `docs/M1.index.md` is insufficient
 - Context and indexing policy: `src/memory/handbook/context-economy.md`
+- Live config and project root: `src/memory/handbook/tesseract-config.md`
 
 ## Token-economy rule
 

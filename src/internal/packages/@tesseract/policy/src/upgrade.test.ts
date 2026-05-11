@@ -9,16 +9,35 @@ import { loadLegacyPolicyConfig } from "./legacy.js";
 import { upgradePolicyTree } from "./upgrade.js";
 
 describe("upgradePolicyTree", () => {
-  it("maps snake_case threshold fields", () => {
+  it("maps snake_case threshold fields and project root", () => {
     const v = upgradePolicyTree({
+      project_root: ".",
+      bootstrap: {
+        phase: "4",
+        status: "phase-4-in-progress",
+        completed_phases: ["-1", "0", "1", "2", "3"],
+        enforced_today: false,
+        current_focus: "dogfood",
+      },
       risk_tier: "high",
       threshold_policy: "defaults.high",
       contract_bundle: { kind: "rego", telemetry_gates: ["a"] },
     });
     expect(v.schemaVersion).toBe(1);
+    expect(v.projectRoot).toBe(".");
+    expect(v.bootstrap?.phase).toBe("4");
+    expect(v.bootstrap?.status).toBe("phase-4-in-progress");
+    expect(v.bootstrap?.completedPhases).toEqual(["-1", "0", "1", "2", "3"]);
+    expect(v.bootstrap?.enforcedToday).toBe(false);
+    expect(v.bootstrap?.currentFocus).toBe("dogfood");
     expect(v.riskTier).toBe("high");
     expect(v.thresholdPolicy).toBe("defaults.high");
     expect(v.contractBundle.telemetryGates).toEqual(["a"]);
+  });
+
+  it("defaults projectRoot to the self-hosting root", () => {
+    const v = upgradePolicyTree({ risk_tier: "low" });
+    expect(v.projectRoot).toBe(".");
   });
 });
 

@@ -482,3 +482,20 @@ items:
       - /docs/PRD.md
     evidence: "The active-memory tier landed in pass-2 without naming an owner for post-ship rotation. Librarian's write scope explicitly excludes src/memory/active/** per src/personas/librarian.md lines 117 to 120, and the PRD \u00a77 feature-delivery post_run block does not contain an active-memory rotation action. The pass-2 ship cycle therefore required operator override to keep the tier from going stale immediately after the first Feature shipped."
     notes: "Pick one of: extend librarian write scope plus add a fourth post_run action rotate_active_memory; add a manual operator step to src/memory/handbook/inbox-lifecycle.md \u00a73; or assign tech-lead an explicit rotation obligation at the start of each plan stage. Inbox-lifecycle handbook update is the lowest-risk first move while runtime remains unwired."
+
+  - id: tesseract-config-schema-validation
+    title: Validate project_root and bootstrap tracking in config loader
+    source: tesseract.yaml
+    owner: coder
+    milestone: phase-4
+    status: open
+    priority: medium
+    opened_at: "2026-05-10T13:15:00Z"
+    links:
+      - /tesseract.yaml
+      - /src/memory/handbook/tesseract-config.md
+      - /src/internal/packages/@tesseract/policy/src/config-v1.ts
+      - /src/personas/adopter.md
+      - /src/skills/adopt-existing-repo/SKILL.md
+    evidence: "The config now records project_root and live bootstrap tracking, and the policy upgrade helper preserves those fields. Runtime validation should still reject empty project roots, malformed phase states, and paths that resolve outside the operator-approved boundary."
+    notes: "Add schema-level validation when @tesseract/policy grows its Conftest/Rego-backed config loader. Adoption should set project_root during init/adopt after human ratification or in config-write mode."

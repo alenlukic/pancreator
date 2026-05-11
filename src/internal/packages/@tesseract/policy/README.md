@@ -20,4 +20,4 @@ const v1 = await upgradePolicyConfig("./tesseract.yaml");
 ## Migration contract
 
 - `loadLegacyPolicyConfig(path)` parses JSON (`.json`) or YAML (`.yaml`/`.yml`), returns the raw document, and prints a **deprecation** line to stderr referencing Bootstrap Phase 3 policy migration (internal Q23). Use it only while bridging older repos.
-- `upgradePolicyConfig(path)` reads the same files, returns `PolicyConfigV1` with `schemaVersion: 1`, and maps legacy **snake_case** keys (`risk_tier`, `contract_bundle`, `telemetry_gates`, `gates_on_failure`) to **camelCase** fields. It performs **no** filesystem writes; the caller persists after human review (for example `tess upgrade --apply`).
+- `upgradePolicyConfig(path)` reads the same files, returns `PolicyConfigV1` with `schemaVersion: 1`, and maps legacy **snake_case** keys (`project_root`, `risk_tier`, `contract_bundle`, `telemetry_gates`, `gates_on_failure`) to **camelCase** fields. It defaults `projectRoot` to `.` for self-hosted repos. It performs **no** filesystem writes; the caller persists after human review (for example `tess upgrade --apply`).

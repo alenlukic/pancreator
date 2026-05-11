@@ -30,6 +30,7 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | M1/bootstrap routing before full PRD/BOOTSTRAP reads | `docs/M1.index.md` |
 | Subagent standard/complex model tiers | `src/memory/handbook/subagent-model-tiers.md` |
 | Current context cost audit | `src/memory/handbook/context-cost-audit.md` |
+| `tesseract.yaml` phase and `project_root` config | `src/memory/handbook/tesseract-config.md` |
 | Model and context escalation | `src/memory/handbook/context-economy.md` |
 | Active-memory orientation | `src/memory/active/current.md` |
 | Active-memory layout | `src/memory/active/README.md` |
@@ -192,17 +193,21 @@ response.
 /docs/PRD.md                     product spec
 /docs/M1.index.md                 compact M1/bootstrap route map
 /docs/BOOTSTRAP.md                phase-by-phase bootstrap plan
-/tesseract.yaml                  org-level threshold policy (M2+)
-/tesseract-defaults.yaml         risk-tier defaults (M2+)
+/tesseract.yaml                  live policy, bootstrap tracking, and project_root
+/tesseract-defaults.yaml         risk-tier defaults introduced during Phase 2
 ```
 
 ## 8 — Bootstrap status (live)
 
-Handbook seeds, meta-personas, meta-skills, Phase-1 MVP roster, Cursor shims,
-and backlog foundation (ADR-0001, format, index) are present. `tess`
-CLI or runtime execution is not wired; `/src/pipelines/` and `/src/ensembles/` hold no
-executable definitions yet. Next meaningful implementation phase per
-`docs/BOOTSTRAP.md`: contract corpus plus substrate or runtime execution wiring.
+`tesseract.yaml` tracks the repo at Bootstrap Phase 4 with status
+`phase-4-in-progress`. Phases -1 through 3 are treated as complete for
+tracking purposes: the repo contains the scaffold, handbook seeds, persona
+roster, Cursor projections, M1 contract feature folders, substrate package
+implementations, and static MVP pipeline definitions. Phase 4 remains open
+until the US-1 dogfood exit gaps are ratified, including external run-log
+observability and an empirical pause/resume/abort exercise. `tess` exists as a
+Phase-3 CLI surface with several stubs; full runtime pipeline execution is not
+yet ratified as complete.
 
 ## 9 — Stability
 

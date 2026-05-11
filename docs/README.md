@@ -7,3 +7,5 @@ This directory holds high-level product and bootstrap documents that operators m
 - `PRD.index.md` — section-level PRD routing map.
 - `PRD.md` — full product requirements; explicit-read by default for detailed requirements and line-anchored citations.
 - `BOOTSTRAP.md` — full phase plan, sequencing, and exit criteria; explicit-read by default when compact routing is insufficient.
+
+- `../tesseract.yaml` — live bootstrap tracking and `project_root`; route through `../src/memory/handbook/tesseract-config.md` before editing.

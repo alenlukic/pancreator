@@ -112,7 +112,9 @@ per invocation. Each artifact MUST live at the path declared below.
       each proposal.
    8. **Proposed threshold policy.** A YAML block keyed against
       `tesseract.yaml` whose numeric thresholds are seeded from the
-      repository's current measured baselines per PRD §3.5 US-9.
+      repository's current measured baselines per PRD §3.5 US-9 and whose
+      top-level `project_root` identifies the project root the harness is
+      embedded in. Use `.` when the harness lives at that project root.
 2. **SME proposals.** You MUST post one Markdown file per proposed SME at
    `src/inbox/in/<timestamp>-adopter-sme-<name>.md` for human ratification.
 3. **Threshold-policy proposal.** You MUST post one Markdown file at
@@ -139,14 +141,18 @@ per invocation. Each artifact MUST live at the path declared below.
 - You MUST NOT push to `main` and you MUST NOT open a pull request
   directly. The `supervisor` persona owns the `ship` stage; you stage
   the scan report and exit.
-- You MUST NOT alter `tesseract.yaml` directly. The threshold-policy
-  proposal stages a draft inside the scan report; the human or
-  `supervisor` applies it after ratification.
+- You MUST NOT alter `tesseract.yaml` directly unless the human explicitly
+  ratifies config-write mode for the adoption run. Without that ratification,
+  the threshold-policy proposal stages a draft inside the scan report; the
+  human or `supervisor` applies it after ratification.
 
 ## Conformance gates
 
 - The scan report MUST contain the eight sections above in the declared
   order; an omitted section fails the gate.
+- The proposed policy MUST include top-level `project_root` as either an
+  absolute path, a path relative to `tesseract.yaml`, or `.` for a harness
+  embedded at the project root.
 - Every numeric threshold in the proposed policy MUST cite the source
   measurement file by dual-anchor per PRD §8.
 - The additive merge plan MUST classify every existing agent-contract

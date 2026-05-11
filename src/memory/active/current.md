@@ -34,10 +34,9 @@ read per `src/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- None. The repository is between Features.
-- Operators SHALL pick the next Feature from `src/inbox/in/` per
-  `src/memory/handbook/inbox-lifecycle.md` §1 and SHALL update this section before
-  the new Feature enters the `intake` stage.
+- `bootstrap-state-fast-forward` — update live bootstrap tracking from Phase 2 to
+  Phase 4, add `tesseract.yaml: project_root`, and route adopter/config docs.
+- Active workspace: `src/work/172996_05-10-26/68321_1315_bootstrap-state-fast-forward/`.
 
 ## Most recent shipped Features
 

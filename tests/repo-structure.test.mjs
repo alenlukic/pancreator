@@ -40,6 +40,27 @@ test("operator-facing root keeps implementation under internal while tests and d
   assert.equal(exists("M1.index.md"), false);
 });
 
+
+test("tesseract.yaml tracks live bootstrap state and embedded project root", () => {
+  const config = read("tesseract.yaml");
+  assert.match(config, /^project_root:\s+"\."$/m);
+  assert.match(config, /^\s+phase:\s+"4"$/m);
+  assert.match(config, /^\s+status:\s+phase-4-in-progress$/m);
+  assert.match(config, /^\s+completed_phases:\s+\["-1", "0", "1", "2", "3"\]$/m);
+
+  const defaults = read("tesseract-defaults.yaml");
+  assert.doesNotMatch(defaults, /^bootstrap:\s*$/m);
+  assert.match(defaults, /introduced during Bootstrap Phase 2/);
+});
+
+test("configuration docs route project_root through adopter and handbook", () => {
+  assert.ok(exists("src/memory/handbook/tesseract-config.md"));
+  assert.match(read("src/memory/handbook/tesseract-config.md"), /project_root/);
+  assert.match(read("src/personas/adopter.md"), /project_root/);
+  assert.match(read("src/skills/adopt-existing-repo/SKILL.md"), /project_root/);
+  assert.match(read("src/memory/handbook/index.md"), /tesseract-config\.md/);
+});
+
 test("archived work day-directory prefixes match days from UTC day to Jan 1 2500", () => {
   const archiveRoot = path.join(ROOT, "src", "internal", "work_archive");
   const names = fs.readdirSync(archiveRoot, { withFileTypes: true })

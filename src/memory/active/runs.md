@@ -26,7 +26,9 @@ keep active logs under **active-work** prefixes such as `src/work/<day>/<task-id
 
 ## Active runs
 
-- None.
+| Run identifier | Pointer | Feature | Status |
+|---|---|---|---|
+| `172996_05-10-26/68321_1315_bootstrap-state-fast-forward` | `src/work/172996_05-10-26/68321_1315_bootstrap-state-fast-forward/` | `bootstrap-state-fast-forward` | active |
 
 ## Recent runs
 
