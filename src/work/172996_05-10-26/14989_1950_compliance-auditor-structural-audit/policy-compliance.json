@@ -1,0 +1,33 @@
+{
+  "task_id": "14989_1950_compliance-auditor-structural-audit",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "src/memory/handbook/constitution.md",
+    "docs/PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The patch changes governed repository structure, Cursor rule behavior, compliance-hook behavior, normative documentation, tests, and backlog state.",
+    "changed_surfaces": [
+      "docs/PRD.md",
+      "src/memory/handbook/glossary.md",
+      "src/memory/handbook/context-cost-audit.md",
+      "src/memory/backlog/index.yaml",
+      "src/work/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-audit.md",
+      "src/work/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-remediation.md"
+    ],
+    "deferred_items": []
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The patch preserves no-push behavior, keeps governed structural changes local, emits compliance artifacts under src/work/<day>/<task-id>/, and keeps documentation-impact accounting explicit.",
+    "constitution_alignment": "The patch improves reference stewardship by aligning live work-path placeholders with the ratified timestamp-naming shape and by adding regression tests for the convention.",
+    "prd_alignment": "The patch preserves the PRD pipeline workspace model while aligning current references with the three-level src/work/<day>/<task-id>/ layout and strengthening compliance-run coverage.",
+    "required_updates": [
+      "docs/PRD.md",
+      "src/memory/handbook/glossary.md",
+      "src/memory/handbook/context-cost-audit.md",
+      "src/memory/backlog/index.yaml",
+      "tests/repo-structure.test.mjs"
+    ]
+  }
+}

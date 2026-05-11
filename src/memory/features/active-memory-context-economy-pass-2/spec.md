@@ -175,7 +175,7 @@ references:
     path: src/memory/handbook/policy-compliance-contract.md
     range: [47, 98]
     contentHash: 971f594cd9fb1c1cbc9da86b6104d6fff81b9c723cd9266766687b63277a3d67
-    note: "Policy-compliance contract requires `/src/work/<task-id>/policy-compliance.json` for non-`src/work/` structural changes."
+    note: "Policy-compliance contract requires `/src/work/<day>/<task-id>/policy-compliance.json` for non-`src/work/` structural changes."
   - kind: lines
     path: src/memory/handbook/documentation-impact-contract.md
     range: [42, 102]
@@ -485,7 +485,7 @@ for explicit human and agent reads per the non-goals at
   documentation-impact contract cited at
   `{kind: lines, path: src/memory/handbook/documentation-impact-contract.md, range: [42, 102], contentHash: 38ed8213e11f7aa1f53d46588cc55cad7da746016c52aa1747f03d8b97d16248}`.
 - When the Feature stages every governed change, the Feature MUST stage one
-  policy-compliance artifact at `/src/work/<task-id>/policy-compliance.json` per
+  policy-compliance artifact at `/src/work/<day>/<task-id>/policy-compliance.json` per
   the policy-compliance contract cited at
   `{kind: lines, path: src/memory/handbook/policy-compliance-contract.md, range: [47, 98], contentHash: 971f594cd9fb1c1cbc9da86b6104d6fff81b9c723cd9266766687b63277a3d67}`.
 

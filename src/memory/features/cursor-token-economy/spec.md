@@ -220,7 +220,7 @@ reachable for explicit human and agent reads.
   delete any generated manifest under `src/memory/**` or `src/work/**`.
 - When the Feature stages every governed change, the Feature MUST stage
   one policy-compliance artifact at
-  `/src/work/<task-id>/policy-compliance.json` per the policy-compliance
+  `/src/work/<day>/<task-id>/policy-compliance.json` per the policy-compliance
   contract.
 
 ## Out of scope

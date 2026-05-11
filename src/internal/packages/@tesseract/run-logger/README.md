@@ -1,6 +1,6 @@
 # @tesseract/run-logger
 
-JSONL run-log writing for Tesseract: one record per line under `/src/work/<task-id>/run.log.jsonl`, with types aligned to the handbook `run-log-schema` and OpenTelemetry GenAI + OpenInference attribute names.
+JSONL run-log writing for Tesseract: one record per line under `/src/work/<day>/<task-id>/run.log.jsonl`, with types aligned to the handbook `run-log-schema` and OpenTelemetry GenAI + OpenInference attribute names.
 
 ## Quickstart
 

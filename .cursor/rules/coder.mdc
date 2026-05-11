@@ -1,6 +1,15 @@
 ---
 description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL implement one task within the touch-set declared at `/src/work/<day>/<id>/touch-set.json`, write tests for every public symbol it adds or modifies, and stage the diff for the `review` stage.
-globs: ["src/internal/packages/**/src/**/*", "src/internal/packages/**/test/**/*", "src/internal/packages/**/__tests__/**/*", "src/**/*", "tests/**/*", "src/work/**/touch-set.json"]
+globs:
+  - "src/internal/packages/**/src/**/*"
+  - "src/internal/packages/**/test/**/*"
+  - "src/internal/packages/**/__tests__/**/*"
+  - "src/internal/packages/**/package.json"
+  - "src/internal/packages/**/tsconfig.json"
+  - "tests/**/*.mjs"
+  - "tests/**/*.ts"
+  - "src/internal/tools/**/*.mjs"
+  - "src/work/**/touch-set.json"
 alwaysApply: false
 ---
 

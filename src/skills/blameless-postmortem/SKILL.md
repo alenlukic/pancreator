@@ -55,10 +55,10 @@ PRD §8 line 949.
 
 ## Prerequisites
 
-- `/src/work/<task-id>/run.log.jsonl` SHALL exist and SHALL carry the OpenInference
+- `/src/work/<day>/<task-id>/run.log.jsonl` SHALL exist and SHALL carry the OpenInference
   spans plus the OTel GenAI semconv parallel layer declared at PRD §7
   line 838; an empty or truncated run log fails the gate.
-- `/src/work/<task-id>/run-summary.md` SHALL exist when the trigger is
+- `/src/work/<day>/<task-id>/run-summary.md` SHALL exist when the trigger is
   `tess abort` per PRD §3.5 US-10 line 244; the supervisor emits the
   summary on abort per PRD §7 line 890.
 - `/src/memory/postmortems/` SHALL exist as a writable directory; the skill
@@ -72,7 +72,7 @@ Execute these steps in order, once per aborted run.
 
 ### Step 1 — Load the run log and reconstruct the timeline
 
-Read `/src/work/<task-id>/run.log.jsonl` and parse every span emitted between
+Read `/src/work/<day>/<task-id>/run.log.jsonl` and parse every span emitted between
 the run start and the abort. Build a timeline keyed by ISO-8601
 timestamps; each entry MUST list the stage id, the persona id, the tool
 call (when present), the gate state (when the entry crosses a gate), and
@@ -187,10 +187,10 @@ When all gates are green, you MUST:
 
 ## Stop conditions
 
-- Halt when `/src/work/<task-id>/run.log.jsonl` is missing or empty; the
+- Halt when `/src/work/<day>/<task-id>/run.log.jsonl` is missing or empty; the
   postmortem cannot rest on a synthesized timeline. Route an inbox item
   rather than fabricate spans.
-- Halt when `/src/work/<task-id>/run-summary.md` is missing on an abort
+- Halt when `/src/work/<day>/<task-id>/run-summary.md` is missing on an abort
   trigger; the supervisor's PRD §7 line 890 invariant is broken and the
   postmortem MUST flag the gap before authoring narrative.
 - Halt when the stub already exists at the target path; the published

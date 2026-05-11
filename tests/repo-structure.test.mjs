@@ -53,13 +53,17 @@ test("archived work day-directory prefixes match days from UTC day to Jan 1 2500
   }
 });
 
-test("active work contains no completed timestamp day directories", () => {
+test("active work day directories use canonical days-to-FDS prefixes", () => {
   const activeWorkRoot = path.join(ROOT, "src", "work");
-  const offenders = fs.readdirSync(activeWorkRoot, { withFileTypes: true })
+  const dayDirs = fs.readdirSync(activeWorkRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .filter((name) => /^\d{6}_\d{2}-\d{2}-\d{2}$/.test(name));
+    .map((entry) => entry.name);
+  const offenders = dayDirs.filter((name) => !/^\d{6}_\d{2}-\d{2}-\d{2}$/.test(name));
   assert.deepEqual(offenders, []);
+  for (const name of dayDirs) {
+    const [prefix, suffix] = name.split("_");
+    assert.equal(Number(prefix), daysToFdsForSuffix(suffix), name);
+  }
 });
 
 test("workspace, scripts, and workflow use conventional test and docs paths", () => {
@@ -77,6 +81,9 @@ test("workspace, scripts, and workflow use conventional test and docs paths", ()
   assert.match(workflow, /src\/internal\/tools\/\*\*/);
   assert.match(workflow, /docs\/\*\*/);
   assert.match(workflow, /tests\/\*\*/);
+  assert.match(workflow, /\.cursor\/agents\/\*\*/);
+  assert.match(workflow, /\.cursor\/hooks\/\*\*/);
+  assert.match(workflow, /\.cursor\/rules\/\*\*/);
   assert.match(workflow, /pnpm run migration:test/);
   assert.match(workflow, /pnpm run context:budget:test/);
   assert.match(workflow, /pnpm run repo:structure:test/);
@@ -92,4 +99,58 @@ test("librarian owns completed work archival maintenance", () => {
   const librarian = read("src/personas/librarian.md");
   assert.match(librarian, /src\/internal\/work_archive\//);
   assert.match(librarian, /archive_completed_work/);
+});
+
+test("live normative surfaces use three-level work placeholders", () => {
+  const roots = [
+    "AGENTS.md",
+    ".cursor/hooks/enforce-policy-compliance.sh",
+    ".cursor/rules",
+    "docs",
+    "src/internal/packages",
+    "src/memory/handbook",
+    "src/skills",
+    "tests/compliance",
+  ];
+  const files = [];
+  const addPath = (rel) => {
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) return;
+    const stat = fs.statSync(abs);
+    if (stat.isDirectory()) {
+      for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+        addPath(path.posix.join(rel, entry.name));
+      }
+    } else if (stat.isFile()) {
+      files.push(rel);
+    }
+  };
+  roots.forEach(addPath);
+
+  const offenders = [];
+  for (const rel of files) {
+    const text = read(rel);
+    if (
+      /src\/work\/<(?:id|task-id)>\//.test(text) ||
+      /src\/work\/\*\/run\.log\.jsonl/.test(text)
+    ) {
+      offenders.push(rel);
+    }
+  }
+  assert.deepEqual(offenders, []);
+});
+
+test("policy-compliance hook accepts only canonical three-level artifacts", () => {
+  const hook = read(".cursor/hooks/enforce-policy-compliance.sh");
+  assert.match(hook, /\^src\/work\/\[\^\/\]\+\/\[\^\/\]\+\/policy-compliance\\\.json\$/);
+  assert.doesNotMatch(hook, /\^src\/work\/\[\^\/\]\+\/policy-compliance\\\.json\$/);
+  assert.match(hook, /src\/work\/<day>\/<task-id>\/policy-compliance\.json/);
+});
+
+test("Cursor implementation rules avoid broad src-wide activation", () => {
+  const coderRule = read(".cursor/rules/coder.mdc");
+  assert.doesNotMatch(coderRule, /"src\/\*\*\/\*"|"src\/\*\*\/\*\*"|"src\/\*\*\/*"/);
+  assert.doesNotMatch(coderRule, /-\s+"src\/\*\*\/*"/);
+  assert.match(coderRule, /src\/internal\/packages\/\*\*\/src\/\*\*\/\*/);
+  assert.match(coderRule, /tests\/\*\*\/\.mjs|tests\/\*\*\/\*\.mjs/);
 });

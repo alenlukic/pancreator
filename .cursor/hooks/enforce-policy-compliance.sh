@@ -71,18 +71,16 @@ fi
 
 artifacts=()
 for path in "${staged_files[@]}"; do
-  # Accept both the legacy two-level shape (src/work/<task>/policy-compliance.json)
-  # and the timestamp-naming three-level shape (src/work/<day>/<task>/policy-compliance.json)
-  # encoded by ADR 0005. Other depths remain rejected.
-  if [[ "$path" =~ ^src/work/[^/]+/policy-compliance\.json$ ]] \
-    || [[ "$path" =~ ^src/work/[^/]+/[^/]+/policy-compliance\.json$ ]]; then
+  # Accept only the timestamp-naming three-level shape
+  # `src/work/<day>/<task>/policy-compliance.json`.
+  if [[ "$path" =~ ^src/work/[^/]+/[^/]+/policy-compliance\.json$ ]]; then
     artifacts+=("$path")
   fi
 done
 
 if [[ ${#artifacts[@]} -eq 0 ]]; then
   cat <<'JSON'
-{"permission":"deny","user_message":"Commit blocked: stage at least one src/work/<task-id>/policy-compliance.json artifact for non-work structural changes.","agent_message":"Policy-compliance gate failed because no staged policy-compliance artifact was found."}
+{"permission":"deny","user_message":"Commit blocked: stage at least one src/work/<day>/<task-id>/policy-compliance.json artifact for non-work structural changes.","agent_message":"Policy-compliance gate failed because no staged policy-compliance artifact was found."}
 JSON
   exit 0
 fi

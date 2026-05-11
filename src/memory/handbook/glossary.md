@@ -209,7 +209,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `/src/memory/backlog/`, `/src/inbox/` (episodic), and the codebase itself.
 - **Memory tiers** — *procedural* (`/src/memory/handbook/`, `/src/personas/`,
   `/src/skills/` — the rules), *semantic* (`/src/memory/adr|rfc|prd|runbooks/` — the
-  facts and decisions), *episodic* (`/src/inbox/threads/`, `/src/work/*/run.log.jsonl`
+  facts and decisions), *episodic* (`/src/inbox/threads/`, `/src/work/*/*/run.log.jsonl`
   — the experiences).
 - **active-memory** — the short-term operator-facing tier under `src/memory/active/`
   that holds concise summaries and pointers; canonical policy lives at
