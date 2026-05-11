@@ -42,15 +42,15 @@ The root directory is the operator entry point. The `docs/` directory contains h
 2. Start the run:
 
    ```bash
-   pnpm exec tess run feature-delivery <name>.md
+   pnpm -w exec tess run feature-delivery <name>.md
    # equivalent alias:
-   pnpm exec tess feature new <name>.md
+   pnpm -w exec tess feature new <name>.md
    ```
 
    Optional flags:
 
    ```bash
-   pnpm exec tess run feature-delivery <name>.md --feature <feature-id> --task <task-id>
+   pnpm -w exec tess run feature-delivery <name>.md --feature <feature-id> --task <task-id>
    ```
 
 3. Read the emitted JSON. The important fields are `taskId`, `stateFile`,
@@ -63,10 +63,10 @@ The root directory is the operator entry point. The `docs/` directory contains h
 6. Inspect state at any point:
 
    ```bash
-   pnpm exec tess status <task-id>
-   pnpm exec tess pause <task-id>
-   pnpm exec tess resume <task-id>
-   pnpm exec tess abort <task-id> --reason "superseded or unsafe"
+   pnpm -w exec tess status <task-id>
+   pnpm -w exec tess pause <task-id>
+   pnpm -w exec tess resume <task-id>
+   pnpm -w exec tess abort <task-id> --reason "superseded or unsafe"
    ```
 
 ## 4) Post-invocation state machine

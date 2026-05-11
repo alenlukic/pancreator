@@ -12,13 +12,13 @@ pnpm --filter @tesseract/cli run test
 ```
 
 ```bash
-pnpm exec tess inbox
-pnpm exec tess run feature-delivery my-feature.md
-pnpm exec tess feature new my-feature.md
-pnpm exec tess status <task-id>
-pnpm exec tess pause <task-id>
-pnpm exec tess resume <task-id>
-pnpm exec tess abort <task-id> --reason "superseded"
+pnpm -w exec tess inbox
+pnpm -w exec tess run feature-delivery my-feature.md
+pnpm -w exec tess feature new my-feature.md
+pnpm -w exec tess status <task-id>
+pnpm -w exec tess pause <task-id>
+pnpm -w exec tess resume <task-id>
+pnpm -w exec tess abort <task-id> --reason "superseded"
 ```
 
 ## Feature-delivery invocation

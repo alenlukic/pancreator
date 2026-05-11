@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "tess": "./dist/cli.js"
+    "tess": "./bin/tess.js"
   },
   "exports": {
     ".": {
@@ -15,6 +15,7 @@
     }
   },
   "files": [
+    "bin",
     "dist"
   ],
   "scripts": {

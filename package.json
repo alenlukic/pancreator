@@ -20,6 +20,8 @@
     "@arethetypeswrong/cli": "catalog:",
     "@changesets/cli": "catalog:",
     "@eslint/js": "catalog:",
+    "@tesseract/cli": "workspace:*",
+    "@tesseract/mcp-server": "workspace:*",
     "eslint": "catalog:",
     "publint": "catalog:",
     "turbo": "catalog:",
