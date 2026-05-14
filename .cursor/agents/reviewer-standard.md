@@ -1,7 +1,4 @@
 ---
-name: reviewer-standard
-description: "Standard economical `reviewer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
-model: auto
 permissionMode: default
 tools:
   - Read
@@ -51,6 +48,9 @@ metadata:
   tesseract-base-persona: reviewer
   tesseract-model-tier: standard
   tesseract-canonical-persona: src/personas/reviewer.md
+name: reviewer-standard
+model: gpt-5.3-codex
+description: Standard economical `reviewer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model.
 ---
 
 # reviewer-standard
