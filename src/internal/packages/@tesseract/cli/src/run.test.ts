@@ -91,6 +91,83 @@ describe("parseAndRun", () => {
     );
   });
 
+  it("advances one stage only with the expected stage artifact", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-advance-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; nextPromptFile: string };
+    expect(start.nextPromptFile).toContain("next-prompt.md");
+
+    const spec = path.join(root, "src", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Demo Feature Spec", "utf8");
+
+    const advanceOut: string[] = [];
+    const code = await parseAndRun(
+      ["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/spec.md"],
+      { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
+    );
+    expect(code).toBe(0);
+    const advanced = JSON.parse(advanceOut.join("")) as { currentStage: string; nextPromptFile: string };
+    expect(advanced.currentStage).toBe("plan");
+    expect(await readFile(path.join(root, advanced.nextPromptFile), "utf8")).toContain("Use subagent/persona: tech-lead");
+
+    const duplicateOut: string[] = [];
+    const duplicateCode = await parseAndRun(
+      ["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/spec.md"],
+      { repoRoot: root, writeOut: (c) => duplicateOut.push(c), writeErr: () => undefined },
+    );
+    expect(duplicateCode).toBe(1);
+    expect(duplicateOut.join("")).toContain("not valid for plan");
+  });
+
+  it("repairs a stale state ledger with explicit evidence and reason", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-repair-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string };
+    const review = path.join(root, "src", "work", "172996_05-10-26", start.taskId, "review.md");
+    await mkdir(path.dirname(review), { recursive: true });
+    await writeFile(review, "# Review\n\nManual out-of-band review evidence.", "utf8");
+
+    const repairOut: string[] = [];
+    const code = await parseAndRun(
+      [
+        "repair-state",
+        start.taskId,
+        "--stage",
+        "review",
+        "--artifact",
+        `src/work/172996_05-10-26/${start.taskId}/review.md`,
+        "--reason",
+        "manual Cursor run reached review before ledger advancement existed",
+      ],
+      { repoRoot: root, writeOut: (c) => repairOut.push(c) },
+    );
+    expect(code).toBe(0);
+    const repaired = JSON.parse(repairOut.join("")) as { currentStage: string; nextPersona: string };
+    expect(repaired.currentStage).toBe("review");
+    expect(repaired.nextPersona).toBe("reviewer");
+    const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+      currentStage: string;
+      advanceHistory: Array<{ kind: string; reason?: string }>;
+    };
+    expect(state.currentStage).toBe("review");
+    expect(state.advanceHistory.at(-1)?.kind).toBe("repair");
+  });
+
   it("exposes intervention state through status", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "tess-status-"));
     await seedFeatureDeliveryRepo(root);

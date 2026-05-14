@@ -1,7 +1,7 @@
 ---
 name: coder-standard
 description: "Standard economical `coder` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
-model: composer-2
+model: auto
 permissionMode: default
 tools:
   - Read

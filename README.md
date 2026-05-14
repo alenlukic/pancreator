@@ -15,9 +15,10 @@ the current workflow.
   Phoenix/Langfuse verification, and the pause/resume/abort path needs an
   empirical mid-run exercise.
 - **Runtime caveat:** `tess run feature-delivery <inbox-entry>` now creates a
-  Phase-4 state machine, handoff card, and run log under `src/work/<day>/<task-id>/`.
-  It does **not** call Cursor, a model, or LangGraph automatically. Operators
-  still invoke the named personas/subagents at each stage boundary.
+  Phase-4 state machine, handoff card, run log, and bounded `next-prompt.md`
+  under `src/work/<day>/<task-id>/`. It does **not** call Cursor, a model, or
+  LangGraph automatically. Operators still invoke the named personas/subagents
+  at each stage boundary, then run `tess advance` with the accepted stage artifact.
 
 ## 2) System overview
 
@@ -54,13 +55,35 @@ The root directory is the operator entry point. The `docs/` directory contains h
    ```
 
 3. Read the emitted JSON. The important fields are `taskId`, `stateFile`,
-   `handoffFile`, and `nextHumanAction`.
-4. Delegate the `handoffFile` to the stage owner named in `src/pipelines/feature-delivery.yaml`.
-   The first owner is `intake-analyst`.
+   `handoffFile`, `nextPromptFile`, and `nextHumanAction`.
+4. Delegate `nextPromptFile` to the stage owner named in
+   `src/pipelines/feature-delivery.yaml`. The first owner is `intake-analyst`.
 5. At each gate, the human operator checks the emitted artifact and either ratifies
    the transition, answers questions, pauses, resumes, aborts, or sends the run
-   back to the owning persona.
-6. Inspect state at any point:
+   back to the owning persona. Ratified stages advance one step with a
+   stage-specific artifact, for example:
+
+   ```bash
+   pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/spec.md
+   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/touch-set.json
+   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/implementation-report.md
+   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/review.md
+   pnpm -w exec tess advance <task-id> --event must_fix --artifact src/work/<day>/<task-id>/review.md
+   ```
+
+   `tess advance` validates the current stage and expected artifact; reusing the
+   same artifact for later stages is rejected.
+6. If work already moved out-of-band and the ledger is behind, do not repeatedly
+   call `advance`. Create or point to a repo-local evidence artifact and use an
+   explicit repair:
+
+   ```bash
+   pnpm -w exec tess repair-state <task-id> --stage review \
+     --artifact src/work/<day>/<task-id>/review.md \
+     --reason "manual Cursor run already reached review before state advancement existed"
+   ```
+
+7. Inspect state at any point:
 
    ```bash
    pnpm -w exec tess status <task-id>
@@ -71,9 +94,9 @@ The root directory is the operator entry point. The `docs/` directory contains h
 
 ## 4) Post-invocation state machine
 
-Invocation creates `src/work/<day>/<task-id>/state.json`, `handoff.md`, and
-`run.log.jsonl`. The initial state is `ready_for_intake_delegation` with
-`currentStage: intake`.
+Invocation creates `src/work/<day>/<task-id>/state.json`, `handoff.md`,
+`next-prompt.md`, and `run.log.jsonl`. The initial state is
+`ready_for_intake_delegation` with `currentStage: intake`.
 
 | State | Owner | Human attention |
 |---|---|---|
@@ -91,6 +114,8 @@ Main transitions: `invoke → intake`; `human_approval → plan`; `human_approva
 `implementation_complete → review`; `must_fix → implement`; `review_passes → report`;
 `report_ready → ship`; `human_ratifies_local_diff → index`; `artifacts_indexed → complete`.
 Interventions are journaled separately under `.tess/scheduler/interventions/<task-id>.jsonl`.
+`repair-state` is reserved for ledger recovery after explicit out-of-band work;
+its reason and evidence artifact are appended to `run.log.jsonl`.
 
 ## 5) Manual bootstrap workflow remains valid
 

@@ -7,7 +7,9 @@ import {
   type CheckpointId,
 } from "@tesseract/intervention";
 import {
+  advanceFeatureDelivery,
   readFeatureDeliveryStatusWithInterventions,
+  repairFeatureDeliveryState,
   startFeatureDelivery,
 } from "./feature-delivery-run.js";
 
@@ -153,6 +155,47 @@ export async function parseAndRun(
         await readFeatureDeliveryStatusWithInterventions(repoRoot, taskId, (id) =>
           mgr.loadActiveState(id),
         ),
+      );
+    });
+
+
+  program
+    .command("advance")
+    .description("Advance a feature-delivery task by one validated stage transition")
+    .argument("<taskId>", "Task id under src/work/")
+    .requiredOption("--artifact <path>", "Repo-relative artifact proving the current stage completed")
+    .option("--event <event>", "Transition event override, for example must_fix during review")
+    .action(async (taskId: string, opts: { artifact: string; event?: string }) => {
+      emit(
+        writeOut,
+        await advanceFeatureDelivery({
+          repoRoot,
+          taskId,
+          artifact: opts.artifact,
+          event: opts.event,
+          clock: options?.clock,
+        }),
+      );
+    });
+
+  program
+    .command("repair-state")
+    .description("Explicitly repair a feature-delivery ledger after out-of-band manual work")
+    .argument("<taskId>", "Task id under src/work/")
+    .requiredOption("--stage <stage>", "Stage the ledger should reflect")
+    .requiredOption("--artifact <path>", "Repo-relative evidence artifact justifying the repair")
+    .requiredOption("--reason <text>", "Human-readable reason for the repair")
+    .action(async (taskId: string, opts: { stage: string; artifact: string; reason: string }) => {
+      emit(
+        writeOut,
+        await repairFeatureDeliveryState({
+          repoRoot,
+          taskId,
+          stage: opts.stage,
+          artifact: opts.artifact,
+          reason: opts.reason,
+          clock: options?.clock,
+        }),
       );
     });
 

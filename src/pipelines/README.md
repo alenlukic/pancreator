@@ -18,7 +18,7 @@ an `id`, an optional `version`, an ordered list of `stages` with optional
 
 ## Bootstrap status
 
-The pipelines are registered through `loadPipelineYaml`. `tess run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, and run log for the first stage. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@tesseract/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, stages are advanced manually by delegating the emitted handoff to the named persona subagents per `AGENTS.md` §4.
+The pipelines are registered through `loadPipelineYaml`. `tess run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, generated `next-prompt.md`, and run log for the first stage. `tess advance <task-id> --artifact <path>` records accepted stage artifacts, mutates `state.json`, appends the run log, and regenerates the next handoff/prompt. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@tesseract/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, operators still invoke the named Cursor persona subagents manually, but they should delegate only the generated `next-prompt.md` rather than broad prior chat context.
 
 ## Authoring rules
 
