@@ -213,3 +213,5 @@ node_modules/
 .turbo/
 
 src/inbox/notes/
+
+tmp/
