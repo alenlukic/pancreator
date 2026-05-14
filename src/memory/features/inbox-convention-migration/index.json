@@ -1,1 +1,53 @@
-{}
+{
+  "schema": "tesseract.feature-artifact-index.v1",
+  "featureId": "inbox-convention-migration",
+  "taskId": "60722_0707_inbox-convention-migration",
+  "pipeline": "feature-delivery",
+  "stage": "index",
+  "status": "indexed",
+  "summary": "Indexes the accepted ship artifacts for the inbox convention migration re-entry slice. The delivery report states that standalone inbox migration writes now require an approved manifest, nested legacy thread discovery is covered, review passes, and no blockers remain.",
+  "artifacts": [
+    {
+      "role": "delivery-report",
+      "path": "src/memory/features/inbox-convention-migration/delivery-report.md",
+      "contentHash": "40cc3548c914b4a820ea0a2e8855c6700b8d4fd37f443b3e9fb2b42e3d91f3f8",
+      "status": "accepted"
+    },
+    {
+      "role": "implementation-report",
+      "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+      "contentHash": "c5ca8b5ef0b7a2958d868420d93171ac9a0f684d4bec2a834c8caa681150cd61",
+      "status": "accepted"
+    },
+    {
+      "role": "review",
+      "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+      "contentHash": "4d323f28428e2c06c571f156339561ef2c9b6ec447eb162847a4e64cd6084808",
+      "status": "accepted",
+      "verdict": "review_passes: true"
+    }
+  ],
+  "interfaceNotes": [
+    "Standalone inbox migration writes require --manifest <path> and TESSERACT_MIGRATION_GO=1.",
+    "Combined work-plus-inbox migrations continue to use migrate-timestamp-naming.mjs --write --manifest with the combined timestamp manifest.",
+    "Legacy thread discovery recurses nested legacy feature directories while skipping already-migrated day and task subtrees."
+  ],
+  "validationEvidence": [
+    {
+      "source": "review.md",
+      "commands": [
+        "node --test tests/*.test.mjs",
+        "node src/internal/tools/check-phase-0a-scaffold.mjs",
+        "node src/internal/tools/context-budget-report.mjs",
+        "bash -n .cursor/hooks/enforce-policy-compliance.sh"
+      ],
+      "result": "passed"
+    }
+  ],
+  "notIndexed": [
+    {
+      "path": "src/inbox/out/<timestamp>-inbox-convention-migration-delivery-report.md",
+      "reason": "No matching outbox delivery-report file was found during the index stage."
+    }
+  ]
+}

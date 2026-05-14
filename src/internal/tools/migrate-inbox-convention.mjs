@@ -32,12 +32,19 @@ import {
   hhmm,
   inventoryReferences,
   isExcludedFromMigration,
+  applyReferenceUpdatesFromManifest,
 } from "./migrate-timestamp-naming.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Work-style day directory basename pattern (UTC). */
 const DAY_DIR_RE = /^\d{6}_\d{2}-\d{2}-\d{2}$/;
+
+/**
+ * Post-migration thread task directory: SID + `_` + HHMM + `_` + semantic (see buildBasename).
+ * Used to skip already-nested thread subtrees during legacy discovery.
+ */
+const MIGRATED_THREAD_TASK_SEGMENT_RE = /^\d+_\d{4}_/u;
 
 /**
  * @param {string} stem
@@ -67,6 +74,14 @@ export function parseFrontmatterFeatureId(text) {
     }
   }
   return null;
+}
+
+/**
+ * @param {string} dirBasename
+ * @returns {boolean} True when basename matches migrated inbox thread task directory pattern.
+ */
+export function isMigratedThreadTaskSegment(dirBasename) {
+  return MIGRATED_THREAD_TASK_SEGMENT_RE.test(dirBasename);
 }
 
 /**
@@ -125,22 +140,44 @@ export function listLegacyInboxArtifactRows(repoRoot) {
       if (!feat.isDirectory() || feat.name.startsWith(".") || DAY_DIR_RE.test(feat.name)) {
         continue;
       }
-      const d = path.join(threads, feat.name);
-      for (const e of readdirSync(d, { withFileTypes: true })) {
-        if (!e.isFile() || e.name.startsWith(".")) {
-          continue;
+      const featureSlug = feat.name;
+      const d0 = path.join(threads, featureSlug);
+
+      /**
+       * Legacy thread files may live under nested subdirectories. Skip subtrees that already
+       * match migrated day/task layout; never traverse `notes`.
+       * @param {string} dirAbs
+       * @param {string[]} relTail after `src/inbox/threads/` (includes feature slug).
+       */
+      const walk = (dirAbs, relTail) => {
+        for (const e of readdirSync(dirAbs, { withFileTypes: true })) {
+          if (e.name.startsWith(".")) {
+            continue;
+          }
+          const relJoined = ["src", "inbox", "threads", ...relTail, e.name].join("/");
+          if (relJoined.includes("/notes/") || relJoined.endsWith("/notes")) {
+            continue;
+          }
+          if (e.isDirectory()) {
+            if (DAY_DIR_RE.test(e.name) || isMigratedThreadTaskSegment(e.name)) {
+              continue;
+            }
+            walk(path.join(dirAbs, e.name), [...relTail, e.name]);
+          } else if (e.isFile()) {
+            if (isExcludedFromMigration(relJoined)) {
+              continue;
+            }
+            out.push({
+              abs: path.join(dirAbs, e.name),
+              rel: relJoined,
+              queue: "threads",
+              threadFeatureId: featureSlug,
+            });
+          }
         }
-        const rel = `src/inbox/threads/${feat.name}/${e.name}`;
-        if (isExcludedFromMigration(rel)) {
-          continue;
-        }
-        out.push({
-          abs: path.join(d, e.name),
-          rel,
-          queue: "threads",
-          threadFeatureId: feat.name,
-        });
-      }
+      };
+
+      walk(d0, [featureSlug]);
     }
   }
   return out.sort((a, b) => a.rel.localeCompare(b.rel));
@@ -448,6 +485,19 @@ export function writeInboxArtifactIndex(repoRoot, renames, artifactIndexRel = "s
   writeFileSync(abs, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
+/**
+ * @param {unknown} m
+ * @returns {m is { renames?: Array<{ sourceRel: string, targetRel: string, kind: string }>, referenceUpdates?: Array<{ file: string, before: string, after: string }> }}
+ */
+function isPersistedInboxMigrationManifest(m) {
+  return (
+    typeof m === "object" &&
+    m !== null &&
+    /** @type {{ schema?: string }} */ (m).schema ===
+      "tesseract.inbox-convention-migration-manifest.v1"
+  );
+}
+
 function parseArgs(argv) {
   let dryRun = true;
   let write = false;
@@ -498,6 +548,40 @@ function main() {
     );
     return;
   }
+
+  if (!args.manifestPath) {
+    console.error(
+      "[migrate-inbox-convention] refuse --write without --manifest <path>" +
+        " (apply a persisted dry-run manifest verbatim; do not recompute a plan at write time). " +
+        "Use migrate-timestamp-naming.mjs --write --manifest for the combined migration, " +
+        "which applies an approved combined manifest including inbox steps.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const mp = path.resolve(args.manifestPath);
+  if (!existsSync(mp)) {
+    console.error(`[migrate-inbox-convention] missing manifest: ${mp}`);
+    process.exitCode = 1;
+    return;
+  }
+  let persisted;
+  try {
+    persisted = JSON.parse(readFileSync(mp, "utf8"));
+  } catch (e) {
+    console.error(`[migrate-inbox-convention] invalid manifest JSON: ${mp}`, e);
+    process.exitCode = 1;
+    return;
+  }
+  if (!isPersistedInboxMigrationManifest(persisted)) {
+    console.error(
+      `[migrate-inbox-convention] manifest schema must be tesseract.inbox-convention-migration-manifest.v1 (got ${String(/** @type {{ schema?: unknown }} */ (persisted).schema)})`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   if (process.env.TESSERACT_MIGRATION_GO !== "1") {
     console.error(
       "[migrate-inbox-convention] refuse --write without TESSERACT_MIGRATION_GO=1",
@@ -505,10 +589,20 @@ function main() {
     process.exitCode = 1;
     return;
   }
-  applyInboxRenamesFromManifest(plan.renames, args.root);
-  writeInboxArtifactIndex(args.root, plan.renames);
+
+  const renames = /** @type {Array<{ sourceRel: string, targetRel: string, kind: string }>} */ (
+    persisted.renames ?? []
+  );
+  applyInboxRenamesFromManifest(renames, args.root);
+  applyReferenceUpdatesFromManifest(
+    /** @type {Array<{ file: string, before: string, after: string }>} */ (
+      persisted.referenceUpdates ?? []
+    ),
+    args.root,
+  );
+  writeInboxArtifactIndex(args.root, renames);
   console.log(
-    `[migrate-inbox-convention] write applied (TESSERACT_MIGRATION_GO=1)`,
+    `[migrate-inbox-convention] write applied from ${mp} (TESSERACT_MIGRATION_GO=1)`,
   );
 }
 

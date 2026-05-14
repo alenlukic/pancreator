@@ -9,6 +9,7 @@ import {
   stemHasTimestampPrefix,
   parseFrontmatterFeatureId,
   slugFeatureId,
+  isMigratedThreadTaskSegment,
   listLegacyInboxArtifactRows,
   planInboxConventionMigration,
 } from "../src/internal/tools/migrate-inbox-convention.mjs";
@@ -94,6 +95,54 @@ test("planInboxConventionMigration: idempotent basename keeps SID_HHMM_ leaf", (
     );
     assert.ok(step);
     assert.ok(step.targetRel.endsWith("/86400_1200_already.md"));
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("isMigratedThreadTaskSegment: matches work-style task directory token", () => {
+  assert.equal(isMigratedThreadTaskSegment("86400_1200_my-feature_demo"), true);
+  assert.equal(isMigratedThreadTaskSegment("legacy-subdir"), false);
+});
+
+test("planInboxConventionMigration: thread file in nested legacy subdirectory", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-nest-"));
+  try {
+    const nested = path.join(tmp, "src", "inbox", "threads", "my-feat", "old-rounds");
+    fs.mkdirSync(nested, { recursive: true });
+    fs.writeFileSync(path.join(nested, "note.md"), "body", "utf8");
+    const plan = planInboxConventionMigration(tmp, {
+      operatorIsoByRel: {
+        "src/inbox/threads/my-feat/old-rounds/note.md": "2024-07-01T08:05:00.000Z",
+      },
+    });
+    const step = plan.renames.find(
+      (r) => r.kind === "inbox-nested-file" && r.sourceRel.endsWith("old-rounds/note.md"),
+    );
+    assert.ok(step);
+    assert.match(step.targetRel, /^src\/inbox\/threads\/\d{6}_\d{2}-\d{2}-\d{2}\//);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("listLegacyInboxArtifactRows: skips migrated day/task subtrees under legacy feature", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-skip-"));
+  try {
+    const legacyFeat = path.join(tmp, "src", "inbox", "threads", "feat-a");
+    const dayLike = path.join(legacyFeat, "172995_05-11-26");
+    const taskLike = path.join(legacyFeat, "86500_0830_task_sem");
+    fs.mkdirSync(path.join(dayLike, "extra"), { recursive: true });
+    fs.writeFileSync(path.join(dayLike, "extra", "skip-me.md"), "x", "utf8");
+    fs.mkdirSync(taskLike, { recursive: true });
+    fs.writeFileSync(path.join(taskLike, "skip-too.md"), "y", "utf8");
+    fs.writeFileSync(path.join(legacyFeat, "keep.md"), "z", "utf8");
+
+    const rows = listLegacyInboxArtifactRows(tmp);
+    const rels = rows.filter((r) => r.queue === "threads").map((r) => r.rel);
+    assert.ok(rels.includes("src/inbox/threads/feat-a/keep.md"));
+    assert.ok(!rels.some((r) => r.includes("skip-me")));
+    assert.ok(!rels.some((r) => r.includes("skip-too")));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

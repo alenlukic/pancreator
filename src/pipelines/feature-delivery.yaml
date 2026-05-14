@@ -8,7 +8,9 @@ metadata:
     ship. Mirrors PRD §3.5 US-1. Each stage is owned by a named persona; the
     supervisor enforces gates and dispatches Intervention actions. Runtime
     invocation and advancement regenerate a bounded next-prompt.md so stage
-    delegation does not rely on prior chat context.
+    delegation does not rely on prior chat context. The complete-stage prompt is
+    a bounded librarian handoff for agent-executed artifact closure with
+    tess close-artifacts after human validation.
   references:
     - kind: lines
       path: docs/PRD.md
@@ -53,4 +55,4 @@ stages:
     label: Stage the PR (no auto-push, Q3)
   - id: index
     persona: librarian
-    label: Index emitted artifacts and refresh the feature index
+    label: Index emitted artifacts and refresh the feature index before librarian artifact closure

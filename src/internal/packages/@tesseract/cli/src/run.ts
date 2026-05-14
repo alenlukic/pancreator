@@ -8,7 +8,9 @@ import {
 } from "@tesseract/intervention";
 import {
   advanceFeatureDelivery,
+  closeFeatureDeliveryArtifacts,
   readFeatureDeliveryStatusWithInterventions,
+  refreshFeatureDeliveryPrompt,
   repairFeatureDeliveryState,
   startFeatureDelivery,
 } from "./feature-delivery-run.js";
@@ -194,6 +196,35 @@ export async function parseAndRun(
           stage: opts.stage,
           artifact: opts.artifact,
           reason: opts.reason,
+          clock: options?.clock,
+        }),
+      );
+    });
+
+  program
+    .command("refresh-prompt")
+    .description("Regenerate feature-delivery handoff.md and next-prompt.md from the current ledger state")
+    .argument("<taskId>", "Task id under src/work/")
+    .action(async (taskId: string) => {
+      emit(
+        writeOut,
+        await refreshFeatureDeliveryPrompt({
+          repoRoot,
+          taskId,
+        }),
+      );
+    });
+
+  program
+    .command("close-artifacts")
+    .description("Archive a completed feature-delivery run and its source inbox directive")
+    .argument("<taskId>", "Task id under src/work/")
+    .action(async (taskId: string) => {
+      emit(
+        writeOut,
+        await closeFeatureDeliveryArtifacts({
+          repoRoot,
+          taskId,
           clock: options?.clock,
         }),
       );

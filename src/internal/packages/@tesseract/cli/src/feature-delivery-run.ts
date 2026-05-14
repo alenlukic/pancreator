@@ -9,7 +9,7 @@ import {
   type RunLogRecord,
 } from "@tesseract/run-logger";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
@@ -35,6 +35,7 @@ export type PipelineStatus =
   | "ready_for_stage_delegation"
   | "waiting_for_human_gate"
   | "complete"
+  | "closed"
   | "repaired";
 
 export interface FeatureDeliveryStageState {
@@ -55,7 +56,7 @@ export interface FeatureDeliveryTransition {
 
 export interface FeatureDeliveryAdvanceHistoryEntry {
   atIso: string;
-  kind: "advance" | "repair";
+  kind: "advance" | "repair" | "close";
   from: string;
   to: string;
   event: string;
@@ -172,6 +173,45 @@ export interface RepairFeatureDeliveryStateResult {
   handoffFile: string;
   nextPromptFile: string;
   nextPersona: string | null;
+  nextHumanAction: string;
+}
+
+export interface RefreshFeatureDeliveryPromptInput {
+  repoRoot: string;
+  taskId: string;
+}
+
+export interface RefreshFeatureDeliveryPromptResult {
+  command: "refresh-prompt";
+  status: "ok";
+  taskId: string;
+  featureId: string;
+  currentStage: string;
+  stateFile: string;
+  handoffFile: string;
+  nextPromptFile: string;
+  nextPersona: string | null;
+  nextHumanAction: string;
+}
+
+export interface CloseFeatureDeliveryArtifactsInput {
+  repoRoot: string;
+  taskId: string;
+  clock?: () => Date;
+}
+
+export interface CloseFeatureDeliveryArtifactsResult {
+  command: "close-artifacts";
+  status: "ok";
+  taskId: string;
+  featureId: string;
+  currentStage: "complete";
+  pipelineStatus: "closed";
+  archivedRunDir: string;
+  archivedInboxPath: string;
+  stateFile: string;
+  runLogFile: string;
+  nextPromptFile: string;
   nextHumanAction: string;
 }
 
@@ -404,6 +444,129 @@ export async function repairFeatureDeliveryState(
   };
 }
 
+export async function refreshFeatureDeliveryPrompt(
+  input: RefreshFeatureDeliveryPromptInput,
+): Promise<RefreshFeatureDeliveryPromptResult> {
+  const repoRoot = path.resolve(input.repoRoot);
+  const taskId = sanitizeTaskId(input.taskId);
+  const stateFile = await findStateFile(repoRoot, taskId);
+  const state = await readFeatureDeliveryState(stateFile.abs);
+  const pipeline = loadFeatureDeliveryPipeline(repoRoot);
+
+  await persistStateAndPrompts(repoRoot, state, pipeline, "refresh-prompt");
+
+  return {
+    command: "refresh-prompt",
+    status: "ok",
+    taskId,
+    featureId: state.featureId,
+    currentStage: state.currentStage,
+    stateFile: stateFile.rel,
+    handoffFile: state.artifacts.handoffFile,
+    nextPromptFile: requireNextPromptFile(state),
+    nextPersona: personaForStage(pipeline, state.currentStage),
+    nextHumanAction: state.nextHumanAction,
+  };
+}
+
+export async function closeFeatureDeliveryArtifacts(
+  input: CloseFeatureDeliveryArtifactsInput,
+): Promise<CloseFeatureDeliveryArtifactsResult> {
+  const repoRoot = path.resolve(input.repoRoot);
+  const taskId = sanitizeTaskId(input.taskId);
+  const now = input.clock?.() ?? new Date();
+  const stateFile = await findStateFile(repoRoot, taskId);
+  const state = await readFeatureDeliveryState(stateFile.abs);
+  const pipeline = loadFeatureDeliveryPipeline(repoRoot);
+
+  if (state.currentStage !== TERMINAL_STAGE || state.status !== "complete") {
+    if (state.currentStage === TERMINAL_STAGE && state.status === "closed") {
+      throw new Error(`Task ${taskId} is already closed.`);
+    }
+    throw new Error(`Task ${taskId} must be complete before artifact closure; got ${state.currentStage}/${state.status}.`);
+  }
+
+  const closure = finalClosurePaths(state);
+  const activeRunDirAbs = path.join(repoRoot, ...closure.runDirRel.split("/"));
+  const archiveRunDirAbs = path.join(repoRoot, ...closure.workArchiveRel.split("/"));
+  const inboxSourceAbs = path.join(repoRoot, ...closure.inboxSourceRel.split("/"));
+  const inboxArchiveAbs = path.join(repoRoot, ...closure.inboxArchiveRel.split("/"));
+  const policyRel = path.posix.join(closure.runDirRel, "policy-compliance.json");
+  const indexRel = path.posix.join("src", "memory", "features", state.featureId, "index.json");
+
+  await assertExistingDirectory(activeRunDirAbs, closure.runDirRel);
+  await assertExistingFile(path.join(repoRoot, ...policyRel.split("/")), policyRel);
+  await assertExistingFile(path.join(repoRoot, ...indexRel.split("/")), indexRel);
+  await assertExistingFile(inboxSourceAbs, closure.inboxSourceRel);
+  await assertPathMissing(archiveRunDirAbs, closure.workArchiveRel);
+  await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
+
+  await mkdir(path.dirname(archiveRunDirAbs), { recursive: true });
+  await mkdir(path.dirname(inboxArchiveAbs), { recursive: true });
+
+  await rename(inboxSourceAbs, inboxArchiveAbs);
+  await rename(activeRunDirAbs, archiveRunDirAbs);
+
+  const previousRunDir = state.artifacts.runDir;
+  state.artifacts = {
+    runDir: closure.workArchiveRel,
+    stateFile: path.posix.join(closure.workArchiveRel, "state.json"),
+    handoffFile: path.posix.join(closure.workArchiveRel, "handoff.md"),
+    runLogFile: path.posix.join(closure.workArchiveRel, "run.log.jsonl"),
+    nextPromptFile: path.posix.join(closure.workArchiveRel, "next-prompt.md"),
+  };
+  state.status = "closed";
+  state.nextHumanAction =
+    "Artifact closure complete; active work and source inbox directive are archived. No further feature-delivery action is required.";
+  state.advanceHistory = [
+    ...(state.advanceHistory ?? []),
+    {
+      atIso: rfc3339UtcMs(now),
+      kind: "close",
+      from: TERMINAL_STAGE,
+      to: TERMINAL_STAGE,
+      event: "artifacts_closed",
+      artifact: closure.workArchiveRel,
+      reason: `Archived active run from ${previousRunDir} and source inbox directive from ${closure.inboxSourceRel}.`,
+    },
+  ];
+
+  await writeFile(
+    path.join(repoRoot, ...state.artifacts.stateFile.split("/")),
+    `${JSON.stringify(state, null, 2)}\n`,
+    "utf8",
+  );
+  await writeFile(
+    path.join(repoRoot, ...state.artifacts.handoffFile.split("/")),
+    renderHandoff(state, pipeline),
+    "utf8",
+  );
+  await writeFile(
+    path.join(repoRoot, ...requireNextPromptFile(state).split("/")),
+    `# Generated by tess close-artifacts\n\n${renderNextPrompt(state, pipeline)}`,
+    "utf8",
+  );
+  await appendRunLogRecord(
+    path.join(repoRoot, ...state.artifacts.runLogFile.split("/")),
+    makeCloseRecord(state, now, previousRunDir, closure.workArchiveRel, closure.inboxSourceRel, closure.inboxArchiveRel),
+  );
+
+  return {
+    command: "close-artifacts",
+    status: "ok",
+    taskId,
+    featureId: state.featureId,
+    currentStage: TERMINAL_STAGE,
+    pipelineStatus: "closed",
+    archivedRunDir: closure.workArchiveRel,
+    archivedInboxPath: closure.inboxArchiveRel,
+    stateFile: state.artifacts.stateFile,
+    runLogFile: state.artifacts.runLogFile,
+    nextPromptFile: requireNextPromptFile(state),
+    nextHumanAction: state.nextHumanAction,
+  };
+}
+
 /**
  * Accepts nested `src/inbox/in/`-relative POSIX paths after inbox convention migration.
  * @param {string} value
@@ -522,7 +685,7 @@ function stageGate(stage: PipelineStage): Pick<FeatureDeliveryStageState, "human
     case "index":
       return {
         humanGate: "archive_and_index_audit",
-        humanAttention: "Confirm feature index and archival moves after the run exits.",
+        humanAttention: "Verify feature index artifacts; after index is accepted, the generated complete-stage prompt gives the human operator exact archival closure commands.",
       };
     default:
       return {};
@@ -665,6 +828,9 @@ ${excerpt}
 }
 
 function renderNextPrompt(state: FeatureDeliveryState, pipeline: PipelineDefinition): string {
+  if (state.currentStage === TERMINAL_STAGE && state.status === "closed") {
+    return renderClosedPrompt(state);
+  }
   const persona = personaForStage(pipeline, state.currentStage) ?? "human";
   const stage = state.currentStage;
   return `You are executing the ${stage} stage for feature-delivery task ${state.taskId}.
@@ -701,10 +867,101 @@ function stageContractMarkdown(state: FeatureDeliveryState, stage: string): stri
     case "index":
       return `Inputs: delivery report and accepted ship artifacts\nOutput: src/memory/features/${state.featureId}/index.json\nAdvance after artifacts are indexed: pnpm -w exec tess advance ${state.taskId} --artifact src/memory/features/${state.featureId}/index.json`;
     case "complete":
-      return "No next agent stage. Confirm archival/index state and close the task manually.";
+      return state.status === "closed" ? closedContractMarkdown(state) : finalClosureContractMarkdown(state);
     default:
       return `No stage contract is defined for ${stage}.`;
   }
+}
+
+function finalClosureContractMarkdown(state: FeatureDeliveryState): string {
+  const closure = finalClosurePaths(state);
+  return `Final artifact closure is delegated to librarian after the human operator has already ratified validation and indexing.
+
+Librarian task:
+
+1. Confirm the run is complete and the active artifacts exist.
+2. Execute the artifact closure command exactly once:
+
+\`\`\`bash
+pnpm -w exec tess close-artifacts ${state.taskId}
+\`\`\`
+
+3. Verify the command output reports:
+   - archivedRunDir: ${closure.workArchiveRel}
+   - archivedInboxPath: ${closure.inboxArchiveRel}
+4. Run \`pnpm -w exec tess status ${state.taskId}\` and confirm the status resolves from the archive.
+5. Report the resulting \`git status --short\`.
+
+Do not manually move files unless \`tess close-artifacts\` fails and the failure is reported back to the operator.`;
+}
+
+function renderClosedPrompt(state: FeatureDeliveryState): string {
+  return `Feature-delivery task ${state.taskId} is closed.
+
+Artifact closure has already completed.
+
+Archived run directory: ${state.artifacts.runDir}
+State file: ${state.artifacts.stateFile}
+Run log: ${state.artifacts.runLogFile}
+
+No further feature-delivery agent action is required.`;
+}
+
+function closedContractMarkdown(state: FeatureDeliveryState): string {
+  return `Artifact closure completed.
+
+Archived run directory: ${state.artifacts.runDir}
+State file: ${state.artifacts.stateFile}
+Run log: ${state.artifacts.runLogFile}
+
+No further feature-delivery action is required.`;
+}
+
+function finalClosurePaths(state: FeatureDeliveryState): {
+  runDirRel: string;
+  workArchiveRel: string;
+  inboxSourceRel: string;
+  inboxArchiveRel: string;
+} {
+  const run = parseWorkRunDir(state.artifacts.runDir, state.taskId);
+  const inboxSourceRel = state.source.inboxPath.replace(/\\/gu, "/").replace(/^\/+/, "");
+  return {
+    runDirRel: state.artifacts.runDir,
+    workArchiveRel: path.posix.join("src", "internal", "work_archive", run.dayDir, run.taskId),
+    inboxSourceRel,
+    inboxArchiveRel: archiveInboxPathForSource(inboxSourceRel, run.dayDir, run.taskId),
+  };
+}
+
+function parseWorkRunDir(runDirRel: string, expectedTaskId: string): { dayDir: string; taskId: string } {
+  const parts = runDirRel.split("/");
+  if (parts.length !== 4 || parts[0] !== "src" || parts[1] !== "work") {
+    throw new Error(`feature-delivery runDir must be src/work/<day>/<task-id>; got ${runDirRel}.`);
+  }
+  const [, , dayDir, taskId] = parts;
+  if (taskId !== expectedTaskId) {
+    throw new Error(`feature-delivery runDir task id ${taskId} does not match state task id ${expectedTaskId}.`);
+  }
+  return { dayDir, taskId };
+}
+
+function archiveInboxPathForSource(sourceRel: string, dayDir: string, taskId: string): string {
+  const prefix = "src/inbox/in/";
+  if (!sourceRel.startsWith(prefix)) {
+    throw new Error(`feature-delivery source inbox path must be under ${prefix}; got ${sourceRel}.`);
+  }
+  const tail = sourceRel.slice(prefix.length);
+  if (tail.length === 0 || tail.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) {
+    throw new Error(`feature-delivery source inbox path has an invalid relative tail: ${sourceRel}.`);
+  }
+  const parts = tail.split("/");
+  const alreadyNested = parts.length >= 3 && isWorkStyleDayDir(parts[0]) && parts[1] === taskId;
+  const archiveTail = alreadyNested ? tail : path.posix.join(dayDir, taskId, path.posix.basename(tail));
+  return path.posix.join("src", "inbox", "archive", "in", archiveTail);
+}
+
+function isWorkStyleDayDir(value: string): boolean {
+  return /^\d{6}_\d{2}-\d{2}-\d{2}$/u.test(value);
 }
 
 function makeInvocationRecord(state: FeatureDeliveryState, now: Date): RunLogRecord {
@@ -772,6 +1029,35 @@ function makeRepairRecord(
   };
 }
 
+function makeCloseRecord(
+  state: FeatureDeliveryState,
+  now: Date,
+  previousRunDir: string,
+  archivedRunDir: string,
+  inboxSource: string,
+  archivedInboxPath: string,
+): RunLogRecord {
+  const record = makeStateRecord(
+    state,
+    now,
+    "tesseract.pipeline.close_artifacts",
+    TERMINAL_STAGE,
+    TERMINAL_STAGE,
+    "artifacts_closed",
+    archivedRunDir,
+  );
+  return {
+    ...record,
+    attributes: {
+      ...record.attributes,
+      "tesseract.previous_run_dir": previousRunDir,
+      "tesseract.archived_run_dir": archivedRunDir,
+      "tesseract.inbox_source": inboxSource,
+      "tesseract.archived_inbox_path": archivedInboxPath,
+    },
+  };
+}
+
 function makeStateRecord(
   state: FeatureDeliveryState,
   now: Date,
@@ -813,23 +1099,30 @@ function makeStateRecord(
 }
 
 async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: string; rel: string }> {
-  const workRoot = path.join(repoRoot, "src", "work");
-  const dayDirs = await safeReaddir(workRoot);
-  for (const day of dayDirs) {
-    const candidate = path.join(workRoot, day, taskId, "state.json");
-    try {
-      await readFile(candidate, "utf8");
-      return {
-        abs: candidate,
-        rel: path.posix.join("src", "work", day, taskId, "state.json"),
-      };
-    } catch (error) {
-      const err = error as NodeJS.ErrnoException;
-      if (err.code !== "ENOENT" && err.code !== "ENOTDIR") {
-        throw error;
+  const roots = [
+    { abs: path.join(repoRoot, "src", "work"), rel: path.posix.join("src", "work") },
+    { abs: path.join(repoRoot, "src", "internal", "work_archive"), rel: path.posix.join("src", "internal", "work_archive") },
+  ];
+
+  for (const root of roots) {
+    const dayDirs = await safeReaddir(root.abs);
+    for (const day of dayDirs) {
+      const candidate = path.join(root.abs, day, taskId, "state.json");
+      try {
+        await readFile(candidate, "utf8");
+        return {
+          abs: candidate,
+          rel: path.posix.join(root.rel, day, taskId, "state.json"),
+        };
+      } catch (error) {
+        const err = error as NodeJS.ErrnoException;
+        if (err.code !== "ENOENT" && err.code !== "ENOTDIR") {
+          throw error;
+        }
       }
     }
   }
+
   throw new Error(`No feature-delivery state.json found for task ${taskId}.`);
 }
 
@@ -856,7 +1149,7 @@ async function persistStateAndPrompts(
   repoRoot: string,
   state: FeatureDeliveryState,
   pipeline: PipelineDefinition,
-  mode: "advance" | "repair",
+  mode: "advance" | "repair" | "refresh-prompt",
 ): Promise<void> {
   await writeFile(path.join(repoRoot, state.artifacts.stateFile), `${JSON.stringify(state, null, 2)}\n`, "utf8");
   await writeFile(path.join(repoRoot, state.artifacts.handoffFile), renderHandoff(state, pipeline), "utf8");
@@ -1008,16 +1301,18 @@ function nextHumanActionForStage(
     case "ship":
       return `${prefix}Delegate next-prompt.md to supervisor; human must ratify the local diff before index.`;
     case "index":
-      return `${prefix}Delegate next-prompt.md to librarian; verify feature index and outbox/archive state before complete.`;
+      return `${prefix}Delegate next-prompt.md to librarian; verify feature index artifacts before complete. The generated complete-stage prompt delegates artifact closure to librarian.`;
     case "complete":
-      return `${prefix}Run is complete; verify archival/index state and external traceability.`;
+      return state.status === "closed"
+        ? `${prefix}Artifact closure complete; no further feature-delivery action is required.`
+        : `${prefix}Delegate next-prompt.md to librarian for final artifact closure with tess close-artifacts.`;
     default:
       return `${prefix}No human action defined for ${stage}.`;
   }
 }
 
 function personaForStage(pipeline: PipelineDefinition, stage: string): string | null {
-  if (stage === TERMINAL_STAGE) return null;
+  if (stage === TERMINAL_STAGE) return "librarian";
   return pipeline.stages.find((candidate) => candidate.id === stage)?.persona ?? null;
 }
 
@@ -1048,6 +1343,49 @@ async function assertRepoRelativeExistingFile(
     throw new Error(`${label} MUST point to a file: ${rel}.`);
   }
   return { abs, rel };
+}
+
+async function assertExistingFile(abs: string, rel: string): Promise<void> {
+  try {
+    const info = await stat(abs);
+    if (!info.isFile()) {
+      throw new Error(`Expected file but found non-file path: ${rel}.`);
+    }
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === "ENOENT" || err.code === "ENOTDIR") {
+      throw new Error(`Required file is missing: ${rel}.`);
+    }
+    throw error;
+  }
+}
+
+async function assertExistingDirectory(abs: string, rel: string): Promise<void> {
+  try {
+    const info = await stat(abs);
+    if (!info.isDirectory()) {
+      throw new Error(`Expected directory but found non-directory path: ${rel}.`);
+    }
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === "ENOENT" || err.code === "ENOTDIR") {
+      throw new Error(`Required directory is missing: ${rel}.`);
+    }
+    throw error;
+  }
+}
+
+async function assertPathMissing(abs: string, rel: string): Promise<void> {
+  try {
+    await stat(abs);
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === "ENOENT" || err.code === "ENOTDIR") {
+      return;
+    }
+    throw error;
+  }
+  throw new Error(`Closure target already exists: ${rel}.`);
 }
 
 function requireNextPromptFile(state: FeatureDeliveryState): string {

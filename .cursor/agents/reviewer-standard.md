@@ -49,7 +49,7 @@ metadata:
   tesseract-model-tier: standard
   tesseract-canonical-persona: src/personas/reviewer.md
 name: reviewer-standard
-model: gpt-5.3-codex
+model: auto
 description: Standard economical `reviewer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model.
 ---
 

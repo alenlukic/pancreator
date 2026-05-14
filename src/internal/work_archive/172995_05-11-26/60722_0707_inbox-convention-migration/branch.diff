@@ -1,0 +1,3608 @@
+diff --git a/.cursor/agents/reviewer-standard.md b/.cursor/agents/reviewer-standard.md
+index 774b059..776190b 100644
+--- a/.cursor/agents/reviewer-standard.md
++++ b/.cursor/agents/reviewer-standard.md
+@@ -1,7 +1,4 @@
+ ---
+-name: reviewer-standard
+-description: "Standard economical `reviewer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
+-model: auto
+ permissionMode: default
+ tools:
+   - Read
+@@ -51,6 +48,9 @@ metadata:
+   tesseract-base-persona: reviewer
+   tesseract-model-tier: standard
+   tesseract-canonical-persona: src/personas/reviewer.md
++name: reviewer-standard
++model: gpt-5.3-codex
++description: Standard economical `reviewer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model.
+ ---
+ 
+ # reviewer-standard
+diff --git a/.gitignore b/.gitignore
+index d9fe0f4..faa9aeb 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -213,3 +213,5 @@ node_modules/
+ .turbo/
+ 
+ src/inbox/notes/
++
++tmp/
+diff --git a/AGENTS.md b/AGENTS.md
+index c672ebf..a1a4698 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -74,9 +74,13 @@ mode` forbids delegation.
+ 
+ 1. **Planning/execution boundary.** When a planning persona emits a plan, touch-set,
+    or ADR draft, the next action SHOULD be a delegated executor invocation with a
+-   compact handoff path, not more parent-agent implementation inside the same
+-   context window. The handoff card lives at `src/work/<day>/<task-id>/handoff.md`;
+-   `src/memory/active/handoffs.md` stores pointers only.
++   compact generated prompt path, not more parent-agent implementation inside
++   the same context window. The handoff card lives at
++   `src/work/<day>/<task-id>/handoff.md`; the delegated prompt lives at
++   `src/work/<day>/<task-id>/next-prompt.md`; `src/memory/active/handoffs.md`
++   stores pointers only. Operators SHOULD paste only `next-prompt.md` into the
++   Cursor subagent and SHOULD NOT paste the full spec, prior chat transcript,
++   PRD, bootstrap document, archival work, or broad directory listings.
+ 2. **Native subagent invocation.** Cursor exposes standard and complex variants:
+    `.cursor/agents/<name>-standard.md` uses `model: auto`;
+    `.cursor/agents/<name>-complex.md` preserves the prior fixed model for that
+@@ -93,7 +97,8 @@ mode` forbids delegation.
+    back to the owning persona instead of extending the executor loop.
+ 5. **Cost discipline.** Subagents isolate parent context; they do not guarantee
+    lower total tokens. Avoid fan-out when multiple subagents would reload the
+-   same PRD, handbook, or archival context.
++   same PRD, handbook, or archival context. When `tess run` or `tess advance`
++   emits `nextPromptFile`, use that prompt as the delegated stage scope.
+ 
+ When no persona owns the work (for example bootstrap-only handbook authoring or
+ configuration scaffolding), perform it directly and cite this section in your
+@@ -214,8 +219,10 @@ implementations, and static MVP pipeline definitions. Phase 4 remains open
+ until the US-1 dogfood exit gaps are ratified, including external run-log
+ observability and an empirical pause/resume/abort exercise. `tess run
+ feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine,
+-handoff card, and run log, but it does not yet automate Cursor/model transport
+-or LangGraph execution.
++handoff card, bounded next-prompt, and run log. Operators still invoke Cursor
++personas manually, then use `tess advance` with the accepted stage artifact;
++`repair-state` is reserved for explicit ledger recovery after out-of-band work.
++It does not yet automate Cursor/model transport or LangGraph execution.
+ 
+ ## 9 — Stability
+ 
+diff --git a/README.md b/README.md
+index 54c4d75..d0fb123 100644
+--- a/README.md
++++ b/README.md
+@@ -15,9 +15,10 @@ the current workflow.
+   Phoenix/Langfuse verification, and the pause/resume/abort path needs an
+   empirical mid-run exercise.
+ - **Runtime caveat:** `tess run feature-delivery <inbox-entry>` now creates a
+-  Phase-4 state machine, handoff card, and run log under `src/work/<day>/<task-id>/`.
+-  It does **not** call Cursor, a model, or LangGraph automatically. Operators
+-  still invoke the named personas/subagents at each stage boundary.
++  Phase-4 state machine, handoff card, run log, and bounded `next-prompt.md`
++  under `src/work/<day>/<task-id>/`. It does **not** call Cursor, a model, or
++  LangGraph automatically. Operators still invoke the named personas/subagents
++  at each stage boundary, then run `tess advance` with the accepted stage artifact.
+ 
+ ## 2) System overview
+ 
+@@ -42,38 +43,60 @@ The root directory is the operator entry point. The `docs/` directory contains h
+ 2. Start the run:
+ 
+    ```bash
+-   pnpm exec tess run feature-delivery <name>.md
++   pnpm -w exec tess run feature-delivery <name>.md
+    # equivalent alias:
+-   pnpm exec tess feature new <name>.md
++   pnpm -w exec tess feature new <name>.md
+    ```
+ 
+    Optional flags:
+ 
+    ```bash
+-   pnpm exec tess run feature-delivery <name>.md --feature <feature-id> --task <task-id>
++   pnpm -w exec tess run feature-delivery <name>.md --feature <feature-id> --task <task-id>
+    ```
+ 
+ 3. Read the emitted JSON. The important fields are `taskId`, `stateFile`,
+-   `handoffFile`, and `nextHumanAction`.
+-4. Delegate the `handoffFile` to the stage owner named in `src/pipelines/feature-delivery.yaml`.
+-   The first owner is `intake-analyst`.
++   `handoffFile`, `nextPromptFile`, and `nextHumanAction`.
++4. Delegate `nextPromptFile` to the stage owner named in
++   `src/pipelines/feature-delivery.yaml`. The first owner is `intake-analyst`.
+ 5. At each gate, the human operator checks the emitted artifact and either ratifies
+    the transition, answers questions, pauses, resumes, aborts, or sends the run
+-   back to the owning persona.
+-6. Inspect state at any point:
++   back to the owning persona. Ratified stages advance one step with a
++   stage-specific artifact, for example:
+ 
+    ```bash
+-   pnpm exec tess status <task-id>
+-   pnpm exec tess pause <task-id>
+-   pnpm exec tess resume <task-id>
+-   pnpm exec tess abort <task-id> --reason "superseded or unsafe"
++   pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/spec.md
++   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/touch-set.json
++   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/implementation-report.md
++   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/review.md
++   pnpm -w exec tess advance <task-id> --event must_fix --artifact src/work/<day>/<task-id>/review.md
++   ```
++
++   `tess advance` validates the current stage and expected artifact; reusing the
++   same artifact for later stages is rejected.
++6. If work already moved out-of-band and the ledger is behind, do not repeatedly
++   call `advance`. Create or point to a repo-local evidence artifact and use an
++   explicit repair:
++
++   ```bash
++   pnpm -w exec tess repair-state <task-id> --stage review \
++     --artifact src/work/<day>/<task-id>/review.md \
++     --reason "manual Cursor run already reached review before state advancement existed"
++   ```
++
++7. Inspect state at any point:
++
++   ```bash
++   pnpm -w exec tess status <task-id>
++   pnpm -w exec tess pause <task-id>
++   pnpm -w exec tess resume <task-id>
++   pnpm -w exec tess abort <task-id> --reason "superseded or unsafe"
+    ```
+ 
+ ## 4) Post-invocation state machine
+ 
+-Invocation creates `src/work/<day>/<task-id>/state.json`, `handoff.md`, and
+-`run.log.jsonl`. The initial state is `ready_for_intake_delegation` with
+-`currentStage: intake`.
++Invocation creates `src/work/<day>/<task-id>/state.json`, `handoff.md`,
++`next-prompt.md`, and `run.log.jsonl`. The initial state is
++`ready_for_intake_delegation` with `currentStage: intake`.
+ 
+ | State | Owner | Human attention |
+ |---|---|---|
+@@ -91,6 +114,8 @@ Main transitions: `invoke → intake`; `human_approval → plan`; `human_approva
+ `implementation_complete → review`; `must_fix → implement`; `review_passes → report`;
+ `report_ready → ship`; `human_ratifies_local_diff → index`; `artifacts_indexed → complete`.
+ Interventions are journaled separately under `.tess/scheduler/interventions/<task-id>.jsonl`.
++`repair-state` is reserved for ledger recovery after explicit out-of-band work;
++its reason and evidence artifact are appended to `run.log.jsonl`.
+ 
+ ## 5) Manual bootstrap workflow remains valid
+ 
+diff --git a/docs/M1.index.md b/docs/M1.index.md
+index 1a5bfd7..6f9f1e4 100644
+--- a/docs/M1.index.md
++++ b/docs/M1.index.md
+@@ -25,10 +25,11 @@ repository it operates on.
+ Phase 4 is the right tracking phase because Phase 3 substrate package
+ implementations and the five MVP pipeline definition files exist, while the
+ Phase 4 dogfood exit gaps remain open. `tess run feature-delivery <inbox-entry>`
+-now creates the active-work `state.json`, `handoff.md`, and `run.log.jsonl`
+-scaffold for manual persona delegation. Do not infer M1 completion from the
+-phase number; use `docs/BOOTSTRAP.md` Phase 4 and Phase 5 exit criteria for
+-ratification.
++now creates the active-work `state.json`, `handoff.md`, `next-prompt.md`, and
++`run.log.jsonl` scaffold for manual persona delegation. Stage progress is
++recorded only through `tess advance` or explicit `tess repair-state`; do not
++infer M1 completion from the phase number; use `docs/BOOTSTRAP.md` Phase 4 and
++Phase 5 exit criteria for ratification.
+ 
+ ## M1 scope quick map
+ 
+diff --git a/docs/PRD.summary.md b/docs/PRD.summary.md
+index 773b0cd..dd492c8 100644
+--- a/docs/PRD.summary.md
++++ b/docs/PRD.summary.md
+@@ -30,8 +30,9 @@ control plane (`tess` CLI is not wired in this repository yet).
+ has scaffold, handbook seeds, personas, skills, M1 contract feature folders,
+ Phase 3 substrate packages, and the five static MVP pipeline definition files.
+ Phase 4 remains open until the dogfood exit gaps are ratified. The `tess` CLI
+-surface can now invoke `feature-delivery` into a state-machine/handoff scaffold,
+-but full automatic Cursor/model/LangGraph execution is not yet complete.
++surface can now invoke `feature-delivery` into a state-machine, handoff, and
++bounded next-prompt scaffold; `tess advance` records validated stage artifacts.
++Full automatic Cursor/model/LangGraph execution is not yet complete.
+ 
+ ## Where to go next
+ 
+diff --git a/package.json b/package.json
+index c5a97aa..ef10f9f 100644
+--- a/package.json
++++ b/package.json
+@@ -11,7 +11,7 @@
+     "attw": "turbo run attw",
+     "publint": "turbo run publint",
+     "check:phase0a": "node src/internal/tools/check-phase-0a-scaffold.mjs",
+-    "migration:test": "node --test tests/migrate-timestamp-naming.test.mjs",
++    "migration:test": "node --test tests/migrate-timestamp-naming.test.mjs tests/migrate-inbox-convention.test.mjs",
+     "context:budget": "node src/internal/tools/context-budget-report.mjs",
+     "context:budget:test": "node --test tests/context-budget-report.test.mjs",
+     "repo:structure:test": "node --test tests/repo-structure.test.mjs"
+@@ -20,6 +20,8 @@
+     "@arethetypeswrong/cli": "catalog:",
+     "@changesets/cli": "catalog:",
+     "@eslint/js": "catalog:",
++    "@tesseract/cli": "workspace:*",
++    "@tesseract/mcp-server": "workspace:*",
+     "eslint": "catalog:",
+     "publint": "catalog:",
+     "turbo": "catalog:",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 549fd95..bcc098a 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -56,6 +56,12 @@ importers:
+       '@eslint/js':
+         specifier: 'catalog:'
+         version: 9.39.4
++      '@tesseract/cli':
++        specifier: workspace:*
++        version: link:src/internal/packages/@tesseract/cli
++      '@tesseract/mcp-server':
++        specifier: workspace:*
++        version: link:src/internal/packages/@tesseract/mcp-server
+       eslint:
+         specifier: 'catalog:'
+         version: 9.39.4
+diff --git a/src/inbox/in/inbox_convention_migration.md b/src/inbox/in/inbox_convention_migration.md
+index ca00632..d834451 100644
+--- a/src/inbox/in/inbox_convention_migration.md
++++ b/src/inbox/in/inbox_convention_migration.md
+@@ -1 +1 @@
+-- Migrate `inbox` to follow the same naming and organizational conventions as `work` (i.e. day-oriented top-level directories, HHMM-oriented subdirectories, ensuring reverse chron order using future anchor prefixes, descriptive suffixes)
+\ No newline at end of file
++- Migrate `inbox` to follow the same naming and organizational conventions as `work` (i.e. day-oriented top-level directories, HHMM-oriented subdirectories, ensuring reverse chron order using future anchor prefixes, descriptive suffixes)
+diff --git a/src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md b/src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md
+index c826291..6f28a7d 100644
+--- a/src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md
++++ b/src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md
+@@ -32,39 +32,7 @@ questions (Q1–Q7) below. Round 1 operator answers are inlined under
+ **Questions**. The clarifying loop terminates at five rounds per the
+ intake-analyst contract.
+ 
+-## Questions
+ 
+-- Q1. Single-file leaf placement vs per-artifact HHMM subdirectory. The
+-  directive says "HHMM-oriented subdirectories". Assumption A1 maps `HHMM`
+-  to the basename token rather than a folder layer because inbox artifacts
+-  are single files. Does Q1 close on A1 (basename token), or require strict
+-  folder-per-item parity with `src/work/`? **Answer**: A1 is the correct assumption.
+-- Q2. Threads layout. Three options: (a) day-bucket nested inside the
+-  feature folder as
+-  `src/inbox/threads/<feature-slug>/{days-to-FDS}_{MM-DD-YY}/`; (b)
+-  feature-folder nested inside a day bucket as
+-  `src/inbox/threads/{days-to-FDS}_{MM-DD-YY}/<feature-slug>/`; or (c)
+-  feature-folder remains flat at the threads top level with no day buckets.
+-  Assumption A2 picks option (a). **Answer**: Option (b).
+-- Q3. Migration tool surface. Extend `src/internal/tools/migrate-timestamp-naming.mjs`
+-  with hierarchy logic, or ship a sibling
+-  `src/internal/tools/migrate-inbox-directory-hierarchy.mjs` (repo script
+-  layout per `AGENTS.md` workspace map)? Assumption A3 picks the sibling tool.
+-  **Answer**: A3.
+-- Q4. Compliance descriptor surface. Extend
+-  `tests/compliance/timestamp-naming-conventions.yaml` with hierarchy clauses, or
+-  land a sibling `tests/compliance/inbox-directory-hierarchy.yaml`? Assumption A4
+-  picks the sibling descriptor. **Answer**: A4.
+-- Q5. ADR shape. New ADR `src/memory/adr/0006-inbox-directory-hierarchy.md`
+-  extending ADR-0005 by reference, or amend ADR-0005 in place? Assumption
+-  A5 picks the new ADR. **Answer**: New ADR.
+-- Q6. Migration ordering. One atomic migration manifest covering all four
+-  in-scope subtrees, or staged subtree-by-subtree across multiple
+-  ratification slices? Assumption A6 picks the atomic manifest. **Answer**: A6.
+-- Q7. Archive subtree handling. Apply the day-bucket hierarchy
+-  retroactively to every artifact already in `src/inbox/archive/in/`, or freeze
+-  the archive in its pre-migration shape and only apply the hierarchy to
+-  future archived items? Assumption A7 picks retroactive application. **Answer**: A7.
+ 
+ ## How to reply
+ 
+diff --git a/src/internal/packages/@tesseract/cli/README.md b/src/internal/packages/@tesseract/cli/README.md
+index c48ce36..8a87be1 100644
+--- a/src/internal/packages/@tesseract/cli/README.md
++++ b/src/internal/packages/@tesseract/cli/README.md
+@@ -12,13 +12,13 @@ pnpm --filter @tesseract/cli run test
+ ```
+ 
+ ```bash
+-pnpm exec tess inbox
+-pnpm exec tess run feature-delivery my-feature.md
+-pnpm exec tess feature new my-feature.md
+-pnpm exec tess status <task-id>
+-pnpm exec tess pause <task-id>
+-pnpm exec tess resume <task-id>
+-pnpm exec tess abort <task-id> --reason "superseded"
++pnpm -w exec tess inbox
++pnpm -w exec tess run feature-delivery my-feature.md
++pnpm -w exec tess feature new my-feature.md
++pnpm -w exec tess status <task-id>
++pnpm -w exec tess pause <task-id>
++pnpm -w exec tess resume <task-id>
++pnpm -w exec tess abort <task-id> --reason "superseded"
+ ```
+ 
+ ## Feature-delivery invocation
+diff --git a/src/internal/packages/@tesseract/cli/bin/tess.js b/src/internal/packages/@tesseract/cli/bin/tess.js
+new file mode 100755
+index 0000000..9078d21
+--- /dev/null
++++ b/src/internal/packages/@tesseract/cli/bin/tess.js
+@@ -0,0 +1,50 @@
++#!/usr/bin/env node
++import fs from "node:fs";
++import path from "node:path";
++import { spawnSync } from "node:child_process";
++import { fileURLToPath, pathToFileURL } from "node:url";
++
++const binFile = fileURLToPath(import.meta.url);
++const packageRoot = path.resolve(path.dirname(binFile), "..");
++const repoRoot = findRepoRoot(packageRoot);
++const distEntry = path.join(packageRoot, "dist", "cli.js");
++const dependencyEntries = [
++  path.join(packageRoot, "node_modules", "@tesseract", "core", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@tesseract", "inbox", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@tesseract", "intervention", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@tesseract", "pipeline", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@tesseract", "run-logger", "dist", "index.js"),
++];
++const missingDependencyEntries = dependencyEntries.filter((entry) => !fs.existsSync(entry));
++const needsBuild = !fs.existsSync(distEntry) || missingDependencyEntries.length > 0;
++
++function findRepoRoot(startDir) {
++  let current = startDir;
++  for (;;) {
++    if (fs.existsSync(path.join(current, "pnpm-workspace.yaml"))) {
++      return current;
++    }
++    const parent = path.dirname(current);
++    if (parent === current) {
++      throw new Error(`Could not locate repo root from ${startDir}`);
++    }
++    current = parent;
++  }
++}
++
++if (needsBuild) {
++  const result = spawnSync("pnpm", ["--dir", repoRoot, "--filter", "@tesseract/cli...", "run", "build"], {
++    cwd: repoRoot,
++    stdio: "inherit",
++  });
++  if (result.status !== 0) {
++    process.exit(result.status ?? 1);
++  }
++}
++
++if (!fs.existsSync(distEntry)) {
++  console.error(`Missing CLI entrypoint after build: ${distEntry}`);
++  process.exit(1);
++}
++
++await import(pathToFileURL(distEntry).href);
+diff --git a/src/internal/packages/@tesseract/cli/package.json b/src/internal/packages/@tesseract/cli/package.json
+index 0de8146..4fdde74 100644
+--- a/src/internal/packages/@tesseract/cli/package.json
++++ b/src/internal/packages/@tesseract/cli/package.json
+@@ -6,7 +6,7 @@
+   "main": "./dist/index.js",
+   "types": "./dist/index.d.ts",
+   "bin": {
+-    "tess": "./dist/cli.js"
++    "tess": "./bin/tess.js"
+   },
+   "exports": {
+     ".": {
+@@ -15,6 +15,7 @@
+     }
+   },
+   "files": [
++    "bin",
+     "dist"
+   ],
+   "scripts": {
+diff --git a/src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts b/src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts
+index 7d02ad3..b3a6d2f 100644
+--- a/src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts
++++ b/src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts
+@@ -8,14 +8,34 @@ import {
+   rfc3339UtcMs,
+   type RunLogRecord,
+ } from "@tesseract/run-logger";
+-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
++import { existsSync } from "node:fs";
++import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+ import path from "node:path";
+ 
+ export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
+ 
+ const FDS_UTC_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
++const FEATURE_DELIVERY_STAGES = [
++  "intake",
++  "plan",
++  "implement",
++  "review",
++  "report",
++  "ship",
++  "index",
++] as const;
++const TERMINAL_STAGE = "complete" as const;
++
++type FeatureDeliveryStageId = (typeof FEATURE_DELIVERY_STAGES)[number];
++type FeatureDeliveryCurrentStage = FeatureDeliveryStageId | typeof TERMINAL_STAGE;
+ 
+ export type StageStatus = "ready" | "pending" | "complete" | "blocked" | "skipped";
++export type PipelineStatus =
++  | "ready_for_intake_delegation"
++  | "ready_for_stage_delegation"
++  | "waiting_for_human_gate"
++  | "complete"
++  | "repaired";
+ 
+ export interface FeatureDeliveryStageState {
+   id: string;
+@@ -33,13 +53,23 @@ export interface FeatureDeliveryTransition {
+   humanAttention?: string;
+ }
+ 
++export interface FeatureDeliveryAdvanceHistoryEntry {
++  atIso: string;
++  kind: "advance" | "repair";
++  from: string;
++  to: string;
++  event: string;
++  artifact: string;
++  reason?: string;
++}
++
+ export interface FeatureDeliveryState {
+   schemaVersion: typeof FEATURE_DELIVERY_STATE_SCHEMA_VERSION;
+   pipelineId: "feature-delivery";
+   taskId: string;
+   featureId: string;
+-  status: "ready_for_intake_delegation";
+-  currentStage: "intake";
++  status: PipelineStatus;
++  currentStage: FeatureDeliveryCurrentStage;
+   createdAtIso: string;
+   source: {
+     inboxEntry: string;
+@@ -50,10 +80,12 @@ export interface FeatureDeliveryState {
+     stateFile: string;
+     handoffFile: string;
+     runLogFile: string;
++    nextPromptFile?: string;
+   };
+   stages: FeatureDeliveryStageState[];
+   transitions: FeatureDeliveryTransition[];
+   nextHumanAction: string;
++  advanceHistory?: FeatureDeliveryAdvanceHistoryEntry[];
+ }
+ 
+ export interface StartFeatureDeliveryInput {
+@@ -74,6 +106,7 @@ export interface StartFeatureDeliveryResult {
+   stateFile: string;
+   handoffFile: string;
+   runLogFile: string;
++  nextPromptFile: string;
+   currentStage: "intake";
+   nextHumanAction: string;
+ }
+@@ -89,6 +122,56 @@ export interface FeatureDeliveryStatusResult {
+   interventionState: InterventionState;
+   runDir: string;
+   stateFile: string;
++  nextPromptFile: string | null;
++  nextHumanAction: string;
++}
++
++export interface AdvanceFeatureDeliveryInput {
++  repoRoot: string;
++  taskId: string;
++  artifact: string;
++  event?: string;
++  clock?: () => Date;
++}
++
++export interface AdvanceFeatureDeliveryResult {
++  command: "advance";
++  status: "ok";
++  taskId: string;
++  featureId: string;
++  fromStage: string;
++  event: string;
++  currentStage: string;
++  artifact: string;
++  stateFile: string;
++  handoffFile: string;
++  nextPromptFile: string;
++  nextPersona: string | null;
++  nextHumanAction: string;
++}
++
++export interface RepairFeatureDeliveryStateInput {
++  repoRoot: string;
++  taskId: string;
++  stage: string;
++  artifact: string;
++  reason: string;
++  clock?: () => Date;
++}
++
++export interface RepairFeatureDeliveryStateResult {
++  command: "repair-state";
++  status: "ok";
++  taskId: string;
++  featureId: string;
++  previousStage: string;
++  currentStage: string;
++  artifact: string;
++  reason: string;
++  stateFile: string;
++  handoffFile: string;
++  nextPromptFile: string;
++  nextPersona: string | null;
+   nextHumanAction: string;
+ }
+ 
+@@ -98,8 +181,8 @@ export async function startFeatureDelivery(
+ ): Promise<StartFeatureDeliveryResult> {
+   const repoRoot = path.resolve(input.repoRoot);
+   const now = input.clock?.() ?? new Date();
+-  const inboxEntry = assertBasename(input.inboxEntry, "inbox entry");
+-  const inboxPath = path.join(repoRoot, "src", "inbox", "in", inboxEntry);
++  const inboxRel = assertInboxInRelativePath(input.inboxEntry, "inbox entry");
++  const inboxPath = path.join(repoRoot, "src", "inbox", "in", ...inboxRel.split("/"));
+   const directive = await readFile(inboxPath, "utf8");
+   const pipelinePath = path.join(repoRoot, "src", "pipelines", "feature-delivery.yaml");
+   const pipeline = loadPipelineYaml(pipelinePath);
+@@ -107,7 +190,9 @@ export async function startFeatureDelivery(
+     throw new Error(`Expected feature-delivery pipeline at ${pipelinePath}; found ${pipeline.id}.`);
+   }
+ 
+-  const featureId = sanitizeSlug(input.featureId ?? deriveFeatureId(inboxEntry, directive));
++  const featureId = sanitizeSlug(
++    input.featureId ?? deriveFeatureId(path.posix.basename(inboxRel), directive),
++  );
+   const taskId = sanitizeTaskId(input.taskId ?? makeTaskId(now, featureId));
+   const dayDir = makeDayDir(now);
+   const runDirRel = path.posix.join("src", "work", dayDir, taskId);
+@@ -115,9 +200,11 @@ export async function startFeatureDelivery(
+   const stateFileRel = path.posix.join(runDirRel, "state.json");
+   const handoffFileRel = path.posix.join(runDirRel, "handoff.md");
+   const runLogFileRel = path.posix.join(runDirRel, "run.log.jsonl");
++  const nextPromptFileRel = path.posix.join(runDirRel, "next-prompt.md");
+   const stateFile = path.join(runDir, "state.json");
+   const handoffFile = path.join(runDir, "handoff.md");
+   const runLogFile = path.join(runDir, "run.log.jsonl");
++  const nextPromptFile = path.join(runDir, "next-prompt.md");
+ 
+   await mkdir(runDir, { recursive: true });
+ 
+@@ -130,23 +217,25 @@ export async function startFeatureDelivery(
+     currentStage: "intake",
+     createdAtIso: rfc3339UtcMs(now),
+     source: {
+-      inboxEntry,
+-      inboxPath: path.posix.join("src", "inbox", "in", inboxEntry),
++      inboxEntry: inboxRel,
++      inboxPath: path.posix.join("src", "inbox", "in", inboxRel),
+     },
+     artifacts: {
+       runDir: runDirRel,
+       stateFile: stateFileRel,
+       handoffFile: handoffFileRel,
+       runLogFile: runLogFileRel,
++      nextPromptFile: nextPromptFileRel,
+     },
+     stages: buildStageStates(pipeline),
+     transitions: featureDeliveryTransitions(),
+     nextHumanAction:
+-      "Delegate the intake stage to intake-analyst with the handoff card; answer clarifying questions or ratify the emitted spec before plan starts.",
++      "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan.",
+   };
+ 
+   await writeFile(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+   await writeFile(handoffFile, renderHandoff(state, pipeline, directive), "utf8");
++  await writeFile(nextPromptFile, renderNextPrompt(state, pipeline), "utf8");
+   await appendRunLogRecord(runLogFile, makeInvocationRecord(state, now));
+ 
+   return {
+@@ -159,6 +248,7 @@ export async function startFeatureDelivery(
+     stateFile: stateFileRel,
+     handoffFile: handoffFileRel,
+     runLogFile: runLogFileRel,
++    nextPromptFile: nextPromptFileRel,
+     currentStage: "intake",
+     nextHumanAction: state.nextHumanAction,
+   };
+@@ -186,16 +276,151 @@ export async function readFeatureDeliveryStatusWithInterventions(
+     interventionState,
+     runDir: parsed.artifacts.runDir,
+     stateFile: stateFile.rel,
++    nextPromptFile: parsed.artifacts.nextPromptFile ?? null,
+     nextHumanAction: parsed.nextHumanAction,
+   };
+ }
+ 
+-function assertBasename(value: string, label: string): string {
+-  const base = path.basename(value);
+-  if (base !== value || value.includes("..") || value.includes("/") || value.includes("\\")) {
+-    throw new Error(`${label} MUST be a single path segment.`);
++export async function advanceFeatureDelivery(
++  input: AdvanceFeatureDeliveryInput,
++): Promise<AdvanceFeatureDeliveryResult> {
++  const repoRoot = path.resolve(input.repoRoot);
++  const taskId = sanitizeTaskId(input.taskId);
++  const now = input.clock?.() ?? new Date();
++  const stateFile = await findStateFile(repoRoot, taskId);
++  const state = await readFeatureDeliveryState(stateFile.abs);
++  const pipeline = loadFeatureDeliveryPipeline(repoRoot);
++  const artifact = await assertRepoRelativeExistingFile(repoRoot, input.artifact, "artifact");
++
++  if (state.currentStage === TERMINAL_STAGE) {
++    throw new Error(`Task ${taskId} is already complete; refusing to advance.`);
++  }
++
++  const event = input.event ?? defaultEventForStage(state.currentStage);
++  const transition = state.transitions.find(
++    (candidate) => candidate.from === state.currentStage && candidate.on === event,
++  );
++  if (transition === undefined) {
++    throw new Error(`No transition from ${state.currentStage} on ${event}.`);
+   }
+-  return value;
++  assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
++
++  const fromStage = state.currentStage;
++  const toStage = transition.to as FeatureDeliveryCurrentStage;
++  state.currentStage = toStage;
++  state.status = toStage === TERMINAL_STAGE ? "complete" : "ready_for_stage_delegation";
++  state.nextHumanAction = nextHumanActionForStage(state, toStage, transition.humanAttention);
++  state.stages = applyStageStatuses(state.stages, fromStage, toStage, event);
++  state.advanceHistory = [
++    ...(state.advanceHistory ?? []),
++    {
++      atIso: rfc3339UtcMs(now),
++      kind: "advance",
++      from: fromStage,
++      to: toStage,
++      event,
++      artifact: artifact.rel,
++    },
++  ];
++
++  await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
++  await appendRunLogRecord(
++    path.join(repoRoot, state.artifacts.runLogFile),
++    makeAdvanceRecord(state, now, fromStage, toStage, event, artifact.rel),
++  );
++
++  return {
++    command: "advance",
++    status: "ok",
++    taskId,
++    featureId: state.featureId,
++    fromStage,
++    event,
++    currentStage: state.currentStage,
++    artifact: artifact.rel,
++    stateFile: stateFile.rel,
++    handoffFile: state.artifacts.handoffFile,
++    nextPromptFile: requireNextPromptFile(state),
++    nextPersona: personaForStage(pipeline, state.currentStage),
++    nextHumanAction: state.nextHumanAction,
++  };
++}
++
++export async function repairFeatureDeliveryState(
++  input: RepairFeatureDeliveryStateInput,
++): Promise<RepairFeatureDeliveryStateResult> {
++  const repoRoot = path.resolve(input.repoRoot);
++  const taskId = sanitizeTaskId(input.taskId);
++  const now = input.clock?.() ?? new Date();
++  const targetStage = assertFeatureDeliveryStage(input.stage);
++  const reason = input.reason.trim();
++  if (reason.length < 12) {
++    throw new Error("repair-state requires a concrete --reason with at least 12 characters.");
++  }
++
++  const stateFile = await findStateFile(repoRoot, taskId);
++  const state = await readFeatureDeliveryState(stateFile.abs);
++  const pipeline = loadFeatureDeliveryPipeline(repoRoot);
++  const artifact = await assertRepoRelativeExistingFile(repoRoot, input.artifact, "artifact");
++  const previousStage = state.currentStage;
++
++  state.currentStage = targetStage;
++  state.status = "repaired";
++  state.nextHumanAction = nextHumanActionForStage(state, targetStage, `Manual state repair: ${reason}`);
++  state.stages = repairStageStatuses(state.stages, targetStage);
++  state.advanceHistory = [
++    ...(state.advanceHistory ?? []),
++    {
++      atIso: rfc3339UtcMs(now),
++      kind: "repair",
++      from: previousStage,
++      to: targetStage,
++      event: "manual_repair",
++      artifact: artifact.rel,
++      reason,
++    },
++  ];
++
++  await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
++  await appendRunLogRecord(
++    path.join(repoRoot, state.artifacts.runLogFile),
++    makeRepairRecord(state, now, previousStage, targetStage, artifact.rel, reason),
++  );
++
++  return {
++    command: "repair-state",
++    status: "ok",
++    taskId,
++    featureId: state.featureId,
++    previousStage,
++    currentStage: state.currentStage,
++    artifact: artifact.rel,
++    reason,
++    stateFile: stateFile.rel,
++    handoffFile: state.artifacts.handoffFile,
++    nextPromptFile: requireNextPromptFile(state),
++    nextPersona: personaForStage(pipeline, state.currentStage),
++    nextHumanAction: state.nextHumanAction,
++  };
++}
++
++/**
++ * Accepts nested `src/inbox/in/`-relative POSIX paths after inbox convention migration.
++ * @param {string} value
++ * @param {string} label
++ */
++function assertInboxInRelativePath(value: string, label: string): string {
++  const norm = value.replace(/\\/gu, "/").replace(/^\/+/, "");
++  if (norm === "" || norm.includes("\0")) {
++    throw new Error(`${label} MUST be a non-empty relative path.`);
++  }
++  const segments = norm.split("/").filter(Boolean);
++  for (const s of segments) {
++    if (s === ".." || s === ".") {
++      throw new Error(`${label} MUST NOT contain dot segments.`);
++    }
++  }
++  return norm;
+ }
+ 
+ function sanitizeSlug(raw: string): string {
+@@ -381,30 +606,35 @@ function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
+   ];
+ }
+ 
+-function renderHandoff(state: FeatureDeliveryState, pipeline: PipelineDefinition, directive: string): string {
+-  const firstStage = pipeline.stages[0];
+-  const nextPersona = firstStage?.persona ?? "intake-analyst";
+-  const excerpt = directive.trim().split(/\r?\n/u).slice(0, 20).join("\n");
++function renderHandoff(state: FeatureDeliveryState, pipeline: PipelineDefinition, directive?: string): string {
++  const nextPersona = personaForStage(pipeline, state.currentStage) ?? "human";
++  const stage = state.currentStage;
++  const excerpt = directive?.trim().split(/\r?\n/u).slice(0, 20).join("\n");
+   return `# Feature delivery handoff — ${state.featureId}
+ 
+ - Feature id: ${state.featureId}
+ - Task id: ${state.taskId}
+ - Pipeline: ${state.pipelineId}
+-- Current stage: ${state.currentStage}
+-- Planner persona: supervisor
++- Current stage: ${stage}
+ - Executor persona: ${nextPersona}
+ - Source directive: ${state.source.inboxPath}
+ - State file: ${state.artifacts.stateFile}
+ - Run log: ${state.artifacts.runLogFile}
++- Next prompt: ${requireNextPromptFile(state)}
++
++## Stage contract
++
++${stageContractMarkdown(state, stage)}
+ 
+ ## In-scope paths
+ 
+ - ${state.source.inboxPath}
+ - src/memory/features/${state.featureId}/spec.md
+-- src/work/<day>/<task-id>/plan.md
+-- src/work/<day>/<task-id>/adr-draft.md
+-- src/work/<day>/<task-id>/touch-set.json
+-- src/work/<day>/<task-id>/review.md
++- ${state.artifacts.runDir}/plan.md
++- ${state.artifacts.runDir}/adr-draft.md
++- ${state.artifacts.runDir}/touch-set.json
++- ${state.artifacts.runDir}/implementation-report.md
++- ${state.artifacts.runDir}/review.md
+ - src/memory/features/${state.featureId}/delivery-report.md
+ - src/inbox/out/<timestamp>-${state.featureId}-delivery-report.md
+ 
+@@ -413,7 +643,7 @@ function renderHandoff(state: FeatureDeliveryState, pipeline: PipelineDefinition
+ - Do not read or write src/inbox/notes/.
+ - Do not continue past a human gate without explicit ratification.
+ - Do not push, open a PR, or commit without the human operator.
+-- Do not carry planning context into implementation; pass this handoff path instead.
++- Do not carry planning context into implementation; use the stage prompt and named stage inputs.
+ 
+ ## Validation commands
+ 
+@@ -425,15 +655,58 @@ function renderHandoff(state: FeatureDeliveryState, pipeline: PipelineDefinition
+ ## Re-entry rule
+ 
+ If scope changes, validation repeatedly fails, or the touch-set is incomplete, stop and delegate back to supervisor, tech-lead, or reviewer instead of extending the executor loop.
+-
++${excerpt === undefined || excerpt.length === 0 ? "" : `
+ ## Directive excerpt
+ 
+ \`\`\`markdown
+ ${excerpt}
+ \`\`\`
++`}`;
++}
++
++function renderNextPrompt(state: FeatureDeliveryState, pipeline: PipelineDefinition): string {
++  const persona = personaForStage(pipeline, state.currentStage) ?? "human";
++  const stage = state.currentStage;
++  return `You are executing the ${stage} stage for feature-delivery task ${state.taskId}.
++
++Use subagent/persona: ${persona}
++
++Read first, in this order:
++1. AGENTS.md
++2. ${state.artifacts.handoffFile}
++3. The stage input paths listed below
++
++Do not read broad archives, full PRD/bootstrap docs, src/inbox/notes/**, or unrelated src/work/** paths unless the handoff explicitly requires it.
++
++${stageContractMarkdown(state, stage)}
++
++After the stage artifact is accepted by the human operator, run exactly one matching state command from the handoff instructions. Do not continue to the next persona in the same agent loop.
+ `;
+ }
+ 
++function stageContractMarkdown(state: FeatureDeliveryState, stage: string): string {
++  switch (stage) {
++    case "intake":
++      return `Input: ${state.source.inboxPath}\nOutput: src/memory/features/${state.featureId}/spec.md\nAdvance after human ratification: pnpm -w exec tess advance ${state.taskId} --artifact src/memory/features/${state.featureId}/spec.md`;
++    case "plan":
++      return `Input: src/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after human ratification: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/touch-set.json`;
++    case "implement":
++      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/implementation-report.md`;
++    case "review":
++      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md\nReturn to implement on must-fix: pnpm -w exec tess advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
++    case "report":
++      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md\nOutput: src/memory/features/${state.featureId}/delivery-report.md\nAdvance after report is accepted: pnpm -w exec tess advance ${state.taskId} --artifact src/memory/features/${state.featureId}/delivery-report.md`;
++    case "ship":
++      return `Inputs: local diff, validation output, src/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/policy-compliance.json`;
++    case "index":
++      return `Inputs: delivery report and accepted ship artifacts\nOutput: src/memory/features/${state.featureId}/index.json\nAdvance after artifacts are indexed: pnpm -w exec tess advance ${state.taskId} --artifact src/memory/features/${state.featureId}/index.json`;
++    case "complete":
++      return "No next agent stage. Confirm archival/index state and close the task manually.";
++    default:
++      return `No stage contract is defined for ${stage}.`;
++  }
++}
++
+ function makeInvocationRecord(state: FeatureDeliveryState, now: Date): RunLogRecord {
+   return {
+     ts: rfc3339UtcMs(now),
+@@ -462,6 +735,83 @@ function makeInvocationRecord(state: FeatureDeliveryState, now: Date): RunLogRec
+   };
+ }
+ 
++function makeAdvanceRecord(
++  state: FeatureDeliveryState,
++  now: Date,
++  fromStage: string,
++  toStage: string,
++  event: string,
++  artifact: string,
++): RunLogRecord {
++  return makeStateRecord(state, now, "tesseract.pipeline.advance", fromStage, toStage, event, artifact);
++}
++
++function makeRepairRecord(
++  state: FeatureDeliveryState,
++  now: Date,
++  fromStage: string,
++  toStage: string,
++  artifact: string,
++  reason: string,
++): RunLogRecord {
++  const record = makeStateRecord(
++    state,
++    now,
++    "tesseract.pipeline.repair_state",
++    fromStage,
++    toStage,
++    "manual_repair",
++    artifact,
++  );
++  return {
++    ...record,
++    attributes: {
++      ...record.attributes,
++      "tesseract.repair.reason": reason,
++    },
++  };
++}
++
++function makeStateRecord(
++  state: FeatureDeliveryState,
++  now: Date,
++  name: string,
++  fromStage: string,
++  toStage: string,
++  event: string,
++  artifact: string,
++): RunLogRecord {
++  return {
++    ts: rfc3339UtcMs(now),
++    trace_id: newTraceId(),
++    span_id: newSpanId(),
++    name,
++    kind: "event",
++    status: { code: "OK" },
++    attributes: {
++      "openinference.span.kind": "CHAIN",
++      "gen_ai.operation.name": name,
++      "gen_ai.provider.name": "local-cli",
++      "gen_ai.request.model": "none",
++      "tesseract.feature_id": state.featureId,
++      "tesseract.state_file": state.artifacts.stateFile,
++      "tesseract.from_stage": fromStage,
++      "tesseract.to_stage": toStage,
++      "tesseract.transition_event": event,
++      "tesseract.artifact": artifact,
++    },
++    resource: { "service.name": "tesseract", "service.version": "0.0.0" },
++    tesseract: {
++      task_id: asTaskId(state.taskId),
++      pipeline: state.pipelineId,
++      stage_id: fromStage,
++      outcome: "success",
++      checkpoint_seq: state.advanceHistory?.length ?? 0,
++      token_usage_unavailable: true,
++    },
++  };
++}
++
+ async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: string; rel: string }> {
+   const workRoot = path.join(repoRoot, "src", "work");
+   const dayDirs = await safeReaddir(workRoot);
+@@ -483,6 +833,229 @@ async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: s
+   throw new Error(`No feature-delivery state.json found for task ${taskId}.`);
+ }
+ 
++async function readFeatureDeliveryState(stateFile: string): Promise<FeatureDeliveryState> {
++  const parsed = JSON.parse(await readFile(stateFile, "utf8")) as FeatureDeliveryState;
++  if (parsed.pipelineId !== "feature-delivery") {
++    throw new Error(`Expected feature-delivery state file; found ${parsed.pipelineId}.`);
++  }
++  if (parsed.artifacts.nextPromptFile === undefined) {
++    parsed.artifacts.nextPromptFile = path.posix.join(parsed.artifacts.runDir, "next-prompt.md");
++  }
++  return parsed;
++}
++
++function loadFeatureDeliveryPipeline(repoRoot: string): PipelineDefinition {
++  const pipeline = loadPipelineYaml(path.join(repoRoot, "src", "pipelines", "feature-delivery.yaml"));
++  if (pipeline.id !== "feature-delivery") {
++    throw new Error(`Expected feature-delivery pipeline; found ${pipeline.id}.`);
++  }
++  return pipeline;
++}
++
++async function persistStateAndPrompts(
++  repoRoot: string,
++  state: FeatureDeliveryState,
++  pipeline: PipelineDefinition,
++  mode: "advance" | "repair",
++): Promise<void> {
++  await writeFile(path.join(repoRoot, state.artifacts.stateFile), `${JSON.stringify(state, null, 2)}\n`, "utf8");
++  await writeFile(path.join(repoRoot, state.artifacts.handoffFile), renderHandoff(state, pipeline), "utf8");
++  await writeFile(
++    path.join(repoRoot, requireNextPromptFile(state)),
++    `# Generated by tess ${mode}\n\n${renderNextPrompt(state, pipeline)}`,
++    "utf8",
++  );
++}
++
++function defaultEventForStage(stage: string): string {
++  switch (stage) {
++    case "intake":
++    case "plan":
++      return "human_approval";
++    case "implement":
++      return "implementation_complete";
++    case "review":
++      return "review_passes";
++    case "report":
++      return "report_ready";
++    case "ship":
++      return "human_ratifies_local_diff";
++    case "index":
++      return "artifacts_indexed";
++    default:
++      throw new Error(`No default advance event for stage ${stage}.`);
++  }
++}
++
++function assertStageArtifact(
++  repoRoot: string,
++  state: FeatureDeliveryState,
++  stage: string,
++  artifact: string,
++  event: string,
++): void {
++  const expected = expectedArtifactsForStage(state, stage, event);
++  if (!expected.acceptedArtifacts.includes(artifact)) {
++    throw new Error(
++      `Artifact ${artifact} is not valid for ${stage} on ${event}; expected one of: ${expected.acceptedArtifacts.join(", ")}.`,
++    );
++  }
++  for (const required of expected.requiredArtifacts) {
++    if (!existsSync(path.join(repoRoot, required))) {
++      throw new Error(`Cannot advance ${stage}; required artifact is missing: ${required}.`);
++    }
++  }
++}
++
++function expectedArtifactsForStage(
++  state: FeatureDeliveryState,
++  stage: string,
++  event: string,
++): { acceptedArtifacts: string[]; requiredArtifacts: string[] } {
++  const run = state.artifacts.runDir;
++  switch (stage) {
++    case "intake": {
++      const spec = path.posix.join("src", "memory", "features", state.featureId, "spec.md");
++      return { acceptedArtifacts: [spec], requiredArtifacts: [spec] };
++    }
++    case "plan": {
++      const required = [
++        path.posix.join(run, "plan.md"),
++        path.posix.join(run, "touch-set.json"),
++        state.artifacts.handoffFile,
++      ];
++      return { acceptedArtifacts: required, requiredArtifacts: required };
++    }
++    case "implement": {
++      const implementationReport = path.posix.join(run, "implementation-report.md");
++      return { acceptedArtifacts: [implementationReport], requiredArtifacts: [implementationReport] };
++    }
++    case "review": {
++      const review = path.posix.join(run, "review.md");
++      if (event !== "review_passes" && event !== "must_fix") {
++        throw new Error(`Review stage only supports review_passes or must_fix, got ${event}.`);
++      }
++      return { acceptedArtifacts: [review], requiredArtifacts: [review] };
++    }
++    case "report": {
++      const report = path.posix.join("src", "memory", "features", state.featureId, "delivery-report.md");
++      return { acceptedArtifacts: [report], requiredArtifacts: [report] };
++    }
++    case "ship": {
++      const policy = path.posix.join(run, "policy-compliance.json");
++      return { acceptedArtifacts: [policy], requiredArtifacts: [policy] };
++    }
++    case "index": {
++      const index = path.posix.join("src", "memory", "features", state.featureId, "index.json");
++      return { acceptedArtifacts: [index], requiredArtifacts: [index] };
++    }
++    default:
++      throw new Error(`No artifact contract for stage ${stage}.`);
++  }
++}
++
++function applyStageStatuses(
++  stages: FeatureDeliveryStageState[],
++  fromStage: string,
++  toStage: string,
++  event: string,
++): FeatureDeliveryStageState[] {
++  if (event === "must_fix") {
++    return stages.map((stage) => {
++      if (stage.id === "review") return { ...stage, status: "blocked" };
++      if (stage.id === "implement") return { ...stage, status: "ready" };
++      return stage;
++    });
++  }
++  return stages.map((stage) => {
++    if (stage.id === fromStage) return { ...stage, status: "complete" };
++    if (stage.id === toStage) return { ...stage, status: "ready" };
++    return stage;
++  });
++}
++
++function repairStageStatuses(
++  stages: FeatureDeliveryStageState[],
++  targetStage: FeatureDeliveryStageId,
++): FeatureDeliveryStageState[] {
++  const targetIndex = FEATURE_DELIVERY_STAGES.indexOf(targetStage);
++  return stages.map((stage) => {
++    const index = FEATURE_DELIVERY_STAGES.indexOf(stage.id as FeatureDeliveryStageId);
++    if (index < 0) return stage;
++    if (index < targetIndex) return { ...stage, status: "complete" };
++    if (index === targetIndex) return { ...stage, status: "ready" };
++    return { ...stage, status: "pending" };
++  });
++}
++
++function nextHumanActionForStage(
++  state: FeatureDeliveryState,
++  stage: string,
++  extra?: string,
++): string {
++  const prefix = extra === undefined ? "" : `${extra} `;
++  switch (stage) {
++    case "intake":
++      return `${prefix}Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing.`;
++    case "plan":
++      return `${prefix}Delegate next-prompt.md to tech-lead; ratify plan.md, touch-set.json, and handoff.md before advancing.`;
++    case "implement":
++      return `${prefix}Delegate next-prompt.md to coder; monitor drift and require ${state.artifacts.runDir}/implementation-report.md before review.`;
++    case "review":
++      return `${prefix}Delegate next-prompt.md to reviewer; inspect ${state.artifacts.runDir}/review.md and choose pass or must-fix.`;
++    case "report":
++      return `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before ship.`;
++    case "ship":
++      return `${prefix}Delegate next-prompt.md to supervisor; human must ratify the local diff before index.`;
++    case "index":
++      return `${prefix}Delegate next-prompt.md to librarian; verify feature index and outbox/archive state before complete.`;
++    case "complete":
++      return `${prefix}Run is complete; verify archival/index state and external traceability.`;
++    default:
++      return `${prefix}No human action defined for ${stage}.`;
++  }
++}
++
++function personaForStage(pipeline: PipelineDefinition, stage: string): string | null {
++  if (stage === TERMINAL_STAGE) return null;
++  return pipeline.stages.find((candidate) => candidate.id === stage)?.persona ?? null;
++}
++
++function assertFeatureDeliveryStage(value: string): FeatureDeliveryStageId {
++  const stage = value as FeatureDeliveryStageId;
++  if (!FEATURE_DELIVERY_STAGES.includes(stage)) {
++    throw new Error(`stage MUST be one of: ${FEATURE_DELIVERY_STAGES.join(", ")}.`);
++  }
++  return stage;
++}
++
++async function assertRepoRelativeExistingFile(
++  repoRoot: string,
++  value: string,
++  label: string,
++): Promise<{ abs: string; rel: string }> {
++  const rel = value.replace(/\\/gu, "/").replace(/^\/+/, "");
++  if (rel === "" || rel.includes("\0") || rel.split("/").some((part) => part === ".." || part === ".")) {
++    throw new Error(`${label} MUST be a safe repo-relative path.`);
++  }
++  const abs = path.join(repoRoot, ...rel.split("/"));
++  const relativeBack = path.relative(repoRoot, abs);
++  if (relativeBack.startsWith("..") || path.isAbsolute(relativeBack)) {
++    throw new Error(`${label} MUST stay inside the repository.`);
++  }
++  const info = await stat(abs);
++  if (!info.isFile()) {
++    throw new Error(`${label} MUST point to a file: ${rel}.`);
++  }
++  return { abs, rel };
++}
++
++function requireNextPromptFile(state: FeatureDeliveryState): string {
++  const nextPromptFile = state.artifacts.nextPromptFile ?? path.posix.join(state.artifacts.runDir, "next-prompt.md");
++  state.artifacts.nextPromptFile = nextPromptFile;
++  return nextPromptFile;
++}
++
+ async function safeReaddir(dir: string): Promise<string[]> {
+   try {
+     return await readdir(dir);
+diff --git a/src/internal/packages/@tesseract/cli/src/run.test.ts b/src/internal/packages/@tesseract/cli/src/run.test.ts
+index 14fafa5..4ae3f57 100644
+--- a/src/internal/packages/@tesseract/cli/src/run.test.ts
++++ b/src/internal/packages/@tesseract/cli/src/run.test.ts
+@@ -91,6 +91,83 @@ describe("parseAndRun", () => {
+     );
+   });
+ 
++  it("advances one stage only with the expected stage artifact", async () => {
++    const root = await mkdtemp(path.join(os.tmpdir(), "tess-advance-"));
++    await seedFeatureDeliveryRepo(root);
++    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
++    const out: string[] = [];
++    await parseAndRun(["feature", "new", "demo-feature.md"], {
++      repoRoot: root,
++      writeOut: (c) => out.push(c),
++      clock: () => new Date("2026-05-10T13:15:30.000Z"),
++    });
++    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; nextPromptFile: string };
++    expect(start.nextPromptFile).toContain("next-prompt.md");
++
++    const spec = path.join(root, "src", "memory", "features", "demo-feature", "spec.md");
++    await mkdir(path.dirname(spec), { recursive: true });
++    await writeFile(spec, "# Demo Feature Spec", "utf8");
++
++    const advanceOut: string[] = [];
++    const code = await parseAndRun(
++      ["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/spec.md"],
++      { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
++    );
++    expect(code).toBe(0);
++    const advanced = JSON.parse(advanceOut.join("")) as { currentStage: string; nextPromptFile: string };
++    expect(advanced.currentStage).toBe("plan");
++    expect(await readFile(path.join(root, advanced.nextPromptFile), "utf8")).toContain("Use subagent/persona: tech-lead");
++
++    const duplicateOut: string[] = [];
++    const duplicateCode = await parseAndRun(
++      ["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/spec.md"],
++      { repoRoot: root, writeOut: (c) => duplicateOut.push(c), writeErr: () => undefined },
++    );
++    expect(duplicateCode).toBe(1);
++    expect(duplicateOut.join("")).toContain("not valid for plan");
++  });
++
++  it("repairs a stale state ledger with explicit evidence and reason", async () => {
++    const root = await mkdtemp(path.join(os.tmpdir(), "tess-repair-"));
++    await seedFeatureDeliveryRepo(root);
++    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
++    const out: string[] = [];
++    await parseAndRun(["feature", "new", "demo-feature.md"], {
++      repoRoot: root,
++      writeOut: (c) => out.push(c),
++      clock: () => new Date("2026-05-10T13:15:30.000Z"),
++    });
++    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string };
++    const review = path.join(root, "src", "work", "172996_05-10-26", start.taskId, "review.md");
++    await mkdir(path.dirname(review), { recursive: true });
++    await writeFile(review, "# Review\n\nManual out-of-band review evidence.", "utf8");
++
++    const repairOut: string[] = [];
++    const code = await parseAndRun(
++      [
++        "repair-state",
++        start.taskId,
++        "--stage",
++        "review",
++        "--artifact",
++        `src/work/172996_05-10-26/${start.taskId}/review.md`,
++        "--reason",
++        "manual Cursor run reached review before ledger advancement existed",
++      ],
++      { repoRoot: root, writeOut: (c) => repairOut.push(c) },
++    );
++    expect(code).toBe(0);
++    const repaired = JSON.parse(repairOut.join("")) as { currentStage: string; nextPersona: string };
++    expect(repaired.currentStage).toBe("review");
++    expect(repaired.nextPersona).toBe("reviewer");
++    const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
++      currentStage: string;
++      advanceHistory: Array<{ kind: string; reason?: string }>;
++    };
++    expect(state.currentStage).toBe("review");
++    expect(state.advanceHistory.at(-1)?.kind).toBe("repair");
++  });
++
+   it("exposes intervention state through status", async () => {
+     const root = await mkdtemp(path.join(os.tmpdir(), "tess-status-"));
+     await seedFeatureDeliveryRepo(root);
+diff --git a/src/internal/packages/@tesseract/cli/src/run.ts b/src/internal/packages/@tesseract/cli/src/run.ts
+index 02393f5..480ceab 100644
+--- a/src/internal/packages/@tesseract/cli/src/run.ts
++++ b/src/internal/packages/@tesseract/cli/src/run.ts
+@@ -7,7 +7,9 @@ import {
+   type CheckpointId,
+ } from "@tesseract/intervention";
+ import {
++  advanceFeatureDelivery,
+   readFeatureDeliveryStatusWithInterventions,
++  repairFeatureDeliveryState,
+   startFeatureDelivery,
+ } from "./feature-delivery-run.js";
+ 
+@@ -156,6 +158,47 @@ export async function parseAndRun(
+       );
+     });
+ 
++
++  program
++    .command("advance")
++    .description("Advance a feature-delivery task by one validated stage transition")
++    .argument("<taskId>", "Task id under src/work/")
++    .requiredOption("--artifact <path>", "Repo-relative artifact proving the current stage completed")
++    .option("--event <event>", "Transition event override, for example must_fix during review")
++    .action(async (taskId: string, opts: { artifact: string; event?: string }) => {
++      emit(
++        writeOut,
++        await advanceFeatureDelivery({
++          repoRoot,
++          taskId,
++          artifact: opts.artifact,
++          event: opts.event,
++          clock: options?.clock,
++        }),
++      );
++    });
++
++  program
++    .command("repair-state")
++    .description("Explicitly repair a feature-delivery ledger after out-of-band manual work")
++    .argument("<taskId>", "Task id under src/work/")
++    .requiredOption("--stage <stage>", "Stage the ledger should reflect")
++    .requiredOption("--artifact <path>", "Repo-relative evidence artifact justifying the repair")
++    .requiredOption("--reason <text>", "Human-readable reason for the repair")
++    .action(async (taskId: string, opts: { stage: string; artifact: string; reason: string }) => {
++      emit(
++        writeOut,
++        await repairFeatureDeliveryState({
++          repoRoot,
++          taskId,
++          stage: opts.stage,
++          artifact: opts.artifact,
++          reason: opts.reason,
++          clock: options?.clock,
++        }),
++      );
++    });
++
+   program
+     .command("approve")
+     .description("Approve a gated action")
+diff --git a/src/internal/packages/@tesseract/cli/tsconfig.json b/src/internal/packages/@tesseract/cli/tsconfig.json
+index fa0ec53..0925802 100644
+--- a/src/internal/packages/@tesseract/cli/tsconfig.json
++++ b/src/internal/packages/@tesseract/cli/tsconfig.json
+@@ -1,4 +1,4 @@
+ {
+-  "extends": "../../../../tsconfig.base.json",
++  "extends": "../../../../../tsconfig.base.json",
+   "include": ["src"]
+ }
+diff --git a/src/internal/packages/@tesseract/core/tsconfig.json b/src/internal/packages/@tesseract/core/tsconfig.json
+index fa0ec53..0925802 100644
+--- a/src/internal/packages/@tesseract/core/tsconfig.json
++++ b/src/internal/packages/@tesseract/core/tsconfig.json
+@@ -1,4 +1,4 @@
+ {
+-  "extends": "../../../../tsconfig.base.json",
++  "extends": "../../../../../tsconfig.base.json",
+   "include": ["src"]
+ }
+diff --git a/src/internal/packages/@tesseract/inbox/src/file-inbox.test.ts b/src/internal/packages/@tesseract/inbox/src/file-inbox.test.ts
+index 99d9fd6..2d52566 100644
+--- a/src/internal/packages/@tesseract/inbox/src/file-inbox.test.ts
++++ b/src/internal/packages/@tesseract/inbox/src/file-inbox.test.ts
+@@ -1,4 +1,4 @@
+-import { mkdtemp, readFile, rm } from "node:fs/promises";
++import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+ import os from "node:os";
+ import path from "node:path";
+ import { describe, expect, it } from "vitest";
+@@ -15,8 +15,21 @@ describe("FileInbox", () => {
+     await rm(tmp, { recursive: true, force: true });
+   });
+ 
+-  it("rejects multi-segment names", async () => {
++  it("lists nested inbox/in files with POSIX-relative paths", async () => {
++    const tmp = await mkdtemp(path.join(os.tmpdir(), "inbox-"));
++    const inbox = new FileInbox(tmp);
++    const nestedDir = path.join(tmp, "src", "inbox", "in", "172995_01-01-26", "50909_task");
++    await mkdir(nestedDir, { recursive: true });
++    await writeFile(path.join(nestedDir, "a.md"), "x", "utf8");
++    const entries = await inbox.listIn();
++    expect(entries).toContain("172995_01-01-26/50909_task/a.md");
++    const body = await inbox.readInFile("172995_01-01-26/50909_task/a.md");
++    expect(body).toBe("x");
++    await rm(tmp, { recursive: true, force: true });
++  });
++
++  it("rejects path traversal", async () => {
+     const inbox = new FileInbox("/tmp");
+-    await expect(inbox.writeOutFile("a/b.md", "x")).rejects.toThrow("single path segment");
++    await expect(inbox.writeOutFile("../escape.md", "x")).rejects.toThrow(/dot segments|queue root/u);
+   });
+ });
+diff --git a/src/internal/packages/@tesseract/inbox/src/file-inbox.ts b/src/internal/packages/@tesseract/inbox/src/file-inbox.ts
+index 2791c3e..b0971d6 100644
+--- a/src/internal/packages/@tesseract/inbox/src/file-inbox.ts
++++ b/src/internal/packages/@tesseract/inbox/src/file-inbox.ts
+@@ -30,48 +30,92 @@ export class FileInbox implements Inbox {
+   }
+ 
+   pathIn(filename = ""): string {
+-    return path.join(this.inboxRoot, "in", filename);
++    if (filename === "") {
++      return path.join(this.inboxRoot, "in");
++    }
++    return this.resolveUnderQueue("in", filename);
+   }
+ 
+   pathOut(filename = ""): string {
+-    return path.join(this.inboxRoot, "out", filename);
++    if (filename === "") {
++      return path.join(this.inboxRoot, "out");
++    }
++    return this.resolveUnderQueue("out", filename);
+   }
+ 
+   pathThreads(filename = ""): string {
+-    return path.join(this.inboxRoot, "threads", filename);
++    if (filename === "") {
++      return path.join(this.inboxRoot, "threads");
++    }
++    return this.resolveUnderQueue("threads", filename);
+   }
+ 
+-  private assertBasename(name: string): void {
+-    const b = path.basename(name);
+-    if (b !== name || name.includes("..") || name.includes("/") || name.includes("\\")) {
+-      throw new Error("Inbox file name MUST be a single path segment");
++  private resolveUnderQueue(
++    queue: "in" | "out" | "threads",
++    relativePath: string,
++  ): string {
++    const root = path.join(this.inboxRoot, queue);
++    const normalized = relativePath.replace(/\\/g, "/").replace(/^\/+/u, "");
++    if (!normalized || normalized.includes("\0")) {
++      throw new Error("Inbox relative path MUST be non-empty and valid");
+     }
++    const segments = normalized.split("/").filter(Boolean);
++    for (const s of segments) {
++      if (s === ".." || s === ".") {
++        throw new Error("Inbox relative path MUST NOT contain dot segments");
++      }
++    }
++    const resolved = path.resolve(root, ...segments);
++    const rootResolved = path.resolve(root);
++    const rel = path.relative(rootResolved, resolved);
++    if (rel.startsWith("..") || path.isAbsolute(rel)) {
++      throw new Error("Inbox relative path MUST stay under its queue root");
++    }
++    return resolved;
+   }
+ 
+   async listIn(): Promise<string[]> {
+     const dir = this.pathIn();
+-    let names: string[];
+-    try {
+-      names = await readdir(dir);
+-    } catch (e) {
+-      const err = e as NodeJS.ErrnoException;
+-      if (err.code === "ENOENT") {
+-        return [];
+-      }
+-      throw e;
+-    }
+-    return names.filter((n) => !n.startsWith(".")).sort();
++    return listNestedFiles(dir);
+   }
+ 
+   async readInFile(name: string): Promise<string> {
+-    this.assertBasename(name);
+     return readFile(this.pathIn(name), "utf8");
+   }
+ 
+   async writeOutFile(name: string, content: string): Promise<void> {
+-    this.assertBasename(name);
+     const p = this.pathOut(name);
+     await mkdir(path.dirname(p), { recursive: true });
+     await writeFile(p, content, "utf8");
+   }
+ }
++
++async function listNestedFiles(absDir: string): Promise<string[]> {
++  const out: string[] = [];
++  async function walk(relPrefix: string, dir: string): Promise<void> {
++    let entries;
++    try {
++      entries = await readdir(dir, { withFileTypes: true });
++    } catch (e) {
++      const err = e as NodeJS.ErrnoException;
++      if (err.code === "ENOENT") {
++        return;
++      }
++      throw e;
++    }
++    for (const e of entries) {
++      if (e.name.startsWith(".")) {
++        continue;
++      }
++      const rel = relPrefix === "" ? e.name : `${relPrefix}/${e.name}`;
++      const abs = path.join(dir, e.name);
++      if (e.isDirectory()) {
++        await walk(rel, abs);
++      } else {
++        out.push(rel.split(path.sep).join("/"));
++      }
++    }
++  }
++  await walk("", absDir);
++  return out.sort();
++}
+diff --git a/src/internal/packages/@tesseract/inbox/tsconfig.json b/src/internal/packages/@tesseract/inbox/tsconfig.json
+index fa0ec53..0925802 100644
+--- a/src/internal/packages/@tesseract/inbox/tsconfig.json
++++ b/src/internal/packages/@tesseract/inbox/tsconfig.json
+@@ -1,4 +1,4 @@
+ {
+-  "extends": "../../../../tsconfig.base.json",
++  "extends": "../../../../../tsconfig.base.json",
+   "include": ["src"]
+ }
+diff --git a/src/internal/packages/@tesseract/intervention/tsconfig.json b/src/internal/packages/@tesseract/intervention/tsconfig.json
+index fa0ec53..0925802 100644
+--- a/src/internal/packages/@tesseract/intervention/tsconfig.json
++++ b/src/internal/packages/@tesseract/intervention/tsconfig.json
+@@ -1,4 +1,4 @@
+ {
+-  "extends": "../../../../tsconfig.base.json",
++  "extends": "../../../../../tsconfig.base.json",
+   "include": ["src"]
+ }
+diff --git a/src/internal/packages/@tesseract/mcp-server/README.md b/src/internal/packages/@tesseract/mcp-server/README.md
+index a638eb3..cef4660 100644
+--- a/src/internal/packages/@tesseract/mcp-server/README.md
++++ b/src/internal/packages/@tesseract/mcp-server/README.md
+@@ -14,7 +14,7 @@ This package exposes the bootstrap `tess` workspace surface as an MCP server ove
+ 2. Run the binary (installs resolve `tess-mcp-server` from `node_modules/.bin` when the package is a dependency):
+ 
+    ```bash
+-   pnpm exec tess-mcp-server
++   pnpm -w exec tess-mcp-server
+    ```
+ 
+ 3. List tools (from an MCP client that speaks stdio JSON-RPC; example names only):
+diff --git a/src/internal/packages/@tesseract/mcp-server/bin/tess-mcp-server.js b/src/internal/packages/@tesseract/mcp-server/bin/tess-mcp-server.js
+new file mode 100755
+index 0000000..f7fb459
+--- /dev/null
++++ b/src/internal/packages/@tesseract/mcp-server/bin/tess-mcp-server.js
+@@ -0,0 +1,50 @@
++#!/usr/bin/env node
++import fs from "node:fs";
++import path from "node:path";
++import { spawnSync } from "node:child_process";
++import { fileURLToPath, pathToFileURL } from "node:url";
++
++const binFile = fileURLToPath(import.meta.url);
++const packageRoot = path.resolve(path.dirname(binFile), "..");
++const repoRoot = findRepoRoot(packageRoot);
++const distEntry = path.join(packageRoot, "dist", "server.js");
++const dependencyEntries = [
++  path.join(packageRoot, "node_modules", "@tesseract", "core", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@tesseract", "inbox", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@tesseract", "intervention", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@tesseract", "memory", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@tesseract", "run-logger", "dist", "index.js"),
++];
++const missingDependencyEntries = dependencyEntries.filter((entry) => !fs.existsSync(entry));
++const needsBuild = !fs.existsSync(distEntry) || missingDependencyEntries.length > 0;
++
++function findRepoRoot(startDir) {
++  let current = startDir;
++  for (;;) {
++    if (fs.existsSync(path.join(current, "pnpm-workspace.yaml"))) {
++      return current;
++    }
++    const parent = path.dirname(current);
++    if (parent === current) {
++      throw new Error(`Could not locate repo root from ${startDir}`);
++    }
++    current = parent;
++  }
++}
++
++if (needsBuild) {
++  const result = spawnSync("pnpm", ["--dir", repoRoot, "--filter", "@tesseract/mcp-server...", "run", "build"], {
++    cwd: repoRoot,
++    stdio: "inherit",
++  });
++  if (result.status !== 0) {
++    process.exit(result.status ?? 1);
++  }
++}
++
++if (!fs.existsSync(distEntry)) {
++  console.error(`Missing MCP server entrypoint after build: ${distEntry}`);
++  process.exit(1);
++}
++
++await import(pathToFileURL(distEntry).href);
+diff --git a/src/internal/packages/@tesseract/mcp-server/package.json b/src/internal/packages/@tesseract/mcp-server/package.json
+index be952d0..489de4d 100644
+--- a/src/internal/packages/@tesseract/mcp-server/package.json
++++ b/src/internal/packages/@tesseract/mcp-server/package.json
+@@ -6,7 +6,7 @@
+   "main": "./dist/index.js",
+   "types": "./dist/index.d.ts",
+   "bin": {
+-    "tess-mcp-server": "./dist/server.js"
++    "tess-mcp-server": "./bin/tess-mcp-server.js"
+   },
+   "exports": {
+     ".": {
+@@ -14,7 +14,7 @@
+       "import": "./dist/index.js"
+     }
+   },
+-  "files": ["dist"],
++  "files": ["bin", "dist"],
+   "scripts": {
+     "build": "tsup src/index.ts src/server.ts --format esm --dts --clean",
+     "typecheck": "tsc -p tsconfig.json",
+diff --git a/src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts b/src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts
+index dd9555b..7b52fd7 100644
+--- a/src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts
++++ b/src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts
+@@ -15,7 +15,7 @@ async function mktemp(prefix: string): Promise<string> {
+ describe("tess.inbox", () => {
+   it("lists src/inbox/in entries for a temp repo", async () => {
+     const root = await mktemp("tess-mcp-inbox-");
+-    const inboxIn = path.join(root, "inbox", "in");
++    const inboxIn = path.join(root, "src", "inbox", "in");
+     await fs.mkdir(inboxIn, { recursive: true });
+     await fs.writeFile(path.join(inboxIn, "hello.md"), "x", "utf8");
+ 
+@@ -26,6 +26,20 @@ describe("tess.inbox", () => {
+       entries: ["hello.md"],
+     });
+   });
++
++  it("lists nested inbox/in paths", async () => {
++    const root = await mktemp("tess-mcp-inbox-nested-");
++    const deep = path.join(root, "src", "inbox", "in", "172995_01-01-26", "50909_task");
++    await fs.mkdir(deep, { recursive: true });
++    await fs.writeFile(path.join(deep, "a.md"), "x", "utf8");
++
++    const out = await callTessToolMcp("tess.inbox", {}, { repoRoot: root });
++    expect(out).toEqual({
++      command: "inbox",
++      status: "ok",
++      entries: ["172995_01-01-26/50909_task/a.md"],
++    });
++  });
+ });
+ 
+ describe("tess.pause", () => {
+diff --git a/src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts b/src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts
+index bd88954..d4f7921 100644
+--- a/src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts
++++ b/src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts
+@@ -127,6 +127,36 @@ async function listDirNames(dir: string): Promise<string[]> {
+   }
+ }
+ 
++async function listInboxNestedFiles(absRoot: string): Promise<string[]> {
++  const out: string[] = [];
++  async function walk(rel: string, dir: string): Promise<void> {
++    let entries;
++    try {
++      entries = await readdir(dir, { withFileTypes: true });
++    } catch (e) {
++      const err = e as NodeJS.ErrnoException;
++      if (err.code === "ENOENT") {
++        return;
++      }
++      throw e;
++    }
++    for (const e of entries) {
++      if (e.name.startsWith(".")) {
++        continue;
++      }
++      const r = rel === "" ? e.name : `${rel}/${e.name}`;
++      const abs = path.join(dir, e.name);
++      if (e.isDirectory()) {
++        await walk(r, abs);
++      } else {
++        out.push(r.split(path.sep).join("/"));
++      }
++    }
++  }
++  await walk("", absRoot);
++  return out.sort();
++}
++
+ /**
+  * `memory://` lists `/src/memory/<area>/` directory names. `inbox://` lists Inbox queue file names.
+  * `work-run-log://<taskId>` returns `src/work/<taskId>/run.log.jsonl` as text when present.
+@@ -155,9 +185,9 @@ export async function readTesseractResource(
+   if (uri === "inbox://") {
+     const inbox = new FileInbox(root);
+     const [inFiles, outFiles, threadFiles] = await Promise.all([
+-      listDirNames(inbox.pathIn()),
+-      listDirNames(inbox.pathOut()),
+-      listDirNames(inbox.pathThreads()),
++      listInboxNestedFiles(inbox.pathIn()),
++      listInboxNestedFiles(inbox.pathOut()),
++      listInboxNestedFiles(inbox.pathThreads()),
+     ]);
+     return {
+       mimeType: "application/json",
+diff --git a/src/internal/packages/@tesseract/mcp-server/tsconfig.json b/src/internal/packages/@tesseract/mcp-server/tsconfig.json
+index fa0ec53..0925802 100644
+--- a/src/internal/packages/@tesseract/mcp-server/tsconfig.json
++++ b/src/internal/packages/@tesseract/mcp-server/tsconfig.json
+@@ -1,4 +1,4 @@
+ {
+-  "extends": "../../../../tsconfig.base.json",
++  "extends": "../../../../../tsconfig.base.json",
+   "include": ["src"]
+ }
+diff --git a/src/internal/packages/@tesseract/memory/tsconfig.json b/src/internal/packages/@tesseract/memory/tsconfig.json
+index fa0ec53..0925802 100644
+--- a/src/internal/packages/@tesseract/memory/tsconfig.json
++++ b/src/internal/packages/@tesseract/memory/tsconfig.json
+@@ -1,4 +1,4 @@
+ {
+-  "extends": "../../../../tsconfig.base.json",
++  "extends": "../../../../../tsconfig.base.json",
+   "include": ["src"]
+ }
+diff --git a/src/internal/packages/@tesseract/pipeline/tsconfig.json b/src/internal/packages/@tesseract/pipeline/tsconfig.json
+index fa0ec53..0925802 100644
+--- a/src/internal/packages/@tesseract/pipeline/tsconfig.json
++++ b/src/internal/packages/@tesseract/pipeline/tsconfig.json
+@@ -1,4 +1,4 @@
+ {
+-  "extends": "../../../../tsconfig.base.json",
++  "extends": "../../../../../tsconfig.base.json",
+   "include": ["src"]
+ }
+diff --git a/src/internal/packages/@tesseract/run-logger/tsconfig.json b/src/internal/packages/@tesseract/run-logger/tsconfig.json
+index fa0ec53..0925802 100644
+--- a/src/internal/packages/@tesseract/run-logger/tsconfig.json
++++ b/src/internal/packages/@tesseract/run-logger/tsconfig.json
+@@ -1,4 +1,4 @@
+ {
+-  "extends": "../../../../tsconfig.base.json",
++  "extends": "../../../../../tsconfig.base.json",
+   "include": ["src"]
+ }
+diff --git a/src/internal/tools/migrate-inbox-convention.mjs b/src/internal/tools/migrate-inbox-convention.mjs
+new file mode 100644
+index 0000000..db6ef7f
+--- /dev/null
++++ b/src/internal/tools/migrate-inbox-convention.mjs
+@@ -0,0 +1,517 @@
++#!/usr/bin/env node
++/**
++ * Inbox convention migration: nested day + task directories mirroring `src/work/`.
++ * Planner and writer live here; `migrate-timestamp-naming.mjs` merges this plan
++ * into the combined timestamp migration manifest.
++ *
++ * @see src/memory/features/inbox-convention-migration/spec.md
++ */
++
++import {
++  readFileSync,
++  existsSync,
++  readdirSync,
++  statSync,
++  renameSync,
++  mkdirSync,
++  rmdirSync,
++  writeFileSync,
++} from "node:fs";
++import path from "node:path";
++import { fileURLToPath } from "node:url";
++
++import {
++  chooseTimestamp,
++  gitOldestAddIso,
++  applyCollisionCounter,
++  buildBasename,
++  daysToFds,
++  pad6,
++  mmDdYySuffix,
++  secondsRemainingInDay,
++  hhmm,
++  inventoryReferences,
++  isExcludedFromMigration,
++} from "./migrate-timestamp-naming.mjs";
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++
++/** Work-style day directory basename pattern (UTC). */
++const DAY_DIR_RE = /^\d{6}_\d{2}-\d{2}-\d{2}$/;
++
++/**
++ * @param {string} stem
++ * @returns {boolean} True when stem already has `{SID}_{HHMM}_` prefix (idempotent pass).
++ */
++export function stemHasTimestampPrefix(stem) {
++  return /^\d+_\d{4}_/u.test(stem);
++}
++
++/**
++ * @param {string} text
++ * @returns {string | null}
++ */
++export function parseFrontmatterFeatureId(text) {
++  if (!text.startsWith("---")) {
++    return null;
++  }
++  const end = text.indexOf("\n---", 3);
++  if (end === -1) {
++    return null;
++  }
++  const fm = text.slice(3, end);
++  for (const line of fm.split("\n")) {
++    const m = line.match(/^\s*feature_id\s*:\s*(.+)\s*$/i);
++    if (m) {
++      return m[1].trim().replace(/^["']|["']$/g, "");
++    }
++  }
++  return null;
++}
++
++/**
++ * @param {string} raw
++ * @returns {string}
++ */
++export function slugFeatureId(raw) {
++  const slug = raw
++    .toLowerCase()
++    .replace(/\.[a-z0-9]+$/u, "")
++    .replace(/^\d+_\d{4}_/u, "")
++    .replace(/[^a-z0-9]+/gu, "-")
++    .replace(/^-+|-+$/gu, "")
++    .slice(0, 80);
++  return slug.length > 0 ? slug : "inbox";
++}
++
++/**
++ * @param {string} repoRoot
++ * @returns {Array<{ abs: string, rel: string, queue: 'in' | 'out' | 'archive-in' | 'threads', threadFeatureId: string | null }>}
++ */
++export function listLegacyInboxArtifactRows(repoRoot) {
++  /** @type {Array<{ abs: string, rel: string, queue: 'in' | 'out' | 'archive-in' | 'threads', threadFeatureId: string | null }>} */
++  const out = [];
++
++  const roots = /** @type {const} */ ([
++    { queue: "in", segs: ["src", "inbox", "in"] },
++    { queue: "out", segs: ["src", "inbox", "out"] },
++    { queue: "archive-in", segs: ["src", "inbox", "archive", "in"] },
++  ]);
++  for (const { queue, segs } of roots) {
++    const dir = path.join(repoRoot, ...segs);
++    if (!existsSync(dir)) {
++      continue;
++    }
++    for (const e of readdirSync(dir, { withFileTypes: true })) {
++      if (!e.isFile() || e.name.startsWith(".")) {
++        continue;
++      }
++      const rel = [...segs, e.name].join("/");
++      if (isExcludedFromMigration(rel)) {
++        continue;
++      }
++      out.push({
++        abs: path.join(dir, e.name),
++        rel,
++        queue,
++        threadFeatureId: null,
++      });
++    }
++  }
++
++  const threads = path.join(repoRoot, "src", "inbox", "threads");
++  if (existsSync(threads)) {
++    for (const feat of readdirSync(threads, { withFileTypes: true })) {
++      if (!feat.isDirectory() || feat.name.startsWith(".") || DAY_DIR_RE.test(feat.name)) {
++        continue;
++      }
++      const d = path.join(threads, feat.name);
++      for (const e of readdirSync(d, { withFileTypes: true })) {
++        if (!e.isFile() || e.name.startsWith(".")) {
++          continue;
++        }
++        const rel = `src/inbox/threads/${feat.name}/${e.name}`;
++        if (isExcludedFromMigration(rel)) {
++          continue;
++        }
++        out.push({
++          abs: path.join(d, e.name),
++          rel,
++          queue: "threads",
++          threadFeatureId: feat.name,
++        });
++      }
++    }
++  }
++  return out.sort((a, b) => a.rel.localeCompare(b.rel));
++}
++
++/**
++ * @param {typeof listLegacyInboxArtifactRows extends (...args: infer R) => infer T ? T extends Array<infer U> ? U : never : never} row
++ * @param {string} text
++ * @returns {string}
++ */
++function resolveFeatureIdForRow(row, text) {
++  if (row.threadFeatureId) {
++    return slugFeatureId(row.threadFeatureId);
++  }
++  const fm = parseFrontmatterFeatureId(text);
++  if (fm) {
++    return slugFeatureId(fm);
++  }
++  const base = path.posix.basename(row.rel);
++  const stem = base.includes(".") ? base.slice(0, base.lastIndexOf(".")) : base;
++  return slugFeatureId(stem);
++}
++
++/**
++ * Target queue prefix (POSIX segments, no `src/inbox` prefix).
++ * @param {'in' | 'out' | 'archive-in' | 'threads'} queue
++ */
++function queuePrefixSegments(queue) {
++  switch (queue) {
++    case "in":
++      return ["src", "inbox", "in"];
++    case "out":
++      return ["src", "inbox", "out"];
++    case "archive-in":
++      return ["src", "inbox", "archive", "in"];
++    case "threads":
++      return ["src", "inbox", "threads"];
++    default: {
++      throw new Error(`queuePrefixSegments: unknown queue ${queue}`);
++    }
++  }
++}
++
++/**
++ * Deterministic inbox nesting plan (no I/O writes).
++ * @param {string} repoRoot
++ * @param {{ operatorIsoByRel?: Record<string, string> }} [opts]
++ * @returns {{ renames: Array<object>, referenceUpdates: Array<object>, collisions: string[], summary: object }}
++ */
++export function planInboxConventionMigration(repoRoot, opts = {}) {
++  const operatorIsoByRel = opts.operatorIsoByRel ?? {};
++  const rows = listLegacyInboxArtifactRows(repoRoot);
++
++  /** @type {Array<{ rel: string, queue: string, threadFeatureId: string | null, chosen: ReturnType<typeof chooseTimestamp>, d: Date, featureId: string, fileStem: string, ext: string, dayDir: string, sid: number, hm: string, taskSemantic: string, needsBasenamePrefix: boolean }>} */
++  const enriched = [];
++
++  for (const row of rows) {
++    let text = "";
++    try {
++      const buf = readFileSync(row.abs);
++      if (!buf.includes(0)) {
++        text = buf.toString("utf8");
++      }
++    } catch {
++      /* ignore */
++    }
++    const gitIso = gitOldestAddIso(repoRoot, row.rel);
++    let st;
++    try {
++      st = statSync(row.abs);
++    } catch {
++      continue;
++    }
++    const chosen = chooseTimestamp(
++      { path: row.rel, text },
++      gitIso,
++      { mtimeMs: st.mtimeMs },
++      { operatorIsoOverride: operatorIsoByRel[row.rel] ?? null },
++    );
++    const d = new Date(chosen.iso);
++    const base = path.posix.basename(row.rel);
++    const fileStem = base.includes(".") ? base.slice(0, base.lastIndexOf(".")) : base;
++    const ext = base.includes(".") ? base.slice(base.lastIndexOf(".")) : "";
++    const featureId = resolveFeatureIdForRow(row, text);
++    const taskSemantic = `${featureId}_${fileStem}`;
++    const days = daysToFds(d);
++    const dayDir = `${pad6(days)}_${mmDdYySuffix(d)}`;
++    const sid = secondsRemainingInDay(d);
++    const hm = hhmm(d);
++    const needsBasenamePrefix = !stemHasTimestampPrefix(fileStem);
++
++    enriched.push({
++      rel: row.rel,
++      queue: row.queue,
++      threadFeatureId: row.threadFeatureId,
++      chosen,
++      d,
++      featureId,
++      fileStem,
++      ext,
++      dayDir,
++      sid,
++      hm,
++      taskSemantic,
++      needsBasenamePrefix,
++    });
++  }
++
++  /** Task-directory collision groups: queue + day + sid + HHMM + taskSemantic */
++  /** @type {Array<{ id: string, createdAtMs: number, sid: number, hhmm: string, semantic: string }>} */
++  const taskDirCollisionInputs = enriched.map((e) => ({
++    id: e.rel,
++    createdAtMs: e.d.getTime(),
++    sid: e.sid,
++    hhmm: e.hm,
++    semantic: e.taskSemantic,
++  }));
++  const taskDirResolved = applyCollisionCounter(taskDirCollisionInputs);
++  const taskDirByRel = new Map(taskDirResolved.map((t) => [t.id, t]));
++
++  /** File-basename collision (only rows that need new prefix), per legacy flat parent. */
++  /** @type {Map<string, Array<typeof enriched[0]>>} */
++  const byLegacyParent = new Map();
++  for (const e of enriched) {
++    if (!e.needsBasenamePrefix) {
++      continue;
++    }
++    const parent = path.posix.dirname(e.rel);
++    const g = byLegacyParent.get(parent) ?? [];
++    g.push(e);
++    byLegacyParent.set(parent, g);
++  }
++
++  /** @type {Map<string, number | null>} */
++  const fileBasenameCounterByRel = new Map();
++  for (const [, group] of byLegacyParent) {
++    /** @type {Array<{ id: string, createdAtMs: number, sid: number, hhmm: string, semantic: string }>} */
++    const ic = group.map((e) => ({
++      id: e.rel,
++      createdAtMs: e.d.getTime(),
++      sid: e.sid,
++      hhmm: e.hm,
++      semantic: e.fileStem,
++    }));
++    const resolved = applyCollisionCounter(ic);
++    for (const r of resolved) {
++      fileBasenameCounterByRel.set(r.id, r.collisionCounter);
++    }
++  }
++
++  /** @type {Array<{ sourceRel: string, targetRel: string, kind: string, timestamp: { iso: string, source: string } }>} */
++  const renames = [];
++  /** @type {Set<string>} */
++  const threadFeatureDirsToDrop = new Set();
++
++  for (const e of enriched) {
++    const tdc = taskDirByRel.get(e.rel);
++    if (!tdc) {
++      continue;
++    }
++    const taskDirBasename = buildBasename(
++      tdc.sid,
++      tdc.hhmm,
++      tdc.collisionCounter,
++      e.taskSemantic,
++    );
++    const leaf = e.needsBasenamePrefix
++      ? `${buildBasename(e.sid, e.hm, fileBasenameCounterByRel.get(e.rel) ?? null, e.fileStem)}${e.ext}`
++      : `${e.fileStem}${e.ext}`;
++
++    const prefix = queuePrefixSegments(
++      /** @type {'in' | 'out' | 'archive-in' | 'threads'} */ (e.queue),
++    );
++    const targetRel = [...prefix, e.dayDir, taskDirBasename, leaf].join("/");
++    renames.push({
++      sourceRel: e.rel,
++      targetRel,
++      kind: "inbox-nested-file",
++      timestamp: { iso: e.chosen.iso, source: e.chosen.source },
++    });
++
++    if (e.queue === "threads" && e.threadFeatureId) {
++      threadFeatureDirsToDrop.add(
++        path.posix.join("src/inbox/threads", e.threadFeatureId) + "/",
++      );
++    }
++  }
++
++  for (const dirRel of [...threadFeatureDirsToDrop].sort((a, b) => b.length - a.length)) {
++    renames.push({
++      sourceRel: dirRel,
++      targetRel: dirRel,
++      kind: "inbox-remove-empty-dir",
++      timestamp: { iso: "", source: "cleanup" },
++    });
++  }
++
++  /** @type {Array<{ file: string, line: number, column: number, jsonPointer: string | null, before: string, after: string }>} */
++  const referenceUpdates = [];
++  for (const r of renames) {
++    if (r.kind !== "inbox-nested-file" || r.sourceRel === r.targetRel) {
++      continue;
++    }
++    const legacy = r.sourceRel;
++    const target = r.targetRel;
++    const hits = inventoryReferences(legacy, repoRoot);
++    for (const h of hits) {
++      referenceUpdates.push({
++        file: h.file,
++        line: h.line,
++        column: h.column,
++        jsonPointer: null,
++        before: h.before,
++        after: h.before.replaceAll(legacy, target),
++      });
++    }
++  }
++
++  /** @type {string[]} */
++  const collisions = [];
++  const seen = new Map();
++  for (const r of renames) {
++    if (r.kind !== "inbox-nested-file") {
++      continue;
++    }
++    const t = r.targetRel;
++    const c = seen.get(t) ?? 0;
++    seen.set(t, c + 1);
++    if (c >= 1) {
++      collisions.push(`duplicate inbox target ${t}`);
++    }
++  }
++
++  return {
++    renames,
++    referenceUpdates,
++    collisions,
++    summary: {
++      legacyArtifacts: rows.length,
++      plannedFileRenames: renames.filter((r) => r.kind === "inbox-nested-file").length,
++      threadFeatureDirsRemoved: threadFeatureDirsToDrop.size,
++    },
++  };
++}
++
++/**
++ * Apply inbox-specific rename steps from a combined manifest.
++ * @param {Array<{ sourceRel: string, targetRel: string, kind: string }>} renames
++ * @param {string} repoRoot
++ */
++export function applyInboxRenamesFromManifest(renames, repoRoot) {
++  const inboxKinds = renames.filter(
++    (r) => r.kind === "inbox-nested-file" || r.kind === "inbox-remove-empty-dir",
++  );
++  const files = inboxKinds.filter((r) => r.kind === "inbox-nested-file");
++  const sorted = [...files].sort((a, b) =>
++    b.targetRel.split("/").length - a.targetRel.split("/").length,
++  );
++  for (const r of sorted) {
++    const fromRel = r.sourceRel.replace(/\/+$/, "");
++    const toRel = r.targetRel.replace(/\/+$/, "");
++    if (fromRel === toRel) {
++      continue;
++    }
++    const fromAbs = path.join(repoRoot, fromRel);
++    const toAbs = path.join(repoRoot, toRel);
++    const toParent = path.dirname(toAbs);
++    mkdirSync(toParent, { recursive: true });
++    renameSync(fromAbs, toAbs);
++  }
++  const dirs = inboxKinds.filter((r) => r.kind === "inbox-remove-empty-dir");
++  for (const r of dirs) {
++    const dirAbs = path.join(repoRoot, r.sourceRel.replace(/\/+$/, ""));
++    try {
++      if (!existsSync(dirAbs)) {
++        continue;
++      }
++      const left = readdirSync(dirAbs);
++      if (left.length === 0) {
++        rmdirSync(dirAbs);
++      }
++    } catch {
++      /* ignore */
++    }
++  }
++}
++
++/**
++ * @param {string} repoRoot
++ * @param {Array<{ sourceRel: string, targetRel: string, kind: string }>} renames
++ * @param {string} [artifactIndexRel]
++ */
++export function writeInboxArtifactIndex(repoRoot, renames, artifactIndexRel = "src/inbox/artifact-index.json") {
++  const threadTargets = renames
++    .filter((r) => r.kind === "inbox-nested-file" && r.targetRel.startsWith("src/inbox/threads/"))
++    .map((r) => r.targetRel)
++    .sort();
++  const payload = {
++    schema: "tesseract.inbox-artifact-index.v1",
++    generatedAt: new Date().toISOString(),
++    threads: threadTargets,
++  };
++  const abs = path.join(repoRoot, artifactIndexRel);
++  mkdirSync(path.dirname(abs), { recursive: true });
++  writeFileSync(abs, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
++}
++
++function parseArgs(argv) {
++  let dryRun = true;
++  let write = false;
++  /** @type {string | null} */
++  let manifestPath = null;
++  let root = path.resolve(__dirname, "..", "..", "..");
++  for (let i = 2; i < argv.length; i++) {
++    const a = argv[i];
++    if (a === "--dry-run") {
++      dryRun = true;
++      write = false;
++    } else if (a === "--write") {
++      write = true;
++      dryRun = false;
++    } else if (a === "--manifest" && argv[i + 1]) {
++      manifestPath = argv[++i];
++    } else if (a === "--root" && argv[i + 1]) {
++      root = path.resolve(argv[++i]);
++    }
++  }
++  return { dryRun, write, manifestPath, root };
++}
++
++function main() {
++  const args = parseArgs(process.argv);
++  const plan = planInboxConventionMigration(args.root);
++  const manifest = {
++    schema: "tesseract.inbox-convention-migration-manifest.v1",
++    mode: args.write ? "write" : "dry-run",
++    generatedAt: new Date().toISOString(),
++    repoRoot: args.root,
++    summary: plan.summary,
++    renames: plan.renames,
++    referenceUpdates: plan.referenceUpdates,
++    collisions: plan.collisions,
++  };
++  const outPath =
++    args.manifestPath ??
++    path.join(
++      args.root,
++      "src/work/inbox-convention-migration/migration-manifest.dry-run.json",
++    );
++  if (!args.write) {
++    mkdirSync(path.dirname(outPath), { recursive: true });
++    writeFileSync(outPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
++    console.log(
++      `[migrate-inbox-convention] dry-run manifest: ${outPath} (fileRenames=${plan.summary.plannedFileRenames})`,
++    );
++    return;
++  }
++  if (process.env.TESSERACT_MIGRATION_GO !== "1") {
++    console.error(
++      "[migrate-inbox-convention] refuse --write without TESSERACT_MIGRATION_GO=1",
++    );
++    process.exitCode = 1;
++    return;
++  }
++  applyInboxRenamesFromManifest(plan.renames, args.root);
++  writeInboxArtifactIndex(args.root, plan.renames);
++  console.log(
++    `[migrate-inbox-convention] write applied (TESSERACT_MIGRATION_GO=1)`,
++  );
++}
++
++if (process.argv[1] === fileURLToPath(import.meta.url)) {
++  main();
++}
+diff --git a/src/internal/tools/migrate-timestamp-naming.mjs b/src/internal/tools/migrate-timestamp-naming.mjs
+index 6aa9e35..840ca21 100644
+--- a/src/internal/tools/migrate-timestamp-naming.mjs
++++ b/src/internal/tools/migrate-timestamp-naming.mjs
+@@ -482,52 +482,6 @@ function listFlatWorkTasks(repoRoot) {
+   return out;
+ }
+ 
+-/**
+- * @param {string} repoRoot
+- * @returns {string[]}
+- */
+-function listInboxFiles(repoRoot) {
+-  /** @type {string[]} */
+-  const files = [];
+-  const patterns = [
+-    ["src", "inbox", "in"],
+-    ["src", "inbox", "out"],
+-    ["src", "inbox", "archive", "in"],
+-  ];
+-  for (const segs of patterns) {
+-    const dir = path.join(repoRoot, ...segs);
+-    if (!existsSync(dir)) {
+-      continue;
+-    }
+-    for (const e of readdirSync(dir, { withFileTypes: true })) {
+-      if (e.isFile()) {
+-        const rel = [...segs, e.name].join("/");
+-        if (!isExcludedFromMigration(rel)) {
+-          files.push(path.join(dir, e.name));
+-        }
+-      }
+-    }
+-  }
+-  const threads = path.join(repoRoot, "src", "inbox", "threads");
+-  if (existsSync(threads)) {
+-    for (const feat of readdirSync(threads, { withFileTypes: true })) {
+-      if (!feat.isDirectory()) {
+-        continue;
+-      }
+-      const d = path.join(threads, feat.name);
+-      for (const e of readdirSync(d, { withFileTypes: true })) {
+-        if (e.isFile()) {
+-          const rel = `src/inbox/threads/${feat.name}/${e.name}`;
+-          if (!isExcludedFromMigration(rel)) {
+-            files.push(path.join(d, e.name));
+-          }
+-        }
+-      }
+-    }
+-  }
+-  return files;
+-}
+-
+ /**
+  * @param {Record<string, unknown>} manifest
+  * @param {string} dest
+@@ -568,13 +522,14 @@ function parseArgs(argv) {
+ /**
+  * @param {{ repoRoot: string, strictReferences: boolean }} opts
+  */
+-function buildDryRunManifest(opts) {
++async function buildDryRunManifest(opts) {
++  const { planInboxConventionMigration } = await import("./migrate-inbox-convention.mjs");
++  const inboxPlan = planInboxConventionMigration(opts.repoRoot);
+   const { repoRoot, strictReferences } = opts;
+   const workTasks = listFlatWorkTasks(repoRoot);
+-  const inboxFiles = listInboxFiles(repoRoot);
+ 
+   /** @type {Array<{ sourceRel: string, targetRel: string, kind: string, timestamp: { iso: string, source: string } }>} */
+-  const renames = [];
++  const workRenames = [];
+   /** @type {Array<{ id: string, createdAtMs: number, sid: number, hhmm: string, semantic: string }>} */
+   const collisionInputs = [];
+ 
+@@ -658,7 +613,7 @@ function buildDryRunManifest(opts) {
+       col.semantic,
+     );
+     const targetRel = `src/work/${dayDir}/${taskBasename}/`;
+-    renames.push({
++    workRenames.push({
+       sourceRel: relDir,
+       targetRel,
+       kind: "work-task-dir",
+@@ -666,87 +621,14 @@ function buildDryRunManifest(opts) {
+     });
+   }
+ 
+-  /** @type {Map<string, Array<{ abs: string, rel: string, chosen: ReturnType<typeof chooseTimestamp>, d: Date }>>} */
+-  const inboxByParent = new Map();
+-  for (const abs of inboxFiles) {
+-    const rel = path.relative(repoRoot, abs).split(path.sep).join("/");
+-    const text = readFileSync(abs, "utf8");
+-    const gitIso = gitOldestAddIso(repoRoot, rel);
+-    const st = statSync(abs);
+-    const chosen = chooseTimestamp(
+-      { path: rel, text },
+-      gitIso,
+-      { mtimeMs: st.mtimeMs },
+-    );
+-    const d = new Date(chosen.iso);
+-    const parent = path.posix.dirname(rel);
+-    const g = inboxByParent.get(parent) ?? [];
+-    g.push({ abs, rel, chosen, d });
+-    inboxByParent.set(parent, g);
+-  }
+-  for (const [, group] of inboxByParent) {
+-    /** @type {Array<{ id: string, createdAtMs: number, sid: number, hhmm: string, semantic: string }>} */
+-    const ic = [];
+-    for (const item of group) {
+-      const base = path.posix.basename(item.rel);
+-      const stem = base.includes(".")
+-        ? base.slice(0, base.lastIndexOf("."))
+-        : base;
+-      const sid = secondsRemainingInDay(item.d);
+-      const hm = hhmm(item.d);
+-      ic.push({
+-        id: item.rel,
+-        createdAtMs: item.d.getTime(),
+-        sid,
+-        hhmm: hm,
+-        semantic: stem,
+-      });
+-    }
+-    const resolved = applyCollisionCounter(ic);
+-    const byRel = new Map(resolved.map((t) => [t.id, t]));
+-    for (const item of group) {
+-      const col = byRel.get(item.rel);
+-      if (!col) {
+-        continue;
+-      }
+-      const ctx = {
+-        repoRoot,
+-        chosenDate: item.d,
+-        collisionCounter: col.collisionCounter,
+-      };
+-      const { targetRel } = migrateTargetForInboxPath(item.abs, ctx);
+-      renames.push({
+-        sourceRel: item.rel,
+-        targetRel,
+-        kind: "inbox-file",
+-        timestamp: { iso: item.chosen.iso, source: item.chosen.source },
+-      });
+-    }
+-  }
+-
+-  /** @type {Map<string, string>} */
+-  const pathMap = new Map();
+-  for (const r of renames) {
+-    const from = r.sourceRel.replace(/\/$/, "");
+-    const to = r.targetRel.replace(/\/$/, "");
+-    pathMap.set(from, to);
+-    if (r.kind === "work-task-dir") {
+-      pathMap.set(`${from}/`, `${to}/`);
+-    }
+-  }
++  const renames = [...workRenames, ...inboxPlan.renames];
+ 
+   /** @type {Array<{ file: string, line: number, column: number, jsonPointer: string | null, before: string, after: string }>} */
+   const referenceUpdates = [];
+-  for (const r of renames) {
+-    const legacy =
+-      r.kind === "work-task-dir"
+-        ? r.sourceRel.replace(/\/$/, "")
+-        : r.sourceRel;
++  for (const r of workRenames) {
++    const legacy = r.sourceRel.replace(/\/$/, "");
+     const hits = inventoryReferences(legacy, repoRoot);
+-    const target =
+-      r.kind === "work-task-dir"
+-        ? r.targetRel.replace(/\/$/, "")
+-        : r.targetRel;
++    const target = r.targetRel.replace(/\/$/, "");
+     for (const h of hits) {
+       referenceUpdates.push({
+         file: h.file,
+@@ -758,11 +640,15 @@ function buildDryRunManifest(opts) {
+       });
+     }
+   }
++  referenceUpdates.push(...inboxPlan.referenceUpdates);
+ 
+   /** @type {string[]} */
+   const collisions = [];
+   const seen = new Map();
+   for (const r of renames) {
++    if (r.kind === "inbox-remove-empty-dir") {
++      continue;
++    }
+     const t = r.targetRel.replace(/\/$/, "");
+     const c = seen.get(t) ?? 0;
+     seen.set(t, c + 1);
+@@ -778,6 +664,8 @@ function buildDryRunManifest(opts) {
+     repoRoot,
+     summary: {
+       plannedRenames: renames.length,
++      plannedWorkTaskDirs: workRenames.length,
++      inboxConvention: inboxPlan.summary,
+       referenceUpdateRows: referenceUpdates.length,
+       collisionWarnings: collisions.length,
+     },
+@@ -789,6 +677,9 @@ function buildDryRunManifest(opts) {
+   if (strictReferences) {
+     const stale = [];
+     for (const r of renames) {
++      if (r.kind === "inbox-remove-empty-dir") {
++        continue;
++      }
+       const legacy =
+         r.kind === "work-task-dir"
+           ? r.sourceRel.replace(/\/$/, "")
+@@ -823,12 +714,7 @@ function buildDryRunManifest(opts) {
+  * @param {string} repoRoot
+  */
+ export function applyRenamesFromManifest(renames, repoRoot) {
+-  const ordered = [...renames].sort((a, b) => {
+-    if (a.kind === b.kind) {
+-      return 0;
+-    }
+-    return a.kind === "work-task-dir" ? -1 : 1;
+-  });
++  const ordered = [...renames].filter((r) => r.kind === "work-task-dir");
+   for (const r of ordered) {
+     const fromRel = r.sourceRel.replace(/\/+$/, "");
+     const toRel = r.targetRel.replace(/\/+$/, "");
+@@ -865,7 +751,7 @@ export function applyReferenceUpdatesFromManifest(referenceUpdates, repoRoot) {
+   }
+ }
+ 
+-function main() {
++async function main() {
+   const args = parseArgs(process.argv);
+   const repoRoot = args.root;
+   const defaultManifest = path.join(
+@@ -883,10 +769,12 @@ function main() {
+       return;
+     }
+     const m = JSON.parse(readFileSync(mp, "utf8"));
+-    const back = (m.renames ?? []).map((/** @type {{ sourceRel: string, targetRel: string }} */ r) => ({
+-      from: r.targetRel,
+-      to: r.sourceRel,
+-    }));
++    const back = (m.renames ?? [])
++      .filter((/** @type {{ kind?: string }} */ r) => r.kind !== "inbox-remove-empty-dir")
++      .map((/** @type {{ sourceRel: string, targetRel: string }} */ r) => ({
++        from: r.targetRel,
++        to: r.sourceRel,
++      }));
+     console.log(
+       JSON.stringify({ rollbackPlanned: back.length, steps: back }, null, 2),
+     );
+@@ -910,18 +798,22 @@ function main() {
+       return;
+     }
+     const m = JSON.parse(readFileSync(mp, "utf8"));
+-    applyRenamesFromManifest(/** @type {[]} */ (m.renames ?? []), repoRoot);
++    const renames = /** @type {[]} */ (m.renames ?? []);
++    applyRenamesFromManifest(renames, repoRoot);
+     applyReferenceUpdatesFromManifest(
+       /** @type {[]} */ (m.referenceUpdates ?? []),
+       repoRoot,
+     );
++    const inboxMod = await import("./migrate-inbox-convention.mjs");
++    inboxMod.applyInboxRenamesFromManifest(renames, repoRoot);
++    inboxMod.writeInboxArtifactIndex(repoRoot, renames);
+     console.log(
+       `[migrate-timestamp-naming] write applied from ${mp} (TESSERACT_MIGRATION_GO=1)`,
+     );
+     return;
+   }
+ 
+-  const manifest = buildDryRunManifest({
++  const manifest = await buildDryRunManifest({
+     repoRoot,
+     strictReferences: args.strictReferences,
+   });
+@@ -939,5 +831,8 @@ function main() {
+ }
+ 
+ if (process.argv[1] === fileURLToPath(import.meta.url)) {
+-  main();
++  main().catch((err) => {
++    console.error(err);
++    process.exitCode = 1;
++  });
+ }
+diff --git a/src/memory/active/current.md b/src/memory/active/current.md
+index 25750a8..ef8438d 100644
+--- a/src/memory/active/current.md
++++ b/src/memory/active/current.md
+@@ -35,14 +35,7 @@ read per `src/memory/handbook/context-economy.md`.
+ 
+ ## Active Feature
+ 
+-- `inbox-directory-hierarchy-migration` — migrate `src/inbox/` naming and layout
+-  to the same day- and time-oriented conventions as `src/work/` (alias:
+-  `inbox-convention-migration` from directive filename). **Gate:** engineering
+-  spec is at `human_approval` after round-1 clarify answers were folded inline
+-  (thread `status: ratified`).
+-- Intake sources: `src/inbox/in/inbox_convention_migration.md`;
+-  canonical spec `src/memory/features/inbox-directory-hierarchy-migration/spec.md`;
+-  round-1 clarify `src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md`.
++- *(none)*. Pick up the next canonical queue item from `src/inbox/in/`.
+ 
+ ## Most recent shipped Features
+ 
+diff --git a/src/memory/features/inbox-convention-migration/index.json b/src/memory/features/inbox-convention-migration/index.json
+new file mode 100644
+index 0000000..0967ef4
+--- /dev/null
++++ b/src/memory/features/inbox-convention-migration/index.json
+@@ -0,0 +1 @@
++{}
+diff --git a/src/memory/features/inbox-convention-migration/spec.md b/src/memory/features/inbox-convention-migration/spec.md
+new file mode 100644
+index 0000000..73e923c
+--- /dev/null
++++ b/src/memory/features/inbox-convention-migration/spec.md
+@@ -0,0 +1,144 @@
++---
++title: Inbox convention migration — Engineering Spec
++feature_id: inbox-convention-migration
++status: implement
++source_inbox_item: src/inbox/in/inbox_convention_migration.md
++references:
++  - kind: lines
++    path: src/inbox/in/inbox_convention_migration.md
++    range: [1, 2]
++    contentHash: 9e48b26756b8b8546e666b7ece34e0a83e681c039da715cfcd06e808cf831c2d
++    note: Operator directive states inbox SHALL mirror work directory conventions.
++  - kind: lines
++    path: docs/PRD.md
++    range: [641, 648]
++    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
++    note: feature-delivery intake outputs canonical spec and uses human_approval gate.
++  - kind: lines
++    path: AGENTS.md
++    range: [107, 110]
++    contentHash: b8b1d4afc3bb6810867b17d4c89681d832616f4f13747433782f9e74c7edf7b8
++    note: Operator sandbox notes/ SHALL stay off-limits to agents during any migration.
++  - kind: lines
++    path: AGENTS.md
++    range: [189, 191]
++    contentHash: b8b1d4afc3bb6810867b17d4c89681d832616f4f13747433782f9e74c7edf7b8
++    note: Workspace map lists canonical inbox subtree roots versus notes/.
++  - kind: lines
++    path: src/memory/handbook/inbox-lifecycle.md
++    range: [67, 75]
++    contentHash: 68ffb4d8c8b8ced312c1340a9fe6e613230bdf4cc2ead48e2fccb186170a31f8
++    note: Canonical inbox locations including archive/in/ and notes/ exclusion rules.
++  - kind: lines
++    path: src/memory/handbook/glossary.md
++    range: [252, 258]
++    contentHash: e5f5ecda71b648e008525e8cae2c0ebb15994d581bc434788d6f77f3b9e996a3
++    note: Glossary defines Inbox layout and Spec Kit alignment for feature folders.
++  - kind: lines
++    path: src/memory/features/timestamp-naming-conventions/spec.md
++    range: [54, 76]
++    contentHash: 94a67b588ec8dbd7a363ccf534f2605f111d61be22d507a030936efbb62d0ccf
++    note: Ratified UTC, FDS, SID, and work day plus task subdirectory naming tokens.
++  - kind: lines
++    path: src/memory/features/timestamp-naming-conventions/spec.md
++    range: [80, 84]
++    contentHash: 94a67b588ec8dbd7a363ccf534f2605f111d61be22d507a030936efbb62d0ccf
++    note: Prior ratified threads layout keeps a per-feature parent; this Feature relocates under day-first directories during migration.
++  - kind: lines
++    path: src/internal/tools/migrate-timestamp-naming.mjs
++    range: [270, 302]
++    contentHash: b2d4c13e60075d84abf509dca3b442241179810a7546bbe2817b2bce984f4075
++    note: Current planner renames inbox basenames inside flat parents; inbox nesting SHALL land in a separate module per operator decision.
++  - kind: lines
++    path: src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml
++    range: [1, 9]
++    contentHash: 5a02d2d3ab70b22dfd3116820600a043f15d8066541725306bdff5117937ca72
++    note: Ratified timestamp selection precedence used by migration planning.
++  - kind: lines
++    path: src/internal/packages/@tesseract/inbox/src/file-inbox.ts
++    range: [44, 49]
++    contentHash: 9338ed58b26303394d1579301f05eb5d7e676ee5ab6bac3b970fd4dee7b9e12b
++    note: Inbox runtime currently rejects nested relative paths; compatibility work SHALL precede nesting enforcement.
++  - kind: lines
++    path: src/memory/handbook/contract-style.md
++    range: [60, 76]
++    contentHash: afdc2a6ae4e9faf7610de385a37c0455434317b85bcc15b1e7748fe3f0fa703c
++    note: Layer 1 requires one RFC 2119 keyword and one EARS form per normative clause.
++---
++
++# Spec
++
++This Feature SHALL apply directory-level organization under `src/inbox/` that matches the day-oriented and HHMM-oriented layout already used under `src/work/`, so operators obtain the same reverse-chronological ordering by path sort. The ratified Feature `timestamp-naming-conventions` already defines UTC time zone, `FDS`, `SID`, collision counters, and work tree shape. This Feature SHALL extend that parity from flat inbox parents to nested day and task directories without reading or writing `src/inbox/notes/`.
++
++When the Feature evaluates nesting scope under `src/inbox/`, the Feature SHALL apply the work-style layout to `src/inbox/in/`, `src/inbox/out/`, `src/inbox/threads/`, and `src/inbox/archive/in/`.
++
++When the Feature derives a timestamp for any inbox artifact migration, the Feature SHALL select the git oldest-add timestamp before `created_at` frontmatter before filesystem `mtime` before an operator override.
++
++When the Feature migrates an artifact under `src/inbox/in/`, the Feature SHALL relocate that artifact to `src/inbox/in/<work-style-day-directory>/<work-style-task-directory>/<original-basename>`.
++
++When the Feature migrates an artifact under `src/inbox/out/`, the Feature SHALL relocate that artifact to `src/inbox/out/<work-style-day-directory>/<work-style-task-directory>/<original-basename>`.
++
++When the Feature migrates an artifact under `src/inbox/archive/in/`, the Feature SHALL relocate that artifact to `src/inbox/archive/in/<work-style-day-directory>/<work-style-task-directory>/<original-basename>`.
++
++When the Feature migrates `src/inbox/threads/`, the Feature SHALL place artifacts beneath `src/inbox/threads/<work-style-day-directory>/`.
++
++When the Feature migrates an artifact under `src/inbox/threads/`, the Feature SHALL relocate that artifact to `src/inbox/threads/<work-style-day-directory>/<work-style-task-directory>/<original-basename>`.
++
++When migration completes for `src/inbox/threads/`, the Feature SHALL NOT use a persistent `src/inbox/threads/<feature-id>/` directory as the primary path locator for those artifacts.
++
++When the Feature names a task subdirectory under `src/inbox/threads/`, the Feature SHALL apply the same seconds-remaining prefix, `HHMM` token, and collision-counter position the `timestamp-naming-conventions` Feature cites for `src/work/` task subdirectories.
++
++When the Feature sets the semantic suffix on that task subdirectory, the Feature SHALL concatenate the feature identifier, one ASCII underscore, and the task stem for that artifact.
++
++When the Feature derives the task stem for a Markdown file in `src/inbox/in/`, the Feature SHALL derive that stem solely from that file's filename stem.
++
++When the Feature derives the task stem for a non-Markdown inbox artifact under any ratified inbox subtree, the Feature SHALL derive that stem solely from that artifact's filename stem.
++
++When the Feature organizes a task directory under any ratified inbox subtree, the Feature MAY place more than one file in that directory.
++
++When the Feature implements inbox nesting, the Feature SHALL ship the planner and writer in a dedicated module that remains separate from `src/internal/tools/migrate-timestamp-naming.mjs`.
++
++When the Feature executes inbox nesting migration, the Feature SHALL generate a deterministic manifest that maps every in-scope legacy inbox path to a target nested inbox path before applying writes.
++
++When the Feature applies a write plan for inbox nesting migration, the Feature SHALL persist the approved manifest so rollback can invert that mapping.
++
++When the Feature updates inbox runtime access for nesting, the Feature SHALL ensure operators can list and read migrated inbox artifacts without requiring flat single-segment inbox names.
++
++When the Feature migrates inbox paths, the Feature SHALL execute every inbox subtree transformation and every remaining flat rename for the prior `timestamp-naming-conventions` inbox scope in one operator-approved pass that preserves idempotency with existing `{SID-prefix}_{HHMM}_` basenames.
++
++## Acceptance criteria
++
++- When the Feature evaluates naming scope, the Feature MUST treat `src/inbox/notes/` as permanently out of scope for every migration, rename, and documentation update.
++- When the Feature evaluates nesting scope under `src/inbox/`, the Feature MUST apply work-style nesting to `src/inbox/in/`, `src/inbox/out/`, `src/inbox/threads/`, and `src/inbox/archive/in/`.
++- When the Feature applies work-style layout to a ratified inbox subtree, the Feature MUST use `UTC` as the only time zone for every derived directory token.
++- When the Feature derives a timestamp for any inbox artifact migration, the Feature MUST select the git oldest-add timestamp before `created_at` frontmatter before filesystem `mtime` before an operator override.
++- When the Feature applies work-style layout, the Feature MUST derive the six-digit days-to-`FDS` prefix and the `MM-DD-YY` day-directory suffix using the same rules as the `timestamp-naming-conventions` Feature cites for `src/work/`.
++- When the Feature applies work-style layout, the Feature MUST derive the seconds-remaining prefix, the `HHMM` token, and the semantic suffix position using the same rules as the `timestamp-naming-conventions` Feature cites for `src/work/` task subdirectories.
++- When the Feature migrates `src/inbox/threads/`, the Feature MUST place artifacts under `src/inbox/threads/<work-style-day-directory>/`.
++- When the Feature migrates `src/inbox/threads/`, the Feature MUST NOT retain `src/inbox/threads/<feature-id>/` as the primary locator after migration completes.
++- When the Feature names a task subdirectory under `src/inbox/threads/`, the Feature MUST set the semantic suffix to the feature identifier, one ASCII underscore, and the task stem for that artifact.
++- When the Feature derives the task stem for a Markdown file in `src/inbox/in/`, the Feature MUST derive that stem solely from that file's filename stem.
++- When the Feature organizes a task directory under a ratified inbox subtree, the Feature MAY place more than one file in that directory.
++- When the Feature migrates an inbox artifact whose path crosses the ratified subtree list, the Feature MUST relocate that artifact beneath the new day directory and task subdirectory pattern instead of leaving only a flat parent rename.
++- When the Feature implements inbox nesting migration, the Feature MUST deliver the planner and writer in a dedicated module separate from `src/internal/tools/migrate-timestamp-naming.mjs`.
++- When the Feature implements inbox nesting migration, the Feature MUST generate a deterministic manifest that maps every in-scope legacy inbox path to a target nested inbox path before applying writes.
++- When the Feature implements inbox nesting migration, the Feature MUST persist the approved manifest so rollback can invert that mapping.
++- When the Feature updates inbox runtime access for nesting, the Feature MUST ensure operators can list and read migrated inbox artifacts without requiring flat single-segment inbox names.
++- When the Feature implements inbox nesting migration, the Feature MUST add or extend repository tests so CI encodes the nested inbox target shapes.
++- When the Feature finishes a path migration, the Feature MUST update every reference artifact and every documentation artifact that names a legacy inbox path, including `src/memory/handbook/inbox-lifecycle.md` when canonical path prose changes.
++- When the Feature plans execution for inbox migration, the Feature MUST combine every inbox subtree transformation and every remaining flat rename for the prior `timestamp-naming-conventions` inbox scope into one operator-approved pass that stays idempotent with existing `{SID-prefix}_{HHMM}_` basename prefixes.
++- When the Feature touches documented operational primitives or operator interfaces under `src/inbox/`, the operator MUST run `tests/compliance/` descriptors against `tests/compliance/schemas/latest.yaml` before merge per repository guidance in `AGENTS.md` section 6.1.
++
++## Out of scope
++
++- This Feature does not relax the agent ban on `src/inbox/notes/` traversal or mutation.
++- This Feature does not redefine `FDS`, `SID`, or post-`FDS` rollover policy; those remain owned by the `timestamp-naming-conventions` Feature and its deferrals.
++- This Feature does not rename `src/work/*/*/run.log.jsonl`.
++- This Feature does not ship git commits, pull requests, or production pushes; the human operator remains in the loop per `LocalUserAuthorizer`.
++- This Feature does not by itself rewrite the ratified prose in `src/memory/features/timestamp-naming-conventions/spec.md`.
++
++## Open questions
++
++- When a thread artifact migrates under day and task directories, what is the canonical operator lookup key for that artifact outside filesystem traversal. **Answer**: An index should be created and maintained at `src/inbox` - any agent which creates, renames, or moves a thread artifact/any artifact that will need to be read by other agents in the future must do this.
++- When a migrated inbox artifact collides on `<work-style-task-directory>` naming, does the migration rely solely on the collision counter token, or does it permit operator overrides in the approved manifest. **Answer**: Collision counter token only.
++- When inbox nesting lands, does the repository permit legacy-path compatibility artifacts (such as symlinks) or does it require pure relocation plus reference rewrites only. **Answer**: Relocation + reference updates only.
+\ No newline at end of file
+diff --git a/src/memory/features/inbox-directory-hierarchy-migration/index.json b/src/memory/features/inbox-directory-hierarchy-migration/index.json
+deleted file mode 100644
+index bd089d1..0000000
+--- a/src/memory/features/inbox-directory-hierarchy-migration/index.json
++++ /dev/null
+@@ -1,25 +0,0 @@
+-{
+-  "feature_id": "inbox-directory-hierarchy-migration",
+-  "status": "human_approval",
+-  "stage": "human_approval",
+-  "owner_persona": "intake-analyst",
+-  "next_owner": "tech-lead",
+-  "next_stage": "plan",
+-  "created_at_utc": "2026-05-09T20:45:00Z",
+-  "source_inbox_item": "src/inbox/in/inbox_convention_migration.md",
+-  "intake_round": 1,
+-  "intake_thread": "src/inbox/threads/inbox-directory-hierarchy-migration/",
+-  "ratification_round_1": "folded",
+-  "ratification_source_inline": "src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md",
+-  "extends_feature": "timestamp-naming-conventions",
+-  "extends_relationship": "extends-deferred-scope",
+-  "artifacts": [
+-    {
+-      "kind": "spec",
+-      "path": "src/memory/features/inbox-directory-hierarchy-migration/spec.md"
+-    }
+-  ],
+-  "open_question_count": 0,
+-  "ratification_required": true,
+-  "librarian_populated": false
+-}
+diff --git a/src/memory/features/inbox-directory-hierarchy-migration/spec.md b/src/memory/features/inbox-directory-hierarchy-migration/spec.md
+deleted file mode 100644
+index 3697972..0000000
+--- a/src/memory/features/inbox-directory-hierarchy-migration/spec.md
++++ /dev/null
+@@ -1,304 +0,0 @@
+----
+-title: Inbox Directory Hierarchy Migration Intake Spec
+-feature_id: inbox-directory-hierarchy-migration
+-status: human_approval
+-next_owner: tech-lead
+-next_stage: plan
+-source_inbox_item: src/inbox/in/inbox_convention_migration.md
+-intake_round: 1
+-intake_thread: src/inbox/threads/inbox-directory-hierarchy-migration/
+-ratification_source: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md
+-ratification_note: Round-1 operator answers are inlined under Questions in the ratification_source thread; no separate human-responses file.
+-extends_feature: timestamp-naming-conventions
+-extends_relationship: extends-deferred-scope
+-references:
+-  - kind: lines
+-    path: src/inbox/in/inbox_convention_migration.md
+-    range: [1, 1]
+-    contentHash: 03e17dc152bb45b74cbdf9b459f7a30cbf251722d8016f050b1c5af84b82a72e
+-    note: "Operator directive defines the migration intent for inbox to mirror work directory conventions."
+-  - kind: lines
+-    path: src/memory/features/timestamp-naming-conventions/spec.md
+-    range: [114, 129]
+-    contentHash: 0c47ddf6df2f9236d65509cdba0d225dfd86a7a3494d6572b23520f504864d17
+-    note: "Prior feature explicitly defers broader content-organization philosophy and post-FDS rollover; this feature picks up the deferred organizational scope for inbox subtrees."
+-  - kind: lines
+-    path: src/memory/adr/0005-timestamp-naming-conventions.md
+-    range: [36, 51]
+-    contentHash: 64d620e338d077214f03804c2b0fe6f9272be895a9d56e551f2d89cfd6915851
+-    note: "Ratified naming policy defines the day-directory and task-directory shape this migration extends to inbox subtrees."
+-  - kind: lines
+-    path: src/memory/handbook/inbox-lifecycle.md
+-    range: [67, 77]
+-    contentHash: 15aa6412f0028b7f96f214977adfe329cc397b95c1c19d47613e474080eaafeb
+-    note: "Canonical inbox locations under in/, out/, threads/, archive/in/, and the operator-only notes/ sandbox."
+-  - kind: lines
+-    path: src/memory/handbook/inbox-lifecycle.md
+-    range: [79, 100]
+-    contentHash: 6f313f6aeb223acb8a8b67563b501b47fa1c43f68de09f083baa401d258914fb
+-    note: "Operator-sandbox immunity rule excludes src/inbox/notes/ from agent traversal and migration scope."
+-  - kind: lines
+-    path: src/memory/handbook/inbox-lifecycle.md
+-    range: [142, 158]
+-    contentHash: 1a108e8636f13b89cc4fa570ee7bf806c6ce2ea20e05f64af438a6fe5fa3f953
+-    note: "Semantic-immutability rule constrains the migration to path moves plus reference updates without rewriting body content."
+-  - kind: lines
+-    path: src/memory/handbook/inbox-lifecycle.md
+-    range: [160, 174]
+-    contentHash: c96a49ed17a85976ed44098a74adbf83a1a73c240d83c4ba9343eed05d469903
+-    note: "Timestamp-prefix actor-ownership rule for non-conforming human-generated inbox artifacts during migration."
+-  - kind: lines
+-    path: AGENTS.md
+-    range: [157, 189]
+-    contentHash: 3ea1eff8e35bff46ce5a413b5fd4c7c5dd0e2f865c80ce1ccb59f01dbd1c8f7e
+-    note: "Workspace map block whose inbox lines require update when the directory hierarchy lands."
+-  - kind: lines
+-    path: src/memory/handbook/glossary.md
+-    range: [231, 234]
+-    contentHash: 32977d62644e45572bce949eac7078f0ce59595e2ec65f2e11613828ad4c31cb
+-    note: "Glossary Inbox entry whose path enumeration requires update when the directory hierarchy lands."
+-  - kind: lines
+-    path: src/memory/adr/0003-inbox-lifecycle-and-archival.md
+-    range: [52, 109]
+-    contentHash: 1b639f3d822eb7a0d50fedfce6b17a8208719058f7646a254cdd9d363d86fb52
+-    note: "Existing inbox lifecycle decision boundary that this Feature extends with a directory-hierarchy clause."
+----
+-
+-# Spec
+-
+-This Feature SHALL migrate the four agent-visible inbox subtrees to a
+-day-bucketed directory hierarchy that mirrors the `src/work/` layout already
+-ratified in
+-`{kind: lines, path: src/memory/adr/0005-timestamp-naming-conventions.md, range: [36, 51], contentHash: 64d620e338d077214f03804c2b0fe6f9272be895a9d56e551f2d89cfd6915851}`,
+-SHALL preserve every basename token defined in
+-`{kind: lines, path: src/memory/features/timestamp-naming-conventions/spec.md, range: [114, 129], contentHash: 0c47ddf6df2f9236d65509cdba0d225dfd86a7a3494d6572b23520f504864d17}`,
+-and SHALL update every reference that names a moved inbox path inside the
+-same delivery slice.
+-
+-This Feature picks up the deferred organizational philosophy that the prior
+-`timestamp-naming-conventions` Feature placed out of scope. Citation:
+-`{kind: lines, path: src/memory/features/timestamp-naming-conventions/spec.md, range: [114, 129], contentHash: 0c47ddf6df2f9236d65509cdba0d225dfd86a7a3494d6572b23520f504864d17}`.
+-
+-## Acceptance criteria
+-
+-### Scope and exclusions
+-
+-- When the Feature evaluates directory-hierarchy scope, the Feature MUST
+-  include `src/inbox/in/`, `src/inbox/out/`, `src/inbox/threads/`, and
+-  `src/inbox/archive/in/`.
+-- When the Feature evaluates directory-hierarchy scope, the Feature MUST
+-  exclude `src/inbox/notes/` because `/src/inbox/notes/` is an operator-only
+-  sandbox per the rule cited at
+-  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [79, 100], contentHash: 6f313f6aeb223acb8a8b67563b501b47fa1c43f68de09f083baa401d258914fb}`.
+-- When the Feature evaluates directory-hierarchy scope, the Feature MUST
+-  exclude every path outside `src/inbox/` because the directive named only the
+-  inbox subtree.
+-
+-### Day-bucket directory shape
+-
+-- When the Feature creates a day directory under any in-scope inbox
+-  subtree, the Feature MUST name the directory
+-  `{days-to-FDS}_{MM-DD-YY}` with a 6-digit zero-padded `days-to-FDS`
+-  prefix.
+-- When the Feature derives `days-to-FDS`, the Feature MUST use the
+-  `FDS = 2500-01-01T00:00:00Z` constant defined at
+-  `{kind: lines, path: src/memory/features/timestamp-naming-conventions/spec.md, range: [50, 70], contentHash: 0c47ddf6df2f9236d65509cdba0d225dfd86a7a3494d6572b23520f504864d17}`.
+-- When the Feature derives the `MM-DD-YY` suffix, the Feature MUST use the
+-  UTC calendar date that the artifact attaches to under the timestamp
+-  precedence ratified by ADR-0005.
+-
+-### Per-artifact basename shape
+-
+-- When the Feature places a single-file artifact inside a day bucket, the
+-  Feature MUST keep the basename shape
+-  `{SID-prefix}_{HHMM}_{semantic-suffix}` defined at
+-  `{kind: lines, path: src/memory/features/timestamp-naming-conventions/spec.md, range: [77, 90], contentHash: 0c47ddf6df2f9236d65509cdba0d225dfd86a7a3494d6572b23520f504864d17}`.
+-- When the Feature encounters a non-conforming human-generated artifact in
+-  `src/inbox/in/` or `src/inbox/threads/`, the agent performing the move MUST
+-  apply the time-prefix actor-ownership rule cited at
+-  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [160, 174], contentHash: c96a49ed17a85976ed44098a74adbf83a1a73c240d83c4ba9343eed05d469903}`
+-  before placing the artifact under its new day bucket.
+-- When the Feature collides on `{SID-prefix}_{HHMM}_{semantic-suffix}` for
+-  two artifacts inside the same day bucket, the Feature MUST insert a
+-  bare integer collision counter between `HHMM` and the semantic suffix
+-  starting at `0` per the rule ratified by the prior feature.
+-
+-### Threads-subtree handling
+-
+-- When the Feature migrates the `src/inbox/threads/` subtree, the Feature MUST
+-  preserve each `<feature-slug>` directory as the per-feature anchor.
+-- When the Feature places day buckets inside the threads subtree, the Feature
+-  MUST nest each feature folder under its day bucket as
+-  `src/inbox/threads/{days-to-FDS}_{MM-DD-YY}/<feature-slug>/<round-file>.md`
+-  per round-1 ratification in
+-  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [42, 48], contentHash: TBD-on-commit}`.
+-
+-### Migration execution
+-
+-- When the Feature migrates an existing artifact, the Feature MUST derive
+-  the day bucket and basename prefixes from the timestamp precedence
+-  ratified at
+-  `{kind: lines, path: src/memory/adr/0005-timestamp-naming-conventions.md, range: [36, 51], contentHash: 64d620e338d077214f03804c2b0fe6f9272be895a9d56e551f2d89cfd6915851}`.
+-- When the Feature migrates an existing artifact, the Feature MUST
+-  preserve the artifact's body content per the semantic-immutability rule
+-  cited at
+-  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [142, 158], contentHash: 1a108e8636f13b89cc4fa570ee7bf806c6ce2ea20e05f64af438a6fe5fa3f953}`.
+-- When the Feature migrates an existing artifact, the Feature MUST update
+-  every reference that names the prior path within the same delivery
+-  slice.
+-- When the Feature emits the migration manifest, the migration tool MUST
+-  enumerate every source path and every destination path so the operator
+-  rollback procedure remains deterministic.
+-- When the Feature executes the hierarchy migration, the Feature MUST
+-  include `src/inbox/in/`, `src/inbox/out/`, `src/inbox/threads/`, and
+-  `src/inbox/archive/in/` in one atomic manifest for the delivery slice per
+-  round-1 ratification in
+-  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [61, 63], contentHash: TBD-on-commit}`.
+-
+-### Tooling
+-
+-- When the Feature ships migration logic, the Feature MUST stage a sibling
+-  script at `src/internal/tools/migrate-inbox-directory-hierarchy.mjs`
+-  adjacent to `src/internal/tools/migrate-timestamp-naming.mjs` rather than
+-  extending the timestamp migration tool, consistent with ADR-0005 tool layout
+-  and
+-  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [49, 53], contentHash: TBD-on-commit}`.
+-- When the Feature ships migration logic, the migration tool MUST
+-  default to `--dry-run` and MUST require an explicit
+-  `TESSERACT_MIGRATION_GO=1` environment guard for write mode, mirroring
+-  the prior tool's idiom.
+-- When the Feature ships migration logic, the tool MUST mark
+-  migration-only affordances with `metadata.tesseract-bootstrap-only:
+-  true` and the persistent policy with
+-  `metadata.tesseract-bootstrap-only: false`.
+-
+-### Compliance and contracts
+-
+-- When the Feature encodes the directory-hierarchy policy, the Feature
+-  MUST land a sibling compliance descriptor at
+-  `tests/compliance/inbox-directory-hierarchy.yaml` rather than extending
+-  `tests/compliance/timestamp-naming-conventions.yaml`, matching the
+-  repository layout at
+-  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [54, 57], contentHash: TBD-on-commit}`,
+-  and that descriptor MUST include `structure-change` and
+-  `operator-on-demand` in `trigger_modes` per
+-  `{kind: lines, path: tests/compliance/schemas/latest.yaml, range: [27, 36], contentHash: TBD-on-commit}`.
+-- When the Feature encodes the policy, the Feature MUST author or extend
+-  Spec Contracts under
+-  `src/memory/features/inbox-directory-hierarchy-migration/contracts/`
+-  covering policy assertion, migration precedence, and reference-update
+-  audit per the contract format cited at
+-  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [67, 77], contentHash: 15aa6412f0028b7f96f214977adfe329cc397b95c1c19d47613e474080eaafeb}`.
+-
+-### Documentation impact
+-
+-- When the Feature lands the new layout, the Feature MUST update the
+-  AGENTS workspace map block at
+-  `{kind: lines, path: AGENTS.md, range: [157, 189], contentHash: 3ea1eff8e35bff46ce5a413b5fd4c7c5dd0e2f865c80ce1ccb59f01dbd1c8f7e}`
+-  to show the day-bucket pattern under the inbox lines.
+-- When the Feature lands the new layout, the Feature MUST update
+-  `src/memory/handbook/inbox-lifecycle.md` Section 1 canonical-locations
+-  enumeration to show the day-bucket pattern.
+-- When the Feature lands the new layout, the Feature MUST update the
+-  glossary Inbox entry at
+-  `{kind: lines, path: src/memory/handbook/glossary.md, range: [231, 234], contentHash: 32977d62644e45572bce949eac7078f0ce59595e2ec65f2e11613828ad4c31cb}`
+-  to reference the hierarchical layout.
+-- When the Feature lands the new layout, the Feature MUST update the
+-  `Out of scope` section of
+-  `src/memory/features/timestamp-naming-conventions/spec.md` with a
+-  cross-link to this Feature so the deferred-scope chain remains
+-  navigable.
+-- When the Feature lands the new layout, the Feature MUST author one new
+-  ADR `src/memory/adr/0006-inbox-directory-hierarchy.md` that extends ADR-0005
+-  by reference per round-1 ratification in
+-  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [58, 60], contentHash: TBD-on-commit}`.
+-
+-### Reverse-chronological ordering proof
+-
+-- When an operator lists any in-scope inbox subtree in lexical order, the
+-  Feature MUST place the most recent day bucket first because the
+-  6-digit `days-to-FDS` prefix decreases monotonically with calendar
+-  time.
+-- When an operator lists any day bucket in lexical order, the Feature
+-  MUST place the most recent artifact first because the SID-prefix
+-  decreases monotonically across the UTC day.
+-
+-## Out of scope
+-
+-- This Feature does not modify, traverse, or migrate any path under
+-  `src/inbox/notes/` because that subtree remains operator-only per the rule
+-  cited at
+-  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [79, 100], contentHash: 6f313f6aeb223acb8a8b67563b501b47fa1c43f68de09f083baa401d258914fb}`.
+-- This Feature does not modify the `src/work/` directory layout or the
+-  basename rules ratified by ADR-0005.
+-- This Feature does not introduce a backward-compatibility shim for
+-  pre-migration paths because the migration commit updates every
+-  reference atomically.
+-- This Feature does not address the post-`2500-01-01T00:00:00Z`
+-  rollover rule that ADR-0005 explicitly defers.
+-- This Feature does not redesign the inbox lifecycle states defined at
+-  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [142, 158], contentHash: 1a108e8636f13b89cc4fa570ee7bf806c6ce2ea20e05f64af438a6fe5fa3f953}`.
+-
+-## Assumptions (round 1, ratified)
+-
+-The operator ratified assumptions A1–A7 inline in
+-`{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [37, 67], contentHash: TBD-on-commit}`.
+-
+-- A1. Single-file artifacts sit directly inside a day bucket with the
+-  basename shape `{SID-prefix}_{HHMM}_{semantic-suffix}.md`. The Feature
+-  does not introduce a per-artifact `HHMM` subdirectory because inbox
+-  items emit one file each, while `src/work/` task directories emit several.
+-- A2. Under `src/inbox/threads/`, day buckets nest above each
+-  `<feature-slug>/` directory so the layout reads
+-  `src/inbox/threads/{days-to-FDS}_{MM-DD-YY}/<feature-slug>/` while the
+-  per-feature folder remains the semantic anchor for thread files.
+-- A3. The Feature ships migration logic as
+-  `src/internal/tools/migrate-inbox-directory-hierarchy.mjs` adjacent to
+-  `src/internal/tools/migrate-timestamp-naming.mjs` rather than extending the
+-  timestamp migration tool so hierarchy precedence stays isolated.
+-- A4. The Feature lands a sibling compliance descriptor at
+-  `tests/compliance/inbox-directory-hierarchy.yaml` rather than amending
+-  `tests/compliance/timestamp-naming-conventions.yaml` so the prior
+-  descriptor's surface remains stable.
+-- A5. The Feature authors one new ADR `0006-inbox-directory-hierarchy.md`
+-  that extends ADR-0005 by reference.
+-- A6. The Feature migrates the four in-scope subtrees in one atomic
+-  delivery slice with one manifest.
+-- A7. The Feature applies the day-bucket hierarchy retroactively to every
+-  artifact already in `src/inbox/archive/in/` because reverse-chronological
+-  ordering benefits operators reading the archive.
+-
+-## Ratified decisions (round 1)
+-
+-The round-1 clarify thread at
+-`src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md`
+-captures operator answers inlined under **Questions** (Q1–Q7). Each decision
+-matches assumptions A1–A7 above: **Q1** → A1 basename `HHMM` token (no per-file
+-folder); **Q2** → option **(b)** day bucket above `<feature-slug>/`; **Q3** →
+-sibling `src/internal/tools/migrate-inbox-directory-hierarchy.mjs`; **Q4** →
+-sibling `tests/compliance/inbox-directory-hierarchy.yaml`; **Q5** → new ADR
+-0006; **Q6** → one atomic manifest across all four subtrees; **Q7** →
+-retroactive archive hierarchy.
+-
+-## Deferrals
+-
+-- The post-`2500-01-01T00:00:00Z` rollover rule remains deferred per
+-  ADR-0005 and SHALL stay outside this delivery slice.
+-- The timestamp-source precedence for inbox artifacts that lack an
+-  authoritative creation timestamp follows the precedence already
+-  ratified by ADR-0005; the planning stage MAY restate the precedence
+-  with inbox-specific examples but SHALL NOT reorder the precedence.
+-
+-## Cross-references
+-
+-- This Feature extends `src/memory/features/timestamp-naming-conventions/`.
+-  The relationship is `extends-deferred-scope`, recorded in
+-  `index.json`.
+-- The directive at
+-  `src/inbox/in/inbox_convention_migration.md` cites
+-  `src/personas/tesseract-engineer.md` for downstream implementation
+-  context; this spec awaits the `human_approval` gate before the
+-  `feature-delivery` pipeline advances to `plan` owned by `tech-lead`.
+-  Spec Contracts under
+-  `src/memory/features/inbox-directory-hierarchy-migration/contracts/`
+-  SHOULD route to `contract-writer` per pipeline contract obligations.
+diff --git a/src/memory/features/timestamp-naming-conventions/spec.md b/src/memory/features/timestamp-naming-conventions/spec.md
+index e2903a0..a382c9a 100644
+--- a/src/memory/features/timestamp-naming-conventions/spec.md
++++ b/src/memory/features/timestamp-naming-conventions/spec.md
+@@ -110,6 +110,11 @@ This Feature SHALL define one UTC-based naming convention for in-scope temporal
+ - When the Feature encodes the actor-ownership rule for non-conforming
+   human-generated inbox artifacts, the Feature MUST update
+   `src/memory/handbook/inbox-lifecycle.md`.
++- When the Feature migrates an artifact under an in-scope inbox subtree, the
++  Feature MUST preserve the existing directory layout.
++- When the Feature migrates an artifact under an in-scope inbox subtree, the
++  Feature MUST NOT create new day directories or new task subdirectories under
++  that inbox subtree.
+ 
+ ## Out of scope
+ 
+@@ -119,6 +124,8 @@ This Feature SHALL define one UTC-based naming convention for in-scope temporal
+ - This Feature does not rename the intake directive or operator response files
+   during intake-stage canonicalization.
+ - This Feature does not rename `src/work/*/*/run.log.jsonl`.
++- This Feature does not apply work-style day-directory or task-subdirectory
++  nesting under `src/inbox/` subtrees.
+ 
+ ## Deferrals
+ 
+diff --git a/src/memory/handbook/context-cost-audit.md b/src/memory/handbook/context-cost-audit.md
+index 63ff4bb..51fb6a2 100644
+--- a/src/memory/handbook/context-cost-audit.md
++++ b/src/memory/handbook/context-cost-audit.md
+@@ -25,11 +25,11 @@ controls used to reduce default load.
+ | Cost sink | Control |
+ |---|---|
+ | Full `docs/PRD.md` and full `docs/BOOTSTRAP.md` loaded for routing questions | Keep full files explicit-read by default; route through `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md`. |
+-| Active and archival execution artifacts under `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, and `src/inbox/threads/**` | Exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
++| Active and archival execution artifacts under `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, and `src/inbox/threads/**` | Track `.cursorindexingignore`; exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
+ | Human-only operator notes | Exclude `src/inbox/notes/**` from Cursor indexing and preserve AGENTS prohibition on agent traversal. |
+ | Cursor subagent projections duplicating canonical persona prose and PRD citations | Keep `.cursor/agents/**` compact and point to `src/personas/<name>.md` as canonical source. |
+ | Expensive fixed models used for every subagent invocation | Add standard/complex Cursor subagent variants; standard uses `model: auto`, complex preserves prior fixed model. |
+-| Parent agents carrying planning, implementation, and review in one long context window | Add compact `handoff.md` cards and pointer-only `src/memory/active/handoffs.md` so execution starts from bounded context. |
++| Parent agents carrying planning, implementation, and review in one long context window | Add compact `handoff.md` cards, generated `next-prompt.md` stage prompts, and pointer-only `src/memory/active/handoffs.md` so execution starts from bounded context. |
+ | Generated machine artifacts | Exclude generated JSON, manifests, dry-run/write outputs, and lockfiles from default semantic indexing. |
+ | Broad handbook/persona sweeps | Treat internal operating content as routeable by handbook index, not default-loaded. |
+ | Broad implementation rule triggers | Keep `coder.mdc` scoped to implementation packages, tests, tools, and explicit touch-set files instead of broad `src/**/*` activation. |
+@@ -49,3 +49,10 @@ controls used to reduce default load.
+ After this pass, operators SHOULD restart or reindex Cursor and run 3-5
+ comparable simple tasks. Compare cache-read totals against the recent post-pass
+ baseline of roughly 770K cache-read tokens.
++
++## Current failure mode
++
++When `.cursorindexingignore` is absent, Cursor can re-index active work, archival
++inbox artifacts, generated machine outputs, and subagent projections despite the
++handbook policy. Operators SHOULD treat a missing root `.cursorindexingignore` as
++a correctness bug, not just an optimization gap.
+diff --git a/src/memory/handbook/context-economy.md b/src/memory/handbook/context-economy.md
+index 22b9b42..32f1568 100644
+--- a/src/memory/handbook/context-economy.md
++++ b/src/memory/handbook/context-economy.md
+@@ -178,17 +178,19 @@ the operator-visible response body.
+ 
+ When a task requires both planning and execution, the planning agent SHALL
+ produce a bounded handoff card before execution starts. The handoff card SHALL
+-live at `src/work/<day>/<task-id>/handoff.md` for active runs, and active memory
+-SHALL store only a pointer in `src/memory/active/handoffs.md`.
++live at `src/work/<day>/<task-id>/handoff.md` for active runs, the generated
++subagent prompt SHALL live at `src/work/<day>/<task-id>/next-prompt.md`, and
++active memory SHALL store only a pointer in `src/memory/active/handoffs.md`.
+ 
+ A handoff card SHOULD include the Feature id, current stage, planner persona,
+ executor persona, upstream artifact paths, in-scope paths, explicit non-goals,
+ validation commands, known pre-existing failures, and unresolved blockers.
+ 
+-When a parent agent invokes an executor, the parent SHOULD pass the handoff card
+-path plus the executor persona name as the initial payload. The parent SHOULD NOT
+-paste full PRD sections, handbook pages, archival artifacts, or planner scratch
+-notes into the executor prompt.
++When a parent agent invokes an executor, the parent SHOULD pass the generated
++`next-prompt.md` path or its contents as the initial payload. The parent SHOULD
++NOT paste full PRD sections, handbook pages, archival artifacts, feature specs,
++prior chat transcripts, broad directory listings, or planner scratch notes into
++the executor prompt unless the generated prompt names the exact file.
+ 
+ When execution finds ambiguity that changes scope, touch-set, acceptance
+ criteria, or validation strategy, the executor SHALL stop and delegate back to
+diff --git a/src/memory/handbook/inbox-lifecycle.md b/src/memory/handbook/inbox-lifecycle.md
+index 1179ea3..fd768c3 100644
+--- a/src/memory/handbook/inbox-lifecycle.md
++++ b/src/memory/handbook/inbox-lifecycle.md
+@@ -68,10 +68,10 @@ completed inbound requests out of the active queue.
+ 
+ Operators SHALL use these canonical paths:
+ 
+-- Active queue: `/src/inbox/in/`
+-- Responses: `/src/inbox/out/`
+-- Threads: `/src/inbox/threads/`
+-- Archive: `/src/inbox/archive/in/`
++- Active queue: `/src/inbox/in/` (artifacts MAY nest under work-style `<day>/<task>/` directories mirroring `src/work/` after inbox convention migration)
++- Responses: `/src/inbox/out/` (same nesting convention as the active queue)
++- Threads: `/src/inbox/threads/` (thread artifacts nest under `<day>/<task>/`; primary discovery SHOULD use `src/inbox/artifact-index.json` when present)
++- Archive: `/src/inbox/archive/in/` (same nesting convention as the active queue)
+ - Operator sandbox: `/src/inbox/notes/` (human-only; see Section 1a)
+ 
+ Operators MUST NOT treat ad hoc directories as inbox sources of truth.
+@@ -121,9 +121,9 @@ completed inbound item:
+ 2. Mark the inbound item complete by recording `responded` status in the
+    operator handoff context (for example the active work note or run log entry
+    that references the response artifact path).
+-3. Move the inbound source file from `/src/inbox/in/` to `/src/inbox/archive/in/`
+-   without changing the file basename.
+-4. Verify the source file no longer exists in `/src/inbox/in/` and exists in
++3. Move the inbound source file from its path under `/src/inbox/in/` to the matching nested path under `/src/inbox/archive/in/`
++   without changing the file basename (preserve the `<day>/<task>/` prefix segments when present).
++4. Verify the source file no longer exists under `/src/inbox/in/` and exists under
+    `/src/inbox/archive/in/`.
+ 
+ Operators SHALL execute archival moves only after the response artifact exists.
+@@ -132,7 +132,7 @@ Operators SHALL execute archival moves only after the response artifact exists.
+ 
+ When an outbox artifact in `/src/inbox/out/` requests operator answers for an
+ active thread, operators SHALL post replies under the referenced thread path in
+-`/src/inbox/threads/<thread-id>/`.
++`/src/inbox/threads/` (nested paths MUST stay under the same `<day>/<task>/` layout as other inbox queues).
+ 
+ Operators MUST NOT move outbox artifacts into `/src/inbox/in/`.
+ 
+diff --git a/src/pipelines/README.md b/src/pipelines/README.md
+index 1a33ea7..1059d8d 100644
+--- a/src/pipelines/README.md
++++ b/src/pipelines/README.md
+@@ -18,7 +18,7 @@ an `id`, an optional `version`, an ordered list of `stages` with optional
+ 
+ ## Bootstrap status
+ 
+-The pipelines are registered through `loadPipelineYaml`. `tess run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, and run log for the first stage. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@tesseract/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, stages are advanced manually by delegating the emitted handoff to the named persona subagents per `AGENTS.md` §4.
++The pipelines are registered through `loadPipelineYaml`. `tess run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, generated `next-prompt.md`, and run log for the first stage. `tess advance <task-id> --artifact <path>` records accepted stage artifacts, mutates `state.json`, appends the run log, and regenerates the next handoff/prompt. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@tesseract/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, operators still invoke the named Cursor persona subagents manually, but they should delegate only the generated `next-prompt.md` rather than broad prior chat context.
+ 
+ ## Authoring rules
+ 
+diff --git a/src/pipelines/feature-delivery.yaml b/src/pipelines/feature-delivery.yaml
+index dcfd896..bdc868f 100644
+--- a/src/pipelines/feature-delivery.yaml
++++ b/src/pipelines/feature-delivery.yaml
+@@ -6,7 +6,9 @@ metadata:
+     PRD §11 MVP pipeline. Walks a semi-formal directive in src/inbox/in/ through
+     canonicalization, planning, implementation, review, delivery report, and
+     ship. Mirrors PRD §3.5 US-1. Each stage is owned by a named persona; the
+-    supervisor enforces gates and dispatches Intervention actions.
++    supervisor enforces gates and dispatches Intervention actions. Runtime
++    invocation and advancement regenerate a bounded next-prompt.md so stage
++    delegation does not rely on prior chat context.
+   references:
+     - kind: lines
+       path: docs/PRD.md
+@@ -30,10 +32,12 @@ stages:
+       - src/work/<day>/<task-id>/adr-draft.md
+       - src/work/<day>/<task-id>/touch-set.json
+       - src/work/<day>/<task-id>/handoff.md
++      - src/work/<day>/<task-id>/next-prompt.md
+   - id: implement
+     persona: coder
+     label: Implement against the declared touch-set from the handoff card
+     inputs:
++      - src/work/<day>/<task-id>/next-prompt.md
+       - src/work/<day>/<task-id>/handoff.md
+       - src/work/<day>/<task-id>/touch-set.json
+   - id: review
+diff --git a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/handoff.md b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/handoff.md
+new file mode 100644
+index 0000000..e0617f3
+--- /dev/null
++++ b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/handoff.md
+@@ -0,0 +1,46 @@
++# Feature delivery handoff — inbox-convention-migration
++
++- Feature id: inbox-convention-migration
++- Task id: 60722_0707_inbox-convention-migration
++- Pipeline: feature-delivery
++- Current stage: intake
++- Planner persona: supervisor
++- Executor persona: intake-analyst
++- Source directive: src/inbox/in/inbox_convention_migration.md
++- State file: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json
++- Run log: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
++
++## In-scope paths
++
++- src/inbox/in/inbox_convention_migration.md
++- src/memory/features/inbox-convention-migration/spec.md
++- src/work/<day>/<task-id>/plan.md
++- src/work/<day>/<task-id>/adr-draft.md
++- src/work/<day>/<task-id>/touch-set.json
++- src/work/<day>/<task-id>/review.md
++- src/memory/features/inbox-convention-migration/delivery-report.md
++- src/inbox/out/<timestamp>-inbox-convention-migration-delivery-report.md
++
++## Explicit non-goals
++
++- Do not read or write src/inbox/notes/.
++- Do not continue past a human gate without explicit ratification.
++- Do not push, open a PR, or commit without the human operator.
++- Do not carry planning context into implementation; pass this handoff path instead.
++
++## Validation commands
++
++- node --test tests/*.test.mjs
++- node src/internal/tools/check-phase-0a-scaffold.mjs
++- node src/internal/tools/context-budget-report.mjs
++- bash -n .cursor/hooks/enforce-policy-compliance.sh
++
++## Re-entry rule
++
++If scope changes, validation repeatedly fails, or the touch-set is incomplete, stop and delegate back to supervisor, tech-lead, or reviewer instead of extending the executor loop.
++
++## Directive excerpt
++
++```markdown
++- Migrate `inbox` to follow the same naming and organizational conventions as `work` (i.e. day-oriented top-level directories, HHMM-oriented subdirectories, ensuring reverse chron order using future anchor prefixes, descriptive suffixes)
++```
+diff --git a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
+new file mode 100644
+index 0000000..b3071f5
+--- /dev/null
++++ b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
+@@ -0,0 +1 @@
++{"ts":"2026-05-11T07:07:57.154Z","trace_id":"d2bae2c405c43b93f1046ff1c580f869","span_id":"6d6c96a245a4280c","name":"tesseract.pipeline.invoke","kind":"event","status":{"code":"OK"},"attributes":{"openinference.span.kind":"CHAIN","gen_ai.operation.name":"pipeline.invoke","gen_ai.provider.name":"local-cli","gen_ai.request.model":"none","tesseract.feature_id":"inbox-convention-migration","tesseract.state_file":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json"},"resource":{"service.name":"tesseract","service.version":"0.0.0"},"tesseract":{"task_id":"60722_0707_inbox-convention-migration","pipeline":"feature-delivery","stage_id":"invoke","outcome":"success","checkpoint_seq":0,"token_usage_unavailable":true}}
+diff --git a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json
+new file mode 100644
+index 0000000..b877bec
+--- /dev/null
++++ b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json
+@@ -0,0 +1,150 @@
++{
++  "schemaVersion": "1",
++  "pipelineId": "feature-delivery",
++  "taskId": "60722_0707_inbox-convention-migration",
++  "featureId": "inbox-convention-migration",
++  "status": "ready_for_intake_delegation",
++  "currentStage": "intake",
++  "createdAtIso": "2026-05-11T07:07:57.154Z",
++  "source": {
++    "inboxEntry": "inbox_convention_migration.md",
++    "inboxPath": "src/inbox/in/inbox_convention_migration.md"
++  },
++  "artifacts": {
++    "runDir": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration",
++    "stateFile": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json",
++    "handoffFile": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/handoff.md",
++    "runLogFile": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl"
++  },
++  "stages": [
++    {
++      "id": "intake",
++      "persona": "intake-analyst",
++      "label": "Canonicalize the human directive",
++      "status": "ready",
++      "humanGate": "human_approval",
++      "humanAttention": "Answer intake clarifying questions and ratify the canonical spec before planning."
++    },
++    {
++      "id": "plan",
++      "persona": "tech-lead",
++      "label": "Draft plan, ADR, touch-set, and handoff card",
++      "status": "pending",
++      "humanGate": "human_approval",
++      "humanAttention": "Ratify the plan, ADR draft, touch-set, and handoff before execution."
++    },
++    {
++      "id": "implement",
++      "persona": "coder",
++      "label": "Implement against the declared touch-set from the handoff card",
++      "status": "pending",
++      "humanGate": "operator_intervention_available",
++      "humanAttention": "Use tess pause/resume/abort if implementation drifts, loops, or exceeds scope."
++    },
++    {
++      "id": "review",
++      "persona": "reviewer",
++      "label": "Run modern-code-review and contracts pass with compact must-fix output",
++      "status": "pending",
++      "humanGate": "review_passes_or_reenter_implement",
++      "humanAttention": "Inspect high findings; approve only clean review output or send the run back to implement."
++    },
++    {
++      "id": "report",
++      "persona": "tech-writer",
++      "label": "Author the delivery report",
++      "status": "pending"
++    },
++    {
++      "id": "ship",
++      "persona": "supervisor",
++      "label": "Stage the PR (no auto-push, Q3)",
++      "status": "pending",
++      "humanGate": "local_stage_only",
++      "humanAttention": "Review the local diff and delivery report; no agent may push or open the PR unaudited."
++    },
++    {
++      "id": "index",
++      "persona": "librarian",
++      "label": "Index emitted artifacts and refresh the feature index",
++      "status": "pending",
++      "humanGate": "archive_and_index_audit",
++      "humanAttention": "Confirm feature index and archival moves after the run exits."
++    }
++  ],
++  "transitions": [
++    {
++      "from": "created",
++      "on": "invoke",
++      "to": "intake",
++      "humanAttention": "Operator delegates the handoff card to intake-analyst."
++    },
++    {
++      "from": "intake",
++      "on": "human_approval",
++      "to": "plan",
++      "humanAttention": "Canonical spec is ratified or clarified before plan starts."
++    },
++    {
++      "from": "plan",
++      "on": "human_approval",
++      "to": "implement",
++      "humanAttention": "Plan and touch-set are ratified before coder starts."
++    },
++    {
++      "from": "implement",
++      "on": "pause",
++      "to": "paused",
++      "humanAttention": "Use tess pause <task-id> to stop at the next safe boundary."
++    },
++    {
++      "from": "paused",
++      "on": "resume",
++      "to": "implement",
++      "humanAttention": "Use tess resume <task-id> after resolving the blocker."
++    },
++    {
++      "from": "implement",
++      "on": "abort",
++      "to": "aborted",
++      "humanAttention": "Use tess abort <task-id> --reason <text> for failed or superseded runs."
++    },
++    {
++      "from": "implement",
++      "on": "implementation_complete",
++      "to": "review",
++      "humanAttention": "Reviewer receives only the handoff, touch-set, diff, and validation output."
++    },
++    {
++      "from": "review",
++      "on": "must_fix",
++      "to": "implement",
++      "humanAttention": "Bounded re-entry; high findings block shipping."
++    },
++    {
++      "from": "review",
++      "on": "review_passes",
++      "to": "report",
++      "humanAttention": "Human should still inspect review output before report/ship."
++    },
++    {
++      "from": "report",
++      "on": "report_ready",
++      "to": "ship",
++      "humanAttention": "Delivery report must be useful to the operator, not just a changelog."
++    },
++    {
++      "from": "ship",
++      "on": "human_ratifies_local_diff",
++      "to": "index",
++      "humanAttention": "No push occurs before human review."
++    },
++    {
++      "from": "index",
++      "on": "artifacts_indexed",
++      "to": "complete",
++      "humanAttention": "Confirm archive/index state and outbox report."
++    }
++  ],
++  "nextHumanAction": "Delegate the intake stage to intake-analyst with the handoff card; answer clarifying questions or ratify the emitted spec before plan starts."
++}
+diff --git a/tests/compliance/timestamp-naming-conventions.yaml b/tests/compliance/timestamp-naming-conventions.yaml
+index d461f4e..5e428f7 100644
+--- a/tests/compliance/timestamp-naming-conventions.yaml
++++ b/tests/compliance/timestamp-naming-conventions.yaml
+@@ -12,6 +12,7 @@ scope:
+     - "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml"
+     - "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml"
+     - "src/internal/tools/migrate-timestamp-naming.mjs"
++    - "src/internal/tools/migrate-inbox-convention.mjs"
+ assertion:
+   statement: "When an agent introduces or edits in-scope temporal artifacts under src/work/ or src/inbox/, the agent SHALL conform to the UTC timestamp naming policy encoded by this descriptor and the three Spec Contracts."
+   pass_criteria: "Compliance harness and Spec Contract runners record zero block failures for the policy descriptor, migration precedence, and reference-update audit clauses after a structure-change or operator-on-demand run."
+diff --git a/tests/migrate-inbox-convention.test.mjs b/tests/migrate-inbox-convention.test.mjs
+new file mode 100644
+index 0000000..7fa7560
+--- /dev/null
++++ b/tests/migrate-inbox-convention.test.mjs
+@@ -0,0 +1,112 @@
++import assert from "node:assert/strict";
++import fs from "node:fs";
++import os from "node:os";
++import path from "node:path";
++import { test } from "node:test";
++import { fileURLToPath } from "node:url";
++
++import {
++  stemHasTimestampPrefix,
++  parseFrontmatterFeatureId,
++  slugFeatureId,
++  listLegacyInboxArtifactRows,
++  planInboxConventionMigration,
++} from "../src/internal/tools/migrate-inbox-convention.mjs";
++
++test("stemHasTimestampPrefix: detects SID_HHMM_ prefix", () => {
++  assert.equal(stemHasTimestampPrefix("81300_0125_foo"), true);
++  assert.equal(stemHasTimestampPrefix("foo_bar"), false);
++});
++
++test("parseFrontmatterFeatureId: reads feature_id", () => {
++  const t = "---\nfeature_id: my-feature\n---\nbody";
++  assert.equal(parseFrontmatterFeatureId(t), "my-feature");
++});
++
++test("slugFeatureId: normalizes slug", () => {
++  assert.equal(slugFeatureId("My Feature!"), "my-feature");
++});
++
++test("planInboxConventionMigration: nested target shape for flat inbox/in file", () => {
++  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-"));
++  try {
++    const inboxIn = path.join(tmp, "src", "inbox", "in");
++    fs.mkdirSync(inboxIn, { recursive: true });
++    fs.writeFileSync(
++      path.join(inboxIn, "demo.md"),
++      "---\nfeature_id: demo-feature\ncreated_at: 2024-06-15T14:30:00.000Z\n---\n",
++      "utf8",
++    );
++    const plan = planInboxConventionMigration(tmp, {
++      operatorIsoByRel: { "src/inbox/in/demo.md": "2024-06-15T14:30:00.000Z" },
++    });
++    const fileStep = plan.renames.find(
++      (r) => r.kind === "inbox-nested-file" && r.sourceRel.endsWith("demo.md"),
++    );
++    assert.ok(fileStep);
++    assert.match(
++      fileStep.targetRel,
++      /^src\/inbox\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_1430_demo-feature_demo\/\d+_1430_demo\.md$/,
++    );
++  } finally {
++    fs.rmSync(tmp, { recursive: true, force: true });
++  }
++});
++
++test("planInboxConventionMigration: thread file loses feature-dir primary locator", () => {
++  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-t-"));
++  try {
++    const tdir = path.join(tmp, "src", "inbox", "threads", "my-feat");
++    fs.mkdirSync(tdir, { recursive: true });
++    fs.writeFileSync(path.join(tdir, "round.md"), "body", "utf8");
++    const plan = planInboxConventionMigration(tmp, {
++      operatorIsoByRel: { "src/inbox/threads/my-feat/round.md": "2024-07-01T08:05:00.000Z" },
++    });
++    const step = plan.renames.find(
++      (r) => r.kind === "inbox-nested-file" && r.sourceRel.includes("round.md"),
++    );
++    assert.ok(step);
++    assert.equal(step.targetRel.includes("/threads/my-feat/"), false);
++    assert.match(step.targetRel, /^src\/inbox\/threads\/\d{6}_\d{2}-\d{2}-\d{2}\//);
++    assert.ok(plan.renames.some((r) => r.kind === "inbox-remove-empty-dir"));
++  } finally {
++    fs.rmSync(tmp, { recursive: true, force: true });
++  }
++});
++
++test("planInboxConventionMigration: idempotent basename keeps SID_HHMM_ leaf", () => {
++  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-idem-"));
++  try {
++    const inboxIn = path.join(tmp, "src", "inbox", "in");
++    fs.mkdirSync(inboxIn, { recursive: true });
++    fs.writeFileSync(
++      path.join(inboxIn, "86400_1200_already.md"),
++      "x",
++      "utf8",
++    );
++    const plan = planInboxConventionMigration(tmp, {
++      operatorIsoByRel: {
++        "src/inbox/in/86400_1200_already.md": "2024-06-15T12:00:30.000Z",
++      },
++    });
++    const step = plan.renames.find(
++      (r) => r.kind === "inbox-nested-file" && r.sourceRel.endsWith("86400_1200_already.md"),
++    );
++    assert.ok(step);
++    assert.ok(step.targetRel.endsWith("/86400_1200_already.md"));
++  } finally {
++    fs.rmSync(tmp, { recursive: true, force: true });
++  }
++});
++
++const __dirname = path.dirname(fileURLToPath(import.meta.url));
++
++test("listLegacyInboxArtifactRows: real repo returns sorted rows", () => {
++  const repoRoot = path.resolve(__dirname, "..");
++  const rows = listLegacyInboxArtifactRows(repoRoot);
++  assert.ok(Array.isArray(rows));
++  for (const r of rows) {
++    assert.ok(r.rel.startsWith("src/inbox/"));
++    assert.ok(!r.rel.includes("/notes/"));
++  }
++});

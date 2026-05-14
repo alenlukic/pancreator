@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -166,6 +167,188 @@ describe("parseAndRun", () => {
     };
     expect(state.currentStage).toBe("review");
     expect(state.advanceHistory.at(-1)?.kind).toBe("repair");
+  });
+
+
+  it("delegates final artifact closure to librarian for complete feature-delivery runs", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-complete-prompt-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; nextPromptFile: string };
+    const runDir = path.join(root, "src", "work", "172996_05-10-26", start.taskId);
+
+    const spec = path.join(root, "src", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Spec", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/spec.md"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    await writeFile(path.join(runDir, "plan.md"), "# Plan", "utf8");
+    await writeFile(path.join(runDir, "touch-set.json"), "{}\n", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `src/work/172996_05-10-26/${start.taskId}/touch-set.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    await writeFile(path.join(runDir, "implementation-report.md"), "# Impl", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `src/work/172996_05-10-26/${start.taskId}/implementation-report.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `src/work/172996_05-10-26/${start.taskId}/review.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    const report = path.join(root, "src", "memory", "features", "demo-feature", "delivery-report.md");
+    await writeFile(report, "# Delivery", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/delivery-report.md"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    await writeFile(path.join(runDir, "policy-compliance.json"), "{}\n", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `src/work/172996_05-10-26/${start.taskId}/policy-compliance.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    const index = path.join(root, "src", "memory", "features", "demo-feature", "index.json");
+    await writeFile(index, "{}\n", "utf8");
+    const completeOut: string[] = [];
+    await parseAndRun(["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/index.json"], {
+      repoRoot: root,
+      writeOut: (c) => completeOut.push(c),
+    });
+    const complete = JSON.parse(completeOut.join("")) as { currentStage: string; nextPersona: string; nextPromptFile: string };
+    expect(complete.currentStage).toBe("complete");
+    expect(complete.nextPersona).toBe("librarian");
+
+    const prompt = await readFile(path.join(root, complete.nextPromptFile), "utf8");
+    expect(prompt).toContain("Use subagent/persona: librarian");
+    expect(prompt).toContain("Final artifact closure is delegated to librarian");
+    expect(prompt).toContain(`pnpm -w exec tess close-artifacts ${start.taskId}`);
+    expect(prompt).not.toContain("Human operator action: archive active surfaces");
+  });
+
+  it("closes completed feature-delivery artifacts by archiving work and source inbox paths", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-close-artifacts-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    const activeRunDirRel = `src/work/172996_05-10-26/${start.taskId}`;
+    const activeRunDir = path.join(root, activeRunDirRel);
+
+    const spec = path.join(root, "src", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Spec", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/spec.md"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(activeRunDir, "plan.md"), "# Plan", "utf8");
+    await writeFile(path.join(activeRunDir, "touch-set.json"), "{}\n", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(activeRunDir, "implementation-report.md"), "# Impl", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/implementation-report.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(activeRunDir, "review.md"), "review_passes: true", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/review.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    const report = path.join(root, "src", "memory", "features", "demo-feature", "delivery-report.md");
+    await writeFile(report, "# Delivery", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/delivery-report.md"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(activeRunDir, "policy-compliance.json"), "{}\n", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/policy-compliance.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    const index = path.join(root, "src", "memory", "features", "demo-feature", "index.json");
+    await writeFile(index, "{}\n", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/index.json"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    const closeOut: string[] = [];
+    const code = await parseAndRun(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => closeOut.push(c),
+      clock: () => new Date("2026-05-10T14:00:00.000Z"),
+    });
+    expect(code).toBe(0);
+    const closed = JSON.parse(closeOut.join("")) as {
+      pipelineStatus: string;
+      archivedRunDir: string;
+      archivedInboxPath: string;
+      stateFile: string;
+    };
+    expect(closed.pipelineStatus).toBe("closed");
+    expect(closed.archivedRunDir).toBe(`src/internal/work_archive/172996_05-10-26/${start.taskId}`);
+    expect(closed.archivedInboxPath).toBe(`src/inbox/archive/in/172996_05-10-26/${start.taskId}/demo-feature.md`);
+
+    expect(existsSync(path.join(root, "src", "inbox", "in", "demo-feature.md"))).toBe(false);
+    expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
+    expect(existsSync(path.join(root, closed.archivedInboxPath))).toBe(true);
+    expect(existsSync(path.join(root, closed.stateFile))).toBe(true);
+
+    const statusOut: string[] = [];
+    await parseAndRun(["status", start.taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
+    const status = JSON.parse(statusOut.join("")) as { pipelineStatus: string; runDir: string };
+    expect(status.pipelineStatus).toBe("closed");
+    expect(status.runDir).toBe(closed.archivedRunDir);
+  });
+
+  it("refreshes prompt files for an existing feature-delivery ledger", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-prompt-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; nextPromptFile: string };
+    const nextPromptAbs = path.join(root, start.nextPromptFile);
+    await writeFile(nextPromptAbs, "stale prompt", "utf8");
+
+    const refreshOut: string[] = [];
+    const code = await parseAndRun(["refresh-prompt", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => refreshOut.push(c),
+    });
+    expect(code).toBe(0);
+    const refreshed = JSON.parse(refreshOut.join("")) as { command: string; currentStage: string };
+    expect(refreshed.command).toBe("refresh-prompt");
+    expect(refreshed.currentStage).toBe("intake");
+    expect(await readFile(nextPromptAbs, "utf8")).toContain("Use subagent/persona: intake-analyst");
   });
 
   it("exposes intervention state through status", async () => {

@@ -222,7 +222,12 @@ feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine,
 handoff card, bounded next-prompt, and run log. Operators still invoke Cursor
 personas manually, then use `tess advance` with the accepted stage artifact;
 `repair-state` is reserved for explicit ledger recovery after out-of-band work.
-It does not yet automate Cursor/model transport or LangGraph execution.
+When a run reaches `complete`, `next-prompt.md` is a bounded librarian handoff
+for agent-executed artifact closure. The librarian runs `tess close-artifacts
+<task-id>` to archive the active work directory and source inbox item after
+human validation/indexing are complete. `tess refresh-prompt <task-id>`
+regenerates prompt files from the current ledger without changing state. It
+does not yet automate Cursor/model transport or LangGraph execution.
 
 ## 9 — Stability
 

@@ -19,6 +19,9 @@ the current workflow.
   under `src/work/<day>/<task-id>/`. It does **not** call Cursor, a model, or
   LangGraph automatically. Operators still invoke the named personas/subagents
   at each stage boundary, then run `tess advance` with the accepted stage artifact.
+  When the run reaches `complete`, the generated `next-prompt.md` becomes a
+  bounded librarian handoff for agent-executed artifact closure via
+  `tess close-artifacts <task-id>` after final human validation.
 
 ## 2) System overview
 
@@ -83,10 +86,12 @@ The root directory is the operator entry point. The `docs/` directory contains h
      --reason "manual Cursor run already reached review before state advancement existed"
    ```
 
-7. Inspect state at any point:
+7. Inspect state at any point, or regenerate prompt files from the current ledger
+   without changing state:
 
    ```bash
    pnpm -w exec tess status <task-id>
+   pnpm -w exec tess refresh-prompt <task-id>
    pnpm -w exec tess pause <task-id>
    pnpm -w exec tess resume <task-id>
    pnpm -w exec tess abort <task-id> --reason "superseded or unsafe"
@@ -106,8 +111,8 @@ Invocation creates `src/work/<day>/<task-id>/state.json`, `handoff.md`,
 | `review` | `reviewer` | High findings block shipping; approve clean review output or re-enter `implement`. |
 | `report` | `tech-writer` | Ensure the delivery report explains architecture, interfaces, tradeoffs, and usage, not just a changelog. |
 | `ship` | `supervisor` | Review the local diff. Agents stage locally only; no push or PR without human review. |
-| `index` | `librarian` | Confirm feature index updates, outbox report, and archival moves. |
-| `complete` | human + librarian | Confirm the run is indexed, archived, and externally traceable. |
+| `index` | `librarian` | Confirm feature index updates and accept the index artifact. |
+| `complete` | librarian | Use the generated `next-prompt.md` to run `tess close-artifacts <task-id>`, archiving `src/work/<day>/<task-id>/` and the source `src/inbox/in/` item after human validation/indexing. |
 | `paused` / `aborted` | human + supervisor | Resolve the blocker before resume, or leave a reasoned abort journal. |
 
 Main transitions: `invoke → intake`; `human_approval → plan`; `human_approval → implement`;
