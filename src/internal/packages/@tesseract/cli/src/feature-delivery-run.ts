@@ -9,7 +9,7 @@ import {
   type RunLogRecord,
 } from "@tesseract/run-logger";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rmdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
@@ -506,6 +506,8 @@ export async function closeFeatureDeliveryArtifacts(
 
   await rename(inboxSourceAbs, inboxArchiveAbs);
   await rename(activeRunDirAbs, archiveRunDirAbs);
+  await assertExistingDirectory(archiveRunDirAbs, closure.workArchiveRel);
+  await removeEmptyDirectoryIfPresent(path.dirname(activeRunDirAbs), path.posix.dirname(closure.runDirRel));
 
   const previousRunDir = state.artifacts.runDir;
   state.artifacts = {
@@ -1343,6 +1345,21 @@ async function assertRepoRelativeExistingFile(
     throw new Error(`${label} MUST point to a file: ${rel}.`);
   }
   return { abs, rel };
+}
+
+async function removeEmptyDirectoryIfPresent(abs: string, rel: string): Promise<void> {
+  try {
+    await rmdir(abs);
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === "ENOENT" || err.code === "ENOTEMPTY" || err.code === "EEXIST") {
+      return;
+    }
+    if (err.code === "ENOTDIR") {
+      throw new Error(`Expected directory while cleaning closure residue: ${rel}.`);
+    }
+    throw error;
+  }
 }
 
 async function assertExistingFile(abs: string, rel: string): Promise<void> {

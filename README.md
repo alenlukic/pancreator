@@ -112,7 +112,7 @@ Invocation creates `src/work/<day>/<task-id>/state.json`, `handoff.md`,
 | `report` | `tech-writer` | Ensure the delivery report explains architecture, interfaces, tradeoffs, and usage, not just a changelog. |
 | `ship` | `supervisor` | Review the local diff. Agents stage locally only; no push or PR without human review. |
 | `index` | `librarian` | Confirm feature index updates and accept the index artifact. |
-| `complete` | librarian | Use the generated `next-prompt.md` to run `tess close-artifacts <task-id>`, archiving `src/work/<day>/<task-id>/` and the source `src/inbox/in/` item after human validation/indexing. |
+| `complete` | librarian | Use the generated `next-prompt.md` to run `tess close-artifacts <task-id>`, archiving `src/work/<day>/<task-id>/`, removing the empty active day directory, and archiving the source `src/inbox/in/` item after human validation/indexing. |
 | `paused` / `aborted` | human + supervisor | Resolve the blocker before resume, or leave a reasoned abort journal. |
 
 Main transitions: `invoke → intake`; `human_approval → plan`; `human_approval → implement`;

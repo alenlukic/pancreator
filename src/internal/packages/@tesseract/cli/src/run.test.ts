@@ -315,6 +315,7 @@ describe("parseAndRun", () => {
 
     expect(existsSync(path.join(root, "src", "inbox", "in", "demo-feature.md"))).toBe(false);
     expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
+    expect(existsSync(path.join(root, "src", "work", "172996_05-10-26"))).toBe(false);
     expect(existsSync(path.join(root, closed.archivedInboxPath))).toBe(true);
     expect(existsSync(path.join(root, closed.stateFile))).toBe(true);
 
