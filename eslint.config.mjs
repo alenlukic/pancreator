@@ -22,6 +22,17 @@ export default tseslint.config(
     },
   },
   {
+    files: ["src/internal/packages/@tesseract/**/bin/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
+  {
     files: [
       "src/internal/packages/tesseract/src/**/*.ts",
       "src/internal/packages/@tesseract/**/*.ts",
