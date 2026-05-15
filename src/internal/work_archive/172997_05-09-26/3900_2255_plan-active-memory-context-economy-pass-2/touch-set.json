@@ -4,7 +4,12 @@
   "paths": [
     {
       "path": ".",
-      "plannedFiles": ["AGENTS.md", "README.md", ".cursorindexingignore", "package.json"],
+      "plannedFiles": [
+        "AGENTS.md",
+        "README.md",
+        ".cursorindexingignore",
+        "package.json"
+      ],
       "operation": "mutate",
       "risk_tier": "high",
       "rationale": "Always-loaded guidance, operator entry points, Cursor indexing policy, and script wiring affect routine agent behavior."
@@ -49,28 +54,37 @@
     },
     {
       "path": "src/memory/adr",
-      "plannedFiles": ["src/memory/adr/0006-active-vs-archival-memory.md"],
+      "plannedFiles": [
+        "src/memory/adr/0006-active-vs-archival-memory.md"
+      ],
       "operation": "add",
       "risk_tier": "medium",
       "rationale": "The new ADR records the active-versus-archival memory decision."
     },
     {
       "path": "tools",
-      "plannedFiles": ["src/internal/tools/context-budget-report.mjs", "src/internal/tools/context-budget-report.test.mjs"],
+      "plannedFiles": [
+        "src/internal/tools/context-budget-report.mjs",
+        "src/internal/tools/context-budget-report.test.mjs"
+      ],
       "operation": "mutate",
       "risk_tier": "medium",
       "rationale": "The context-budget report and test must cover the seven tier groups."
     },
     {
       "path": "src/memory/backlog",
-      "plannedFiles": ["src/memory/backlog/index.yaml"],
+      "plannedFiles": [
+        "src/memory/backlog/index.yaml"
+      ],
       "operation": "mutate",
       "risk_tier": "medium",
       "rationale": "Kept deferrals require backlog linkage."
     },
     {
       "path": "src/memory/features/active-memory-context-economy-pass-2",
-      "plannedFiles": ["src/memory/features/active-memory-context-economy-pass-2/index.json"],
+      "plannedFiles": [
+        "src/memory/features/active-memory-context-economy-pass-2/index.json"
+      ],
       "operation": "mutate",
       "risk_tier": "low",
       "rationale": "The feature index records plan-stage routing fields."
@@ -88,51 +102,220 @@
     }
   ],
   "file_plan": [
-    { "path": "AGENTS.md", "operation": "mutate", "risk_tier": "high" },
-    { "path": "README.md", "operation": "mutate", "risk_tier": "medium" },
-    { "path": ".cursorindexingignore", "operation": "mutate", "risk_tier": "medium" },
-    { "path": "package.json", "operation": "mutate", "risk_tier": "low" },
-    { "path": ".cursor/rules/00-agents-md.mdc", "operation": "mutate", "risk_tier": "high" },
-    { "path": ".cursor/rules/tesseract-engineer.mdc", "operation": "mutate", "risk_tier": "high" },
-    { "path": ".cursor/rules/persona-designer.mdc", "operation": "mutate-or-defer", "risk_tier": "high" },
-    { "path": ".cursor/rules/intake-analyst.mdc", "operation": "mutate-or-record-no-change", "risk_tier": "medium" },
-    { "path": ".cursor/rules/supervisor.mdc", "operation": "mutate-or-record-no-change", "risk_tier": "medium" },
-    { "path": ".cursor/rules/tech-lead.mdc", "operation": "mutate-or-record-no-change", "risk_tier": "medium" },
-    { "path": ".cursor/rules/tech-writer.mdc", "operation": "mutate-or-record-no-change", "risk_tier": "medium" },
-    { "path": "src/memory/handbook/context-economy.md", "operation": "mutate", "risk_tier": "high" },
-    { "path": "src/memory/handbook/index.md", "operation": "mutate", "risk_tier": "medium" },
-    { "path": "src/memory/handbook/glossary.md", "operation": "mutate", "risk_tier": "high" },
-    { "path": "src/memory/handbook/memory-tiers.md", "operation": "add", "risk_tier": "high" },
-    { "path": "src/memory/active/README.md", "operation": "add", "risk_tier": "medium" },
-    { "path": "src/memory/active/current.md", "operation": "add", "risk_tier": "medium" },
-    { "path": "src/memory/active/runs.md", "operation": "add", "risk_tier": "medium" },
-    { "path": "src/memory/adr/0006-active-vs-archival-memory.md", "operation": "add", "risk_tier": "medium" },
-    { "path": "src/internal/tools/context-budget-report.mjs", "operation": "mutate", "risk_tier": "medium" },
-    { "path": "src/internal/tools/context-budget-report.test.mjs", "operation": "mutate", "risk_tier": "medium" },
-    { "path": "src/memory/backlog/index.yaml", "operation": "mutate", "risk_tier": "medium" },
-    { "path": "src/memory/features/active-memory-context-economy-pass-2/index.json", "operation": "mutate", "risk_tier": "low" },
-    { "path": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md", "operation": "add", "risk_tier": "low" },
-    { "path": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json", "operation": "add", "risk_tier": "low" },
-    { "path": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json", "operation": "add", "risk_tier": "low" }
+    {
+      "path": "AGENTS.md",
+      "operation": "mutate",
+      "risk_tier": "high"
+    },
+    {
+      "path": "README.md",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    },
+    {
+      "path": ".cursorindexingignore",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "package.json",
+      "operation": "mutate",
+      "risk_tier": "low"
+    },
+    {
+      "path": ".cursor/rules/00-agents-md.mdc",
+      "operation": "mutate",
+      "risk_tier": "high"
+    },
+    {
+      "path": ".cursor/rules/tesseract-engineer.mdc",
+      "operation": "mutate",
+      "risk_tier": "high"
+    },
+    {
+      "path": ".cursor/rules/persona-designer.mdc",
+      "operation": "mutate-or-defer",
+      "risk_tier": "high"
+    },
+    {
+      "path": ".cursor/rules/intake-analyst.mdc",
+      "operation": "mutate-or-record-no-change",
+      "risk_tier": "medium"
+    },
+    {
+      "path": ".cursor/rules/supervisor.mdc",
+      "operation": "mutate-or-record-no-change",
+      "risk_tier": "medium"
+    },
+    {
+      "path": ".cursor/rules/tech-lead.mdc",
+      "operation": "mutate-or-record-no-change",
+      "risk_tier": "medium"
+    },
+    {
+      "path": ".cursor/rules/tech-writer.mdc",
+      "operation": "mutate-or-record-no-change",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/memory/handbook/context-economy.md",
+      "operation": "mutate",
+      "risk_tier": "high"
+    },
+    {
+      "path": "src/memory/handbook/index.md",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/memory/handbook/glossary.md",
+      "operation": "mutate",
+      "risk_tier": "high"
+    },
+    {
+      "path": "src/memory/handbook/memory-tiers.md",
+      "operation": "add",
+      "risk_tier": "high"
+    },
+    {
+      "path": "src/memory/active/README.md",
+      "operation": "add",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/memory/active/current.md",
+      "operation": "add",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/memory/active/runs.md",
+      "operation": "add",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/memory/adr/0006-active-vs-archival-memory.md",
+      "operation": "add",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/internal/tools/context-budget-report.test.mjs",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/memory/backlog/index.yaml",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/memory/features/active-memory-context-economy-pass-2/index.json",
+      "operation": "mutate",
+      "risk_tier": "low"
+    },
+    {
+      "path": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
+      "operation": "add",
+      "risk_tier": "low"
+    },
+    {
+      "path": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+      "operation": "add",
+      "risk_tier": "low"
+    },
+    {
+      "path": "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+      "operation": "add",
+      "risk_tier": "low"
+    }
   ],
   "symbols": [
-    { "path": "src/internal/tools/context-budget-report.mjs", "symbol": "exists", "operation": "mutate", "risk_tier": "low" },
-    { "path": "src/internal/tools/context-budget-report.mjs", "symbol": "walkFiles", "operation": "mutate", "risk_tier": "medium" },
-    { "path": "src/internal/tools/context-budget-report.mjs", "symbol": "countMatchingChars", "operation": "mutate", "risk_tier": "medium" },
-    { "path": "src/internal/tools/context-budget-report.mjs", "symbol": "underPrefix", "operation": "mutate", "risk_tier": "low" },
-    { "path": "src/internal/tools/context-budget-report.mjs", "symbol": "main", "operation": "mutate", "risk_tier": "medium" }
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "symbol": "exists",
+      "operation": "mutate",
+      "risk_tier": "low"
+    },
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "symbol": "walkFiles",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "symbol": "countMatchingChars",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    },
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "symbol": "underPrefix",
+      "operation": "mutate",
+      "risk_tier": "low"
+    },
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "symbol": "main",
+      "operation": "mutate",
+      "risk_tier": "medium"
+    }
   ],
   "tests": [
-    { "kind": "command", "name": "lint", "command": "pnpm lint" },
-    { "kind": "command", "name": "typecheck", "command": "pnpm typecheck" },
-    { "kind": "command", "name": "phase-0a-scaffold", "command": "pnpm run check:phase0a" },
-    { "kind": "command", "name": "context-budget-report-test", "command": "pnpm run context:budget:test" },
-    { "kind": "command", "name": "context-budget-report", "command": "node src/internal/tools/context-budget-report.mjs" },
-    { "kind": "manual", "name": "cursor-reindex-check", "command": "Restart or reindex Cursor and record before/after context-budget observations." },
-    { "kind": "manual", "name": "custom-agent-discovery-check", "command": "Confirm Cursor still discovers custom agents under .cursor/agents/**." },
-    { "kind": "manual", "name": "explicit-read-access-check", "command": "Confirm explicit reads still reach PRD.md, BOOTSTRAP.md, src/memory/**, src/work/**, and excluded artifacts." },
-    { "kind": "manual", "name": "protected-surface-ratification", "command": "Approve AGENTS.md and mirrored Cursor rule changes before merge." },
-    { "kind": "manual", "name": "historical-artifact-preservation", "command": "Confirm no historical artifact under src/work/**, src/memory/**, src/inbox/out/**, or src/inbox/threads/** was deleted." }
+    {
+      "kind": "command",
+      "name": "lint",
+      "command": "pnpm lint"
+    },
+    {
+      "kind": "command",
+      "name": "typecheck",
+      "command": "pnpm typecheck"
+    },
+    {
+      "kind": "command",
+      "name": "phase-0a-scaffold",
+      "command": "pnpm run check:phase0a"
+    },
+    {
+      "kind": "command",
+      "name": "context-budget-report-test",
+      "command": "pnpm run context:budget:test"
+    },
+    {
+      "kind": "command",
+      "name": "context-budget-report",
+      "command": "node src/internal/tools/context-budget-report.mjs"
+    },
+    {
+      "kind": "manual",
+      "name": "cursor-reindex-check",
+      "command": "Restart or reindex Cursor and record before/after context-budget observations."
+    },
+    {
+      "kind": "manual",
+      "name": "custom-agent-discovery-check",
+      "command": "Confirm Cursor still discovers custom agents under .cursor/agents/**."
+    },
+    {
+      "kind": "manual",
+      "name": "explicit-read-access-check",
+      "command": "Confirm explicit reads still reach PRD.md, BOOTSTRAP.md, src/memory/**, src/work/**, and excluded artifacts."
+    },
+    {
+      "kind": "manual",
+      "name": "protected-surface-ratification",
+      "command": "Approve AGENTS.md and mirrored Cursor rule changes before merge."
+    },
+    {
+      "kind": "manual",
+      "name": "historical-artifact-preservation",
+      "command": "Confirm no historical artifact under src/work/**, src/memory/**, src/inbox/out/**, or src/inbox/threads/** was deleted."
+    }
   ],
   "disallowed_paths": [
     "src/memory/features/active-memory-context-economy-pass-2/spec.md",

@@ -14,6 +14,22 @@ function exists(rel) {
   return fs.existsSync(path.join(ROOT, rel));
 }
 
+
+function collectFiles(rel, predicate) {
+  const abs = path.join(ROOT, rel);
+  if (!fs.existsSync(abs)) return [];
+  const entry = fs.statSync(abs);
+  if (entry.isFile()) return predicate(rel) ? [rel] : [];
+  if (!entry.isDirectory()) return [];
+  const ignoredDirs = new Set([".git", "node_modules", "dist", ".turbo"]);
+  const files = [];
+  for (const child of fs.readdirSync(abs, { withFileTypes: true })) {
+    if (child.isDirectory() && ignoredDirs.has(child.name)) continue;
+    files.push(...collectFiles(path.posix.join(rel, child.name), predicate));
+  }
+  return files;
+}
+
 function daysToFdsForSuffix(mmDdYy) {
   const m = /^(\d{2})-(\d{2})-(\d{2})$/.exec(mmDdYy);
   assert.ok(m, `invalid MM-DD-YY suffix: ${mmDdYy}`);
@@ -22,6 +38,21 @@ function daysToFdsForSuffix(mmDdYy) {
   const dayMs = Date.UTC(year, Number(mm) - 1, Number(dd), 0, 0, 0, 0);
   return Math.floor((FDS_UTC_MS - dayMs) / 86400000);
 }
+
+
+test("repository JSON files use two-space formatting", () => {
+  const jsonFiles = collectFiles(".", (rel) => rel.endsWith(".json"));
+  assert.ok(jsonFiles.length > 0);
+
+  const offenders = [];
+  for (const rel of jsonFiles) {
+    const raw = read(rel);
+    const expected = `${JSON.stringify(JSON.parse(raw), null, 2)}\n`;
+    if (raw !== expected) offenders.push(rel);
+  }
+
+  assert.deepEqual(offenders, []);
+});
 
 test("operator-facing root keeps implementation under internal while tests and docs stay at root", () => {
   assert.ok(exists("src/internal/packages"));

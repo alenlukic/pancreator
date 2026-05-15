@@ -61,7 +61,7 @@ describe("upgradePolicyConfig", () => {
   it("reads a file and upgrades", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "tess-pol2-"));
     const f = path.join(dir, "c.json");
-    await writeFile(f, JSON.stringify({ risk_tier: "low" }), "utf8");
+    await writeFile(f, `${JSON.stringify({ risk_tier: "low" }, null, 2)}\n`, "utf8");
     const v = await upgradePolicyConfig(f);
     expect(v.riskTier).toBe("low");
   });

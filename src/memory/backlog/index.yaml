@@ -242,7 +242,7 @@ items:
       - /.cursor/hooks/enforce-policy-compliance.sh
       - /src/memory/adr/0005-timestamp-naming-conventions.md
       - /src/internal/work_archive/173009_04-27-26/18990_1843_policy-compliance-hook-three-level-fix/policy-compliance.json
-      - /src/work/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-audit.md
+      - /src/internal/work_archive/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-audit.md
     evidence: "Commit d1d68d2 temporarily admitted both the legacy src/work/<task>/policy-compliance.json shape and the ADR-0005 src/work/<day>/<task>/policy-compliance.json shape. The compliance-auditor structural audit removed the legacy two-level regex branch and updated the denial message to require src/work/<day>/<task-id>/policy-compliance.json."
     notes: "Closed by the compliance-auditor structural audit patch. The repo-structure test now rejects the legacy two-level hook regex and stale two-level work placeholders in live normative surfaces."
 

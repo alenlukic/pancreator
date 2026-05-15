@@ -14,7 +14,10 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["bin", "dist"],
+  "files": [
+    "bin",
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts src/server.ts --format esm --dts --clean",
     "typecheck": "tsc -p tsconfig.json",

@@ -219,7 +219,7 @@ test("defaultManifestPath prefers archived inbox convention run when indexed", (
     mkdirSync(featureDir, { recursive: true });
     writeFileSync(
       path.join(featureDir, "index.json"),
-      `${JSON.stringify({ featureId: "inbox-convention-migration", taskId })}\n`,
+      `${JSON.stringify({ featureId: "inbox-convention-migration", taskId }, null, 2)}\n`,
       "utf8",
     );
 

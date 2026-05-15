@@ -30,7 +30,7 @@ Exact audited path set:
 - Searched live normative surfaces for stale two-level work placeholders with `/src/work/<id>/`, `/src/work/<task-id>/`, and `/src/work/*/run.log.jsonl`.
 - Audited Cursor rule globs for broad `src/**/*` activation.
 - Audited `.github/workflows/phase-0a-scaffold.yml` path triggers for changes to Cursor rules, hooks, and agent projections.
-- Validated policy-compliance gate readiness by adding and checking `src/work/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/policy-compliance.json` against `src/memory/handbook/policy-compliance-contract.md`.
+- Validated policy-compliance gate readiness by adding and checking `src/internal/work_archive/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/policy-compliance.json` against `src/memory/handbook/policy-compliance-contract.md`.
 
 ## Findings
 
