@@ -19,9 +19,9 @@
 - `src/skills/write-adr/SKILL.md`
 - `tests/compliance/high-remediation-blocking.yaml`
 - `tests/repo-structure.test.mjs`
-- `src/work/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-audit.md`
-- `src/work/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-remediation.md`
-- `src/work/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/policy-compliance.json`
+- `src/internal/work_archive/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-audit.md`
+- `src/internal/work_archive/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-remediation.md`
+- `src/internal/work_archive/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/policy-compliance.json`
 
 ## Unresolved findings checklist
 
