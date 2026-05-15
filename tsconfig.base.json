@@ -4,7 +4,9 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
@@ -18,8 +20,12 @@
       "@tesseract/checkpointer-fs": [
         "src/internal/packages/@tesseract/checkpointer-fs/src/index.ts"
       ],
-      "@tesseract/cli": ["src/internal/packages/@tesseract/cli/src/index.ts"],
-      "@tesseract/contract": ["src/internal/packages/@tesseract/contract/src/index.ts"],
+      "@tesseract/cli": [
+        "src/internal/packages/@tesseract/cli/src/index.ts"
+      ],
+      "@tesseract/contract": [
+        "src/internal/packages/@tesseract/contract/src/index.ts"
+      ],
       "@tesseract/contract-runner-llm-judge": [
         "src/internal/packages/@tesseract/contract-runner-llm-judge/src/index.ts"
       ],
@@ -29,26 +35,36 @@
       "@tesseract/contract-style": [
         "src/internal/packages/@tesseract/contract-style/src/index.ts"
       ],
-      "@tesseract/core": ["src/internal/packages/@tesseract/core/src/index.ts"],
+      "@tesseract/core": [
+        "src/internal/packages/@tesseract/core/src/index.ts"
+      ],
       "@tesseract/env-isolation": [
         "src/internal/packages/@tesseract/env-isolation/src/index.ts"
       ],
-      "@tesseract/inbox": ["src/internal/packages/@tesseract/inbox/src/index.ts"],
+      "@tesseract/inbox": [
+        "src/internal/packages/@tesseract/inbox/src/index.ts"
+      ],
       "@tesseract/intervention": [
         "src/internal/packages/@tesseract/intervention/src/index.ts"
       ],
       "@tesseract/mcp-server": [
         "src/internal/packages/@tesseract/mcp-server/src/index.ts"
       ],
-      "@tesseract/memory": ["src/internal/packages/@tesseract/memory/src/index.ts"],
+      "@tesseract/memory": [
+        "src/internal/packages/@tesseract/memory/src/index.ts"
+      ],
       "@tesseract/notifier": [
         "src/internal/packages/@tesseract/notifier/src/index.ts"
       ],
-      "@tesseract/persona": ["src/internal/packages/@tesseract/persona/src/index.ts"],
+      "@tesseract/persona": [
+        "src/internal/packages/@tesseract/persona/src/index.ts"
+      ],
       "@tesseract/pipeline": [
         "src/internal/packages/@tesseract/pipeline/src/index.ts"
       ],
-      "@tesseract/policy": ["src/internal/packages/@tesseract/policy/src/index.ts"],
+      "@tesseract/policy": [
+        "src/internal/packages/@tesseract/policy/src/index.ts"
+      ],
       "@tesseract/run-logger": [
         "src/internal/packages/@tesseract/run-logger/src/index.ts"
       ],
@@ -64,5 +80,9 @@
     "src/internal/packages/tesseract/src/**/*.ts",
     "src/internal/packages/@tesseract/*/src/**/*.ts"
   ],
-  "exclude": ["node_modules", "**/dist", "**/node_modules"]
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules"
+  ]
 }

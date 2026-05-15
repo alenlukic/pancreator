@@ -58,7 +58,8 @@ The root directory is the operator entry point. The `docs/` directory contains h
    ```
 
 3. Read the emitted JSON. The important fields are `taskId`, `stateFile`,
-   `handoffFile`, `nextPromptFile`, and `nextHumanAction`.
+   `handoffFile`, `nextPromptFile`, and `nextHumanAction`. Emitted JSON and
+   persisted `.json` artifacts use two-space indentation for human review.
 4. Delegate `nextPromptFile` to the stage owner named in
    `src/pipelines/feature-delivery.yaml`. The first owner is `intake-analyst`.
 5. At each gate, the human operator checks the emitted artifact and either ratifies

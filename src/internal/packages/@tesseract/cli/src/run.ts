@@ -27,7 +27,7 @@ function emit(
   writeOut: (chunk: string) => void,
   payload: object,
 ): void {
-  writeOut(`${JSON.stringify(payload)}\n`);
+  writeOut(`${JSON.stringify(payload, null, 2)}\n`);
 }
 
 function stub(

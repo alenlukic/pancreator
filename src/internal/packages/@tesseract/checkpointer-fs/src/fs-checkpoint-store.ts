@@ -28,7 +28,7 @@ export class FsCheckpointStore {
     const dir = this.taskDir(asTaskId(envelope.task_id));
     await mkdir(dir, { recursive: true });
     const target = this.pathFor(asTaskId(envelope.task_id), envelope.seq);
-    await writeFile(target, `${JSON.stringify(envelope)}\n`, "utf8");
+    await writeFile(target, `${JSON.stringify(envelope, null, 2)}\n`, "utf8");
   }
 
   /**

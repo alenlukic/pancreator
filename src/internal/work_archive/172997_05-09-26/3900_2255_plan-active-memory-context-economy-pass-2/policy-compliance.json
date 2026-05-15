@@ -47,13 +47,19 @@
     {
       "kind": "lines",
       "path": "src/memory/handbook/policy-compliance-contract.md",
-      "range": [47, 98],
+      "range": [
+        47,
+        98
+      ],
       "contentHash": "971f594cd9fb1c1cbc9da86b6104d6fff81b9c723cd9266766687b63277a3d67"
     },
     {
       "kind": "lines",
       "path": "AGENTS.md",
-      "range": [101, 109],
+      "range": [
+        101,
+        109
+      ],
       "contentHash": "884bc58912b0084f49ad6f23e294c283af65ea3e7fa0e4c911e1a857958fcbdc"
     }
   ]

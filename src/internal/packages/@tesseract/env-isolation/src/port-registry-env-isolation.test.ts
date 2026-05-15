@@ -84,7 +84,7 @@ describe("PortRegistryEnvIsolation", () => {
         maxPort: 7005,
         allocations: { x: [7000, 7001], y: [7001, 7002] },
       };
-      await writeFile(file, JSON.stringify(bad), "utf8");
+      await writeFile(file, `${JSON.stringify(bad, null, 2)}\n`, "utf8");
       await expect(readRegistryState(file, 7000, 7005)).rejects.toThrow(PortRegistryCollisionError);
     } finally {
       await cleanup();

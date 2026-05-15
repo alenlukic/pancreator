@@ -11,9 +11,9 @@ describe("scanRepository", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "tess-adopt-"));
     writeFileSync(
       path.join(root, "package.json"),
-      JSON.stringify({
+      `${JSON.stringify({
         devDependencies: { vitest: "^3.0.0" },
-      }),
+      }, null, 2)}\n`,
       "utf8",
     );
     const r = await scanRepository(root);

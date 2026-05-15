@@ -48,13 +48,19 @@
     {
       "kind": "lines",
       "path": "src/memory/handbook/documentation-impact-contract.md",
-      "range": [47, 98],
+      "range": [
+        47,
+        98
+      ],
       "contentHash": "38ed8213e11f7aa1f53d46588cc55cad7da746016c52aa1747f03d8b97d16248"
     },
     {
       "kind": "lines",
       "path": "src/memory/features/active-memory-context-economy-pass-2/spec.md",
-      "range": [475, 520],
+      "range": [
+        475,
+        520
+      ],
       "contentHash": "e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d"
     }
   ]
