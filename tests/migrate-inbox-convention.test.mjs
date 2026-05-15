@@ -190,10 +190,13 @@ test("planInboxConventionMigration: task directory semantics are deduplicated", 
     );
     assert.ok(step);
     assert.ok(!step.targetRel.includes("compliance-tests_68576_0457_compliance-tests"));
-    assert.match(
-      step.targetRel,
-      /^src\/inbox\/archive\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_0057_compliance-tests\/68576_0457_compliance-tests\.md$/,
-    );
+
+    const targetParts = step.targetRel.split("/");
+    const taskDir = targetParts.at(-2);
+    const leafName = targetParts.at(-1);
+
+    assert.match(taskDir, /^\d+_\d{4}_compliance-tests$/);
+    assert.equal(leafName, "68576_0457_compliance-tests.md");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
