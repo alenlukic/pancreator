@@ -109,6 +109,15 @@ response.
 - **Stage diffs locally; never push.** No agent SHALL run `git push` or
   `git commit --no-verify`. Persona `disallowedTools` enforces this; AGENTS.md
   restates it for out-of-band tooling.
+- **Documented durable directories are materialized on demand.** When
+  agent-facing documentation names a durable repository directory and that
+  directory is absent from the working tree, agents SHALL create the directory
+  before reading, writing, listing, or failing on that path. In addition, agent
+  SHALL create an empty .gitkeep file within the directory. This applies to
+  canonical paths such as `/src/inbox/in/`, which Git may omit when empty. It
+  does not apply to generated or placeholder-scoped paths such as
+  `/src/work/<day>/<task-id>/`, archive entries, `.tess/` sandboxes, or other
+  run-specific directories.
 - **Operator sandbox is off-limits.** `/src/inbox/notes/` is human-operator-only.
   No agent SHALL read, traverse, ingest, cite, or modify any file under
   `/src/inbox/notes/`. Only `/src/inbox/in/` is the canonical incoming queue; operators
