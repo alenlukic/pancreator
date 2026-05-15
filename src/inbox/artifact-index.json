@@ -1,0 +1,14 @@
+{
+  "schema": "tesseract.inbox-artifact-index.v1",
+  "generatedAt": "2026-05-15T05:35:38.365Z",
+  "threads": [
+    "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md",
+    "src/inbox/threads/172996_05-10-26/81349_0124_inbox-directory-hierarchy-migration_round-01-clarify/11700_2045_round-01-clarify.md",
+    "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md",
+    "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md",
+    "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md",
+    "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md",
+    "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md",
+    "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+  ]
+}

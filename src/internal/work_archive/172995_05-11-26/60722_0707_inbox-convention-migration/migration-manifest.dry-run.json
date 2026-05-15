@@ -1,0 +1,1038 @@
+{
+  "schema": "tesseract.timestamp-migration-manifest.v1",
+  "mode": "dry-run",
+  "generatedAt": "2026-05-15T05:33:41.203Z",
+  "repoRoot": "/Users/alen/Dev/tesseract",
+  "summary": {
+    "plannedRenames": 24,
+    "plannedWorkTaskDirs": 0,
+    "inboxConvention": {
+      "legacyArtifacts": 21,
+      "plannedFileRenames": 21,
+      "threadFeatureDirsRemoved": 3
+    },
+    "referenceUpdateRows": 100,
+    "collisionWarnings": 0
+  },
+  "renames": [
+    {
+      "sourceRel": "src/inbox/archive/in/11951_2040_token_economy.md",
+      "targetRel": "src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-09T16:40:49-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/archive/in/2174_2323_2026-04-25-2259-architecture-system-map-v1.md",
+      "targetRel": "src/inbox/archive/in/173011_04-25-26/2174_2323_architecture-system-map-v1/2174_2323_2026-04-25-2259-architecture-system-map-v1.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-25T19:23:46-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/archive/in/2174_2323_2026-04-25-2259-docs-operator-readme-v1.md",
+      "targetRel": "src/inbox/archive/in/173011_04-25-26/2174_2323_docs-operator-readme-v1/2174_2323_2026-04-25-2259-docs-operator-readme-v1.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-25T19:23:46-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/archive/in/2174_2323_2026-04-25-2259-governance-agents-status-v1.md",
+      "targetRel": "src/inbox/archive/in/173011_04-25-26/2174_2323_governance-agents-status-v1/2174_2323_2026-04-25-2259-governance-agents-status-v1.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-25T19:23:46-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/archive/in/68576_0457_2026-04-26-2021-reviewer-missing-input.md",
+      "targetRel": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests_reviewer-missing-input/68576_0457_2026-04-26-2021-reviewer-missing-input.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "targetRel": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+      "targetRel": "src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-09T21:24:11-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "targetRel": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-10T13:01:19-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+      "targetRel": "src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-10T13:01:19-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "targetRel": "src/inbox/out/173009_04-27-26/65835_0542_intake-processing-report-round-06/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T01:42:45-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "targetRel": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report/68576_0457_2026-04-26-intake-processing-report.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "targetRel": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report-round-05/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md",
+      "targetRel": "src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-10T13:01:19-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "targetRel": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "targetRel": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "targetRel": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "targetRel": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-10T13:01:19-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "targetRel": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "targetRel": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T00:57:04-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md",
+      "targetRel": "src/inbox/threads/172996_05-10-26/81349_0124_inbox-directory-hierarchy-migration_round-01-clarify/11700_2045_round-01-clarify.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-09T21:24:11-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "targetRel": "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-04-27T05:50:09-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/inbox-directory-hierarchy-migration/",
+      "targetRel": "src/inbox/threads/inbox-directory-hierarchy-migration/",
+      "kind": "inbox-remove-empty-dir",
+      "timestamp": {
+        "iso": "",
+        "source": "cleanup"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/timestamp-naming-conventions/",
+      "targetRel": "src/inbox/threads/timestamp-naming-conventions/",
+      "kind": "inbox-remove-empty-dir",
+      "timestamp": {
+        "iso": "",
+        "source": "cleanup"
+      }
+    },
+    {
+      "sourceRel": "src/inbox/threads/compliance-tests/",
+      "targetRel": "src/inbox/threads/compliance-tests/",
+      "kind": "inbox-remove-empty-dir",
+      "timestamp": {
+        "iso": "",
+        "source": "cleanup"
+      }
+    }
+  ],
+  "referenceUpdates": [
+    {
+      "file": "src/memory/active/current.md",
+      "line": 46,
+      "column": 254,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/11951_2040_token_economy.md",
+      "after": "src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md"
+    },
+    {
+      "file": "src/memory/backlog/index.yaml",
+      "line": 446,
+      "column": 10,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/11951_2040_token_economy.md",
+      "after": "src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md"
+    },
+    {
+      "file": "src/memory/features/cursor-token-economy/index.json",
+      "line": 42,
+      "column": 34,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/11951_2040_token_economy.md",
+      "after": "src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md"
+    },
+    {
+      "file": "src/memory/features/cursor-token-economy/index.json",
+      "line": 52,
+      "column": 31,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/11951_2040_token_economy.md",
+      "after": "src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md"
+    },
+    {
+      "file": "src/work/172996_05-10-26/15300_2230_symlink-removal-agents-cursor/policy-compliance.json",
+      "line": 16,
+      "column": 8,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/11951_2040_token_economy.md",
+      "after": "src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 8,
+      "column": 27,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 7,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 16,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 64,
+      "column": 30,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "src/inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "line": 20,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 13,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 54,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "line": 20,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "tests/migrate-inbox-convention.test.mjs",
+      "line": 185,
+      "column": 10,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/68576_0457_compliance-tests.md",
+      "after": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md"
+    },
+    {
+      "file": "src/memory/active/README.md",
+      "line": 18,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+      "after": "src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md"
+    },
+    {
+      "file": "src/memory/active/current.md",
+      "line": 45,
+      "column": 246,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+      "after": "src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md"
+    },
+    {
+      "file": "src/memory/backlog/index.yaml",
+      "line": 465,
+      "column": 10,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+      "after": "src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md"
+    },
+    {
+      "file": "src/memory/features/active-memory-context-economy-pass-2/index.json",
+      "line": 199,
+      "column": 34,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+      "after": "src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md"
+    },
+    {
+      "file": "src/memory/features/active-memory-context-economy-pass-2/index.json",
+      "line": 209,
+      "column": 31,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+      "after": "src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md"
+    },
+    {
+      "file": "src/memory/handbook/memory-tiers.md",
+      "line": 18,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/archive/in/75480_0302_token-economy-enhanced.md",
+      "after": "src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 14,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 14,
+      "column": 249,
+      "jsonPointer": null,
+      "before": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 15,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 15,
+      "column": 269,
+      "jsonPointer": null,
+      "before": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/index.json",
+      "line": 258,
+      "column": 16,
+      "jsonPointer": null,
+      "before": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/index.json",
+      "line": 261,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/index.json",
+      "line": 486,
+      "column": 26,
+      "jsonPointer": null,
+      "before": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md"
+    },
+    {
+      "file": "src/memory/active/current.md",
+      "line": 46,
+      "column": 174,
+      "jsonPointer": null,
+      "before": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md"
+    },
+    {
+      "file": "src/memory/backlog/index.yaml",
+      "line": 445,
+      "column": 10,
+      "jsonPointer": null,
+      "before": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/cursor-token-economy/index.json",
+      "line": 16,
+      "column": 29,
+      "jsonPointer": null,
+      "before": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/cursor-token-economy/index.json",
+      "line": 38,
+      "column": 25,
+      "jsonPointer": null,
+      "before": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/cursor-token-economy/index.json",
+      "line": 51,
+      "column": 25,
+      "jsonPointer": null,
+      "before": "src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 198,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "src/inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "src/inbox/out/173009_04-27-26/65835_0542_intake-processing-report-round-06/65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 201,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "src/inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "src/inbox/out/173009_04-27-26/65835_0542_intake-processing-report-round-06/65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "src/inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "line": 49,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "src/inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "after": "src/inbox/out/173009_04-27-26/65835_0542_intake-processing-report-round-06/65835_0542_2026-04-27-intake-processing-report-round-06.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 60,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report/68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 111,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report/68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "line": 3,
+      "column": 14,
+      "jsonPointer": null,
+      "before": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "after": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report/68576_0457_2026-04-26-intake-processing-report.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 207,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report-round-05/68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 210,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report-round-05/68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "src/inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "line": 3,
+      "column": 14,
+      "jsonPointer": null,
+      "before": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report-round-05/68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "line": 50,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "after": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report-round-05/68576_0457_2026-04-27-intake-processing-report-round-05.md"
+    },
+    {
+      "file": "src/memory/active/current.md",
+      "line": 45,
+      "column": 150,
+      "jsonPointer": null,
+      "before": "src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md"
+    },
+    {
+      "file": "src/memory/backlog/index.yaml",
+      "line": 464,
+      "column": 10,
+      "jsonPointer": null,
+      "before": "src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/active-memory-context-economy-pass-2/index.json",
+      "line": 194,
+      "column": 25,
+      "jsonPointer": null,
+      "before": "src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/active-memory-context-economy-pass-2/index.json",
+      "line": 208,
+      "column": 25,
+      "jsonPointer": null,
+      "before": "src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md",
+      "after": "src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 31,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 17,
+      "column": 65,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 6,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 20,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 57,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 77,
+      "column": 17,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "line": 9,
+      "column": 152,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "line": 11,
+      "column": 174,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "line": 12,
+      "column": 155,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "line": 13,
+      "column": 159,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-01.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 36,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 18,
+      "column": 65,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 8,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 22,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 58,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-02.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 15,
+      "column": 35,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 234,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 237,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 11,
+      "column": 28,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 41,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 19,
+      "column": 65,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 10,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 24,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 43,
+      "column": 25,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 59,
+      "column": 7,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 16,
+      "column": 28,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 243,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 246,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 12,
+      "column": 21,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 46,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 20,
+      "column": 65,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 25,
+      "column": 103,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 26,
+      "column": 98,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md",
+      "line": 66,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md",
+      "after": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 14,
+      "column": 33,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 225,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 228,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 10,
+      "column": 26,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 51,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+      "line": 7,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 9,
+      "column": 36,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 13,
+      "column": 27,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 216,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/index.json",
+      "line": 219,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 9,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "src/memory/features/compliance-tests/spec.md",
+      "line": 56,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "src/inbox/out/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+      "line": 7,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/compliance-tests/68576_0457_round-06-human-approve.md",
+      "after": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+    },
+    {
+      "file": "src/work/172996_05-10-26/15300_2230_symlink-removal-agents-cursor/policy-compliance.json",
+      "line": 17,
+      "column": 8,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md",
+      "after": "src/inbox/threads/172996_05-10-26/81349_0124_inbox-directory-hierarchy-migration_round-01-clarify/11700_2045_round-01-clarify.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 12,
+      "column": 88,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 14,
+      "column": 104,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 23,
+      "column": 4,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+      "line": 23,
+      "column": 232,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
+      "line": 10,
+      "column": 164,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md"
+    },
+    {
+      "file": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "line": 10,
+      "column": 164,
+      "jsonPointer": null,
+      "before": "src/inbox/threads/timestamp-naming-conventions/50991_0950_round-01-clarify.md",
+      "after": "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md"
+    }
+  ],
+  "collisions": []
+}

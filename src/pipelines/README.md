@@ -18,11 +18,7 @@ an `id`, an optional `version`, an ordered list of `stages` with optional
 
 ## Bootstrap status
 
-The pipelines are registered through `loadPipelineYaml` for now; LangGraph
-`StateGraph` compilation is stubbed in `src/internal/packages/@tesseract/pipeline/src/compile.ts`
-and lands during the Phase 5 self-hosted milestone. Until then, stages execute
-in order through `executePipeline` with delegation to named persona subagents
-per `AGENTS.md` §4.
+The pipelines are registered through `loadPipelineYaml`. `tess run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, generated `next-prompt.md`, and run log for the first stage. `tess advance <task-id> --artifact <path>` records accepted stage artifacts, mutates `state.json`, appends the run log, and regenerates the next handoff/prompt. When feature-delivery reaches `complete`, the generated `next-prompt.md` becomes the final librarian handoff: after human validation/indexing, the librarian runs `tess close-artifacts <task-id>` to archive the active `src/work/<day>/<task-id>/` directory to `src/internal/work_archive/<day>/<task-id>/`, remove the now-empty active day directory, and move the source `src/inbox/in/` directive to `src/inbox/archive/in/<day>/<task-id>/`. `tess refresh-prompt <task-id>` regenerates `handoff.md` and `next-prompt.md` from the current ledger without changing state, which is useful after prompt template changes or for already-complete runs. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@tesseract/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, operators still invoke the named Cursor persona subagents manually, but they should delegate only the generated `next-prompt.md` rather than broad prior chat context.
 
 ## Authoring rules
 

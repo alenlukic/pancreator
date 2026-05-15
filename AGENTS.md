@@ -74,9 +74,13 @@ mode` forbids delegation.
 
 1. **Planning/execution boundary.** When a planning persona emits a plan, touch-set,
    or ADR draft, the next action SHOULD be a delegated executor invocation with a
-   compact handoff path, not more parent-agent implementation inside the same
-   context window. The handoff card lives at `src/work/<day>/<task-id>/handoff.md`;
-   `src/memory/active/handoffs.md` stores pointers only.
+   compact generated prompt path, not more parent-agent implementation inside
+   the same context window. The handoff card lives at
+   `src/work/<day>/<task-id>/handoff.md`; the delegated prompt lives at
+   `src/work/<day>/<task-id>/next-prompt.md`; `src/memory/active/handoffs.md`
+   stores pointers only. Operators SHOULD paste only `next-prompt.md` into the
+   Cursor subagent and SHOULD NOT paste the full spec, prior chat transcript,
+   PRD, bootstrap document, archival work, or broad directory listings.
 2. **Native subagent invocation.** Cursor exposes standard and complex variants:
    `.cursor/agents/<name>-standard.md` uses `model: auto`;
    `.cursor/agents/<name>-complex.md` preserves the prior fixed model for that
@@ -93,7 +97,8 @@ mode` forbids delegation.
    back to the owning persona instead of extending the executor loop.
 5. **Cost discipline.** Subagents isolate parent context; they do not guarantee
    lower total tokens. Avoid fan-out when multiple subagents would reload the
-   same PRD, handbook, or archival context.
+   same PRD, handbook, or archival context. When `tess run` or `tess advance`
+   emits `nextPromptFile`, use that prompt as the delegated stage scope.
 
 When no persona owns the work (for example bootstrap-only handbook authoring or
 configuration scaffolding), perform it directly and cite this section in your
@@ -212,9 +217,17 @@ tracking purposes: the repo contains the scaffold, handbook seeds, persona
 roster, Cursor projections, M1 contract feature folders, substrate package
 implementations, and static MVP pipeline definitions. Phase 4 remains open
 until the US-1 dogfood exit gaps are ratified, including external run-log
-observability and an empirical pause/resume/abort exercise. `tess` exists as a
-Phase-3 CLI surface with several stubs; full runtime pipeline execution is not
-yet ratified as complete.
+observability and an empirical pause/resume/abort exercise. `tess run
+feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine,
+handoff card, bounded next-prompt, and run log. Operators still invoke Cursor
+personas manually, then use `tess advance` with the accepted stage artifact;
+`repair-state` is reserved for explicit ledger recovery after out-of-band work.
+When a run reaches `complete`, `next-prompt.md` is a bounded librarian handoff
+for agent-executed artifact closure. The librarian runs `tess close-artifacts
+<task-id>` to archive the active work directory and source inbox item after
+human validation/indexing are complete. `tess refresh-prompt <task-id>`
+regenerates prompt files from the current ledger without changing state. It
+does not yet automate Cursor/model transport or LangGraph execution.
 
 ## 9 — Stability
 

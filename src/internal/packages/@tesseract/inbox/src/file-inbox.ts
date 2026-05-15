@@ -26,52 +26,96 @@ export class FileInbox implements Inbox {
    * @param repositoryRoot - Absolute path to the repository root that contains `src/inbox/`.
    */
   constructor(repositoryRoot: string) {
-    this.inboxRoot = path.join(path.resolve(repositoryRoot), "inbox");
+    this.inboxRoot = path.join(path.resolve(repositoryRoot), "src", "inbox");
   }
 
   pathIn(filename = ""): string {
-    return path.join(this.inboxRoot, "in", filename);
+    if (filename === "") {
+      return path.join(this.inboxRoot, "in");
+    }
+    return this.resolveUnderQueue("in", filename);
   }
 
   pathOut(filename = ""): string {
-    return path.join(this.inboxRoot, "out", filename);
+    if (filename === "") {
+      return path.join(this.inboxRoot, "out");
+    }
+    return this.resolveUnderQueue("out", filename);
   }
 
   pathThreads(filename = ""): string {
-    return path.join(this.inboxRoot, "threads", filename);
+    if (filename === "") {
+      return path.join(this.inboxRoot, "threads");
+    }
+    return this.resolveUnderQueue("threads", filename);
   }
 
-  private assertBasename(name: string): void {
-    const b = path.basename(name);
-    if (b !== name || name.includes("..") || name.includes("/") || name.includes("\\")) {
-      throw new Error("Inbox file name MUST be a single path segment");
+  private resolveUnderQueue(
+    queue: "in" | "out" | "threads",
+    relativePath: string,
+  ): string {
+    const root = path.join(this.inboxRoot, queue);
+    const normalized = relativePath.replace(/\\/g, "/").replace(/^\/+/u, "");
+    if (!normalized || normalized.includes("\0")) {
+      throw new Error("Inbox relative path MUST be non-empty and valid");
     }
+    const segments = normalized.split("/").filter(Boolean);
+    for (const s of segments) {
+      if (s === ".." || s === ".") {
+        throw new Error("Inbox relative path MUST NOT contain dot segments");
+      }
+    }
+    const resolved = path.resolve(root, ...segments);
+    const rootResolved = path.resolve(root);
+    const rel = path.relative(rootResolved, resolved);
+    if (rel.startsWith("..") || path.isAbsolute(rel)) {
+      throw new Error("Inbox relative path MUST stay under its queue root");
+    }
+    return resolved;
   }
 
   async listIn(): Promise<string[]> {
     const dir = this.pathIn();
-    let names: string[];
-    try {
-      names = await readdir(dir);
-    } catch (e) {
-      const err = e as NodeJS.ErrnoException;
-      if (err.code === "ENOENT") {
-        return [];
-      }
-      throw e;
-    }
-    return names.filter((n) => !n.startsWith(".")).sort();
+    return listNestedFiles(dir);
   }
 
   async readInFile(name: string): Promise<string> {
-    this.assertBasename(name);
     return readFile(this.pathIn(name), "utf8");
   }
 
   async writeOutFile(name: string, content: string): Promise<void> {
-    this.assertBasename(name);
     const p = this.pathOut(name);
     await mkdir(path.dirname(p), { recursive: true });
     await writeFile(p, content, "utf8");
   }
+}
+
+async function listNestedFiles(absDir: string): Promise<string[]> {
+  const out: string[] = [];
+  async function walk(relPrefix: string, dir: string): Promise<void> {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch (e) {
+      const err = e as NodeJS.ErrnoException;
+      if (err.code === "ENOENT") {
+        return;
+      }
+      throw e;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith(".")) {
+        continue;
+      }
+      const rel = relPrefix === "" ? e.name : `${relPrefix}/${e.name}`;
+      const abs = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        await walk(rel, abs);
+      } else {
+        out.push(rel.split(path.sep).join("/"));
+      }
+    }
+  }
+  await walk("", absDir);
+  return out.sort();
 }

@@ -35,22 +35,15 @@ read per `src/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- `inbox-directory-hierarchy-migration` — migrate `src/inbox/` naming and layout
-  to the same day- and time-oriented conventions as `src/work/` (alias:
-  `inbox-convention-migration` from directive filename). **Gate:** engineering
-  spec is at `human_approval` after round-1 clarify answers were folded inline
-  (thread `status: ratified`).
-- Intake sources: `src/inbox/in/inbox_convention_migration.md`;
-  canonical spec `src/memory/features/inbox-directory-hierarchy-migration/spec.md`;
-  round-1 clarify `src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md`.
+- *(none)*. Pick up the next canonical queue item from `src/inbox/in/`.
 
 ## Most recent shipped Features
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
 | `bootstrap-state-fast-forward` | `2026-05-10T14:30:00Z` (operator close-out) | — | — | — |
-| `active-memory-context-economy-pass-2` | `2026-05-10T03:02:00Z` | `src/memory/features/active-memory-context-economy-pass-2/delivery-report.md` | `src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md` | `src/inbox/archive/in/75480_0302_token-economy-enhanced.md` |
-| `cursor-token-economy` | `2026-05-10T03:16:00Z` (operator close-out; delivery report staged 2026-05-09) | `src/memory/features/cursor-token-economy/delivery-report.md` | `src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md` | `src/inbox/archive/in/11951_2040_token_economy.md` |
+| `active-memory-context-economy-pass-2` | `2026-05-10T03:02:00Z` | `src/memory/features/active-memory-context-economy-pass-2/delivery-report.md` | `src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md` | `src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md` |
+| `cursor-token-economy` | `2026-05-10T03:16:00Z` (operator close-out; delivery report staged 2026-05-09) | `src/memory/features/cursor-token-economy/delivery-report.md` | `src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md` | `src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md` |
 
 Pass-2 extends pass-1 deferred scope; both close as a single operator session.
 

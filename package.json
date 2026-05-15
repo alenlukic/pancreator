@@ -11,7 +11,7 @@
     "attw": "turbo run attw",
     "publint": "turbo run publint",
     "check:phase0a": "node src/internal/tools/check-phase-0a-scaffold.mjs",
-    "migration:test": "node --test tests/migrate-timestamp-naming.test.mjs",
+    "migration:test": "node --test tests/migrate-timestamp-naming.test.mjs tests/migrate-inbox-convention.test.mjs",
     "context:budget": "node src/internal/tools/context-budget-report.mjs",
     "context:budget:test": "node --test tests/context-budget-report.test.mjs",
     "repo:structure:test": "node --test tests/repo-structure.test.mjs"
@@ -20,6 +20,8 @@
     "@arethetypeswrong/cli": "catalog:",
     "@changesets/cli": "catalog:",
     "@eslint/js": "catalog:",
+    "@tesseract/cli": "workspace:*",
+    "@tesseract/mcp-server": "workspace:*",
     "eslint": "catalog:",
     "publint": "catalog:",
     "turbo": "catalog:",

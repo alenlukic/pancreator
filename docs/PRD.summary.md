@@ -30,7 +30,9 @@ control plane (`tess` CLI is not wired in this repository yet).
 has scaffold, handbook seeds, personas, skills, M1 contract feature folders,
 Phase 3 substrate packages, and the five static MVP pipeline definition files.
 Phase 4 remains open until the dogfood exit gaps are ratified. The `tess` CLI
-surface exists, but full runtime pipeline execution is not yet complete.
+surface can now invoke `feature-delivery` into a state-machine, handoff, and
+bounded next-prompt scaffold; `tess advance` records validated stage artifacts.
+Full automatic Cursor/model/LangGraph execution is not yet complete.
 
 ## Where to go next
 

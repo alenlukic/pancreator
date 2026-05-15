@@ -25,11 +25,11 @@ controls used to reduce default load.
 | Cost sink | Control |
 |---|---|
 | Full `docs/PRD.md` and full `docs/BOOTSTRAP.md` loaded for routing questions | Keep full files explicit-read by default; route through `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md`. |
-| Active and archival execution artifacts under `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, and `src/inbox/threads/**` | Exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
+| Active and archival execution artifacts under `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, and `src/inbox/threads/**` | Track `.cursorindexingignore`; exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
 | Human-only operator notes | Exclude `src/inbox/notes/**` from Cursor indexing and preserve AGENTS prohibition on agent traversal. |
 | Cursor subagent projections duplicating canonical persona prose and PRD citations | Keep `.cursor/agents/**` compact and point to `src/personas/<name>.md` as canonical source. |
 | Expensive fixed models used for every subagent invocation | Add standard/complex Cursor subagent variants; standard uses `model: auto`, complex preserves prior fixed model. |
-| Parent agents carrying planning, implementation, and review in one long context window | Add compact `handoff.md` cards and pointer-only `src/memory/active/handoffs.md` so execution starts from bounded context. |
+| Parent agents carrying planning, implementation, and review in one long context window | Add compact `handoff.md` cards, generated `next-prompt.md` stage prompts, and pointer-only `src/memory/active/handoffs.md` so execution starts from bounded context. |
 | Generated machine artifacts | Exclude generated JSON, manifests, dry-run/write outputs, and lockfiles from default semantic indexing. |
 | Broad handbook/persona sweeps | Treat internal operating content as routeable by handbook index, not default-loaded. |
 | Broad implementation rule triggers | Keep `coder.mdc` scoped to implementation packages, tests, tools, and explicit touch-set files instead of broad `src/**/*` activation. |
@@ -49,3 +49,10 @@ controls used to reduce default load.
 After this pass, operators SHOULD restart or reindex Cursor and run 3-5
 comparable simple tasks. Compare cache-read totals against the recent post-pass
 baseline of roughly 770K cache-read tokens.
+
+## Current failure mode
+
+When `.cursorindexingignore` is absent, Cursor can re-index active work, archival
+inbox artifacts, generated machine outputs, and subagent projections despite the
+handbook policy. Operators SHOULD treat a missing root `.cursorindexingignore` as
+a correctness bug, not just an optimization gap.

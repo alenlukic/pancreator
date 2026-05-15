@@ -178,17 +178,19 @@ the operator-visible response body.
 
 When a task requires both planning and execution, the planning agent SHALL
 produce a bounded handoff card before execution starts. The handoff card SHALL
-live at `src/work/<day>/<task-id>/handoff.md` for active runs, and active memory
-SHALL store only a pointer in `src/memory/active/handoffs.md`.
+live at `src/work/<day>/<task-id>/handoff.md` for active runs, the generated
+subagent prompt SHALL live at `src/work/<day>/<task-id>/next-prompt.md`, and
+active memory SHALL store only a pointer in `src/memory/active/handoffs.md`.
 
 A handoff card SHOULD include the Feature id, current stage, planner persona,
 executor persona, upstream artifact paths, in-scope paths, explicit non-goals,
 validation commands, known pre-existing failures, and unresolved blockers.
 
-When a parent agent invokes an executor, the parent SHOULD pass the handoff card
-path plus the executor persona name as the initial payload. The parent SHOULD NOT
-paste full PRD sections, handbook pages, archival artifacts, or planner scratch
-notes into the executor prompt.
+When a parent agent invokes an executor, the parent SHOULD pass the generated
+`next-prompt.md` path or its contents as the initial payload. The parent SHOULD
+NOT paste full PRD sections, handbook pages, archival artifacts, feature specs,
+prior chat transcripts, broad directory listings, or planner scratch notes into
+the executor prompt unless the generated prompt names the exact file.
 
 When execution finds ambiguity that changes scope, touch-set, acceptance
 criteria, or validation strategy, the executor SHALL stop and delegate back to

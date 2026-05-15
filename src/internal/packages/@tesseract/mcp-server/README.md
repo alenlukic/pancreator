@@ -14,7 +14,7 @@ This package exposes the bootstrap `tess` workspace surface as an MCP server ove
 2. Run the binary (installs resolve `tess-mcp-server` from `node_modules/.bin` when the package is a dependency):
 
    ```bash
-   pnpm exec tess-mcp-server
+   pnpm -w exec tess-mcp-server
    ```
 
 3. List tools (from an MCP client that speaks stdio JSON-RPC; example names only):

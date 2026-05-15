@@ -1,0 +1,316 @@
+diff --git a/src/internal/tools/migrate-inbox-convention.mjs b/src/internal/tools/migrate-inbox-convention.mjs
+index db6ef7f..4dd338c 100644
+--- a/src/internal/tools/migrate-inbox-convention.mjs
++++ b/src/internal/tools/migrate-inbox-convention.mjs
+@@ -32,6 +32,7 @@ import {
+   hhmm,
+   inventoryReferences,
+   isExcludedFromMigration,
++  applyReferenceUpdatesFromManifest,
+ } from "./migrate-timestamp-naming.mjs";
+ 
+ const __dirname = path.dirname(fileURLToPath(import.meta.url));
+@@ -39,6 +40,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
+ /** Work-style day directory basename pattern (UTC). */
+ const DAY_DIR_RE = /^\d{6}_\d{2}-\d{2}-\d{2}$/;
+ 
++/**
++ * Post-migration thread task directory: SID + `_` + HHMM + `_` + semantic (see buildBasename).
++ * Used to skip already-nested thread subtrees during legacy discovery.
++ */
++const MIGRATED_THREAD_TASK_SEGMENT_RE = /^\d+_\d{4}_/u;
++
+ /**
+  * @param {string} stem
+  * @returns {boolean} True when stem already has `{SID}_{HHMM}_` prefix (idempotent pass).
+@@ -69,6 +76,14 @@ export function parseFrontmatterFeatureId(text) {
+   return null;
+ }
+ 
++/**
++ * @param {string} dirBasename
++ * @returns {boolean} True when basename matches migrated inbox thread task directory pattern.
++ */
++export function isMigratedThreadTaskSegment(dirBasename) {
++  return MIGRATED_THREAD_TASK_SEGMENT_RE.test(dirBasename);
++}
++
+ /**
+  * @param {string} raw
+  * @returns {string}
+@@ -125,22 +140,44 @@ export function listLegacyInboxArtifactRows(repoRoot) {
+       if (!feat.isDirectory() || feat.name.startsWith(".") || DAY_DIR_RE.test(feat.name)) {
+         continue;
+       }
+-      const d = path.join(threads, feat.name);
+-      for (const e of readdirSync(d, { withFileTypes: true })) {
+-        if (!e.isFile() || e.name.startsWith(".")) {
+-          continue;
+-        }
+-        const rel = `src/inbox/threads/${feat.name}/${e.name}`;
+-        if (isExcludedFromMigration(rel)) {
+-          continue;
++      const featureSlug = feat.name;
++      const d0 = path.join(threads, featureSlug);
++
++      /**
++       * Legacy thread files may live under nested subdirectories. Skip subtrees that already
++       * match migrated day/task layout; never traverse `notes`.
++       * @param {string} dirAbs
++       * @param {string[]} relTail after `src/inbox/threads/` (includes feature slug).
++       */
++      const walk = (dirAbs, relTail) => {
++        for (const e of readdirSync(dirAbs, { withFileTypes: true })) {
++          if (e.name.startsWith(".")) {
++            continue;
++          }
++          const relJoined = ["src", "inbox", "threads", ...relTail, e.name].join("/");
++          if (relJoined.includes("/notes/") || relJoined.endsWith("/notes")) {
++            continue;
++          }
++          if (e.isDirectory()) {
++            if (DAY_DIR_RE.test(e.name) || isMigratedThreadTaskSegment(e.name)) {
++              continue;
++            }
++            walk(path.join(dirAbs, e.name), [...relTail, e.name]);
++          } else if (e.isFile()) {
++            if (isExcludedFromMigration(relJoined)) {
++              continue;
++            }
++            out.push({
++              abs: path.join(dirAbs, e.name),
++              rel: relJoined,
++              queue: "threads",
++              threadFeatureId: featureSlug,
++            });
++          }
+         }
+-        out.push({
+-          abs: path.join(d, e.name),
+-          rel,
+-          queue: "threads",
+-          threadFeatureId: feat.name,
+-        });
+-      }
++      };
++
++      walk(d0, [featureSlug]);
+     }
+   }
+   return out.sort((a, b) => a.rel.localeCompare(b.rel));
+@@ -448,6 +485,19 @@ export function writeInboxArtifactIndex(repoRoot, renames, artifactIndexRel = "s
+   writeFileSync(abs, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+ }
+ 
++/**
++ * @param {unknown} m
++ * @returns {m is { renames?: Array<{ sourceRel: string, targetRel: string, kind: string }>, referenceUpdates?: Array<{ file: string, before: string, after: string }> }}
++ */
++function isPersistedInboxMigrationManifest(m) {
++  return (
++    typeof m === "object" &&
++    m !== null &&
++    /** @type {{ schema?: string }} */ (m).schema ===
++      "tesseract.inbox-convention-migration-manifest.v1"
++  );
++}
++
+ function parseArgs(argv) {
+   let dryRun = true;
+   let write = false;
+@@ -498,6 +548,40 @@ function main() {
+     );
+     return;
+   }
++
++  if (!args.manifestPath) {
++    console.error(
++      "[migrate-inbox-convention] refuse --write without --manifest <path>" +
++        " (apply a persisted dry-run manifest verbatim; do not recompute a plan at write time). " +
++        "Use migrate-timestamp-naming.mjs --write --manifest for the combined migration, " +
++        "which applies an approved combined manifest including inbox steps.",
++    );
++    process.exitCode = 1;
++    return;
++  }
++
++  const mp = path.resolve(args.manifestPath);
++  if (!existsSync(mp)) {
++    console.error(`[migrate-inbox-convention] missing manifest: ${mp}`);
++    process.exitCode = 1;
++    return;
++  }
++  let persisted;
++  try {
++    persisted = JSON.parse(readFileSync(mp, "utf8"));
++  } catch (e) {
++    console.error(`[migrate-inbox-convention] invalid manifest JSON: ${mp}`, e);
++    process.exitCode = 1;
++    return;
++  }
++  if (!isPersistedInboxMigrationManifest(persisted)) {
++    console.error(
++      `[migrate-inbox-convention] manifest schema must be tesseract.inbox-convention-migration-manifest.v1 (got ${String(/** @type {{ schema?: unknown }} */ (persisted).schema)})`,
++    );
++    process.exitCode = 1;
++    return;
++  }
++
+   if (process.env.TESSERACT_MIGRATION_GO !== "1") {
+     console.error(
+       "[migrate-inbox-convention] refuse --write without TESSERACT_MIGRATION_GO=1",
+@@ -505,10 +589,20 @@ function main() {
+     process.exitCode = 1;
+     return;
+   }
+-  applyInboxRenamesFromManifest(plan.renames, args.root);
+-  writeInboxArtifactIndex(args.root, plan.renames);
++
++  const renames = /** @type {Array<{ sourceRel: string, targetRel: string, kind: string }>} */ (
++    persisted.renames ?? []
++  );
++  applyInboxRenamesFromManifest(renames, args.root);
++  applyReferenceUpdatesFromManifest(
++    /** @type {Array<{ file: string, before: string, after: string }>} */ (
++      persisted.referenceUpdates ?? []
++    ),
++    args.root,
++  );
++  writeInboxArtifactIndex(args.root, renames);
+   console.log(
+-    `[migrate-inbox-convention] write applied (TESSERACT_MIGRATION_GO=1)`,
++    `[migrate-inbox-convention] write applied from ${mp} (TESSERACT_MIGRATION_GO=1)`,
+   );
+ }
+ 
+diff --git a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/next-prompt.md b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/next-prompt.md
+index 7bc6213..48dfb86 100644
+--- a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/next-prompt.md
++++ b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/next-prompt.md
+@@ -1,4 +1,4 @@
+-# Generated by tess repair
++# Generated by tess advance
+ 
+ You are executing the review stage for feature-delivery task 60722_0707_inbox-convention-migration.
+ 
+diff --git a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
+index f643c43..77fe7f6 100644
+--- a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
++++ b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
+@@ -1,2 +1,4 @@
+ {"ts":"2026-05-11T07:07:57.154Z","trace_id":"d2bae2c405c43b93f1046ff1c580f869","span_id":"6d6c96a245a4280c","name":"tesseract.pipeline.invoke","kind":"event","status":{"code":"OK"},"attributes":{"openinference.span.kind":"CHAIN","gen_ai.operation.name":"pipeline.invoke","gen_ai.provider.name":"local-cli","gen_ai.request.model":"none","tesseract.feature_id":"inbox-convention-migration","tesseract.state_file":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json"},"resource":{"service.name":"tesseract","service.version":"0.0.0"},"tesseract":{"task_id":"60722_0707_inbox-convention-migration","pipeline":"feature-delivery","stage_id":"invoke","outcome":"success","checkpoint_seq":0,"token_usage_unavailable":true}}
+ {"ts":"2026-05-14T05:17:50.397Z","trace_id":"fa5206f5b14851c8f6f189febd96668d","span_id":"ab0be3c1cbaa2324","name":"tesseract.pipeline.repair_state","kind":"event","status":{"code":"OK"},"attributes":{"openinference.span.kind":"CHAIN","gen_ai.operation.name":"tesseract.pipeline.repair_state","gen_ai.provider.name":"local-cli","gen_ai.request.model":"none","tesseract.feature_id":"inbox-convention-migration","tesseract.state_file":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json","tesseract.from_stage":"intake","tesseract.to_stage":"review","tesseract.transition_event":"manual_repair","tesseract.artifact":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state-repair.md","tesseract.repair.reason":"manual Cursor implementation reached review before ledger advancement existed"},"resource":{"service.name":"tesseract","service.version":"0.0.0"},"tesseract":{"task_id":"60722_0707_inbox-convention-migration","pipeline":"feature-delivery","stage_id":"intake","outcome":"success","checkpoint_seq":1,"token_usage_unavailable":true}}
++{"ts":"2026-05-14T06:09:37.603Z","trace_id":"6905a934b941d976c820069b7c46f978","span_id":"71161907dad02a00","name":"tesseract.pipeline.advance","kind":"event","status":{"code":"OK"},"attributes":{"openinference.span.kind":"CHAIN","gen_ai.operation.name":"tesseract.pipeline.advance","gen_ai.provider.name":"local-cli","gen_ai.request.model":"none","tesseract.feature_id":"inbox-convention-migration","tesseract.state_file":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json","tesseract.from_stage":"review","tesseract.to_stage":"implement","tesseract.transition_event":"must_fix","tesseract.artifact":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md"},"resource":{"service.name":"tesseract","service.version":"0.0.0"},"tesseract":{"task_id":"60722_0707_inbox-convention-migration","pipeline":"feature-delivery","stage_id":"review","outcome":"success","checkpoint_seq":2,"token_usage_unavailable":true}}
++{"ts":"2026-05-14T06:19:19.275Z","trace_id":"12b755b4146d7f82f14eb36d91e310a6","span_id":"386bab1483adf9d1","name":"tesseract.pipeline.advance","kind":"event","status":{"code":"OK"},"attributes":{"openinference.span.kind":"CHAIN","gen_ai.operation.name":"tesseract.pipeline.advance","gen_ai.provider.name":"local-cli","gen_ai.request.model":"none","tesseract.feature_id":"inbox-convention-migration","tesseract.state_file":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json","tesseract.from_stage":"implement","tesseract.to_stage":"review","tesseract.transition_event":"implementation_complete","tesseract.artifact":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md"},"resource":{"service.name":"tesseract","service.version":"0.0.0"},"tesseract":{"task_id":"60722_0707_inbox-convention-migration","pipeline":"feature-delivery","stage_id":"implement","outcome":"success","checkpoint_seq":3,"token_usage_unavailable":true}}
+diff --git a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json
+index 74b1d46..9273a79 100644
+--- a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json
++++ b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json
+@@ -3,7 +3,7 @@
+   "pipelineId": "feature-delivery",
+   "taskId": "60722_0707_inbox-convention-migration",
+   "featureId": "inbox-convention-migration",
+-  "status": "repaired",
++  "status": "ready_for_stage_delegation",
+   "currentStage": "review",
+   "createdAtIso": "2026-05-11T07:07:57.154Z",
+   "source": {
+@@ -147,7 +147,7 @@
+       "humanAttention": "Confirm archive/index state and outbox report."
+     }
+   ],
+-  "nextHumanAction": "Manual state repair: manual Cursor implementation reached review before ledger advancement existed Delegate next-prompt.md to reviewer; inspect src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md and choose pass or must-fix.",
++  "nextHumanAction": "Reviewer receives only the handoff, touch-set, diff, and validation output. Delegate next-prompt.md to reviewer; inspect src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md and choose pass or must-fix.",
+   "advanceHistory": [
+     {
+       "atIso": "2026-05-14T05:17:50.397Z",
+@@ -157,6 +157,22 @@
+       "event": "manual_repair",
+       "artifact": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state-repair.md",
+       "reason": "manual Cursor implementation reached review before ledger advancement existed"
++    },
++    {
++      "atIso": "2026-05-14T06:09:37.603Z",
++      "kind": "advance",
++      "from": "review",
++      "to": "implement",
++      "event": "must_fix",
++      "artifact": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md"
++    },
++    {
++      "atIso": "2026-05-14T06:19:19.275Z",
++      "kind": "advance",
++      "from": "implement",
++      "to": "review",
++      "event": "implementation_complete",
++      "artifact": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md"
+     }
+   ]
+ }
+diff --git a/tests/migrate-inbox-convention.test.mjs b/tests/migrate-inbox-convention.test.mjs
+index 7fa7560..620a70b 100644
+--- a/tests/migrate-inbox-convention.test.mjs
++++ b/tests/migrate-inbox-convention.test.mjs
+@@ -9,6 +9,7 @@ import {
+   stemHasTimestampPrefix,
+   parseFrontmatterFeatureId,
+   slugFeatureId,
++  isMigratedThreadTaskSegment,
+   listLegacyInboxArtifactRows,
+   planInboxConventionMigration,
+ } from "../src/internal/tools/migrate-inbox-convention.mjs";
+@@ -99,6 +100,54 @@ test("planInboxConventionMigration: idempotent basename keeps SID_HHMM_ leaf", (
+   }
+ });
+ 
++test("isMigratedThreadTaskSegment: matches work-style task directory token", () => {
++  assert.equal(isMigratedThreadTaskSegment("86400_1200_my-feature_demo"), true);
++  assert.equal(isMigratedThreadTaskSegment("legacy-subdir"), false);
++});
++
++test("planInboxConventionMigration: thread file in nested legacy subdirectory", () => {
++  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-nest-"));
++  try {
++    const nested = path.join(tmp, "src", "inbox", "threads", "my-feat", "old-rounds");
++    fs.mkdirSync(nested, { recursive: true });
++    fs.writeFileSync(path.join(nested, "note.md"), "body", "utf8");
++    const plan = planInboxConventionMigration(tmp, {
++      operatorIsoByRel: {
++        "src/inbox/threads/my-feat/old-rounds/note.md": "2024-07-01T08:05:00.000Z",
++      },
++    });
++    const step = plan.renames.find(
++      (r) => r.kind === "inbox-nested-file" && r.sourceRel.endsWith("old-rounds/note.md"),
++    );
++    assert.ok(step);
++    assert.match(step.targetRel, /^src\/inbox\/threads\/\d{6}_\d{2}-\d{2}-\d{2}\//);
++  } finally {
++    fs.rmSync(tmp, { recursive: true, force: true });
++  }
++});
++
++test("listLegacyInboxArtifactRows: skips migrated day/task subtrees under legacy feature", () => {
++  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-skip-"));
++  try {
++    const legacyFeat = path.join(tmp, "src", "inbox", "threads", "feat-a");
++    const dayLike = path.join(legacyFeat, "172995_05-11-26");
++    const taskLike = path.join(legacyFeat, "86500_0830_task_sem");
++    fs.mkdirSync(path.join(dayLike, "extra"), { recursive: true });
++    fs.writeFileSync(path.join(dayLike, "extra", "skip-me.md"), "x", "utf8");
++    fs.mkdirSync(taskLike, { recursive: true });
++    fs.writeFileSync(path.join(taskLike, "skip-too.md"), "y", "utf8");
++    fs.writeFileSync(path.join(legacyFeat, "keep.md"), "z", "utf8");
++
++    const rows = listLegacyInboxArtifactRows(tmp);
++    const rels = rows.filter((r) => r.queue === "threads").map((r) => r.rel);
++    assert.ok(rels.includes("src/inbox/threads/feat-a/keep.md"));
++    assert.ok(!rels.some((r) => r.includes("skip-me")));
++    assert.ok(!rels.some((r) => r.includes("skip-too")));
++  } finally {
++    fs.rmSync(tmp, { recursive: true, force: true });
++  }
++});
++
+ const __dirname = path.dirname(fileURLToPath(import.meta.url));
+ 
+ test("listLegacyInboxArtifactRows: real repo returns sorted rows", () => {

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
@@ -15,6 +17,8 @@ import {
   migrateTargetForWorkPath,
   migrateTargetForInboxPath,
   inventoryReferences,
+  defaultManifestPath,
+  writeManifest,
 } from "../src/internal/tools/migrate-timestamp-naming.mjs";
 
 test("daysToFds: FDS calendar day yields 0", () => {
@@ -195,4 +199,47 @@ test("inventoryReferences: finds a known path string in repo", () => {
   assert.ok(hits.length > 0);
   const files = new Set(hits.map((h) => h.file));
   assert.ok([...files].some((f) => f.endsWith(".md") || f.endsWith(".json")));
+});
+
+
+test("defaultManifestPath prefers archived inbox convention run when indexed", () => {
+  const repoRoot = mkdtempSync(path.join(tmpdir(), "tess-manifest-default-"));
+  try {
+    const taskId = "60722_0707_inbox-convention-migration";
+    const archiveRun = path.join(
+      repoRoot,
+      "src",
+      "internal",
+      "work_archive",
+      "172995_05-11-26",
+      taskId,
+    );
+    mkdirSync(archiveRun, { recursive: true });
+    const featureDir = path.join(repoRoot, "src", "memory", "features", "inbox-convention-migration");
+    mkdirSync(featureDir, { recursive: true });
+    writeFileSync(
+      path.join(featureDir, "index.json"),
+      `${JSON.stringify({ featureId: "inbox-convention-migration", taskId })}\n`,
+      "utf8",
+    );
+
+    assert.equal(
+      defaultManifestPath(repoRoot),
+      path.join(archiveRun, "migration-manifest.dry-run.json"),
+    );
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test("writeManifest creates missing parent directories", () => {
+  const repoRoot = mkdtempSync(path.join(tmpdir(), "tess-manifest-write-"));
+  try {
+    const out = path.join(repoRoot, "src", "internal", "work_archive", "day", "task", "manifest.json");
+    writeManifest({ schema: "test" }, out);
+    assert.equal(existsSync(out), true);
+    assert.deepEqual(JSON.parse(readFileSync(out, "utf8")), { schema: "test" });
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true });
+  }
 });

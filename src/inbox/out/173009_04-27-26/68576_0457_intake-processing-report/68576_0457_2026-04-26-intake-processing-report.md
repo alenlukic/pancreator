@@ -3,25 +3,25 @@
 ## Items processed
 
 - `src/inbox/in/compliance-tests.md` -> processed in intake round 1.
-- `src/inbox/threads/compliance-tests/68576_0457_round-01.md` -> processed as operator
+- `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md` -> processed as operator
   clarification input in intake round 2.
-- `src/inbox/threads/compliance-tests/68576_0457_round-02.md` -> resolved with interim
+- `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md` -> resolved with interim
   canonical fallback for gate blocking.
-- `src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md` -> ratified intake
+- `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md` -> ratified intake
   exit and authorized handoff to `plan`.
 - `src/inbox/in/compliance-tests.md` -> archived to
-  `src/inbox/archive/in/68576_0457_compliance-tests.md` after intake closeout.
+  `src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md` after intake closeout.
 
 ## Spec artifacts created or updated
 
 - `src/memory/features/compliance-tests/index.json` (feature status and handoff metadata).
 - `src/memory/features/compliance-tests/spec.md` (canonicalized engineering spec,
   status: `intake-approved-for-plan`; round-03 approval folded).
-- `src/inbox/threads/compliance-tests/68576_0457_round-01.md` (clarifying questions for
+- `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md` (clarifying questions for
   human response).
-- `src/inbox/threads/compliance-tests/68576_0457_round-02.md` (resolved clarification and
+- `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md` (resolved clarification and
   interim canonical fallback decision).
-- `src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md` (human approval for
+- `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md` (human approval for
   intake exit to `plan`).
 
 ## Remaining unresolved questions
@@ -40,7 +40,7 @@
 
 - Intake stage is complete for `compliance-tests`.
 - Current feature state is `intake-approved-for-plan`.
-- Approval artifact is `src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md`.
+- Approval artifact is `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md`.
 - Explicit handoff target is `tech-lead` at `plan` stage.
 
 ## Documentation impact decision
@@ -51,19 +51,19 @@ documentation_impact:
   rationale: Intake processing added a new feature artifact set and an inbox
     thread artifact, so documentation/reference surfaces changed.
   changed-surfaces:
-    - src/inbox/archive/in/68576_0457_compliance-tests.md
+    - src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md
     - src/memory/features/compliance-tests/index.json
     - src/memory/features/compliance-tests/spec.md
-    - src/inbox/threads/compliance-tests/68576_0457_round-01.md
-    - src/inbox/threads/compliance-tests/68576_0457_round-02.md
-    - src/inbox/threads/compliance-tests/68576_0457_round-03-approval.md
-    - src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md
+    - src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md
+    - src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-02/68576_0457_round-02.md
+    - src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md
+    - src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report/68576_0457_2026-04-26-intake-processing-report.md
   deferred-items: []
 ```
 
 ## Post-approval rejection processing (round 04)
 
-- `src/inbox/threads/compliance-tests/68576_0457_round-04-human-reject.md` -> processed as a
+- `src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md` -> processed as a
   human rejection decision that reopens feature remediation.
 
 ## Required corrections extracted from rejection
@@ -74,7 +74,7 @@ documentation_impact:
 - The first remediation slice MUST preserve agent-invokable compliance runs
   alongside operator invocation while scheduled automation remains deferred.
 - Invocation policies MUST cover structure-change scenarios previously
-  clarified in `src/inbox/threads/compliance-tests/68576_0457_round-01.md`.
+  clarified in `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-01/68576_0457_round-01.md`.
 - The remediation slice MUST update `AGENTS.md` behavioral guidance to encode
   when agents trigger compliance runs.
 
@@ -108,6 +108,6 @@ documentation_impact:
   changed-surfaces:
     - src/memory/features/compliance-tests/spec.md
     - src/memory/features/compliance-tests/index.json
-    - src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md
+    - src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report/68576_0457_2026-04-26-intake-processing-report.md
   deferred-items: []
 ```

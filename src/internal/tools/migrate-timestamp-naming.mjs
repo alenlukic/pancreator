@@ -7,7 +7,8 @@
  * runs out of CI and local defaults; operators set the variable only for
  * audited post-`ship` migration commits.
  *
- * Default mode is `--dry-run`, which emits
+ * Default mode is `--dry-run`, which emits a manifest next to the active/archived
+ * inbox convention migration run when that feature index exists, falling back to
  * `src/work/timestamp-naming-conventions/migration-manifest.dry-run.json`.
  *
  * Carveout: this file is intentionally excluded from ESLint via
@@ -484,55 +485,84 @@ function listFlatWorkTasks(repoRoot) {
 
 /**
  * @param {string} repoRoot
- * @returns {string[]}
+ * @param {string} rootRel
+ * @param {string} taskId
+ * @returns {string | null}
  */
-function listInboxFiles(repoRoot) {
-  /** @type {string[]} */
-  const files = [];
-  const patterns = [
-    ["src", "inbox", "in"],
-    ["src", "inbox", "out"],
-    ["src", "inbox", "archive", "in"],
-  ];
-  for (const segs of patterns) {
-    const dir = path.join(repoRoot, ...segs);
-    if (!existsSync(dir)) {
+function findTaskRunDir(repoRoot, rootRel, taskId) {
+  const rootAbs = path.join(repoRoot, ...rootRel.split("/"));
+  if (!existsSync(rootAbs)) {
+    return null;
+  }
+  for (const day of readdirSync(rootAbs, { withFileTypes: true })) {
+    if (!day.isDirectory() || !isDayDirectoryName(day.name)) {
       continue;
     }
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
-      if (e.isFile()) {
-        const rel = [...segs, e.name].join("/");
-        if (!isExcludedFromMigration(rel)) {
-          files.push(path.join(dir, e.name));
-        }
-      }
+    const candidateAbs = path.join(rootAbs, day.name, taskId);
+    if (existsSync(candidateAbs) && statSync(candidateAbs).isDirectory()) {
+      return path.posix.join(rootRel, day.name, taskId);
     }
   }
-  const threads = path.join(repoRoot, "src", "inbox", "threads");
-  if (existsSync(threads)) {
-    for (const feat of readdirSync(threads, { withFileTypes: true })) {
-      if (!feat.isDirectory()) {
-        continue;
-      }
-      const d = path.join(threads, feat.name);
-      for (const e of readdirSync(d, { withFileTypes: true })) {
-        if (e.isFile()) {
-          const rel = `src/inbox/threads/${feat.name}/${e.name}`;
-          if (!isExcludedFromMigration(rel)) {
-            files.push(path.join(d, e.name));
-          }
-        }
-      }
-    }
+  return null;
+}
+
+/**
+ * The inbox convention migration owns the current inbox tree rewrite. When that
+ * feature has been closed, default dry-run manifests should live with its
+ * archived run artifacts rather than recreating the deprecated active work path.
+ *
+ * @param {string} repoRoot
+ * @returns {string | null}
+ */
+function inboxConventionRunDir(repoRoot) {
+  const indexPath = path.join(
+    repoRoot,
+    "src",
+    "memory",
+    "features",
+    "inbox-convention-migration",
+    "index.json",
+  );
+  if (!existsSync(indexPath)) {
+    return null;
   }
-  return files;
+  let taskId = null;
+  try {
+    const index = JSON.parse(readFileSync(indexPath, "utf8"));
+    taskId = typeof index.taskId === "string" ? index.taskId : null;
+  } catch {
+    return null;
+  }
+  if (!taskId) {
+    return null;
+  }
+  return (
+    findTaskRunDir(repoRoot, "src/internal/work_archive", taskId) ??
+    findTaskRunDir(repoRoot, "src/work", taskId)
+  );
+}
+
+/**
+ * @param {string} repoRoot
+ * @returns {string}
+ */
+export function defaultManifestPath(repoRoot) {
+  const runDir = inboxConventionRunDir(repoRoot);
+  if (runDir) {
+    return path.join(repoRoot, ...runDir.split("/"), "migration-manifest.dry-run.json");
+  }
+  return path.join(
+    repoRoot,
+    "src/work/timestamp-naming-conventions/migration-manifest.dry-run.json",
+  );
 }
 
 /**
  * @param {Record<string, unknown>} manifest
  * @param {string} dest
  */
-function writeManifest(manifest, dest) {
+export function writeManifest(manifest, dest) {
+  mkdirSync(path.dirname(dest), { recursive: true });
   writeFileSync(dest, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }
 
@@ -568,13 +598,14 @@ function parseArgs(argv) {
 /**
  * @param {{ repoRoot: string, strictReferences: boolean }} opts
  */
-function buildDryRunManifest(opts) {
+async function buildDryRunManifest(opts) {
+  const { planInboxConventionMigration } = await import("./migrate-inbox-convention.mjs");
+  const inboxPlan = planInboxConventionMigration(opts.repoRoot);
   const { repoRoot, strictReferences } = opts;
   const workTasks = listFlatWorkTasks(repoRoot);
-  const inboxFiles = listInboxFiles(repoRoot);
 
   /** @type {Array<{ sourceRel: string, targetRel: string, kind: string, timestamp: { iso: string, source: string } }>} */
-  const renames = [];
+  const workRenames = [];
   /** @type {Array<{ id: string, createdAtMs: number, sid: number, hhmm: string, semantic: string }>} */
   const collisionInputs = [];
 
@@ -658,7 +689,7 @@ function buildDryRunManifest(opts) {
       col.semantic,
     );
     const targetRel = `src/work/${dayDir}/${taskBasename}/`;
-    renames.push({
+    workRenames.push({
       sourceRel: relDir,
       targetRel,
       kind: "work-task-dir",
@@ -666,87 +697,14 @@ function buildDryRunManifest(opts) {
     });
   }
 
-  /** @type {Map<string, Array<{ abs: string, rel: string, chosen: ReturnType<typeof chooseTimestamp>, d: Date }>>} */
-  const inboxByParent = new Map();
-  for (const abs of inboxFiles) {
-    const rel = path.relative(repoRoot, abs).split(path.sep).join("/");
-    const text = readFileSync(abs, "utf8");
-    const gitIso = gitOldestAddIso(repoRoot, rel);
-    const st = statSync(abs);
-    const chosen = chooseTimestamp(
-      { path: rel, text },
-      gitIso,
-      { mtimeMs: st.mtimeMs },
-    );
-    const d = new Date(chosen.iso);
-    const parent = path.posix.dirname(rel);
-    const g = inboxByParent.get(parent) ?? [];
-    g.push({ abs, rel, chosen, d });
-    inboxByParent.set(parent, g);
-  }
-  for (const [, group] of inboxByParent) {
-    /** @type {Array<{ id: string, createdAtMs: number, sid: number, hhmm: string, semantic: string }>} */
-    const ic = [];
-    for (const item of group) {
-      const base = path.posix.basename(item.rel);
-      const stem = base.includes(".")
-        ? base.slice(0, base.lastIndexOf("."))
-        : base;
-      const sid = secondsRemainingInDay(item.d);
-      const hm = hhmm(item.d);
-      ic.push({
-        id: item.rel,
-        createdAtMs: item.d.getTime(),
-        sid,
-        hhmm: hm,
-        semantic: stem,
-      });
-    }
-    const resolved = applyCollisionCounter(ic);
-    const byRel = new Map(resolved.map((t) => [t.id, t]));
-    for (const item of group) {
-      const col = byRel.get(item.rel);
-      if (!col) {
-        continue;
-      }
-      const ctx = {
-        repoRoot,
-        chosenDate: item.d,
-        collisionCounter: col.collisionCounter,
-      };
-      const { targetRel } = migrateTargetForInboxPath(item.abs, ctx);
-      renames.push({
-        sourceRel: item.rel,
-        targetRel,
-        kind: "inbox-file",
-        timestamp: { iso: item.chosen.iso, source: item.chosen.source },
-      });
-    }
-  }
-
-  /** @type {Map<string, string>} */
-  const pathMap = new Map();
-  for (const r of renames) {
-    const from = r.sourceRel.replace(/\/$/, "");
-    const to = r.targetRel.replace(/\/$/, "");
-    pathMap.set(from, to);
-    if (r.kind === "work-task-dir") {
-      pathMap.set(`${from}/`, `${to}/`);
-    }
-  }
+  const renames = [...workRenames, ...inboxPlan.renames];
 
   /** @type {Array<{ file: string, line: number, column: number, jsonPointer: string | null, before: string, after: string }>} */
   const referenceUpdates = [];
-  for (const r of renames) {
-    const legacy =
-      r.kind === "work-task-dir"
-        ? r.sourceRel.replace(/\/$/, "")
-        : r.sourceRel;
+  for (const r of workRenames) {
+    const legacy = r.sourceRel.replace(/\/$/, "");
     const hits = inventoryReferences(legacy, repoRoot);
-    const target =
-      r.kind === "work-task-dir"
-        ? r.targetRel.replace(/\/$/, "")
-        : r.targetRel;
+    const target = r.targetRel.replace(/\/$/, "");
     for (const h of hits) {
       referenceUpdates.push({
         file: h.file,
@@ -758,11 +716,15 @@ function buildDryRunManifest(opts) {
       });
     }
   }
+  referenceUpdates.push(...inboxPlan.referenceUpdates);
 
   /** @type {string[]} */
   const collisions = [];
   const seen = new Map();
   for (const r of renames) {
+    if (r.kind === "inbox-remove-empty-dir") {
+      continue;
+    }
     const t = r.targetRel.replace(/\/$/, "");
     const c = seen.get(t) ?? 0;
     seen.set(t, c + 1);
@@ -778,6 +740,8 @@ function buildDryRunManifest(opts) {
     repoRoot,
     summary: {
       plannedRenames: renames.length,
+      plannedWorkTaskDirs: workRenames.length,
+      inboxConvention: inboxPlan.summary,
       referenceUpdateRows: referenceUpdates.length,
       collisionWarnings: collisions.length,
     },
@@ -789,6 +753,9 @@ function buildDryRunManifest(opts) {
   if (strictReferences) {
     const stale = [];
     for (const r of renames) {
+      if (r.kind === "inbox-remove-empty-dir") {
+        continue;
+      }
       const legacy =
         r.kind === "work-task-dir"
           ? r.sourceRel.replace(/\/$/, "")
@@ -823,12 +790,7 @@ function buildDryRunManifest(opts) {
  * @param {string} repoRoot
  */
 export function applyRenamesFromManifest(renames, repoRoot) {
-  const ordered = [...renames].sort((a, b) => {
-    if (a.kind === b.kind) {
-      return 0;
-    }
-    return a.kind === "work-task-dir" ? -1 : 1;
-  });
+  const ordered = [...renames].filter((r) => r.kind === "work-task-dir");
   for (const r of ordered) {
     const fromRel = r.sourceRel.replace(/\/+$/, "");
     const toRel = r.targetRel.replace(/\/+$/, "");
@@ -865,13 +827,10 @@ export function applyReferenceUpdatesFromManifest(referenceUpdates, repoRoot) {
   }
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv);
   const repoRoot = args.root;
-  const defaultManifest = path.join(
-    repoRoot,
-    "src/work/timestamp-naming-conventions/migration-manifest.dry-run.json",
-  );
+  const defaultManifest = defaultManifestPath(repoRoot);
 
   if (args.rollback) {
     const mp = args.manifestPath
@@ -883,10 +842,12 @@ function main() {
       return;
     }
     const m = JSON.parse(readFileSync(mp, "utf8"));
-    const back = (m.renames ?? []).map((/** @type {{ sourceRel: string, targetRel: string }} */ r) => ({
-      from: r.targetRel,
-      to: r.sourceRel,
-    }));
+    const back = (m.renames ?? [])
+      .filter((/** @type {{ kind?: string }} */ r) => r.kind !== "inbox-remove-empty-dir")
+      .map((/** @type {{ sourceRel: string, targetRel: string }} */ r) => ({
+        from: r.targetRel,
+        to: r.sourceRel,
+      }));
     console.log(
       JSON.stringify({ rollbackPlanned: back.length, steps: back }, null, 2),
     );
@@ -910,18 +871,22 @@ function main() {
       return;
     }
     const m = JSON.parse(readFileSync(mp, "utf8"));
-    applyRenamesFromManifest(/** @type {[]} */ (m.renames ?? []), repoRoot);
+    const renames = /** @type {[]} */ (m.renames ?? []);
+    applyRenamesFromManifest(renames, repoRoot);
     applyReferenceUpdatesFromManifest(
       /** @type {[]} */ (m.referenceUpdates ?? []),
       repoRoot,
     );
+    const inboxMod = await import("./migrate-inbox-convention.mjs");
+    inboxMod.applyInboxRenamesFromManifest(renames, repoRoot);
+    inboxMod.writeInboxArtifactIndex(repoRoot, renames);
     console.log(
       `[migrate-timestamp-naming] write applied from ${mp} (TESSERACT_MIGRATION_GO=1)`,
     );
     return;
   }
 
-  const manifest = buildDryRunManifest({
+  const manifest = await buildDryRunManifest({
     repoRoot,
     strictReferences: args.strictReferences,
   });
@@ -939,5 +904,8 @@ function main() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main();
+  main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
 }

@@ -6,7 +6,11 @@ metadata:
     PRD §11 MVP pipeline. Walks a semi-formal directive in src/inbox/in/ through
     canonicalization, planning, implementation, review, delivery report, and
     ship. Mirrors PRD §3.5 US-1. Each stage is owned by a named persona; the
-    supervisor enforces gates and dispatches Intervention actions.
+    supervisor enforces gates and dispatches Intervention actions. Runtime
+    invocation and advancement regenerate a bounded next-prompt.md so stage
+    delegation does not rely on prior chat context. The complete-stage prompt is
+    a bounded librarian handoff for agent-executed artifact closure with
+    tess close-artifacts after human validation.
   references:
     - kind: lines
       path: docs/PRD.md
@@ -30,10 +34,12 @@ stages:
       - src/work/<day>/<task-id>/adr-draft.md
       - src/work/<day>/<task-id>/touch-set.json
       - src/work/<day>/<task-id>/handoff.md
+      - src/work/<day>/<task-id>/next-prompt.md
   - id: implement
     persona: coder
     label: Implement against the declared touch-set from the handoff card
     inputs:
+      - src/work/<day>/<task-id>/next-prompt.md
       - src/work/<day>/<task-id>/handoff.md
       - src/work/<day>/<task-id>/touch-set.json
   - id: review
@@ -49,4 +55,4 @@ stages:
     label: Stage the PR (no auto-push, Q3)
   - id: index
     persona: librarian
-    label: Index emitted artifacts and refresh the feature index
+    label: Index emitted artifacts and refresh the feature index before librarian artifact closure

@@ -1,0 +1,14 @@
+{
+  "status": "operator_ratified",
+  "ratified_at": "2026-05-14T16:43:54Z",
+  "evidence": {
+    "ship_validation_report": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/ship-validation-report.md",
+    "delivery_report": "src/memory/features/inbox-convention-migration/delivery-report.md",
+    "review": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md"
+  },
+  "notes": [
+    "Operator reviewed final local diff.",
+    "Relevant validation commands were run and captured.",
+    "No known blocking policy-compliance issues remain."
+  ]
+}

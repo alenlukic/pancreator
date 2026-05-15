@@ -1,10 +1,10 @@
 # Intake Processing Report - 2026-04-27 (Round 05 Superseding)
 
-Supersedes: `src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md`
+Supersedes: `src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report/68576_0457_2026-04-26-intake-processing-report.md`
 
 ## Items processed
 
-- `src/inbox/threads/compliance-tests/68576_0457_round-05-human-approve.md` -> processed as
+- `src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md` -> processed as
   a human approval decision that closes intake remediation.
 
 ## Canonical artifacts updated
@@ -17,7 +17,7 @@ Supersedes: `src/inbox/out/68576_0457_2026-04-26-intake-processing-report.md`
 ## Lifecycle and immutability checks
 
 - Inbound source item remains archived at
-  `src/inbox/archive/in/68576_0457_compliance-tests.md`.
+  `src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md`.
 - No semantic rewrite was applied to prior thread or outbox artifacts.
 - This report is append-only and supersedes the prior outbox report without
   mutating historical records.
@@ -47,6 +47,6 @@ documentation_impact:
   changed-surfaces:
     - src/memory/features/compliance-tests/spec.md
     - src/memory/features/compliance-tests/index.json
-    - src/inbox/out/68576_0457_2026-04-27-intake-processing-report-round-05.md
+    - src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report-round-05/68576_0457_2026-04-27-intake-processing-report-round-05.md
   deferred-items: []
 ```
