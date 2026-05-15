@@ -89,14 +89,46 @@ export function isMigratedThreadTaskSegment(dirBasename) {
  * @returns {string}
  */
 export function slugFeatureId(raw) {
-  const slug = raw
+  const slug = normalizeInboxSemanticStem(raw).slice(0, 80);
+  return slug.length > 0 ? slug : "inbox";
+}
+
+/**
+ * Normalize filename-derived semantic text before using it in a work-style task
+ * directory. Legacy inbox names often already include SID/HHMM and date tokens;
+ * retaining those in the semantic suffix produces paths like
+ * `68576_0457_compliance-tests_68576_0457_compliance-tests`.
+ * @param {string} raw
+ * @returns {string}
+ */
+export function normalizeInboxSemanticStem(raw) {
+  return raw
     .toLowerCase()
     .replace(/\.[a-z0-9]+$/u, "")
     .replace(/^\d+_\d{4}_/u, "")
+    .replace(/^\d{4}[-_]\d{2}[-_]\d{2}[-_]\d{4}[-_]*/u, "")
+    .replace(/^\d{4}[-_]\d{2}[-_]\d{2}[-_]*/u, "")
     .replace(/[^a-z0-9]+/gu, "-")
-    .replace(/^-+|-+$/gu, "")
-    .slice(0, 80);
-  return slug.length > 0 ? slug : "inbox";
+    .replace(/^-+|-+$/gu, "");
+}
+
+/**
+ * @param {string} featureId
+ * @param {string} fileStem
+ * @returns {string}
+ */
+export function buildInboxTaskSemantic(featureId, fileStem) {
+  const feature = slugFeatureId(featureId);
+  const taskStem = normalizeInboxSemanticStem(fileStem);
+  if (!taskStem || taskStem === feature) {
+    return feature;
+  }
+  const featurePrefix = `${feature}-`;
+  if (taskStem.startsWith(featurePrefix)) {
+    const remainder = taskStem.slice(featurePrefix.length).replace(/^-+|-+$/gu, "");
+    return remainder ? `${feature}_${remainder}` : feature;
+  }
+  return `${feature}_${taskStem}`;
 }
 
 /**
@@ -262,7 +294,7 @@ export function planInboxConventionMigration(repoRoot, opts = {}) {
     const fileStem = base.includes(".") ? base.slice(0, base.lastIndexOf(".")) : base;
     const ext = base.includes(".") ? base.slice(base.lastIndexOf(".")) : "";
     const featureId = resolveFeatureIdForRow(row, text);
-    const taskSemantic = `${featureId}_${fileStem}`;
+    const taskSemantic = buildInboxTaskSemantic(featureId, fileStem);
     const days = daysToFds(d);
     const dayDir = `${pad6(days)}_${mmDdYySuffix(d)}`;
     const sid = secondsRemainingInDay(d);

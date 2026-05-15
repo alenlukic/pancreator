@@ -9,6 +9,8 @@ import {
   stemHasTimestampPrefix,
   parseFrontmatterFeatureId,
   slugFeatureId,
+  normalizeInboxSemanticStem,
+  buildInboxTaskSemantic,
   isMigratedThreadTaskSegment,
   listLegacyInboxArtifactRows,
   planInboxConventionMigration,
@@ -26,6 +28,30 @@ test("parseFrontmatterFeatureId: reads feature_id", () => {
 
 test("slugFeatureId: normalizes slug", () => {
   assert.equal(slugFeatureId("My Feature!"), "my-feature");
+  assert.equal(slugFeatureId("2174_2323_2026-04-25-2259-docs-operator-readme-v1"), "docs-operator-readme-v1");
+});
+
+test("normalizeInboxSemanticStem: strips legacy timestamp/date prefixes", () => {
+  assert.equal(
+    normalizeInboxSemanticStem("2174_2323_2026-04-25-2259-docs-operator-readme-v1"),
+    "docs-operator-readme-v1",
+  );
+  assert.equal(normalizeInboxSemanticStem("68576_0457_compliance-tests"), "compliance-tests");
+});
+
+test("buildInboxTaskSemantic: avoids duplicating feature and task stem tokens", () => {
+  assert.equal(
+    buildInboxTaskSemantic("compliance-tests", "68576_0457_compliance-tests"),
+    "compliance-tests",
+  );
+  assert.equal(
+    buildInboxTaskSemantic("timestamp-naming-conventions", "50991_0950_round-01-clarify"),
+    "timestamp-naming-conventions_round-01-clarify",
+  );
+  assert.equal(
+    buildInboxTaskSemantic("docs-operator-readme-v1", "2174_2323_2026-04-25-2259-docs-operator-readme-v1"),
+    "docs-operator-readme-v1",
+  );
 });
 
 test("planInboxConventionMigration: nested target shape for flat inbox/in file", () => {
@@ -143,6 +169,31 @@ test("listLegacyInboxArtifactRows: skips migrated day/task subtrees under legacy
     assert.ok(rels.includes("src/inbox/threads/feat-a/keep.md"));
     assert.ok(!rels.some((r) => r.includes("skip-me")));
     assert.ok(!rels.some((r) => r.includes("skip-too")));
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("planInboxConventionMigration: task directory semantics are deduplicated", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-dedupe-"));
+  try {
+    const archiveIn = path.join(tmp, "src", "inbox", "archive", "in");
+    fs.mkdirSync(archiveIn, { recursive: true });
+    fs.writeFileSync(path.join(archiveIn, "68576_0457_compliance-tests.md"), "body", "utf8");
+    const plan = planInboxConventionMigration(tmp, {
+      operatorIsoByRel: {
+        "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md": "2024-04-27T00:57:04.000Z",
+      },
+    });
+    const step = plan.renames.find(
+      (r) => r.kind === "inbox-nested-file" && r.sourceRel.endsWith("68576_0457_compliance-tests.md"),
+    );
+    assert.ok(step);
+    assert.ok(!step.targetRel.includes("compliance-tests_68576_0457_compliance-tests"));
+    assert.match(
+      step.targetRel,
+      /^src\/inbox\/archive\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_0057_compliance-tests\/68576_0457_compliance-tests\.md$/,
+    );
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

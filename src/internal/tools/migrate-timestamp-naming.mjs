@@ -7,7 +7,8 @@
  * runs out of CI and local defaults; operators set the variable only for
  * audited post-`ship` migration commits.
  *
- * Default mode is `--dry-run`, which emits
+ * Default mode is `--dry-run`, which emits a manifest next to the active/archived
+ * inbox convention migration run when that feature index exists, falling back to
  * `src/work/timestamp-naming-conventions/migration-manifest.dry-run.json`.
  *
  * Carveout: this file is intentionally excluded from ESLint via
@@ -483,10 +484,85 @@ function listFlatWorkTasks(repoRoot) {
 }
 
 /**
+ * @param {string} repoRoot
+ * @param {string} rootRel
+ * @param {string} taskId
+ * @returns {string | null}
+ */
+function findTaskRunDir(repoRoot, rootRel, taskId) {
+  const rootAbs = path.join(repoRoot, ...rootRel.split("/"));
+  if (!existsSync(rootAbs)) {
+    return null;
+  }
+  for (const day of readdirSync(rootAbs, { withFileTypes: true })) {
+    if (!day.isDirectory() || !isDayDirectoryName(day.name)) {
+      continue;
+    }
+    const candidateAbs = path.join(rootAbs, day.name, taskId);
+    if (existsSync(candidateAbs) && statSync(candidateAbs).isDirectory()) {
+      return path.posix.join(rootRel, day.name, taskId);
+    }
+  }
+  return null;
+}
+
+/**
+ * The inbox convention migration owns the current inbox tree rewrite. When that
+ * feature has been closed, default dry-run manifests should live with its
+ * archived run artifacts rather than recreating the deprecated active work path.
+ *
+ * @param {string} repoRoot
+ * @returns {string | null}
+ */
+function inboxConventionRunDir(repoRoot) {
+  const indexPath = path.join(
+    repoRoot,
+    "src",
+    "memory",
+    "features",
+    "inbox-convention-migration",
+    "index.json",
+  );
+  if (!existsSync(indexPath)) {
+    return null;
+  }
+  let taskId = null;
+  try {
+    const index = JSON.parse(readFileSync(indexPath, "utf8"));
+    taskId = typeof index.taskId === "string" ? index.taskId : null;
+  } catch {
+    return null;
+  }
+  if (!taskId) {
+    return null;
+  }
+  return (
+    findTaskRunDir(repoRoot, "src/internal/work_archive", taskId) ??
+    findTaskRunDir(repoRoot, "src/work", taskId)
+  );
+}
+
+/**
+ * @param {string} repoRoot
+ * @returns {string}
+ */
+export function defaultManifestPath(repoRoot) {
+  const runDir = inboxConventionRunDir(repoRoot);
+  if (runDir) {
+    return path.join(repoRoot, ...runDir.split("/"), "migration-manifest.dry-run.json");
+  }
+  return path.join(
+    repoRoot,
+    "src/work/timestamp-naming-conventions/migration-manifest.dry-run.json",
+  );
+}
+
+/**
  * @param {Record<string, unknown>} manifest
  * @param {string} dest
  */
-function writeManifest(manifest, dest) {
+export function writeManifest(manifest, dest) {
+  mkdirSync(path.dirname(dest), { recursive: true });
   writeFileSync(dest, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }
 
@@ -754,10 +830,7 @@ export function applyReferenceUpdatesFromManifest(referenceUpdates, repoRoot) {
 async function main() {
   const args = parseArgs(process.argv);
   const repoRoot = args.root;
-  const defaultManifest = path.join(
-    repoRoot,
-    "src/work/timestamp-naming-conventions/migration-manifest.dry-run.json",
-  );
+  const defaultManifest = defaultManifestPath(repoRoot);
 
   if (args.rollback) {
     const mp = args.manifestPath

@@ -255,10 +255,10 @@
       }
     },
     "outbound_delivery_report": {
-      "path": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "path": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
       "citation": {
         "kind": "lines",
-        "path": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+        "path": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
         "range": [
           1,
           71
@@ -483,7 +483,7 @@
         "d472d02"
       ]
     },
-    "staged_inbox_out": "src/inbox/out/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+    "staged_inbox_out": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
     "run_log": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
     "verification_replay": {
       "command": "pnpm run check:phase0a",

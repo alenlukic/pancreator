@@ -88,11 +88,11 @@ When migration completes for `src/inbox/threads/`, the Feature SHALL NOT use a p
 
 When the Feature names a task subdirectory under `src/inbox/threads/`, the Feature SHALL apply the same seconds-remaining prefix, `HHMM` token, and collision-counter position the `timestamp-naming-conventions` Feature cites for `src/work/` task subdirectories.
 
-When the Feature sets the semantic suffix on that task subdirectory, the Feature SHALL concatenate the feature identifier, one ASCII underscore, and the task stem for that artifact.
+When the Feature sets the semantic suffix on that task subdirectory, the Feature SHALL combine the feature identifier and filename-derived task stem without repeating an identical normalized task stem.
 
-When the Feature derives the task stem for a Markdown file in `src/inbox/in/`, the Feature SHALL derive that stem solely from that file's filename stem.
+When the Feature derives the task stem for a Markdown file in `src/inbox/in/`, the Feature SHALL derive that stem solely from that file's filename stem after stripping legacy `{SID}_{HHMM}_` and leading `YYYY-MM-DD[-HHMM]` tokens.
 
-When the Feature derives the task stem for a non-Markdown inbox artifact under any ratified inbox subtree, the Feature SHALL derive that stem solely from that artifact's filename stem.
+When the Feature derives the task stem for a non-Markdown inbox artifact under any ratified inbox subtree, the Feature SHALL derive that stem solely from that artifact's filename stem after stripping legacy `{SID}_{HHMM}_` and leading `YYYY-MM-DD[-HHMM]` tokens.
 
 When the Feature organizes a task directory under any ratified inbox subtree, the Feature MAY place more than one file in that directory.
 
@@ -116,8 +116,8 @@ When the Feature migrates inbox paths, the Feature SHALL execute every inbox sub
 - When the Feature applies work-style layout, the Feature MUST derive the seconds-remaining prefix, the `HHMM` token, and the semantic suffix position using the same rules as the `timestamp-naming-conventions` Feature cites for `src/work/` task subdirectories.
 - When the Feature migrates `src/inbox/threads/`, the Feature MUST place artifacts under `src/inbox/threads/<work-style-day-directory>/`.
 - When the Feature migrates `src/inbox/threads/`, the Feature MUST NOT retain `src/inbox/threads/<feature-id>/` as the primary locator after migration completes.
-- When the Feature names a task subdirectory under `src/inbox/threads/`, the Feature MUST set the semantic suffix to the feature identifier, one ASCII underscore, and the task stem for that artifact.
-- When the Feature derives the task stem for a Markdown file in `src/inbox/in/`, the Feature MUST derive that stem solely from that file's filename stem.
+- When the Feature names a task subdirectory under `src/inbox/threads/`, the Feature MUST set the semantic suffix to a normalized feature/task semantic that does not repeat identical feature and filename-stem tokens.
+- When the Feature derives the task stem for a Markdown file in `src/inbox/in/`, the Feature MUST derive that stem solely from that file's filename stem after stripping legacy `{SID}_{HHMM}_` and leading `YYYY-MM-DD[-HHMM]` tokens.
 - When the Feature organizes a task directory under a ratified inbox subtree, the Feature MAY place more than one file in that directory.
 - When the Feature migrates an inbox artifact whose path crosses the ratified subtree list, the Feature MUST relocate that artifact beneath the new day directory and task subdirectory pattern instead of leaving only a flat parent rename.
 - When the Feature implements inbox nesting migration, the Feature MUST deliver the planner and writer in a dedicated module separate from `src/internal/tools/migrate-timestamp-naming.mjs`.

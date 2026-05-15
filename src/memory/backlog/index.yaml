@@ -442,8 +442,8 @@ items:
       - /src/memory/features/cursor-token-economy/delivery-report.md
       - /src/memory/features/cursor-token-economy/spec.md
       - /src/memory/features/cursor-token-economy/index.json
-      - /src/inbox/out/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md
-      - /src/inbox/archive/in/11951_2040_token_economy.md
+      - /src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md
+      - /src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md
     evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, docs/PRD.summary.md plus docs/PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to src/inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring is not implemented per AGENTS.md \u00a78."
     notes: "Closed in the same operator session that shipped pass-2 because pass-2 extends pass-1 deferred scope (extends_relationship: extends-deferred-scope per src/memory/features/active-memory-context-economy-pass-2/index.json)."
 
@@ -461,8 +461,8 @@ items:
       - /src/memory/features/active-memory-context-economy-pass-2/spec.md
       - /src/memory/features/active-memory-context-economy-pass-2/index.json
       - /src/memory/adr/0006-active-vs-archival-memory.md
-      - /src/inbox/out/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md
-      - /src/inbox/archive/in/75480_0302_token-economy-enhanced.md
+      - /src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md
+      - /src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md
     evidence: "Feature shipped under operator override authority. Active-memory tier created, ADR-0006 promoted, AGENTS.md slimmed (1458 to 1178 raw words; 900 prose-only), six Cursor rules narrowed, .cursorindexingignore aligned with the new tier model, context-budget reporter emits the seven tier groups, all six verification gates green, reviewer verdict approve at 20 pass / 0 concern / 0 fail across acceptance criteria, delivery report staged to src/inbox/out/, inbound source archived to src/inbox/archive/in/."
     notes: "Operator manually executed the librarian post_run actions because runtime feature-delivery ship/index automation was not yet implemented at delivery time. Active-memory rotation also performed under operator override; see follow-up backlog item active-memory-post-ship-ownership for the underlying ownership gap."
 
