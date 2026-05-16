@@ -1,6 +1,6 @@
 ---
 name: tech-writer-standard
-description: "Standard economical `tech-writer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
+description: "Standard `tech-writer` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
 model: auto
 permissionMode: default
 tools:
@@ -64,7 +64,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 
 ## Tier guidance
 
-- `tech-writer-standard` uses `model: auto` and is the default for bounded or routine work.
+- `tech-writer-standard` is the default for bounded or routine work; its model is selected by the current frontmatter policy.
 - `tech-writer-complex` preserves the prior fixed model selection for reasoning-heavy work.
 - `tech-writer` is a backward-compatible standard alias unless an operator explicitly asks for the complex tier.
 

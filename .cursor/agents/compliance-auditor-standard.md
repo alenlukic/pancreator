@@ -1,6 +1,6 @@
 ---
 name: compliance-auditor-standard
-description: "Standard economical `compliance-auditor` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
+description: "Standard `compliance-auditor` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
 model: auto
 permissionMode: default
 tools:
@@ -74,7 +74,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 
 ## Tier guidance
 
-- `compliance-auditor-standard` uses `model: auto` and is the default for bounded or routine work.
+- `compliance-auditor-standard` is the default for bounded or routine work; its model is selected by the current frontmatter policy.
 - `compliance-auditor-complex` preserves the prior fixed model selection for reasoning-heavy work.
 - `compliance-auditor` is a backward-compatible standard alias unless an operator explicitly asks for the complex tier.
 

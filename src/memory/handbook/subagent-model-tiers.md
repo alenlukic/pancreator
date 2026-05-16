@@ -24,9 +24,18 @@ Tesseract exposes two model tiers per persona.
 
 | Tier | Naming | Model policy | Use when |
 |---|---|---|---|
-| Standard | `.cursor/agents/<persona>-standard.md` | `model: auto` | bounded implementation, routine docs, simple task mode, known file sets |
-| Complex | `.cursor/agents/<persona>-complex.md` | prior fixed model for that persona | ambiguous architecture, policy/compliance reasoning, broad audit, historical reconstruction, high-risk cross-cutting work |
-| Alias | `.cursor/agents/<persona>.md` | `model: auto` | backward-compatible default; equivalent to standard unless an operator asks otherwise |
+| Standard | `.cursor/agents/<persona>-standard.md` | economical default; `model: auto` preferred when appropriate, fixed model allowed after human ratification | bounded implementation, routine docs, simple task mode, known file sets |
+| Complex | `.cursor/agents/<persona>-complex.md` | prior fixed model for that persona unless human-ratified policy changes it | ambiguous architecture, policy/compliance reasoning, broad audit, historical reconstruction, high-risk cross-cutting work |
+| Alias | `.cursor/agents/<persona>.md` | backward-compatible standard default; `model: auto` preferred when appropriate | equivalent to standard unless an operator asks otherwise |
+
+## General-purpose fallback
+
+`.cursor/agents/general-purpose.md` is a standalone catch-all agent, not a
+canonical persona projection. Use it when the operator is unsure which persona
+owns the task, when a native Cursor projection is missing, or when bounded bridge
+work is needed while infrastructure is still being built. Its first job is route
+discovery: prefer delegating to an owner persona over doing broad implementation
+inside the catch-all context.
 
 ## Delegation economics
 

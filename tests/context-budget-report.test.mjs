@@ -91,24 +91,37 @@ test("CLI exits zero with eight tiers and aggregate labels", () => {
   assert.match(out, /chars\/4/);
 });
 
-test("Cursor subagent projections expose standard and complex tiers", () => {
+test("Cursor persona projections expose standard and complex tiers", () => {
   const dir = path.join(ROOT, ".cursor", "agents");
   const names = fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".md"))
     .map((f) => f.replace(/\.md$/, ""));
-  const bases = names.filter((n) => !n.endsWith("-standard") && !n.endsWith("-complex"));
+  const bases = names
+    .filter((n) => !n.endsWith("-standard") && !n.endsWith("-complex"))
+    .filter((base) => names.includes(`${base}-standard`) && names.includes(`${base}-complex`));
   assert.ok(bases.length > 0);
   for (const base of bases) {
     const alias = fs.readFileSync(path.join(dir, `${base}.md`), "utf8");
     const standard = fs.readFileSync(path.join(dir, `${base}-standard.md`), "utf8");
     const complex = fs.readFileSync(path.join(dir, `${base}-complex.md`), "utf8");
-    assert.match(alias, /^model: auto$/m, `${base} alias should use auto`);
-    assert.match(standard, /^model: auto$/m, `${base}-standard should use auto`);
+    assert.match(alias, /^model:\s*\S+/m, `${base} alias should declare a model`);
+    assert.match(standard, /^model:\s*\S+/m, `${base}-standard should declare a model`);
     assert.doesNotMatch(complex, /^model: auto$/m, `${base}-complex should preserve a fixed model`);
     assert.match(alias, new RegExp(`tesseract-base-persona: ${base}`));
-    assert.match(complex, new RegExp(`tesseract-model-tier: complex`));
+    assert.match(standard, /tesseract-model-tier: standard/);
+    assert.match(complex, /tesseract-model-tier: complex/);
   }
+});
+
+test("Cursor general-purpose agent is a standalone fallback, not a persona tier projection", () => {
+  const dir = path.join(ROOT, ".cursor", "agents");
+  const fallback = fs.readFileSync(path.join(dir, "general-purpose.md"), "utf8");
+  assert.match(fallback, /^name: general-purpose$/m);
+  assert.match(fallback, /tesseract-model-tier: standalone/);
+  assert.match(fallback, /route discovery/i);
+  assert.equal(fs.existsSync(path.join(dir, "general-purpose-standard.md")), false);
+  assert.equal(fs.existsSync(path.join(dir, "general-purpose-complex.md")), false);
 });
 
 test("persona and Cursor agent frontmatter avoids inline maxTurns comments", () => {

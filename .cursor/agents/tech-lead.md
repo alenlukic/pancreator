@@ -68,7 +68,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 
 ## Tier guidance
 
-- `tech-lead-standard` uses `model: auto` and is the default for bounded or routine work.
+- `tech-lead-standard` is the default for bounded or routine work; its model is selected by the current frontmatter policy.
 - `tech-lead-complex` preserves the prior fixed model selection for reasoning-heavy work.
 - `tech-lead` is a backward-compatible standard alias unless an operator explicitly asks for the complex tier.
 

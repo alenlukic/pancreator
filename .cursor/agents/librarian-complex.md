@@ -68,7 +68,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 
 ## Tier guidance
 
-- `librarian-standard` uses `model: auto` and is the default for bounded or routine work.
+- `librarian-standard` is the default for bounded or routine work; its model is selected by the current frontmatter policy.
 - `librarian-complex` preserves the prior fixed model selection for reasoning-heavy work.
 - `librarian` is a backward-compatible standard alias unless an operator explicitly asks for the complex tier.
 

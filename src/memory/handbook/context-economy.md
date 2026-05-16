@@ -248,7 +248,7 @@ for human decisions unless debugging a specific generator.
 | Product intent at low detail | `docs/PRD.summary.md` | Orientation only; not a substitute for `docs/PRD.md` when citations need line anchors. |
 | Section-level PRD routing | `docs/PRD.index.md` | Picks which `docs/PRD.md` section to open next. |
 | M1 and bootstrap routing | `docs/M1.index.md` | Prefer this before full `docs/BOOTSTRAP.md` or full `docs/PRD.md` for M1 work. |
-| Subagent model tiering | `src/memory/handbook/subagent-model-tiers.md` | Defines standard (`model: auto`) and complex variants. |
+| Subagent model tiering | `src/memory/handbook/subagent-model-tiers.md` | Defines standard/default and complex variants without requiring a fixed model solely from the file suffix. |
 | Feature implementation | `src/memory/features/<id>/spec.md` | Canonical Engineering Spec for that Feature. |
 | Bootstrap phase authority | `docs/BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |
 | Governance and policy artifacts | `src/memory/handbook/policy-compliance-contract.md`, `src/memory/handbook/documentation-impact-contract.md` | Required for governed commits and post-task documentation decisions. |

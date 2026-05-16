@@ -71,7 +71,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 
 ## Tier guidance
 
-- `tesseract-engineer-standard` uses `model: auto` and is the default for bounded or routine work.
+- `tesseract-engineer-standard` is the default for bounded or routine work; its model is selected by the current frontmatter policy.
 - `tesseract-engineer-complex` preserves the prior fixed model selection for reasoning-heavy work.
 - `tesseract-engineer` is a backward-compatible standard alias unless an operator explicitly asks for the complex tier.
 

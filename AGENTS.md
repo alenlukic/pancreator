@@ -82,27 +82,36 @@ mode` forbids delegation.
    Cursor subagent and SHOULD NOT paste the full spec, prior chat transcript,
    PRD, bootstrap document, archival work, or broad directory listings.
 2. **Native subagent invocation.** Cursor exposes standard and complex variants:
-   `.cursor/agents/<name>-standard.md` uses `model: auto`;
-   `.cursor/agents/<name>-complex.md` preserves the prior fixed model for that
-   persona; `.cursor/agents/<name>.md` is a backward-compatible standard alias.
-   Use standard by default. Use complex only for the escalation triggers in
-   `src/memory/handbook/subagent-model-tiers.md`. Claude Code and other harnesses
-   SHALL use their equivalent tiering when available.
-3. **Persona-as-prompt fallback.** When no native invocation exists, start a
-   generalPurpose subagent, prepend the persona file contents to its system
-   prompt, and name the persona plus intended tier in the first message.
-4. **Loop discipline.** A parent SHOULD NOT run multi-round planning plus
+   `.cursor/agents/<name>-standard.md` is the default bounded-work variant and
+   should use Cursor `auto` when that is the best economical default, but the
+   suffix does not mandate a specific model; `.cursor/agents/<name>-complex.md`
+   preserves the prior fixed model for that persona unless a human ratifies a
+   model-policy change; `.cursor/agents/<name>.md` is a backward-compatible
+   standard alias. Use standard by default. Use complex only for the escalation
+   triggers in `src/memory/handbook/subagent-model-tiers.md`. Claude Code and
+   other harnesses SHALL use their equivalent tiering when available.
+3. **General-purpose fallback.** When no native invocation exists, when the
+   operator is unsure which persona owns the task, or while infrastructure gaps
+   prevent normal routing, start `.cursor/agents/general-purpose.md`. The agent
+   should discover the route, keep context reads compact, and either delegate to
+   the owning persona or perform bounded bridge work when no better owner exists.
+4. **Persona-as-prompt fallback.** When a native Cursor projection is missing for
+   a known persona, start the general-purpose agent, prepend the persona file
+   contents to its system prompt, and name the persona plus intended tier in the
+   first message.
+5. **Loop discipline.** A parent SHOULD NOT run multi-round planning plus
    implementation plus review in one context window. If execution exposes scope
    ambiguity, missing touch-set entries, or repeated validation failure, delegate
    back to the owning persona instead of extending the executor loop.
-5. **Cost discipline.** Subagents isolate parent context; they do not guarantee
+6. **Cost discipline.** Subagents isolate parent context; they do not guarantee
    lower total tokens. Avoid fan-out when multiple subagents would reload the
    same PRD, handbook, or archival context. When `tess run` or `tess advance`
    emits `nextPromptFile`, use that prompt as the delegated stage scope.
 
 When no persona owns the work (for example bootstrap-only handbook authoring or
-configuration scaffolding), perform it directly and cite this section in your
-response.
+configuration scaffolding), use the general-purpose fallback in Cursor when a
+separate agent context is useful; otherwise perform the work directly and cite
+this section in your response.
 
 ## 5 — Working agreement
 
