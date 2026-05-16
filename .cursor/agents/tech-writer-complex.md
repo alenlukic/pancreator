@@ -1,7 +1,7 @@
 ---
 name: tech-writer-complex
 description: "Complex high-effort `tech-writer` subagent. Use only when standard mode is insufficient: ambiguous architecture, policy/compliance reasoning, broad repo audit, historical reconstruction, or high-risk cross-cutting work."
-model: gpt-5.4-mini
+model: claude-4.6-sonnet-medium-thinking
 permissionMode: default
 tools:
   - Read

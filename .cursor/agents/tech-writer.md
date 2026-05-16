@@ -1,7 +1,7 @@
 ---
 name: tech-writer
 description: "Backward-compatible standard alias for `tech-writer-standard`. Use for routine tech-writer work; invoke `tech-writer-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: auto
+model: gpt-5.4-mini
 permissionMode: default
 tools:
   - Read

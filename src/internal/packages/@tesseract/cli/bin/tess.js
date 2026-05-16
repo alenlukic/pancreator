@@ -8,15 +8,48 @@ const binFile = fileURLToPath(import.meta.url);
 const packageRoot = path.resolve(path.dirname(binFile), "..");
 const repoRoot = findRepoRoot(packageRoot);
 const distEntry = path.join(packageRoot, "dist", "cli.js");
-const dependencyEntries = [
-  path.join(packageRoot, "node_modules", "@tesseract", "core", "dist", "index.js"),
-  path.join(packageRoot, "node_modules", "@tesseract", "inbox", "dist", "index.js"),
-  path.join(packageRoot, "node_modules", "@tesseract", "intervention", "dist", "index.js"),
-  path.join(packageRoot, "node_modules", "@tesseract", "pipeline", "dist", "index.js"),
-  path.join(packageRoot, "node_modules", "@tesseract", "run-logger", "dist", "index.js"),
+const dependencyPackageRoots = [
+  path.join(packageRoot, "node_modules", "@tesseract", "core"),
+  path.join(packageRoot, "node_modules", "@tesseract", "inbox"),
+  path.join(packageRoot, "node_modules", "@tesseract", "intervention"),
+  path.join(packageRoot, "node_modules", "@tesseract", "pipeline"),
+  path.join(packageRoot, "node_modules", "@tesseract", "run-logger"),
 ];
+const dependencyEntries = dependencyPackageRoots.map((root) =>
+  path.join(root, "dist", "index.js"),
+);
+const sourceRoots = [
+  path.join(packageRoot, "src"),
+  ...dependencyPackageRoots.map((root) => path.join(root, "src")),
+];
+const sourceFiles = sourceRoots.flatMap((root) => listSourceFiles(root));
 const missingDependencyEntries = dependencyEntries.filter((entry) => !fs.existsSync(entry));
-const needsBuild = !fs.existsSync(distEntry) || missingDependencyEntries.length > 0;
+const needsBuild =
+  !fs.existsSync(distEntry) ||
+  missingDependencyEntries.length > 0 ||
+  sourceIsNewerThanDist(distEntry, sourceFiles);
+
+function listSourceFiles(root) {
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    const abs = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      return listSourceFiles(abs);
+    }
+    return entry.isFile() && /\.[cm]?[tj]sx?$/u.test(entry.name) ? [abs] : [];
+  });
+}
+
+function sourceIsNewerThanDist(distFile, sources) {
+  if (!fs.existsSync(distFile)) {
+    return true;
+  }
+  const distMtime = fs.statSync(distFile).mtimeMs;
+  return sources.some((source) => fs.statSync(source).mtimeMs > distMtime);
+}
 
 function findRepoRoot(startDir) {
   let current = startDir;

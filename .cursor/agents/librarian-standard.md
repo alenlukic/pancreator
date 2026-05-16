@@ -1,7 +1,7 @@
 ---
 name: librarian-standard
 description: "Standard `librarian` subagent. Use for bounded indexing, backlog updates, citation sweeps, and completed-work archival with the model declared in this agent frontmatter."
-model: auto
+model: gpt-5.4
 permissionMode: default
 tools:
   - Read

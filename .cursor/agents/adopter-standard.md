@@ -1,7 +1,7 @@
 ---
 name: adopter-standard
 description: "Standard `adopter` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: auto
+model: claude-opus-4-7
 permissionMode: default
 tools:
   - Read

@@ -1,7 +1,7 @@
 ---
 name: supervisor
 description: "Backward-compatible standard alias for `supervisor-standard`. Use for routine supervisor work; invoke `supervisor-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: auto
+model: gpt-5.3-codex
 permissionMode: default
 tools:
   - Read

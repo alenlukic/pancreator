@@ -1,7 +1,7 @@
 ---
 name: tesseract-engineer-standard
 description: "Standard `tesseract-engineer` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: auto
+model: gpt-5.3-codex
 permissionMode: default
 tools:
   - Read
