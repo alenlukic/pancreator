@@ -152,9 +152,11 @@ Rules:
 
 - `src/personas/<name>.md` MUST remain canonical for authoring and review.
 - `.cursor/agents/<name>.md` MUST remain a backward-compatible standard alias
-  that uses `model: auto`.
-- `.cursor/agents/<name>-standard.md` MUST use `model: auto` for bounded and
-  routine work.
+  for the standard tier. It SHOULD use `model: auto` unless a human ratifies a
+  different default model for that persona.
+- `.cursor/agents/<name>-standard.md` MUST remain the default bounded-work
+  variant. It SHOULD use Cursor `auto` when that is the best economical default,
+  but the suffix does not mandate a specific model.
 - `.cursor/agents/<name>-complex.md` MUST preserve the prior fixed model for
   reasoning-heavy work unless a human ratifies a model-policy change.
 - Cursor projection bodies SHOULD point to `src/personas/<name>.md` instead of
@@ -164,7 +166,10 @@ Rules:
   tier metadata.
 
 Subagent tier selection policy lives in
-`/src/memory/handbook/subagent-model-tiers.md`.
+`/src/memory/handbook/subagent-model-tiers.md`. Standalone catch-all agents such
+as `.cursor/agents/general-purpose.md` are allowed when they are explicitly
+documented as non-persona projections and route to canonical personas whenever
+one owns the work.
 
 ### 5.2 — `.mdc` rule-layer projection (where required)
 

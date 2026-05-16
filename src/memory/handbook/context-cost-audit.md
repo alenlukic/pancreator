@@ -28,7 +28,7 @@ controls used to reduce default load.
 | Active and archival execution artifacts under `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, and `src/inbox/threads/**` | Track `.cursorindexingignore`; exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
 | Human-only operator notes | Exclude `src/inbox/notes/**` from Cursor indexing and preserve AGENTS prohibition on agent traversal. |
 | Cursor subagent projections duplicating canonical persona prose and PRD citations | Keep `.cursor/agents/**` compact and point to `src/personas/<name>.md` as canonical source. |
-| Expensive fixed models used for every subagent invocation | Add standard/complex Cursor subagent variants; standard uses `model: auto`, complex preserves prior fixed model. |
+| Expensive fixed models used for every subagent invocation | Add standard/complex Cursor subagent variants; standard uses an economical default and should prefer `model: auto` when appropriate, while complex preserves the prior fixed model. |
 | Parent agents carrying planning, implementation, and review in one long context window | Add compact `handoff.md` cards, generated `next-prompt.md` stage prompts, and pointer-only `src/memory/active/handoffs.md` so execution starts from bounded context. |
 | Generated machine artifacts | Exclude generated JSON, manifests, dry-run/write outputs, and lockfiles from default semantic indexing. |
 | Broad handbook/persona sweeps | Treat internal operating content as routeable by handbook index, not default-loaded. |

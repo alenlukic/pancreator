@@ -1,6 +1,6 @@
 ---
 name: coder-standard
-description: "Standard economical `coder` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model."
+description: "Standard `coder` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
 model: auto
 permissionMode: default
 tools:
@@ -68,7 +68,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 
 ## Tier guidance
 
-- `coder-standard` uses `model: auto` and is the default for bounded or routine work.
+- `coder-standard` is the default for bounded or routine work; its model is selected by the current frontmatter policy.
 - `coder-complex` preserves the prior fixed model selection for reasoning-heavy work.
 - `coder` is a backward-compatible standard alias unless an operator explicitly asks for the complex tier.
 
