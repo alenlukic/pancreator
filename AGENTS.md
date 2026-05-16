@@ -115,6 +115,17 @@ this section in your response.
 
 ## 5 — Working agreement
 
+- **Delegation policy.** When a user prompt begins with an agent invocation token
+  such as `/general-purpose`, the parent agent SHALL invoke the specified agent
+  with the remainder of the prompt as the delegated task. If the prompt contains
+  no instructions specifically intended for the parent agent, the parent agent
+  SHALL wait for the delegated agent to finish, then report the delegated result
+  to the user. For long-running delegated tasks, the parent agent SHALL perform
+  a heartbeat status check every 2 minutes. If the delegated agent crashes, the
+  parent agent SHALL retry invocation up to three times before reporting failure
+  and the last observed error. If the prompt also contains parent-agent
+  instructions, the parent agent SHALL determine whether those instructions
+  should run before, during, or after delegation, then execute them accordingly.
 - **Stage diffs locally; never push.** No agent SHALL run `git push` or
   `git commit --no-verify`. Persona `disallowedTools` enforces this; AGENTS.md
   restates it for out-of-band tooling.

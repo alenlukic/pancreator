@@ -1,0 +1,46 @@
+{
+  "feature_id": "us-1-dogfood-phase-4-exit",
+  "title": "US-1 Dogfood Phase 4 Exit",
+  "status": "intake-closed",
+  "current_stage": "intake",
+  "next_owner": "tech-lead",
+  "next_stage": "plan",
+  "pipeline_state": "ready_for_plan",
+  "created_at_utc": "2026-05-16T00:00:00Z",
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "src/inbox/in/us-1-dogfood-phase-4-exit.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "src/inbox/in/us-1-dogfood-phase-4-exit.md",
+      "range": [
+        1,
+        133
+      ],
+      "contentHash": "414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90"
+    },
+    "intake_thread": null,
+    "clarifying_rounds_posted": 0,
+    "clarifying_skip_rationale": "Source directive enumerates five required-execution sections, ten acceptance criteria, five operator manual-validation actions, and three explicit non-goals. The intake-analyst surfaces remaining latitude as `## Plan-stage decisions required` rather than as open intake questions.",
+    "human_approval_gate": "pending",
+    "human_approval_channel": "operator_cursor_chat",
+    "human_approval_request_note": "Operator ratification is required because the Feature drives the Phase 4 bootstrap exit gate and touches `tesseract.yaml`, the inbox lifecycle, and the dogfood proof bundle that gates Phase 5 M1 backlog work."
+  },
+  "artifact_index": {
+    "engineering_spec": {
+      "path": "src/memory/features/us-1-dogfood-phase-4-exit/spec.md"
+    },
+    "per_feature_index": {
+      "path": "src/memory/features/us-1-dogfood-phase-4-exit/index.json"
+    }
+  },
+  "ratification_required": true,
+  "librarian_populated": false,
+  "metadata": {
+    "tesseract-bootstrap-only": true,
+    "scaffold_only": true,
+    "scaffold_note": "Intake-analyst created the spec and the per-feature index scaffold only. Librarian populates the full index at post_run after the run reaches the index and complete stages."
+  }
+}
