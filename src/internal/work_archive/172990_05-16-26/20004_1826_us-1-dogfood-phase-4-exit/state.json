@@ -3,26 +3,26 @@
   "pipelineId": "feature-delivery",
   "taskId": "20004_1826_us-1-dogfood-phase-4-exit",
   "featureId": "us-1-dogfood-phase-4-exit",
-  "status": "ready_for_intake_delegation",
-  "currentStage": "intake",
+  "status": "closed",
+  "currentStage": "complete",
   "createdAtIso": "2026-05-16T18:26:35.519Z",
   "source": {
     "inboxEntry": "us-1-dogfood-phase-4-exit.md",
     "inboxPath": "src/inbox/in/us-1-dogfood-phase-4-exit.md"
   },
   "artifacts": {
-    "runDir": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit",
-    "stateFile": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/state.json",
-    "handoffFile": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/handoff.md",
-    "runLogFile": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/run.log.jsonl",
-    "nextPromptFile": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/next-prompt.md"
+    "runDir": "src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit",
+    "stateFile": "src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/state.json",
+    "handoffFile": "src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/handoff.md",
+    "runLogFile": "src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/run.log.jsonl",
+    "nextPromptFile": "src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/next-prompt.md"
   },
   "stages": [
     {
       "id": "intake",
       "persona": "intake-analyst",
       "label": "Canonicalize the human directive",
-      "status": "ready",
+      "status": "complete",
       "humanGate": "human_approval",
       "humanAttention": "Answer intake clarifying questions and ratify the canonical spec before planning."
     },
@@ -30,7 +30,7 @@
       "id": "plan",
       "persona": "tech-lead",
       "label": "Draft plan, ADR, touch-set, and handoff card",
-      "status": "pending",
+      "status": "complete",
       "humanGate": "human_approval",
       "humanAttention": "Ratify the plan, ADR draft, touch-set, and handoff before execution."
     },
@@ -38,7 +38,7 @@
       "id": "implement",
       "persona": "coder",
       "label": "Implement against the declared touch-set from the handoff card",
-      "status": "pending",
+      "status": "complete",
       "humanGate": "operator_intervention_available",
       "humanAttention": "Use tess pause/resume/abort if implementation drifts, loops, or exceeds scope."
     },
@@ -46,7 +46,7 @@
       "id": "review",
       "persona": "reviewer",
       "label": "Run modern-code-review and contracts pass with compact must-fix output",
-      "status": "pending",
+      "status": "complete",
       "humanGate": "review_passes_or_reenter_implement",
       "humanAttention": "Inspect high findings; approve only clean review output or send the run back to implement."
     },
@@ -54,13 +54,13 @@
       "id": "report",
       "persona": "tech-writer",
       "label": "Author the delivery report",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "ship",
       "persona": "supervisor",
       "label": "Stage the PR (no auto-push, Q3)",
-      "status": "pending",
+      "status": "complete",
       "humanGate": "local_stage_only",
       "humanAttention": "Review the local diff and delivery report; no agent may push or open the PR unaudited."
     },
@@ -68,7 +68,7 @@
       "id": "index",
       "persona": "librarian",
       "label": "Index emitted artifacts and refresh the feature index before librarian artifact closure",
-      "status": "pending",
+      "status": "complete",
       "humanGate": "archive_and_index_audit",
       "humanAttention": "Verify feature index artifacts; after index is accepted, the generated complete-stage prompt gives the human operator exact archival closure commands."
     }
@@ -147,5 +147,88 @@
       "humanAttention": "Confirm archive/index state and outbox report."
     }
   ],
-  "nextHumanAction": "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan."
+  "nextHumanAction": "Artifact closure complete; active work and source inbox directive are archived. No further feature-delivery action is required.",
+  "advanceHistory": [
+    {
+      "atIso": "2026-05-16T18:49:18.111Z",
+      "kind": "advance",
+      "from": "intake",
+      "to": "plan",
+      "event": "human_approval",
+      "artifact": "src/memory/features/us-1-dogfood-phase-4-exit/spec.md"
+    },
+    {
+      "atIso": "2026-05-16T20:18:58.745Z",
+      "kind": "advance",
+      "from": "plan",
+      "to": "implement",
+      "event": "human_approval",
+      "artifact": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/touch-set.json"
+    },
+    {
+      "atIso": "2026-05-16T20:21:52.351Z",
+      "kind": "advance",
+      "from": "implement",
+      "to": "review",
+      "event": "implementation_complete",
+      "artifact": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md"
+    },
+    {
+      "atIso": "2026-05-16T20:34:49.971Z",
+      "kind": "advance",
+      "from": "review",
+      "to": "implement",
+      "event": "must_fix",
+      "artifact": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md"
+    },
+    {
+      "atIso": "2026-05-17T00:25:21.497Z",
+      "kind": "advance",
+      "from": "implement",
+      "to": "review",
+      "event": "implementation_complete",
+      "artifact": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md"
+    },
+    {
+      "atIso": "2026-05-17T00:30:30.886Z",
+      "kind": "advance",
+      "from": "review",
+      "to": "report",
+      "event": "review_passes",
+      "artifact": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md"
+    },
+    {
+      "atIso": "2026-05-18T17:29:38.159Z",
+      "kind": "advance",
+      "from": "report",
+      "to": "ship",
+      "event": "report_ready",
+      "artifact": "src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md"
+    },
+    {
+      "atIso": "2026-05-18T17:41:08.842Z",
+      "kind": "advance",
+      "from": "ship",
+      "to": "index",
+      "event": "human_ratifies_local_diff",
+      "artifact": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/policy-compliance.json"
+    },
+    {
+      "atIso": "2026-05-18T17:44:22.962Z",
+      "kind": "advance",
+      "from": "index",
+      "to": "complete",
+      "event": "artifacts_indexed",
+      "artifact": "src/memory/features/us-1-dogfood-phase-4-exit/index.json"
+    },
+    {
+      "atIso": "2026-05-18T17:45:35.158Z",
+      "kind": "close",
+      "from": "complete",
+      "to": "complete",
+      "event": "artifacts_closed",
+      "artifact": "src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit",
+      "reason": "Archived active run from src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit and source inbox directive from src/inbox/in/us-1-dogfood-phase-4-exit.md."
+    }
+  ]
 }

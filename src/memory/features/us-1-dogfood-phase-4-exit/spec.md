@@ -8,7 +8,7 @@ source_inbox_item: src/inbox/in/us-1-dogfood-phase-4-exit.md
 next_owner: tech-lead
 next_stage: plan
 intake_closure:
-  human_approval_gate: pending
+  human_approval_gate: approved
   channel: operator_cursor_chat
   note: |
     The intake-analyst opted out of the clarifying-question loop because the

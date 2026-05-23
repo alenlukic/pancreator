@@ -1,0 +1,45 @@
+{
+  "task_id": "20004_1826_us-1-dogfood-phase-4-exit",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "src/memory/handbook/constitution.md",
+    "docs/PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "This task updates the ratified Phase 4 documentation and reference surfaces so bootstrap tracking, operator guidance, and feature evidence stay aligned after human approval.",
+    "changed_surfaces": [
+      "AGENTS.md",
+      "README.md",
+      "docs/M1.index.md",
+      "tesseract.yaml",
+      "src/memory/active/current.md",
+      "src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md",
+      "src/memory/features/us-1-dogfood-phase-4-exit/index.json",
+      "src/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json",
+      "src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md",
+      "src/memory/features/us-1-dogfood-phase-4-exit/phase-4-ratification-request.md",
+      "src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md",
+      "src/memory/features/us-1-dogfood-phase-4-exit/spec.md",
+      "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/handoff.md",
+      "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/next-prompt.md",
+      "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/run.log.jsonl",
+      "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/state.json"
+    ],
+    "deferred_items": []
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The task follows the bootstrap working agreement by staging the governance artifact locally and waiting for human ratification before advance.",
+    "constitution_alignment": "The task preserves documentation and reference stewardship by recording the affected surfaces and keeping the deferred ratification work explicit.",
+    "prd_alignment": "The task keeps the phase-4 exit aligned with the product requirement for ratified and traceable delivery artifacts.",
+    "required_updates": [
+      "tesseract.yaml",
+      "README.md",
+      "AGENTS.md",
+      "docs/M1.index.md",
+      "src/memory/active/current.md",
+      "src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md",
+      "src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/policy-compliance.json"
+    ]
+  }
+}

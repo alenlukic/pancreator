@@ -6,14 +6,14 @@ the current workflow.
 ## 1) Current status
 
 - **Current phase tracking:** `tesseract.yaml` records Bootstrap Phase 4 with
-  status `phase-4-in-progress`. Phases -1 through 3 are treated as complete
+  status `phase-4-ratified`. Phases -1 through 3 are treated as complete
   for tracking because scaffold, handbook seeds, personas, skills, M1 feature
   contracts, substrate packages, and static MVP pipeline definitions are
   present.
-- **Current focus:** Phase 4 US-1 dogfood verification and runtime wiring
-  hardening. Phase 4 still has exit gaps: the run log still needs external
-  Phoenix/Langfuse verification, and the pause/resume/abort path needs an
-  empirical mid-run exercise.
+- **Current focus:** the US-1 dogfood proof bundle was ratified on `2026-05-19`
+  after the nested proof-bundle and intervention runs closed. The remaining
+  Phoenix/Langfuse import gap is now an engineering backlog item for
+  `@tesseract/run-logger` and `tesseract-engineer`, not an open operator step.
 - **Runtime caveat:** `tess run feature-delivery <inbox-entry>` now creates a
   Phase-4 state machine, handoff card, run log, and bounded `next-prompt.md`
   under `src/work/<day>/<task-id>/`. It does **not** call Cursor, a model, or
@@ -41,6 +41,14 @@ The root directory is the operator entry point. The `docs/` directory contains h
 
 ## 3) How operators use feature delivery now
 
+The feature-delivery runtime is a state ledger plus prompt/artifact generator. It
+tracks which stage is active; it does **not** execute stage work by itself. The
+human operator is currently responsible for delegating each generated
+`next-prompt.md`, checking the resulting repo-local artifact, and advancing the
+ledger after the artifact is accepted.
+
+Use this loop exactly:
+
 1. Put the request in `src/inbox/in/<name>.md`. Do not use `src/inbox/notes/`; it is
    human-only scratch space.
 2. Start the run:
@@ -57,46 +65,97 @@ The root directory is the operator entry point. The `docs/` directory contains h
    pnpm -w exec tess run feature-delivery <name>.md --feature <feature-id> --task <task-id>
    ```
 
-3. Read the emitted JSON. The important fields are `taskId`, `stateFile`,
-   `handoffFile`, `nextPromptFile`, and `nextHumanAction`. Emitted JSON and
-   persisted `.json` artifacts use two-space indentation for human review.
-4. Delegate `nextPromptFile` to the stage owner named in
-   `src/pipelines/feature-delivery.yaml`. The first owner is `intake-analyst`.
-5. At each gate, the human operator checks the emitted artifact and either ratifies
-   the transition, answers questions, pauses, resumes, aborts, or sends the run
-   back to the owning persona. Ratified stages advance one step with a
-   stage-specific artifact, for example:
+3. Read the emitted JSON. The important fields are `taskId`, `featureId`,
+   `runDir`, `stateFile`, `handoffFile`, `nextPromptFile`, `currentStage`, and
+   `nextHumanAction`. Emitted JSON and persisted `.json` artifacts use two-space
+   indentation for human review.
+4. Delegate `nextPromptFile` to the persona named by `currentStage`. At invocation
+   time, this is `intake-analyst`.
+5. Wait for the delegated persona to produce the stage artifact listed in the
+   table below.
+6. Human-check the artifact. If it is wrong or incomplete, do **not** run
+   `advance`; send the task back to the same persona with the correction.
+7. When the artifact is accepted, run exactly the matching `tess advance` command
+   from the table below. `advance` records the transition, updates `state.json`,
+   regenerates `handoff.md`, and regenerates `next-prompt.md` for the next stage.
+8. Repeat from step 4 until `currentStage` becomes `complete`.
+9. At `complete`, do **not** run `tess advance` again. Delegate the generated
+   complete-stage `next-prompt.md` to `librarian`; if simulating that step
+   manually, run `pnpm -w exec tess close-artifacts <task-id>` exactly once after
+   confirming `policy-compliance.json` and `src/memory/features/<feature-id>/index.json`
+   exist.
 
-   ```bash
-   pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/spec.md
-   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/touch-set.json
-   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/implementation-report.md
-   pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/review.md
-   pnpm -w exec tess advance <task-id> --event must_fix --artifact src/work/<day>/<task-id>/review.md
-   ```
+`advance` is therefore run after every accepted non-terminal stage result:
+`intake`, `plan`, `implement`, `review`, `report`, `ship`, and `index`. The only
+branch is `review`: a passing review advances to `report`; a must-fix review uses
+`--event must_fix` and sends the run back to `implement`. `advance` is not run
+after initial invocation, after pause/resume/abort commands, or after the final
+`complete` state.
 
-   `tess advance` validates the current stage and expected artifact; reusing the
-   same artifact for later stages is rejected.
-6. If work already moved out-of-band and the ledger is behind, do not repeatedly
-   call `advance`. Create or point to a repo-local evidence artifact and use an
-   explicit repair:
+### Exact `tess advance` commands by current stage
 
-   ```bash
-   pnpm -w exec tess repair-state <task-id> --stage review \
-     --artifact src/work/<day>/<task-id>/review.md \
-     --reason "manual Cursor run already reached review before state advancement existed"
-   ```
+Replace `<task-id>`, `<feature-id>`, and `<runDir>` with the values emitted by
+`tess run`, `tess feature new`, or `tess status`. `<runDir>` has the form
+`src/work/<day>/<task-id>` while the run is active.
 
-7. Inspect state at any point, or regenerate prompt files from the current ledger
-   without changing state:
+| Current `currentStage` | Delegate `next-prompt.md` to | Required artifact before advancing | Command after human acceptance | Resulting `currentStage` |
+|---|---|---|---|---|
+| `intake` | `intake-analyst` | `src/memory/features/<feature-id>/spec.md` | `pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/spec.md` | `plan` |
+| `plan` | `tech-lead` | `<runDir>/plan.md`, `<runDir>/touch-set.json`, and `<runDir>/handoff.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/touch-set.json` | `implement` |
+| `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/implementation-report.md` | `review` |
+| `review` with no blocking findings | `reviewer` | `<runDir>/review.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/review.md` | `report` |
+| `review` with must-fix findings | `reviewer` | `<runDir>/review.md` documenting the must-fix findings | `pnpm -w exec tess advance <task-id> --event must_fix --artifact <runDir>/review.md` | `implement` |
+| `report` | `tech-writer` | `src/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/delivery-report.md` | `ship` |
+| `ship` | `supervisor` | `<runDir>/policy-compliance.json` plus human-ratified local diff | `pnpm -w exec tess advance <task-id> --artifact <runDir>/policy-compliance.json` | `index` |
+| `index` | `librarian` | `src/memory/features/<feature-id>/index.json` | `pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/index.json` | `complete` |
+| `complete` | `librarian` | Existing `<runDir>/policy-compliance.json` and `src/memory/features/<feature-id>/index.json` | `pnpm -w exec tess close-artifacts <task-id>` after final validation; do not use `advance` | `complete` with status `closed` |
 
-   ```bash
-   pnpm -w exec tess status <task-id>
-   pnpm -w exec tess refresh-prompt <task-id>
-   pnpm -w exec tess pause <task-id>
-   pnpm -w exec tess resume <task-id>
-   pnpm -w exec tess abort <task-id> --reason "superseded or unsafe"
-   ```
+Plan-stage note: the CLI accepts any of `<runDir>/plan.md`,
+`<runDir>/touch-set.json`, or `<runDir>/handoff.md` as the `--artifact` value,
+but all three files must exist. Use `<runDir>/touch-set.json` by default because
+it is the implementation scope contract for the next stage. If the tech-lead
+also emits `<runDir>/adr-draft.md`, ratify it as part of plan review, but the
+current CLI does not accept it as the transition artifact.
+
+### What the human operator edits manually
+
+The normal stage loop requires manual judgment, not manual ledger edits.
+
+- The human operator may manually create the initial `src/inbox/in/<name>.md`.
+- The delegated stage persona creates or edits the stage artifact listed above.
+- The human operator reviews the artifact content and decides whether to accept
+  it. If the operator chooses to manually correct an artifact, the corrected
+  file becomes the accepted artifact; no extra command is needed before
+  `advance`.
+- The human operator MUST NOT manually edit `state.json`, generated `handoff.md`,
+  generated `next-prompt.md`, or `run.log.jsonl` during normal operation. Use
+  `tess advance`, `tess refresh-prompt`, `tess repair-state`, `tess pause`,
+  `tess resume`, `tess abort`, or `tess close-artifacts` instead.
+- Running `advance` is sufficient only after the required repo-local artifact
+  already exists and has been accepted. It does not create missing artifacts,
+  perform implementation work, run review, run tests, stage files, push commits,
+  or open a PR.
+
+If work already moved out-of-band and the ledger is behind, do not repeatedly
+call `advance`. Create or point to a repo-local evidence artifact and use an
+explicit repair:
+
+```bash
+pnpm -w exec tess repair-state <task-id> --stage review \
+  --artifact src/work/<day>/<task-id>/review.md \
+  --reason "manual Cursor run already reached review before state advancement existed"
+```
+
+Inspect state at any point, or regenerate prompt files from the current ledger
+without changing state:
+
+```bash
+pnpm -w exec tess status <task-id>
+pnpm -w exec tess refresh-prompt <task-id>
+pnpm -w exec tess pause <task-id>
+pnpm -w exec tess resume <task-id>
+pnpm -w exec tess abort <task-id> --reason "superseded or unsafe"
+```
 
 ## 4) Post-invocation state machine
 
@@ -104,21 +163,23 @@ Invocation creates `src/work/<day>/<task-id>/state.json`, `handoff.md`,
 `next-prompt.md`, and `run.log.jsonl`. The initial state is
 `ready_for_intake_delegation` with `currentStage: intake`.
 
-| State | Owner | Human attention |
-|---|---|---|
-| `intake` | `intake-analyst` | Answer clarifying questions and ratify `src/memory/features/<id>/spec.md`. |
-| `plan` | `tech-lead` | Ratify `plan.md`, `adr-draft.md`, `touch-set.json`, and the next handoff. |
-| `implement` | `coder` | Watch for drift, scope expansion, validation loops, or tool failures; use pause/resume/abort when needed. |
-| `review` | `reviewer` | High findings block shipping; approve clean review output or re-enter `implement`. |
-| `report` | `tech-writer` | Ensure the delivery report explains architecture, interfaces, tradeoffs, and usage, not just a changelog. |
-| `ship` | `supervisor` | Review the local diff. Agents stage locally only; no push or PR without human review. |
-| `index` | `librarian` | Confirm feature index updates and accept the index artifact. |
-| `complete` | librarian | Use the generated `next-prompt.md` to run `tess close-artifacts <task-id>`, archiving `src/work/<day>/<task-id>/`, removing the empty active day directory, and archiving the source `src/inbox/in/` item after human validation/indexing. |
-| `paused` / `aborted` | human + supervisor | Resolve the blocker before resume, or leave a reasoned abort journal. |
+| State | Owner | Transition event recorded by command | Human gate |
+|---|---|---|---|
+| `intake` | `intake-analyst` | `human_approval` via `tess advance ... spec.md` | Accept canonical spec. |
+| `plan` | `tech-lead` | `human_approval` via `tess advance ... touch-set.json` | Accept plan, touch-set, and handoff before coding. |
+| `implement` | `coder` | `implementation_complete` via `tess advance ... implementation-report.md` | Accept implementation report and local work as ready for review. |
+| `review` | `reviewer` | `review_passes` via default `advance`, or `must_fix` via `--event must_fix` | Decide whether review passes or returns to implementation. |
+| `report` | `tech-writer` | `report_ready` via `tess advance ... delivery-report.md` | Accept the delivery report. |
+| `ship` | `supervisor` | `human_ratifies_local_diff` via `tess advance ... policy-compliance.json` | Ratify the local diff; no agent push or PR occurs here. |
+| `index` | `librarian` | `artifacts_indexed` via `tess advance ... index.json` | Accept the feature index artifact. |
+| `complete` | `librarian` | `artifacts_closed` via `tess close-artifacts`, not `advance` | Validate artifact closure and archive movement. |
+| `paused` / `aborted` | human + supervisor | `pause`, `resume`, or `abort` commands | Resolve blocker before resume, or leave a reasoned abort journal. |
 
 Main transitions: `invoke → intake`; `human_approval → plan`; `human_approval → implement`;
 `implementation_complete → review`; `must_fix → implement`; `review_passes → report`;
-`report_ready → ship`; `human_ratifies_local_diff → index`; `artifacts_indexed → complete`.
+`report_ready → ship`; `human_ratifies_local_diff → index`; `artifacts_indexed → complete`;
+`artifacts_closed → closed`.
+
 Interventions are journaled separately under `.tess/scheduler/interventions/<task-id>.jsonl`.
 `repair-state` is reserved for ledger recovery after explicit out-of-band work;
 its reason and evidence artifact are appended to `run.log.jsonl`.

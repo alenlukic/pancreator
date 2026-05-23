@@ -1,0 +1,109 @@
+{
+  "feature_id": "phase-4-intervention-probe-pause-resume-abort",
+  "task_id": "71096_0415_phase-4-intervention-probe-pause-resume-abort",
+  "stage": "plan",
+  "run_log_path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/run.log.jsonl",
+  "paths": [
+    {
+      "path": "src/inbox/in/phase-4-intervention-probe.md",
+      "access": "read",
+      "reason": "Source directive defining required intervention order and non-goals."
+    },
+    {
+      "path": "src/memory/features/phase-4-intervention-probe-pause-resume-abort/spec.md",
+      "access": "read",
+      "reason": "Canonical acceptance criteria and boundaries for this nested run."
+    },
+    {
+      "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/",
+      "access": "create-update",
+      "planned_children": [
+        "plan.md",
+        "adr-draft.md",
+        "touch-set.json",
+        "handoff.md",
+        "implementation-report.md",
+        "review.md",
+        "test-report.md",
+        "run.log.jsonl",
+        "state.json"
+      ]
+    },
+    {
+      "path": "src/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json",
+      "access": "update",
+      "reason": "Primary evidence artifact for pause, resume, and abort transitions."
+    },
+    {
+      "path": "src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md",
+      "access": "update",
+      "reason": "Proof-bundle index reference to intervention evidence path."
+    },
+    {
+      "path": "src/memory/features/phase-4-intervention-probe-pause-resume-abort/",
+      "access": "create-update",
+      "planned_children": [
+        "delivery-report.md",
+        "index.json"
+      ]
+    },
+    {
+      "path": "src/inbox/out/",
+      "access": "create",
+      "planned_children": [
+        "<timestamp>-phase-4-intervention-probe-pause-resume-abort-delivery-report.md"
+      ]
+    },
+    {
+      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "access": "update",
+      "reason": "Ratified: appendFeatureDeliveryInterventionRunLog emits OpenInference JSONL rows so pause-resume-abort-evidence.json can cite trace_id:span_id per nested spec and US-1 acceptance group."
+    },
+    {
+      "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+      "access": "update",
+      "reason": "Ratified: wires pause/resume/abort CLI commands to run-log append for feature-delivery task state files."
+    },
+    {
+      "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+      "access": "update",
+      "reason": "Ratified: regression coverage for intervention run-log emission on tess pause."
+    }
+  ],
+  "symbols": [],
+  "tests": [
+    {
+      "command": "node --test tests/*.test.mjs",
+      "required": true
+    },
+    {
+      "command": "node src/internal/tools/check-phase-0a-scaffold.mjs",
+      "required": true
+    },
+    {
+      "command": "node src/internal/tools/context-budget-report.mjs",
+      "required": true
+    },
+    {
+      "command": "bash -n .cursor/hooks/enforce-policy-compliance.sh",
+      "required": true
+    }
+  ],
+  "non_goals": [
+    "Do not substitute for the end-to-end proof-bundle nested run.",
+    "Do not start Phase 5 M1 backlog delivery.",
+    "Do not execute intervention CLI steps outside the live plan-stage boundary.",
+    "Do not modify any src/memory/features/us-1-dogfood-phase-4-exit/ path except pause-resume-abort-evidence.json and phase-4-proof-bundle.md."
+  ],
+  "required_artifacts": [
+    "Plan-stage artifacts: plan.md, adr-draft.md, touch-set.json, and updated handoff.md.",
+    "Implement-stage intervention evidence with pause/resume/abort state diffs and run-log event-id citations.",
+    "Review artifact verifying all acceptance criteria and non-goal compliance.",
+    "Feature delivery report and timestamped ship-stage copy under src/inbox/out/."
+  ],
+  "references": [
+    "{kind: lines, path: src/inbox/in/phase-4-intervention-probe.md, range: [39, 43], contentHash: 970e45fb321244d98ddde62ee2ca1f9fa05f264b5b6ce84aace2470ec2f00f5b}",
+    "{kind: lines, path: src/memory/features/phase-4-intervention-probe-pause-resume-abort/spec.md, range: [79, 132], contentHash: 970e45fb321244d98ddde62ee2ca1f9fa05f264b5b6ce84aace2470ec2f00f5b}",
+    "{kind: lines, path: src/memory/features/us-1-dogfood-phase-4-exit/spec.md, range: [208, 232], contentHash: 8796dd7d32f015073e2d95484a5dda802809c2109f82091bf892159bf551f360}"
+  ]
+}

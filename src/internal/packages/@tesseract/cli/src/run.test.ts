@@ -356,6 +356,34 @@ describe("parseAndRun", () => {
     expect(await readFile(nextPromptAbs, "utf8")).toContain("Use subagent/persona: intake-analyst");
   });
 
+  it("writes an intervention pause line to feature-delivery run.log when paused", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-pause-log-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(
+      path.join(root, "src", "inbox", "in", "demo-feature.md"),
+      "# Demo Feature\n\nBuild the thing.",
+      "utf8",
+    );
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; runLogFile: string };
+    await parseAndRun(["pause", start.taskId], { repoRoot: root, writeOut: () => undefined });
+
+    const runLogAbs = path.join(root, start.runLogFile);
+    const logText = await readFile(runLogAbs, "utf8");
+    const lines = logText.trim().split("\n").filter(Boolean);
+    const last = JSON.parse(lines[lines.length - 1]!) as {
+      name: string;
+      tesseract: { intervention?: { lever: string } };
+    };
+    expect(last.name).toBe("tesseract.pipeline.intervention.pause");
+    expect(last.tesseract.intervention?.lever).toBe("pause");
+  });
+
   it("exposes intervention state through status", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "tess-status-"));
     await seedFeatureDeliveryRepo(root);

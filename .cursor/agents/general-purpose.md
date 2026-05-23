@@ -41,7 +41,7 @@ metadata:
   tesseract-base-persona: general-purpose
   tesseract-model-tier: standalone
 name: general-purpose
-model: gpt-5.4
+model: auto
 description: Catch-all Tesseract subagent. Use when the operator is unsure which persona owns the work, when normal routing is blocked, or when bounded bridge work is needed while infrastructure is still being built.
 ---
 
