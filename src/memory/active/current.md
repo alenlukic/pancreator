@@ -35,7 +35,7 @@ read per `src/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- *(none)*. Pick up the next canonical queue item from `src/inbox/in/`.
+- *(none)*. `src/inbox/in/` currently contains only `.gitkeep`; no active inbox item is pending pickup.
 
 ## Most recent shipped Features
 

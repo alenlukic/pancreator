@@ -19,7 +19,7 @@ Human reviewer SHALL attach or cite paths for:
    an engineering backlog signal, not missing operator work.
 3. `pause-resume-abort-evidence.json` — this file is **not** produced by the
    intake ratification inbox item
-   `src/inbox/in/2026-05-18T04-16-00Z-intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`.
+   `src/inbox/archive/in/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/2026-05-18T04-16-00Z-intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`.
    That inbox item only approves the canonical **spec** after intake and supplies
    the `tess advance … --artifact …/spec.md` gate to move task `71096_0415_…` to
    **plan**. Intervention evidence is produced during the nested
@@ -39,7 +39,7 @@ Human reviewer SHALL attach or cite paths for:
 ## What you do for item 3 (intervention evidence) — human operator
 
 **You do not** run
-`src/inbox/in/2026-05-18T04-16-00Z-intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`
+`src/inbox/archive/in/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/2026-05-18T04-16-00Z-intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`
 to satisfy item 3. That inbox item only ever meant: read the spec, then run the
 `pnpm -w exec tess advance … --artifact …/spec.md` command printed there so the
 nested task leaves **intake** and enters **plan**. It does **not** create

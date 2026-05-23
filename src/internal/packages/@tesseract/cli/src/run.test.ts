@@ -68,7 +68,7 @@ describe("parseAndRun", () => {
     });
     expect(code).toBe(0);
     const raw = out.join("");
-    expect(raw).toMatch(/^\{\n  "command": "run",\n/u);
+    expect(raw).toMatch(/^\{\n {2}"command": "run",\n/u);
     const msg = JSON.parse(raw) as {
       status: string;
       taskId: string;
@@ -105,7 +105,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const startRaw = out.join("");
-    expect(startRaw).toMatch(/^\{\n  "command": "feature new",\n/u);
+    expect(startRaw).toMatch(/^\{\n {2}"command": "feature new",\n/u);
     const start = JSON.parse(startRaw) as { taskId: string; stateFile: string; nextPromptFile: string };
     expect(start.nextPromptFile).toContain("next-prompt.md");
 

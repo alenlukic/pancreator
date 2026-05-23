@@ -21,7 +21,7 @@ D6.
   carries a false-positive open ticket against this same task. The fix
   belongs to the operator or librarian, not the reviewer, because the
   reviewer write surface is `review.md` only per PRD §6. Citations:
-  `{kind: lines, path: src/inbox/in/2026-05-16T20-23-43Z-reviewer-missing-input.md, range: [1, 28], contentHash: f5a9bd4966f9d505ab9d82d7d2a90cf2083e8ad8485b68db3538b32cf8e398c8}`,
+  `{kind: lines, path: src/inbox/archive/in/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit_reviewer-missing-input/2026-05-16T20-23-43Z-reviewer-missing-input.md, range: [1, 28], contentHash: f5a9bd4966f9d505ab9d82d7d2a90cf2083e8ad8485b68db3538b32cf8e398c8}`,
   `{kind: lines, path: src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/test-report.md, range: [1, 10], contentHash: 4df96315339f4e29a883eb118f4e1aabb22c4b1cd4444a37c36c8f17bc2f455d}`.
 - Stage the unrelated working-tree edits to `README.md` and
   `.cursor/agents/general-purpose.md` as a separate commit before ship,
