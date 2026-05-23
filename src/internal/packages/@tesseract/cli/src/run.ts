@@ -8,6 +8,7 @@ import {
 } from "@tesseract/intervention";
 import {
   advanceFeatureDelivery,
+  appendFeatureDeliveryInterventionRunLog,
   closeFeatureDeliveryArtifacts,
   readFeatureDeliveryStatusWithInterventions,
   refreshFeatureDeliveryPrompt,
@@ -257,6 +258,12 @@ export async function parseAndRun(
     .action(async (taskId: string) => {
       const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
       await mgr.pause(asTaskId(taskId));
+      await appendFeatureDeliveryInterventionRunLog({
+        repoRoot,
+        taskId,
+        command: "pause",
+        clock: options?.clock,
+      });
       emit(writeOut, { command: "pause", status: "ok", taskId });
     });
 
@@ -272,6 +279,12 @@ export async function parseAndRun(
       const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
       const cp = opts.checkpoint as CheckpointId | undefined;
       await mgr.resume(asTaskId(taskId), cp);
+      await appendFeatureDeliveryInterventionRunLog({
+        repoRoot,
+        taskId,
+        command: "resume",
+        clock: options?.clock,
+      });
       emit(writeOut, {
         command: "resume",
         status: "ok",
@@ -288,6 +301,13 @@ export async function parseAndRun(
     .action(async (taskId: string, opts: { reason?: string }) => {
       const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
       await mgr.abort(asTaskId(taskId), opts.reason);
+      await appendFeatureDeliveryInterventionRunLog({
+        repoRoot,
+        taskId,
+        command: "abort",
+        abortReason: opts.reason,
+        clock: options?.clock,
+      });
       emit(writeOut, {
         command: "abort",
         status: "ok",

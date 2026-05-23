@@ -1,7 +1,7 @@
 ---
 name: tesseract-engineer-complex
 description: "Complex high-effort `tesseract-engineer` subagent. Use only when standard mode is insufficient: ambiguous architecture, policy/compliance reasoning, broad repo audit, historical reconstruction, or high-risk cross-cutting work."
-model: claude-4.6-sonnet-medium-thinking
+model: claude-opus-4-7
 permissionMode: default
 tools:
   - Read

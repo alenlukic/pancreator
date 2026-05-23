@@ -1,0 +1,65 @@
+{
+  "feature_id": "us-1-dogfood-phase-4-exit",
+  "probe_directive_path": "src/inbox/in/phase-4-intervention-probe.md",
+  "probe_nested_feature_id": "phase-4-intervention-probe-pause-resume-abort",
+  "probe_task_id": "71096_0415_phase-4-intervention-probe-pause-resume-abort",
+  "probe_work_directory": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort",
+  "probe_run_log_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/run.log.jsonl",
+  "intervention_journal_path": ".tess/scheduler/interventions/71096_0415_phase-4-intervention-probe-pause-resume-abort.jsonl",
+  "status": "captured",
+  "ledger_positioning_note": "Interventions were executed with currentStage `plan` (live plan) after `tess repair-state --stage plan` (run-log line 9). Ledger was restored to implement-stage re-entry with `tess repair-state --stage implement` (run-log line 13); task `state.json` was then aligned to must_fix semantics (review blocked) without using `tess advance`.",
+  "event_id_convention": "Each run-log citation uses trace_id concatenated with span_id as `<trace_id>:<span_id>` (single JSONL record per intervention).",
+  "pause": {
+    "task_id": "71096_0415_phase-4-intervention-probe-pause-resume-abort",
+    "stage_id_at_intervention": "plan",
+    "journal_timestamp_iso": "2026-05-18T16:42:04.492Z",
+    "run_log_timestamp_iso": "2026-05-18T16:42:04.493Z",
+    "run_log_event_ids": [
+      "04f1d6f7ac6711333e4c08dcd7e0918f:acdca970ecb775f1"
+    ],
+    "run_log_name": "tesseract.pipeline.intervention.pause",
+    "tess_status_before_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/tess-status.before.pause.json",
+    "tess_status_after_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/tess-status.after.pause.json",
+    "intervention_state_before": "running",
+    "intervention_state_after": "paused",
+    "state_snapshot_before_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/state.snapshot.before.pause.json",
+    "state_snapshot_after_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/state.snapshot.after.pause.json",
+    "ledger_state_json_unchanged_note": "Feature-delivery `state.json` body is identical before and after pause; `tess status` interventionState transitions running → paused while currentStage remains `plan`."
+  },
+  "resume": {
+    "task_id": "71096_0415_phase-4-intervention-probe-pause-resume-abort",
+    "resumed_stage_id": "plan",
+    "journal_timestamp_iso": "2026-05-18T16:42:06.874Z",
+    "run_log_timestamp_iso": "2026-05-18T16:42:06.875Z",
+    "run_log_event_ids": [
+      "003304becd55dfbffc47342c8f72339b:56f006a472b5913c"
+    ],
+    "run_log_name": "tesseract.pipeline.intervention.resume",
+    "tess_status_before_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/tess-status.before.resume.json",
+    "tess_status_after_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/tess-status.after.resume.json",
+    "intervention_state_before": "paused",
+    "intervention_state_after": "resumed",
+    "state_snapshot_before_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/state.snapshot.before.resume.json",
+    "state_snapshot_after_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/state.snapshot.after.resume.json",
+    "ledger_state_json_unchanged_note": "`state.json` body unchanged; interventionState transitions paused → resumed while currentStage remains `plan`."
+  },
+  "abort": {
+    "task_id": "71096_0415_phase-4-intervention-probe-pause-resume-abort",
+    "aborted_stage_id": "plan",
+    "abort_reason_text": "Phase 4 intervention probe — abort-after-resume at live plan stage (task 71096_0415).",
+    "journal_timestamp_iso": "2026-05-18T16:42:09.298Z",
+    "run_log_timestamp_iso": "2026-05-18T16:42:09.300Z",
+    "run_log_event_ids": [
+      "6af6b98b8735545533d66a0a16a01583:7cc4773968ec697e"
+    ],
+    "run_log_name": "tesseract.pipeline.intervention.abort",
+    "tess_status_before_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/tess-status.before.abort.json",
+    "tess_status_after_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/tess-status.after.abort.json",
+    "intervention_state_before": "resumed",
+    "intervention_state_after": "aborted",
+    "state_snapshot_before_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/state.snapshot.before.abort.json",
+    "state_snapshot_after_path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/state.snapshot.after.abort.json",
+    "ledger_state_json_unchanged_note": "`state.json` body unchanged; interventionState transitions resumed → aborted while currentStage remains `plan`."
+  },
+  "tooling_note": "`tess pause|resume|abort` append OpenInference-shaped rows to the task run log via `appendFeatureDeliveryInterventionRunLog` in `@tesseract/cli` when a feature-delivery state file resolves. `tesseract.stage_id` in each intervention row reflects `state.currentStage` at emission time (`plan` for this capture)."
+}

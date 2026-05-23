@@ -1,7 +1,7 @@
 ---
 name: contract-writer-standard
 description: "Standard `contract-writer` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: auto
+model: gpt-5.4
 permissionMode: default
 tools:
   - Read

@@ -115,6 +115,17 @@ this section in your response.
 
 ## 5 — Working agreement
 
+- **Delegation policy.** When a user prompt begins with an agent invocation token
+  such as `/general-purpose`, the parent agent SHALL invoke the specified agent
+  with the remainder of the prompt as the delegated task. If the prompt contains
+  no instructions specifically intended for the parent agent, the parent agent
+  SHALL wait for the delegated agent to finish, then report the delegated result
+  to the user. For long-running delegated tasks, the parent agent SHALL perform
+  a heartbeat status check every 2 minutes. If the delegated agent crashes, the
+  parent agent SHALL retry invocation up to three times before reporting failure
+  and the last observed error. If the prompt also contains parent-agent
+  instructions, the parent agent SHALL determine whether those instructions
+  should run before, during, or after delegation, then execute them accordingly.
 - **Stage diffs locally; never push.** No agent SHALL run `git push` or
   `git commit --no-verify`. Persona `disallowedTools` enforces this; AGENTS.md
   restates it for out-of-band tooling.
@@ -230,12 +241,16 @@ this section in your response.
 ## 8 — Bootstrap status (live)
 
 `tesseract.yaml` tracks the repo at Bootstrap Phase 4 with status
-`phase-4-in-progress`. Phases -1 through 3 are treated as complete for
+`phase-4-ratified`. Phases -1 through 3 are treated as complete for
 tracking purposes: the repo contains the scaffold, handbook seeds, persona
 roster, Cursor projections, M1 contract feature folders, substrate package
-implementations, and static MVP pipeline definitions. Phase 4 remains open
-until the US-1 dogfood exit gaps are ratified, including external run-log
-observability and an empirical pause/resume/abort exercise. `tess run
+implementations, and static MVP pipeline definitions. The US-1 dogfood exit is
+ratified: the proof bundle is accepted, pause/resume/abort evidence is captured,
+and the nested runs `77373_0230_phase-4-dogfood-proof-bundle-evidence-index`
+and `71096_0415_phase-4-intervention-probe-pause-resume-abort` are closed.
+Phoenix trace verification remains deferred per
+`src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md` as
+an `@tesseract/run-logger` and `tesseract-engineer` backlog item. `tess run
 feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine,
 handoff card, bounded next-prompt, and run log. Operators still invoke Cursor
 personas manually, then use `tess advance` with the accepted stage artifact;

@@ -1,7 +1,7 @@
 ---
 name: tech-writer-standard
 description: "Standard `tech-writer` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: auto
+model: gpt-5.4-mini
 permissionMode: default
 tools:
   - Read

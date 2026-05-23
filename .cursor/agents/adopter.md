@@ -1,7 +1,7 @@
 ---
 name: adopter
 description: "Backward-compatible standard alias for `adopter-standard`. Use for routine adopter work; invoke `adopter-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: auto
+model: claude-opus-4-7
 permissionMode: default
 tools:
   - Read

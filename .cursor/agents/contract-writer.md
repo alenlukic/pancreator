@@ -1,7 +1,7 @@
 ---
 name: contract-writer
 description: "Backward-compatible standard alias for `contract-writer-standard`. Use for routine contract-writer work; invoke `contract-writer-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: auto
+model: gpt-5.4
 permissionMode: default
 tools:
   - Read

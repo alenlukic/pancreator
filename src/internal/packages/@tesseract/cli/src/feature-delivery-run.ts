@@ -294,6 +294,36 @@ export async function startFeatureDelivery(
   };
 }
 
+/** Appends a run-log row for tess pause/resume/abort when a feature-delivery ledger exists. Returns false when no state file matches the task id. */
+export async function appendFeatureDeliveryInterventionRunLog(input: {
+  repoRoot: string;
+  taskId: string;
+  command: "pause" | "resume" | "abort";
+  abortReason?: string;
+  clock?: () => Date;
+}): Promise<boolean> {
+  try {
+    const repoRoot = path.resolve(input.repoRoot);
+    const taskId = sanitizeTaskId(input.taskId);
+    const now = input.clock?.() ?? new Date();
+    let stateFile: { abs: string };
+    try {
+      stateFile = await findStateFile(repoRoot, taskId);
+    } catch {
+      return false;
+    }
+    const state = await readFeatureDeliveryState(stateFile.abs);
+    const runLogAbs = path.join(repoRoot, state.artifacts.runLogFile);
+    await appendRunLogRecord(
+      runLogAbs,
+      makeInterventionRecord(state, now, input.command, input.abortReason),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function readFeatureDeliveryStatusWithInterventions(
   repoRootInput: string,
   taskIdInput: string,
@@ -964,6 +994,46 @@ function archiveInboxPathForSource(sourceRel: string, dayDir: string, taskId: st
 
 function isWorkStyleDayDir(value: string): boolean {
   return /^\d{6}_\d{2}-\d{2}-\d{2}$/u.test(value);
+}
+
+function makeInterventionRecord(
+  state: FeatureDeliveryState,
+  now: Date,
+  command: "pause" | "resume" | "abort",
+  abortReason?: string,
+): RunLogRecord {
+  const checkpointSeq = state.advanceHistory?.length ?? 0;
+  const attrs: Record<string, unknown> = {
+    "openinference.span.kind": "CHAIN",
+    "gen_ai.operation.name": `tesseract.pipeline.intervention.${command}`,
+    "gen_ai.provider.name": "local-cli",
+    "gen_ai.request.model": "none",
+    "tesseract.feature_id": state.featureId,
+    "tesseract.state_file": state.artifacts.stateFile,
+    "tesseract.intervention.command": command,
+  };
+  if (abortReason !== undefined) {
+    attrs["tesseract.intervention.abort_reason"] = abortReason;
+  }
+  return {
+    ts: rfc3339UtcMs(now),
+    trace_id: newTraceId(),
+    span_id: newSpanId(),
+    name: `tesseract.pipeline.intervention.${command}`,
+    kind: "event",
+    status: { code: "OK" },
+    attributes: attrs,
+    resource: { "service.name": "tesseract", "service.version": "0.0.0" },
+    tesseract: {
+      task_id: asTaskId(state.taskId),
+      pipeline: state.pipelineId,
+      stage_id: state.currentStage,
+      outcome: command === "abort" ? "aborted" : "success",
+      checkpoint_seq: checkpointSeq,
+      token_usage_unavailable: true,
+      intervention: { lever: command },
+    },
+  };
 }
 
 function makeInvocationRecord(state: FeatureDeliveryState, now: Date): RunLogRecord {

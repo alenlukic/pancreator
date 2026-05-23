@@ -1,7 +1,7 @@
 ---
 name: supervisor-standard
 description: "Standard `supervisor` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: auto
+model: gpt-5.3-codex
 permissionMode: default
 tools:
   - Read

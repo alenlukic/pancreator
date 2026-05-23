@@ -1,7 +1,7 @@
 ---
 name: persona-designer-standard
 description: "Standard `persona-designer` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: auto
+model: claude-4.6-sonnet-medium-thinking
 permissionMode: default
 tools:
   - Read

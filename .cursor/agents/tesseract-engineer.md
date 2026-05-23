@@ -1,7 +1,7 @@
 ---
 name: tesseract-engineer
 description: "Backward-compatible standard alias for `tesseract-engineer-standard`. Use for routine tesseract-engineer work; invoke `tesseract-engineer-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: auto
+model: gpt-5.3-codex
 permissionMode: default
 tools:
   - Read

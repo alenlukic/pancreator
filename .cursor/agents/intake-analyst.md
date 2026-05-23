@@ -1,7 +1,7 @@
 ---
 name: intake-analyst
 description: "Backward-compatible standard alias for `intake-analyst-standard`. Use for routine intake-analyst work; invoke `intake-analyst-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: auto
+model: claude-4.6-sonnet-medium-thinking
 permissionMode: default
 tools:
   - Read
