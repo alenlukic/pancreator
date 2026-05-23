@@ -1,7 +1,7 @@
 ---
 name: librarian
 description: "Backward-compatible standard alias for `librarian-standard`. Use for routine librarian indexing and completed-work archival; invoke `librarian-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: gpt-5.4
+model: auto
 permissionMode: default
 tools:
   - Read
