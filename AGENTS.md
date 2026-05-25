@@ -37,6 +37,7 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | Post-task documentation impact | `src/memory/handbook/documentation-impact-contract.md` |
 | Governed-commit policy compliance artifact | `src/memory/handbook/policy-compliance-contract.md` |
 | Inbox lifecycle and operator sandbox | `src/memory/handbook/inbox-lifecycle.md` |
+| Operator completion output (next steps block) | `src/memory/handbook/operator-output-contract.md` |
 | Layer 1 normative style | `src/memory/handbook/contract-style.md` |
 | Clause wrapper schema | `src/memory/handbook/contract-format.md` |
 | Run log schema | `src/memory/handbook/run-log-schema.md` |
@@ -157,6 +158,15 @@ this section in your response.
   evaluate documentation or reference impact after each task and SHALL either
   apply required updates or record deferral rationale with backlog linkage per
   `src/memory/handbook/documentation-impact-contract.md`.
+- **Next operator steps on task completion.** When a bounded task completes,
+  every agent SHALL append a final `## Next operator steps` section to
+  operator-visible output per
+  `src/memory/handbook/operator-output-contract.md`. A single follow-up MUST
+  state **What** and **How** (commands, paths, persona tokens) explicitly;
+  read-only inspection MUST be labeled `Read-only:`. Multiple follow-ups MUST
+  add **When to choose** and **Impact** per option. Parent agents summarizing
+  delegated work SHALL include the block for the operator even when the
+  subagent already emitted one.
 - **Policy-compliance artifact gate is mandatory for governed commits.** Tasks
   that stage structural changes outside active run work SHALL stage
   `/src/work/<day>/<task-id>/policy-compliance.json` per

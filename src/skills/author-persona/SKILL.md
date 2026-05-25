@@ -107,7 +107,10 @@ Required extensions:
 - `tesseract-stability` ∈ `{experimental, stable, deprecated}`; new personas land
   as `experimental` and promote on green dogfood usage for 4 consecutive weeks.
 - `tesseract-handbook-anchors` — array of paths the persona reads at invocation.
+  Every persona SHOULD anchor `/src/memory/handbook/operator-output-contract.md`
+  when the persona emits operator-visible chat output.
 - `tesseract-checklist` — array of named conformance checks the reviewer step runs.
+  Every checklist MUST include `next-operator-steps-on-completion`.
 
 ### Step 5 — Author the body prose
 
@@ -123,9 +126,11 @@ PRD §4.6 Layer 1 lint to every normative statement:
 - Median sentence length ≤ 30 words; p95 ≤ 40 words.
 
 The body MUST contain three sections: "When you are invoked", "What you MUST
-produce", and "What you MUST NOT do". Personas with conformance gates MUST add a
-fourth section, "Conformance gates"; personas with non-trivial failure modes MUST
-add a fifth, "Failure-handling".
+produce", and "What you MUST NOT do". The "What you MUST produce" section MUST
+require a `## Next operator steps` block on bounded task completion per
+`/src/memory/handbook/operator-output-contract.md`. Personas with conformance
+gates MUST add a fourth section, "Conformance gates"; personas with non-trivial
+failure modes MUST add a fifth, "Failure-handling".
 
 ### Step 6 — Emit the Cursor `.mdc` shim
 

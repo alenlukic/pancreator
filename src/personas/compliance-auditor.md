@@ -66,8 +66,8 @@ references:
     note: "Persona format and Cursor projection contract."
   - kind: lines
     path: /src/memory/handbook/documentation-impact-contract.md
-    range: [1, 260]
-    contentHash: bfa82077675a61d913808f3f59a107df44568b71158eeb5e12da53a02869b930
+    range: [1, 115]
+    contentHash: 1fcda8c4551b457a491ce1d276f74b1ad59fe333df49148adda3e836d1f779d7
     note: "Mandatory documentation impact decision contract."
   - kind: lines
     path: /src/memory/handbook/policy-compliance-contract.md
@@ -76,8 +76,8 @@ references:
     note: "Policy-compliance artifact shape and commit-time enforcement linkage."
   - kind: lines
     path: /src/memory/handbook/run-log-schema.md
-    range: [1, 221]
-    contentHash: dbc14fea33994592ad9df92bdb5e033f9f73e03bc579f764cd169c1676bbed93
+    range: [1, 220]
+    contentHash: 7fcab4f770815a487e2c85fb2d0d00dae4b179a230af4362eeb3cbdea1912b30
     note: "Run-log schema used by focused audit mode."
 ---
 

@@ -12,12 +12,12 @@ references:
   - kind: lines
     path: src/memory/features/active-memory-context-economy-pass-2/delivery-report.md
     range: [1, 120]
-    contentHash: TBD-on-commit
+    contentHash: 7d917d4
     note: "Most recent shipped Feature delivery report."
   - kind: lines
     path: src/memory/handbook/inbox-lifecycle.md
     range: [60, 130]
-    contentHash: TBD-on-commit
+    contentHash: 8542ae2
     note: "Inbox lifecycle drives the next-Feature pickup procedure."
 related:
   - /src/memory/handbook/context-economy.md
@@ -41,6 +41,7 @@ read per `src/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `json-formatting` | `2026-05-24T00:00:00Z` (index complete) | `src/memory/features/json-formatting/delivery-report.md` | — | `src/inbox/archive/in/172983_05-23-26/67055_0522_json-formatting/json_formatting.md` |
 | `us-1-dogfood-phase-4-exit` | `2026-05-19T00:00:00Z` (ratification close-out) | `src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md` | `src/inbox/out/172987_05-19-26/77614_0226_us-1-dogfood-phase-4-exit-delivery-report.md` | `src/inbox/archive/in/172983_05-23-26/78179_0217_us-1-dogfood-phase-4-exit.md` |
 | `bootstrap-state-fast-forward` | `2026-05-10T14:30:00Z` (operator close-out) | — | — | — |
 | `active-memory-context-economy-pass-2` | `2026-05-10T03:02:00Z` | `src/memory/features/active-memory-context-economy-pass-2/delivery-report.md` | `src/inbox/out/172991_05-15-26/81300_0125_active-memory-context-economy-pass-2-delivery-report.md` | `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy-enhanced.md` |
