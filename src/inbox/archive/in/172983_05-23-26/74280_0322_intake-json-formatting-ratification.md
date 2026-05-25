@@ -5,7 +5,7 @@ intake_round: 1
 spec_path: src/memory/features/json-formatting/spec.md
 closed_question_count: 7
 open_question_count: 0
-status: pending-ratification
+status: human-ratified
 created: 2026-05-23T03:22:00Z
 ---
 
@@ -48,6 +48,8 @@ feature. The plan stage for `json-formatting` MUST resolve whether:
   prefix comparison, or
 - (b) abbreviation applies only to rendered output while the stored value
   retains the full 64-character digest.
+
+**Answer**: This has been addressed. `glossary.md` has been updated. ONLY abbreviated hashes are to be used moving forward. This feature is closed. This inbox item is out of date.
 
 **Human ratification is required on this point before the plan stage proceeds.**
 

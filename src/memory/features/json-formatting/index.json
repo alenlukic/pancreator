@@ -126,10 +126,7 @@
       "contentHash": "35157ee"
     }
   },
-  "deferred_backlog_ids": [
-    "json-formatting-citation-verifier-prefix",
-    "json-formatting-markdown-corpus-scan"
-  ],
+  "deferred_backlog_ids": ["json-formatting-citation-verifier-prefix", "json-formatting-markdown-corpus-scan"],
   "open_followups": [
     {
       "id": "json-formatting-citation-verifier-prefix",
