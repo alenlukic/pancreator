@@ -6,7 +6,7 @@ next_owner: tech-lead
 next_stage: plan
 source_inbox_item: src/inbox/in/timestamp_naming_conventions.md
 intake_round: 1
-closure_artifact: src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md
+closure_artifact: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
 references:
   - kind: lines
     path: src/inbox/in/timestamp_naming_conventions.md
@@ -24,7 +24,7 @@ references:
     contentHash: TBD-on-commit
     note: Directive naming and implementation sections define the sentinel values, path patterns, and migration intent.
   - kind: lines
-    path: src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md
+    path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
     range: [10, 87]
     contentHash: TBD-on-commit
     note: Operator answers resolve scope, collision, tie-break, migration, start-day, and inbox-owner questions, and defer the post-2500 rollover rule.

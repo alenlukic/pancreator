@@ -64,7 +64,8 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 2. Read `src/personas/tech-lead.md` for role semantics before performing persona-owned work.
 3. Read `src/memory/handbook/context-economy.md` only when the task requires context-budget decisions.
 4. Read `docs/M1.index.md`, `docs/PRD.index.md`, or `docs/PRD.summary.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md`.
-5. Do not traverse `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, or `src/inbox/threads/**` unless the task explicitly requires active-run handling or archival reconstruction.
+5. For plan-stage work, read the active run `state.json` and treat `taskId` plus `artifacts.runDir` as canonical path inputs.
+6. Do not traverse `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, or `src/inbox/threads/**` unless the task explicitly requires active-run handling or archival reconstruction.
 
 ## Tier guidance
 

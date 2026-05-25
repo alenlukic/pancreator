@@ -1,0 +1,107 @@
+{
+  "feature_id": "json-formatting",
+  "task_id": "67055_0522_json-formatting",
+  "stage": "implement",
+  "plan_revision": "scope-corrected-round-02",
+  "slice_strategy": "two-slice-implement",
+  "decisions": {
+    "scope_basis": "all-r1-json-surfaces",
+    "canonical_formatter_owner": "coder",
+    "bulk_migration_owner": "tesseract-engineer",
+    "migration_script_path": "src/internal/tools/migrate-json-formatting.mjs",
+    "compliance_descriptor_path": "tests/compliance/json-formatting.yaml",
+    "compliance_schema_path": "tests/compliance/schemas/latest.yaml",
+    "glossary_update_path": "src/memory/handbook/glossary.md",
+    "output_surface_alignment": ["repository-json-files", "markdown-embedded-json", "terminal-cli-json", "agent-chat-json"],
+    "hash_abbreviation_source": "git rev-parse --short HEAD",
+    "short_hash_length_at_plan_time": 7,
+    "deferred_companion_feature_id": "json-formatting-citation-verifier-prefix"
+  },
+  "paths": [
+    {
+      "path": "src/internal/tools/migrate-json-formatting.mjs",
+      "access": "update"
+    },
+    {
+      "path": "tests/compliance/json-formatting.yaml",
+      "access": "update"
+    },
+    {
+      "path": "tests/compliance/schemas/latest.yaml",
+      "access": "read-validate"
+    },
+    {
+      "path": "tests/migrate-json-formatting.test.mjs",
+      "access": "update"
+    },
+    {
+      "path": "tests/repo-structure.test.mjs",
+      "access": "update"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "access": "update"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+      "access": "update"
+    },
+    {
+      "path": "src/memory/handbook/glossary.md",
+      "access": "update"
+    },
+    {
+      "path": "src/memory/features/json-formatting/index.json",
+      "access": "update"
+    },
+    {
+      "path": "src/work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
+      "access": "create-update"
+    }
+  ],
+  "symbols": [],
+  "tests": [
+    {
+      "id": "canonical-formatter-shape",
+      "type": "unit-validation",
+      "target": "src/internal/tools/migrate-json-formatting.mjs",
+      "expectation": "Formatter emits indent=2 JSON with one object key-value pair per line and valid array pretty layout."
+    },
+    {
+      "id": "abbreviation-length-derivation",
+      "type": "unit-validation",
+      "target": "src/internal/tools/migrate-json-formatting.mjs",
+      "expectation": "Git short-hash length drives git hash and contentHash abbreviation length for all writer surfaces."
+    },
+    {
+      "id": "descriptor-schema-conformance",
+      "type": "artifact-validation",
+      "target": "tests/compliance/json-formatting.yaml",
+      "expectation": "Descriptor remains valid for tests/compliance/schemas/latest.yaml and asserts excluded surface rules."
+    },
+    {
+      "id": "non-json-surface-detection",
+      "type": "integration-validation",
+      "target": "tests/*.test.mjs",
+      "expectation": "Compliance checks detect practical markdown, terminal, or chat surface formatting violations where fixtures exist."
+    },
+    {
+      "id": "migration-idempotency",
+      "type": "script-validation",
+      "target": "src/internal/tools/migrate-json-formatting.mjs",
+      "expectation": "Dry-run after write and second write-mode run both report zero rewrites."
+    },
+    {
+      "id": "out-of-scope-guard",
+      "type": "review-check",
+      "target": "implement-slice",
+      "expectation": "No pre-commit hook, no Cursor rule, and no citation-verifier implementation updates are included."
+    }
+  ],
+  "non_goals": [
+    "Do not add or modify pre-commit hooks for JSON formatting.",
+    "Do not add or modify Cursor rules for JSON formatting enforcement.",
+    "Do not modify citation-verifier implementation logic in this feature.",
+    "Do not modify node_modules, vendored paths, package-lock.json, or tsconfig.tsbuildinfo formatting behavior."
+  ]
+}

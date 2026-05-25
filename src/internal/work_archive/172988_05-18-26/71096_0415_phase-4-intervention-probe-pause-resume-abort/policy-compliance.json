@@ -1,10 +1,6 @@
 {
   "task_id": "71096_0415_phase-4-intervention-probe-pause-resume-abort",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "docs/PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "docs/PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "This ship-stage pass emits governance-facing documentation artifacts for Phase 4 ratification, including the feature delivery report mirror in inbox/out and the policy-compliance gate artifact.",

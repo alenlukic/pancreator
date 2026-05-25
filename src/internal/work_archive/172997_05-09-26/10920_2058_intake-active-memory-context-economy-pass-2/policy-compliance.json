@@ -1,10 +1,6 @@
 {
   "task_id": "173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Intake stage adds a new Feature folder, a canonical Engineering Spec, and a per-Feature index under src/memory/features/active-memory-context-economy-pass-2/. The librarian post_run obligation and the global src/memory/features/index.json both depend on the new spec citation, so documentation-impact applies.",

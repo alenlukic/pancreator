@@ -1,10 +1,6 @@
 {
   "task_id": "tesseract-persona-pipeline-runner-impl",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Phase 3 step 5 implements the harness loop: @tesseract/persona (parse/emit/validate Anthropic 16-field, .cursor/agents mirror, .mdc shim, with a tech-writer round-trip test), @tesseract/pipeline (YAML loader, executePipeline, compilePipeline structural stub), and @tesseract/runner-cursor (CursorRunner producing a structured invocation envelope without an LLM call). Adds the yaml catalog dep and updates the three feature task lists.",

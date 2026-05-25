@@ -1,10 +1,6 @@
 {
   "task_id": "tesseract-memory-io-impl",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Phase 3 step 4 implements the memory + I/O surface: @tesseract/memory (FileMemoryStore, MemoryRouter, dual-anchor citation methods), @tesseract/inbox (FileInbox), and @tesseract/notifier (Console + Inbox notifiers). Adjusts the meta package re-exports so the workspace typechecks under the renamed observability symbols, and closes the three feature task lists.",

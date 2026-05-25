@@ -6,65 +6,65 @@
   "status": "human-ratified",
   "source_inbox_item": {
     "path": "src/inbox/in/us-1-dogfood-phase-4-exit.md",
-    "content_hash": "414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90"
+    "content_hash": "414a8f4"
   },
   "feature_artifacts": [
     {
       "kind": "spec",
       "path": "src/memory/features/us-1-dogfood-phase-4-exit/spec.md",
-      "content_hash": "8796dd7d32f015073e2d95484a5dda802809c2109f82091bf892159bf551f360"
+      "content_hash": "8796dd7"
     },
     {
       "kind": "proof-bundle-index",
       "path": "src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md",
-      "content_hash": "1801f6fac831d5554eaa95cff06570880da1c6ba66f39229defcb13672ce67af"
+      "content_hash": "1801f6f"
     },
     {
       "kind": "phoenix-trace-evidence",
       "path": "src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md",
-      "content_hash": "9c3bfd84b5b25581106144d91d8eb7c699d4ec4ebd6c519bf04ee5e8e6e61a93"
+      "content_hash": "9c3bfd8"
     },
     {
       "kind": "pause-resume-abort-evidence",
       "path": "src/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json",
-      "content_hash": "8f976002d7f2a9519f3dc4a83b8d553c1ac1e953f6ad9948ec052ccb3205cabf"
+      "content_hash": "8f97600"
     },
     {
       "kind": "phase-4-ratification-request",
       "path": "src/memory/features/us-1-dogfood-phase-4-exit/phase-4-ratification-request.md",
-      "content_hash": "87b6be42f4949e6bbcf051a07d8b8d4c0095ba9a3b6650fb786d398651875cc6"
+      "content_hash": "87b6be4"
     },
     {
       "kind": "delivery-report",
       "path": "src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md",
-      "content_hash": "07abd84551cf73eca05b7b2b10ed1034dafd36ef72c4ed578fa4466aeedab93e"
+      "content_hash": "07abd84"
     }
   ],
   "accepted_ship_artifacts": [
     {
       "kind": "plan",
       "path": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/plan.md",
-      "content_hash": "d210e4abe78df2aa34d48b108545907ac2d393e8807c4d6667feaecff8c55e0d"
+      "content_hash": "d210e4a"
     },
     {
       "kind": "adr-draft",
       "path": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/adr-draft.md",
-      "content_hash": "f7a69b7f266335e6f0fe02a4a92ddf3c0c18545645e409d300aa3f6d53db9e15"
+      "content_hash": "f7a69b7"
     },
     {
       "kind": "touch-set",
       "path": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/touch-set.json",
-      "content_hash": "669a0ff07461858030daf6dcfbb9fc6902571fff1c22d9f360dfd958f19f3274"
+      "content_hash": "669a0ff"
     },
     {
       "kind": "implementation-report",
       "path": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
-      "content_hash": "f60f453e5e17247700e365dffac38ddc4d1e319df0237ea8fd89c0c2adb94022"
+      "content_hash": "f60f453"
     },
     {
       "kind": "review",
       "path": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
-      "content_hash": "f66f572609cfd3d92f3a5c3494d7a4c35a13d586ca7e5a4650ed6796d4ba16cb"
+      "content_hash": "f66f572"
     }
   ],
   "ship_outbox_artifact": {

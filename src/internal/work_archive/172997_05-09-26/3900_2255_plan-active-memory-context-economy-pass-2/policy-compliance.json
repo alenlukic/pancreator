@@ -1,10 +1,6 @@
 {
   "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Implement stage completes pass-2 documentation and governance; slice 7 refreshes task-local documentation-impact and policy-compliance artifacts for governed non-work paths.",
@@ -47,20 +43,14 @@
     {
       "kind": "lines",
       "path": "src/memory/handbook/policy-compliance-contract.md",
-      "range": [
-        47,
-        98
-      ],
-      "contentHash": "971f594cd9fb1c1cbc9da86b6104d6fff81b9c723cd9266766687b63277a3d67"
+      "range": [47, 98],
+      "contentHash": "971f594"
     },
     {
       "kind": "lines",
       "path": "AGENTS.md",
-      "range": [
-        101,
-        109
-      ],
-      "contentHash": "884bc58912b0084f49ad6f23e294c283af65ea3e7fa0e4c911e1a857958fcbdc"
+      "range": [101, 109],
+      "contentHash": "884bc58"
     }
   ]
 }

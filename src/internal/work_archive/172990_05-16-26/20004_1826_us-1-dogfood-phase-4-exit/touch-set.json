@@ -30,10 +30,7 @@
     {
       "path": "src/inbox/in/",
       "access": "create",
-      "planned_children": [
-        "phase-4-dogfood-proof-bundle-index.md",
-        "phase-4-intervention-probe.md"
-      ]
+      "planned_children": ["phase-4-dogfood-proof-bundle-index.md", "phase-4-intervention-probe.md"]
     },
     {
       "path": "src/memory/features/us-1-dogfood-phase-4-exit/",
@@ -50,11 +47,7 @@
     {
       "path": "src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/",
       "access": "create-update",
-      "planned_children": [
-        "implementation-report.md",
-        "policy-compliance.json",
-        "test-report.md"
-      ]
+      "planned_children": ["implementation-report.md", "policy-compliance.json", "test-report.md"]
     }
   ],
   "symbols": [],
@@ -70,21 +63,15 @@
     },
     {
       "command": "node src/internal/tools/check-phase-0a-scaffold.mjs",
-      "paths": [
-        "src/internal/tools/check-phase-0a-scaffold.mjs"
-      ]
+      "paths": ["src/internal/tools/check-phase-0a-scaffold.mjs"]
     },
     {
       "command": "node src/internal/tools/context-budget-report.mjs",
-      "paths": [
-        "src/internal/tools/context-budget-report.mjs"
-      ]
+      "paths": ["src/internal/tools/context-budget-report.mjs"]
     },
     {
       "command": "bash -n .cursor/hooks/enforce-policy-compliance.sh",
-      "paths": [
-        ".cursor/hooks/enforce-policy-compliance.sh"
-      ]
+      "paths": [".cursor/hooks/enforce-policy-compliance.sh"]
     }
   ],
   "non_goals": [

@@ -1,10 +1,6 @@
 {
   "task_id": "15300_2230_symlink-removal-agents-cursor",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "docs/PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "docs/PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "The worktree removes duplicate agent entrypoints (root CLAUDE.md symlink, redundant Cursor rule shim, `.github/copilot-instructions.md` symlink) and updates AGENTS, PRD, handbook, workflows, hooks, personas, feature specs, and archives so references stay coherent with `AGENTS.md` as the sole root operating card.",

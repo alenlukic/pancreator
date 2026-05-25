@@ -1,6 +1,8 @@
 {
   "extends": "../../../../../tsconfig.base.json",
-  "include": [
-    "src"
-  ]
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src", "../../../tools/canonical-json-format.mjs"]
 }

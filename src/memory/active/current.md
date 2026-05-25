@@ -41,10 +41,10 @@ read per `src/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
-| `us-1-dogfood-phase-4-exit` | `2026-05-19T00:00:00Z` (ratification close-out) | `src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md` | `src/inbox/out/2026-05-19T02-26-26Z-us-1-dogfood-phase-4-exit-delivery-report.md` | `src/inbox/archive/in/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/us-1-dogfood-phase-4-exit.md` |
+| `us-1-dogfood-phase-4-exit` | `2026-05-19T00:00:00Z` (ratification close-out) | `src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md` | `src/inbox/out/172987_05-19-26/77614_0226_us-1-dogfood-phase-4-exit-delivery-report.md` | `src/inbox/archive/in/172983_05-23-26/78179_0217_us-1-dogfood-phase-4-exit.md` |
 | `bootstrap-state-fast-forward` | `2026-05-10T14:30:00Z` (operator close-out) | — | — | — |
-| `active-memory-context-economy-pass-2` | `2026-05-10T03:02:00Z` | `src/memory/features/active-memory-context-economy-pass-2/delivery-report.md` | `src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md` | `src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md` |
-| `cursor-token-economy` | `2026-05-10T03:16:00Z` (operator close-out; delivery report staged 2026-05-09) | `src/memory/features/cursor-token-economy/delivery-report.md` | `src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md` | `src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md` |
+| `active-memory-context-economy-pass-2` | `2026-05-10T03:02:00Z` | `src/memory/features/active-memory-context-economy-pass-2/delivery-report.md` | `src/inbox/out/172991_05-15-26/81300_0125_active-memory-context-economy-pass-2-delivery-report.md` | `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy-enhanced.md` |
+| `cursor-token-economy` | `2026-05-10T03:16:00Z` (operator close-out; delivery report staged 2026-05-09) | `src/memory/features/cursor-token-economy/delivery-report.md` | `src/inbox/out/172991_05-15-26/50909_1005_cursor-token-economy-delivery-report.md` | `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md` |
 
 Pass-2 extends pass-1 deferred scope; both close as a single operator session.
 

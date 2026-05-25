@@ -1,10 +1,6 @@
 {
   "task_id": "tesseract-observability-impl",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Phase 3 step 3 implements observability + state: @tesseract/run-logger (JSONL append, record types, ids, helpers) and @tesseract/checkpointer-fs (CheckpointEnvelopeV1 + FsCheckpointStore). Adds vitest configs, scripts, @types/node devDependency, and updates the two feature task lists.",

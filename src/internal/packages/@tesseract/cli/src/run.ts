@@ -16,6 +16,8 @@ import {
   startFeatureDelivery,
 } from "./feature-delivery-run.js";
 
+import { stringifyCliJson } from "./canonical-json-io.js";
+
 export interface CliRunOptions {
   repoRoot?: string;
   writeOut?: (chunk: string) => void;
@@ -26,18 +28,20 @@ export interface CliRunOptions {
 
 function emit(
   writeOut: (chunk: string) => void,
+  repoRoot: string,
   payload: object,
 ): void {
-  writeOut(`${JSON.stringify(payload, null, 2)}\n`);
+  writeOut(stringifyCliJson(repoRoot, payload));
 }
 
 function stub(
+  repoRoot: string,
   writeOut: (chunk: string) => void,
   command: string,
   summary: string,
 ): () => void {
   return () => {
-    emit(writeOut, { command, status: "stub", summary });
+    emit(writeOut, repoRoot, { command, status: "stub", summary });
   };
 }
 
@@ -67,7 +71,7 @@ export async function parseAndRun(
   program
     .command("init")
     .description("Initialize a Tesseract workspace in the current repository")
-    .action(stub(writeOut, "init", "Greenfield and adopt flows land in Phase 4+."));
+    .action(stub(repoRoot, writeOut, "init", "Greenfield and adopt flows land in Phase 4+."));
 
   program
     .command("run")
@@ -78,7 +82,7 @@ export async function parseAndRun(
     .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
     .action(async (pipeline: string, inboxEntry: string | undefined, opts: { feature?: string; task?: string }) => {
       if (pipeline !== "feature-delivery") {
-        emit(writeOut, {
+        emit(writeOut, repoRoot, {
           command: "run",
           status: "stub",
           pipelineId: pipeline,
@@ -91,6 +95,7 @@ export async function parseAndRun(
       }
       emit(
         writeOut,
+        repoRoot,
         await startFeatureDelivery(
           {
             repoRoot,
@@ -110,7 +115,7 @@ export async function parseAndRun(
     .action(async () => {
       const inbox = new FileInbox(repoRoot);
       const entries = await inbox.listIn();
-      emit(writeOut, { command: "inbox", status: "ok", entries });
+      emit(writeOut, repoRoot, { command: "inbox", status: "ok", entries });
     });
 
   const feature = program
@@ -126,6 +131,7 @@ export async function parseAndRun(
     .action(async (inboxEntry: string, opts: { feature?: string; task?: string }) => {
       emit(
         writeOut,
+        repoRoot,
         await startFeatureDelivery(
           {
             repoRoot,
@@ -145,7 +151,7 @@ export async function parseAndRun(
     .argument("[taskId]", "Task id under src/work/")
     .action(async (taskId: string | undefined) => {
       if (taskId === undefined) {
-        emit(writeOut, {
+        emit(writeOut, repoRoot, {
           command: "status",
           status: "stub",
           summary: "Pass a task id to inspect a feature-delivery state file.",
@@ -155,6 +161,7 @@ export async function parseAndRun(
       const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
       emit(
         writeOut,
+        repoRoot,
         await readFeatureDeliveryStatusWithInterventions(repoRoot, taskId, (id) =>
           mgr.loadActiveState(id),
         ),
@@ -171,6 +178,7 @@ export async function parseAndRun(
     .action(async (taskId: string, opts: { artifact: string; event?: string }) => {
       emit(
         writeOut,
+        repoRoot,
         await advanceFeatureDelivery({
           repoRoot,
           taskId,
@@ -191,6 +199,7 @@ export async function parseAndRun(
     .action(async (taskId: string, opts: { stage: string; artifact: string; reason: string }) => {
       emit(
         writeOut,
+        repoRoot,
         await repairFeatureDeliveryState({
           repoRoot,
           taskId,
@@ -209,6 +218,7 @@ export async function parseAndRun(
     .action(async (taskId: string) => {
       emit(
         writeOut,
+        repoRoot,
         await refreshFeatureDeliveryPrompt({
           repoRoot,
           taskId,
@@ -223,6 +233,7 @@ export async function parseAndRun(
     .action(async (taskId: string) => {
       emit(
         writeOut,
+        repoRoot,
         await closeFeatureDeliveryArtifacts({
           repoRoot,
           taskId,
@@ -234,22 +245,22 @@ export async function parseAndRun(
   program
     .command("approve")
     .description("Approve a gated action")
-    .action(stub(writeOut, "approve", "Authorizer integration lands in M3+."));
+    .action(stub(repoRoot, writeOut, "approve", "Authorizer integration lands in M3+."));
 
   program
     .command("memory")
     .description("Inspect Memory tier indexes")
-    .action(stub(writeOut, "memory", "MemoryRouter CLI lands with FileMemoryStore hardening."));
+    .action(stub(repoRoot, writeOut, "memory", "MemoryRouter CLI lands with FileMemoryStore hardening."));
 
   program
     .command("contracts")
     .description("List or evaluate Spec Contracts")
-    .action(stub(writeOut, "contracts", "Contract runner CLI surfaces land in Phase 4+."));
+    .action(stub(repoRoot, writeOut, "contracts", "Contract runner CLI surfaces land in Phase 4+."));
 
   program
     .command("lint")
     .description("Run repository lint and policy gates")
-    .action(stub(writeOut, "lint", "ESLint and policy bundles invoke from CI today; CLI wiring expands later."));
+    .action(stub(repoRoot, writeOut, "lint", "ESLint and policy bundles invoke from CI today; CLI wiring expands later."));
 
   program
     .command("pause")
@@ -264,7 +275,7 @@ export async function parseAndRun(
         command: "pause",
         clock: options?.clock,
       });
-      emit(writeOut, { command: "pause", status: "ok", taskId });
+      emit(writeOut, repoRoot, { command: "pause", status: "ok", taskId });
     });
 
   program
@@ -285,7 +296,7 @@ export async function parseAndRun(
         command: "resume",
         clock: options?.clock,
       });
-      emit(writeOut, {
+      emit(writeOut, repoRoot, {
         command: "resume",
         status: "ok",
         taskId,
@@ -308,7 +319,7 @@ export async function parseAndRun(
         abortReason: opts.reason,
         clock: options?.clock,
       });
-      emit(writeOut, {
+      emit(writeOut, repoRoot, {
         command: "abort",
         status: "ok",
         taskId,
@@ -322,7 +333,7 @@ export async function parseAndRun(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.length > 0 && !message.startsWith("error:")) {
-      emit(writeOut, { command: "error", status: "error", message });
+      emit(writeOut, repoRoot, { command: "error", status: "error", message });
     }
     return 1;
   }

@@ -4,12 +4,7 @@
   "paths": [
     {
       "path": ".",
-      "plannedFiles": [
-        "AGENTS.md",
-        "README.md",
-        ".cursorindexingignore",
-        "package.json"
-      ],
+      "plannedFiles": ["AGENTS.md", "README.md", ".cursorindexingignore", "package.json"],
       "operation": "mutate",
       "risk_tier": "high",
       "rationale": "Always-loaded guidance, operator entry points, Cursor indexing policy, and script wiring affect routine agent behavior."
@@ -43,20 +38,14 @@
     },
     {
       "path": "src/memory/active",
-      "plannedFiles": [
-        "src/memory/active/README.md",
-        "src/memory/active/current.md",
-        "src/memory/active/runs.md"
-      ],
+      "plannedFiles": ["src/memory/active/README.md", "src/memory/active/current.md", "src/memory/active/runs.md"],
       "operation": "add",
       "risk_tier": "medium",
       "rationale": "New active-memory files become the routine orientation surface."
     },
     {
       "path": "src/memory/adr",
-      "plannedFiles": [
-        "src/memory/adr/0006-active-vs-archival-memory.md"
-      ],
+      "plannedFiles": ["src/memory/adr/0006-active-vs-archival-memory.md"],
       "operation": "add",
       "risk_tier": "medium",
       "rationale": "The new ADR records the active-versus-archival memory decision."
@@ -73,18 +62,14 @@
     },
     {
       "path": "src/memory/backlog",
-      "plannedFiles": [
-        "src/memory/backlog/index.yaml"
-      ],
+      "plannedFiles": ["src/memory/backlog/index.yaml"],
       "operation": "mutate",
       "risk_tier": "medium",
       "rationale": "Kept deferrals require backlog linkage."
     },
     {
       "path": "src/memory/features/active-memory-context-economy-pass-2",
-      "plannedFiles": [
-        "src/memory/features/active-memory-context-economy-pass-2/index.json"
-      ],
+      "plannedFiles": ["src/memory/features/active-memory-context-economy-pass-2/index.json"],
       "operation": "mutate",
       "risk_tier": "low",
       "rationale": "The feature index records plan-stage routing fields."

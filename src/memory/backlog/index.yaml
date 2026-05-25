@@ -1,6 +1,6 @@
 metadata:
   schema_version: 1
-  generated_at: "2026-04-27T20:25:00Z"
+  generated_at: "2026-05-23T00:00:00Z"
   owners: [tech-lead, librarian]
   source_of_truth: /src/memory/backlog/index.yaml
   schema_ref: /src/memory/handbook/backlog-format.md
@@ -204,30 +204,32 @@ items:
     source: src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-write.stderr.log
     owner: coder
     milestone: phase-5
-    status: open
+    status: done
     priority: high
     opened_at: "2026-04-27T20:25:00Z"
+    delivered_at: "2026-05-25T04:14:00Z"
     links:
       - /src/internal/tools/migrate-timestamp-naming.mjs
       - /src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-write.stderr.log
       - /src/memory/adr/0005-timestamp-naming-conventions.md
-    evidence: "Phase 4 migration write at commit 2a41ca9 failed mid-flight with ENOENT inside applyReferenceUpdatesFromManifest because renames had already moved files off the manifest's pre-rename paths. Coder recovered by manually applying 670 reference edits through a one-off post-rename resolver."
-    notes: "Either apply reference updates before renames or remap u.file through the rename map inside applyReferenceUpdatesFromManifest before writing. Required before any future migration --write run."
+    evidence: "Migration writers now apply manifest reference updates before renames, so updates run against manifest-authoritative pre-rename paths and no longer fail with ENOENT during write."
+    notes: "Closed by reordering write flow in src/internal/tools/migrate-timestamp-naming.mjs and src/internal/tools/migrate-inbox-convention.mjs, then validating with a guarded write and clean post-write dry-runs."
 
   - id: migration-script-inbox-stem-idempotency-bug
     title: Make migrate-timestamp-naming inbox stem derivation idempotent
     source: src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.post-write.json
     owner: coder
     milestone: phase-5
-    status: open
+    status: done
     priority: high
     opened_at: "2026-04-27T20:25:00Z"
+    delivered_at: "2026-05-25T04:14:00Z"
     links:
       - /src/internal/tools/migrate-timestamp-naming.mjs
       - /src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.post-write.json
       - /src/memory/adr/0005-timestamp-naming-conventions.md
-    evidence: "Post-write dry-run captured 17 residual inbox renames and 322 reference-row edits that would re-prefix already-prefixed stems (for example 27250_1625_x.md restamped to 27250_1625_27250_1625_x.md). Migration write is therefore non-idempotent in its current shape."
-    notes: "Strip a ratified SID/HHMM prefix before treating the residual basename as the semantic stem inside migrateTargetForInboxPath. Required before any future migration --write run."
+    evidence: "Inbox stem derivation now strips an existing ratified `{SID}_{HHMM}_` (and optional collision counter) prefix before semantic derivation, preventing repeat-prefix writes on reruns."
+    notes: "Closed by prefix-strip handling in migrateTargetForInboxPath and planner stem normalization, then validated by post-write dry-runs reporting zero planned inbox renames."
 
   - id: policy-compliance-hook-legacy-shape-removal
     title: Drop legacy two-level path branch from policy-compliance hook
@@ -308,7 +310,7 @@ items:
 
   - id: timestamp-naming-post-2500-rollover-rule
     title: Ratify post-2500 days-to-FDS rollover successor rule
-    source: src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md
+    source: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
     owner: tech-lead
     milestone: m7
     status: deferred
@@ -317,7 +319,7 @@ items:
     links:
       - /src/memory/features/timestamp-naming-conventions/spec.md
       - /src/memory/adr/0005-timestamp-naming-conventions.md
-      - /src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md
+      - /src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
       - /src/internal/tools/migrate-timestamp-naming.mjs
     evidence: "Operator deferred the days-to-FDS=000000 rollover rule during round-1 intake clarifications with the rationale that the boundary is unlikely to surface in practice. Migration script daysToFds helper currently throws FDS_PLUS_ONE as a fail-loud guard for any timestamp at or beyond 2500-01-01T00:00:00Z."
     notes: "Ratify a successor rule at least one calendar year before 2500-01-01T00:00:00Z. Until then the fail-loud guard is the contract."
@@ -442,8 +444,8 @@ items:
       - /src/memory/features/cursor-token-economy/delivery-report.md
       - /src/memory/features/cursor-token-economy/spec.md
       - /src/memory/features/cursor-token-economy/index.json
-      - /src/inbox/out/172996_05-10-26/25121_1701_cursor-token-economy-delivery-report/50909_1005_2026-05-09-cursor-token-economy-delivery-report.md
-      - /src/inbox/archive/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md
+      - /src/inbox/out/172991_05-15-26/50909_1005_cursor-token-economy-delivery-report.md
+      - /src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, docs/PRD.summary.md plus docs/PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to src/inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring is not implemented per AGENTS.md \u00a78."
     notes: "Closed in the same operator session that shipped pass-2 because pass-2 extends pass-1 deferred scope (extends_relationship: extends-deferred-scope per src/memory/features/active-memory-context-economy-pass-2/index.json)."
 
@@ -461,8 +463,8 @@ items:
       - /src/memory/features/active-memory-context-economy-pass-2/spec.md
       - /src/memory/features/active-memory-context-economy-pass-2/index.json
       - /src/memory/adr/0006-active-vs-archival-memory.md
-      - /src/inbox/out/172996_05-10-26/25121_1701_active-memory-context-economy-pass-2_delivery-report/81300_0125_2026-05-10-active-memory-context-economy-pass-2-delivery-report.md
-      - /src/inbox/archive/in/172996_05-10-26/81349_0124_active-memory-context-economy-pass-2_token-economy-enhanced/75480_0302_token-economy-enhanced.md
+      - /src/inbox/out/172991_05-15-26/81300_0125_active-memory-context-economy-pass-2-delivery-report.md
+      - /src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
     evidence: "Feature shipped under operator override authority. Active-memory tier created, ADR-0006 promoted, AGENTS.md slimmed (1458 to 1178 raw words; 900 prose-only), six Cursor rules narrowed, .cursorindexingignore aligned with the new tier model, context-budget reporter emits the seven tier groups, all six verification gates green, reviewer verdict approve at 20 pass / 0 concern / 0 fail across acceptance criteria, delivery report staged to src/inbox/out/, inbound source archived to src/inbox/archive/in/."
     notes: "Operator manually executed the librarian post_run actions because runtime feature-delivery ship/index automation was not yet implemented at delivery time. Active-memory rotation also performed under operator override; see follow-up backlog item active-memory-post-ship-ownership for the underlying ownership gap."
 
@@ -499,3 +501,57 @@ items:
       - /src/skills/adopt-existing-repo/SKILL.md
     evidence: "The config now records project_root and live bootstrap tracking, and the policy upgrade helper preserves those fields. Runtime validation should still reject empty project roots, malformed phase states, and paths that resolve outside the operator-approved boundary."
     notes: "Add schema-level validation when @tesseract/policy grows its Conftest/Rego-backed config loader. Adoption should set project_root during init/adopt after human ratification or in config-write mode."
+
+  - id: json-formatting-shipped
+    title: Canonical JSON formatting policy delivered
+    source: src/memory/features/json-formatting/delivery-report.md
+    owner: librarian
+    milestone: phase-4
+    status: done
+    priority: high
+    opened_at: "2026-05-24T00:00:00Z"
+    delivered_at: "2026-05-24T00:00:00Z"
+    links:
+      - /src/memory/features/json-formatting/delivery-report.md
+      - /src/memory/features/json-formatting/spec.md
+      - /src/memory/features/json-formatting/index.json
+      - /src/internal/tools/canonical-json-format.mjs
+      - /src/internal/tools/migrate-json-formatting.mjs
+      - /src/work/172983_05-23-26/67055_0522_json-formatting/review.md
+    evidence: "Feature shipped canonical JSON formatting across Round-02 R1 surfaces: repository .json, Markdown-embedded JSON, tess terminal/CLI output, and agent-chat JSON sketches. Shared formatter module, CLI emitters, compliance descriptor, glossary alignment, and migration idempotency evidence (candidates=144, wouldRewrite=0, two write passes each files rewritten=0) all passed review verdict pass with 71/71 tests green."
+    notes: "Deferred companion work tracked as json-formatting-citation-verifier-prefix and json-formatting-markdown-corpus-scan. Work directory remains under src/work/ until complete-stage close-artifacts runs."
+
+  - id: json-formatting-citation-verifier-prefix
+    title: Update citation verifier for abbreviated contentHash prefix comparison
+    source: src/memory/features/json-formatting/spec.md
+    owner: tech-lead
+    milestone: phase-5
+    status: open
+    priority: medium
+    opened_at: "2026-05-23T00:00:00Z"
+    links:
+      - /src/memory/features/json-formatting/spec.md
+      - /src/memory/features/json-formatting/index.json
+      - /src/memory/features/json-formatting/delivery-report.md
+      - /src/internal/tools/migrate-json-formatting.mjs
+      - /src/memory/handbook/glossary.md
+    evidence: "json-formatting shipped abbreviated contentHash storage in JSON and Markdown surfaces, and spec Deferrals explicitly defers verifier prefix comparison to a companion feature. The feature index already listed this id under deferred_companion_features, but the phase-4 deferral promotion gap left it untracked in backlog."
+    notes: "Verifier MUST compare abbreviated SHA-256 prefixes against stored citation values and MUST NOT regress full-digest verification paths for out-of-scope artifacts until migration completes. Batch with bootstrap-content-hash-refresh where practical."
+
+  - id: json-formatting-markdown-corpus-scan
+    title: Repo-wide Markdown dual-anchor citation layout compliance pass
+    source: src/memory/features/json-formatting/delivery-report.md
+    owner: tesseract-engineer
+    milestone: phase-5
+    status: open
+    priority: medium
+    opened_at: "2026-05-23T00:00:00Z"
+    links:
+      - /src/memory/features/json-formatting/spec.md
+      - /src/memory/features/json-formatting/delivery-report.md
+      - /src/internal/tools/canonical-json-format.mjs
+      - /src/internal/tools/reformat-markdown-citations.mjs
+      - /tests/migrate-json-formatting.test.mjs
+      - /src/memory/handbook/glossary.md
+    evidence: "json-formatting R1 policy covers Markdown-embedded JSON across handbook, inbox threads, work-stage markdown, and delivery reports. The slice reformatted feature delivery reports and tech-writer conformance, while tests currently scan delivery reports and tech-writer only."
+    notes: "Extend markdown citation compliance scan (or add scan-markdown-json-citations.mjs) to cover configured globs and run reformat-markdown-citations.mjs (or equivalent) for violations, with allowlisted normative anti-pattern examples only. Surfaces still out of current automated scan scope include src/memory/handbook/**, src/inbox/threads/**, docs/**, other personas, and archived work markdown. SHOULD batch with bootstrap-content-hash-refresh and citation-range-realignment-pass to avoid triple corpus churn."

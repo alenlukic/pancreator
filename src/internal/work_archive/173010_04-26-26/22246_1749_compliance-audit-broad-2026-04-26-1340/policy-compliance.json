@@ -1,10 +1,6 @@
 {
   "task_id": "compliance-audit-broad-2026-04-26-1340",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "This execution normalized governance and contract reference hashes across the declared corpus scope and produced updated compliance execution artifacts with explicit protected-file deferrals.",

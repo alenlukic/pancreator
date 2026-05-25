@@ -1,10 +1,6 @@
 {
   "task_id": "14989_1950_compliance-auditor-structural-audit",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "docs/PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "docs/PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "The patch changes governed repository structure, Cursor rule behavior, compliance-hook behavior, normative documentation, tests, and backlog state.",

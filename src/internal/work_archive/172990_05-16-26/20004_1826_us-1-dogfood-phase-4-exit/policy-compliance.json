@@ -1,10 +1,6 @@
 {
   "task_id": "20004_1826_us-1-dogfood-phase-4-exit",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "docs/PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "docs/PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "This task updates the ratified Phase 4 documentation and reference surfaces so bootstrap tracking, operator guidance, and feature evidence stay aligned after human approval.",

@@ -1,10 +1,6 @@
 {
   "task_id": "tesseract-contract-spine-impl",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Phase 3 step 2 implements the contract spine: @tesseract/contract wrapper types and structural guards, @tesseract/contract-runner-rego input helpers, @tesseract/contract-runner-llm-judge MVP panel defaults, and @tesseract/contract-style Layer-1 weasel scan. Adds vitest catalog entry, turbo test/typecheck pipelines, README Quickstarts, and updates the four feature task lists.",

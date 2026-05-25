@@ -36,17 +36,12 @@
     {
       "path": "src/memory/features/phase-4-dogfood-proof-bundle-evidence-index/",
       "access": "create-update",
-      "planned_children": [
-        "delivery-report.md",
-        "index.json"
-      ]
+      "planned_children": ["delivery-report.md", "index.json"]
     },
     {
       "path": "src/inbox/out/",
       "access": "create",
-      "planned_children": [
-        "<timestamp>-phase-4-dogfood-proof-bundle-evidence-index-delivery-report.md"
-      ]
+      "planned_children": ["<timestamp>-phase-4-dogfood-proof-bundle-evidence-index-delivery-report.md"]
     }
   ],
   "symbols": [],

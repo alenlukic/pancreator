@@ -46,7 +46,7 @@ references:
     contentHash: 6ea08ca23f1241425af057fc20324c9d18c456de7eaf1e25c5b0b56c4fcdb4d4
     note: "Layer 1 requires RFC 2119 keywords in normative prose."
   - kind: lines
-    path: src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md
+    path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
     range: [79, 87]
     contentHash: TBD-on-commit
     note: "Operator round-1 answer Q7 assigns prefix ownership to the active processing agent."
@@ -68,10 +68,10 @@ completed inbound requests out of the active queue.
 
 Operators SHALL use these canonical paths:
 
-- Active queue: `/src/inbox/in/` (artifacts MAY nest under work-style `<day>/<task>/` directories mirroring `src/work/` after inbox convention migration)
-- Responses: `/src/inbox/out/` (same nesting convention as the active queue)
-- Threads: `/src/inbox/threads/` (thread artifacts nest under `<day>/<task>/`; primary discovery SHOULD use `src/inbox/artifact-index.json` when present)
-- Archive: `/src/inbox/archive/in/` (same nesting convention as the active queue)
+- Active queue: `/src/inbox/in/` (artifacts nest under `<day>/{SID}_{HHMM}_{semantic}.md` leaves without per-file task subdirectories)
+- Responses: `/src/inbox/out/` (same day-bucket leaf layout as the active queue)
+- Threads: `/src/inbox/threads/` (thread artifacts nest under `<day>/<feature-slug>/` with `{SID}_{HHMM}_{semantic}.md` leaves; primary discovery SHOULD use `src/inbox/artifact-index.json` when present)
+- Archive: `/src/inbox/archive/in/` (same day-bucket leaf layout as the active queue)
 - Operator sandbox: `/src/inbox/notes/` (human-only; see Section 1a)
 
 Operators MUST NOT treat ad hoc directories as inbox sources of truth.
@@ -121,8 +121,8 @@ completed inbound item:
 2. Mark the inbound item complete by recording `responded` status in the
    operator handoff context (for example the active work note or run log entry
    that references the response artifact path).
-3. Move the inbound source file from its path under `/src/inbox/in/` to the matching nested path under `/src/inbox/archive/in/`
-   without changing the file basename (preserve the `<day>/<task>/` prefix segments when present).
+3. Move the inbound source file from its path under `/src/inbox/in/` to the matching path under `/src/inbox/archive/in/`
+   without changing the file basename (preserve the `<day>/` prefix segment and timestamp-prefixed leaf name when present).
 4. Verify the source file no longer exists under `/src/inbox/in/` and exists under
    `/src/inbox/archive/in/`.
 
@@ -132,7 +132,7 @@ Operators SHALL execute archival moves only after the response artifact exists.
 
 When an outbox artifact in `/src/inbox/out/` requests operator answers for an
 active thread, operators SHALL post replies under the referenced thread path in
-`/src/inbox/threads/` (nested paths MUST stay under the same `<day>/<task>/` layout as other inbox queues).
+`/src/inbox/threads/` (nested paths MUST stay under `<day>/<feature-slug>/` with timestamp-prefixed basenames; other inbox queues use `<day>/` leaves without per-file task subdirectories).
 
 Operators MUST NOT move outbox artifacts into `/src/inbox/in/`.
 
@@ -171,7 +171,32 @@ Where inbox policy names specific personas, this handbook rule SHALL remain
 decoupled from persona identifiers so future roster changes do not invalidate
 the obligation.
 
-Citation: `{kind: lines, path: src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md, range: [79, 87], contentHash: TBD-on-commit}`.
+Citation: `{kind: lines, path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md, range: [79, 87], contentHash: TBD-on-commit}`.
+
+## 3d - Empty directory hygiene
+
+Renames and archival moves under `/src/inbox/in/`, `/src/inbox/out/`,
+`/src/inbox/threads/`, and `/src/inbox/archive/in/` MUST NOT leave orphan empty
+directories behind (for example empty day buckets or legacy per-file task folders
+after a reshape).
+
+When an agent or migration tool moves the last artifact out of an inbox
+directory, that agent or tool MUST remove every resulting empty parent directory
+under the affected queue, except queue roots that intentionally retain only
+`.gitkeep`.
+
+The migration tool `src/internal/tools/migrate-inbox-convention.mjs` SHALL run
+empty-directory pruning automatically after every inbox write pass. Operators and
+agents MAY also run a standalone hygiene pass:
+
+```bash
+node src/internal/tools/migrate-inbox-convention.mjs --prune-empty-dirs --dry-run
+node src/internal/tools/migrate-inbox-convention.mjs --prune-empty-dirs --write
+```
+
+A `--dry-run` prune pass MUST list candidate empty directories without deleting
+them. A `--write` prune pass MUST delete only directories that are still empty at
+apply time. Pruning MUST NOT traverse or modify `/src/inbox/notes/`.
 
 ## 4 - Future automated mechanism
 

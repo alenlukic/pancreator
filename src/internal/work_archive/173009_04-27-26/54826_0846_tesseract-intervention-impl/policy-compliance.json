@@ -1,10 +1,6 @@
 {
   "task_id": "tesseract-intervention-impl",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Phase 3 step 7 implements @tesseract/intervention: typed manager (pause/resume/abort/gotoStage), append-only JSONL FsInterventionStore plus an in-memory test double, journal-reduction helper for active state, and structural LangGraph-shaped helpers. Updates the feature task list.",

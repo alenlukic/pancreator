@@ -1,10 +1,6 @@
 {
   "task_id": "policy-compliance-gate-2026-04-26",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "The change introduces a commit-time enforcement mechanism and a new canonical handbook contract that alters operator and agent workflow expectations.",

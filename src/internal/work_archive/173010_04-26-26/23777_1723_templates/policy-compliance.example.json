@@ -1,10 +1,6 @@
 {
   "task_id": "task-bootstrap-policy-gate",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "The task changed governance enforcement and added a new handbook contract surface.",

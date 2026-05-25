@@ -3,9 +3,7 @@
     {
       "path": "tests/compliance",
       "operation": "add-compliance-descriptor",
-      "plannedFiles": [
-        "src/internal/tests/compliance/timestamp-naming-conventions.yaml"
-      ]
+      "plannedFiles": ["src/internal/tests/compliance/timestamp-naming-conventions.yaml"]
     },
     {
       "path": "src/memory/features/timestamp-naming-conventions/contracts",
@@ -19,24 +17,17 @@
     {
       "path": "tools",
       "operation": "add-migration-script",
-      "plannedFiles": [
-        "src/internal/tools/migrate-timestamp-naming.mjs"
-      ]
+      "plannedFiles": ["src/internal/tools/migrate-timestamp-naming.mjs"]
     },
     {
       "path": "src/memory/handbook",
       "operation": "update-inbox-lifecycle-rule",
-      "plannedFiles": [
-        "src/memory/handbook/inbox-lifecycle.md"
-      ]
+      "plannedFiles": ["src/memory/handbook/inbox-lifecycle.md"]
     },
     {
       "path": "work",
       "operation": "migrate-in-scope-work-paths",
-      "plannedGlobs": [
-        "src/work/*",
-        "src/work/*/*"
-      ],
+      "plannedGlobs": ["src/work/*", "src/work/*/*"],
       "excludedGlobs": [
         "src/work/*/run.log.jsonl",
         "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
@@ -62,16 +53,12 @@
     {
       "path": "src/memory/features/compliance-tests",
       "operation": "update-migrated-path-references",
-      "plannedFiles": [
-        "src/memory/features/compliance-tests/index.json"
-      ]
+      "plannedFiles": ["src/memory/features/compliance-tests/index.json"]
     },
     {
       "path": "src/memory/backlog",
       "operation": "update-migrated-path-references",
-      "plannedFiles": [
-        "src/memory/backlog/index.yaml"
-      ]
+      "plannedFiles": ["src/memory/backlog/index.yaml"]
     },
     {
       "path": "src/internal/work_archive/173009_04-27-26/68576_0457_compliance-tests",
@@ -84,9 +71,7 @@
     {
       "path": "src/memory/features/timestamp-naming-conventions",
       "operation": "update-feature-index-after-implementation",
-      "plannedFiles": [
-        "src/memory/features/timestamp-naming-conventions/index.json"
-      ]
+      "plannedFiles": ["src/memory/features/timestamp-naming-conventions/index.json"]
     }
   ],
   "symbols": [],

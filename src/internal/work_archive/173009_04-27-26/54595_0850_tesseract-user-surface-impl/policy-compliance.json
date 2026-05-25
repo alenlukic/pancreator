@@ -1,10 +1,6 @@
 {
   "task_id": "tesseract-user-surface-impl",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Phase 3 step 8 implements the user surface: scanRepository and AdoptionScanReport (@tesseract/adopter-scan); legacy policy loader with Q23 deprecation, upgradePolicyConfig, and PolicyConfigV1 (@tesseract/policy); tess CLI binary with commander-based parseAndRun, src/inbox/list, and pause/resume/abort wired to InterventionManager + FsInterventionStore (@tesseract/cli). Whitelists @tesseract/cli as a workspace composer in the no-horizontal-primitive-deps ESLint rule and the check:phase0a scaffold checker, with a documenting note in BOOTSTRAP.md Phase 0a.",

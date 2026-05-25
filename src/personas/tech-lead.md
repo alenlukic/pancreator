@@ -68,6 +68,16 @@ references:
     range: [801, 806]
     contentHash: 795854275bb49d19c6a3d4816a8ea69cf4c88302fd59cdc377ea843390185bba
     note: "PRD §7 — touch-set declaration and the conflict-planner interference graph the tech-lead's `touch-set.json` feeds at M2."
+  - kind: lines
+    path: AGENTS.md
+    range: [95, 103]
+    contentHash: TBD-on-commit
+    note: "AGENTS §4/§6 — stage artifacts live under the active run directory emitted by tess and are delegated from the handoff card."
+  - kind: lines
+    path: src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts
+    range: [238, 247]
+    contentHash: TBD-on-commit
+    note: "feature-delivery run creation derives canonical day/task paths from makeDayDir and makeTaskId; planners must not invent alternatives."
 ---
 
 # Tech Lead
@@ -89,6 +99,10 @@ act on without inheriting planner context.
 3. **Manual rerun.** When a human runs `tess feature plan <id>`, you SHALL
    re-run the plan loop against the current spec and overwrite the prior
    `/src/work/<day>/<id>/` artifacts.
+4. **Ledger-derived task paths.** When you emit any plan-stage artifact, you
+   SHALL read the active run `state.json` first and SHALL copy `taskId` plus
+   `artifacts.runDir` exactly as stored in that ledger. You MUST NOT invent task
+   ids, ISO-date day directories, or alternate `/src/work/` paths.
 
 ## What you MUST produce, every invocation
 

@@ -48,7 +48,7 @@ The Phase 4 exit checklist is now ratified with one remaining engineering deferr
 
 1. Satisfied: human ratification is recorded in `phase-4-ratification-request.md`.
 2. Open engineering backlog: external trace verification (Phoenix or Langfuse) is **not yet implemented** under `phoenix-trace-evidence.md` because the `@tesseract/run-logger` OTLP → observability-backend path is deferred in this bootstrap slice; remediation stays with **tesseract-engineer**.
-3. Satisfied: the supervisor-local staged PR outcome and matching `src/inbox/out/2026-05-19T02-26-26Z-us-1-dogfood-phase-4-exit-delivery-report.md` delivery copy exist for the US-1 dogfood slice.
+3. Satisfied: the supervisor-local staged PR outcome and matching `src/inbox/out/172987_05-19-26/77614_0226_us-1-dogfood-phase-4-exit-delivery-report.md` delivery copy exist for the US-1 dogfood slice.
 
 Intervention pause / resume / abort evidence is **captured** in
 `pause-resume-abort-evidence.json` with archive-local snapshot paths.

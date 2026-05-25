@@ -1,10 +1,6 @@
 {
   "task_id": "tesseract-core-impl",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Phase 3 step 1 implements @tesseract/core with branded types, exports, and README Quickstart. Touches package source surfaces and the feature task list.",
