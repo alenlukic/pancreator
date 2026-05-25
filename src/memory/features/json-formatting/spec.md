@@ -6,7 +6,7 @@ next_owner: tech-lead
 next_stage: plan
 source_inbox_item: src/inbox/in/json_formatting.md
 intake_round: 2
-closure_artifact: src/inbox/threads/json-formatting/round-02-operator-scope-correction.md
+closure_artifact: src/inbox/threads/172983_05-23-26/json-formatting/67080_0522_round-02-operator-scope-correction.md
 references:
   - kind: lines
     path: src/inbox/in/json_formatting.md
@@ -14,12 +14,12 @@ references:
     contentHash: ebfc73c
     note: Informal directive requires pretty-formatted JSON on all agent/script output surfaces, abbreviated hashes, and migration of existing JSON.
   - kind: lines
-    path: src/inbox/threads/json-formatting/round-01-reply.md
+    path: src/inbox/threads/172983_05-23-26/json-formatting/74280_0322_round-01-reply.md
     range: [29, 96]
     contentHash: 35d65b8
     note: Round-1 operator answers resolve hash length (Q1), contentHash abbreviation scope (Q2), output-file scope for bulk migration (Q3), exclusions (Q4), array formatting (Q5), migration ownership (Q6), and enforcement mechanism (Q7). Q3 scopes the file inventory for migration/compliance; it does not limit R1 surfaces per round-2 correction.
   - kind: lines
-    path: src/inbox/threads/json-formatting/round-02-operator-scope-correction.md
+    path: src/inbox/threads/172983_05-23-26/json-formatting/67080_0522_round-02-operator-scope-correction.md
     range: [1, 142]
     contentHash: 7770f73
     note: Round-2 operator ratification corrects scope to all R1 surfaces (repo .json artifacts, markdown-embedded JSON, terminal/CLI, agent chat). Supersedes narrowed-scope portions of the prior spec. Authoritative for R1–R5 requirements.

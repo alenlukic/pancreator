@@ -19,7 +19,7 @@ Human reviewer SHALL attach or cite paths for:
    an engineering backlog signal, not missing operator work.
 3. `pause-resume-abort-evidence.json` — this file is **not** produced by the
    intake ratification inbox item
-   `src/inbox/archive/in/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/2026-05-18T04-16-00Z-intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`.
+   `src/inbox/archive/in/172988_05-18-26/71040_0416_intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`.
    That inbox item only approves the canonical **spec** after intake and supplies
    the `tess advance … --artifact …/spec.md` gate to move task `71096_0415_…` to
    **plan**. Intervention evidence is produced during the nested
@@ -39,7 +39,7 @@ Human reviewer SHALL attach or cite paths for:
 ## What you do for item 3 (intervention evidence) — human operator
 
 **You do not** run
-`src/inbox/archive/in/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/2026-05-18T04-16-00Z-intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`
+`src/inbox/archive/in/172988_05-18-26/71040_0416_intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`
 to satisfy item 3. That inbox item only ever meant: read the spec, then run the
 `pnpm -w exec tess advance … --artifact …/spec.md` command printed there so the
 nested task leaves **intake** and enters **plan**. It does **not** create
@@ -88,7 +88,7 @@ advance.
 
 | Outcome | Notes |
 | --- | --- |
-| Ratified Phase 4 exit | 1. src/internal/work_archive/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl ; 2. Item 2 deferred per bootstrap; no Phoenix importer; engineering backlog remains - src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md ; 3. Item 3 pass — pause, resume, abort captured - src/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json ; 4. src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/policy-compliance.json ; 5. src/inbox/out/2026-05-19T02-26-26Z-us-1-dogfood-phase-4-exit-delivery-report.md + src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md |
+| Ratified Phase 4 exit | 1. src/internal/work_archive/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl ; 2. Item 2 deferred per bootstrap; no Phoenix importer; engineering backlog remains - src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md ; 3. Item 3 pass — pause, resume, abort captured - src/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json ; 4. src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/policy-compliance.json ; 5. src/inbox/out/172987_05-19-26/77614_0226_us-1-dogfood-phase-4-exit-delivery-report.md + src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md |
 
 Post-ratification updates to `tesseract.yaml`, `AGENTS.md`, `docs/M1.index.md`, and
 `src/memory/active/current.md` remain gated until humans approve per parent feature spec.

@@ -240,6 +240,16 @@ export function buildBasename(sid, hm, counter, semantic) {
 }
 
 /**
+ * Remove an existing ratified timestamp prefix from an inbox stem so reruns do
+ * not stack `{SID}_{HHMM}_` segments.
+ * @param {string} stem
+ * @returns {string}
+ */
+export function stripInboxTimestampPrefix(stem) {
+  return stem.replace(/^\d+_\d{4}(?:_\d+)?_/u, "");
+}
+
+/**
  * Computes planned relocation for `src/work/<task>/` (flat layout).
  * Citation: spec.md lines 60–76 (TBD-on-commit).
  * @param {string} absPath absolute path to task directory
@@ -291,7 +301,7 @@ export function migrateTargetForInboxPath(absPath, ctx) {
     ? base.slice(0, base.lastIndexOf("."))
     : base;
   const ext = base.includes(".") ? base.slice(base.lastIndexOf(".")) : "";
-  const semantic = stem;
+  const semantic = stripInboxTimestampPrefix(stem);
   const newBase = `${buildBasename(sid, hm, counter, semantic)}${ext}`;
   if (parts[2] === "threads" && parts.length >= 5) {
     const parent = parts.slice(0, -1).join("/");
@@ -414,11 +424,19 @@ export function inventoryReferences(legacyPath, repoRoot, scanRoots) {
  * @param {string} relPath
  * @returns {string | null}
  */
-export function gitOldestAddIso(repoRoot, relPath) {
+export function gitOldestAddIso(repoRoot, relPath, opts = {}) {
+  const follow = opts.follow !== false;
   try {
     const out = execFileSync(
       "git",
-      ["log", "--diff-filter=A", "--follow", "--format=%aI", "--", relPath],
+      [
+        "log",
+        "--diff-filter=A",
+        ...(follow ? ["--follow"] : []),
+        "--format=%aI",
+        "--",
+        relPath,
+      ],
       { cwd: repoRoot, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
     );
     const lines = out.trim().split("\n").filter(Boolean);
@@ -436,7 +454,6 @@ const EXCLUDED_SOURCES = new Set([
   "src/work/timestamp-naming-conventions/adr-draft.md",
   "src/work/timestamp-naming-conventions/touch-set.json",
   "src/inbox/in/timestamp_naming_conventions.md",
-  "src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
 ]);
 
 /**
@@ -872,11 +889,11 @@ async function main() {
     }
     const m = JSON.parse(readFileSync(mp, "utf8"));
     const renames = /** @type {[]} */ (m.renames ?? []);
-    applyRenamesFromManifest(renames, repoRoot);
     applyReferenceUpdatesFromManifest(
       /** @type {[]} */ (m.referenceUpdates ?? []),
       repoRoot,
     );
+    applyRenamesFromManifest(renames, repoRoot);
     const inboxMod = await import("./migrate-inbox-convention.mjs");
     inboxMod.applyInboxRenamesFromManifest(renames, repoRoot);
     inboxMod.writeInboxArtifactIndex(repoRoot, renames);

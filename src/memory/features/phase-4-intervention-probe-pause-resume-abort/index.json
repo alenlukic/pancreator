@@ -48,7 +48,7 @@
     }
   ],
   "ship_outbox_artifact": {
-    "path": "src/inbox/out/2026-05-18T16-52-34Z-phase-4-intervention-probe-pause-resume-abort-delivery-report.md",
+    "path": "src/inbox/out/172988_05-18-26/25646_1652_phase-4-intervention-probe-pause-resume-abort-delivery-report.md",
     "content_hash": "7e5f2aa",
     "status": "present"
   },

@@ -5,15 +5,15 @@
   "intake": {
     "round": 6,
     "open_questions": 0,
-    "source_inbox_item": "src/inbox/archive/in/173009_04-27-26/68576_0457_compliance-tests/68576_0457_compliance-tests.md",
-    "last_processed_thread_item": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md"
+    "source_inbox_item": "src/inbox/archive/in/172991_05-15-26/68576_0457_compliance-tests.md",
+    "last_processed_thread_item": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-06-human-approve.md"
   },
   "handoff": {
     "decision": "delivery-reported",
-    "approval_artifact": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md",
-    "prior_approval_artifact": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md",
-    "initial_approval_artifact": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md",
-    "rejection_artifact": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md",
+    "approval_artifact": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-06-human-approve.md",
+    "prior_approval_artifact": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-05-human-approve.md",
+    "initial_approval_artifact": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-03-approval.md",
+    "rejection_artifact": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-04-human-reject.md",
     "delivery_report": "src/memory/features/compliance-tests/delivery-report.md",
     "next_owner": "librarian",
     "next_stage": "index",
@@ -195,55 +195,55 @@
     },
     "lineage": {
       "processing_report": {
-        "path": "src/inbox/out/173009_04-27-26/65835_0542_intake-processing-report-round-06/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+        "path": "src/inbox/out/172991_05-15-26/65835_0542_intake-processing-report-round-06.md",
         "citation": {
           "kind": "lines",
-          "path": "src/inbox/out/173009_04-27-26/65835_0542_intake-processing-report-round-06/65835_0542_2026-04-27-intake-processing-report-round-06.md",
+          "path": "src/inbox/out/172991_05-15-26/65835_0542_intake-processing-report-round-06.md",
           "range": [1, 51],
           "contentHash": "31f6263"
         }
       },
       "prior_processing_report": {
-        "path": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report-round-05/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+        "path": "src/inbox/out/172991_05-15-26/68576_0457_intake-processing-report-round-05.md",
         "citation": {
           "kind": "lines",
-          "path": "src/inbox/out/173009_04-27-26/68576_0457_intake-processing-report-round-05/68576_0457_2026-04-27-intake-processing-report-round-05.md",
+          "path": "src/inbox/out/172991_05-15-26/68576_0457_intake-processing-report-round-05.md",
           "range": [1, 52],
           "contentHash": "ace49ba"
         }
       },
       "approval_artifact": {
-        "path": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md",
+        "path": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-06-human-approve.md",
         "citation": {
           "kind": "lines",
-          "path": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-06-human-approve/68576_0457_round-06-human-approve.md",
+          "path": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-06-human-approve.md",
           "range": [1, 3],
           "contentHash": "0cabf59"
         }
       },
       "prior_approval_artifact": {
-        "path": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md",
+        "path": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-05-human-approve.md",
         "citation": {
           "kind": "lines",
-          "path": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-05-human-approve/68576_0457_round-05-human-approve.md",
+          "path": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-05-human-approve.md",
           "range": [1, 3],
           "contentHash": "0cabf59"
         }
       },
       "initial_approval_artifact": {
-        "path": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md",
+        "path": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-03-approval.md",
         "citation": {
           "kind": "lines",
-          "path": "src/inbox/threads/173009_04-27-26/68576_0457_compliance-tests_round-03-approval/68576_0457_round-03-approval.md",
+          "path": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-03-approval.md",
           "range": [1, 7],
           "contentHash": "d6dbb55"
         }
       },
       "rejection_artifact": {
-        "path": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md",
+        "path": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-04-human-reject.md",
         "citation": {
           "kind": "lines",
-          "path": "src/inbox/threads/172996_05-10-26/25121_1701_compliance-tests_round-04-human-reject/68576_0457_round-04-human-reject.md",
+          "path": "src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-04-human-reject.md",
           "range": [1, 16],
           "contentHash": "bd497cd"
         }

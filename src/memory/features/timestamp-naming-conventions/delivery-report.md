@@ -69,7 +69,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "src/inbox/threads/173009_04-27-26/50991_0950_timestamp-naming-conventions_round-01-clarify/50991_0950_round-01-clarify.md",
+  "path": "src/inbox/threads/173009_04-27-26/timestamp-naming-conventions/51237_0946_round-01-clarify.md",
   "range": [1, 97],
   "contentHash": "ec8f770"
 }
@@ -78,7 +78,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
+  "path": "src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md",
   "range": [1, 87],
   "contentHash": "025a1eb"
 }

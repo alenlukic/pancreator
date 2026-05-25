@@ -11,7 +11,7 @@
     "open_questions": 0,
     "pending_questions": [],
     "source_inbox_item": "src/inbox/in/timestamp_naming_conventions.md",
-    "last_processed_thread_item": "src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md"
+    "last_processed_thread_item": "src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md"
   },
   "handoff": {
     "decision": "index-complete",
@@ -201,10 +201,10 @@
       }
     },
     "outbound_delivery_report": {
-      "path": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+      "path": "src/inbox/out/172991_05-15-26/27250_1625_timestamp-naming-conventions-delivery-report.md",
       "citation": {
         "kind": "lines",
-        "path": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+        "path": "src/inbox/out/172991_05-15-26/27250_1625_timestamp-naming-conventions-delivery-report.md",
         "range": [1, 71],
         "contentHash": "TBD-on-commit"
       }
@@ -381,7 +381,7 @@
       "head_commit": "ff57fb8",
       "lineage_commits": ["1ca2afd", "7d7b62a", "635e5bb", "ff57fb8", "d472d02"]
     },
-    "staged_inbox_out": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
+    "staged_inbox_out": "src/inbox/out/172991_05-15-26/27250_1625_timestamp-naming-conventions-delivery-report.md",
     "run_log": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
     "verification_replay": {
       "command": "pnpm run check:phase0a",
@@ -443,7 +443,7 @@
       },
       {
         "kind": "lines",
-        "path": "src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
+        "path": "src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md",
         "range": [1, 87],
         "contentHash": "TBD-on-commit"
       }

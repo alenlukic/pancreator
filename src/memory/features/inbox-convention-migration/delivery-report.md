@@ -161,7 +161,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 }
 ```
 
-- **Manual cleanup:** Empty nested directories under a legacy feature tree may still require manual cleanup after thread moves. 
+- **Empty-directory pruning:** `pruneEmptyInboxDirectories` in `migrate-inbox-convention.mjs` runs after every inbox write pass; operators MAY run `--prune-empty-dirs` standalone per `src/memory/handbook/inbox-lifecycle.md` section 3d. 
 
 ```json
 {
