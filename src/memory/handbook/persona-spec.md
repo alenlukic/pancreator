@@ -127,7 +127,11 @@ The body MUST contain three sections:
 
 1. **When you are invoked.** Trigger conditions in EARS form.
 2. **What you MUST produce, every invocation.** The artifacts the persona
-   emits, with paths and shape.
+   emits, with paths and shape. On every bounded task completion, the
+   operator-visible response MUST also end with a `## Next operator steps`
+   section per `/src/memory/handbook/operator-output-contract.md` (single-option
+   or multi-option layout, explicit **What** / **How**, read-only labeling,
+   and **When to choose** / **Impact** when multiple options exist).
 3. **What you MUST NOT do.** Negative obligations and self-protection clauses.
 
 Personas with conformance gates MUST add a fourth section, **Conformance
@@ -236,7 +240,8 @@ warning to an error.
 - `tesseract-bootstrap-only` — required.
 - `tesseract-stability` — required.
 - `tesseract-handbook-anchors` — required when the persona reads the handbook.
-- `tesseract-checklist` — required.
+- `tesseract-checklist` — required. Every persona checklist SHOULD include
+  `next-operator-steps-on-completion` unless a ratified exception is recorded.
 - `tesseract-allowed-kinds-mvp` / `-m2` / `-m3plus` — milestone allowlists.
 - `tesseract-cost-ceiling-usd` — per-invocation cost cap.
 - `tesseract-base-persona` — specialization parent.

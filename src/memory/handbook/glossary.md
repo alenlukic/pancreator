@@ -285,6 +285,11 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `src/inbox/in/`, `src/inbox/out/`, and `src/inbox/threads/`. The `src/inbox/notes/`
   subdirectory is a human-operator-only sandbox; agents MUST NOT read or
   modify it (see `/src/memory/handbook/inbox-lifecycle.md` §1a).
+- **Next operator steps** — the standardized `## Next operator steps` section
+  every agent appends at bounded task completion per
+  `/src/memory/handbook/operator-output-contract.md`. Each step states **What**
+  and **How**; read-only verification is labeled `Read-only:`; multiple options
+  add **When to choose** and **Impact**.
 - **Spec Kit alignment** — `/src/memory/features/<id>/` paths align with GitHub
   Spec Kit v0.8 conventions: `spec.md`, `plan.md`, `tasks.md`. The repo-level
   constitution lives at `/src/memory/handbook/constitution.md`.
