@@ -11,9 +11,7 @@
   "documentation_impact": {
     "applies": true,
     "rationale": "Slice promotes 10 previously-untracked deferrals and known issues from per-slice policy-compliance.json deferred_items[], the timestamp-naming-conventions citation-rot scan, the BOOTSTRAP.md Phase 4 exit criteria, and the round-1 intake clarifications into the canonical /src/memory/backlog/index.yaml as required by ADR 0001 and src/memory/handbook/backlog-format.md. Slice also refreshes the bootstrap-content-hash-refresh entry with the empirical 501 TBD-on-commit count observed at commit b4332c8 and re-targets it to phase-5 alongside the new citation-range-realignment-pass entry so both passes can be batched. Backlog curation is the canonical surface for tracking deferred work; these promotions close a process-defect gap discovered during Phase 4 -> Phase 5 boundary review.",
-    "changed_surfaces": [
-      "src/memory/backlog/index.yaml"
-    ],
+    "changed_surfaces": ["src/memory/backlog/index.yaml"],
     "deferred_items": [
       {
         "id": "librarian-backlog-promotion-duty",

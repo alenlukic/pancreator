@@ -3,9 +3,11 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { parseAndRun } from "./run.js";
+
+const JSON_FORMAT_ABBREV_ENV = "TESS_JSON_FORMAT_ABBREV_LEN";
 
 async function seedFeatureDeliveryRepo(root: string): Promise<void> {
   await mkdir(path.join(root, "src", "inbox", "in"), { recursive: true });
@@ -36,6 +38,23 @@ stages:
 }
 
 describe("parseAndRun", () => {
+  let hadAbbrevEnv: boolean;
+  let prevAbbrevEnv: string | undefined;
+
+  beforeEach(() => {
+    hadAbbrevEnv = Object.hasOwn(process.env, JSON_FORMAT_ABBREV_ENV);
+    prevAbbrevEnv = process.env[JSON_FORMAT_ABBREV_ENV];
+    process.env[JSON_FORMAT_ABBREV_ENV] = "7";
+  });
+
+  afterEach(() => {
+    if (hadAbbrevEnv) {
+      process.env[JSON_FORMAT_ABBREV_ENV] = prevAbbrevEnv;
+    } else {
+      delete process.env[JSON_FORMAT_ABBREV_ENV];
+    }
+  });
+
   it("lists src/inbox/in entries via FileInbox", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "tess-cli-"));
     const inboxIn = path.join(root, "src", "inbox", "in");
@@ -130,6 +149,56 @@ describe("parseAndRun", () => {
     );
     expect(duplicateCode).toBe(1);
     expect(duplicateOut.join("")).toContain("not valid for plan");
+  });
+
+  it("reports invalid task-id format with a suggested canonical id during advance", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-advance-hint-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+
+    const spec = path.join(root, "src", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Demo Feature Spec", "utf8");
+
+    const invalidOut: string[] = [];
+    const invalidCode = await parseAndRun(
+      ["advance", "000200_demo-feature", "--artifact", "src/memory/features/demo-feature/spec.md"],
+      { repoRoot: root, writeOut: (c) => invalidOut.push(c), writeErr: () => undefined },
+    );
+    expect(invalidCode).toBe(1);
+    const payload = JSON.parse(invalidOut.join("")) as { message: string };
+    expect(payload.message).toContain("task id MUST match <seconds-to-midnight>_<HHMM>_<slug>.");
+    expect(payload.message).toContain("Did you mean 38670_1315_demo-feature?");
+  });
+
+  it("reports invalid task-id format without hint when no slug match exists", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-advance-no-hint-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+
+    const spec = path.join(root, "src", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Demo Feature Spec", "utf8");
+
+    const invalidOut: string[] = [];
+    const invalidCode = await parseAndRun(
+      ["advance", "000200_unknown-feature", "--artifact", "src/memory/features/demo-feature/spec.md"],
+      { repoRoot: root, writeOut: (c) => invalidOut.push(c), writeErr: () => undefined },
+    );
+    expect(invalidCode).toBe(1);
+    const payload = JSON.parse(invalidOut.join("")) as { message: string };
+    expect(payload.message).toBe("task id MUST match <seconds-to-midnight>_<HHMM>_<slug>.");
   });
 
   it("repairs a stale state ledger with explicit evidence and reason", async () => {

@@ -196,14 +196,46 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   *generally*, *typically*, *usually*, *if needed*, *as required*, *etc.*,
   *and so on*, *user-friendly*, *modern*, *robust*, *seamless*. The list is
   versioned in `/src/memory/handbook/contract-style.md`.
-- **Dual-anchor citation** — a cross-reference of the form
-  `{kind: 'symbol', path, symbol, contentHash}` (preferred, resolved via
-  tree-sitter or ast-grep) or `{kind: 'lines', path, range, contentHash}`
-  (fallback for non-AST content). Survives moves and renames; flags semantic
-  changes as needs-re-verification.
-- **Content hash** — the SHA-256 of the cited file at citation time. The
-  citation verifier compares the recorded hash against the live file and
-  reports `valid | moved | changed | gone`.
+- **Dual-anchor citation** — a cross-reference serialized as JSON. Preferred `"kind"` is `symbol`
+  (resolved via tree-sitter or ast-grep):
+
+  ```json
+  {
+    "kind": "symbol",
+    "path": "<path>",
+    "symbol": "<symbol>",
+    "contentHash": "<abbrev>"
+  }
+  ```
+
+  Fallback `"kind"` is `lines` for non-AST content:
+
+  ```json
+  {
+    "kind": "lines",
+    "path": "<path>",
+    "range": [
+      1,
+      9
+    ],
+    "contentHash": "<abbrev>"
+  }
+  ```
+
+  Dual-anchor citations survive moves and renames; they flag semantic changes as
+  needs-re-verification. In prose/chat surfaces, citation objects MUST serialize
+  with the json-formatting canonical printer (`src/internal/tools/migrate-json-formatting.mjs`,
+  importing `canonical-json-format.mjs`). Compact single-line blobs with multiple
+  object keys MUST NOT substitute for that layout. Each `contentHash` value MUST
+  stay abbreviated per the prefix length emitted by `git rev-parse --short HEAD`
+  at write time.
+- **Content hash** — the SHA-256 digest of the cited file at citation time. For
+  stored values in-scope, the canonical `contentHash` field SHALL record only an
+  abbreviated hexadecimal prefix; the prefix length MUST equal the character count
+  from `git rev-parse --short HEAD` at write time rather than retaining all 64
+  digest hex characters in the artifact. The citation verifier compares full
+  digests against in-repo citations today; abbreviated-prefix comparison waits on
+  companion feature id `json-formatting-citation-verifier-prefix`.
 - **Stability tier** — `experimental | stable | deprecated`. New artifacts
   land as `experimental` and promote on green dogfood usage for four
   consecutive weeks.

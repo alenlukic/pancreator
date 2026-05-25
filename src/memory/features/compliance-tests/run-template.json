@@ -21,34 +21,11 @@
     "rerun_evidence": "Attach rerun report that shows zero open high findings."
   },
   "_requirements": {
-    "required_fields": [
-      "run_timestamp",
-      "trigger_mode",
-      "test_results[].test_id",
-      "test_results[].outcome"
-    ],
-    "required_test_result_fields": [
-      "test_id",
-      "severity",
-      "outcome"
-    ],
-    "high_severity_required_fields": [
-      "high_severity_follow_up.remediation_notes",
-      "high_severity_follow_up.rerun_evidence"
-    ],
-    "allowed_trigger_modes": [
-      "scheduled-cadence",
-      "structure-change",
-      "operator-on-demand"
-    ],
-    "allowed_severity": [
-      "high",
-      "medium",
-      "low"
-    ],
-    "allowed_outcome": [
-      "pass",
-      "fail"
-    ]
+    "required_fields": ["run_timestamp", "trigger_mode", "test_results[].test_id", "test_results[].outcome"],
+    "required_test_result_fields": ["test_id", "severity", "outcome"],
+    "high_severity_required_fields": ["high_severity_follow_up.remediation_notes", "high_severity_follow_up.rerun_evidence"],
+    "allowed_trigger_modes": ["scheduled-cadence", "structure-change", "operator-on-demand"],
+    "allowed_severity": ["high", "medium", "low"],
+    "allowed_outcome": ["pass", "fail"]
   }
 }

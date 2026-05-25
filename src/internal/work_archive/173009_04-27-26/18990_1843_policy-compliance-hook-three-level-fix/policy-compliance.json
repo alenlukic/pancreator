@@ -9,9 +9,7 @@
   "documentation_impact": {
     "applies": true,
     "rationale": "ADR 0005 (timestamp-naming-conventions) encodes a three-level work path shape src/work/<day>/<task>/<artifact> for migrated and post-migration work directories. The pre-existing .cursor/hooks/enforce-policy-compliance.sh accepts only the legacy two-level shape src/work/<task>/policy-compliance.json via the regex ^src/work/[^/]+/policy-compliance\\.json$. Without this fix, the migration-write commit and every subsequent commit landing artifacts under the new three-level shape would be rejected by the policy-compliance gate, locking the bootstrap. This fix extends the artifact discovery loop to accept both the legacy two-level and the ADR-0005 three-level shapes, while continuing to reject other depths.",
-    "changed_surfaces": [
-      ".cursor/hooks/enforce-policy-compliance.sh"
-    ],
+    "changed_surfaces": [".cursor/hooks/enforce-policy-compliance.sh"],
     "deferred_items": [
       {
         "id": "policy-compliance-hook-legacy-shape-removal",

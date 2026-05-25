@@ -1,10 +1,6 @@
 {
   "task_id": "173009_05-09-26/50909_1000_cursor-token-economy",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Operator-facing contracts, handbook routing, PRD retrieval paths, and bootstrap scripts changed; deferrals recorded for persona-designer globs and future .cursorignore.",

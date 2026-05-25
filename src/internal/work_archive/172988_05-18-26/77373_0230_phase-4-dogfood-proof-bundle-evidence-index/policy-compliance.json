@@ -1,10 +1,6 @@
 {
   "task_id": "77373_0230_phase-4-dogfood-proof-bundle-evidence-index",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "docs/PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "docs/PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Task-local diff introduces new operator-facing documentation and run artifacts for the nested proof-bundle feature; policy requires recording those surfaces in the same delivery set.",

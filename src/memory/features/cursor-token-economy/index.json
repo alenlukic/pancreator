@@ -60,10 +60,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/cursor-token-economy/spec.md",
-        "range": [
-          1,
-          1
-        ],
+        "range": [1, 1],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -72,10 +69,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/cursor-token-economy/index.json",
-        "range": [
-          1,
-          1
-        ],
+        "range": [1, 1],
         "contentHash": "TBD-on-commit"
       }
     }

@@ -1,0 +1,3 @@
+- All JSON that either agents or automated scripts write to output files, terminal/CLI, or agent chat window must be pretty-formatted: indent=2, one key/value per line.
+- Any commit hash values (e.g. `contentHash`) must be the abbreviated hash, NOT the full hash.
+- Existing JSON must be migrated to the new convention.

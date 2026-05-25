@@ -44,19 +44,13 @@
       {
         "kind": "lines",
         "path": "src/memory/handbook/glossary.md",
-        "range": [
-          216,
-          218
-        ],
+        "range": [216, 218],
         "contentHash": "TBD-on-commit"
       },
       {
         "kind": "lines",
         "path": "src/memory/handbook/run-log-schema.md",
-        "range": [
-          83,
-          162
-        ],
+        "range": [83, 162],
         "contentHash": "TBD-on-commit"
       }
     ]
@@ -67,10 +61,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/spec.md",
-        "range": [
-          1,
-          133
-        ],
+        "range": [1, 133],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -79,10 +70,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/adr/0005-timestamp-naming-conventions.md",
-        "range": [
-          1,
-          64
-        ],
+        "range": [1, 64],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -91,10 +79,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
-        "range": [
-          1,
-          35
-        ],
+        "range": [1, 35],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -103,10 +88,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
-        "range": [
-          1,
-          40
-        ],
+        "range": [1, 40],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -115,10 +97,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
-        "range": [
-          1,
-          130
-        ],
+        "range": [1, 130],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -127,10 +106,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
-        "range": [
-          1,
-          27
-        ],
+        "range": [1, 27],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -139,10 +115,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
-        "range": [
-          1,
-          27
-        ],
+        "range": [1, 27],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -151,10 +124,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
-        "range": [
-          1,
-          30
-        ],
+        "range": [1, 30],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -163,10 +133,7 @@
       "citation": {
         "kind": "lines",
         "path": "tests/compliance/timestamp-naming-conventions.yaml",
-        "range": [
-          1,
-          17
-        ],
+        "range": [1, 17],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -175,10 +142,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/tools/migrate-timestamp-naming.mjs",
-        "range": [
-          1,
-          943
-        ],
+        "range": [1, 943],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -187,10 +151,7 @@
       "citation": {
         "kind": "lines",
         "path": "tests/migrate-timestamp-naming.test.mjs",
-        "range": [
-          1,
-          196
-        ],
+        "range": [1, 196],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -199,10 +160,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
-        "range": [
-          1,
-          1
-        ],
+        "range": [1, 1],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -211,10 +169,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
-        "range": [
-          1,
-          229
-        ],
+        "range": [1, 229],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -223,10 +178,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
-        "range": [
-          1,
-          71
-        ],
+        "range": [1, 71],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -235,10 +187,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
-        "range": [
-          1,
-          86
-        ],
+        "range": [1, 86],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -247,10 +196,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
-        "range": [
-          1,
-          4
-        ],
+        "range": [1, 4],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -259,10 +205,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
-        "range": [
-          1,
-          71
-        ],
+        "range": [1, 71],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -271,10 +214,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/index.json",
-        "range": [
-          1,
-          1
-        ],
+        "range": [1, 1],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -283,10 +223,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/handbook/inbox-lifecycle.md",
-        "range": [
-          135,
-          149
-        ],
+        "range": [135, 149],
         "contentHash": "TBD-on-commit"
       }
     },
@@ -295,10 +232,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
-        "range": [
-          1,
-          1
-        ],
+        "range": [1, 1],
         "contentHash": "TBD-on-commit"
       }
     }
@@ -312,10 +246,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
-        "range": [
-          1,
-          1
-        ],
+        "range": [1, 1],
         "contentHash": "TBD-on-commit"
       },
       "note": "When write-mode runs, the operator MUST set TESSERACT_MIGRATION_GO=1. This follow-up completed with a post-rename reference-apply recovery after stock --write ordering failed; post-write dry-run residue remains for inbox idempotency."
@@ -328,10 +259,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
-        "range": [
-          28,
-          28
-        ],
+        "range": [28, 28],
         "contentHash": "TBD-on-commit"
       },
       "note": "When the dedicated L2 pass runs, the task MUST refresh mixed contentHash values."
@@ -344,10 +272,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
-        "range": [
-          29,
-          29
-        ],
+        "range": [29, 29],
         "contentHash": "TBD-on-commit"
       },
       "note": "When Phase 5 runner wiring starts, the task MUST connect Spec Contract execution to the contract-runner panel."
@@ -360,10 +285,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
-        "range": [
-          30,
-          30
-        ],
+        "range": [30, 30],
         "contentHash": "TBD-on-commit"
       },
       "note": "When rollover policy resumes, the task MUST capture the operator decision before implementation."
@@ -385,19 +307,13 @@
           {
             "kind": "lines",
             "path": "src/memory/features/timestamp-naming-conventions/spec.md",
-            "range": [
-              54,
-              103
-            ],
+            "range": [54, 103],
             "contentHash": "TBD-on-commit"
           },
           {
             "kind": "lines",
             "path": "tests/compliance/schemas/latest.yaml",
-            "range": [
-              1,
-              63
-            ],
+            "range": [1, 63],
             "contentHash": "TBD-on-commit"
           }
         ]
@@ -416,19 +332,13 @@
           {
             "kind": "lines",
             "path": "src/memory/features/timestamp-naming-conventions/spec.md",
-            "range": [
-              123,
-              129
-            ],
+            "range": [123, 129],
             "contentHash": "TBD-on-commit"
           },
           {
             "kind": "lines",
             "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
-            "range": [
-              17,
-              17
-            ],
+            "range": [17, 17],
             "contentHash": "TBD-on-commit"
           }
         ]
@@ -447,19 +357,13 @@
           {
             "kind": "lines",
             "path": "src/memory/features/timestamp-naming-conventions/spec.md",
-            "range": [
-              104,
-              109
-            ],
+            "range": [104, 109],
             "contentHash": "TBD-on-commit"
           },
           {
             "kind": "lines",
             "path": "src/memory/adr/0004-documentation-impact-contract.md",
-            "range": [
-              67,
-              75
-            ],
+            "range": [67, 75],
             "contentHash": "TBD-on-commit"
           }
         ]
@@ -474,14 +378,8 @@
       "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
       "title": "[bootstrap-phase-4] timestamp naming conventions: encode policy + tooling (write deferred)",
       "branch": "bootstrap",
-      "head_commit": "ff57fb856e752d61f1b0457eab014cf3c39b798b",
-      "lineage_commits": [
-        "1ca2afd",
-        "7d7b62a",
-        "635e5bb",
-        "ff57fb8",
-        "d472d02"
-      ]
+      "head_commit": "ff57fb8",
+      "lineage_commits": ["1ca2afd", "7d7b62a", "635e5bb", "ff57fb8", "d472d02"]
     },
     "staged_inbox_out": "src/inbox/out/172996_05-10-26/25121_1701_timestamp-naming-conventions-delivery-report/27250_1625_2026-04-27-timestamp-naming-conventions-delivery-report.md",
     "run_log": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
@@ -496,9 +394,7 @@
       "stage": "human_approval",
       "status": "cleared",
       "cleared_at_head": "d472d02",
-      "operator_actions_required": [
-        "Approve the post-merge migration-write task before it runs with TESSERACT_MIGRATION_GO=1."
-      ]
+      "operator_actions_required": ["Approve the post-merge migration-write task before it runs with TESSERACT_MIGRATION_GO=1."]
     },
     "pipeline_state": "human_approval_cleared",
     "supervisor_invariants": {
@@ -515,7 +411,7 @@
   "review": {
     "verdict": "pass-with-conditions",
     "report": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
-    "implement_commit": "7d7b62a1cbf1903def541c968dffacfd2c8744a5",
+    "implement_commit": "7d7b62a",
     "block_findings": 0,
     "warn_findings": 2,
     "info_findings": 4,
@@ -531,11 +427,7 @@
     }
   },
   "lineage": {
-    "intake_commits": [
-      "90f6110",
-      "d26d4e1",
-      "f2263fc"
-    ],
+    "intake_commits": ["90f6110", "d26d4e1", "f2263fc"],
     "persona_ratification": "85edfcb",
     "plan": "1ca2afd",
     "implement": "7d7b62a",
@@ -546,19 +438,13 @@
       {
         "kind": "lines",
         "path": "src/inbox/in/timestamp_naming_conventions.md",
-        "range": [
-          1,
-          59
-        ],
+        "range": [1, 59],
         "contentHash": "TBD-on-commit"
       },
       {
         "kind": "lines",
         "path": "src/inbox/threads/timestamp-naming-conventions/round-01-clarify-human-responses.md",
-        "range": [
-          1,
-          87
-        ],
+        "range": [1, 87],
         "contentHash": "TBD-on-commit"
       }
     ]

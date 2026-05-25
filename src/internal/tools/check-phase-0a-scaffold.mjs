@@ -16,6 +16,9 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const TESSERACT_PREFIX = "@tesseract/";
+const WORK_DAY_DIR_RE = /^\d+_\d{2}-\d{2}-\d{2}$/u;
+const ISO_DAY_DIR_RE = /^\d{4}-\d{2}-\d{2}$/u;
+const WORK_TASK_ID_RE = /^\d+_\d{4}_[a-z0-9][a-z0-9_-]*$/u;
 
 const PRIMITIVE_DIRS = readdirSync(
   path.join(REPO_ROOT, "src", "internal", "packages", "@tesseract"),
@@ -197,6 +200,34 @@ if (process.argv.includes("--list-packages")) {
   );
   for (const id of Array.from(all).sort()) {
     console.log(id);
+  }
+}
+
+const workRoot = path.join(REPO_ROOT, "src", "work");
+if (existsSync(workRoot)) {
+  for (const dayEntry of readdirSync(workRoot, { withFileTypes: true })) {
+    if (!dayEntry.isDirectory()) {
+      continue;
+    }
+    if (ISO_DAY_DIR_RE.test(dayEntry.name)) {
+      err(
+        `src/work/${dayEntry.name} uses ISO date format; day directories MUST match <days-to-fds>_<MM-DD-YY>.`,
+      );
+    }
+    if (!WORK_DAY_DIR_RE.test(dayEntry.name)) {
+      continue;
+    }
+    const dayAbs = path.join(workRoot, dayEntry.name);
+    for (const taskEntry of readdirSync(dayAbs, { withFileTypes: true })) {
+      if (!taskEntry.isDirectory()) {
+        continue;
+      }
+      if (!WORK_TASK_ID_RE.test(taskEntry.name)) {
+        err(
+          `src/work/${dayEntry.name}/${taskEntry.name} MUST match <seconds-to-midnight>_<HHMM>_<slug>.`,
+        );
+      }
+    }
   }
 }
 

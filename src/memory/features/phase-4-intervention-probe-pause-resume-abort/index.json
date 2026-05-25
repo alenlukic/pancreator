@@ -6,50 +6,50 @@
   "status": "pending-human-ratification",
   "source_inbox_item": {
     "path": "src/inbox/in/phase-4-intervention-probe.md",
-    "content_hash": "970e45fb321244d98ddde62ee2ca1f9fa05f264b5b6ce84aace2470ec2f00f5b"
+    "content_hash": "970e45f"
   },
   "feature_artifacts": [
     {
       "kind": "spec",
       "path": "src/memory/features/phase-4-intervention-probe-pause-resume-abort/spec.md",
-      "content_hash": "4afe50ddba4195a5b3c9a4fde426789decd3d2efd8d1a3097b2b7bfc0fb43b4a"
+      "content_hash": "4afe50d"
     },
     {
       "kind": "delivery-report",
       "path": "src/memory/features/phase-4-intervention-probe-pause-resume-abort/delivery-report.md",
-      "content_hash": "7e5f2aa1414c6f95b3bb52dc860197fe1733e52a7d587288f8fc21b64606fa1c"
+      "content_hash": "7e5f2aa"
     }
   ],
   "accepted_ship_artifacts": [
     {
       "kind": "plan",
       "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
-      "content_hash": "16c2f21dcfa0c234043f99278defb5e3d6d6b86302fdba4a089d2b1c00344644"
+      "content_hash": "16c2f21"
     },
     {
       "kind": "adr-draft",
       "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
-      "content_hash": "d82f01c76168e72e4c6ad9a0e7bde280893ffbc75456cd7cb3d01710963a41ca"
+      "content_hash": "d82f01c"
     },
     {
       "kind": "touch-set",
       "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/touch-set.json",
-      "content_hash": "0831d310e16a40b4d03e88322eeca3c1d3f32adbec8fe9ad419f3eb1212f8b48"
+      "content_hash": "0831d31"
     },
     {
       "kind": "implementation-report",
       "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
-      "content_hash": "935825e4711c1d260ef3a703728b65bd6b8899cf48755498bb3cffee761450a7"
+      "content_hash": "935825e"
     },
     {
       "kind": "review",
       "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
-      "content_hash": "8b9b5366715de45176d5ae92de274d8ea52dc0a01befbc44e04e6c2a309a87ef"
+      "content_hash": "8b9b536"
     }
   ],
   "ship_outbox_artifact": {
     "path": "src/inbox/out/2026-05-18T16-52-34Z-phase-4-intervention-probe-pause-resume-abort-delivery-report.md",
-    "content_hash": "7e5f2aa1414c6f95b3bb52dc860197fe1733e52a7d587288f8fc21b64606fa1c",
+    "content_hash": "7e5f2aa",
     "status": "present"
   },
   "active_work_artifacts": [

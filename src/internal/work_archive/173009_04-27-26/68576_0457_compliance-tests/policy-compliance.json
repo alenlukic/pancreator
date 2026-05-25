@@ -1,10 +1,6 @@
 {
   "task_id": "compliance-tests",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "The compliance-tests slice includes non-work structural artifacts and this audit adds gate artifacts under src/internal/work_archive/173009_04-27-26/68576_0457_compliance-tests.",

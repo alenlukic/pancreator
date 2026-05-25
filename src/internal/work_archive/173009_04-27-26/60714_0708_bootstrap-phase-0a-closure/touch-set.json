@@ -18,9 +18,7 @@
     {
       "path": ".github",
       "operation": "add-ci-check",
-      "plannedFiles": [
-        ".github/workflows/phase-0a-scaffold.yml"
-      ]
+      "plannedFiles": [".github/workflows/phase-0a-scaffold.yml"]
     },
     {
       "path": "src/memory/features/bootstrap-phase-0a-closure",

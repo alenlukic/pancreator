@@ -17,11 +17,8 @@
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "src/inbox/in/token-economy-enhanced.md",
-      "range": [
-        1,
-        535
-      ],
-      "contentHash": "fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051"
+      "range": [1, 535],
+      "contentHash": "fb1ac76"
     },
     "intake_thread": null,
     "clarifying_rounds_posted": 0,
@@ -51,25 +48,17 @@
       {
         "id": "wave-2",
         "description": "Active-memory orientation files under src/memory/active/.",
-        "paths": [
-          "src/memory/active/README.md",
-          "src/memory/active/current.md",
-          "src/memory/active/runs.md"
-        ]
+        "paths": ["src/memory/active/README.md", "src/memory/active/current.md", "src/memory/active/runs.md"]
       },
       {
         "id": "wave-3",
         "description": "ADR-0006 active versus archival memory decision record.",
-        "paths": [
-          "src/memory/adr/0006-active-vs-archival-memory.md"
-        ]
+        "paths": ["src/memory/adr/0006-active-vs-archival-memory.md"]
       },
       {
         "id": "wave-4",
         "description": "AGENTS.md slimming and route pointers to handbook and memory tiers.",
-        "paths": [
-          "AGENTS.md"
-        ]
+        "paths": ["AGENTS.md"]
       },
       {
         "id": "wave-5",
@@ -134,11 +123,8 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/active-memory-context-economy-pass-2/spec.md",
-        "range": [
-          1,
-          1
-        ],
-        "contentHash": "e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d"
+        "range": [1, 1],
+        "contentHash": "e6c4fcd"
       }
     },
     "per_feature_index": {
@@ -146,10 +132,7 @@
       "citation": {
         "kind": "lines",
         "path": "src/memory/features/active-memory-context-economy-pass-2/index.json",
-        "range": [
-          1,
-          1
-        ],
+        "range": [1, 1],
         "contentHash": "TBD-on-commit"
       }
     },

@@ -1,10 +1,6 @@
 {
   "task_id": "50123_1205_human-ratified-ma001-ma003",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "Human ratified MA-001, MA-002, and MA-003 from src/internal/work_archive/173006_04-30-26/00198_2356_compliance-audit-broad-2026-04-30/compliance-remediation.md; persona descriptions and supervisor color changed with canonical, mirror, and rule-shim parity.",

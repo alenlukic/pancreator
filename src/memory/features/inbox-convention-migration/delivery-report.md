@@ -5,29 +5,249 @@
 
 ## Summary
 
-This re-entry slice hardens the standalone inbox convention migration tool and extends legacy thread discovery so nested layout is handled safely. Review records `review_passes: true`, states that prior must-fix findings are resolved, and lists no must-fix items. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [1, 8], contentHash: 1076c2bf8629987accf66d4d362722c842586c872f07639f00053b468d45ab1e}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [1, 6], contentHash: 40488da6183e0d5f2c124cd5a0dcf0d9c4706ab608fa3981c8cbb5dd0d373d6e}`
+This re-entry slice hardens the standalone inbox convention migration tool and extends legacy thread discovery so nested layout is handled safely. Review records `review_passes: true`, states that prior must-fix findings are resolved, and lists no must-fix items. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [1, 8],
+  "contentHash": "1076c2b"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [1, 6],
+  "contentHash": "40488da"
+}
+```
+
 
 ## Architecture
 
-- **Standalone write safety:** `--write` no longer recomputes a fresh plan at apply time. Operators must supply `--manifest <path>` to persisted JSON with schema `tesseract.inbox-convention-migration-manifest.v1`; apply uses `renames`, `referenceUpdates`, `applyInboxRenamesFromManifest`, `applyReferenceUpdatesFromManifest`, and `writeInboxArtifactIndex`; `TESSERACT_MIGRATION_GO=1` remains required for writes. Combined work-plus-inbox migrations stay on `migrate-timestamp-naming.mjs --write --manifest …` with the combined timestamp manifest. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [9, 23], contentHash: 4f7b470abf8b1bc7d50f50e4ec51df891aaa3c8045e7cb914b95ab279d9ee344}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [13, 17], contentHash: dfa7d867b826558fed7c3831a8d8c7b6725e04fce142165dddf36aec07367eb6}`
-- **Thread discovery:** Under each first-level legacy feature directory under `src/inbox/threads/<feature>/`, discovery recurses into subdirectories, skips work-style day and migrated-task-directory patterns, never traverses paths containing `/notes/`, and keeps `threadFeatureId` as the first-level feature slug. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [24, 29], contentHash: 805b288107018ae7ba1f5ce972efce3afcaae293d196fffdb01f7573f99827e4}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [15, 16], contentHash: 9d2b7684458101feca7ad5460fb556089f54dcc5f0aa70ac0da55b0a87c8c10d}`
-- **Exports and tests:** `isMigratedThreadTaskSegment` is exported for tests and reuse; tests live in `tests/migrate-inbox-convention.test.mjs` per the changed-files list. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [31, 33], contentHash: 6de1a36edc83bf67ba523c0691043935c348ffa83d3b9a5cdf8f59d0d70d7eeb}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [15, 16], contentHash: 9d2b7684458101feca7ad5460fb556089f54dcc5f0aa70ac0da55b0a87c8c10d}`
+- **Standalone write safety:** `--write` no longer recomputes a fresh plan at apply time. Operators must supply `--manifest <path>` to persisted JSON with schema `tesseract.inbox-convention-migration-manifest.v1`; apply uses `renames`, `referenceUpdates`, `applyInboxRenamesFromManifest`, `applyReferenceUpdatesFromManifest`, and `writeInboxArtifactIndex`; `TESSERACT_MIGRATION_GO=1` remains required for writes. Combined work-plus-inbox migrations stay on `migrate-timestamp-naming.mjs --write --manifest …` with the combined timestamp manifest. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [9, 23],
+  "contentHash": "4f7b470"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [13, 17],
+  "contentHash": "dfa7d86"
+}
+```
+
+- **Thread discovery:** Under each first-level legacy feature directory under `src/inbox/threads/<feature>/`, discovery recurses into subdirectories, skips work-style day and migrated-task-directory patterns, never traverses paths containing `/notes/`, and keeps `threadFeatureId` as the first-level feature slug. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [24, 29],
+  "contentHash": "805b288"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [15, 16],
+  "contentHash": "9d2b768"
+}
+```
+
+- **Exports and tests:** `isMigratedThreadTaskSegment` is exported for tests and reuse; tests live in `tests/migrate-inbox-convention.test.mjs` per the changed-files list. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [31, 33],
+  "contentHash": "6de1a36"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [15, 16],
+  "contentHash": "9d2b768"
+}
+```
+
 
 ## Interfaces
 
-- **Standalone inbox migration:** Persist the dry-run manifest, then apply with `--write --manifest <path>` and `TESSERACT_MIGRATION_GO=1`. Operators using `migrate-timestamp-naming.mjs --rollback --manifest <same-approved-file>` still invert `sourceRel` and `targetRel` from the stored manifest; inbox-only runs should still produce a rollback-capable manifest when inbox steps apply. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [9, 22], contentHash: ee1ad58ee29a4f2a117e7d096042e9755215245a7737887a40c204081d03e205}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [13, 17], contentHash: dfa7d867b826558fed7c3831a8d8c7b6725e04fce142165dddf36aec07367eb6}`
-- **Combined migrations:** Use `migrate-timestamp-naming.mjs --write --manifest …` with the combined timestamp manifest—not the standalone inbox migration path—when scope spans work plus inbox. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [22, 23], contentHash: 9dbc61629e47b365db0bffb11cb835f5129f32d2a270e3775c7f69076451e60a}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [1, 6], contentHash: 40488da6183e0d5f2c124cd5a0dcf0d9c4706ab608fa3981c8cbb5dd0d373d6e}`
+- **Standalone inbox migration:** Persist the dry-run manifest, then apply with `--write --manifest <path>` and `TESSERACT_MIGRATION_GO=1`. Operators using `migrate-timestamp-naming.mjs --rollback --manifest <same-approved-file>` still invert `sourceRel` and `targetRel` from the stored manifest; inbox-only runs should still produce a rollback-capable manifest when inbox steps apply. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [9, 22],
+  "contentHash": "ee1ad58"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [13, 17],
+  "contentHash": "dfa7d86"
+}
+```
+
+- **Combined migrations:** Use `migrate-timestamp-naming.mjs --write --manifest …` with the combined timestamp manifest—not the standalone inbox migration path—when scope spans work plus inbox. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [22, 23],
+  "contentHash": "9dbc616"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [1, 6],
+  "contentHash": "40488da"
+}
+```
+
 
 ## Tradeoffs, caveats, and follow-ups
 
-- **Heuristic skips:** The migrated-task-directory skip rule can skip a rarely named legacy subdirectory; operators may rename beforehand. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [46, 46], contentHash: d68c58773a365ced2ba73c50627076381289d12c12d36584859632b688d781f9}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [1, 6], contentHash: 40488da6183e0d5f2c124cd5a0dcf0d9c4706ab608fa3981c8cbb5dd0d373d6e}`
-- **Manual cleanup:** Empty nested directories under a legacy feature tree may still require manual cleanup after thread moves. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [47, 47], contentHash: 4141359d48ee5f91a4a9269fb17913877ddf7d0d268f7817028b7ebd4acd91f5}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [1, 6], contentHash: 40488da6183e0d5f2c124cd5a0dcf0d9c4706ab608fa3981c8cbb5dd0d373d6e}`
-- **Signal quality:** `node --test tests/*.test.mjs` may emit non-blocking `fatal: not a git repository` lines from subprocesses; reviewer marks this as a nit for later cleanup. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [35, 42], contentHash: 2fb411c26823da96d714650578eb46795f6d05a1b34bb3b50c3b87045066763f}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [18, 20], contentHash: d1cf127576a6c187322fa86f65a0e651a882dc59cef17fade33cc4bcdd47fb46}`
+- **Heuristic skips:** The migrated-task-directory skip rule can skip a rarely named legacy subdirectory; operators may rename beforehand. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [46, 46],
+  "contentHash": "d68c587"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [1, 6],
+  "contentHash": "40488da"
+}
+```
+
+- **Manual cleanup:** Empty nested directories under a legacy feature tree may still require manual cleanup after thread moves. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [47, 47],
+  "contentHash": "4141359"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [1, 6],
+  "contentHash": "40488da"
+}
+```
+
+- **Signal quality:** `node --test tests/*.test.mjs` may emit non-blocking `fatal: not a git repository` lines from subprocesses; reviewer marks this as a nit for later cleanup. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [35, 42],
+  "contentHash": "2fb411c"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [18, 20],
+  "contentHash": "d1cf127"
+}
+```
+
 
 ## Testing and verification
 
-- Implementer ran targeted migration tests plus phase-0a scaffold, context-budget report, and policy hook `bash -n`; full `tests/*.test.mjs` produced an unrelated single failure in `context-budget-report.test.mjs` outside this touch set. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md, range: [35, 42], contentHash: 2fb411c26823da96d714650578eb46795f6d05a1b34bb3b50c3b87045066763f}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [29, 34], contentHash: 47b6be9ff3667d229864864b7945b20ce98eaa3327f47dce05169af6f51f89ac}`
-- Reviewer re-ran `node --test tests/*.test.mjs` (48 tests, 0 failed) plus the same scaffold, context-budget, and `bash -n` gates; no remaining blockers. `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [29, 38], contentHash: fe565201fd1c736a7e8fb9836ff7f3988c7f600523a267409f060c807848a44a}` `{kind: lines, path: src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md, range: [36, 38], contentHash: 44ee2d35b0c8cca80453cd27137afd678702c11128b14990d7cc3aca6e4a967c}`
+- Implementer ran targeted migration tests plus phase-0a scaffold, context-budget report, and policy hook `bash -n`; full `tests/*.test.mjs` produced an unrelated single failure in `context-budget-report.test.mjs` outside this touch set. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "range": [35, 42],
+  "contentHash": "2fb411c"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [29, 34],
+  "contentHash": "47b6be9"
+}
+```
+
+- Reviewer re-ran `node --test tests/*.test.mjs` (48 tests, 0 failed) plus the same scaffold, context-budget, and `bash -n` gates; no remaining blockers. 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [29, 38],
+  "contentHash": "fe56520"
+}
+```
+ 
+
+```json
+{
+  "kind": "lines",
+  "path": "src/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "range": [36, 38],
+  "contentHash": "44ee2d3"
+}
+```
+
 
 ## After human acceptance
 

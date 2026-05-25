@@ -3,6 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import {
+  isExcludedRelPath,
+  rewriteJsonText,
+  resolveAbbrevLen,
+} from "../src/internal/tools/migrate-json-formatting.mjs";
+
 const ROOT = path.resolve(import.meta.dirname, "..");
 const FDS_UTC_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
 
@@ -41,14 +47,17 @@ function daysToFdsForSuffix(mmDdYy) {
 
 
 test("repository JSON files use two-space formatting", () => {
+  const abbrevLen = resolveAbbrevLen(ROOT);
   const jsonFiles = collectFiles(".", (rel) => rel.endsWith(".json"));
   assert.ok(jsonFiles.length > 0);
 
   const offenders = [];
+  const posixRel = (rel) => rel.replace(/\\/g, "/");
   for (const rel of jsonFiles) {
+    if (isExcludedRelPath(posixRel(rel))) continue;
     const raw = read(rel);
-    const expected = `${JSON.stringify(JSON.parse(raw), null, 2)}\n`;
-    if (raw !== expected) offenders.push(rel);
+    const { output } = rewriteJsonText(raw, abbrevLen);
+    if (raw !== output) offenders.push(rel);
   }
 
   assert.deepEqual(offenders, []);

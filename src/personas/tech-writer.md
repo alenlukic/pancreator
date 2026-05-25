@@ -124,9 +124,17 @@ under 1500 words across the six sections combined.
 - The Delivery Report MUST contain the six sections above in the declared order.
 - The Summary MUST be at most 150 words.
 - The full body MUST be at most 1500 words across the six sections.
-- Every claim in every section MUST carry a dual-anchor citation per PRD §8:
-  `{kind: 'symbol', path, symbol, contentHash}` is preferred;
-  `{kind: 'lines', path, range, contentHash}` is the fallback.
+- Every claim in every section MUST carry a dual-anchor citation per PRD §8, and
+  each citation MUST serialize as canonical pretty JSON using
+  `formatCanonicalJson` layout from `src/internal/tools/canonical-json-format.mjs`.
+- In Markdown prose, each citation MUST appear as either:
+  - a fenced `json` block, or
+  - a backtick-wrapped multiline pretty JSON object.
+- Compact single-line multi-key citation blobs are forbidden.
+- Citation objects MUST be valid JSON with double-quoted keys; JS-literal
+  object-literal syntax without quoted keys is forbidden.
+- `contentHash` MUST use the abbreviated prefix length defined by the
+  json-formatting policy.
 - The body prose MUST pass PRD §4.6 Layer 1 lint clean. Each rule below MUST
   hold across the Delivery Report:
   - One RFC 2119 obligation keyword per normative clause.

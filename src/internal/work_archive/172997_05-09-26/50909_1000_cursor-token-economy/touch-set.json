@@ -3,56 +3,37 @@
     {
       "path": ".",
       "operation": "add-indexing-policy-and-prd-surfaces",
-      "plannedFiles": [
-        ".cursorindexingignore",
-        ".gitignore",
-        "PRD.summary.md",
-        "PRD.index.md"
-      ]
+      "plannedFiles": [".cursorindexingignore", ".gitignore", "PRD.summary.md", "PRD.index.md"]
     },
     {
       "path": ".",
       "operation": "update-summary-first-operator-guidance",
-      "plannedFiles": [
-        "AGENTS.md",
-        "README.md"
-      ]
+      "plannedFiles": ["AGENTS.md", "README.md"]
     },
     {
       "path": ".cursor/rules",
       "operation": "audit-and-narrow-cursor-rule-globs",
-      "plannedGlobs": [
-        ".cursor/rules/*.mdc"
-      ]
+      "plannedGlobs": [".cursor/rules/*.mdc"]
     },
     {
       "path": "src/memory/handbook",
       "operation": "add-context-economy-route",
-      "plannedFiles": [
-        "src/memory/handbook/context-economy.md",
-        "src/memory/handbook/index.md"
-      ]
+      "plannedFiles": ["src/memory/handbook/context-economy.md", "src/memory/handbook/index.md"]
     },
     {
       "path": "tools",
       "operation": "add-context-budget-report-command",
-      "plannedFiles": [
-        "src/internal/tools/context-budget-report.mjs"
-      ]
+      "plannedFiles": ["src/internal/tools/context-budget-report.mjs"]
     },
     {
       "path": ".",
       "operation": "optionally-add-context-budget-script",
-      "plannedFiles": [
-        "package.json"
-      ]
+      "plannedFiles": ["package.json"]
     },
     {
       "path": "src/memory/backlog",
       "operation": "record-approved-deferrals",
-      "plannedFiles": [
-        "src/memory/backlog/index.yaml"
-      ]
+      "plannedFiles": ["src/memory/backlog/index.yaml"]
     },
     {
       "path": "src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy",

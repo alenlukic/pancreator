@@ -6,45 +6,45 @@
   "status": "pending-human-ratification",
   "source_inbox_item": {
     "path": "src/inbox/in/phase-4-dogfood-proof-bundle-index.md",
-    "content_hash": "ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c"
+    "content_hash": "ccf9748"
   },
   "feature_artifacts": [
     {
       "kind": "spec",
       "path": "src/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
-      "content_hash": "7488b9f52d9bed16f4713570ac56a4abe9a56f689fcff62635792b692015abc6"
+      "content_hash": "7488b9f"
     },
     {
       "kind": "delivery-report",
       "path": "src/memory/features/phase-4-dogfood-proof-bundle-evidence-index/delivery-report.md",
-      "content_hash": "e8386b4398c29db4ce1652892d9b12fe3d085539b42d5191142480ab22552734"
+      "content_hash": "e8386b4"
     }
   ],
   "accepted_ship_artifacts": [
     {
       "kind": "plan",
       "path": "src/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/plan.md",
-      "content_hash": "84f8784085943bd096594da368d0105d7b0d604cbf8689883a505fbc687b6978"
+      "content_hash": "84f8784"
     },
     {
       "kind": "adr-draft",
       "path": "src/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/adr-draft.md",
-      "content_hash": "ee0b966c297f081c66bf05e14aeefd226e34a5bca01d8c7fb2f6061d91bf660a"
+      "content_hash": "ee0b966"
     },
     {
       "kind": "touch-set",
       "path": "src/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/touch-set.json",
-      "content_hash": "4d602cb1415a8ff672886e0d1ab38180eede7ffa0839a7fadb770aa7a722c27e"
+      "content_hash": "4d602cb"
     },
     {
       "kind": "implementation-report",
       "path": "src/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/implementation-report.md",
-      "content_hash": "9d3d382b48121911d5e1f119210ef05f250105f83dcc08fdfb2808124026f636"
+      "content_hash": "9d3d382"
     },
     {
       "kind": "review",
       "path": "src/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
-      "content_hash": "2da9043fa67a8c61b32742c2762da95a351d4d47aba90b92e3e906e845b06614"
+      "content_hash": "2da9043"
     }
   ],
   "ship_outbox_artifact": {

@@ -12,6 +12,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, rmdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { stringifyCliJson } from "./canonical-json-io.js";
+
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
 
 const FDS_UTC_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
@@ -25,6 +27,7 @@ const FEATURE_DELIVERY_STAGES = [
   "index",
 ] as const;
 const TERMINAL_STAGE = "complete" as const;
+const TASK_ID_PATTERN = /^\d+_\d{4}_[a-z0-9][a-z0-9_-]*$/u;
 
 type FeatureDeliveryStageId = (typeof FEATURE_DELIVERY_STAGES)[number];
 type FeatureDeliveryCurrentStage = FeatureDeliveryStageId | typeof TERMINAL_STAGE;
@@ -273,7 +276,7 @@ export async function startFeatureDelivery(
       "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan.",
   };
 
-  await writeFile(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  await writeFile(stateFile, stringifyCliJson(repoRoot, state), "utf8");
   await writeFile(handoffFile, renderHandoff(state, pipeline, directive), "utf8");
   await writeFile(nextPromptFile, renderNextPrompt(state, pipeline), "utf8");
   await appendRunLogRecord(runLogFile, makeInvocationRecord(state, now));
@@ -355,7 +358,21 @@ export async function advanceFeatureDelivery(
   input: AdvanceFeatureDeliveryInput,
 ): Promise<AdvanceFeatureDeliveryResult> {
   const repoRoot = path.resolve(input.repoRoot);
-  const taskId = sanitizeTaskId(input.taskId);
+  let taskId: string;
+  try {
+    taskId = sanitizeTaskId(input.taskId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("task id MUST match <seconds-to-midnight>_<HHMM>_<slug>.")) {
+      throw error;
+    }
+    const suggestion = await suggestTaskIdFromSlug(repoRoot, input.taskId);
+    throw new Error(
+      suggestion === null
+        ? message
+        : `${message} Did you mean ${suggestion}?`,
+    );
+  }
   const now = input.clock?.() ?? new Date();
   const stateFile = await findStateFile(repoRoot, taskId);
   const state = await readFeatureDeliveryState(stateFile.abs);
@@ -565,7 +582,7 @@ export async function closeFeatureDeliveryArtifacts(
 
   await writeFile(
     path.join(repoRoot, ...state.artifacts.stateFile.split("/")),
-    `${JSON.stringify(state, null, 2)}\n`,
+    stringifyCliJson(repoRoot, state),
     "utf8",
   );
   await writeFile(
@@ -637,10 +654,86 @@ function sanitizeTaskId(raw: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/gu, "-")
     .replace(/^-+|-+$/gu, "");
-  if (!/^\d+_\d{4}_[a-z0-9][a-z0-9_-]*$/u.test(taskId)) {
+  if (!TASK_ID_PATTERN.test(taskId)) {
     throw new Error("task id MUST match <seconds-to-midnight>_<HHMM>_<slug>.");
   }
   return taskId;
+}
+
+async function suggestTaskIdFromSlug(repoRoot: string, rawTaskId: string): Promise<string | null> {
+  const slug = taskIdSlugCandidate(rawTaskId);
+  if (slug === null) {
+    return null;
+  }
+  const roots = [
+    path.join(repoRoot, "src", "work"),
+    path.join(repoRoot, "src", "internal", "work_archive"),
+  ];
+  const suffix = `_${slug}`;
+  const matches: Array<{ taskId: string; mtimeMs: number }> = [];
+  for (const root of roots) {
+    const dayDirs = await safeReaddir(root);
+    for (const dayDir of dayDirs) {
+      const dayAbs = path.join(root, dayDir);
+      let dayInfo;
+      try {
+        dayInfo = await stat(dayAbs);
+      } catch (error) {
+        const err = error as NodeJS.ErrnoException;
+        if (err.code === "ENOENT" || err.code === "ENOTDIR") {
+          continue;
+        }
+        throw error;
+      }
+      if (!dayInfo.isDirectory()) {
+        continue;
+      }
+      const taskDirs = await safeReaddir(dayAbs);
+      for (const taskDir of taskDirs) {
+        if (!TASK_ID_PATTERN.test(taskDir) || !taskDir.endsWith(suffix)) {
+          continue;
+        }
+        const stateAbs = path.join(dayAbs, taskDir, "state.json");
+        try {
+          const stateInfo = await stat(stateAbs);
+          if (!stateInfo.isFile()) {
+            continue;
+          }
+          matches.push({ taskId: taskDir, mtimeMs: stateInfo.mtimeMs });
+        } catch (error) {
+          const err = error as NodeJS.ErrnoException;
+          if (err.code === "ENOENT" || err.code === "ENOTDIR") {
+            continue;
+          }
+          throw error;
+        }
+      }
+    }
+  }
+  if (matches.length === 0) {
+    return null;
+  }
+  matches.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return matches[0]?.taskId ?? null;
+}
+
+function taskIdSlugCandidate(rawTaskId: string): string | null {
+  const normalized = rawTaskId
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+  if (normalized.length === 0) {
+    return null;
+  }
+  const segments = normalized.split("_").filter((part) => part.length > 0);
+  if (segments.length < 2) {
+    return null;
+  }
+  const slug = segments.length >= 3 ? segments.slice(2).join("_") : segments.slice(1).join("_");
+  if (!/^[a-z0-9][a-z0-9_-]*$/u.test(slug)) {
+    return null;
+  }
+  return slug;
 }
 
 function deriveFeatureId(inboxEntry: string, directive: string): string {
@@ -1223,7 +1316,7 @@ async function persistStateAndPrompts(
   pipeline: PipelineDefinition,
   mode: "advance" | "repair" | "refresh-prompt",
 ): Promise<void> {
-  await writeFile(path.join(repoRoot, state.artifacts.stateFile), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  await writeFile(path.join(repoRoot, state.artifacts.stateFile), stringifyCliJson(repoRoot, state), "utf8");
   await writeFile(path.join(repoRoot, state.artifacts.handoffFile), renderHandoff(state, pipeline), "utf8");
   await writeFile(
     path.join(repoRoot, requireNextPromptFile(state)),
