@@ -10,7 +10,7 @@ references:
     path: src/memory/active/current.md
     note: Operator-facing pointers; the active-feature row and shipped-features table both lag inbox state today.
   - kind: path
-    path: src/work/172981_05-25-26/audit_0001_broad-sweep-compliance/compliance-audit.md
+    path: src/work/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md
     note: Finding M-01 and proposal P-02 record manual rotation as a recurring audit gap.
   - kind: path
     path: src/memory/features/json-formatting/index.json

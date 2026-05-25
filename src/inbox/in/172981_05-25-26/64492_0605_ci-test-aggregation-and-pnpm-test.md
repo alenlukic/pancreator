@@ -13,7 +13,7 @@ references:
     path: .github/workflows/
     note: CI runs build, lint, typecheck, attw, publint, scaffold check, and migration tests but does NOT run turbo run test.
   - kind: path
-    path: src/work/172981_05-25-26/audit_0001_broad-sweep-compliance/compliance-audit.md
+    path: src/work/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md
     note: Finding n-01 records the missing pnpm test aggregator and the friction it creates.
   - kind: path
     path: src/internal/packages/@tesseract/cli/src/run.test.ts
