@@ -5,7 +5,7 @@ applies_to:
   kind: artifact-symbol
   path: src/internal/packages/@tesseract/mcp-server/README.md
   symbol: "# Quickstart"
-  contentHash: TBD-on-commit
+  contentHash: d3f9e4c2dc58a4a8f48669ac874900b6f7dc5330acd7f184541590eed71a4e3b
 owner: contract-writer
 description: |
   When `README.md` under `src/internal/packages/@tesseract/mcp-server` is evaluated for MVP library-mode onboarding, the judge panel SHALL return a mean score of at least 0.75 for command clarity and first-run completeness within 5 commands.

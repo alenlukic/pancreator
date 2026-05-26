@@ -27,7 +27,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "src/inbox/in/token_economy.md",
+    "source_inbox_item": "src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md",
     "clarifying_rounds_posted": 0,
     "clarifying_skip_rationale": "Source directive is fully actionable and the lines 299-305 implementation guidance authorizes the no-clarifying-questions intake path.",
     "human_approval_gate": "cleared",
@@ -42,7 +42,7 @@
     "inbox_source_archived_to": "src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md",
     "inbox_source_archive_method": "git mv (rename detected; history preserved)",
     "inbox_source_rename_rule": "src/memory/handbook/inbox-lifecycle.md §3c with timestamp prefix derived from first git commit timestamp 2026-05-09T20:40:49Z per ADR-0005 §47 derivation order",
-    "stale_citation_followup": "src/memory/features/cursor-token-economy/spec.md and src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/plan.md retain point-in-time citations to the original src/inbox/in/ path; contentHash placeholders remain TBD-on-commit; librarian knowledge-curation sweep SHOULD flag and propose updates per src/personas/librarian.md §\"What you MUST produce\" item 3"
+    "stale_citation_followup": "src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/plan.md retains point-in-time citations to the original src/inbox/in/ path; librarian knowledge-curation sweep MAY repoint archive paths per src/personas/librarian.md §\"What you MUST produce\" item 3"
   },
   "shipped": {
     "shipped_at_utc": "2026-05-10T03:16:00Z",
@@ -61,7 +61,7 @@
         "kind": "lines",
         "path": "src/memory/features/cursor-token-economy/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "b7d9d95"
       }
     },
     "per_feature_index": {
@@ -70,7 +70,7 @@
         "kind": "lines",
         "path": "src/memory/features/cursor-token-economy/index.json",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "e9ce532"
       }
     }
   },

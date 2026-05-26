@@ -5,7 +5,7 @@ applies_to:
   kind: artifact-symbol
   path: src/internal/packages/@tesseract/runner-cursor/README.md
   symbol: "# Quickstart"
-  contentHash: TBD-on-commit
+  contentHash: 614ce9a0792e7f6cb2220ee527d50b268b74cfe937a49df90e04f12cd5a9de4c
 owner: contract-writer
 description: |
   When `README.md` under `src/internal/packages/@tesseract/runner-cursor` is evaluated for MVP library-mode onboarding, the judge panel SHALL return a mean score of at least 0.75 for command clarity and first-run completeness within 5 commands.

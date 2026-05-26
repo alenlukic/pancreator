@@ -22,17 +22,17 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [317, 480]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
     note: "PRD §4.5 — wrapper schema, closed-core kind registry, ContractRunner adapter, ContractFailure, quorum policy"
   - kind: lines
     path: docs/PRD.md
     range: [483, 610]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
     note: "PRD §4.6 — Layers 1-5 + worked example"
   - kind: lines
     path: docs/PRD.md
     range: [967, 980]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
     note: "PRD §6 — meta-skill spec this file implements"
 ---
 

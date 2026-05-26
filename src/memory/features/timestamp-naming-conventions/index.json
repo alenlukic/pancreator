@@ -10,7 +10,7 @@
     "round": 1,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "src/inbox/in/timestamp_naming_conventions.md",
+    "source_inbox_item": "src/inbox/archive/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
     "last_processed_thread_item": "src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md"
   },
   "handoff": {
@@ -45,13 +45,13 @@
         "kind": "lines",
         "path": "src/memory/handbook/glossary.md",
         "range": [216, 218],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "086c42d"
       },
       {
         "kind": "lines",
         "path": "src/memory/handbook/run-log-schema.md",
         "range": [83, 162],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "7fcab4f"
       }
     ]
   },
@@ -62,7 +62,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/spec.md",
         "range": [1, 133],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "0573437"
       }
     },
     "adr_0005": {
@@ -71,7 +71,7 @@
         "kind": "lines",
         "path": "src/memory/adr/0005-timestamp-naming-conventions.md",
         "range": [1, 64],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "ff5343e"
       }
     },
     "plan": {
@@ -80,7 +80,7 @@
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
         "range": [1, 35],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "6f9e0fe"
       }
     },
     "adr_draft": {
@@ -89,7 +89,7 @@
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
         "range": [1, 40],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "c806216"
       }
     },
     "touch_set": {
@@ -98,7 +98,7 @@
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
         "range": [1, 130],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "f69c734"
       }
     },
     "contract_policy_descriptor": {
@@ -107,7 +107,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
         "range": [1, 27],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "2dcfed7"
       }
     },
     "contract_migration_precedence": {
@@ -116,7 +116,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
         "range": [1, 27],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "696363d"
       }
     },
     "contract_reference_update_audit": {
@@ -125,7 +125,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
         "range": [1, 30],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "f4e21bd"
       }
     },
     "compliance_descriptor": {
@@ -134,7 +134,7 @@
         "kind": "lines",
         "path": "tests/compliance/timestamp-naming-conventions.yaml",
         "range": [1, 17],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "afcf5e2"
       }
     },
     "migration_script": {
@@ -143,7 +143,7 @@
         "kind": "lines",
         "path": "src/internal/tools/migrate-timestamp-naming.mjs",
         "range": [1, 943],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "5fa37a5"
       }
     },
     "migration_tests": {
@@ -152,7 +152,7 @@
         "kind": "lines",
         "path": "tests/migrate-timestamp-naming.test.mjs",
         "range": [1, 196],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "631e1ff"
       }
     },
     "dry_run_manifest": {
@@ -161,7 +161,7 @@
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "0662fb4"
       }
     },
     "review_report": {
@@ -170,7 +170,7 @@
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
         "range": [1, 229],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "2464ac9"
       }
     },
     "delivery_report": {
@@ -179,7 +179,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
         "range": [1, 71],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "a704fc8"
       }
     },
     "pr_draft": {
@@ -188,7 +188,7 @@
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
         "range": [1, 86],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "b0f17ef"
       }
     },
     "run_log": {
@@ -197,7 +197,7 @@
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
         "range": [1, 4],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "67cd35d"
       }
     },
     "outbound_delivery_report": {
@@ -206,7 +206,7 @@
         "kind": "lines",
         "path": "src/inbox/out/172991_05-15-26/27250_1625_timestamp-naming-conventions-delivery-report.md",
         "range": [1, 71],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "edded95"
       }
     },
     "per_feature_index": {
@@ -215,7 +215,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/index.json",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "efbbcc4"
       }
     },
     "inbox_lifecycle_update": {
@@ -224,7 +224,7 @@
         "kind": "lines",
         "path": "src/memory/handbook/inbox-lifecycle.md",
         "range": [135, 149],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "0b097ca"
       }
     },
     "citation_rot_scan": {
@@ -233,7 +233,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "8639086"
       }
     }
   },
@@ -247,7 +247,7 @@
         "kind": "lines",
         "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "0662fb4"
       },
       "note": "When write-mode runs, the operator MUST set TESSERACT_MIGRATION_GO=1. This follow-up completed with a post-rename reference-apply recovery after stock --write ordering failed; post-write dry-run residue remains for inbox idempotency."
     },
@@ -260,7 +260,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
         "range": [28, 28],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "a704fc8"
       },
       "note": "When the dedicated L2 pass runs, the task MUST refresh mixed contentHash values."
     },
@@ -273,7 +273,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
         "range": [29, 29],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "a704fc8"
       },
       "note": "When Phase 5 runner wiring starts, the task MUST connect Spec Contract execution to the contract-runner panel."
     },
@@ -286,7 +286,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/delivery-report.md",
         "range": [30, 30],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "a704fc8"
       },
       "note": "When rollover policy resumes, the task MUST capture the operator decision before implementation."
     }
@@ -308,13 +308,13 @@
             "kind": "lines",
             "path": "src/memory/features/timestamp-naming-conventions/spec.md",
             "range": [54, 103],
-            "contentHash": "TBD-on-commit"
+            "contentHash": "0573437"
           },
           {
             "kind": "lines",
             "path": "tests/compliance/schemas/latest.yaml",
             "range": [1, 63],
-            "contentHash": "TBD-on-commit"
+            "contentHash": "8bbb8a7"
           }
         ]
       },
@@ -333,13 +333,13 @@
             "kind": "lines",
             "path": "src/memory/features/timestamp-naming-conventions/spec.md",
             "range": [123, 129],
-            "contentHash": "TBD-on-commit"
+            "contentHash": "0573437"
           },
           {
             "kind": "lines",
             "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
             "range": [17, 17],
-            "contentHash": "TBD-on-commit"
+            "contentHash": "6f9e0fe"
           }
         ]
       },
@@ -358,13 +358,13 @@
             "kind": "lines",
             "path": "src/memory/features/timestamp-naming-conventions/spec.md",
             "range": [104, 109],
-            "contentHash": "TBD-on-commit"
+            "contentHash": "0573437"
           },
           {
             "kind": "lines",
             "path": "src/memory/adr/0004-documentation-impact-contract.md",
             "range": [67, 75],
-            "contentHash": "TBD-on-commit"
+            "contentHash": "002c6fd"
           }
         ]
       }
@@ -437,15 +437,15 @@
     "citations": [
       {
         "kind": "lines",
-        "path": "src/inbox/in/timestamp_naming_conventions.md",
+        "path": "src/inbox/archive/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
         "range": [1, 59],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "4c34a77"
       },
       {
         "kind": "lines",
         "path": "src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md",
         "range": [1, 87],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "fa0e81b"
       }
     ]
   },

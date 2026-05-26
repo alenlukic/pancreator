@@ -28,7 +28,7 @@ SHALL NOT hand-maintain path bookkeeping for closed nested runs.
 
 | Field | Value |
 | --- | --- |
-| Directive | `src/inbox/in/phase-4-intervention-probe.md` |
+| Directive | `src/inbox/archive/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md` |
 | Nested task id | `71096_0415_phase-4-intervention-probe-pause-resume-abort` |
 | Work directory | `src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/` |
 | Run log | `src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/run.log.jsonl` |

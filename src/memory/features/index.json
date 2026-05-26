@@ -15,7 +15,7 @@
         "kind": "lines",
         "path": "src/memory/features/bootstrap-phase-0a-closure/index.json",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "822762a"
       }
     },
     {
@@ -27,7 +27,7 @@
         "kind": "lines",
         "path": "src/memory/features/compliance-tests/index.json",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "fa50b68"
       }
     },
     {
@@ -39,7 +39,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-adopter-scan/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "8bdad66"
       },
       "per_feature_index_missing": true
     },
@@ -52,7 +52,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-checkpointer-fs/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "0d11c59"
       },
       "per_feature_index_missing": true
     },
@@ -65,7 +65,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-cli/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "6b449a3"
       },
       "per_feature_index_missing": true
     },
@@ -78,7 +78,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-contract/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "ab811ff"
       },
       "per_feature_index_missing": true
     },
@@ -91,7 +91,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-contract-runner-llm-judge/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "03a0420"
       },
       "per_feature_index_missing": true
     },
@@ -104,7 +104,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-contract-runner-rego/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "7568d17"
       },
       "per_feature_index_missing": true
     },
@@ -117,7 +117,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-contract-style/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "eb110a0"
       },
       "per_feature_index_missing": true
     },
@@ -130,7 +130,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-core/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "5a8721a"
       },
       "per_feature_index_missing": true
     },
@@ -143,7 +143,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-env-isolation/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "a60f245"
       },
       "per_feature_index_missing": true
     },
@@ -154,9 +154,9 @@
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-src/inbox/spec.md",
+        "path": "src/memory/features/tesseract-inbox/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "283cbb4"
       },
       "per_feature_index_missing": true
     },
@@ -169,7 +169,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-intervention/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "8373879"
       },
       "per_feature_index_missing": true
     },
@@ -182,7 +182,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-mcp-server/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "55dab8b"
       },
       "per_feature_index_missing": true
     },
@@ -193,9 +193,9 @@
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-src/memory/spec.md",
+        "path": "src/memory/features/tesseract-memory/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "2760bc7"
       },
       "per_feature_index_missing": true
     },
@@ -208,7 +208,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-notifier/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "4aa9982"
       },
       "per_feature_index_missing": true
     },
@@ -221,7 +221,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-persona/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "8aaaa94"
       },
       "per_feature_index_missing": true
     },
@@ -234,7 +234,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-pipeline/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "7409ecf"
       },
       "per_feature_index_missing": true
     },
@@ -247,7 +247,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-policy/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "a2ba7ee"
       },
       "per_feature_index_missing": true
     },
@@ -260,7 +260,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-run-logger/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "35c7b43"
       },
       "per_feature_index_missing": true
     },
@@ -273,7 +273,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-runner-cursor/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "9906bc4"
       },
       "per_feature_index_missing": true
     },
@@ -286,7 +286,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-worktree/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "b053c5c"
       },
       "per_feature_index_missing": true
     },
@@ -299,7 +299,7 @@
         "kind": "lines",
         "path": "src/memory/features/timestamp-naming-conventions/index.json",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "efbbcc4"
       }
     }
   ],
@@ -311,7 +311,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-adopter-scan/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "8bdad66"
       }
     },
     {
@@ -321,7 +321,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-checkpointer-fs/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "0d11c59"
       }
     },
     {
@@ -331,7 +331,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-cli/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "6b449a3"
       }
     },
     {
@@ -341,7 +341,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-contract/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "ab811ff"
       }
     },
     {
@@ -351,7 +351,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-contract-runner-llm-judge/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "03a0420"
       }
     },
     {
@@ -361,7 +361,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-contract-runner-rego/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "7568d17"
       }
     },
     {
@@ -371,7 +371,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-contract-style/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "eb110a0"
       }
     },
     {
@@ -381,7 +381,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-core/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "5a8721a"
       }
     },
     {
@@ -391,17 +391,17 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-env-isolation/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "a60f245"
       }
     },
     {
       "feature_id": "tesseract-inbox",
-      "missing": "src/memory/features/tesseract-src/inbox/index.json",
+      "missing": "src/memory/features/tesseract-inbox/index.json",
       "citation": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-src/inbox/spec.md",
+        "path": "src/memory/features/tesseract-inbox/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "283cbb4"
       }
     },
     {
@@ -411,7 +411,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-intervention/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "8373879"
       }
     },
     {
@@ -421,17 +421,17 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-mcp-server/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "55dab8b"
       }
     },
     {
       "feature_id": "tesseract-memory",
-      "missing": "src/memory/features/tesseract-src/memory/index.json",
+      "missing": "src/memory/features/tesseract-memory/index.json",
       "citation": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-src/memory/spec.md",
+        "path": "src/memory/features/tesseract-memory/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "2760bc7"
       }
     },
     {
@@ -441,7 +441,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-notifier/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "4aa9982"
       }
     },
     {
@@ -451,7 +451,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-persona/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "8aaaa94"
       }
     },
     {
@@ -461,7 +461,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-pipeline/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "7409ecf"
       }
     },
     {
@@ -471,7 +471,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-policy/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "a2ba7ee"
       }
     },
     {
@@ -481,7 +481,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-run-logger/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "35c7b43"
       }
     },
     {
@@ -491,7 +491,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-runner-cursor/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "9906bc4"
       }
     },
     {
@@ -501,7 +501,7 @@
         "kind": "lines",
         "path": "src/memory/features/tesseract-worktree/spec.md",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "b053c5c"
       }
     }
   ]

@@ -13,17 +13,17 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [116, 174]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS working agreement binds all agents to this contract at task completion."
   - kind: lines
     path: src/memory/handbook/persona-spec.md
     range: [124, 140]
-    contentHash: TBD-on-commit
+    contentHash: 4c164cf34e880be6546c00245fea8fe790123d9a33c32370d4ededf05391c6e9
     note: "Persona body discipline extends to operator-visible completion output."
   - kind: lines
     path: src/memory/handbook/inbox-lifecycle.md
     range: [114, 128]
-    contentHash: TBD-on-commit
+    contentHash: 546e807108a1ef4caa505fba99667e2a65c27407561d35a436829a5072878371
     note: "Manual inbox archival and ratification are common next-step targets."
 related:
   - /AGENTS.md

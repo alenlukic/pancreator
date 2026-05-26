@@ -15,12 +15,12 @@ metadata:
     - kind: lines
       path: docs/PRD.md
       range: [1, 80]
-      contentHash: TBD-on-commit
+      contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
       note: Cited for product context; pipeline structure derives from PRD §11.
     - kind: lines
       path: docs/BOOTSTRAP.md
       range: [223, 243]
-      contentHash: TBD-on-commit
+      contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268
       note: BOOTSTRAP Phase 4 names this pipeline as the US-1 dogfood entry point.
 stages:
   - id: intake

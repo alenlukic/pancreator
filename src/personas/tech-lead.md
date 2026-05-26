@@ -71,12 +71,12 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [95, 103]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS §4/§6 — stage artifacts live under the active run directory emitted by tess and are delegated from the handoff card."
   - kind: lines
     path: src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts
     range: [238, 247]
-    contentHash: TBD-on-commit
+    contentHash: fe3c1b123df997a37f1ab60d4de59bebaebc6a25e5842d4ee19c9e6d5bee52ef
     note: "feature-delivery run creation derives canonical day/task paths from makeDayDir and makeTaskId; planners must not invent alternatives."
 ---
 

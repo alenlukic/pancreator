@@ -45,17 +45,17 @@ references:
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-04-human-reject.md
     range: [1, 17]
-    contentHash: TBD-on-commit
+    contentHash: 0baa4c85fd774d946acea02dbfd04cbe496bfcb5035920ff857b18133b13619f
     note: Human rejection artifact that reopens remediation and constrains plan-level corrections.
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-05-human-approve.md
     range: [1, 3]
-    contentHash: TBD-on-commit
+    contentHash: 0cabf5918bb2579237b66b49684790342e72ead53fc82e64c428aa69246cfdf7
     note: Human approval artifact that closes intake remediation and reaffirms plan handoff.
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-06-human-approve.md
     range: [1, 3]
-    contentHash: TBD-on-commit
+    contentHash: 0cabf5918bb2579237b66b49684790342e72ead53fc82e64c428aa69246cfdf7
     note: Human approval artifact that supersedes round 05 and confirms the plan handoff remains approved.
 ---
 

@@ -10,52 +10,52 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [259, 259]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
     note: "PRD glossary defines backlog as `/src/memory/backlog/`, the live ranked roadmap."
   - kind: lines
     path: docs/PRD.md
     range: [378, 378]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
     note: "PRD memory layer includes backlog and requires dual-anchor cross-references."
   - kind: lines
     path: AGENTS.md
     range: [18, 29]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS defines handbook and PRD as canonical authoring references."
   - kind: lines
     path: AGENTS.md
     range: [77, 83]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS requires dual-anchor citations and Layer 1 style discipline."
   - kind: lines
     path: AGENTS.md
     range: [120, 121]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS workspace map allocates `/src/memory/backlog/` as the backlog memory tier."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [51, 51]
-    contentHash: TBD-on-commit
+    contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268
     note: "Bootstrap scaffolds `/src/memory/backlog/` as a required memory directory."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [264, 270]
-    contentHash: TBD-on-commit
+    contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268
     note: "Bootstrap cross-cutting conventions require dual-anchor citations in artifacts."
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [225, 226]
-    contentHash: TBD-on-commit
+    contentHash: 086c42db642ef209b84848a3b6e9a77ea3c2bfd4adf7deaaba3d4875862118fe
     note: "Handbook glossary defines Backlog ownership and scope."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [60, 63]
-    contentHash: TBD-on-commit
+    contentHash: afdc2a6ae4e9faf7610de385a37c0455434317b85bcc15b1e7748fe3f0fa703c
     note: "Layer 1 requires RFC 2119 obligation keywords in normative statements."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [114, 124]
-    contentHash: TBD-on-commit
+    contentHash: afdc2a6ae4e9faf7610de385a37c0455434317b85bcc15b1e7748fe3f0fa703c
     note: "Layer 1 bans weasel words in normative clauses."
 ---
 

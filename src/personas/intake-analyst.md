@@ -70,12 +70,12 @@ references:
   - kind: lines
     path: src/memory/active/current.md
     range: [36, 38]
-    contentHash: TBD-on-commit
+    contentHash: 300177fd3625d2faa0bb1a940d6755d14b7f73c65a71a9f99a8a170ee4578597
     note: "Active Feature pointer format; intake promotes the source inbox path when a run starts."
   - kind: lines
     path: AGENTS.md
     range: [212, 212]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS §6.8 — Active Feature is explicit; intake-analyst sets it at run start; close-artifacts clears on archive."
 ---
 

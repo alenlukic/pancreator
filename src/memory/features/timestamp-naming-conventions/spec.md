@@ -4,44 +4,44 @@ feature_id: timestamp-naming-conventions
 status: intake-closed
 next_owner: tech-lead
 next_stage: plan
-source_inbox_item: src/inbox/in/timestamp_naming_conventions.md
+source_inbox_item: src/inbox/archive/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
 intake_round: 1
 closure_artifact: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
 references:
   - kind: lines
-    path: src/inbox/in/timestamp_naming_conventions.md
+    path: src/inbox/archive/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
     range: [11, 18]
-    contentHash: TBD-on-commit
+    contentHash: 4c34a77a07d33478de74933996e14f6c2b57ce4cbd0b792974466d2542f143c3
     note: Directive goals and scope define the feature intent and defer the broader organization philosophy.
   - kind: lines
-    path: src/inbox/in/timestamp_naming_conventions.md
+    path: src/inbox/archive/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
     range: [19, 31]
-    contentHash: TBD-on-commit
+    contentHash: 4c34a77a07d33478de74933996e14f6c2b57ce4cbd0b792974466d2542f143c3
     note: Directive operator user stories define the navigability outcomes and the explicit out-of-scope boundary.
   - kind: lines
-    path: src/inbox/in/timestamp_naming_conventions.md
+    path: src/inbox/archive/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
     range: [33, 59]
-    contentHash: TBD-on-commit
+    contentHash: 4c34a77a07d33478de74933996e14f6c2b57ce4cbd0b792974466d2542f143c3
     note: Directive naming and implementation sections define the sentinel values, path patterns, and migration intent.
   - kind: lines
     path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
     range: [10, 87]
-    contentHash: TBD-on-commit
+    contentHash: fa0e81be4c4f848be79a91f7e0642a64f0cbd5b419cc415c36700119f1149468
     note: Operator answers resolve scope, collision, tie-break, migration, start-day, and inbox-owner questions, and defer the post-2500 rollover rule.
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [223, 243]
-    contentHash: TBD-on-commit
+    contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268
     note: Bootstrap Phase 4 requires the intake-analyst dogfood path to emit a canonical feature spec for downstream planning.
   - kind: lines
     path: docs/PRD.md
     range: [641, 648]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
     note: Intake-stage loop control caps the clarifying dialogue at 5 rounds and requires the human-approval gate.
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [219, 235]
-    contentHash: TBD-on-commit
+    contentHash: 086c42db642ef209b84848a3b6e9a77ea3c2bfd4adf7deaaba3d4875862118fe
     note: Glossary entries define Artifact, Feature, Inbox, and Spec Kit alignment for the feature folder.
 ---
 

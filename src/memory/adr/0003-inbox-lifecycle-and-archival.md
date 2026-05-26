@@ -10,42 +10,42 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [267, 267]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
     note: "PRD glossary defines Inbox as the bidirectional queue with in/out/thread paths."
   - kind: lines
     path: docs/PRD.md
     range: [1037, 1037]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
     note: "PRD CLI surface includes `tess inbox` management verbs."
   - kind: lines
     path: AGENTS.md
     range: [101, 103]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS defines `/src/inbox/in/` as the canonical incoming work queue and `/src/inbox/out/` as staged responses."
   - kind: lines
     path: AGENTS.md
     range: [130, 130]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS workspace map defines `src/inbox/{in,out,threads}/`."
   - kind: lines
     path: AGENTS.md
     range: [145, 146]
-    contentHash: TBD-on-commit
+    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
     note: "AGENTS bootstrap status records that runtime/CLI execution wiring is not landed."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [49, 53]
-    contentHash: TBD-on-commit
+    contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268
     note: "Bootstrap scaffold includes `src/inbox/{in,out,threads}/` as a required repository substrate."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [60, 65]
-    contentHash: TBD-on-commit
+    contentHash: afdc2a6ae4e9faf7610de385a37c0455434317b85bcc15b1e7748fe3f0fa703c
     note: "Layer 1 requires RFC 2119 keywords for normative statements."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [114, 124]
-    contentHash: TBD-on-commit
+    contentHash: afdc2a6ae4e9faf7610de385a37c0455434317b85bcc15b1e7748fe3f0fa703c
     note: "Layer 1 forbids weasel words in normative clauses."
 ---
 

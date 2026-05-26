@@ -203,7 +203,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 }
 ```
 
-- To capture intervention evidence, run `src/inbox/in/phase-4-intervention-probe.md`, then populate `pause-resume-abort-evidence.json` with timestamps, state diffs, and run-log event ids. 
+- To capture intervention evidence, run `src/inbox/archive/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md`, then populate `pause-resume-abort-evidence.json` with timestamps, state diffs, and run-log event ids. 
 
 ```json
 {

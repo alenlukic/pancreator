@@ -48,7 +48,7 @@ references:
   - kind: lines
     path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
     range: [79, 87]
-    contentHash: TBD-on-commit
+    contentHash: fa0e81be4c4f848be79a91f7e0642a64f0cbd5b419cc415c36700119f1149468
     note: "Operator round-1 answer Q7 assigns prefix ownership to the active processing agent."
 related:
   - /src/memory/adr/0003-inbox-lifecycle-and-archival.md
@@ -171,7 +171,7 @@ Where inbox policy names specific personas, this handbook rule SHALL remain
 decoupled from persona identifiers so future roster changes do not invalidate
 the obligation.
 
-Citation: `{kind: lines, path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md, range: [79, 87], contentHash: TBD-on-commit}`.
+Citation: `{kind: lines, path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md, range: [79, 87], contentHash: fa0e81be4c4f848be79a91f7e0642a64f0cbd5b419cc415c36700119f1149468}`.
 
 ## 3d - Empty directory hygiene
 
