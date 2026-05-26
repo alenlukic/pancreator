@@ -19,7 +19,7 @@ references:
     path: src/internal/packages/@tesseract/mcp-server/
     note: Four of twelve MCP tools wired; eight return stub envelopes.
   - kind: path
-    path: src/work/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md
+    path: src/internal/work_archive/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md
     note: Finding n-01 (missing pnpm test) and m-02 (bulk contentHash debt).
   - kind: path
     path: src/internal/tools/canonical-json-format.mjs
