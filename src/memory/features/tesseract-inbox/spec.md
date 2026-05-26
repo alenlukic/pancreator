@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/inbox
+feature_id: tesseract-inbox
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/inbox
 
 ## Context

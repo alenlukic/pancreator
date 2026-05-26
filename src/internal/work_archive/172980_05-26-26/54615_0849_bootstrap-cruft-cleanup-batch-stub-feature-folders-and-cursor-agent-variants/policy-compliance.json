@@ -1,0 +1,77 @@
+{
+  "task_id": "54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "docs/PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The delivered change set updates feature-memory documentation/indexing surfaces across 20 tesseract-* folders and the global feature index, and ship-stage governance requires documenting that impact for ratification.",
+    "changed_surfaces": [
+      "src/memory/features/index.json",
+      "src/memory/features/tesseract-adopter-scan/spec.md",
+      "src/memory/features/tesseract-checkpointer-fs/spec.md",
+      "src/memory/features/tesseract-cli/spec.md",
+      "src/memory/features/tesseract-contract/spec.md",
+      "src/memory/features/tesseract-contract-runner-llm-judge/spec.md",
+      "src/memory/features/tesseract-contract-runner-rego/spec.md",
+      "src/memory/features/tesseract-contract-style/spec.md",
+      "src/memory/features/tesseract-core/spec.md",
+      "src/memory/features/tesseract-env-isolation/spec.md",
+      "src/memory/features/tesseract-inbox/spec.md",
+      "src/memory/features/tesseract-intervention/spec.md",
+      "src/memory/features/tesseract-mcp-server/spec.md",
+      "src/memory/features/tesseract-memory/spec.md",
+      "src/memory/features/tesseract-notifier/spec.md",
+      "src/memory/features/tesseract-persona/spec.md",
+      "src/memory/features/tesseract-pipeline/spec.md",
+      "src/memory/features/tesseract-policy/spec.md",
+      "src/memory/features/tesseract-run-logger/spec.md",
+      "src/memory/features/tesseract-runner-cursor/spec.md",
+      "src/memory/features/tesseract-worktree/spec.md",
+      "src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md"
+    ],
+    "deferred_items": []
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The ship-stage artifact is produced at the canonical /src/work/<day>/<task-id>/policy-compliance.json path and preserves the human ratification gate before tess advance.",
+    "constitution_alignment": "The record captures documentation-impact decisions and traceable validation evidence for post-task governance stewardship.",
+    "prd_alignment": "The artifact supports supervised stage-gate delivery with explicit validation evidence, local diff visibility, and operator-controlled advancement.",
+    "required_updates": [
+      "src/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/policy-compliance.json"
+    ]
+  },
+  "validation": [
+    {
+      "command": "node --test tests/*.test.mjs",
+      "exit_code": 0,
+      "result": "pass",
+      "notes": "81/81 tests passed; stderr includes known non-blocking sandbox noise: 'fatal: not a git repository'."
+    },
+    {
+      "command": "node src/internal/tools/check-phase-0a-scaffold.mjs",
+      "exit_code": 0,
+      "result": "pass"
+    },
+    {
+      "command": "node src/internal/tools/context-budget-report.mjs",
+      "exit_code": 0,
+      "result": "pass",
+      "notes": "Report printed all budget tiers and cursor subagent projection totals (aliases, standard, complex)."
+    },
+    {
+      "command": "bash -n .cursor/hooks/enforce-policy-compliance.sh",
+      "exit_code": 0,
+      "result": "pass"
+    }
+  ],
+  "git_evidence": {
+    "status_command": "git status --short",
+    "diff_command": "git diff -- src/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+    "status_summary": "Working tree contains expected task-scope modifications under src/memory/features and untracked task workspace files; no commit/push performed in ship stage.",
+    "diff_summary": "Task workspace diff is represented by new/updated stage artifacts in src/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants."
+  },
+  "stage_inputs_verified": {
+    "delivery_report": "src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md",
+    "touch_set": "src/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/touch-set.json",
+    "implementation_report": "src/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+    "review_report": "src/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md"
+  }
+}

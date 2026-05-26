@@ -1,0 +1,110 @@
+{
+  "taskId": "54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+  "featureId": "bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+  "stage": "plan",
+  "paths": [
+    "AGENTS.md",
+    "src/memory/features/index.json",
+    "src/memory/handbook/subagent-model-tiers.md",
+    "src/memory/handbook/persona-spec.md",
+    "src/memory/handbook/context-economy.md",
+    "src/memory/handbook/operator-output-contract.md",
+    "src/internal/tools/context-budget-report.mjs",
+    "tests/context-budget-report.test.mjs",
+    "src/internal/packages/@tesseract/persona/src/emit.ts",
+    ".cursor/agents/adopter.md",
+    ".cursor/agents/coder.md",
+    ".cursor/agents/compliance-auditor.md",
+    ".cursor/agents/contract-writer.md",
+    ".cursor/agents/general-purpose.md",
+    ".cursor/agents/intake-analyst.md",
+    ".cursor/agents/librarian.md",
+    ".cursor/agents/persona-designer.md",
+    ".cursor/agents/reviewer.md",
+    ".cursor/agents/supervisor.md",
+    ".cursor/agents/tech-lead.md",
+    ".cursor/agents/tech-writer.md",
+    ".cursor/agents/tesseract-engineer.md",
+    ".cursor/agents/adopter-standard.md",
+    ".cursor/agents/adopter-complex.md",
+    ".cursor/agents/coder-standard.md",
+    ".cursor/agents/coder-complex.md",
+    ".cursor/agents/compliance-auditor-standard.md",
+    ".cursor/agents/compliance-auditor-complex.md",
+    ".cursor/agents/contract-writer-standard.md",
+    ".cursor/agents/contract-writer-complex.md",
+    ".cursor/agents/intake-analyst-standard.md",
+    ".cursor/agents/intake-analyst-complex.md",
+    ".cursor/agents/librarian-standard.md",
+    ".cursor/agents/librarian-complex.md",
+    ".cursor/agents/persona-designer-standard.md",
+    ".cursor/agents/persona-designer-complex.md",
+    ".cursor/agents/reviewer-standard.md",
+    ".cursor/agents/reviewer-complex.md",
+    ".cursor/agents/supervisor-standard.md",
+    ".cursor/agents/supervisor-complex.md",
+    ".cursor/agents/tech-lead-standard.md",
+    ".cursor/agents/tech-lead-complex.md",
+    ".cursor/agents/tech-writer-standard.md",
+    ".cursor/agents/tech-writer-complex.md",
+    ".cursor/agents/tesseract-engineer-standard.md",
+    ".cursor/agents/tesseract-engineer-complex.md",
+    "src/memory/features/tesseract-adopter-scan",
+    "src/memory/features/tesseract-checkpointer-fs",
+    "src/memory/features/tesseract-cli",
+    "src/memory/features/tesseract-contract",
+    "src/memory/features/tesseract-contract-runner-llm-judge",
+    "src/memory/features/tesseract-contract-runner-rego",
+    "src/memory/features/tesseract-contract-style",
+    "src/memory/features/tesseract-core",
+    "src/memory/features/tesseract-env-isolation",
+    "src/memory/features/tesseract-inbox",
+    "src/memory/features/tesseract-intervention",
+    "src/memory/features/tesseract-mcp-server",
+    "src/memory/features/tesseract-memory",
+    "src/memory/features/tesseract-notifier",
+    "src/memory/features/tesseract-persona",
+    "src/memory/features/tesseract-pipeline",
+    "src/memory/features/tesseract-policy",
+    "src/memory/features/tesseract-run-logger",
+    "src/memory/features/tesseract-runner-cursor",
+    "src/memory/features/tesseract-worktree"
+  ],
+  "symbols": [
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "symbol": "printReport"
+    },
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "symbol": "countMatchingChars"
+    },
+    {
+      "path": "src/internal/tools/context-budget-report.mjs",
+      "symbol": "classifyExclusiveTier"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/persona/src/emit.ts",
+      "symbol": "emitCursorAgentsMirror"
+    }
+  ],
+  "tests": [
+    "node --test tests/*.test.mjs",
+    "node src/internal/tools/check-phase-0a-scaffold.mjs",
+    "node src/internal/tools/context-budget-report.mjs",
+    "bash -n .cursor/hooks/enforce-policy-compliance.sh"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The implementation mutates canonical agent projection layout and handbook/operator invocation guidance.",
+    "changed-surfaces": [
+      "AGENTS.md",
+      "src/memory/handbook/subagent-model-tiers.md",
+      "src/memory/handbook/persona-spec.md",
+      "src/memory/handbook/context-economy.md",
+      "src/memory/handbook/operator-output-contract.md",
+      "src/memory/features/index.json"
+    ],
+    "deferred-items": []
+  }
+}

@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/env-isolation
+feature_id: tesseract-env-isolation
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/env-isolation
 
 ## Context

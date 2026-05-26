@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/mcp-server
+feature_id: tesseract-mcp-server
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/mcp-server
 
 ## Context

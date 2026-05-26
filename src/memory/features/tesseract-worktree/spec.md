@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/worktree
+feature_id: tesseract-worktree
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/worktree
 
 ## Context

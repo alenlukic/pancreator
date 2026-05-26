@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/adopter-scan
+feature_id: tesseract-adopter-scan
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/adopter-scan
 
 ## Context

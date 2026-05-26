@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/cli
+feature_id: tesseract-cli
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/cli
 
 ## Context

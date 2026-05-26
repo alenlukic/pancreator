@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/persona
+feature_id: tesseract-persona
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/persona
 
 ## Context

@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/pipeline
+feature_id: tesseract-pipeline
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/pipeline
 
 ## Context

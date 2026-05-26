@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/intervention
+feature_id: tesseract-intervention
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/intervention
 
 ## Context

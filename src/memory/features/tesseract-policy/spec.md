@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/policy
+feature_id: tesseract-policy
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/policy
 
 ## Context
