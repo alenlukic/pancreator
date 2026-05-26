@@ -131,7 +131,11 @@ The body MUST contain three sections:
    operator-visible response MUST also end with a `## Next operator steps`
    section per `/src/memory/handbook/operator-output-contract.md` (single-option
    or multi-option layout, explicit **What** / **How**, read-only labeling,
-   and **When to choose** / **Impact** when multiple options exist).
+   and **When to choose** / **Impact** when multiple options exist). Runnable
+   `tess` commands in **How** MUST use `pnpm -w exec tess …` per
+   `/src/memory/handbook/tesseract-config.md`. Shell **How** clauses MUST use
+   fully formed copy-paste command blocks per
+   `/src/memory/handbook/operator-output-contract.md` §3.4.
 3. **What you MUST NOT do.** Negative obligations and self-protection clauses.
 
 Personas with conformance gates MUST add a fourth section, **Conformance

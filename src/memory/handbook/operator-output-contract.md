@@ -27,6 +27,7 @@ references:
     note: "Manual inbox archival and ratification are common next-step targets."
 related:
   - /AGENTS.md
+  - /src/memory/handbook/tesseract-config.md
   - /src/memory/handbook/persona-spec.md
   - /src/memory/handbook/inbox-lifecycle.md
   - /src/memory/handbook/documentation-impact-contract.md
@@ -82,13 +83,28 @@ Each step MUST be one numbered list item. Every item MUST include:
 Agents MUST NOT use vague verbs ("review as needed", "check things") without
 naming the path, command, or gate.
 
-### 3.1 — Command and path specificity
+### 3.1 — `tess` CLI invocation prefix
+
+This workspace does not expose bare `tess` on the shell `PATH`. When a step
+invokes the CLI, the **How** clause MUST use the workspace exec form from the
+repository root:
+
+```bash
+pnpm -w exec tess <subcommand> [arguments...]
+```
+
+Agents MUST NOT tell the operator to run bare `tess …` in copy-paste commands.
+Prose MAY name the logical verb (`tess advance`) when explaining behavior; only
+runnable shell lines require the prefix. See
+`/src/memory/handbook/tesseract-config.md` §“CLI invocation in this workspace”.
+
+### 3.2 — Command and path specificity
 
 When a step invokes the CLI, the **How** clause MUST state the full invocation,
 for example:
 
 ```bash
-tess advance 67055_0522_json-formatting --artifact src/work/172983_05-23-26/67055_0522_json-formatting/review.md
+pnpm -w exec tess advance 67055_0522_json-formatting --artifact src/work/172983_05-23-26/67055_0522_json-formatting/review.md
 ```
 
 When a step edits files, the **How** clause MUST list every path the operator
@@ -98,15 +114,75 @@ When a step delegates to a persona, the **How** clause MUST state the Cursor
 invocation (`/reviewer-standard`, `/tech-lead-complex`, etc.) and the file the
 operator pastes (`src/work/<day>/<task-id>/next-prompt.md` only per AGENTS §4).
 
-### 3.2 — Read-only versus mutating actions
+### 3.3 — Read-only versus mutating actions
 
 - **Read-only** steps MUST be labeled `Read-only:` at the start of the **How**
   clause or in the item title.
-- Mutating steps (commit, `tess advance`, inbox promotion, file edit) MUST NOT
+- Mutating steps (commit, `pnpm -w exec tess advance`, inbox promotion, file edit) MUST NOT
   use the read-only label.
 - Steps that only open or read files for human judgment (diff review, delivery
   report read, compliance audit read) are read-only even when the operator
   later chooses to act.
+
+### 3.4 — Copy-paste commands (fully formed)
+
+When a step is automatable with a shell command, the **How** clause MUST give
+the operator a **fully formed, copy-paste-ready** command block. The operator
+MUST be able to run the step without inventing paths, flags, or file lists.
+
+Rules:
+
+1. **Fenced `bash` blocks.** Put runnable commands in a fenced code block on
+   their own lines. Inline backticks are for single paths or flags inside
+   prose, not for multi-command procedures.
+2. **Complete invocations.** Every `git add`, `git commit`, `pnpm`, and `tess`
+   line MUST list explicit paths and arguments. The operator MUST NOT need to
+   infer "and the other touched files" or "etc."
+3. **No manual assembly steps.** Phrases such as "stage the changed files",
+   "commit the updates", or "run the usual tests" are **disallowed** when the
+   agent can enumerate the exact paths from the task diff or touch-set.
+4. **Do the work in-task when policy allows.** If the completing agent has
+   authority and tooling to run an action (write files, run `pnpm test`, run
+   `git add` for verification), the agent SHALL perform it during the task
+   and MUST NOT punt it to **Next operator steps** unless repository policy
+   reserves the action for the operator (for example human-only `git commit`
+   per AGENTS §5).
+5. **Operator-reserved actions still get full commands.** When only the
+   operator may commit, push, or ratify, **Next operator steps** MUST still
+   supply the complete `git add …` and `git commit -m "$(cat <<'EOF' … EOF)"`
+   (or equivalent) with every path and the full message body—never a prose
+   shopping list of filenames.
+
+**Disallowed example:**
+
+```markdown
+**How:** Stage `AGENTS.md`, `src/memory/handbook/tesseract-config.md`,
+`src/memory/handbook/operator-output-contract.md`, and the other touched
+handbook/persona files, then `git commit` with a message describing the change.
+```
+
+**Allowed example (operator-visible **How** embeds a fence like this):**
+
+**What:** Commit the governance updates when satisfied.
+
+**How:** From the repository root:
+
+```bash
+git add AGENTS.md \
+  src/memory/handbook/tesseract-config.md \
+  src/memory/handbook/operator-output-contract.md
+
+git commit -m "$(cat <<'EOF'
+Document copy-paste next-step command policy.
+
+EOF
+)"
+```
+
+When the file set is long (>15 paths), the agent MAY split into (a) a
+read-only `git status` / `git diff --stat` verification step with exact
+commands and (b) a `git add` block generated from the actual changed-path
+list—still fully enumerated, never "other touched files".
 
 ## 4 — Single-option layout
 
@@ -130,7 +206,7 @@ If the step is read-only, prefix **How** with `Read-only:`.
 ## Next operator steps
 
 1. **What:** Record the accepted review artifact and advance the feature-delivery run to the report stage.
-   **How:** Run `tess advance 67055_0522_json-formatting --artifact src/work/172983_05-23-26/67055_0522_json-formatting/review.md`. Confirm `src/work/172983_05-23-26/67055_0522_json-formatting/state.json` shows `current_stage: report` before delegating `tech-writer`.
+   **How:** Run `pnpm -w exec tess advance 67055_0522_json-formatting --artifact src/work/172983_05-23-26/67055_0522_json-formatting/review.md`. Confirm `src/work/172983_05-23-26/67055_0522_json-formatting/state.json` shows `current_stage: report` before delegating `tech-writer`.
 ```
 
 **Example (single read-only step):**
@@ -179,7 +255,7 @@ requires a strict sequence; when sequence matters, state that in option 1
    **Impact:** The run advances to `implement`; the coder may modify paths listed in `touch-set.json` only.
 
 2. **What:** Send the plan back for revision without advancing the run.
-   **How:** Add a new thread round under `src/inbox/threads/<day>/<feature-slug>/` with required edits; do not run `tess advance` until a superseding plan artifact exists.
+   **How:** Add a new thread round under `src/inbox/threads/<day>/<feature-slug>/` with required edits; do not run `pnpm -w exec tess advance …` until a superseding plan artifact exists.
    **When to choose:** The touch-set is incomplete or the ADR draft misses a constraint.
    **Impact:** The run stays at `plan`; no implementation work should start.
 ```
@@ -191,13 +267,14 @@ active task.
 
 | Situation | What (typical) | How (typical) |
 |---|---|---|
-| Pipeline stage complete | Advance to next stage | `tess advance <task-id> --artifact <path>` |
-| Human gate | Ratify or reject | Read-only: inspect artifact; mutating: reply in inbox thread or run `tess approve <task-id>` when wired |
+| Pipeline stage complete | Advance to next stage | `pnpm -w exec tess advance <task-id> --artifact <path>` |
+| Human gate | Ratify or reject | Read-only: inspect artifact; mutating: reply in inbox thread or run `pnpm -w exec tess approve <task-id>` when wired |
 | Delegate next persona | Hand off execution | Paste `src/work/<day>/<task-id>/next-prompt.md` into `/<persona>-standard` |
-| Pick up inbox work | Start next feature | Read-only: `ls src/inbox/in/`; mutating: `tess run feature-delivery src/inbox/in/<day>/<file>.md` |
+| Pick up inbox work | Start next feature | Read-only: `ls src/inbox/in/`; mutating: `pnpm -w exec tess run feature-delivery src/inbox/in/<day>/<file>.md` |
 | Verify only | Confirm artifact | Read-only: open cited path(s) and check acceptance criteria |
-| Governed commit | Stage policy compliance | Create or verify `src/work/<day>/<task-id>/policy-compliance.json` before `git commit` |
-| Close run | Archive after acceptance | `tess close-artifacts <task-id>` after human validates index |
+| Governed commit | Stage and commit (operator) | Full `git add <every-path>` then `git commit -m "$(cat <<'EOF' … EOF)"`; verify `src/work/<day>/<task-id>/policy-compliance.json` when required |
+| Run tests before commit | Verify green | `pnpm test` (or the exact `pnpm` script named in `package.json`) |
+| Close run | Archive after acceptance | `pnpm -w exec tess close-artifacts <task-id>` after human validates index |
 | Blocked task | Unblock or escalate | State owner persona and the file the operator must edit or the ratification required |
 
 ## 7 — Prohibited content
@@ -210,6 +287,11 @@ The **Next operator steps** block MUST NOT:
 - Reference `src/inbox/notes/` as an action target.
 - Tell the operator to paste PRD, bootstrap docs, or full chat transcripts into
   subagents (per AGENTS §4).
+- Use underspecified file lists ("stage the touched files", "and other
+  handbook/persona files", "etc.") instead of a complete `git add` or copy-paste
+  command block (§3.4).
+- Offload automatable shell work to the operator when the completing agent could
+  have run the same command during the task (§3.4 item 4).
 
 ## 8 — Stability
 
