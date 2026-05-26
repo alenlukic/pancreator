@@ -92,14 +92,11 @@ jobs:
       - name: publint
         run: pnpm run publint
 
+      - name: pnpm test
+        run: pnpm test
+
+      - name: Compliance descriptors
+        run: node src/internal/tools/run-compliance.mjs
+
       - name: Phase 0a scaffold script
         run: pnpm run check:phase0a
-
-      - name: Timestamp migration tests
-        run: pnpm run migration:test
-
-      - name: Context budget tests
-        run: pnpm run context:budget:test
-
-      - name: Repository structure tests
-        run: pnpm run repo:structure:test

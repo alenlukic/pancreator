@@ -41,6 +41,7 @@ read per `src/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `ci-best-practices-batch` | [indexed] (`2026-05-26T18:23:19.000Z`) | `src/memory/features/ci-best-practices-batch/delivery-report.md` | `—` | `—` |
 | `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`2026-05-26T12:00:00.000Z`) | `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md` | `—` | `—` |
 | `tesseract-adopter-scan` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-adopter-scan/delivery-report.md` | `—` | `—` |
 | `tesseract-checkpointer-fs` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-checkpointer-fs/delivery-report.md` | `—` | `—` |
@@ -76,9 +77,10 @@ read per `src/memory/handbook/context-economy.md`.
 
 <!-- tess:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-26T16:41:31.577Z`
+- Active-memory refreshed (UTC): `2026-05-26T19:12:19.151Z`
 
 <!-- /tess:active-memory:operator-notes:auto -->
+
 
 
 
@@ -88,4 +90,4 @@ read per `src/memory/handbook/context-economy.md`.
 - During Phase 4 dogfood, planning stages SHOULD emit a compact handoff card and
   delegate execution to the next persona instead of continuing implementation in
   the same parent context.
-- Run `tess refresh-active-memory [--dry-run]` before committing when shipped-feature rows or the managed refresh stamp drift from `status: indexed` artifacts outside `tess close-artifacts`; set Active Feature manually when work starts — `tess close-artifacts` clears it to `(none)` when the archived inbox source matched.
+- Run `pnpm -w exec tess refresh-active-memory [--dry-run]` before committing when shipped-feature rows or the managed refresh stamp drift from `status: indexed` artifacts outside `pnpm -w exec tess close-artifacts`; set Active Feature manually when work starts — `pnpm -w exec tess close-artifacts` clears it to `(none)` when the archived inbox source matched.

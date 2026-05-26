@@ -290,6 +290,14 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `/src/memory/handbook/operator-output-contract.md`. Each step states **What**
   and **How**; read-only verification is labeled `Read-only:`; multiple options
   add **When to choose** and **Impact**.
+- **`tess` CLI invocation** — in this workspace, runnable operator commands use
+  `pnpm -w exec tess <subcommand> …` from the repository root because `tess` is
+  not on the shell `PATH`. Agents MUST NOT emit bare `tess …` in copy-paste
+  **How** clauses. Policy: `/src/memory/handbook/tesseract-config.md`.
+- **Copy-paste next-step commands** — **Next operator steps** shell procedures
+  MUST be fully formed fenced command blocks listing every path and flag. Agents
+  MUST NOT use underspecified file lists or offload automatable commands to the
+  operator. Policy: `/src/memory/handbook/operator-output-contract.md` §3.4.
 - **Spec Kit alignment** — `/src/memory/features/<id>/` paths align with GitHub
   Spec Kit v0.8 conventions: `spec.md`, `plan.md`, `tasks.md`. The repo-level
   constitution lives at `/src/memory/handbook/constitution.md`.

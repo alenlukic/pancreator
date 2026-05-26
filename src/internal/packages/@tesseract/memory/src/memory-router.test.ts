@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MemoryRouter, parseDocList, parseHandbookIndexTable } from "./memory-router.js";
 
-const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
+const repoRoot = fileURLToPath(new URL("../../../../../../", import.meta.url));
 
 describe("parseDocList", () => {
   it("splits two comma-separated backtick paths", () => {
@@ -16,7 +16,7 @@ describe("parseDocList", () => {
 describe("parseHandbookIndexTable", () => {
   it("extracts the routing table from the real handbook index", async () => {
     const md = await readFile(
-      path.join(repoRoot, "memory", "handbook", "index.md"),
+      path.join(repoRoot, "src", "memory", "handbook", "index.md"),
       "utf8",
     );
     const rows = parseHandbookIndexTable(md);

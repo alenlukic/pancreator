@@ -13,6 +13,7 @@ tools:
   - "Bash(git status:*)"
   - "Bash(git log:*)"
   - "Bash(pnpm lint:*)"
+  - "Bash(pnpm test)"
   - "Bash(pnpm test:*)"
   - "Bash(tess lint contracts:*)"
 disallowedTools:

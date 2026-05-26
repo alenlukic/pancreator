@@ -30,6 +30,7 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | Subagent standard/complex model tiers | `src/memory/handbook/subagent-model-tiers.md` |
 | Current context cost audit | `src/memory/handbook/context-cost-audit.md` |
 | `tesseract.yaml` phase and `project_root` config | `src/memory/handbook/tesseract-config.md` |
+| `tess` CLI invocation (`pnpm -w exec tess`) | `src/memory/handbook/tesseract-config.md` §“CLI invocation in this workspace” |
 | Model and context escalation | `src/memory/handbook/context-economy.md` |
 | Active-memory orientation | `src/memory/active/current.md` |
 | Active-memory layout | `src/memory/active/README.md` |
@@ -166,7 +167,16 @@ this section in your response.
   read-only inspection MUST be labeled `Read-only:`. Multiple follow-ups MUST
   add **When to choose** and **Impact** per option. Parent agents summarizing
   delegated work SHALL include the block for the operator even when the
-  subagent already emitted one.
+  subagent already emitted one. Shell steps MUST use fully formed copy-paste
+  command blocks (explicit paths and flags); prose file shopping lists such as
+  "stage X and the other touched files" are disallowed. Agents SHALL perform
+  automatable work in-task rather than punt it to the operator when policy
+  allows.
+- **`tess` CLI invocation prefix.** This workspace does not install `tess` on
+  the shell `PATH`. Every runnable command an agent emits for an operator MUST
+  use `pnpm -w exec tess <subcommand> …` from the repository root, not bare
+  `tess …`. Prose MAY name the logical verb; copy-paste **How** clauses MUST
+  use the prefix per `src/memory/handbook/tesseract-config.md`.
 - **Policy-compliance artifact gate is mandatory for governed commits.** Tasks
   that stage structural changes outside active run work SHALL stage
   `/src/work/<day>/<task-id>/policy-compliance.json` per
@@ -208,8 +218,8 @@ this section in your response.
   agents SHALL NOT assume automatic cadence execution in the first slice.
 
 6. Operators SHALL interpret `tess` JSON envelopes carrying `"status":"deferred"` as the canonical deferral protocol: each deferred verb exits **`125`** and documents `milestone`, `tracking_intake`, and `manual_workaround` in **`src/internal/packages/@tesseract/cli/src/run.ts`**.
-7. Operators SHALL author new **`src/inbox/in/<utc-day>/<sid_hhmm_slug>.md`** directives with **`tess intake new <slug>`**, keeping UTC bucket naming aligned with **`src/memory/handbook/inbox-lifecycle.md`** and **`src/memory/features/timestamp-naming-conventions/spec.md`**.
-8. Operators SHALL set **`src/memory/active/current.md`** Active Feature bullets explicitly when work becomes active; the refresher SHALL NOT infer active work from the inbox queue. **`tess close-artifacts`** SHALL refresh shipped-feature rows and the managed operator-notes stamp and SHALL clear Active Feature to **`(none)`** when it matched the archived inbox source. Operators SHALL run **`tess refresh-active-memory [--dry-run]`** before other governed commits when those derived slices drift outside artifact closure (`src/memory/features/*/index.json` remain the indexed source of truth).
+7. Operators SHALL author new **`src/inbox/in/<utc-day>/<sid_hhmm_slug>.md`** directives with **`pnpm -w exec tess intake new <slug>`**, keeping UTC bucket naming aligned with **`src/memory/handbook/inbox-lifecycle.md`** and **`src/memory/features/timestamp-naming-conventions/spec.md`**.
+8. Operators SHALL set **`src/memory/active/current.md`** Active Feature bullets explicitly when work becomes active; the refresher SHALL NOT infer active work from the inbox queue. **`pnpm -w exec tess close-artifacts`** SHALL refresh shipped-feature rows and the managed operator-notes stamp and SHALL clear Active Feature to **`(none)`** when it matched the archived inbox source. Operators SHALL run **`pnpm -w exec tess refresh-active-memory [--dry-run]`** before other governed commits when those derived slices drift outside artifact closure (`src/memory/features/*/index.json` remain the indexed source of truth).
 
 ## 7 — Workspace map
 
@@ -264,17 +274,18 @@ and the nested runs `77373_0230_phase-4-dogfood-proof-bundle-evidence-index`
 and `71096_0415_phase-4-intervention-probe-pause-resume-abort` are closed.
 Phoenix trace verification remains deferred per
 `src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md` as
-an `@tesseract/run-logger` and `tesseract-engineer` backlog item. `tess run
-feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine,
-handoff card, bounded next-prompt, and run log. Operators still invoke Cursor
-personas manually, then use `tess advance` with the accepted stage artifact;
-`repair-state` is reserved for explicit ledger recovery after out-of-band work.
-When a run reaches `complete`, `next-prompt.md` is a bounded librarian handoff
-for agent-executed artifact closure. The librarian runs `tess close-artifacts
-<task-id>` to archive the active work directory and source inbox item after
-human validation/indexing are complete. `tess refresh-prompt <task-id>`
-regenerates prompt files from the current ledger without changing state. It
-does not yet automate Cursor/model transport or LangGraph execution.
+an `@tesseract/run-logger` and `tesseract-engineer` backlog item. `pnpm -w exec
+tess run feature-delivery <inbox-entry>` now creates a Phase-4 active-work
+state machine, handoff card, bounded next-prompt, and run log. Operators still
+invoke Cursor personas manually, then use `pnpm -w exec tess advance` with the
+accepted stage artifact; `repair-state` is reserved for explicit ledger recovery
+after out-of-band work. When a run reaches `complete`, `next-prompt.md` is a
+bounded librarian handoff for agent-executed artifact closure. The librarian
+runs `pnpm -w exec tess close-artifacts <task-id>` to archive the active work
+directory and source inbox item after human validation/indexing are complete.
+`pnpm -w exec tess refresh-prompt <task-id>` regenerates prompt files from the
+current ledger without changing state. It does not yet automate Cursor/model
+transport or LangGraph execution.
 
 ## 9 — Stability
 

@@ -12,6 +12,12 @@ import { FileMemoryStore } from "@tesseract/memory";
 import { isRunLogRecord } from "@tesseract/run-logger";
 
 import { type TessToolName } from "./definitions.js";
+import {
+  listFeatureSummaries,
+  queryMemory,
+  readWorkspaceStatus,
+  showFeature,
+} from "./tess-read-handlers.js";
 
 export interface TessExecutionContext {
   readonly repoRoot: string;
@@ -92,6 +98,10 @@ function getString(
   return typeof v === "string" ? v : undefined;
 }
 
+function asToolRecord(value: object): Record<string, unknown> {
+  return value as Record<string, unknown>;
+}
+
 /**
  * Runs the same handlers that the `tess` CLI uses for `inbox`, `pause`, `resume`, and `abort`.
  * Deferred MCP tools emit `TessDeferredToolError`, which the MCP stdio mapper surfaces as a non-success tool response carrying the deferral envelope JSON.
@@ -146,14 +156,41 @@ export async function executeTessTool(
       throw new TessDeferredToolError(tessToolEnvelope("tess.init", "M3"));
     case "tess.run":
       throw new TessDeferredToolError(tessToolEnvelope("tess.run", "M2"));
-    case "tess.feature":
-      throw new TessDeferredToolError(tessToolEnvelope("tess.feature", "M2"));
-    case "tess.status":
-      throw new TessDeferredToolError(tessToolEnvelope("tess.status", "M2"));
+    case "tess.feature": {
+      const action = getString(args, "action") ?? "list";
+      if (action === "list") {
+        return asToolRecord(await listFeatureSummaries({ repoRoot }));
+      }
+      if (action === "show") {
+        const featureId = getString(args, "featureId");
+        if (featureId === undefined || featureId === "") {
+          throw new Error("featureId is required when action is show");
+        }
+        const result = await showFeature({ repoRoot }, featureId);
+        if (result.status === "error") {
+          throw new Error(result.error);
+        }
+        return asToolRecord(result);
+      }
+      throw new Error(`Unsupported tess.feature action: ${action}`);
+    }
+    case "tess.status": {
+      const taskId = getString(args, "taskId");
+      const result = await readWorkspaceStatus({ repoRoot }, taskId);
+      if (result.status === "error") {
+        throw new Error(result.error);
+      }
+      return asToolRecord(result);
+    }
     case "tess.approve":
       throw new TessDeferredToolError(tessToolEnvelope("tess.approve", "M3"));
-    case "tess.memory":
-      throw new TessDeferredToolError(tessToolEnvelope("tess.memory", "M2"));
+    case "tess.memory": {
+      const query = getString(args, "query");
+      if (query === undefined || query === "") {
+        throw new Error("query is required");
+      }
+      return asToolRecord(await queryMemory({ repoRoot }, query));
+    }
     case "tess.contracts":
       throw new TessDeferredToolError(tessToolEnvelope("tess.contracts", "M2"));
     case "tess.lint":

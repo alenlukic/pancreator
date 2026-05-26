@@ -1,7 +1,7 @@
 ---
 name: coder-complex
 description: "Complex high-effort `coder` subagent. Use only when standard mode is insufficient: ambiguous architecture, policy/compliance reasoning, broad repo audit, historical reconstruction, or high-risk cross-cutting work."
-model: composer-2
+model: composer-2.5[fast=false]
 permissionMode: default
 tools:
   - Read

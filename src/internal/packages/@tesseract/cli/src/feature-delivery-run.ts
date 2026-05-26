@@ -153,6 +153,8 @@ export interface AdvanceFeatureDeliveryResult {
   nextPromptFile: string;
   nextPersona: string | null;
   nextHumanAction: string;
+  /** True when implement-stage advance with review.md chained implementation_complete and review_passes. */
+  reviewReentry?: boolean;
 }
 
 export interface RepairFeatureDeliveryStateInput {
@@ -386,6 +388,19 @@ export async function advanceFeatureDelivery(
     throw new Error(`Task ${taskId} is already complete; refusing to advance.`);
   }
 
+  const reentry = await tryResolveReviewReentryAdvance(repoRoot, state, artifact.rel, input.event);
+  if (reentry !== null) {
+    return advanceReviewReentryFromImplement({
+      repoRoot,
+      taskId,
+      state,
+      pipeline,
+      stateFileRel: stateFile.rel,
+      reentry,
+      now,
+    });
+  }
+
   const event = input.event ?? defaultEventForStage(state.currentStage);
   const transition = state.transitions.find(
     (candidate) => candidate.from === state.currentStage && candidate.on === event,
@@ -395,28 +410,19 @@ export async function advanceFeatureDelivery(
   }
   assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
 
-  const fromStage = state.currentStage;
-  const toStage = transition.to as FeatureDeliveryCurrentStage;
-  state.currentStage = toStage;
-  state.status = toStage === TERMINAL_STAGE ? "complete" : "ready_for_stage_delegation";
-  state.nextHumanAction = nextHumanActionForStage(state, toStage, transition.humanAttention);
-  state.stages = applyStageStatuses(state.stages, fromStage, toStage, event);
-  state.advanceHistory = [
-    ...(state.advanceHistory ?? []),
-    {
-      atIso: rfc3339UtcMs(now),
-      kind: "advance",
-      from: fromStage,
-      to: toStage,
-      event,
-      artifact: artifact.rel,
-    },
-  ];
+  const applied = applyFeatureDeliveryTransition(state, transition, event, artifact.rel, now);
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
   await appendRunLogRecord(
     path.join(repoRoot, state.artifacts.runLogFile),
-    makeAdvanceRecord(state, now, fromStage, toStage, event, artifact.rel),
+    makeAdvanceRecord(
+      state,
+      now,
+      applied.fromStage,
+      applied.toStage,
+      applied.event,
+      applied.artifact,
+    ),
   );
 
   return {
@@ -424,10 +430,10 @@ export async function advanceFeatureDelivery(
     status: "ok",
     taskId,
     featureId: state.featureId,
-    fromStage,
-    event,
+    fromStage: applied.fromStage,
+    event: applied.event,
     currentStage: state.currentStage,
-    artifact: artifact.rel,
+    artifact: applied.artifact,
     stateFile: stateFile.rel,
     handoffFile: state.artifacts.handoffFile,
     nextPromptFile: requireNextPromptFile(state),
@@ -991,8 +997,14 @@ function stageContractMarkdown(state: FeatureDeliveryState, stage: string): stri
       return `Input: ${state.source.inboxPath}\nOutput: src/memory/features/${state.featureId}/spec.md\nAdvance after human ratification: pnpm -w exec tess advance ${state.taskId} --artifact src/memory/features/${state.featureId}/spec.md`;
     case "plan":
       return `Input: src/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after human ratification: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/touch-set.json`;
-    case "implement":
-      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/implementation-report.md`;
+    case "implement": {
+      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/implementation-report.md`;
+      const lastAdvance = lastAdvanceEntry(state);
+      if (lastAdvance?.event === "must_fix" && lastAdvance.from === "review") {
+        return `${base}\nAfter must_fix fixes, when ${state.artifacts.runDir}/review.md already records review_passes: true, chain to report in one step: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md`;
+      }
+      return base;
+    }
     case "review":
       return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md\nReturn to implement on must-fix: pnpm -w exec tess advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "report":
@@ -1336,6 +1348,200 @@ async function persistStateAndPrompts(
   );
 }
 
+interface AppliedFeatureDeliveryTransition {
+  fromStage: string;
+  toStage: FeatureDeliveryCurrentStage;
+  event: string;
+  artifact: string;
+}
+
+interface ReviewReentryAdvancePlan {
+  reviewArtifact: string;
+  implementationReport: string;
+}
+
+function applyFeatureDeliveryTransition(
+  state: FeatureDeliveryState,
+  transition: FeatureDeliveryTransition,
+  event: string,
+  artifactRel: string,
+  now: Date,
+): AppliedFeatureDeliveryTransition {
+  const fromStage = state.currentStage;
+  const toStage = transition.to as FeatureDeliveryCurrentStage;
+  state.currentStage = toStage;
+  state.status = toStage === TERMINAL_STAGE ? "complete" : "ready_for_stage_delegation";
+  state.nextHumanAction = nextHumanActionForStage(state, toStage, transition.humanAttention);
+  state.stages = applyStageStatuses(state.stages, fromStage, toStage, event);
+  state.advanceHistory = [
+    ...(state.advanceHistory ?? []),
+    {
+      atIso: rfc3339UtcMs(now),
+      kind: "advance",
+      from: fromStage,
+      to: toStage,
+      event,
+      artifact: artifactRel,
+    },
+  ];
+  return { fromStage, toStage, event, artifact: artifactRel };
+}
+
+function parseReviewPassesVerdict(reviewMarkdown: string): boolean | null {
+  const match = reviewMarkdown.match(/review_passes:\s*(true|false)/iu);
+  if (match === null) {
+    return null;
+  }
+  return match[1].toLowerCase() === "true";
+}
+
+function lastAdvanceEntry(
+  state: FeatureDeliveryState,
+): FeatureDeliveryAdvanceHistoryEntry | undefined {
+  const history = state.advanceHistory ?? [];
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = history[index];
+    if (entry.kind === "advance") {
+      return entry;
+    }
+  }
+  return undefined;
+}
+
+async function tryResolveReviewReentryAdvance(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+  artifactRel: string,
+  eventOverride?: string,
+): Promise<ReviewReentryAdvancePlan | null> {
+  if (state.currentStage !== "implement") {
+    return null;
+  }
+  const reviewArtifact = path.posix.join(state.artifacts.runDir, "review.md");
+  if (artifactRel !== reviewArtifact) {
+    return null;
+  }
+  if (eventOverride !== undefined && eventOverride !== "review_passes") {
+    return null;
+  }
+
+  const lastAdvance = lastAdvanceEntry(state);
+  if (lastAdvance?.event !== "must_fix" || lastAdvance.from !== "review") {
+    return null;
+  }
+
+  const reviewContent = await readFile(path.join(repoRoot, reviewArtifact), "utf8");
+  const verdict = parseReviewPassesVerdict(reviewContent);
+  if (verdict !== true) {
+    throw new Error(
+      `Cannot advance ${state.taskId} with ${reviewArtifact} from implement after must_fix: ` +
+        `review.md must contain review_passes: true. ` +
+        `Advance with ${path.posix.join(state.artifacts.runDir, "implementation-report.md")} to return to review, ` +
+        `or update review.md and retry.`,
+    );
+  }
+
+  const implementationReport = path.posix.join(state.artifacts.runDir, "implementation-report.md");
+  if (!existsSync(path.join(repoRoot, implementationReport))) {
+    throw new Error(
+      `Cannot advance ${state.taskId} with ${reviewArtifact} from implement after must_fix: ` +
+        `required artifact is missing: ${implementationReport}.`,
+    );
+  }
+
+  return { reviewArtifact, implementationReport };
+}
+
+async function advanceReviewReentryFromImplement(input: {
+  repoRoot: string;
+  taskId: string;
+  state: FeatureDeliveryState;
+  pipeline: PipelineDefinition;
+  stateFileRel: string;
+  reentry: ReviewReentryAdvancePlan;
+  now: Date;
+}): Promise<AdvanceFeatureDeliveryResult> {
+  const { repoRoot, taskId, state, pipeline, stateFileRel, reentry, now } = input;
+  const implementTransition = state.transitions.find(
+    (candidate) => candidate.from === "implement" && candidate.on === "implementation_complete",
+  );
+  if (implementTransition === undefined) {
+    throw new Error("feature-delivery pipeline is missing implement → review transition.");
+  }
+  assertStageArtifact(
+    repoRoot,
+    state,
+    "implement",
+    reentry.implementationReport,
+    "implementation_complete",
+  );
+
+  const first = applyFeatureDeliveryTransition(
+    state,
+    implementTransition,
+    "implementation_complete",
+    reentry.implementationReport,
+    now,
+  );
+  await appendRunLogRecord(
+    path.join(repoRoot, state.artifacts.runLogFile),
+    makeAdvanceRecord(
+      state,
+      now,
+      first.fromStage,
+      first.toStage,
+      first.event,
+      first.artifact,
+    ),
+  );
+
+  const reviewTransition = state.transitions.find(
+    (candidate) => candidate.from === "review" && candidate.on === "review_passes",
+  );
+  if (reviewTransition === undefined) {
+    throw new Error("feature-delivery pipeline is missing review → report transition.");
+  }
+  assertStageArtifact(repoRoot, state, "review", reentry.reviewArtifact, "review_passes");
+
+  const second = applyFeatureDeliveryTransition(
+    state,
+    reviewTransition,
+    "review_passes",
+    reentry.reviewArtifact,
+    now,
+  );
+  await appendRunLogRecord(
+    path.join(repoRoot, state.artifacts.runLogFile),
+    makeAdvanceRecord(
+      state,
+      now,
+      second.fromStage,
+      second.toStage,
+      second.event,
+      second.artifact,
+    ),
+  );
+
+  await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+
+  return {
+    command: "advance",
+    status: "ok",
+    taskId,
+    featureId: state.featureId,
+    fromStage: first.fromStage,
+    event: second.event,
+    currentStage: state.currentStage,
+    artifact: second.artifact,
+    stateFile: stateFileRel,
+    handoffFile: state.artifacts.handoffFile,
+    nextPromptFile: requireNextPromptFile(state),
+    nextPersona: personaForStage(pipeline, state.currentStage),
+    nextHumanAction: state.nextHumanAction,
+    reviewReentry: true,
+  };
+}
+
 function defaultEventForStage(stage: string): string {
   switch (stage) {
     case "intake":
@@ -1365,8 +1571,18 @@ function assertStageArtifact(
 ): void {
   const expected = expectedArtifactsForStage(state, stage, event);
   if (!expected.acceptedArtifacts.includes(artifact)) {
+    const reviewArtifact = path.posix.join(state.artifacts.runDir, "review.md");
+    const lastAdvance = lastAdvanceEntry(state);
+    const afterMustFix =
+      stage === "implement" &&
+      artifact === reviewArtifact &&
+      lastAdvance?.event === "must_fix" &&
+      lastAdvance.from === "review";
+    const hint = afterMustFix
+      ? ` After must_fix re-entry, advance with review.md when it records review_passes: true to chain implement→review→report, or advance with ${expected.acceptedArtifacts.join(", ")} first.`
+      : "";
     throw new Error(
-      `Artifact ${artifact} is not valid for ${stage} on ${event}; expected one of: ${expected.acceptedArtifacts.join(", ")}.`,
+      `Artifact ${artifact} is not valid for ${stage} on ${event}; expected one of: ${expected.acceptedArtifacts.join(", ")}.${hint}`,
     );
   }
   for (const required of expected.requiredArtifacts) {

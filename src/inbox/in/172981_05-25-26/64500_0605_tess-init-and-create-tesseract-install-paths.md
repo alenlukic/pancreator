@@ -60,15 +60,15 @@ scaffold.
 
 ## Acceptance criteria
 
-- `tess init --dry-run` against a checked-out copy of the standard examples
-  (TS monorepo, Python service, Next.js app) completes without writing any
-  file outside `src/memory/adoption/` and produces a scan report that resolves
-  language, framework, test runner, and CI surface.
-- `tess init --apply` against a fresh empty directory installs the M1 scaffold
-  in one pass and exits zero.
+- `pnpm -w exec tess init --dry-run` against a checked-out copy of the standard
+  examples (TS monorepo, Python service, Next.js app) completes without writing
+  any file outside `src/memory/adoption/` and produces a scan report that
+  resolves language, framework, test runner, and CI surface.
+- `pnpm -w exec tess init --apply` against a fresh empty directory installs the
+  M1 scaffold in one pass and exits zero.
 - `npx create-tesseract demo` produces a runnable greenfield walkthrough whose
-  `tess inbox` and `tess run feature-delivery` flow succeeds against a seeded
-  inbox directive.
+  `pnpm -w exec tess inbox` and `pnpm -w exec tess run feature-delivery` flow
+  succeeds against a seeded inbox directive.
 - The adopter scan artifact is dual-anchor citation-bearing per
   `src/memory/handbook/contract-format.md`.
 
