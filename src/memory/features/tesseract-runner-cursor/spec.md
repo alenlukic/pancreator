@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/runner-cursor
+feature_id: tesseract-runner-cursor
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/runner-cursor
 
 ## Context

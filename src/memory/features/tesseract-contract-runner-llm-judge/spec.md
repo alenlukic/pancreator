@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/contract-runner-llm-judge
+feature_id: tesseract-contract-runner-llm-judge
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/contract-runner-llm-judge
 
 ## Context

@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/notifier
+feature_id: tesseract-notifier
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/notifier
 
 ## Context

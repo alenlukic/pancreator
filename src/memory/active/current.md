@@ -37,11 +37,31 @@ read per `src/memory/handbook/context-economy.md`.
 
 - `(none)`
 
-
 ## Most recent shipped Features
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`2026-05-26T12:00:00.000Z`) | `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md` | `—` | `—` |
+| `tesseract-adopter-scan` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-adopter-scan/delivery-report.md` | `—` | `—` |
+| `tesseract-checkpointer-fs` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-checkpointer-fs/delivery-report.md` | `—` | `—` |
+| `tesseract-cli` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-cli/delivery-report.md` | `—` | `—` |
+| `tesseract-contract` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract/delivery-report.md` | `—` | `—` |
+| `tesseract-contract-runner-llm-judge` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract-runner-llm-judge/delivery-report.md` | `—` | `—` |
+| `tesseract-contract-runner-rego` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract-runner-rego/delivery-report.md` | `—` | `—` |
+| `tesseract-contract-style` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract-style/delivery-report.md` | `—` | `—` |
+| `tesseract-core` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-core/delivery-report.md` | `—` | `—` |
+| `tesseract-env-isolation` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-env-isolation/delivery-report.md` | `—` | `—` |
+| `tesseract-inbox` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-inbox/delivery-report.md` | `—` | `—` |
+| `tesseract-intervention` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-intervention/delivery-report.md` | `—` | `—` |
+| `tesseract-mcp-server` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-mcp-server/delivery-report.md` | `—` | `—` |
+| `tesseract-memory` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-memory/delivery-report.md` | `—` | `—` |
+| `tesseract-notifier` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-notifier/delivery-report.md` | `—` | `—` |
+| `tesseract-persona` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-persona/delivery-report.md` | `—` | `—` |
+| `tesseract-pipeline` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-pipeline/delivery-report.md` | `—` | `—` |
+| `tesseract-policy` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-policy/delivery-report.md` | `—` | `—` |
+| `tesseract-run-logger` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-run-logger/delivery-report.md` | `—` | `—` |
+| `tesseract-runner-cursor` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-runner-cursor/delivery-report.md` | `—` | `—` |
+| `tesseract-worktree` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-worktree/delivery-report.md` | `—` | `—` |
 | `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`2026-05-26T00:00:00.000Z`) | `src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md` | `—` | `—` |
 | `json-formatting` | [indexed] (`2026-05-24T00:00:00.000Z`) | `src/memory/features/json-formatting/delivery-report.md` | `—` | `—` |
 | `compliance-tests` | [indexed] (`—`) | `src/memory/features/compliance-tests/delivery-report.md` | `—` | `—` |
@@ -56,9 +76,10 @@ read per `src/memory/handbook/context-economy.md`.
 
 <!-- tess:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-26T00:56:00.000Z`
+- Active-memory refreshed (UTC): `2026-05-26T16:41:31.577Z`
 
 <!-- /tess:active-memory:operator-notes:auto -->
+
 
 
 

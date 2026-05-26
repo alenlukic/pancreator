@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/contract-runner-rego
+feature_id: tesseract-contract-runner-rego
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/contract-runner-rego
 
 ## Context

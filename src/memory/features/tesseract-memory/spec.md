@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/memory
+feature_id: tesseract-memory
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/memory
 
 ## Context

@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/core
+feature_id: tesseract-core
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/core
 
 ## Context

@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/run-logger
+feature_id: tesseract-run-logger
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/run-logger
 
 ## Context

@@ -1,3 +1,9 @@
+---
+title: Engineering Spec - @tesseract/checkpointer-fs
+feature_id: tesseract-checkpointer-fs
+lifecycle_stage: contracts-authored
+---
+
 # Engineering Spec - @tesseract/checkpointer-fs
 
 ## Context
