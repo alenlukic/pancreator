@@ -1,7 +1,7 @@
 ---
 name: coder
 description: "Backward-compatible standard alias for `coder-standard`. Use for routine coder work; invoke `coder-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: composer-2
+model: composer-2.5
 permissionMode: default
 tools:
   - Read
