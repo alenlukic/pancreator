@@ -171,8 +171,7 @@ export async function queryMemory(
   const handbookIndex = path.join(ctx.repoRoot, "src", "memory", "handbook", "index.md");
   const router = await MemoryRouter.fromIndexFile(handbookIndex);
   const routeHits = router.routeIntent(query, { limit: 5 });
-  /** @type {MemoryQueryHit[]} */
-  const hits = routeHits.map((hit) => ({
+  const hits: MemoryQueryHit[] = routeHits.map((hit) => ({
     tier: "handbook" as const,
     path: hit.primaryPaths[0] ?? hit.secondaryPaths[0] ?? "",
     intent: hit.intent,

@@ -145,8 +145,9 @@ describe("stdio MCP transport read tools", () => {
     ] as const;
     for (const call of cases) {
       const result = await client.callTool(call);
-      const text = result.content
-        .map((c) => ("text" in c ? c.text : ""))
+      const content = Array.isArray(result.content) ? result.content : [];
+      const text = content
+        .map((c: { text?: string }) => ("text" in c && typeof c.text === "string" ? c.text : ""))
         .join("\n");
       expect(text).not.toContain('"status": "stub"');
       expect(text).not.toContain('"status":"stub"');

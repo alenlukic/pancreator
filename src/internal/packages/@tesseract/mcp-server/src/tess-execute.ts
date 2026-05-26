@@ -98,6 +98,10 @@ function getString(
   return typeof v === "string" ? v : undefined;
 }
 
+function asToolRecord(value: object): Record<string, unknown> {
+  return value as Record<string, unknown>;
+}
+
 /**
  * Runs the same handlers that the `tess` CLI uses for `inbox`, `pause`, `resume`, and `abort`.
  * Deferred MCP tools emit `TessDeferredToolError`, which the MCP stdio mapper surfaces as a non-success tool response carrying the deferral envelope JSON.
@@ -155,7 +159,7 @@ export async function executeTessTool(
     case "tess.feature": {
       const action = getString(args, "action") ?? "list";
       if (action === "list") {
-        return listFeatureSummaries({ repoRoot });
+        return asToolRecord(await listFeatureSummaries({ repoRoot }));
       }
       if (action === "show") {
         const featureId = getString(args, "featureId");
@@ -166,7 +170,7 @@ export async function executeTessTool(
         if (result.status === "error") {
           throw new Error(result.error);
         }
-        return result;
+        return asToolRecord(result);
       }
       throw new Error(`Unsupported tess.feature action: ${action}`);
     }
@@ -176,7 +180,7 @@ export async function executeTessTool(
       if (result.status === "error") {
         throw new Error(result.error);
       }
-      return result;
+      return asToolRecord(result);
     }
     case "tess.approve":
       throw new TessDeferredToolError(tessToolEnvelope("tess.approve", "M3"));
@@ -185,7 +189,7 @@ export async function executeTessTool(
       if (query === undefined || query === "") {
         throw new Error("query is required");
       }
-      return queryMemory({ repoRoot }, query);
+      return asToolRecord(await queryMemory({ repoRoot }, query));
     }
     case "tess.contracts":
       throw new TessDeferredToolError(tessToolEnvelope("tess.contracts", "M2"));
