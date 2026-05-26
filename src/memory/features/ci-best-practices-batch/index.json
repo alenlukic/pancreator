@@ -121,12 +121,7 @@
     "root_test_command": "pnpm test",
     "compliance_runner": "node src/internal/tools/run-compliance.mjs",
     "citation_refresh": "node src/internal/tools/refresh-citations.mjs [--dry-run] [<glob>...]",
-    "mcp_read_tools": [
-      "tess.feature.list",
-      "tess.feature.show",
-      "tess.status",
-      "tess.memory.query"
-    ],
+    "mcp_read_tools": ["tess.feature.list", "tess.feature.show", "tess.status", "tess.memory.query"],
     "citation": {
       "kind": "lines",
       "path": "src/memory/features/ci-best-practices-batch/delivery-report.md",

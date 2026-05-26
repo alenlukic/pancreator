@@ -1,10 +1,6 @@
 {
   "task_id": "24959_1704_ci-best-practices-batch",
-  "governing_sources_checked": [
-    "AGENTS.md",
-    "src/memory/handbook/constitution.md",
-    "docs/PRD.md"
-  ],
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "docs/PRD.md"],
   "documentation_impact": {
     "applies": true,
     "rationale": "The implementation changes operator-facing documentation and governance/reference surfaces for CI, compliance tooling, and MCP read handlers, so documentation-impact obligations apply and were handled in-task.",

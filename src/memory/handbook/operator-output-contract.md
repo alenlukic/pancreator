@@ -215,7 +215,7 @@ If the step is read-only, prefix **How** with `Read-only:`.
 ## Next operator steps
 
 1. **What:** Confirm the compliance audit gate recommendation before merging.
-   **How:** Read-only: open `src/work/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md` section 7 and verify `compliance_passes: true`.
+   **How:** Read-only: open `src/internal/work_archive/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md` section 7 and verify `compliance_passes: true`.
 ```
 
 ## 5 — Multi-option layout

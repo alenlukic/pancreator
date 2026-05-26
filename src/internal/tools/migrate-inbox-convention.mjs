@@ -36,6 +36,7 @@ import {
   applyReferenceUpdatesFromManifest,
   parseFrontmatterCreatedAt,
   stripInboxTimestampPrefix,
+  defaultManifestPath,
 } from "./migrate-timestamp-naming.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1151,12 +1152,7 @@ function main() {
     referenceUpdates: plan.referenceUpdates,
     collisions: plan.collisions,
   };
-  const outPath =
-    args.manifestPath ??
-    path.join(
-      args.root,
-      "src/work/172981_05-25-26/71362_0410_inbox-convention-migration/migration-manifest.dry-run.json",
-    );
+  const outPath = args.manifestPath ?? defaultManifestPath(args.root);
   if (!args.write) {
     mkdirSync(path.dirname(outPath), { recursive: true });
     writeFileSync(outPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");

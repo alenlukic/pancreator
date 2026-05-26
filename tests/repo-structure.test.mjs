@@ -127,8 +127,35 @@ test("active work day directories use canonical days-to-FDS prefixes", () => {
   }
 });
 
-
-
+test("active work task directories without feature-delivery state are absent", () => {
+  const allowlist = new Set(["99999_test_fixture"]);
+  const activeWorkRoot = path.join(ROOT, "src", "work");
+  const offenders = [];
+  for (const dayEntry of fs.readdirSync(activeWorkRoot, { withFileTypes: true })) {
+    if (!dayEntry.isDirectory() || !/^\d{6}_\d{2}-\d{2}-\d{2}$/.test(dayEntry.name)) {
+      continue;
+    }
+    const dayAbs = path.join(activeWorkRoot, dayEntry.name);
+    for (const taskEntry of fs.readdirSync(dayAbs, { withFileTypes: true })) {
+      if (!taskEntry.isDirectory()) {
+        continue;
+      }
+      if (allowlist.has(taskEntry.name)) {
+        continue;
+      }
+      const taskRel = path.posix.join("src", "work", dayEntry.name, taskEntry.name);
+      const statePath = path.join(dayAbs, taskEntry.name, "state.json");
+      if (!fs.existsSync(statePath)) {
+        offenders.push(taskRel);
+      }
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    "src/work/<day>/<task-id>/ without state.json is orphan residue; archive via librarian or write manifests under work_archive",
+  );
+});
 test("planning/execution handoff contract is represented across active memory, pipeline, and personas", () => {
   assert.ok(exists("src/memory/active/handoffs.md"));
 
