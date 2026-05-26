@@ -369,6 +369,26 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
+    const inboxSourceRel = "src/inbox/in/demo-feature.md";
+    await mkdir(path.join(root, "src", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "src", "memory", "active", "current.md"),
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        `\n- \`${inboxSourceRel}\`\n`,
+        "",
+        "## Most recent shipped Features",
+        "\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+        "",
+        "## Operator notes",
+        "\n<!-- tess:active-memory:operator-notes:auto -->\n\n- Active-memory refreshed (UTC): `2020-01-01T00:00:00.000Z`\n\n<!-- /tess:active-memory:operator-notes:auto -->\n",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
     const closeOut: string[] = [];
     const code = await parseAndRun(["close-artifacts", start.taskId], {
       repoRoot: root,
@@ -380,11 +400,20 @@ describe("parseAndRun", () => {
       pipelineStatus: string;
       archivedRunDir: string;
       archivedInboxPath: string;
+      activeMemoryPath: string;
+      activeFeatureCleared: boolean;
       stateFile: string;
     };
     expect(closed.pipelineStatus).toBe("closed");
     expect(closed.archivedRunDir).toBe(`src/internal/work_archive/172996_05-10-26/${start.taskId}`);
     expect(closed.archivedInboxPath).toBe(`src/inbox/archive/in/172996_05-10-26/${start.taskId}/demo-feature.md`);
+    expect(closed.activeMemoryPath).toBe("src/memory/active/current.md");
+    expect(closed.activeFeatureCleared).toBe(true);
+
+    const currentMd = await readFile(path.join(root, "src", "memory", "active", "current.md"), "utf8");
+    expect(currentMd).toContain("- `(none)`");
+    expect(currentMd).not.toContain(inboxSourceRel);
+    expect(currentMd).toContain("2026-05-10T14:00:00.000Z");
 
     expect(existsSync(path.join(root, "src", "inbox", "in", "demo-feature.md"))).toBe(false);
     expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
@@ -694,13 +723,16 @@ describe("operator tooling batch cli wiring", () => {
     expect(out.join("")).toContain('"dryRun": true');
   });
 
-  it("refresh-active-memory --dry-run exits conflict code when labeled sections mismatch", async () => {
+  it("refresh-active-memory --dry-run exits conflict code when shipped-feature rows mismatch", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-dry-conflict-"));
     await seedMinimalWorkspace(root);
     const currentAbs = path.join(root, "src", "memory", "active", "current.md");
     await writeFile(
       currentAbs,
-      `${buildSyncedCurrentMd("\n- stale-bullet\n").trimEnd()}\n`,
+      `${buildSyncedCurrentMd("\n- `(none)`\n").trimEnd()}\n`.replace(
+        "| `—` | `—` | `—` | `—` | `—` |",
+        "| `stale-feature` | `—` | `—` | `—` | `—` |",
+      ),
       "utf8",
     );
     const code = await parseAndRun(["refresh-active-memory", "--dry-run"], {
@@ -712,22 +744,48 @@ describe("operator tooling batch cli wiring", () => {
     expect(code).toBe(TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE);
   });
 
-  it("refresh-active-memory emits a conflict exit when active pointers disagree with src/inbox/in", async () => {
+  it("refresh-active-memory emits a conflict exit when Active Feature inbox pointer is missing", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-conflict-"));
     await seedMinimalWorkspace(root);
     const currentAbs = path.join(root, "src", "memory", "active", "current.md");
     await writeFile(
       currentAbs,
-      `${buildSyncedCurrentMd("\n- evil\n").trimEnd()}\n`,
+      `${buildSyncedCurrentMd("\n- `src/inbox/in/missing/archived-item.md`\n").trimEnd()}\n`,
       "utf8",
     );
+    const err: string[] = [];
+    const code = await parseAndRun(["refresh-active-memory"], {
+      repoRoot: root,
+      writeOut: () => {},
+      writeErr: (c) => err.push(c),
+      clock: () => new Date(refreshIso),
+    });
+    expect(code).toBe(TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE);
+    expect(err.join("")).toContain("missing under src/inbox/in/");
+  });
+
+  it("refresh-active-memory preserves human-curated Active Feature when inbox queue differs", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-active-human-"));
+    await seedMinimalWorkspace(root);
+    const bucket = makeUtcDayBucket(new Date(Date.UTC(2026, 4, 25, 6, 0, 0)));
+    const chosen = `src/inbox/in/${bucket}/64489_0605_chosen-active.md`;
+    await mkdir(path.join(root, ...chosen.split("/").slice(0, -1)), { recursive: true });
+    await writeFile(path.join(root, chosen), "# chosen\n", "utf8");
+    const newer = `src/inbox/in/${bucket}/64500_0605_newer-backlog-stub.md`;
+    await writeFile(path.join(root, newer), "# newer\n", "utf8");
+    const currentAbs = path.join(root, "src", "memory", "active", "current.md");
+    const activeLine = `\n- \`${chosen}\`\n`;
+    await writeFile(currentAbs, `${buildSyncedCurrentMd(activeLine).trimEnd()}\n`, "utf8");
     const code = await parseAndRun(["refresh-active-memory"], {
       repoRoot: root,
       writeOut: () => {},
       writeErr: () => {},
       clock: () => new Date(refreshIso),
     });
-    expect(code).toBe(TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE);
+    expect(code).toBe(0);
+    const written = await readFile(currentAbs, "utf8");
+    expect(written).toContain(chosen);
+    expect(written).not.toContain("64500_0605_newer-backlog-stub");
   });
 
   it("refresh-active-memory apply succeeds when only managed operator-notes timestamp is stale", async () => {

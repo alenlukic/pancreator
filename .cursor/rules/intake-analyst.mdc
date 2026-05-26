@@ -4,6 +4,7 @@ globs:
   - "src/memory/features/**/spec.md"
   - "src/inbox/in/**/*.md"
   - "src/inbox/threads/**/*.md"
+  - "src/memory/active/current.md"
 alwaysApply: false
 ---
 

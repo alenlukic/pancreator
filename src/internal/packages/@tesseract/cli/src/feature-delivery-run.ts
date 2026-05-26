@@ -13,6 +13,7 @@ import { mkdir, readFile, readdir, rename, rmdir, stat, writeFile } from "node:f
 import path from "node:path";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { applyActiveMemoryRefreshOnArtifactClosure } from "./active-memory-refresh.js";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
 
@@ -212,6 +213,8 @@ export interface CloseFeatureDeliveryArtifactsResult {
   pipelineStatus: "closed";
   archivedRunDir: string;
   archivedInboxPath: string;
+  activeMemoryPath: string;
+  activeFeatureCleared: boolean;
   stateFile: string;
   runLogFile: string;
   nextPromptFile: string;
@@ -600,6 +603,11 @@ export async function closeFeatureDeliveryArtifacts(
     makeCloseRecord(state, now, previousRunDir, closure.workArchiveRel, closure.inboxSourceRel, closure.inboxArchiveRel),
   );
 
+  const activeMemoryRefresh = await applyActiveMemoryRefreshOnArtifactClosure(repoRoot, {
+    archivedInboxSourceRel: closure.inboxSourceRel,
+    clock: input.clock,
+  });
+
   return {
     command: "close-artifacts",
     status: "ok",
@@ -609,6 +617,8 @@ export async function closeFeatureDeliveryArtifacts(
     pipelineStatus: "closed",
     archivedRunDir: closure.workArchiveRel,
     archivedInboxPath: closure.inboxArchiveRel,
+    activeMemoryPath: activeMemoryRefresh.path,
+    activeFeatureCleared: activeMemoryRefresh.activeFeatureCleared,
     stateFile: state.artifacts.stateFile,
     runLogFile: state.artifacts.runLogFile,
     nextPromptFile: requireNextPromptFile(state),
@@ -1014,6 +1024,7 @@ pnpm -w exec tess close-artifacts ${state.taskId}
 3. Verify the command output reports:
    - archivedRunDir: ${closure.workArchiveRel}
    - archivedInboxPath: ${closure.inboxArchiveRel}
+   - activeMemoryPath: src/memory/active/current.md (refreshed automatically; Active Feature clears to \`(none)\` when it matched the archived inbox source)
 4. Run \`pnpm -w exec tess status ${state.taskId}\` and confirm the status resolves from the archive.
 5. Report the resulting \`git status --short\`.
 

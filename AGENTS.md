@@ -209,7 +209,7 @@ this section in your response.
 
 6. Operators SHALL interpret `tess` JSON envelopes carrying `"status":"deferred"` as the canonical deferral protocol: each deferred verb exits **`125`** and documents `milestone`, `tracking_intake`, and `manual_workaround` in **`src/internal/packages/@tesseract/cli/src/run.ts`**.
 7. Operators SHALL author new **`src/inbox/in/<utc-day>/<sid_hhmm_slug>.md`** directives with **`tess intake new <slug>`**, keeping UTC bucket naming aligned with **`src/memory/handbook/inbox-lifecycle.md`** and **`src/memory/features/timestamp-naming-conventions/spec.md`**.
-8. Operators SHALL converge **`src/memory/active/current.md`** Active Feature bullets, **`status: indexed`** shipped-feature rows, and the managed refresh stamp using **`tess refresh-active-memory [--dry-run]`** whenever those slices drift before governed commits (`src/memory/features/*/index.json` remain the indexed source of truth).
+8. Operators SHALL set **`src/memory/active/current.md`** Active Feature bullets explicitly when work becomes active; the refresher SHALL NOT infer active work from the inbox queue. **`tess close-artifacts`** SHALL refresh shipped-feature rows and the managed operator-notes stamp and SHALL clear Active Feature to **`(none)`** when it matched the archived inbox source. Operators SHALL run **`tess refresh-active-memory [--dry-run]`** before other governed commits when those derived slices drift outside artifact closure (`src/memory/features/*/index.json` remain the indexed source of truth).
 
 ## 7 — Workspace map
 

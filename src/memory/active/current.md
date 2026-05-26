@@ -35,13 +35,14 @@ read per `src/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- `src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md`
+- `(none)`
 
 
 ## Most recent shipped Features
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`2026-05-26T00:00:00.000Z`) | `src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md` | `—` | `—` |
 | `json-formatting` | [indexed] (`2026-05-24T00:00:00.000Z`) | `src/memory/features/json-formatting/delivery-report.md` | `—` | `—` |
 | `compliance-tests` | [indexed] (`—`) | `src/memory/features/compliance-tests/delivery-report.md` | `—` | `—` |
 | `inbox-convention-migration` | [indexed] (`—`) | `src/memory/features/inbox-convention-migration/delivery-report.md` | `—` | `—` |
@@ -55,7 +56,7 @@ read per `src/memory/handbook/context-economy.md`.
 
 <!-- tess:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-25T19:57:12.067Z`
+- Active-memory refreshed (UTC): `2026-05-26T00:56:00.000Z`
 
 <!-- /tess:active-memory:operator-notes:auto -->
 
@@ -66,4 +67,4 @@ read per `src/memory/handbook/context-economy.md`.
 - During Phase 4 dogfood, planning stages SHOULD emit a compact handoff card and
   delegate execution to the next persona instead of continuing implementation in
   the same parent context.
-- Run `tess refresh-active-memory [--dry-run]` before committing when Active Feature or shipped-feature rows drift from `src/inbox/in/` queues and `status: indexed` artifacts.
+- Run `tess refresh-active-memory [--dry-run]` before committing when shipped-feature rows or the managed refresh stamp drift from `status: indexed` artifacts outside `tess close-artifacts`; set Active Feature manually when work starts — `tess close-artifacts` clears it to `(none)` when the archived inbox source matched.
