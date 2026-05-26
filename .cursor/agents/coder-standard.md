@@ -1,7 +1,7 @@
 ---
 name: coder-standard
 description: "Standard `coder` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: composer-2.5
+model: composer-2.5[fast=false]
 permissionMode: default
 tools:
   - Read
