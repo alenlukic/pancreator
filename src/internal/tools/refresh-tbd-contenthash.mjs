@@ -120,27 +120,14 @@ function collectFiles(repoRoot, relDir = "") {
 }
 
 /**
- * @param {string} body
+ * Canonical stored width per json-formatting / glossary: abbreviated SHA-256 prefix
+ * whose length matches `git rev-parse --short HEAD` at write time.
+ *
  * @param {number} abbrevLen
- * @param {string} repoRel
  * @returns {number}
  */
-function inferHashWidth(body, abbrevLen, repoRel) {
-  const re =
-    /contentHash:\s*["']?([0-9a-f]{8,64})["']?|["']contentHash["']\s*:\s*["']([0-9a-f]{8,64})["']/gi;
-  for (const m of body.matchAll(re)) {
-    const h = m[1] ?? m[2];
-    if (!h || h === TBD) {
-      continue;
-    }
-    if (h.length === FULL_SHA256_LEN) {
-      return FULL_SHA256_LEN;
-    }
-    if (h.length >= 4 && h.length <= abbrevLen + 2) {
-      return abbrevLen;
-    }
-  }
-  return repoRel.endsWith(".json") ? abbrevLen : FULL_SHA256_LEN;
+function storedHashWidth(abbrevLen) {
+  return abbrevLen;
 }
 
 /**
@@ -280,8 +267,31 @@ function isInsideExcludedFence(body, index) {
  * @param {string} repoRel
  * @returns {{ body: string, resolved: number, skipped: { reason: string, path?: string }[] }}
  */
+/**
+ * @param {string} body
+ * @param {number} abbrevLen
+ * @returns {{ body: string, abbreviated: number }}
+ */
+function abbreviateFullContentHashes(body, abbrevLen) {
+  let abbreviated = 0;
+  const out = body.replace(
+    /((?:["']contentHash["']|contentHash)\s*:\s*["']?)([0-9a-f]{64})(["']?)/gi,
+    (_match, prefix, hash, suffix) => {
+      abbreviated += 1;
+      return `${prefix}${hash.slice(0, abbrevLen)}${suffix}`;
+    },
+  );
+  return { body: out, abbreviated };
+}
+
+/**
+ * @param {string} body
+ * @param {number} abbrevLen
+ * @param {string} repoRel
+ * @returns {{ body: string, resolved: number, abbreviated: number, skipped: { reason: string, path?: string }[] }}
+ */
 function refreshBody(body, abbrevLen, repoRel) {
-  const width = inferHashWidth(body, abbrevLen, repoRel);
+  const width = storedHashWidth(abbrevLen);
   /** @type {{ reason: string, path?: string }[]} */
   const skipped = [];
   let resolved = 0;
@@ -332,7 +342,20 @@ function refreshBody(body, abbrevLen, repoRel) {
     resolved += 1;
   }
 
-  return { body: out, resolved, skipped };
+  const { body: abbreviatedBody, abbreviated } = abbreviateFullContentHashes(
+    out,
+    abbrevLen,
+  );
+  return { body: abbreviatedBody, resolved, abbreviated, skipped };
+}
+
+/**
+ * @param {string} body
+ * @param {number} abbrevLen
+ * @returns {boolean}
+ */
+function hasFullLengthContentHash(body) {
+  return /(?:["']contentHash["']|contentHash)\s*:\s*["']?[0-9a-f]{64}\b/.test(body);
 }
 
 /**
@@ -343,6 +366,7 @@ function main(write) {
   const files = collectFiles(ROOT).sort();
   let filesChanged = 0;
   let placeholdersResolved = 0;
+  let fullHashesAbbreviated = 0;
   /** @type {Record<string, number>} */
   const skipReasons = {};
   /** @type {{ file: string, path: string }[]} */
@@ -351,20 +375,38 @@ function main(write) {
   for (const rel of files) {
     const abs = path.join(ROOT, rel);
     const original = readFileSync(abs, "utf8");
-    if (!original.includes(TBD)) {
+    const needsTbd = original.includes(TBD);
+    const needsAbbrev = hasFullLengthContentHash(original);
+    if (!needsTbd && !needsAbbrev) {
       continue;
     }
-    const { body, resolved, skipped } = refreshBody(original, abbrevLen, rel);
+    let body;
+    let resolved = 0;
+    let abbreviated = 0;
+    /** @type {{ reason: string, path?: string }[]} */
+    let skipped = [];
+    if (needsTbd) {
+      const refreshed = refreshBody(original, abbrevLen, rel);
+      body = refreshed.body;
+      resolved = refreshed.resolved;
+      abbreviated = refreshed.abbreviated;
+      skipped = refreshed.skipped;
+    } else {
+      const abb = abbreviateFullContentHashes(original, abbrevLen);
+      body = abb.body;
+      abbreviated = abb.abbreviated;
+    }
     for (const s of skipped) {
       skipReasons[s.reason] = (skipReasons[s.reason] ?? 0) + 1;
       if (s.reason === "gone" && s.path) {
         gone.push({ file: rel, path: s.path });
       }
     }
-    if (resolved === 0) {
+    if (resolved === 0 && abbreviated === 0) {
       continue;
     }
     placeholdersResolved += resolved;
+    fullHashesAbbreviated += abbreviated;
     if (body !== original) {
       filesChanged += 1;
       if (write) {
@@ -379,6 +421,7 @@ function main(write) {
     filesScanned: files.length,
     filesChanged,
     placeholdersResolved,
+    fullHashesAbbreviated,
     skipReasons,
     gone,
     remainingTbd: files.filter((rel) => {
@@ -386,6 +429,10 @@ function main(write) {
       return /contentHash:\s*TBD-on-commit|["']contentHash["']\s*:\s*["']TBD-on-commit["']/.test(
         t,
       );
+    }).length,
+    remainingFullLength: files.filter((rel) => {
+      const t = readFileSync(path.join(ROOT, rel), "utf8");
+      return hasFullLengthContentHash(t);
     }).length,
   };
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -405,12 +452,30 @@ function mainFiltered() {
   }
   const rel = fileFilter.replace(/\\/g, "/");
   const original = readFileSync(path.join(ROOT, rel), "utf8");
-  const { body, resolved, skipped } = refreshBody(original, abbrevLen, rel);
-  if (write && resolved > 0) {
+  let body;
+  let resolved = 0;
+  let abbreviated = 0;
+  let skipped = [];
+  if (original.includes(TBD)) {
+    const refreshed = refreshBody(original, abbrevLen, rel);
+    body = refreshed.body;
+    resolved = refreshed.resolved;
+    abbreviated = refreshed.abbreviated;
+    skipped = refreshed.skipped;
+  } else {
+    const abb = abbreviateFullContentHashes(original, abbrevLen);
+    body = abb.body;
+    abbreviated = abb.abbreviated;
+  }
+  if (write && (resolved > 0 || abbreviated > 0)) {
     writeFileSync(path.join(ROOT, rel), body, "utf8");
   }
   process.stdout.write(
-    `${JSON.stringify({ file: rel, resolved, skipped, write }, null, 2)}\n`,
+    `${JSON.stringify(
+      { file: rel, resolved, abbreviated, skipped, write },
+      null,
+      2,
+    )}\n`,
   );
 }
 

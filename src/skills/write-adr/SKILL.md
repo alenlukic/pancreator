@@ -17,22 +17,22 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [506, 506]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §6 — MVP roster: tech-lead drafts the plan/RFC for any non-trivial change and owns the ADR."
   - kind: lines
     path: docs/PRD.md
     range: [649, 658]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §7 — feature-delivery `plan` stage YAML declaring `/src/work/<day>/<id>/adr-draft.md` as a required output of the plan stage."
   - kind: lines
     path: docs/PRD.md
     range: [915, 915]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §8 — Memory architecture: `/src/memory/adr/` holds immutable architecture decision records in Nygard format."
   - kind: lines
     path: docs/PRD.md
     range: [1004, 1010]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §8 — Anti-rot: dual-anchor citations on every ADR/RFC/PRD, ADR immutability, supersession via a new ADR with `supersedes:` link."
 ---
 

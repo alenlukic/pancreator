@@ -25,6 +25,8 @@ test("refresh-tbd-contenthash dry-run is idempotent after write pass", () => {
   });
   const report = JSON.parse(out);
   assert.equal(report.placeholdersResolved, 0);
+  assert.equal(report.fullHashesAbbreviated, 0);
+  assert.equal(report.remainingFullLength, 0);
 });
 
 test("resolveAbbrevLen honors TESS_JSON_FORMAT_ABBREV_LEN", () => {

@@ -42,87 +42,87 @@ references:
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [1, 18]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive frontmatter declares feature id, intake owner, status, and the BOOTSTRAP, M1 index, and AGENTS reference set."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [22, 36]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive problem statement enumerates the five open Phase 4 gaps that block Phase 5 M1 backlog work."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [38, 42]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive goal statement scopes the slice to closing the Phase 4 bootstrap gate with empirical proof artifacts."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [44, 51]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive non-goals forbid Phase 5 backlog start, redefinition of Phase 4 exit criteria, and acceptance of simulated or partial runs."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [55, 70]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive section 1 specifies the canonical US-1 dogfood flow that walks an inbox item through intake, plan, implement, review, report, ship, and index."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [72, 77]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive section 2 specifies capture of a run log from the real dogfood flow and verification that the trace renders cleanly in an external observability tool."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [79, 84]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive section 3 specifies a second controlled dogfood exercise that empirically exercises `tess pause`, `tess resume`, and `tess abort`."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [86, 95]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive section 4 enumerates the Phase 4 proof bundle: staged PR outcome, delivery report under `src/inbox/out/`, clean external run trace, intervention evidence, and residual-gap statement."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [97, 101]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive section 5 requires explicit human ratification of the Phase 4 exit before any Phase 5 M1 backlog work begins."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [103, 120]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive enumerates ten acceptance criteria the proof bundle and the human-ratification gate MUST satisfy."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [122, 132]
-    contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90
+    contentHash: 414a8f4
     note: "Source directive enumerates the five operator manual-validation actions that gate the Phase 4 exit ratification."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [225, 245]
-    contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268
+    contentHash: 940935e
     note: "BOOTSTRAP Phase 4 section defines the seven stage outcomes for the US-1 dogfood pipeline run, the pause/resume/abort exercise, the Phoenix-or-Langfuse run-log verification, and the staged-PR plus delivery-report exit criterion."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [248, 267]
-    contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268
+    contentHash: 940935e
     note: "BOOTSTRAP Phase 5 section identifies the M1 backlog work the Phase 4 exit unblocks; this slice MUST NOT start that work before the Phase 4 exit ratifies."
   - kind: lines
     path: docs/M1.index.md
     range: [18, 34]
-    contentHash: 63d0c43bfb51970cd8f1ee3f711b8ad0dcf1dc3846ae16a4596659476b8a5dda
+    contentHash: 63d0c43
     note: "M1 index records `bootstrap.phase: 4`, `status: phase-4-in-progress`, and the open dogfood exit gaps that this Feature closes."
   - kind: lines
     path: AGENTS.md
     range: [241, 259]
-    contentHash: 03ff3cd5f27af943a83749eba5ed57b5a00eedeb56024b41e9318fbec9ce406e
+    contentHash: 03ff3cd
     note: "AGENTS bootstrap-status section records that Phase 4 remains open until the US-1 dogfood exit gaps ratify and that `tess run`, `tess advance`, and `tess close-artifacts` orchestrate Phase 4 active-work."
   - kind: lines
     path: AGENTS.md
     range: [141, 148]
-    contentHash: 03ff3cd5f27af943a83749eba5ed57b5a00eedeb56024b41e9318fbec9ce406e
+    contentHash: 03ff3cd
     note: "AGENTS working-agreement clauses establish the operator-sandbox exclusion of `/src/inbox/notes/` and the in-loop reviewer obligation at every phase boundary that this spec preserves."
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [281, 283]
-    contentHash: e5f5ecda71b648e008525e8cae2c0ebb15994d581bc434788d6f77f3b9e996a3
+    contentHash: e5f5ecd
     note: "Glossary defines Run-log as the append-only OTLP stream under `/src/work/<day>/<id>/run.log.jsonl` that is the basis for Phoenix and Langfuse import."
 ---
 
@@ -135,7 +135,7 @@ the `feature-delivery` Pipeline.
 
 This Feature SHALL capture the empirical evidence enumerated in the source
 directive at
-`{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [86, 95], contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90}`.
+`{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [86, 95], contentHash: 414a8f4}`.
 
 This Feature SHALL obtain explicit human ratification of the Phase 4 exit
 before any Phase 5 M1 backlog work begins.
@@ -143,12 +143,12 @@ before any Phase 5 M1 backlog work begins.
 This Feature SHALL preserve every Persona, Skill, Pipeline, Spec Contract,
 documentation-impact, policy-compliance, inbox-lifecycle, and stage-exit
 obligation cited at
-`{kind: lines, path: AGENTS.md, range: [141, 148], contentHash: 03ff3cd5f27af943a83749eba5ed57b5a00eedeb56024b41e9318fbec9ce406e}`.
+`{kind: lines, path: AGENTS.md, range: [141, 148], contentHash: 03ff3cd}`.
 
 This Feature SHALL NOT start Phase 5 M1 backlog delivery, SHALL NOT redefine
 the Phase 4 exit criteria, and SHALL NOT treat simulated or partial runs as
 sufficient proof per the non-goals at
-`{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [44, 51], contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90}`.
+`{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [44, 51], contentHash: 414a8f4}`.
 
 ## Acceptance criteria
 
@@ -160,7 +160,7 @@ sufficient proof per the non-goals at
 - When the Feature opens the dogfood run, the Feature MUST start the
   `feature-delivery` Pipeline through `tess run feature-delivery
   <inbox-entry>` per the runtime contract at
-  `{kind: lines, path: AGENTS.md, range: [249, 253], contentHash: 03ff3cd5f27af943a83749eba5ed57b5a00eedeb56024b41e9318fbec9ce406e}`.
+  `{kind: lines, path: AGENTS.md, range: [249, 253], contentHash: 03ff3cd}`.
 - When the run reaches the intake stage, the `intake-analyst` Persona MUST
   canonicalize the directive into `src/memory/features/<id>/spec.md` and
   MUST close the clarifying loop within the 5-round cap.
@@ -178,12 +178,12 @@ sufficient proof per the non-goals at
 - When the run reaches the ship stage, the `supervisor` Persona MUST stage
   the local diff and MUST NOT push or open a remote pull request per the
   ship-stage contract at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [236, 240], contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268}`.
+  `{kind: lines, path: docs/BOOTSTRAP.md, range: [236, 240], contentHash: 940935e}`.
 - When the run reaches the index stage, the `librarian` Persona MUST index
   the emitted artifacts, MUST refresh the per-feature `index.json`, and MUST
   execute `tess close-artifacts <task-id>` after human validation per the
   closure contract at
-  `{kind: lines, path: AGENTS.md, range: [254, 259], contentHash: 03ff3cd5f27af943a83749eba5ed57b5a00eedeb56024b41e9318fbec9ce406e}`.
+  `{kind: lines, path: AGENTS.md, range: [254, 259], contentHash: 03ff3cd}`.
 - When every stage completes, the run MUST preserve the stage-boundary
   Checkpoint artifacts under `/src/work/<day>/<task-id>/` so that the path
   from the inbox item to completion remains auditable.
@@ -196,7 +196,7 @@ sufficient proof per the non-goals at
 - When the Feature verifies external observability, the Feature MUST import
   the captured Run-log into either Phoenix or Langfuse per the conformance
   rule at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [241, 242], contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268}`.
+  `{kind: lines, path: docs/BOOTSTRAP.md, range: [241, 242], contentHash: 940935e}`.
 - When the Feature verifies the external trace, the verification record
   MUST show that the trace is readable, that the span hierarchy is
   complete, and that the trace identifier attributes back to the dogfood
@@ -239,7 +239,7 @@ sufficient proof per the non-goals at
 - When the Feature assembles the proof bundle, the bundle MUST include one
   delivery report staged under `src/inbox/out/` per the
   notifier-to-outbox contract at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [243, 245], contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268}`.
+  `{kind: lines, path: docs/BOOTSTRAP.md, range: [243, 245], contentHash: 940935e}`.
 - When the Feature assembles the proof bundle, the bundle MUST include
   one clean external run trace for the end-to-end dogfood run captured
   under the verification record from the second acceptance group.
@@ -258,7 +258,7 @@ sufficient proof per the non-goals at
   staged pull-request outcome, the delivery report, the external run
   trace, and the pause-resume-abort intervention evidence per the operator
   manual-validation list at
-  `{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [122, 132], contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90}`.
+  `{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [122, 132], contentHash: 414a8f4}`.
 - When the human records the decision, the human MUST either ratify the
   Phase 4 exit or record the remaining blocker list under a dated
   ratification note inside the proof bundle.
@@ -267,7 +267,7 @@ sufficient proof per the non-goals at
   beyond `phase-4-in-progress`.
 - While the ratification record remains unsigned, the Feature SHALL NOT
   start any Phase 5 M1 backlog deliverable enumerated at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [248, 267], contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268}`.
+  `{kind: lines, path: docs/BOOTSTRAP.md, range: [248, 267], contentHash: 940935e}`.
 
 ### Stage and policy invariants
 
@@ -281,7 +281,7 @@ sufficient proof per the non-goals at
 - When the Feature reads, traverses, or cites repository content, the
   Feature MUST NOT touch any path under `/src/inbox/notes/` per the
   operator-sandbox rule at
-  `{kind: lines, path: AGENTS.md, range: [141, 145], contentHash: 03ff3cd5f27af943a83749eba5ed57b5a00eedeb56024b41e9318fbec9ce406e}`.
+  `{kind: lines, path: AGENTS.md, range: [141, 145], contentHash: 03ff3cd}`.
 - When the Feature edits Persona specs, Persona role boundaries, Persona
   tool grants, or Persona safety constraints, the Feature MUST NOT proceed
   without explicit human ratification recorded in the proof bundle.
@@ -295,13 +295,13 @@ sufficient proof per the non-goals at
 - This Feature SHALL NOT start any Phase 5 M1 backlog deliverable before
   the human ratifies the Phase 4 exit proof bundle.
 - This Feature SHALL NOT redefine the Phase 4 exit criteria enumerated at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [225, 245], contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268}`.
+  `{kind: lines, path: docs/BOOTSTRAP.md, range: [225, 245], contentHash: 940935e}`.
 - This Feature SHALL NOT accept a simulated, partial, or replayed run as
   a substitute for the real end-to-end dogfood run.
 - This Feature SHALL NOT push the staged dogfood pull request to any
   remote and SHALL NOT open a remote pull request before human
   ratification per the ship-stage contract at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [236, 240], contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268}`.
+  `{kind: lines, path: docs/BOOTSTRAP.md, range: [236, 240], contentHash: 940935e}`.
 - This Feature SHALL NOT delete any file under `src/work/**`,
   `src/memory/**`, `src/inbox/out/**`, or `src/inbox/threads/**` while
   assembling the proof bundle.
@@ -329,7 +329,7 @@ slot the source directive grants the implementation.
 - D2. Choose the external observability tool used for the run-log
   verification: either Phoenix or Langfuse. The directive authorizes the
   implementation to choose at
-  `{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [74, 77], contentHash: 414a8f44e8e5e4fd37a0de1e3adae5069e19cddaa295d5bf623219daaae91f90}`.
+  `{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [74, 77], contentHash: 414a8f4}`.
 - D3. Choose the second-run scenario that exercises `tess pause`, `tess
   resume`, and `tess abort` in a live stage context. The plan stage MUST
   pick a scenario that touches a real stage rather than a no-op fixture.
@@ -358,11 +358,11 @@ slot the source directive grants the implementation.
 - This Feature targets the bootstrap exit gate tracked by `tesseract.yaml`
   at `bootstrap.phase: 4` and `status: phase-4-in-progress` per the M1
   index at
-  `{kind: lines, path: docs/M1.index.md, range: [18, 34], contentHash: 63d0c43bfb51970cd8f1ee3f711b8ad0dcf1dc3846ae16a4596659476b8a5dda}`.
+  `{kind: lines, path: docs/M1.index.md, range: [18, 34], contentHash: 63d0c43}`.
 - This Feature drives ratification of the Phase 4 exit declared at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [225, 245], contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268}`,
+  `{kind: lines, path: docs/BOOTSTRAP.md, range: [225, 245], contentHash: 940935e}`,
   which unblocks the Phase 5 M1 backlog work at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [248, 267], contentHash: 940935e98a478cca0f5fe5f51abf0f702a4b5eb2a1693f736501dc101b9df268}`.
+  `{kind: lines, path: docs/BOOTSTRAP.md, range: [248, 267], contentHash: 940935e}`.
 - This Feature SHALL register its delivery report under `src/inbox/out/`
   and its closed feature index under
   `src/memory/features/us-1-dogfood-phase-4-exit/index.json` so the

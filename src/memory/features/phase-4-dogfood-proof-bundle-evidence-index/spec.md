@@ -24,42 +24,42 @@ references:
   - kind: lines
     path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md
     range: [19, 23]
-    contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c
+    contentHash: ccf9748
     note: "Source directive problem statement: Phase 4 exit requires one nested real feature-delivery run that produces durable proof pointers under the us-1-dogfood-phase-4-exit feature folder."
   - kind: lines
     path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md
     range: [25, 30]
-    contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c
+    contentHash: ccf9748
     note: "Source directive goal statement: run this inbox item through feature-delivery end-to-end so the implementation updates phase-4-proof-bundle.md."
   - kind: lines
     path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md
     range: [32, 38]
-    contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c
+    contentHash: ccf9748
     note: "Source directive non-goals: SHALL NOT start Phase 5, SHALL NOT redefine exit criteria, SHALL NOT accept simulated telemetry."
   - kind: lines
     path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md
     range: [40, 44]
-    contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c
+    contentHash: ccf9748
     note: "Source directive required execution: three ordered steps for intake canonicalization, proof-bundle update during implement, and run-artifact preservation."
   - kind: lines
     path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md
     range: [46, 51]
-    contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c
+    contentHash: ccf9748
     note: "Source directive acceptance criteria: four numbered items gating the nested task on stage completion, proof-bundle population, Phoenix verification, and human ratification."
   - kind: lines
     path: src/memory/features/us-1-dogfood-phase-4-exit/spec.md
     range: [131, 151]
-    contentHash: 8796dd7d32f015073e2d95484a5dda802809c2109f82091bf892159bf551f360
+    contentHash: 8796dd7
     note: "Parent feature spec Spec section declares the Phase 4 exit gate obligations this nested run satisfies as empirical proof."
   - kind: lines
     path: src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md
     range: [11, 18]
-    contentHash: 1801f6fac831d5554eaa95cff06570880da1c6ba66f39229defcb13672ce67af
+    contentHash: 1801f6f
     note: "Proof-bundle nested-dogfood table lists task id, work directory, and immutable run.log.jsonl path; librarian SHALL refresh paths after close-artifacts."
   - kind: lines
     path: src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/plan.md
     range: [1, 10]
-    contentHash: d210e4abe78df2aa34d48b108545907ac2d393e8807c4d6667feaecff8c55e0d
+    contentHash: d210e4a
     note: "Parent plan decision D1 scopes this nested directive as the empirical proof-bundle slice and declares the proof-bundle root."
 ---
 
@@ -67,7 +67,7 @@ references:
 
 This Feature SHALL produce the nested empirical proof that satisfies the Phase 4
 bootstrap exit gate for US-1 per the parent spec at
-`{kind: lines, path: src/memory/features/us-1-dogfood-phase-4-exit/spec.md, range: [131, 151], contentHash: 8796dd7d32f015073e2d95484a5dda802809c2109f82091bf892159bf551f360}`.
+`{kind: lines, path: src/memory/features/us-1-dogfood-phase-4-exit/spec.md, range: [131, 151], contentHash: 8796dd7}`.
 
 This Feature SHALL run one real `feature-delivery` Pipeline from intake to index
 closure, driven by the `phase-4-dogfood-proof-bundle-index.md` source directive.
@@ -78,7 +78,7 @@ task id `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` and the
 immutable path
 `src/internal/work_archive/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl`
 per the proof-bundle skeleton at
-`{kind: lines, path: src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md, range: [11, 18], contentHash: 1801f6fac831d5554eaa95cff06570880da1c6ba66f39229defcb13672ce67af}`.
+`{kind: lines, path: src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md, range: [11, 18], contentHash: 1801f6f}`.
 
 The parent Phase 4 exit gate still requires external trace verification when
 tooling exists. This nested run SHALL preserve the immutable `run.log.jsonl`
@@ -93,14 +93,14 @@ SHALL follow `phase-4-ratification-request.md` and the parent US-1 spec.
 - When the nested `feature-delivery` Pipeline executes, the Pipeline MUST advance
   through all 7 ordered stages — intake, plan, implement, review, report, ship, and
   index — per the source directive at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [46, 48], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`.
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [46, 48], contentHash: ccf9748}`.
 
 - When each stage closes, the Pipeline MUST produce at least 1 auditable artifact
   per stage under the nested task work directory (canonical path after librarian
   closure:
   `src/internal/work_archive/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/`)
   per the source directive at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [48, 48], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`.
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [48, 48], contentHash: ccf9748}`.
 
 - When the implement stage closes, the `coder` Persona MUST update
   `src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md` to
@@ -108,11 +108,11 @@ SHALL follow `phase-4-ratification-request.md` and the parent US-1 spec.
   `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` and the run-log path
   `src/internal/work_archive/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl`
   per the source directive at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [43, 43], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`.
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [43, 43], contentHash: ccf9748}`.
 
 - When the run log exists at the path above, external Phoenix import and trace
   capture SHALL satisfy the source directive at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [50, 50], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [50, 50], contentHash: ccf9748}`
   only after the `@tesseract/run-logger` importer path exists; until then this
   criterion is **deferred** and SHALL NOT be satisfied by simulated telemetry per
   non-goals.
@@ -121,28 +121,28 @@ SHALL follow `phase-4-ratification-request.md` and the parent US-1 spec.
   verification record MUST be written under
   `src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md`
   per the source directive at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [50, 50], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`.
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [50, 50], contentHash: ccf9748}`.
 
 - When every stage artifact exists and the Phase 4 ratification prerequisites in
   `src/memory/features/us-1-dogfood-phase-4-exit/phase-4-ratification-request.md`
   are satisfied (including explicit handling of deferred Phoenix rows), the human
   operator MUST complete the Phase 4 ratification workflow before any Phase 5 M1
   backlog work begins, per the source directive at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [51, 51], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`.
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [51, 51], contentHash: ccf9748}`.
 
 ## Out of scope
 
 - Phase 5 M1 backlog delivery SHALL NOT start during or after this Feature's
   pipeline run, per the source directive non-goal at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [34, 34], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`.
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [34, 34], contentHash: ccf9748}`.
 
 - Phase 4 exit criteria SHALL NOT be redefined by this Feature, per the source
   directive non-goal at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [36, 36], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`.
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [36, 36], contentHash: ccf9748}`.
 
 - Simulated or replayed telemetry SHALL NOT satisfy any acceptance criterion,
   per the source directive non-goal at
-  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [38, 38], contentHash: ccf9748cc364505754017e9d57ad777e9bd90e78ecfffe3222a64733049ac76c}`.
+  `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [38, 38], contentHash: ccf9748}`.
 
 - Modifications to any artifact under `src/memory/features/us-1-dogfood-phase-4-exit/`
   other than `phase-4-proof-bundle.md` lie outside this Feature's touch-set.

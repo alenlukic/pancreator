@@ -15,17 +15,17 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [460, 500]
-    contentHash: 6fb6f2f1bdf21fd61c39ac2d312224ef18c077a039a5d65342f4faed62749dbd
+    contentHash: 6fb6f2f
     note: "PRD §6 — Subagent Persona Roster: header + 16-field example."
   - kind: lines
     path: docs/PRD.md
     range: [278, 278]
-    contentHash: 4640a5ac6a986a4c33c18db710bf2fa9c9a491b01852d5fe5022232fc23c350d
+    contentHash: 4640a5a
     note: "PRD §4 glossary — Persona Spec Format definition."
   - kind: lines
     path: docs/PRD.md
     range: [462, 462]
-    contentHash: de82bd2c4925e26ab40d565012f442b6784d0b5fe96b211f6cf9ed2a3390bfd1
+    contentHash: de82bd2
     note: "PRD §6 — Anthropic Claude Agent SDK subagents reference URL."
 related:
   - /src/memory/handbook/glossary.md
@@ -292,7 +292,7 @@ references:
   - kind: lines
     path: /src/memory/handbook/persona-spec.md
     range: [1, 1]
-    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
+    contentHash: cb3f91d
     note: "Persona Spec Format reference."
 ---
 

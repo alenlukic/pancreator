@@ -15,47 +15,47 @@ references:
   - kind: lines
     path: src/inbox/archive/in/172991_05-15-26/68576_0457_compliance-tests.md
     range: [1, 10]
-    contentHash: d1c2765a013eb9296690f516031f8e04dc1228b355a9dc97b92f83b289988a64
+    contentHash: d1c2765
     note: Human directive that defines compliance-test scope and severity routing.
   - kind: lines
     path: docs/PRD.md
     range: [633, 649]
-    contentHash: 6a838ec1879ea8c1c83dc5c4dd24618637ff3f7522043775cc123f3751b18f37
+    contentHash: 6a838ec
     note: Intake-stage loop cap and human-approval gate constraints.
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [222, 235]
-    contentHash: aae7388df950d4aa27ab2eda452cabcc4e746875e7dcfa21565116b4d45344dd
+    contentHash: aae7388
     note: Feature-folder and Spec Kit v0.8 path conventions.
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-01.md
     range: [1, 30]
-    contentHash: 31a70528685506d06e58660095b3024e87844a14cbeee56f55445bbcb976e77c
+    contentHash: 31a7052
     note: Operator clarifications that resolve intake round-01 questions.
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-02.md
     range: [1, 17]
-    contentHash: 79664d8a4f2bd9cf076104398d85f644b85e390ee68e1fae76b98a976dc07585
+    contentHash: 79664d8
     note: Interim canonical fallback that resolves blocked gate identifiers.
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-03-approval.md
     range: [1, 8]
-    contentHash: bff1c881dfd10428cf5a4d3a4c74f7399e6dcb5b42ec97595b172687a9bf8452
+    contentHash: bff1c88
     note: Initial human approval artifact that authorizes intake exit to plan.
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-04-human-reject.md
     range: [1, 17]
-    contentHash: 0baa4c85fd774d946acea02dbfd04cbe496bfcb5035920ff857b18133b13619f
+    contentHash: 0baa4c8
     note: Human rejection artifact that reopens remediation and constrains plan-level corrections.
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-05-human-approve.md
     range: [1, 3]
-    contentHash: 0cabf5918bb2579237b66b49684790342e72ead53fc82e64c428aa69246cfdf7
+    contentHash: 0cabf59
     note: Human approval artifact that closes intake remediation and reaffirms plan handoff.
   - kind: lines
     path: src/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-06-human-approve.md
     range: [1, 3]
-    contentHash: 0cabf5918bb2579237b66b49684790342e72ead53fc82e64c428aa69246cfdf7
+    contentHash: 0cabf59
     note: Human approval artifact that supersedes round 05 and confirms the plan handoff remains approved.
 ---
 

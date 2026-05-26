@@ -54,32 +54,32 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [90, 122]
-    contentHash: a58969b586688e58265bd8928fc703dd88d13197de91013dc1f177531555240e
+    contentHash: a58969b
     note: "AGENTS §5 working agreement: stage-local behavior, no push, and mandatory documentation-impact evaluation."
   - kind: lines
     path: /src/memory/handbook/persona-spec.md
     range: [42, 189]
-    contentHash: dd7848651c23fe65c8fafe6de4f0b31d3c52ea2b32b0cba66947a75c0f7500a9
+    contentHash: dd78486
     note: "Persona format, required sections, and Cursor projection contract."
   - kind: lines
     path: /src/memory/handbook/contract-format.md
     range: [43, 122]
-    contentHash: 26db5b0cae692c95b803534bace89724c3a1762d5d0011e00b8abf08533ed155
+    contentHash: 26db5b0
     note: "Contract wrapper and required structural fields used for normalized execution input."
   - kind: lines
     path: /src/memory/handbook/documentation-impact-contract.md
     range: [48, 107]
-    contentHash: bfa82077675a61d913808f3f59a107df44568b71158eeb5e12da53a02869b930
+    contentHash: bfa8207
     note: "Per-task documentation impact decision contract."
   - kind: lines
     path: /src/personas/contract-writer.md
     range: [71, 107]
-    contentHash: 7eb3a92669642ccccc0e5b1b35f1b461ed9733d6a1a5f7678cf207c2eab1f939
+    contentHash: 7eb3a92
     note: "Contract authoring ownership and emitted contract/index outputs."
   - kind: lines
     path: /src/personas/compliance-auditor.md
     range: [111, 176]
-    contentHash: e35b2351236636d52fbeb7fb7370d6ffa39651239b873f7b2a7261d3a8cb9c3f
+    contentHash: e35b235
     note: "Compliance report and remediation summary artifacts accepted as normalization inputs."
 ---
 

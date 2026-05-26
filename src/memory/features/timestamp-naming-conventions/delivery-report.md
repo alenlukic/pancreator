@@ -120,7 +120,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "0662fb4ef86ce063f34f4c0419d54f62c725844d0f4d7e3ece348cfd7f36da8e"
+  "contentHash": "0662fb4"
 }
 ```
 
@@ -419,7 +419,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "0662fb4ef86ce063f34f4c0419d54f62c725844d0f4d7e3ece348cfd7f36da8e"
+  "contentHash": "0662fb4"
 }
 ```
 
@@ -611,7 +611,7 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
   "kind": "lines",
   "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "0662fb4ef86ce063f34f4c0419d54f62c725844d0f4d7e3ece348cfd7f36da8e"
+  "contentHash": "0662fb4"
 }
 ```
 

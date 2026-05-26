@@ -12,7 +12,7 @@ references:
   - kind: lines
     path: src/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [237, 246]
-    contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d
+    contentHash: e6c4fcd
     note: "Spec requires runs.md pointers without embedded artifacts."
 related:
   - /src/memory/handbook/run-log-schema.md

@@ -51,32 +51,32 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [506, 506]
-    contentHash: 8e0272a1110f7be1f82c0485d4521dcc1a54eb6e6be4e520fc5dd428dc8fd944
+    contentHash: 8e0272a
     note: "PRD §6 — MVP roster: tech-lead drafts the plan/RFC for any non-trivial change, decomposes into tasks with declared touch-sets, and owns the ADR."
   - kind: lines
     path: docs/PRD.md
     range: [649, 658]
-    contentHash: 147147aa910dca8f18cb8a3e26f42836910089dd90fb0dcb6a342b40a4d8cf3f
+    contentHash: 147147a
     note: "PRD §7 — feature-delivery `plan` stage YAML declaring inputs (`spec.md`, handbook, ADR corpus) and outputs (`plan.md`, `adr-draft.md`, `touch-set.json`)."
   - kind: lines
     path: docs/PRD.md
     range: [113, 121]
-    contentHash: 745a45da3510bfe125f54fbf195458df759601382e6bc1b4e5cdd4e18ff78ad9
+    contentHash: 745a45d
     note: "PRD §3.5 US-1 — Deliver the backend for feature A: the user story whose intake → plan → implement → review → ship sequence the tech-lead anchors at the plan boundary."
   - kind: lines
     path: docs/PRD.md
     range: [801, 806]
-    contentHash: 795854275bb49d19c6a3d4816a8ea69cf4c88302fd59cdc377ea843390185bba
+    contentHash: 7958542
     note: "PRD §7 — touch-set declaration and the conflict-planner interference graph the tech-lead's `touch-set.json` feeds at M2."
   - kind: lines
     path: AGENTS.md
     range: [95, 103]
-    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
+    contentHash: e037427
     note: "AGENTS §4/§6 — stage artifacts live under the active run directory emitted by tess and are delegated from the handoff card."
   - kind: lines
     path: src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts
     range: [238, 247]
-    contentHash: fe3c1b123df997a37f1ab60d4de59bebaebc6a25e5842d4ee19c9e6d5bee52ef
+    contentHash: fe3c1b1
     note: "feature-delivery run creation derives canonical day/task paths from makeDayDir and makeTaskId; planners must not invent alternatives."
 ---
 

@@ -7,62 +7,62 @@ references:
   - kind: lines
     path: src/inbox/in/inbox_convention_migration.md
     range: [1, 2]
-    contentHash: 9e48b26756b8b8546e666b7ece34e0a83e681c039da715cfcd06e808cf831c2d
+    contentHash: 9e48b26
     note: Operator directive states inbox SHALL mirror work directory conventions.
   - kind: lines
     path: docs/PRD.md
     range: [641, 648]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: feature-delivery intake outputs canonical spec and uses human_approval gate.
   - kind: lines
     path: AGENTS.md
     range: [107, 110]
-    contentHash: b8b1d4afc3bb6810867b17d4c89681d832616f4f13747433782f9e74c7edf7b8
+    contentHash: b8b1d4a
     note: Operator sandbox notes/ SHALL stay off-limits to agents during any migration.
   - kind: lines
     path: AGENTS.md
     range: [189, 191]
-    contentHash: b8b1d4afc3bb6810867b17d4c89681d832616f4f13747433782f9e74c7edf7b8
+    contentHash: b8b1d4a
     note: Workspace map lists canonical inbox subtree roots versus notes/.
   - kind: lines
     path: src/memory/handbook/inbox-lifecycle.md
     range: [67, 75]
-    contentHash: 68ffb4d8c8b8ced312c1340a9fe6e613230bdf4cc2ead48e2fccb186170a31f8
+    contentHash: 68ffb4d
     note: Canonical inbox locations including archive/in/ and notes/ exclusion rules.
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [252, 258]
-    contentHash: e5f5ecda71b648e008525e8cae2c0ebb15994d581bc434788d6f77f3b9e996a3
+    contentHash: e5f5ecd
     note: Glossary defines Inbox layout and Spec Kit alignment for feature folders.
   - kind: lines
     path: src/memory/features/timestamp-naming-conventions/spec.md
     range: [54, 76]
-    contentHash: 94a67b588ec8dbd7a363ccf534f2605f111d61be22d507a030936efbb62d0ccf
+    contentHash: 94a67b5
     note: Ratified UTC, FDS, SID, and work day plus task subdirectory naming tokens.
   - kind: lines
     path: src/memory/features/timestamp-naming-conventions/spec.md
     range: [80, 84]
-    contentHash: 94a67b588ec8dbd7a363ccf534f2605f111d61be22d507a030936efbb62d0ccf
+    contentHash: 94a67b5
     note: Prior ratified threads layout keeps a per-feature parent; this Feature relocates under day-first directories during migration.
   - kind: lines
     path: src/internal/tools/migrate-timestamp-naming.mjs
     range: [270, 302]
-    contentHash: b2d4c13e60075d84abf509dca3b442241179810a7546bbe2817b2bce984f4075
+    contentHash: b2d4c13
     note: Current planner renames inbox basenames inside flat parents; inbox nesting SHALL land in a separate module per operator decision.
   - kind: lines
     path: src/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml
     range: [1, 9]
-    contentHash: 5a02d2d3ab70b22dfd3116820600a043f15d8066541725306bdff5117937ca72
+    contentHash: 5a02d2d
     note: Ratified timestamp selection precedence used by migration planning.
   - kind: lines
     path: src/internal/packages/@tesseract/inbox/src/file-inbox.ts
     range: [44, 49]
-    contentHash: 9338ed58b26303394d1579301f05eb5d7e676ee5ab6bac3b970fd4dee7b9e12b
+    contentHash: 9338ed5
     note: Inbox runtime currently rejects nested relative paths; compatibility work SHALL precede nesting enforcement.
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [60, 76]
-    contentHash: afdc2a6ae4e9faf7610de385a37c0455434317b85bcc15b1e7748fe3f0fa703c
+    contentHash: afdc2a6
     note: Layer 1 requires one RFC 2119 keyword and one EARS form per normative clause.
 ---
 

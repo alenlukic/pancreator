@@ -10,7 +10,7 @@ metadata:
     - kind: lines
       path: AGENTS.md
       range: [124, 134]
-      contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
+      contentHash: e037427
       note: §6.1 Compliance-run trigger guidance covers manual on-demand cadence.
 stages:
   - id: scan

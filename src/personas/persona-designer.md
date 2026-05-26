@@ -46,12 +46,12 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [793, 891]
-    contentHash: 407515511ec3c8c7f3c751483812d689df47e939d0fe3bdeb59d895d65e1eb47
+    contentHash: 4075155
     note: "PRD §6 — Subagent Persona Roster + Anthropic 16-field example"
   - kind: lines
     path: docs/PRD.md
     range: [499, 553]
-    contentHash: 0f5b18ee8e82eb58792c211127aa067ead24fa99c7a5762cebfb64b0024e1603
+    contentHash: 0f5b18e
     note: "PRD §4.6 Layer 1 lint rules (applied to body prose)"
 ---
 

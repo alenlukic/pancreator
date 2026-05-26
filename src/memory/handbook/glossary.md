@@ -13,17 +13,17 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [250, 289]
-    contentHash: acca2e3f9a67c2aab2bb44d032b395a090c65b03317195693f6c8491a6864e5b
+    contentHash: acca2e3
     note: "PRD §4 — Core Concepts (Glossary). Mirrored and extended here."
   - kind: lines
     path: docs/PRD.md
     range: [908, 966]
-    contentHash: 0c3ffe7503262992a168caff37f0565684d8c0a23a0c76ea565867b33563cdac
+    contentHash: 0c3ffe7
     note: "PRD §8 — Memory Architecture (memory-tier nouns)."
   - kind: lines
     path: docs/PRD.md
     range: [858, 905]
-    contentHash: 30f1a107eafbcdd71f67d539db18e10a508059f169beafe4d269afbd87813fd9
+    contentHash: 30f1a10
     note: "PRD §7 — Intervention Conventions (lever vocabulary)."
 related:
   - /src/memory/handbook/persona-spec.md

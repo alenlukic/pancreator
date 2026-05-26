@@ -19,102 +19,102 @@ references:
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [29, 49]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive Problem section motivates the cache-read-volume reduction goal.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [51, 61]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive Goal section names the optimization targets and preservation constraints.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [63, 69]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive Non-goals section bounds the feature scope.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [73, 110]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive §1 specifies the .cursorindexingignore file content and the .gitignore reversal.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [112, 149]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive §2 specifies the Cursor rule audit and the tesseract-engineer glob narrowing example.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [151, 177]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive §3 specifies the new context-economy handbook page and the index.md routing entry.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [179, 194]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive §4 specifies docs/PRD.summary.md and docs/PRD.index.md as summary-first retrieval surfaces.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [196, 214]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive §5 names AGENTS.md slimming as a ratification-bound activity that preserves protected semantics.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [216, 226]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive §6 forbids deletion of src/work/** and routes future bulk artifacts toward .local/ or ignored subpaths.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [228, 253]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive §7 specifies the src/internal/tools/context-budget-report.mjs estimator scope and the chars-over-4 labeling rule.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [255, 268]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive §8 lists the documentation-impact updates the delivery slice MUST evaluate.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [270, 287]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive Acceptance criteria items 1-14 anchor the gate semantics this spec mirrors.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [289, 297]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive Manual validation section enumerates the post-implementation operator checks.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [299, 305]
-    contentHash: 5efe3cc136cb8a8066cd90098b976463ca1197e20f6dda99e1592891ed29f5f0
+    contentHash: 5efe3cc
     note: Directive Implementation guidance authorizes the no-clarifying-questions intake path the analyst followed.
   - kind: lines
     path: docs/PRD.md
     range: [641, 648]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: PRD §7 declares loop.max_rounds 5 and gate human_approval for the feature-delivery intake stage.
   - kind: lines
     path: docs/PRD.md
     range: [921, 931]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: PRD §8 declares the per-Feature folder layout aligned with Spec Kit v0.8 (spec.md, plan.md, tasks.md).
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [222, 235]
-    contentHash: 086c42db642ef209b84848a3b6e9a77ea3c2bfd4adf7deaaba3d4875862118fe
+    contentHash: 086c42d
     note: Glossary §5 defines Artifact, Feature, Inbox, and Spec Kit alignment as the per-feature folder convention.
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [252, 256]
-    contentHash: 086c42db642ef209b84848a3b6e9a77ea3c2bfd4adf7deaaba3d4875862118fe
+    contentHash: 086c42d
     note: Glossary §6 defines AGENTS.md as the primary cross-tool contract per the LF Agentic AI Foundation standard.
   - kind: lines
     path: AGENTS.md
     range: [78, 95]
-    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
+    contentHash: e037427
     note: AGENTS.md §5 declares the working agreement constraints the spec preserves through every change.
   - kind: lines
     path: src/memory/handbook/inbox-lifecycle.md
     range: [79, 100]
-    contentHash: 0b097cab20855a608ba021d0e1810f1dcaac004eaea2978817d7d5e0e4c679e6
+    contentHash: 0b097ca
     note: Inbox-lifecycle §1a confirms /src/inbox/notes/ is operator-only and out of scope for any Cursor indexing change.
 ---
 

@@ -13,42 +13,42 @@ references:
   - kind: lines
     path: src/memory/adr/0003-inbox-lifecycle-and-archival.md
     range: [74, 95]
-    contentHash: aa84cf148c94698899c74f51be5255337290b1ef08e84aedf916b89f19e757fd
+    contentHash: aa84cf1
     note: "ADR-0003 decision defines the required lifecycle states and manual-versus-future automation boundary."
   - kind: lines
     path: docs/PRD.md
     range: [267, 267]
-    contentHash: e7226f12abc886237b6ac1510e8ce51f9aaaf0e24c11376107d50bd468359c59
+    contentHash: e7226f1
     note: "PRD glossary defines Inbox as a bidirectional queue with in/out/thread locations."
   - kind: lines
     path: docs/PRD.md
     range: [1037, 1037]
-    contentHash: 1b196129be3b8ea9d2f52cee6ea204bcbcbb0d970f0de6810e4dd0b8ae627b1e
+    contentHash: 1b19612
     note: "PRD CLI surface includes inbox management verbs."
   - kind: lines
     path: AGENTS.md
     range: [101, 103]
-    contentHash: 6fc43bd7967303a348658906c91b158737259088f5200c9e9d3ea420afb08ce6
+    contentHash: 6fc43bd
     note: "AGENTS defines `/src/inbox/in/` and `/src/inbox/out/` as canonical operational queue paths."
   - kind: lines
     path: AGENTS.md
     range: [130, 130]
-    contentHash: 84615919c53e378e2649c695bb306d0e08903a59e843af757757cfa1b54b7d3f
+    contentHash: 8461591
     note: "AGENTS workspace map defines `src/inbox/{in,out,threads}/`."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [49, 53]
-    contentHash: 214aec65730e2b02accc8be23f009a16d98509e930d3bff9bbc1389cd612a582
+    contentHash: 214aec6
     note: "Bootstrap scaffold includes inbox directories in the required repository substrate."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [60, 65]
-    contentHash: 6ea08ca23f1241425af057fc20324c9d18c456de7eaf1e25c5b0b56c4fcdb4d4
+    contentHash: 6ea08ca
     note: "Layer 1 requires RFC 2119 keywords in normative prose."
   - kind: lines
     path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
     range: [79, 87]
-    contentHash: fa0e81be4c4f848be79a91f7e0642a64f0cbd5b419cc415c36700119f1149468
+    contentHash: fa0e81b
     note: "Operator round-1 answer Q7 assigns prefix ownership to the active processing agent."
 related:
   - /src/memory/adr/0003-inbox-lifecycle-and-archival.md
@@ -171,7 +171,7 @@ Where inbox policy names specific personas, this handbook rule SHALL remain
 decoupled from persona identifiers so future roster changes do not invalidate
 the obligation.
 
-Citation: `{kind: lines, path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md, range: [79, 87], contentHash: fa0e81be4c4f848be79a91f7e0642a64f0cbd5b419cc415c36700119f1149468}`.
+Citation: `{kind: lines, path: src/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md, range: [79, 87], contentHash: fa0e81b}`.
 
 ## 3d - Empty directory hygiene
 

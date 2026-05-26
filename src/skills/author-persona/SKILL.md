@@ -18,12 +18,12 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [793, 950]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §6 — Subagent Persona Roster + reviewer.md exemplar + ensemble pattern"
   - kind: lines
     path: docs/PRD.md
     range: [302, 305]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §4 glossary — Persona Spec Format definition"
 ---
 

@@ -19,27 +19,27 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [505, 505]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §6 — MVP roster: intake-analyst runs the spec-canonicalization sub-pipeline, ingests informal markdown, conducts a clarifying-question dialogue through the inbox at most N rounds, and emits a canonical Engineering Spec."
   - kind: lines
     path: docs/PRD.md
     range: [113, 121]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §3.5 US-1 — Deliver the backend for feature A: the user story whose intake step this skill owns, with the coordinating agent clearing up ambiguities through the inbox."
   - kind: lines
     path: docs/PRD.md
     range: [641, 648]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §7 — feature-delivery `intake` stage YAML declaring inputs `[inbox_message]`, outputs `[/src/memory/features/<id>/spec.md]`, `loop.max_rounds: 5`, and `gate: human_approval`."
   - kind: lines
     path: docs/PRD.md
     range: [921, 931]
-    contentHash: 2ce8e5cbeed520c3e1d54dd8d27fc07a97caa0cfe23ff452082e54048ad1b7f5
+    contentHash: 2ce8e5c
     note: "PRD §8 — Memory architecture: per-Feature folder layout where the canonical spec is `spec.md` per Spec Kit v0.8 alignment."
   - kind: lines
     path: AGENTS.md
     range: [212, 212]
-    contentHash: e0374274c6e58a21d247230cb4da6f2d24a2997c6666d6cd56ad13e9dd03015a
+    contentHash: e037427
     note: "AGENTS §6.8 — Active Feature promotion at intake; closure clears on archive."
 ---
 

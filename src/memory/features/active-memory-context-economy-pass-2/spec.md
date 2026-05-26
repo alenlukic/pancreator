@@ -39,175 +39,175 @@ references:
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [1, 33]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Operator-authored frontmatter declares feature id, owner, stage, and reference set for the pass-2 directive."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [37, 60]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Context section quantifies the prior cache-read baseline near 770000 tokens after pass 1 against the prior 2200000-token average."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [62, 75]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Problem section motivates the explicit memory-tier separation that pass 2 introduces."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [89, 97]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Non-goals enumerate preservation constraints across PRD, BOOTSTRAP, memory, work, personas, and Cursor agents."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [101, 229]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §1 defines the active, durable, archival, internal, and generated-machine memory-tier taxonomy."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [231, 252]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §2 specifies the active-memory directory layout and the 1000-word per-file plus 5000-word tier-wide soft budgets."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [254, 276]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §3 specifies safe path classification with a no-unsafe-physical-migration constraint."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [278, 294]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §4 specifies the new ADR for active versus archival memory at the next available ADR sequence number."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [296, 311]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §5 specifies the context-economy and handbook index updates that route to active-memory and memory-tier guidance."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [313, 352]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §6 defines `simple task mode` default behavior and escalation criteria."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [353, 376]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §7 specifies further AGENTS slimming with an approximately 900-word soft budget and the 00-agents-md.mdc minimization."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [378, 402]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §8 specifies the second Cursor rule audit covering tesseract-engineer, persona-designer, intake-analyst, supervisor, tech-lead, and tech-writer."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [403, 426]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §9 specifies the seven memory-tier groups the context-budget report MUST emit."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [428, 444]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §10 specifies the .cursorindexingignore policy alignment with the new tier model."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [446, 457]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §11 specifies the model and context escalation guidance."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [459, 478]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Required implementation §12 enumerates the documentation-impact surfaces and the backlog file the Feature MUST update."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [480, 503]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Acceptance criteria items 1 through 20 anchor the gate semantics this spec mirrors."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [505, 515]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Manual validation section enumerates the seven post-implementation operator checks."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [517, 535]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Desired outcome section declares the directional cache-read token bands for routine, medium, and large tasks."
   - kind: lines
     path: src/memory/features/cursor-token-economy/spec.md
     range: [121, 224]
-    contentHash: f44cc8ebe621e6c9aadc207abde8026773fe9fdc27012957c43a7c861f6f3449
+    contentHash: f44cc8e
     note: "Pass-1 spec defines the .cursorindexingignore policy, summary-first PRD reads, the context-budget tool, and the documentation-impact obligations that pass 2 extends."
   - kind: lines
     path: AGENTS.md
     range: [157, 189]
-    contentHash: a29b04a32dc62da25ff1af024cca7ff74cc5fe3c76a2be301a7e391c4b56a0e1
+    contentHash: a29b04a
     note: "AGENTS workspace map block whose memory and work entries pass 2 extends with the new active-memory tier and tier classification annotations."
   - kind: lines
     path: AGENTS.md
     range: [92, 130]
-    contentHash: a29b04a32dc62da25ff1af024cca7ff74cc5fe3c76a2be301a7e391c4b56a0e1
+    contentHash: a29b04a
     note: "AGENTS working-agreement block whose protected semantics pass 2 preserves through routing pointers when the directive slims AGENTS further."
   - kind: lines
     path: src/memory/handbook/context-economy.md
     range: [29, 73]
-    contentHash: d890e2c0af0496eaaf46407efeb3453c65f24b523344e50932e63e4df5e341e6
+    contentHash: d890e2c
     note: "Existing context-economy policy that pass 2 extends with memory-tier routing, the `simple task mode` definition, and escalation guidance."
   - kind: lines
     path: src/memory/handbook/index.md
     range: [53, 70]
-    contentHash: 3130f782fdaf2cadad663c8a00d85d3d5cc71a95aa62e5a0af34fbc349f9276d
+    contentHash: 3130f78
     note: "Handbook routing table whose row set pass 2 extends with active-memory and memory-tier intents."
   - kind: lines
     path: src/internal/tools/context-budget-report.mjs
     range: [1, 1]
-    contentHash: 108ed9fbf0d6efa2115b6170f96ced41ad1b09a34d9a1732eb67c5bd947b2d36
+    contentHash: 108ed9f
     note: "Existing context-budget reporter pass 2 extends with seven memory-tier groups."
   - kind: lines
     path: .cursorindexingignore
     range: [1, 1]
-    contentHash: bdb0a62302d0b4afc5f44426a4c62e409e38bdd265e6997455887ecbdf27b876
+    contentHash: bdb0a62
     note: "Existing Cursor indexing-ignore file pass 2 audits and extends to align with the new memory-tier taxonomy."
   - kind: lines
     path: src/memory/handbook/inbox-lifecycle.md
     range: [79, 100]
-    contentHash: bb2a660a67aaa86d36890a0c3c8dcc2d995b68334a14b42546c44c7dae496f29
+    contentHash: bb2a660
     note: "Operator-sandbox immunity rule excludes /src/inbox/notes/ from agent traversal across every pass 2 edit."
   - kind: lines
     path: src/memory/handbook/policy-compliance-contract.md
     range: [47, 98]
-    contentHash: 971f594cd9fb1c1cbc9da86b6104d6fff81b9c723cd9266766687b63277a3d67
+    contentHash: 971f594
     note: "Policy-compliance contract requires `/src/work/<day>/<task-id>/policy-compliance.json` for non-`src/work/` structural changes."
   - kind: lines
     path: src/memory/handbook/documentation-impact-contract.md
     range: [42, 102]
-    contentHash: 38ed8213e11f7aa1f53d46588cc55cad7da746016c52aa1747f03d8b97d16248
+    contentHash: 38ed821
     note: "Documentation-impact contract requires the post-task decision record this Feature satisfies."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [50, 158]
-    contentHash: 7c6ace0a8005694c3815cdb7f278ccd44dde5e05717f264463249b6d69f672f5
+    contentHash: 7c6ace0
     note: "Layer 1 style discipline (RFC 2119, EARS, atomic, active voice, quantification, weasel-word ban, glossary, sentence-length cap, dual-anchor citations) governs every clause in this spec."
 ---
 
 # Spec
 
 This Feature SHALL extend the pass-1 Cursor token-economy controls cited at
-`{kind: lines, path: src/memory/features/cursor-token-economy/spec.md, range: [121, 224], contentHash: f44cc8ebe621e6c9aadc207abde8026773fe9fdc27012957c43a7c861f6f3449}`
+`{kind: lines, path: src/memory/features/cursor-token-economy/spec.md, range: [121, 224], contentHash: f44cc8e}`
 with an explicit memory-tier taxonomy, a new `src/memory/active/` operator surface,
 a `simple task mode`, narrower always-loaded context, narrower remaining
 Cursor rule triggers, per-tier context-budget reporting, an updated
 indexing-ignore policy, and explicit model and context escalation guidance per
 the directive at
-`{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [99, 478], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+`{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [99, 478], contentHash: fb1ac76}`.
 
 This Feature SHALL preserve every Persona, Skill, Pipeline, Spec Contract,
 documentation-impact, policy-compliance, and inbox-lifecycle obligation cited
 at
-`{kind: lines, path: AGENTS.md, range: [92, 130], contentHash: a29b04a32dc62da25ff1af024cca7ff74cc5fe3c76a2be301a7e391c4b56a0e1}`.
+`{kind: lines, path: AGENTS.md, range: [92, 130], contentHash: a29b04a}`.
 
 This Feature SHALL keep `docs/PRD.md`, `docs/BOOTSTRAP.md`, the `src/memory/` tree, the
 `src/work/` tree, the `src/personas/` tree, and the `.cursor/agents/` tree reachable
 for explicit human and agent reads per the non-goals at
-`{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [89, 97], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+`{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [89, 97], contentHash: fb1ac76}`.
 
 ## Acceptance criteria
 
@@ -219,7 +219,7 @@ for explicit human and agent reads per the non-goals at
   define the five tiers `active memory`, `durable memory`, `archival memory`,
   `internal operating content`, and `generated machine artifacts` per the
   directive at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [101, 229], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [101, 229], contentHash: fb1ac76}`.
 - When the Feature authors the memory-tier page, the page MUST list the
   current expected location for each tier.
 - When the Feature authors the memory-tier page, the page MUST state that
@@ -267,7 +267,7 @@ for explicit human and agent reads per the non-goals at
   the Feature MUST defer the migration unless the delivery slice ships
   reference updates, compatibility shims, tests, a migration manifest, and
   rollback notes per the directive at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [254, 276], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [254, 276], contentHash: fb1ac76}`.
 - When the Feature defers physical migration, the Feature MUST record the
   decision as an explicit compatibility deferral in the delivery slice rather
   than as an undocumented omission.
@@ -283,7 +283,7 @@ for explicit human and agent reads per the non-goals at
   by default, the reason `src/memory/active/**` exists, the active-to-durable
   promotion rule, the archival accessibility rule, and the deferred migrations
   per the directive at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [278, 294], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [278, 294], contentHash: fb1ac76}`.
 
 ### Context-economy and handbook index updates
 
@@ -317,7 +317,7 @@ for explicit human and agent reads per the non-goals at
   canonical definition either in `AGENTS.md`, in
   `src/memory/handbook/context-economy.md`, or in a new dedicated handbook page
   per the directive at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [313, 352], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [313, 352], contentHash: fb1ac76}`.
 - When the Feature defines `simple task mode`, the canonical definition MUST
   enumerate the small-edit, lint, typecheck, build, test, dependency
   inspection, file lookup, mechanical refactor, formatting fix, and
@@ -346,7 +346,7 @@ for explicit human and agent reads per the non-goals at
   task.
 - When the Feature defines `simple task mode` escalation, the page MUST list
   the six escalation triggers enumerated at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [344, 351], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [344, 351], contentHash: fb1ac76}`.
 - When an agent escalates context or model usage out of `simple task mode`,
   the agent MUST summarize the escalation rationale in the run-log entry or
   operator response.
@@ -358,7 +358,7 @@ for explicit human and agent reads per the non-goals at
   map rather than as a briefing.
 - When the Feature reduces `AGENTS.md` prose, the Feature MUST preserve every
   normative semantic cited at
-  `{kind: lines, path: AGENTS.md, range: [92, 130], contentHash: a29b04a32dc62da25ff1af024cca7ff74cc5fe3c76a2be301a7e391c4b56a0e1}`.
+  `{kind: lines, path: AGENTS.md, range: [92, 130], contentHash: a29b04a}`.
 - When the Feature reduces `AGENTS.md` prose, the Feature MUST preserve
   explicit route pointers for the policy-compliance contract, the
   documentation-impact contract, the inbox lifecycle, and the new
@@ -376,7 +376,7 @@ for explicit human and agent reads per the non-goals at
   `tesseract-engineer.mdc`, `persona-designer.mdc`, `intake-analyst.mdc`,
   `supervisor.mdc`, `tech-lead.mdc`, and `tech-writer.mdc` per the directive
   at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [378, 402], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [378, 402], contentHash: fb1ac76}`.
 - When the Feature narrows `.cursor/rules/tesseract-engineer.mdc`, the
   Feature MUST remove `src/personas/**/*.md` from the default activation set
   unless the rule body specifically targets persona authoring.
@@ -422,7 +422,7 @@ for explicit human and agent reads per the non-goals at
   subset, the explicit-read-only subset, and the active-memory subset.
 - When the Feature emits a token estimate, the report MUST label the
   `chars / 4` value as approximate per the directive at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [422, 426], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [422, 426], contentHash: fb1ac76}`.
 - When the Feature ships the report extensions, the Feature MUST update or
   add tests at `tests/context-budget-report.test.mjs` that cover the new
   per-tier grouping behavior.
@@ -455,7 +455,7 @@ for explicit human and agent reads per the non-goals at
 - When the Feature documents escalation guidance, the Feature MUST publish
   one section in either `src/memory/handbook/context-economy.md` or `AGENTS.md`
   per the directive at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [446, 457], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [446, 457], contentHash: fb1ac76}`.
 - When the Feature documents escalation guidance, the section MUST state that
   Opus-class models are not the default for routine mechanical work.
 - When the Feature documents escalation guidance, the section MUST state that
@@ -481,11 +481,11 @@ for explicit human and agent reads per the non-goals at
 - When the Feature defers a documentation-impact update, the Feature MUST
   record the deferral rationale and one backlog linkage per the
   documentation-impact contract cited at
-  `{kind: lines, path: src/memory/handbook/documentation-impact-contract.md, range: [42, 102], contentHash: 38ed8213e11f7aa1f53d46588cc55cad7da746016c52aa1747f03d8b97d16248}`.
+  `{kind: lines, path: src/memory/handbook/documentation-impact-contract.md, range: [42, 102], contentHash: 38ed821}`.
 - When the Feature stages every governed change, the Feature MUST stage one
   policy-compliance artifact at `/src/work/<day>/<task-id>/policy-compliance.json` per
   the policy-compliance contract cited at
-  `{kind: lines, path: src/memory/handbook/policy-compliance-contract.md, range: [47, 98], contentHash: 971f594cd9fb1c1cbc9da86b6104d6fff81b9c723cd9266766687b63277a3d67}`.
+  `{kind: lines, path: src/memory/handbook/policy-compliance-contract.md, range: [47, 98], contentHash: 971f594}`.
 
 ### Preservation invariants
 
@@ -501,7 +501,7 @@ for explicit human and agent reads per the non-goals at
 - When the Feature reads, traverses, or cites repository content, the
   Feature MUST NOT touch any path under `/src/inbox/notes/` per the operator
   sandbox rule cited at
-  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [79, 100], contentHash: bb2a660a67aaa86d36890a0c3c8dcc2d995b68334a14b42546c44c7dae496f29}`.
+  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [79, 100], contentHash: bb2a660}`.
 
 ### Delivery report and operator validation
 
@@ -510,10 +510,10 @@ for explicit human and agent reads per the non-goals at
   Cursor requires before merge.
 - When the Feature stages the delivery report, the report MUST request the
   seven operator post-implementation actions enumerated at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [505, 515], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [505, 515], contentHash: fb1ac76}`.
 - When the Feature stages the delivery report, the report MUST cite the
   directional cache-read token bands declared at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [517, 535], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [517, 535], contentHash: fb1ac76}`
   as informational targets rather than as hard correctness gates.
 
 ## Out of scope
@@ -536,7 +536,7 @@ for explicit human and agent reads per the non-goals at
   shims, tests, a migration manifest, and rollback notes.
 - This Feature SHALL NOT redesign the canonical inbox lifecycle states
   defined at
-  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [102, 113], contentHash: bb2a660a67aaa86d36890a0c3c8dcc2d995b68334a14b42546c44c7dae496f29}`.
+  `{kind: lines, path: src/memory/handbook/inbox-lifecycle.md, range: [102, 113], contentHash: bb2a660}`.
 
 ## Human ratification required
 
@@ -546,7 +546,7 @@ because each change touches a protected surface.
 - When the Feature edits `AGENTS.md` to slim verbose operational detail, the
   human MUST ratify the diff before merge per the AGENTS self-protection rule
   at
-  `{kind: lines, path: AGENTS.md, range: [203, 207], contentHash: a29b04a32dc62da25ff1af024cca7ff74cc5fe3c76a2be301a7e391c4b56a0e1}`.
+  `{kind: lines, path: AGENTS.md, range: [203, 207], contentHash: a29b04a}`.
 - When the Feature narrows the `globs` field on any `.cursor/rules/*.mdc`
   file mirrored from a Persona spec, the human MUST ratify the diff because
   the mirror parity rule binds the Persona spec and the Cursor projection
@@ -565,19 +565,19 @@ slot the directive grants the implementation.
   an `AGENTS.md` section, a new `src/memory/handbook/context-economy.md` section,
   or a new dedicated handbook page. The directive authorizes the
   implementation to choose at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [315, 318], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [315, 318], contentHash: fb1ac76}`.
 - D2. Choose the next available ADR sequence number for
   `src/memory/adr/000X-active-vs-archival-memory.md`. The directive authorizes the
   implementation to choose at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [282, 284], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [282, 284], contentHash: fb1ac76}`.
 - D3. Choose whether to ship a lightweight active-memory budget warning
   alongside the soft caps. The directive authorizes the implementation to
   choose at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [248, 252], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [248, 252], contentHash: fb1ac76}`.
 - D4. Choose the canonical surface for model-and-context escalation guidance:
   `src/memory/handbook/context-economy.md` or `AGENTS.md`. The directive
   authorizes the implementation to choose at
-  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [446, 449], contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051}`.
+  `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [446, 449], contentHash: fb1ac76}`.
 - D5. Choose whether `AGENTS.md` reaches the 900-word soft budget within
   this delivery slice. When the budget is not reached, the plan stage
   records the rationale.

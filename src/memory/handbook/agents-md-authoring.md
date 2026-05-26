@@ -14,32 +14,32 @@ references:
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [57, 71]
-    contentHash: 51973c1e32036385d02d823c1e19393494fbbd2d0741be12aa8e4d55660de80e
+    contentHash: 51973c1
     note: "Phase 0b requires `/src/memory/handbook/agents-md-authoring.md` as a handbook seed."
   - kind: lines
     path: AGENTS.md
     range: [3, 6]
-    contentHash: fcc9af63e232ebccfcc0ce86f23d03c532727ce46af2dcd869b70748adb79810
+    contentHash: fcc9af6
     note: "AGENTS defines itself as the primary cross-tool contract and declares symlink surfaces."
   - kind: lines
     path: AGENTS.md
     range: [16, 30]
-    contentHash: d3e4a75dac43a7f9fe62c9f7fd25912ee98d94c932465f743d26eff17400bd08
+    contentHash: d3e4a75
     note: "AGENTS canon table defines mandatory handbook references."
   - kind: lines
     path: AGENTS.md
     range: [55, 71]
-    contentHash: 1941cd3a9be67964e0d9dfe9de6b207382fe89299504f6b13aebf27ddc25bed1
+    contentHash: 1941cd3
     note: "AGENTS delegation rule defines when work is delegated versus performed directly."
   - kind: lines
     path: AGENTS.md
     range: [75, 100]
-    contentHash: 28c22c2e763b67c9b41fb4ac9df82cd0de3eb3a632142bc4399c8b40ec9a200e
+    contentHash: 28c22c2
     note: "AGENTS working agreement defines non-negotiable operating constraints."
   - kind: lines
     path: AGENTS.md
     range: [158, 160]
-    contentHash: 0dd1d3f2c5d1db206bc6da3c346b13c101655a6dacffc6c24072fd769e4c20a0
+    contentHash: 0dd1d3f
     note: "AGENTS changes require inbox item plus explicit human ratification."
 related:
   - /AGENTS.md
