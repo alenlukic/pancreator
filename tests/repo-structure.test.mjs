@@ -241,3 +241,40 @@ test("Cursor implementation rules avoid broad src-wide activation", () => {
   assert.match(coderRule, /src\/internal\/packages\/\*\*\/src\/\*\*\/\*/);
   assert.match(coderRule, /tests\/\*\*\/\.mjs|tests\/\*\*\/\*\.mjs/);
 });
+
+test("tess deferral emits JSON envelopes without stub payloads", async () => {
+  const cliRun = read("src/internal/packages/@tesseract/cli/src/run.ts");
+  const tessExecute = read("src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts");
+  assert.doesNotMatch(cliRun, /status:\s*"stub"/u);
+  assert.doesNotMatch(tessExecute, /status:\s*"stub"/u);
+
+  const { parseAndRun, TESS_DEFERRED_EXIT_CODE } = await import("@tesseract/cli");
+  const batchTracking =
+    "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md";
+  const initTracking =
+    "src/inbox/in/172981_05-25-26/64500_0605_tess-init-and-create-tesseract-install-paths.md";
+  const matrix = [
+    { argv: ["init"], tracking: initTracking },
+    { argv: ["approve"], tracking: batchTracking },
+    { argv: ["memory"], tracking: batchTracking },
+    { argv: ["contracts"], tracking: batchTracking },
+    { argv: ["lint"], tracking: batchTracking },
+    { argv: ["run", "not-a-pipeline"], tracking: batchTracking },
+    { argv: ["status"], tracking: batchTracking },
+  ];
+  for (const { argv, tracking } of matrix) {
+    const chunks = [];
+    const code = await parseAndRun(argv, {
+      repoRoot: ROOT,
+      writeOut: (chunk) => chunks.push(chunk),
+    });
+    assert.equal(code, TESS_DEFERRED_EXIT_CODE);
+    const emitted = chunks.join("");
+    assert.ok(!emitted.includes('"stub"'));
+    assert.match(emitted, /"status":\s*"deferred"/);
+    const env = JSON.parse(emitted);
+    assert.equal(env.status, "deferred");
+    assert.match(env.milestone, /^M[123]$/);
+    assert.equal(env.tracking_intake, tracking);
+  }
+});

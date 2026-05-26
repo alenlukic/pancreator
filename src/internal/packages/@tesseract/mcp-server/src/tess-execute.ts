@@ -17,8 +17,68 @@ export interface TessExecutionContext {
   readonly repoRoot: string;
 }
 
-function stubPayload(command: string, summary: string): Record<string, unknown> {
-  return { command, status: "stub", summary };
+export interface TessDeferredEnvelope {
+  readonly status: "deferred";
+  readonly verb: string;
+  readonly milestone: "M1" | "M2" | "M3";
+  readonly tracking_intake: string;
+  readonly manual_workaround: string;
+}
+
+export class TessDeferredToolError extends Error {
+  readonly envelope: TessDeferredEnvelope;
+
+  constructor(envelope: TessDeferredEnvelope) {
+    super(JSON.stringify(envelope, null, 2));
+    this.name = "TessDeferredToolError";
+    this.envelope = envelope;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+export function deferredEnvelope(payload: Omit<TessDeferredEnvelope, "status">): TessDeferredEnvelope {
+  return { status: "deferred", ...payload };
+}
+
+/**
+ * MCP deferred-tool `tracking_intake` routing: mirror `@tesseract/cli/src/run.ts`
+ * (`defaultDeferredTrackingIntake` uses the same inbox paths keyed by CLI verb /
+ * MCP tool).
+ */
+export function deferredToolTrackingIntake(name: TessToolName): string {
+  if (name === "tess.init") {
+    return "src/inbox/in/172981_05-25-26/64500_0605_tess-init-and-create-tesseract-install-paths.md";
+  }
+  return "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md";
+}
+
+export function tessToolEnvelope(name: TessToolName, milestone: TessDeferredEnvelope["milestone"]): TessDeferredEnvelope {
+  const workaroundByTool: Record<string, string> = {
+    "tess.init":
+      "Bootstrap `tess init` remains deferred pending install-path convergence; scaffold the substrate manually via `docs/M1.index.md` and adopt flows until the wired command lands.",
+    "tess.run":
+      "Only the `feature-delivery` pipeline is executable in bootstrap Phase 4; start runs with `tess feature new <inbox-path>` followed by persona-driven `tess advance` staging.",
+    "tess.feature":
+      "Expose only `feature new`/`run feature-delivery` via the tess CLI shell today; MCP `tess.feature` stays deferred until the tool schema carries the richer argument surface.",
+    "tess.status":
+      "Provide a Phase-4 task id to `tess status <task-id>` until aggregate workspace summaries are modeled for the MCP tool.",
+    "tess.approve":
+      "`tess approve` stays gated on `LocalUserAuthorizer` wiring in Milestone 3 ratification; approve phase exits manually inside the supervising operator session documented in docs/PRD.md.",
+    "tess.memory":
+      "Prefer reading `src/memory/handbook/context-economy.md` plus explicit file reads until MemoryRouter/FileMemoryStore CLI bridging is hardened.",
+    "tess.contracts":
+      "Run compliance descriptors manually under `tests/compliance/` pending the consolidated contract runner surfaced as a CLI verb.",
+    "tess.lint":
+      "Run `pnpm lint` and the Phase-0 scaffold checks referenced in CI until this verb wraps ESLint/policy bundles uniformly.",
+  };
+  return deferredEnvelope({
+    verb: name,
+    milestone,
+    tracking_intake: deferredToolTrackingIntake(name),
+    manual_workaround:
+      workaroundByTool[name] ??
+      "Follow the workaround text in docs/PRD.md for this MCP tool until parity wiring completes.",
+  });
 }
 
 function getString(
@@ -34,7 +94,7 @@ function getString(
 
 /**
  * Runs the same handlers that the `tess` CLI uses for `inbox`, `pause`, `resume`, and `abort`.
- * Other tools return `{ status: \"stub\", summary }` JSON payloads.
+ * Deferred MCP tools emit `TessDeferredToolError`, which the MCP stdio mapper surfaces as a non-success tool response carrying the deferral envelope JSON.
  */
 export async function executeTessTool(
   name: TessToolName,
@@ -83,30 +143,21 @@ export async function executeTessTool(
       return { command: "abort", status: "ok", taskId, reason: reason ?? null };
     }
     case "tess.init":
-      return stubPayload("init", "Greenfield and adopt flows land in Phase 4+.");
+      throw new TessDeferredToolError(tessToolEnvelope("tess.init", "M3"));
     case "tess.run":
-      return stubPayload("run", "Pipeline execution wires through Phase 4+.");
+      throw new TessDeferredToolError(tessToolEnvelope("tess.run", "M2"));
     case "tess.feature":
-      return stubPayload(
-        "feature",
-        "Feature workspace commands land with the delivery pipeline.",
-      );
+      throw new TessDeferredToolError(tessToolEnvelope("tess.feature", "M2"));
     case "tess.status":
-      return stubPayload("status", "Status aggregation lands with the scheduler.");
+      throw new TessDeferredToolError(tessToolEnvelope("tess.status", "M2"));
     case "tess.approve":
-      return stubPayload("approve", "Authorizer integration lands in M3+.");
+      throw new TessDeferredToolError(tessToolEnvelope("tess.approve", "M3"));
     case "tess.memory":
-      return stubPayload(
-        "memory",
-        "MemoryRouter CLI lands with FileMemoryStore hardening.",
-      );
+      throw new TessDeferredToolError(tessToolEnvelope("tess.memory", "M2"));
     case "tess.contracts":
-      return stubPayload("contracts", "Contract runner CLI surfaces land in Phase 4+.");
+      throw new TessDeferredToolError(tessToolEnvelope("tess.contracts", "M2"));
     case "tess.lint":
-      return stubPayload(
-        "lint",
-        "ESLint and policy bundles invoke from CI today; CLI wiring expands later.",
-      );
+      throw new TessDeferredToolError(tessToolEnvelope("tess.lint", "M1"));
     default: {
       const _exhaustive: never = name;
       return _exhaustive;

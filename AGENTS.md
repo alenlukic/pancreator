@@ -207,6 +207,10 @@ this section in your response.
 - Scheduled cadence stays backlog-tracked until runtime scheduler wiring lands;
   agents SHALL NOT assume automatic cadence execution in the first slice.
 
+6. Operators SHALL interpret `tess` JSON envelopes carrying `"status":"deferred"` as the canonical deferral protocol: each deferred verb exits **`125`** and documents `milestone`, `tracking_intake`, and `manual_workaround` in **`src/internal/packages/@tesseract/cli/src/run.ts`**.
+7. Operators SHALL author new **`src/inbox/in/<utc-day>/<sid_hhmm_slug>.md`** directives with **`tess intake new <slug>`**, keeping UTC bucket naming aligned with **`src/memory/handbook/inbox-lifecycle.md`** and **`src/memory/features/timestamp-naming-conventions/spec.md`**.
+8. Operators SHALL converge **`src/memory/active/current.md`** Active Feature bullets, **`status: indexed`** shipped-feature rows, and the managed refresh stamp using **`tess refresh-active-memory [--dry-run]`** whenever those slices drift before governed commits (`src/memory/features/*/index.json` remain the indexed source of truth).
+
 ## 7 — Workspace map
 
 ```

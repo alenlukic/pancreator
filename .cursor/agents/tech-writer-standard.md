@@ -57,10 +57,11 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 ## Retrieval contract
 
 1. Read `AGENTS.md` for the live operating contract.
-2. Read `src/personas/tech-writer.md` for role semantics before performing persona-owned work.
-3. Read `src/memory/handbook/context-economy.md` only when the task requires context-budget decisions.
-4. Read `docs/M1.index.md`, `docs/PRD.index.md`, or `docs/PRD.summary.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md`.
-5. Do not traverse `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, or `src/inbox/threads/**` unless the task explicitly requires active-run handling or archival reconstruction.
+2. Read `src/personas/tech-writer.md` for role semantics before performing persona-owned work. Dual-anchor citations MUST be valid JSON in fenced `json` blocks (or backtick-wrapped pretty JSON per `formatCanonicalJson`); JS object-literal syntax and compact single-line citation blobs are forbidden.
+3. After writing `delivery-report.md`, run `node src/internal/tools/reformat-markdown-citations.mjs` when citations were authored by hand.
+4. Read `src/memory/handbook/context-economy.md` only when the task requires context-budget decisions.
+5. Read `docs/M1.index.md`, `docs/PRD.index.md`, or `docs/PRD.summary.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md`.
+6. Do not traverse `src/work/**`, `src/internal/work_archive/**`, `src/inbox/out/**`, `src/inbox/archive/**`, or `src/inbox/threads/**` unless the task explicitly requires active-run handling or archival reconstruction.
 
 ## Tier guidance
 

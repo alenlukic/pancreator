@@ -15,4 +15,8 @@ export function cliStubVersion(): string {
 }
 
 export type { CliRunOptions } from "./run.js";
-export { parseAndRun } from "./run.js";
+export {
+  parseAndRun,
+  TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
+  TESS_DEFERRED_EXIT_CODE,
+} from "./run.js";

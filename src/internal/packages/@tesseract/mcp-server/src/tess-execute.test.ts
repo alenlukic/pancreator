@@ -7,6 +7,7 @@ import { interventionJournalPath } from "@tesseract/intervention";
 import { describe, expect, it } from "vitest";
 
 import { callTessToolMcp, readTesseractResourceMcp } from "./create-mcp-server.js";
+import { TessDeferredToolError, executeTessTool } from "./tess-execute.js";
 
 async function mktemp(prefix: string): Promise<string> {
   return await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -69,5 +70,45 @@ describe("readTesseractResource work-run-log", () => {
     );
     expect(mimeType).toBe("application/x-ndjson");
     expect(text).toBe(body);
+  });
+});
+
+describe("deferred tess.* MCP tools", () => {
+  it("throw TessDeferredToolError with the shared deferral envelope schema", async () => {
+    const root = await mktemp("tess-mcp-defer-");
+    const err = await executeTessTool("tess.init", {}, { repoRoot: root }).then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(TessDeferredToolError);
+    const typed = err as TessDeferredToolError;
+    expect(typed.envelope.status).toBe("deferred");
+    expect(typed.envelope.verb).toBe("tess.init");
+    expect(typed.envelope.milestone).toBe("M3");
+    expect(typed.envelope.tracking_intake).toBe(
+      "src/inbox/in/172981_05-25-26/64500_0605_tess-init-and-create-tesseract-install-paths.md",
+    );
+    expect(JSON.parse(typed.message).status).toBe("deferred");
+  });
+
+  it("routes tess.lint deferral tracking to the batch operator-tooling intake", async () => {
+    const root = await mktemp("tess-mcp-defer-lint-");
+    const err = await executeTessTool("tess.lint", {}, { repoRoot: root }).then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(TessDeferredToolError);
+    expect((err as TessDeferredToolError).envelope.tracking_intake).toBe(
+      "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md",
+    );
+  });
+
+  it("surface TessDeferredToolError through callTessToolMcp", async () => {
+    const root = await mktemp("tess-mcp-call-defer-");
+    const failed = await callTessToolMcp("tess.lint", {}, { repoRoot: root }).then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(failed).toBeInstanceOf(TessDeferredToolError);
   });
 });
