@@ -14,6 +14,7 @@ metadata:
     - /src/memory/features/<id>/spec.md
     - /src/memory/features/<id>/index.json
     - src/inbox/threads/<thread-id>/<round>.md
+    - src/memory/active/current.md
 references:
   - kind: lines
     path: docs/PRD.md
@@ -35,6 +36,11 @@ references:
     range: [921, 931]
     contentHash: TBD-on-commit
     note: "PRD §8 — Memory architecture: per-Feature folder layout where the canonical spec is `spec.md` per Spec Kit v0.8 alignment."
+  - kind: lines
+    path: AGENTS.md
+    range: [212, 212]
+    contentHash: TBD-on-commit
+    note: "AGENTS §6.8 — Active Feature promotion at intake; closure clears on archive."
 ---
 
 # Skill — `canonicalize-spec`
@@ -81,6 +87,19 @@ You MUST NOT scaffold sibling files (`plan.md`, `tasks.md`,
 `ux-spec.md`, `delivery-report.md`, `contracts/`); each downstream stage
 emits its own artifact at the path declared in PRD §7 lines 641 through
 696.
+
+When `tess feature new` or `tess run feature-delivery` has already assigned
+a task id, you MUST read `src/work/<day>/<task-id>/state.json` and use
+`source.inboxPath` as the canonical inbox source. When no run state exists
+yet, you MUST derive the path from the informal spec file under
+`src/inbox/in/`.
+
+Immediately after `<id>` and the inbox source path are known, you MUST
+update `src/memory/active/current.md` § **Active Feature** before Step 2.
+You MUST set exactly one bullet to `- \`{inboxPath}\`` using the path from
+`state.source.inboxPath` or the informal source file. You MUST edit only
+the Active Feature section; you MUST NOT rewrite shipped-feature rows or
+operator-note stamps.
 
 ### Step 2 — Parse the informal source and classify ambiguities
 

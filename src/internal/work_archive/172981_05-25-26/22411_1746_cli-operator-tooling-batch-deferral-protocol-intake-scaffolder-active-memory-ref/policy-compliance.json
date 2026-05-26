@@ -1,0 +1,29 @@
+{
+  "task_id": "22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "docs/PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The delivery batch changes operator-facing workflow and policy-reference surfaces across AGENTS, active-memory guidance, persona procedure notes, and feature delivery artifacts.",
+    "changed_surfaces": [
+      "AGENTS.md",
+      "src/memory/active/current.md",
+      "src/personas/compliance-auditor.md",
+      "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+      "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md"
+    ],
+    "deferred_items": [
+      {
+        "id": "TASK-22411-TOUCHSET-ALIGNMENT",
+        "rationale": "The local diff contains carry-over paths outside touch-set.json (including src/internal/packages/@tesseract/cli/src/index.ts), so the operator should ratify or reconcile touch-set scope before governed commit."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The ship artifact preserves the human-ratified gate by recording evidence without committing, pushing, advancing stages, or crossing into librarian closure.",
+    "constitution_alignment": "The artifact records documentation-impact and explicit deferral linkage so governance decisions remain traceable during bootstrap best-effort enforcement.",
+    "prd_alignment": "The recorded checks and deferral-protocol evidence support the PRD goals for supervised pipelines, durable memory stewardship, and auditable operator tooling behavior.",
+    "required_updates": [
+      "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/touch-set.json"
+    ]
+  }
+}

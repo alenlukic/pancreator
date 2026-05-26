@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { parseAndRun } from "./run.js";
+import { parseAndRun, TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE, TESS_DEFERRED_EXIT_CODE } from "./run.js";
 
 const JSON_FORMAT_ABBREV_ENV = "TESS_JSON_FORMAT_ABBREV_LEN";
 
@@ -369,6 +369,26 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
+    const inboxSourceRel = "src/inbox/in/demo-feature.md";
+    await mkdir(path.join(root, "src", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "src", "memory", "active", "current.md"),
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        `\n- \`${inboxSourceRel}\`\n`,
+        "",
+        "## Most recent shipped Features",
+        "\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+        "",
+        "## Operator notes",
+        "\n<!-- tess:active-memory:operator-notes:auto -->\n\n- Active-memory refreshed (UTC): `2020-01-01T00:00:00.000Z`\n\n<!-- /tess:active-memory:operator-notes:auto -->\n",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
     const closeOut: string[] = [];
     const code = await parseAndRun(["close-artifacts", start.taskId], {
       repoRoot: root,
@@ -380,11 +400,20 @@ describe("parseAndRun", () => {
       pipelineStatus: string;
       archivedRunDir: string;
       archivedInboxPath: string;
+      activeMemoryPath: string;
+      activeFeatureCleared: boolean;
       stateFile: string;
     };
     expect(closed.pipelineStatus).toBe("closed");
     expect(closed.archivedRunDir).toBe(`src/internal/work_archive/172996_05-10-26/${start.taskId}`);
     expect(closed.archivedInboxPath).toBe(`src/inbox/archive/in/172996_05-10-26/${start.taskId}/demo-feature.md`);
+    expect(closed.activeMemoryPath).toBe("src/memory/active/current.md");
+    expect(closed.activeFeatureCleared).toBe(true);
+
+    const currentMd = await readFile(path.join(root, "src", "memory", "active", "current.md"), "utf8");
+    expect(currentMd).toContain("- `(none)`");
+    expect(currentMd).not.toContain(inboxSourceRel);
+    expect(currentMd).toContain("2026-05-10T14:00:00.000Z");
 
     expect(existsSync(path.join(root, "src", "inbox", "in", "demo-feature.md"))).toBe(false);
     expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
@@ -496,5 +525,316 @@ describe("parseAndRun", () => {
       writeErr: () => {},
     });
     expect(code).toBe(1);
+  });
+});
+
+describe("operator tooling batch cli wiring", () => {
+  const refreshIso = "2026-05-25T19:05:00.000Z";
+  let hadAbbrevEnv: boolean;
+  let prevAbbrevEnv: string | undefined;
+
+  beforeEach(() => {
+    hadAbbrevEnv = Object.hasOwn(process.env, JSON_FORMAT_ABBREV_ENV);
+    prevAbbrevEnv = process.env[JSON_FORMAT_ABBREV_ENV];
+    process.env[JSON_FORMAT_ABBREV_ENV] = "7";
+  });
+
+  afterEach(() => {
+    if (hadAbbrevEnv) {
+      process.env[JSON_FORMAT_ABBREV_ENV] = prevAbbrevEnv;
+    } else {
+      delete process.env[JSON_FORMAT_ABBREV_ENV];
+    }
+  });
+
+  function makeUtcDayBucket(now: Date): string {
+    const FDS_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
+    const y = now.getUTCFullYear();
+    const m = now.getUTCMonth();
+    const d = now.getUTCDate();
+    const dayStart = Date.UTC(y, m, d, 0, 0, 0, 0);
+    const daysToFds = Math.floor((FDS_MS - dayStart) / 86400000);
+    const mm = String(m + 1).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    const yy = String(y % 100).padStart(2, "0");
+    return `${daysToFds}_${mm}-${dd}-${yy}`;
+  }
+
+  const emptyShippedInner =
+    `\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n` +
+    "|---|---|---|---|---|\n" +
+    "| `—` | `—` | `—` | `—` | `—` |\n";
+  const opsInnerSynced =
+    `\n<!-- tess:active-memory:operator-notes:auto -->\n\n` +
+    `- Active-memory refreshed (UTC): \`${refreshIso}\`\n\n` +
+    "<!-- /tess:active-memory:operator-notes:auto -->\n\n" +
+    "- Note body.\n";
+
+  function buildSyncedCurrentMd(activeLine: string): string {
+    return [
+      "# Current focus",
+      "",
+      "## Active Feature",
+      activeLine,
+      "",
+      "## Most recent shipped Features",
+      emptyShippedInner,
+      "",
+      "## Risks and blockers",
+      "- Risks anchor",
+      "",
+      "## Operator notes",
+      opsInnerSynced.trimEnd(),
+      "",
+    ].join("\n");
+  }
+
+  async function seedMinimalWorkspace(root: string): Promise<void> {
+    await writeFile(path.join(root, "tesseract.yaml"), "bootstrap: phase-4\n", "utf8");
+    await mkdir(path.join(root, "src", "inbox", "in"), { recursive: true });
+    await mkdir(path.join(root, "src", "memory", "active"), { recursive: true });
+    await mkdir(path.join(root, "src", "memory", "features"), { recursive: true });
+  }
+
+  it("exits 125 with deferred envelopes for stubbed verbs", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-deferred-"));
+    const batchTracking =
+      "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md";
+    const initTracking =
+      "src/inbox/in/172981_05-25-26/64500_0605_tess-init-and-create-tesseract-install-paths.md";
+    const matrix: Array<{ argv: string[]; tracking: string }> = [
+      { argv: ["init"], tracking: initTracking },
+      { argv: ["approve"], tracking: batchTracking },
+      { argv: ["memory"], tracking: batchTracking },
+      { argv: ["contracts"], tracking: batchTracking },
+      { argv: ["lint"], tracking: batchTracking },
+      { argv: ["run", "not-a-pipeline"], tracking: batchTracking },
+      { argv: ["status"], tracking: batchTracking },
+    ];
+    for (const { argv, tracking } of matrix) {
+      const out: string[] = [];
+      const code = await parseAndRun(argv, { repoRoot: root, writeOut: (c) => out.push(c) });
+      expect(code).toBe(TESS_DEFERRED_EXIT_CODE);
+      const env = JSON.parse(out.join("")) as Record<string, unknown>;
+      expect(env.status).toBe("deferred");
+      expect(typeof env.manual_workaround).toBe("string");
+      expect(env.milestone).toMatch(/^M[123]$/u);
+      expect(env.tracking_intake).toBe(tracking);
+    }
+    const seqA: string[] = [];
+    const seqB: string[] = [];
+    await parseAndRun(["memory"], { repoRoot: root, writeOut: (c) => seqA.push(c) });
+    await parseAndRun(["memory"], { repoRoot: root, writeOut: (c) => seqB.push(c) });
+    expect(seqB.join("")).toEqual(seqA.join(""));
+    expect(JSON.parse(seqA.join(""))).toMatchObject({
+      verb: "tess memory",
+      milestone: "M2",
+      status: "deferred",
+    });
+  });
+
+  it("writes tess intake new output with utc bucket prefixes", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-intake-"));
+    await seedMinimalWorkspace(root);
+    const stamp = new Date(Date.UTC(2026, 0, 2, 0, 3, 4));
+    const out: string[] = [];
+    await parseAndRun(["intake", "new", "demo-slug"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => stamp,
+    });
+    const msg = JSON.parse(out.join("")) as { status: string; path: string };
+    expect(msg.status).toBe("ok");
+    expect(msg.path).toMatch(/^src\/inbox\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d{1,6}_\d{4}_demo-slug\.md$/);
+    expect(existsSync(path.join(root, msg.path))).toBe(true);
+  });
+
+  it("uses SID seconds-to-next-UTC-midnight across the UTC calendar-day boundary", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-intake-sid-"));
+    await seedMinimalWorkspace(root);
+    const outLate: string[] = [];
+    await parseAndRun(["intake", "new", "late-day"], {
+      repoRoot: root,
+      writeOut: (c) => outLate.push(c),
+      clock: () => new Date(Date.UTC(2026, 4, 10, 23, 59, 59)),
+    });
+    const latePath = (JSON.parse(outLate.join("")) as { path: string }).path;
+    expect(latePath).toMatch(/\/1_2359_late-day\.md$/);
+
+    const outFresh: string[] = [];
+    await parseAndRun(["intake", "new", "new-day"], {
+      repoRoot: root,
+      writeOut: (c) => outFresh.push(c),
+      clock: () => new Date(Date.UTC(2026, 4, 11, 0, 0, 0)),
+    });
+    const freshPath = (JSON.parse(outFresh.join("")) as { path: string }).path;
+    expect(freshPath).toMatch(/\/86400_0000_new-day\.md$/);
+  });
+
+  it("refuses tess intake new when archived and active buckets collide", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-intake-archive-"));
+    await seedMinimalWorkspace(root);
+    const bucket = makeUtcDayBucket(new Date(Date.UTC(2026, 1, 2, 9, 0, 0)));
+    await mkdir(path.join(root, "src", "inbox", "in", bucket), { recursive: true });
+    await mkdir(path.join(root, "src", "inbox", "archive", "in", bucket), { recursive: true });
+    const code = await parseAndRun(
+      ["intake", "new", "zzz"],
+      { repoRoot: root, clock: () => new Date(Date.UTC(2026, 1, 2, 9, 0, 0)), writeOut: () => {}, writeErr: () => {} },
+    );
+    expect(code).toBe(1);
+  });
+
+  it("hydrates tess intake new bodies from handbook contract templates when requested", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-intake-template-"));
+    await seedMinimalWorkspace(root);
+    const templates = path.join(root, "src", "memory", "handbook", "contract-templates");
+    await mkdir(templates, { recursive: true });
+    await writeFile(path.join(templates, "ux-spec.template.md"), "## Custom body\n", "utf8");
+    const out: string[] = [];
+    await parseAndRun(
+      ["intake", "new", "from-ux", "--from-template", "ux-spec"],
+      {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date(Date.UTC(2026, 2, 3, 4, 5, 6)),
+      },
+    );
+    const payload = JSON.parse(out.join("")) as { path: string };
+    expect(await readFile(path.join(root, payload.path), "utf8")).toContain("## Custom body");
+  });
+
+  it("refresh-active-memory --dry-run stays quiet once sections mirror derivation outputs", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-green-"));
+    await seedMinimalWorkspace(root);
+    const currentAbs = path.join(root, "src", "memory", "active", "current.md");
+    await writeFile(
+      currentAbs,
+      `${buildSyncedCurrentMd("\n- `(none)`\n").trimEnd()}\n`,
+      "utf8",
+    );
+    const out: string[] = [];
+    const code = await parseAndRun(["refresh-active-memory", "--dry-run"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date(refreshIso),
+    });
+    expect(code).toBe(0);
+    expect(out.join("")).not.toContain("+++ computed");
+    expect(out.join("")).toContain('"dryRun": true');
+  });
+
+  it("refresh-active-memory --dry-run exits conflict code when shipped-feature rows mismatch", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-dry-conflict-"));
+    await seedMinimalWorkspace(root);
+    const currentAbs = path.join(root, "src", "memory", "active", "current.md");
+    await writeFile(
+      currentAbs,
+      `${buildSyncedCurrentMd("\n- `(none)`\n").trimEnd()}\n`.replace(
+        "| `—` | `—` | `—` | `—` | `—` |",
+        "| `stale-feature` | `—` | `—` | `—` | `—` |",
+      ),
+      "utf8",
+    );
+    const code = await parseAndRun(["refresh-active-memory", "--dry-run"], {
+      repoRoot: root,
+      writeOut: () => {},
+      writeErr: () => {},
+      clock: () => new Date(refreshIso),
+    });
+    expect(code).toBe(TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE);
+  });
+
+  it("refresh-active-memory emits a conflict exit when Active Feature inbox pointer is missing", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-conflict-"));
+    await seedMinimalWorkspace(root);
+    const currentAbs = path.join(root, "src", "memory", "active", "current.md");
+    await writeFile(
+      currentAbs,
+      `${buildSyncedCurrentMd("\n- `src/inbox/in/missing/archived-item.md`\n").trimEnd()}\n`,
+      "utf8",
+    );
+    const err: string[] = [];
+    const code = await parseAndRun(["refresh-active-memory"], {
+      repoRoot: root,
+      writeOut: () => {},
+      writeErr: (c) => err.push(c),
+      clock: () => new Date(refreshIso),
+    });
+    expect(code).toBe(TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE);
+    expect(err.join("")).toContain("missing under src/inbox/in/");
+  });
+
+  it("refresh-active-memory preserves human-curated Active Feature when inbox queue differs", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-active-human-"));
+    await seedMinimalWorkspace(root);
+    const bucket = makeUtcDayBucket(new Date(Date.UTC(2026, 4, 25, 6, 0, 0)));
+    const chosen = `src/inbox/in/${bucket}/64489_0605_chosen-active.md`;
+    await mkdir(path.join(root, ...chosen.split("/").slice(0, -1)), { recursive: true });
+    await writeFile(path.join(root, chosen), "# chosen\n", "utf8");
+    const newer = `src/inbox/in/${bucket}/64500_0605_newer-backlog-stub.md`;
+    await writeFile(path.join(root, newer), "# newer\n", "utf8");
+    const currentAbs = path.join(root, "src", "memory", "active", "current.md");
+    const activeLine = `\n- \`${chosen}\`\n`;
+    await writeFile(currentAbs, `${buildSyncedCurrentMd(activeLine).trimEnd()}\n`, "utf8");
+    const code = await parseAndRun(["refresh-active-memory"], {
+      repoRoot: root,
+      writeOut: () => {},
+      writeErr: () => {},
+      clock: () => new Date(refreshIso),
+    });
+    expect(code).toBe(0);
+    const written = await readFile(currentAbs, "utf8");
+    expect(written).toContain(chosen);
+    expect(written).not.toContain("64500_0605_newer-backlog-stub");
+  });
+
+  it("refresh-active-memory apply succeeds when only managed operator-notes timestamp is stale", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-apply-ts-"));
+    await seedMinimalWorkspace(root);
+    const currentAbs = path.join(root, "src", "memory", "active", "current.md");
+    const staleIso = "2020-01-01T00:00:00.000Z";
+    const clockNow = new Date("2026-06-01T12:34:56.789Z");
+    const humanLine = "- Human-only note stays verbatim.\n";
+    const opsStaleInner =
+      `\n<!-- tess:active-memory:operator-notes:auto -->\n\n` +
+      `- Active-memory refreshed (UTC): \`${staleIso}\`\n\n` +
+      "<!-- /tess:active-memory:operator-notes:auto -->\n\n" +
+      humanLine;
+
+    await writeFile(
+      currentAbs,
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        "\n- `(none)`\n",
+        "",
+        "## Most recent shipped Features",
+        emptyShippedInner,
+        "",
+        "## Risks and blockers",
+        "- Risks anchor",
+        "",
+        "## Operator notes",
+        opsStaleInner.trimEnd(),
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const out: string[] = [];
+    const err: string[] = [];
+    const code = await parseAndRun(["refresh-active-memory"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      writeErr: (c) => err.push(c),
+      clock: () => clockNow,
+    });
+    expect(code).toBe(0);
+    expect(err.join("")).toBe("");
+    const written = await readFile(currentAbs, "utf8");
+    expect(written).toContain("- Human-only note stays verbatim.");
+    expect(written).toContain(clockNow.toISOString());
+    expect(written).not.toContain(staleIso);
+    expect(out.join("")).toContain('"status": "ok"');
   });
 });

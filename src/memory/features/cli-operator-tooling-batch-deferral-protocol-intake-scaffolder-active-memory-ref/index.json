@@ -1,0 +1,376 @@
+{
+  "feature_id": "cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
+  "title": "CLI operator tooling batch — deferral protocol, intake scaffolder, active-memory refresh",
+  "task_id": "22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "work_packages": [
+    {
+      "feature_id": "cli-stub-verb-deferral-protocol",
+      "label": "WP-1 — Stub-verb explicit deferral protocol"
+    },
+    {
+      "feature_id": "tess-intake-scaffolder",
+      "label": "WP-2 — Intake scaffolder"
+    },
+    {
+      "feature_id": "tess-refresh-active-memory",
+      "label": "WP-3 — Active-memory refresher"
+    }
+  ],
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md",
+      "range": [1, 201],
+      "contentHash": "7f60993"
+    },
+    "human_approval_gate": "pending_operator_acceptance",
+    "human_approval_note": "Delivery report status is ready for human acceptance; index links ship artifacts before complete-stage archival."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-05-26T00:00:00Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run tess advance to complete, then tess close-artifacts for archival closure per complete-stage prompt."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-05-26T00:00:00Z",
+    "artifacts_indexed": 22,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "tesseract-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "review_round": 3,
+    "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 1,
+    "nit_count": 2,
+    "spec_contracts_executed": 0,
+    "spec_contracts_set_state": "empty (no contracts/ under feature folder)",
+    "verification_gates": {
+      "node_test_suite": "pass (78/78)",
+      "check_phase0a": "pass",
+      "context_budget_report": "pass",
+      "policy_compliance_hook_syntax": "pass",
+      "cli_vitest": "pass (22/22)",
+      "mcp_server_vitest": "pass (9/9)",
+      "tess_refresh_active_memory_live": "pass (exit 0)"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+      "range": [1, 88],
+      "contentHash": "f454add"
+    }
+  },
+  "delivery_report": {
+    "path": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md",
+    "staged_to_inbox_out": null,
+    "staged_to_inbox_out_note": "Canonical delivery report lives under src/memory/features/; no matching src/inbox/out/<timestamp>-cli-operator-tooling-batch-delivery-report.md artifact was present at index time.",
+    "citation": {
+      "kind": "lines",
+      "path": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md",
+      "range": [1, 178],
+      "contentHash": "7ecf456"
+    }
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "policy_compliance_artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
+      "range": [1, 34],
+      "contentHash": "5e30111"
+    }
+  },
+  "operator_contracts": {
+    "deferral_protocol": {
+      "path": "AGENTS.md",
+      "range": [210, 212],
+      "contentHash": "9a5d8c0",
+      "note": "AGENTS.md items 6–8 document deferred verb envelopes, tess intake new, and tess refresh-active-memory."
+    },
+    "cli_deferred_exit_code": 125,
+    "active_memory_conflict_exit_code": 126,
+    "citation": {
+      "kind": "lines",
+      "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+      "range": [25, 43],
+      "contentHash": "39762b6"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "cli-index-ts-touch-set",
+      "owner": "operator",
+      "status": "open",
+      "reason": "src/internal/packages/@tesseract/cli/src/index.ts export additions are coherent but not listed in touch-set.json; operator SHOULD ratify or record intentional governance drift.",
+      "citation": {
+        "kind": "lines",
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+        "range": [21, 28],
+        "contentHash": "f454add"
+      }
+    },
+    {
+      "id": "repo-structure-deferred-smoke",
+      "owner": "tesseract-engineer",
+      "status": "deferred",
+      "reason": "tests/repo-structure.test.mjs smoke still exercises one deferred verb while package vitest covers the full matrix.",
+      "citation": {
+        "kind": "lines",
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+        "range": [25, 28],
+        "contentHash": "f454add"
+      }
+    }
+  ],
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+          "range": [1, 224],
+          "contentHash": "1ea815d"
+        }
+      },
+      "delivery_report": {
+        "path": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md",
+          "range": [1, 178],
+          "contentHash": "7ecf456"
+        }
+      },
+      "per_feature_index": {
+        "path": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json",
+        "citation": {
+          "kind": "lines",
+          "path": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json",
+          "range": [1, 1],
+          "contentHash": "TBD-on-commit"
+        }
+      }
+    },
+    "pipeline_artifacts": {
+      "plan": {
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/plan.md",
+          "range": [1, 78],
+          "contentHash": "618967d"
+        }
+      },
+      "adr_draft": {
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/adr-draft.md",
+          "range": [1, 74],
+          "contentHash": "f3946bb"
+        }
+      },
+      "touch_set": {
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/touch-set.json",
+          "range": [1, 121],
+          "contentHash": "47e1ae8"
+        }
+      },
+      "implementation_report": {
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
+          "range": [1, 54],
+          "contentHash": "9805683"
+        }
+      },
+      "review_report": {
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+          "range": [1, 88],
+          "contentHash": "f454add"
+        }
+      },
+      "policy_compliance": {
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
+        "citation": {
+          "kind": "lines",
+          "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
+          "range": [1, 34],
+          "contentHash": "5e30111"
+        }
+      },
+      "handoff": {
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/handoff.md",
+          "range": [1, 48],
+          "contentHash": "3193d44"
+        }
+      },
+      "run_log": {
+        "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/run.log.jsonl",
+        "citation": {
+          "kind": "lines",
+          "path": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/run.log.jsonl",
+          "range": [1, 11],
+          "contentHash": "3e772be"
+        }
+      }
+    },
+    "implementation_surface": {
+      "cli_run": {
+        "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+          "range": [1, 991],
+          "contentHash": "39762b6"
+        }
+      },
+      "cli_run_tests": {
+        "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+          "range": [1, 782],
+          "contentHash": "6fa6f7a"
+        }
+      },
+      "cli_index_exports": {
+        "path": "src/internal/packages/@tesseract/cli/src/index.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "src/internal/packages/@tesseract/cli/src/index.ts",
+          "range": [1, 23],
+          "contentHash": "57472d1"
+        },
+        "governance_note": "Modified in working tree but omitted from touch-set.json; see open_followups.cli-index-ts-touch-set."
+      },
+      "mcp_tess_execute": {
+        "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts",
+          "range": [1, 275],
+          "contentHash": "79e193e"
+        }
+      },
+      "mcp_tess_execute_tests": {
+        "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts",
+          "range": [1, 115],
+          "contentHash": "d19343f"
+        }
+      },
+      "mcp_definitions": {
+        "path": "src/internal/packages/@tesseract/mcp-server/src/definitions.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "src/internal/packages/@tesseract/mcp-server/src/definitions.ts",
+          "range": [1, 163],
+          "contentHash": "90bd48a"
+        }
+      },
+      "mcp_definitions_tests": {
+        "path": "src/internal/packages/@tesseract/mcp-server/src/definitions.test.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "src/internal/packages/@tesseract/mcp-server/src/definitions.test.ts",
+          "range": [1, 42],
+          "contentHash": "5db1916"
+        }
+      },
+      "repo_structure_smoke": {
+        "path": "tests/repo-structure.test.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "tests/repo-structure.test.mjs",
+          "range": [1, 262],
+          "contentHash": "ff512c5"
+        }
+      },
+      "agents_operator_contracts": {
+        "path": "AGENTS.md",
+        "citation": {
+          "kind": "lines",
+          "path": "AGENTS.md",
+          "range": [1, 284],
+          "contentHash": "9a5d8c0"
+        }
+      },
+      "active_memory_current": {
+        "path": "src/memory/active/current.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/memory/active/current.md",
+          "range": [1, 70],
+          "contentHash": "d227372"
+        }
+      },
+      "compliance_auditor_persona": {
+        "path": "src/personas/compliance-auditor.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/personas/compliance-auditor.md",
+          "range": [1, 301],
+          "contentHash": "229f5cf"
+        }
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md",
+          "range": [1, 201],
+          "contentHash": "7f60993"
+        }
+      }
+    }
+  },
+  "contracts": {
+    "clauses": []
+  },
+  "metadata": {
+    "tesseract-bootstrap-only": false
+  }
+}

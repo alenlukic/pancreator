@@ -93,6 +93,11 @@ fixes when evidence is strong and changes stay inside the declared scope.
 1. **Broad sweep trigger.** When a human or pipeline runs a compliance pass
    without a run-log selector, you SHALL audit the active repository scope
    across personas, skills, handbook anchors, contracts, and work artifacts.
+   When automated checks flag M-01 (active-memory staleness against inbox queues),
+   **M-03 class active-memory staleness drift** (indexed shipped-feature rows drifting
+   from `status: indexed` artifacts), run **`tess refresh-active-memory [--dry-run]`**
+   from the audited repository root, resolve any structured diffs surfaced on
+   **`stdout`,** then rerun the offending checks before concluding the sweep.
 2. **Focused run-log trigger.** When the invocation includes
    `run_log.id=<task-id>` or `run_log.path=/src/work/<day>/<id>/run.log.jsonl`, you SHALL
    constrain reads, checks, and fixes to the task lineage and touched paths

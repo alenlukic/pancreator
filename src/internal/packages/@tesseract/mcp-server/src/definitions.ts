@@ -64,12 +64,13 @@ export function listToolDefinitions(): readonly ToolDefinition[] {
   return [
     {
       name: "tess.init",
-      description: "Initialize a Tesseract workspace in the current repository",
+      description:
+        "Initialize a Tesseract workspace in the current repository [deferred: M3]",
       inputSchema: EMPTY_OBJECT_SCHEMA,
     },
     {
       name: "tess.run",
-      description: "Run a pipeline by name",
+      description: "Run a pipeline by name [deferred: M2]",
       inputSchema: EMPTY_OBJECT_SCHEMA,
     },
     {
@@ -79,32 +80,32 @@ export function listToolDefinitions(): readonly ToolDefinition[] {
     },
     {
       name: "tess.feature",
-      description: "Manage feature-delivery artifacts",
+      description: "Manage feature-delivery artifacts [deferred: M2]",
       inputSchema: EMPTY_OBJECT_SCHEMA,
     },
     {
       name: "tess.status",
-      description: "Show pipeline and workspace status",
+      description: "Show pipeline and workspace status [deferred: M2]",
       inputSchema: EMPTY_OBJECT_SCHEMA,
     },
     {
       name: "tess.approve",
-      description: "Approve a gated action",
+      description: "Approve a gated action [deferred: M3]",
       inputSchema: EMPTY_OBJECT_SCHEMA,
     },
     {
       name: "tess.memory",
-      description: "Inspect Memory tier indexes",
+      description: "Inspect Memory tier indexes [deferred: M2]",
       inputSchema: EMPTY_OBJECT_SCHEMA,
     },
     {
       name: "tess.contracts",
-      description: "List or evaluate Spec Contracts",
+      description: "List or evaluate Spec Contracts [deferred: M2]",
       inputSchema: EMPTY_OBJECT_SCHEMA,
     },
     {
       name: "tess.lint",
-      description: "Run repository lint and policy gates",
+      description: "Run repository lint and policy gates [deferred: M1]",
       inputSchema: EMPTY_OBJECT_SCHEMA,
     },
     {

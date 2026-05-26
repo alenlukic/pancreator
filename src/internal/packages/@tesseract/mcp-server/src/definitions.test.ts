@@ -23,6 +23,7 @@ describe("listToolDefinitions", () => {
         "tess.status",
       ].sort(),
     );
+    expect(tools.find((x) => x.name === "tess.init")?.description).toMatch(/\[deferred: M3\]/);
     for (const t of tools) {
       expect(t.inputSchema).toMatchObject({ type: "object" });
     }

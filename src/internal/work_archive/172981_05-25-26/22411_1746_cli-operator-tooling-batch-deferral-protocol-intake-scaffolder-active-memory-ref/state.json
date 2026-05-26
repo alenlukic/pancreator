@@ -1,0 +1,251 @@
+{
+  "schemaVersion": "1",
+  "pipelineId": "feature-delivery",
+  "taskId": "22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
+  "featureId": "cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
+  "status": "closed",
+  "currentStage": "complete",
+  "createdAtIso": "2026-05-25T17:46:28.715Z",
+  "source": {
+    "inboxEntry": "172981_05-25-26/64488_0605_cli-operator-tooling-batch.md",
+    "inboxPath": "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+  },
+  "artifacts": {
+    "runDir": "src/internal/work_archive/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
+    "stateFile": "src/internal/work_archive/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/state.json",
+    "handoffFile": "src/internal/work_archive/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/handoff.md",
+    "runLogFile": "src/internal/work_archive/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/run.log.jsonl",
+    "nextPromptFile": "src/internal/work_archive/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/next-prompt.md"
+  },
+  "stages": [
+    {
+      "id": "intake",
+      "persona": "intake-analyst",
+      "label": "Canonicalize the human directive",
+      "status": "complete",
+      "humanGate": "human_approval",
+      "humanAttention": "Answer intake clarifying questions and ratify the canonical spec before planning."
+    },
+    {
+      "id": "plan",
+      "persona": "tech-lead",
+      "label": "Draft plan, ADR, touch-set, and handoff card",
+      "status": "complete",
+      "humanGate": "human_approval",
+      "humanAttention": "Ratify the plan, ADR draft, touch-set, and handoff before execution."
+    },
+    {
+      "id": "implement",
+      "persona": "coder",
+      "label": "Implement against the declared touch-set from the handoff card",
+      "status": "complete",
+      "humanGate": "operator_intervention_available",
+      "humanAttention": "Use tess pause/resume/abort if implementation drifts, loops, or exceeds scope."
+    },
+    {
+      "id": "review",
+      "persona": "reviewer",
+      "label": "Run modern-code-review and contracts pass with compact must-fix output",
+      "status": "complete",
+      "humanGate": "review_passes_or_reenter_implement",
+      "humanAttention": "Inspect high findings; approve only clean review output or send the run back to implement."
+    },
+    {
+      "id": "report",
+      "persona": "tech-writer",
+      "label": "Author the delivery report",
+      "status": "complete"
+    },
+    {
+      "id": "ship",
+      "persona": "supervisor",
+      "label": "Stage the PR (no auto-push, Q3)",
+      "status": "complete",
+      "humanGate": "local_stage_only",
+      "humanAttention": "Review the local diff and delivery report; no agent may push or open the PR unaudited."
+    },
+    {
+      "id": "index",
+      "persona": "librarian",
+      "label": "Index emitted artifacts and refresh the feature index before librarian artifact closure",
+      "status": "complete",
+      "humanGate": "archive_and_index_audit",
+      "humanAttention": "Verify feature index artifacts; after index is accepted, the generated complete-stage prompt gives the human operator exact archival closure commands."
+    }
+  ],
+  "transitions": [
+    {
+      "from": "created",
+      "on": "invoke",
+      "to": "intake",
+      "humanAttention": "Operator delegates the handoff card to intake-analyst."
+    },
+    {
+      "from": "intake",
+      "on": "human_approval",
+      "to": "plan",
+      "humanAttention": "Canonical spec is ratified or clarified before plan starts."
+    },
+    {
+      "from": "plan",
+      "on": "human_approval",
+      "to": "implement",
+      "humanAttention": "Plan and touch-set are ratified before coder starts."
+    },
+    {
+      "from": "implement",
+      "on": "pause",
+      "to": "paused",
+      "humanAttention": "Use tess pause <task-id> to stop at the next safe boundary."
+    },
+    {
+      "from": "paused",
+      "on": "resume",
+      "to": "implement",
+      "humanAttention": "Use tess resume <task-id> after resolving the blocker."
+    },
+    {
+      "from": "implement",
+      "on": "abort",
+      "to": "aborted",
+      "humanAttention": "Use tess abort <task-id> --reason <text> for failed or superseded runs."
+    },
+    {
+      "from": "implement",
+      "on": "implementation_complete",
+      "to": "review",
+      "humanAttention": "Reviewer receives only the handoff, touch-set, diff, and validation output."
+    },
+    {
+      "from": "review",
+      "on": "must_fix",
+      "to": "implement",
+      "humanAttention": "Bounded re-entry; high findings block shipping."
+    },
+    {
+      "from": "review",
+      "on": "review_passes",
+      "to": "report",
+      "humanAttention": "Human should still inspect review output before report/ship."
+    },
+    {
+      "from": "report",
+      "on": "report_ready",
+      "to": "ship",
+      "humanAttention": "Delivery report must be useful to the operator, not just a changelog."
+    },
+    {
+      "from": "ship",
+      "on": "human_ratifies_local_diff",
+      "to": "index",
+      "humanAttention": "No push occurs before human review."
+    },
+    {
+      "from": "index",
+      "on": "artifacts_indexed",
+      "to": "complete",
+      "humanAttention": "Confirm archive/index state and outbox report."
+    }
+  ],
+  "nextHumanAction": "Artifact closure complete; active work and source inbox directive are archived. No further feature-delivery action is required.",
+  "advanceHistory": [
+    {
+      "atIso": "2026-05-25T18:12:55.967Z",
+      "kind": "advance",
+      "from": "intake",
+      "to": "plan",
+      "event": "human_approval",
+      "artifact": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md"
+    },
+    {
+      "atIso": "2026-05-25T18:33:48.793Z",
+      "kind": "advance",
+      "from": "plan",
+      "to": "implement",
+      "event": "human_approval",
+      "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/touch-set.json"
+    },
+    {
+      "atIso": "2026-05-25T19:08:54.235Z",
+      "kind": "advance",
+      "from": "implement",
+      "to": "review",
+      "event": "implementation_complete",
+      "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md"
+    },
+    {
+      "atIso": "2026-05-25T19:28:11.733Z",
+      "kind": "advance",
+      "from": "review",
+      "to": "implement",
+      "event": "must_fix",
+      "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md"
+    },
+    {
+      "atIso": "2026-05-25T19:32:59.698Z",
+      "kind": "advance",
+      "from": "implement",
+      "to": "review",
+      "event": "implementation_complete",
+      "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md"
+    },
+    {
+      "atIso": "2026-05-25T21:04:11.341Z",
+      "kind": "advance",
+      "from": "review",
+      "to": "report",
+      "event": "review_passes",
+      "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md"
+    },
+    {
+      "atIso": "2026-05-25T21:05:04.806Z",
+      "kind": "repair",
+      "from": "report",
+      "to": "review",
+      "event": "manual_repair",
+      "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+      "reason": "Premature review_passes advance while review.md still must_fix; reopen review for re-validation after implement remediation."
+    },
+    {
+      "atIso": "2026-05-25T21:08:47.453Z",
+      "kind": "advance",
+      "from": "review",
+      "to": "report",
+      "event": "review_passes",
+      "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md"
+    },
+    {
+      "atIso": "2026-05-26T04:02:07.853Z",
+      "kind": "advance",
+      "from": "report",
+      "to": "ship",
+      "event": "report_ready",
+      "artifact": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md"
+    },
+    {
+      "atIso": "2026-05-26T04:32:37.092Z",
+      "kind": "advance",
+      "from": "ship",
+      "to": "index",
+      "event": "human_ratifies_local_diff",
+      "artifact": "src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json"
+    },
+    {
+      "atIso": "2026-05-26T04:33:43.066Z",
+      "kind": "advance",
+      "from": "index",
+      "to": "complete",
+      "event": "artifacts_indexed",
+      "artifact": "src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json"
+    },
+    {
+      "atIso": "2026-05-26T04:44:00.364Z",
+      "kind": "close",
+      "from": "complete",
+      "to": "complete",
+      "event": "artifacts_closed",
+      "artifact": "src/internal/work_archive/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
+      "reason": "Archived active run from src/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref and source inbox directive from src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md."
+    }
+  ]
+}
