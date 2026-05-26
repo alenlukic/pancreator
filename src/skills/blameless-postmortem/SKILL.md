@@ -16,27 +16,27 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [503, 503]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §6 — MVP roster: supervisor owns the run log and dispatches Intervention actions; the supervisor invokes this skill on every abort per US-10."
   - kind: lines
     path: docs/PRD.md
     range: [533, 533]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §6 — M4 roster: postmortem-author runs blameless postmortems per Allspaw / Etsy `Debriefing Facilitation Guide`, produces second-story narratives, never points at humans."
   - kind: lines
     path: docs/PRD.md
     range: [225, 246]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §3.5 US-10 — Intervention spectrum: abort kills the pipeline and disposes the worktree; artifacts and run-log are preserved for postmortem; abort always emits a run-summary artifact for the Librarian."
   - kind: lines
     path: docs/PRD.md
     range: [858, 892]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §7 — Intervention conventions: state machine, safety invariants, quarantine preserves complete state for postmortem, every intervention dispatch logs the operator identity."
   - kind: lines
     path: docs/PRD.md
     range: [949, 949]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §8 — Memory architecture: `/src/memory/postmortems/` holds blameless RCAs, never modified after publication."
 ---
 

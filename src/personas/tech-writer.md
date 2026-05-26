@@ -47,17 +47,17 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [460, 510]
-    contentHash: f226a48941f7d4859096c2870345383b2f0af67987b0b42870cff6293e40676b
+    contentHash: f226a48
     note: "PRD §6 — Subagent Persona Roster header plus the MVP tech-writer entry on line 510."
   - kind: lines
     path: docs/PRD.md
     range: [683, 696]
-    contentHash: af8a1ad857e825932fb9b08ac11d54d4a1af54b9aa02ed10a97b917bf2043878
+    contentHash: af8a1ad
     note: "PRD §7 — feature-delivery `report` stage YAML, declaring the tech-writer inputs and the `/src/memory/features/<id>/delivery-report.md` output."
   - kind: lines
     path: docs/PRD.md
     range: [113, 121]
-    contentHash: 745a45da3510bfe125f54fbf195458df759601382e6bc1b4e5cdd4e18ff78ad9
+    contentHash: 745a45d
     note: "PRD §3.5 US-1 — the user story that names the Delivery Report as the high-signal post-pipeline summary the tech-writer produces."
 ---
 

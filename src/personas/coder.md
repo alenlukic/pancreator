@@ -51,22 +51,22 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [507, 507]
-    contentHash: 88f82c1fa47907c931a190868c3382ceea8d3bcd8112e42df4b3f45ef641c3c0
+    contentHash: 88f82c1
     note: "PRD §6 — MVP roster: coder is write-scoped to its declared touch-set plus tests, default-deny on production secrets, and split into backend-eng / frontend-eng at M2."
   - kind: lines
     path: docs/PRD.md
     range: [113, 121]
-    contentHash: 745a45da3510bfe125f54fbf195458df759601382e6bc1b4e5cdd4e18ff78ad9
+    contentHash: 745a45d
     note: "PRD §3.5 US-1 — Deliver the backend for feature A: the multi-cycle implement → review → fix → review → ship loop the coder occupies."
   - kind: lines
     path: docs/PRD.md
     range: [659, 668]
-    contentHash: cca572395964a43faf0707099e54c030820f29f3ccc48973453941179b5a5d9a
+    contentHash: cca5723
     note: "PRD §7 — feature-delivery `implement` stage YAML declaring the coder's inputs, outputs, and circuit-breaker thresholds (max_iterations 25, max_tokens 200000, max_tool_failures_consecutive 3)."
   - kind: lines
     path: docs/PRD.md
     range: [801, 811]
-    contentHash: 1276a9118aaeb0b926c103ac39b35fbe28047e89d45523a0563326b3526bc93f
+    contentHash: 1276a91
     note: "PRD §7 — touch-set declaration and the control-plane shim that flags out-of-touch-set writes as circuit-breaker events."
 ---
 

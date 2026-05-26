@@ -118,9 +118,9 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/migration-manifest.dry-run.json",
+  "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "0662fb4"
 }
 ```
 
@@ -417,9 +417,9 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/migration-manifest.dry-run.json",
+  "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "0662fb4"
 }
 ```
 
@@ -609,9 +609,9 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/work_archive/173009_04-27-26/50991_0950_timestamp-naming-conventions/migration-manifest.dry-run.json",
+  "path": "src/internal/work_archive/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "0662fb4"
 }
 ```
 

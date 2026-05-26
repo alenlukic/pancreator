@@ -4,7 +4,7 @@ feature_id: cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-activ
 status: intake-awaiting-ratification
 next_owner: tech-lead
 next_stage: plan
-source_inbox_item: src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md
+source_inbox_item: src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md
 intake_round: 0
 work_packages:
   - feature_id: cli-stub-verb-deferral-protocol
@@ -15,49 +15,49 @@ work_packages:
     label: WP-3 — Active-memory refresher
 references:
   - kind: lines
-    path: src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md
+    path: src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md
     range: [1, 52]
-    contentHash: TBD-on-commit
+    contentHash: 7f60993
     note: Directive frontmatter and problem statement define the three operator-friction items consolidated in this batch.
   - kind: lines
-    path: src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md
+    path: src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md
     range: [82, 138]
-    contentHash: TBD-on-commit
+    contentHash: 7f60993
     note: Required outcomes for WP-1 (deferral envelope shape, exit code, MCP parity, help-output tag, unit tests).
   - kind: lines
-    path: src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md
+    path: src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md
     range: [104, 137]
-    contentHash: TBD-on-commit
+    contentHash: 7f60993
     note: Required outcomes for WP-2 (tess intake new command, SID/HHMM computation, overwrite refusal, template contract).
   - kind: lines
-    path: src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md
+    path: src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md
     range: [122, 138]
-    contentHash: TBD-on-commit
+    contentHash: 7f60993
     note: Required outcomes for WP-3 (tess refresh-active-memory, dry-run flag, source derivation, conflict detection).
   - kind: lines
     path: src/internal/packages/@tesseract/cli/src/run.ts
     range: [37, 44]
-    contentHash: TBD-on-commit
+    contentHash: 8817a0d
     note: stub() helper emits {status:"stub"} with zero exit code; WP-1 replaces this with the deferred envelope and non-zero exit.
   - kind: lines
     path: src/memory/handbook/inbox-lifecycle.md
     range: [1, 10]
-    contentHash: TBD-on-commit
+    contentHash: 0b097ca
     note: Defines the canonical {SID}_{HHMM}_{semantic}.md leaf layout and day-bucket naming that WP-2 must implement.
   - kind: lines
     path: src/memory/features/timestamp-naming-conventions/spec.md
     range: [1, 10]
-    contentHash: TBD-on-commit
+    contentHash: 0573437
     note: Defines SID = 86400 - secondsSinceMidnight and HHMM wallclock encoding that WP-2 must follow exactly.
   - kind: lines
     path: src/memory/active/current.md
     range: [1, 10]
-    contentHash: TBD-on-commit
+    contentHash: 300177f
     note: Active-memory file whose labelled sections WP-3 must rewrite deterministically without clobbering the references or operator-notes blocks.
   - kind: lines
     path: docs/PRD.md
     range: [641, 648]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: PRD §7 feature-delivery intake stage declares inputs, outputs, loop.max_rounds 5, and gate human_approval.
 ---
 
@@ -106,7 +106,7 @@ value.
   same envelope keyed by tool name rather than verb, and SHALL indicate the
   deferred status via a non-success response code in the MCP protocol.
 - When `tracking_intake` references a work package in this batch, it SHALL
-  point to `src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md`;
+  point to `src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md`;
   when no intake item exists, it SHALL point to the relevant PRD section path.
 - When an operator runs `tess --help` or `tess <verb> --help`, the help output
   SHALL mark every deferred verb with a `[deferred: <milestone>]` tag adjacent

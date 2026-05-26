@@ -58,27 +58,27 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [503, 503]
-    contentHash: 02e24fceb2260ae9648bafe2747db8d21a7a7855c3ebc92674427fceed833fcc
+    contentHash: 02e24fc
     note: "PRD §6 — MVP roster: supervisor is pipeline orchestrator, routes work, enforces gates, owns the run log, and dispatches Intervention actions per US-10."
   - kind: lines
     path: docs/PRD.md
     range: [225, 246]
-    contentHash: ef0f91718efadf924d74199a6c3912b09e87074661f21a0b768a7c7d20c603d4
+    contentHash: ef0f917
     note: "PRD §3.5 US-10 — Multiple intervention levers when an agent goes off the rails: graduated 7-lever spectrum (steer, pause, reroute, snapshot, rollback, abort, quarantine) the supervisor dispatches at the next safe checkpoint."
   - kind: lines
     path: docs/PRD.md
     range: [687, 696]
-    contentHash: 0a5f358a3427760c4ac452e8ddd8562a94ede7871cc6877361b8b59e4b6dce98
+    contentHash: 0a5f358
     note: "PRD §7 — feature-delivery `ship` stage YAML: `action: open_pr`, `gate: human_approval`; the `notifier` post_run step posts the Delivery Report to `src/inbox/out/`."
   - kind: lines
     path: docs/PRD.md
     range: [858, 892]
-    contentHash: ce81f59b6409d604d8a06becba4b61dafbcdd049f8df46cd92aaa60fdeef7576
+    contentHash: ce81f59
     note: "PRD §7 — Intervention Conventions: 7-lever spectrum, per-lever LangGraph mapping, state machine, safety invariants, and per-intervention run-log requirements."
   - kind: lines
     path: docs/PRD.md
     range: [834, 842]
-    contentHash: 0a8b7c023365434d91e6f4fc7d587e0e3a6fb4ad243aaf9fe403b1cd30c4dc89
+    contentHash: 0a8b7c0
     note: "PRD §7 — Cross-cutting pipeline conventions: human-approval gates by risk tier, run-log OpenInference + OTel GenAI semconv shape, and stage-boundary checkpointing per LangGraph BaseCheckpointSaver v1."
 ---
 

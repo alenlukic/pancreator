@@ -11,12 +11,12 @@ references:
   - kind: lines
     path: src/memory/features/timestamp-naming-conventions/spec.md
     range: [54, 103]
-    contentHash: TBD-on-commit
+    contentHash: 0573437
     note: "UTC, FDS, SID, work directory, inbox basename, and collision acceptance criteria."
   - kind: lines
     path: tests/compliance/schemas/latest.yaml
     range: [1, 63]
-    contentHash: TBD-on-commit
+    contentHash: 8bbb8a7
     note: "Descriptor schema envelope."
 runtime:
   compliance_descriptor: "tests/compliance/timestamp-naming-conventions.yaml"

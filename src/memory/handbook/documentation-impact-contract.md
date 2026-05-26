@@ -14,22 +14,22 @@ references:
   - kind: lines
     path: src/memory/adr/0004-documentation-impact-contract.md
     range: [66, 100]
-    contentHash: d77cc5cf38a61e2dafc65da2672914ad5bf6fd55295f49786c9b213670085f57
+    contentHash: d77cc5c
     note: "ADR-0004 decision defines mandatory applies true/false decision and minimum actions."
   - kind: lines
     path: AGENTS.md
     range: [74, 95]
-    contentHash: 3dd1213204e134b7c6e6091e1a421403cd37be95823196c4ab1353be5cda3e14
+    contentHash: 3dd1213
     note: "AGENTS working agreement is the global policy surface for task-level obligations."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [60, 65]
-    contentHash: e3a0718364e6034e0d4de4f29c6123a1d5d52ad90713fffe169b67b81a0ff2fe
+    contentHash: e3a0718
     note: "Layer 1 requires RFC 2119 keywords in normative policy language."
   - kind: lines
     path: src/memory/handbook/backlog-format.md
     range: [56, 78]
-    contentHash: a984b4c947288efa0b9a23cb1a145da2a273f2a702e6b6d385e10986869250a0
+    contentHash: a984b4c
     note: "Backlog index schema defines required fields for deferred follow-up items."
 related:
   - /src/memory/adr/0004-documentation-impact-contract.md

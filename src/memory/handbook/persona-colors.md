@@ -14,7 +14,7 @@ references:
   - kind: lines
     path: /src/memory/handbook/persona-spec.md
     range: [180, 210]
-    contentHash: 2c98017201524b5ae71f5345cc3d4f3af5ca5d2f7485782802d5ed152dcc2228
+    contentHash: 2c98017
     note: "Persona Spec Format §6 — palette table; this file is the canonical alias."
 related:
   - /src/memory/handbook/persona-spec.md

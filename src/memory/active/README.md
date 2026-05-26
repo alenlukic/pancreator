@@ -12,12 +12,12 @@ references:
   - kind: lines
     path: src/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [235, 251]
-    contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d
+    contentHash: e6c4fcd
     note: "Spec acceptance criteria require README scope and soft budgets."
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
     range: [231, 251]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Directive §2 defines README behavior and soft budgets. Source archived from src/inbox/in/ per inbox-lifecycle handbook §3."
 related:
   - /src/memory/handbook/memory-tiers.md
@@ -30,7 +30,7 @@ related:
 # Active memory tier
 
 This directory holds **active-memory** only. The Feature cites scope rules at
-`{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [235, 251], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`.
+`{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [235, 251], contentHash: e6c4fcd}`.
 
 ## What belongs here
 

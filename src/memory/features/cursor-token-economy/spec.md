@@ -4,7 +4,7 @@ feature_id: cursor-token-economy
 status: intake-closed
 intake_round: 0
 clarifying_rounds_posted: 0
-source_inbox_item: src/inbox/in/token_economy.md
+source_inbox_item: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
 next_owner: supervisor
 next_stage: ship
 intake_closure:
@@ -17,104 +17,104 @@ intake_notes:
   - The intake-analyst opted out of the clarifying-question loop because no material ambiguity exists for the canonical spec; the human_approval gate is satisfied by an empty `## Open questions` section plus an explicit `## Human ratification required` block for downstream protected-surface edits.
 references:
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [29, 49]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive Problem section motivates the cache-read-volume reduction goal.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [51, 61]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive Goal section names the optimization targets and preservation constraints.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [63, 69]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive Non-goals section bounds the feature scope.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [73, 110]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive §1 specifies the .cursorindexingignore file content and the .gitignore reversal.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [112, 149]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive §2 specifies the Cursor rule audit and the tesseract-engineer glob narrowing example.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [151, 177]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive §3 specifies the new context-economy handbook page and the index.md routing entry.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [179, 194]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive §4 specifies docs/PRD.summary.md and docs/PRD.index.md as summary-first retrieval surfaces.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [196, 214]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive §5 names AGENTS.md slimming as a ratification-bound activity that preserves protected semantics.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [216, 226]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive §6 forbids deletion of src/work/** and routes future bulk artifacts toward .local/ or ignored subpaths.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [228, 253]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive §7 specifies the src/internal/tools/context-budget-report.mjs estimator scope and the chars-over-4 labeling rule.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [255, 268]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive §8 lists the documentation-impact updates the delivery slice MUST evaluate.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [270, 287]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive Acceptance criteria items 1-14 anchor the gate semantics this spec mirrors.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [289, 297]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive Manual validation section enumerates the post-implementation operator checks.
   - kind: lines
-    path: src/inbox/in/token_economy.md
+    path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [299, 305]
-    contentHash: TBD-on-commit
+    contentHash: 5efe3cc
     note: Directive Implementation guidance authorizes the no-clarifying-questions intake path the analyst followed.
   - kind: lines
     path: docs/PRD.md
     range: [641, 648]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: PRD §7 declares loop.max_rounds 5 and gate human_approval for the feature-delivery intake stage.
   - kind: lines
     path: docs/PRD.md
     range: [921, 931]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: PRD §8 declares the per-Feature folder layout aligned with Spec Kit v0.8 (spec.md, plan.md, tasks.md).
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [222, 235]
-    contentHash: TBD-on-commit
+    contentHash: 086c42d
     note: Glossary §5 defines Artifact, Feature, Inbox, and Spec Kit alignment as the per-feature folder convention.
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [252, 256]
-    contentHash: TBD-on-commit
+    contentHash: 086c42d
     note: Glossary §6 defines AGENTS.md as the primary cross-tool contract per the LF Agentic AI Foundation standard.
   - kind: lines
     path: AGENTS.md
     range: [78, 95]
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: AGENTS.md §5 declares the working agreement constraints the spec preserves through every change.
   - kind: lines
     path: src/memory/handbook/inbox-lifecycle.md
     range: [79, 100]
-    contentHash: TBD-on-commit
+    contentHash: 0b097ca
     note: Inbox-lifecycle §1a confirms /src/inbox/notes/ is operator-only and out of scope for any Cursor indexing change.
 ---
 
@@ -160,7 +160,7 @@ reachable for explicit human and agent reads.
   root `.cursorignore` file in this delivery slice.
 - When the Feature audits Cursor rule files, the Feature MUST evaluate
   the five rule files the directive enumerates at lines 117 to 122 of
-  `src/inbox/in/token_economy.md` for over-broad `globs` activation.
+  `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md` for over-broad `globs` activation.
 - When the Feature narrows the `.cursor/rules/tesseract-engineer.mdc`
   glob surface, the Feature MUST exclude `src/work/**/*` from the default
   activation set unless the rule specifically targets run logs, plans,
@@ -175,7 +175,7 @@ reachable for explicit human and agent reads.
   page MUST define default retrieval discipline, per-document read
   triggers, generated-manifest handling, and the
   indexed-versus-explicit-read split per the directive enumeration at
-  lines 159 to 169 of `src/inbox/in/token_economy.md`.
+  lines 159 to 169 of `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md`.
 - When the Feature routes the new handbook page, the Feature MUST add
   one routing entry for context-budgeting decisions in
   `src/memory/handbook/index.md`.
@@ -194,14 +194,14 @@ reachable for explicit human and agent reads.
 - While the `src/internal/tools/context-budget-report.mjs` command runs, the command
   MUST emit character counts and `chars / 4` token estimates for the
   ten path scopes the directive enumerates at lines 240 to 249 of
-  `src/inbox/in/token_economy.md`.
+  `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md`.
 - When the `src/internal/tools/context-budget-report.mjs` command emits the token
   estimate, the report MUST label the `chars / 4` value as a rough
   estimate.
 - When the Feature applies the documentation-impact contract, the
   Feature MUST evaluate updates to the six documentation surfaces the
   directive enumerates at lines 261 to 266 of
-  `src/inbox/in/token_economy.md`.
+  `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md`.
 - When the Feature defers a documentation-impact update, the Feature
   MUST record the deferral rationale and one backlog linkage per the
   documentation-impact contract.
@@ -210,7 +210,7 @@ reachable for explicit human and agent reads.
   verification step Cursor requires before merge.
 - When the Feature stages the delivery report, the report MUST request
   the five operator post-implementation actions the directive
-  enumerates at lines 293 to 297 of `src/inbox/in/token_economy.md`.
+  enumerates at lines 293 to 297 of `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md`.
 - When the Feature processes historical artifacts, the Feature MUST NOT
   delete any file under `src/work/**`.
 - When the Feature processes historical artifacts, the Feature MUST NOT

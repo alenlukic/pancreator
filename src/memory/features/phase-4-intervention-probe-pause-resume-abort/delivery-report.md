@@ -7,9 +7,9 @@ This feature ships a bounded Phase 4 intervention probe that captures empirical 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [10, 29],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "935825e"
 }
 ```
  
@@ -17,9 +17,9 @@ This feature ships a bounded Phase 4 intervention probe that captures empirical 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [1, 3],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "8b9b536"
 }
 ```
 
@@ -49,9 +49,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [1, 18],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "8b9b536"
 }
 ```
  
@@ -59,9 +59,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [49, 58],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "935825e"
 }
 ```
 
@@ -73,9 +73,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
   "range": [5, 12],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "16c2f21"
 }
 ```
  
@@ -83,9 +83,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
   "range": [24, 37],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "d82f01c"
 }
 ```
 
@@ -94,9 +94,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
   "range": [9, 10],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "16c2f21"
 }
 ```
  
@@ -104,9 +104,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
   "range": [32, 41],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "d82f01c"
 }
 ```
 
@@ -115,9 +115,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
   "range": [11, 12],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "16c2f21"
 }
 ```
  
@@ -125,9 +125,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
   "range": [15, 17],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "d82f01c"
 }
 ```
 
@@ -170,9 +170,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [10, 29],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "935825e"
 }
 ```
 
@@ -205,9 +205,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [1, 3],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "8b9b536"
 }
 ```
  
@@ -215,9 +215,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
   "range": [15, 17],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "d82f01c"
 }
 ```
 
@@ -226,9 +226,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [11, 17],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "8b9b536"
 }
 ```
  
@@ -236,9 +236,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [27, 29],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "8b9b536"
 }
 ```
 
@@ -247,9 +247,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [15, 17],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "8b9b536"
 }
 ```
  
@@ -257,9 +257,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "2f37868"
 }
 ```
 
@@ -281,9 +281,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "2f37868"
 }
 ```
 
@@ -302,9 +302,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "2f37868"
 }
 ```
 
@@ -323,9 +323,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "2f37868"
 }
 ```
 
@@ -344,9 +344,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "2f37868"
 }
 ```
 
@@ -358,9 +358,9 @@ Coverage delta against the prior baseline is not expressed as changed-line state
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [10, 14],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "2f37868"
 }
 ```
  
@@ -368,9 +368,9 @@ Coverage delta against the prior baseline is not expressed as changed-line state
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [49, 58],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "935825e"
 }
 ```
 
@@ -379,9 +379,9 @@ Confidence comes from the required validation set: `node --test tests/*.test.mjs
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 29],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "2f37868"
 }
 ```
  
@@ -389,9 +389,9 @@ Confidence comes from the required validation set: `node --test tests/*.test.mjs
 ```json
 {
   "kind": "lines",
-  "path": "src/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [53, 58],
-  "contentHash": "TBD-on-commit"
+  "contentHash": "935825e"
 }
 ```
 

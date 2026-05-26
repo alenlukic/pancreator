@@ -181,7 +181,7 @@
           "kind": "lines",
           "path": "src/memory/features/json-formatting/index.json",
           "range": [1, 1],
-          "contentHash": "TBD-on-commit"
+          "contentHash": "1ae2560"
         }
       }
     },

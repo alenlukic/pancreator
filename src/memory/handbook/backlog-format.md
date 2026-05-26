@@ -13,17 +13,17 @@ references:
   - kind: lines
     path: src/memory/adr/0001-backlog-tracking.md
     range: [76, 81]
-    contentHash: e36b188237d1e2d70aaf96407d1d2c9f852c343c6d4db6c73717ccc9a6fd3775
+    contentHash: e36b188
     note: "ADR decision establishes `/src/memory/backlog/index.yaml` and this handbook schema."
   - kind: lines
     path: AGENTS.md
     range: [77, 83]
-    contentHash: eeba7460135f9da011495b32d2656654835855bd1820db9c7a87d83436e9c1a9
+    contentHash: eeba746
     note: "AGENTS requires dual-anchor citations and Layer 1 style discipline."
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [225, 226]
-    contentHash: ed35925aca8483d61b463472090f5859d25844abd5cd4042a5378c83501c73c0
+    contentHash: ed35925
     note: "Glossary defines backlog as the live ranked roadmap."
 related:
   - /src/memory/adr/0001-backlog-tracking.md

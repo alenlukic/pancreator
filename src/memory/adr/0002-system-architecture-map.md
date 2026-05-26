@@ -10,67 +10,67 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [3, 3]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD overview defines the four-axis architecture: roles, pipelines, memory, and process."
   - kind: lines
     path: docs/PRD.md
     range: [12, 12]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD scaffold todo defines the canonical repository substrate and top-level directories."
   - kind: lines
     path: docs/PRD.md
     range: [17, 21]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD MVP scope defines persona and skill inventories."
   - kind: lines
     path: docs/PRD.md
     range: [26, 30]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD roadmap defines pipelines and control-plane runtime as distinct implementation layers."
   - kind: lines
     path: AGENTS.md
     range: [31, 41]
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: "AGENTS defines current agent and pipeline locations, including bootstrap status for pipeline population."
   - kind: lines
     path: AGENTS.md
     range: [104, 133]
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: "AGENTS workspace map defines canonical memory, inbox, and control-plane paths."
   - kind: lines
     path: AGENTS.md
     range: [138, 141]
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: "AGENTS bootstrap status records the currently active phases."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [49, 53]
-    contentHash: TBD-on-commit
+    contentHash: 940935e
     note: "Bootstrap Phase 0 scaffolds directories that represent the present implemented repository state."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [57, 61]
-    contentHash: TBD-on-commit
+    contentHash: 940935e
     note: "Bootstrap Phase 0b defines handbook seeds as canonical authoring substrate."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [273, 275]
-    contentHash: TBD-on-commit
+    contentHash: 940935e
     note: "Bootstrap conventions require a human-in-the-loop phase-gate reviewer."
   - kind: lines
     path: src/personas/persona-designer.md
     range: [2, 4]
-    contentHash: TBD-on-commit
+    contentHash: 9ac0169
     note: "Persona Designer scope anchors bootstrap persona authoring ownership."
   - kind: lines
     path: src/personas/contract-writer.md
     range: [2, 4]
-    contentHash: TBD-on-commit
+    contentHash: 5b60a64
     note: "Contract Writer scope anchors bootstrap contract-authoring ownership."
   - kind: lines
     path: src/personas/intake-analyst.md
     range: [2, 4]
-    contentHash: TBD-on-commit
+    contentHash: b85829d
     note: "Intake Analyst anchors the inbox-driven intake contract in current persona inventory."
 ---
 

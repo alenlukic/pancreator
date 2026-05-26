@@ -7,19 +7,19 @@ references:
   - kind: lines
     path: src/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [193, 519]
-    contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d
+    contentHash: e6c4fcd
   - kind: lines
     path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
     range: [30, 63]
-    contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70
+    contentHash: 58bbab6
   - kind: lines
     path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md
     range: [40, 173]
-    contentHash: ec473714dee6f250f59b5f211a56ec843ae633c472204baafcb181ec8df10df5
+    contentHash: ec47371
   - kind: lines
     path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/adr-draft.md
     range: [39, 75]
-    contentHash: a001200da3a6253f9e329337cab3fbf1a262bc681a13006f0878dd03d2ec4bfa
+    contentHash: a001200
 ---
 
 # Active Memory Context Economy Pass 2

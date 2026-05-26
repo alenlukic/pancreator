@@ -17,22 +17,22 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [508, 508]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §6 — MVP roster: reviewer runs Modern Code Review per Google's `eng-practices`, classifies must fix / consider / nit, verifies test coverage, checks ADR/PRD alignment, and runs declared Spec Contracts."
   - kind: lines
     path: docs/PRD.md
     range: [669, 678]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §7 — feature-delivery `review` stage YAML declaring inputs `[code, tests, plan, adr-draft, contracts:from_feature]`, output `/src/work/<day>/<id>/review.md`, and `gate: review_passes`."
   - kind: lines
     path: docs/PRD.md
     range: [113, 121]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §3.5 US-1 — Multi-cycle implement → review → fix → review → ship loop the reviewer gates with bounded loop count."
   - kind: lines
     path: docs/PRD.md
     range: [1255, 1255]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD §17 — Reading list cite for Modern Code Review (Bacchelli/Bird, Bosu/Greiler/Bird) the procedure draws from."
 ---
 

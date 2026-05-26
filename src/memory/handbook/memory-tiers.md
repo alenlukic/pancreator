@@ -12,12 +12,12 @@ references:
   - kind: lines
     path: src/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [212, 312]
-    contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d
+    contentHash: e6c4fcd
     note: "Acceptance criteria anchor active-memory and memory-tier handbook obligations."
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
     range: [101, 230]
-    contentHash: fb1ac76d5d8075ee087808b7efbab96242534524d161f26db68b75f21ae37051
+    contentHash: fb1ac76
     note: "Directive §1 defines tier purposes, locations, and rules."
 related:
   - /src/memory/handbook/context-economy.md
@@ -29,7 +29,7 @@ related:
 
 This page defines the six context tiers agents use when they classify default
 versus explicit-read context. The Feature cites this taxonomy at
-`{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [212, 312], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`.
+`{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [212, 312], contentHash: e6c4fcd}`.
 
 ## Active memory
 

@@ -10,32 +10,32 @@ references:
   - kind: symbol
     path: docs/PRD.md
     symbol: "## 13. Open Questions / Risks"
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD defines the Q1-Q22 ratification surface."
   - kind: lines
     path: docs/PRD.md
     range: [1151, 1176]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD lists Q1-Q22 defaults that require ratification or override."
   - kind: symbol
     path: AGENTS.md
     symbol: "## 5 — Working agreement"
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: "AGENTS defines stage-local workflow and citation/style obligations."
   - kind: lines
     path: AGENTS.md
     range: [78, 90]
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: "AGENTS requires local staging, human-gated pushes, dual-anchor citations, and Layer 1 discipline."
   - kind: symbol
     path: src/memory/handbook/contract-style.md
     symbol: "### Rule 1.1 — RFC 2119 obligation per clause"
-    contentHash: TBD-on-commit
+    contentHash: afdc2a6
     note: "Contract style defines RFC 2119 and atomic clause obligations."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [60, 89]
-    contentHash: TBD-on-commit
+    contentHash: afdc2a6
     note: "Layer 1 requires explicit obligation keywords and atomic statements."
 ---
 

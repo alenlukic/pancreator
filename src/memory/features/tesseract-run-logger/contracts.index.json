@@ -17,7 +17,7 @@
         "kind": "artifact-symbol",
         "path": "src/internal/packages/@tesseract/run-logger/README.md",
         "symbol": "# Quickstart",
-        "contentHash": "TBD-on-commit"
+        "contentHash": "38ade8a"
       }
     }
   ]

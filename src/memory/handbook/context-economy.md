@@ -13,22 +13,22 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [1, 36]
-    contentHash: a29b04a32dc62da25ff1af024cca7ff74cc5fe3c76a2be301a7e391c4b56a0e1
+    contentHash: a29b04a
     note: AGENTS defines the primary entry contract and canon table including PRD routing.
   - kind: lines
     path: src/memory/handbook/index.md
     range: [53, 72]
-    contentHash: 9c4824455c19cd39e623ebb93bb81688a7fd9530e9f6f07fdcb1b5c405b49663
+    contentHash: 9c48244
     note: Handbook index defines retrieval policy and routing table maintenance rules.
   - kind: lines
     path: src/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [288, 352]
-    contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d
+    contentHash: e6c4fcd
     note: Context-economy acceptance criteria include tier routing and simple task mode.
   - kind: lines
     path: src/memory/handbook/glossary.md
     range: [205, 226]
-    contentHash: 31546d19f1cabd2d82e88353fbc8a3d67f1b5b5a97f2b28734841d7103b5446f
+    contentHash: 31546d1
     note: Glossary defines active-memory and related tier nouns used here.
 related:
   - /src/memory/handbook/index.md
@@ -70,7 +70,7 @@ Agents MUST NOT read, traverse, ingest, cite, or modify files under
 ## Memory-tier routing
 
 This section states canonical routing cited at
-`{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [288, 312], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`.
+`{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [288, 312], contentHash: e6c4fcd}`.
 
 When an agent asks what the memory tiers mean, the agent SHALL open
 `src/memory/handbook/memory-tiers.md` before loading broader `src/memory/` trees.
@@ -123,7 +123,7 @@ Typical explicit-read surfaces include:
 
 This subsection is the canonical definition for `simple task mode` per plan
 decision D1 at
-`{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
+`{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6}`.
 
 When a task executes under `simple task mode`, agents SHALL treat the posture as
 the default for low-risk mechanical work.
@@ -205,7 +205,7 @@ context after equivalent failures.
 ## Model and context escalation guidance
 
 This subsection is the canonical escalation guidance per plan decision D4 at
-`{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6b966ad3014a4369cf75c6a43235f18832f625902ff70ff1151f086f70}`.
+`{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6}`.
 
 When an agent selects models for routine mechanical work, the agent MUST NOT
 treat Opus-class models as the default.

@@ -57,27 +57,27 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [90, 122]
-    contentHash: a58969b586688e58265bd8928fc703dd88d13197de91013dc1f177531555240e
+    contentHash: a58969b
     note: "AGENTS §5 — stage-local behavior, no push, documentation impact, and bootstrap tagging requirements."
   - kind: lines
     path: /src/memory/handbook/persona-spec.md
     range: [42, 189]
-    contentHash: dd7848651c23fe65c8fafe6de4f0b31d3c52ea2b32b0cba66947a75c0f7500a9
+    contentHash: dd78486
     note: "Persona format and Cursor projection contract."
   - kind: lines
     path: /src/memory/handbook/documentation-impact-contract.md
     range: [1, 115]
-    contentHash: 1fcda8c4551b457a491ce1d276f74b1ad59fe333df49148adda3e836d1f779d7
+    contentHash: 1fcda8c
     note: "Mandatory documentation impact decision contract."
   - kind: lines
     path: /src/memory/handbook/policy-compliance-contract.md
     range: [47, 118]
-    contentHash: 58b85ea93a74d7c09a7dc36aac9ef41050cf2a5c2ddb479c4c1fe00fff7b2d13
+    contentHash: 58b85ea
     note: "Policy-compliance artifact shape and commit-time enforcement linkage."
   - kind: lines
     path: /src/memory/handbook/run-log-schema.md
     range: [1, 220]
-    contentHash: 7fcab4f770815a487e2c85fb2d0d00dae4b179a230af4362eeb3cbdea1912b30
+    contentHash: 7fcab4f
     note: "Run-log schema used by focused audit mode."
 ---
 

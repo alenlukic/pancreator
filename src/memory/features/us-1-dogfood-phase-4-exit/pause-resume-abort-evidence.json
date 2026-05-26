@@ -1,6 +1,6 @@
 {
   "feature_id": "us-1-dogfood-phase-4-exit",
-  "probe_directive_path": "src/inbox/in/phase-4-intervention-probe.md",
+  "probe_directive_path": "src/inbox/archive/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md",
   "probe_nested_feature_id": "phase-4-intervention-probe-pause-resume-abort",
   "probe_task_id": "71096_0415_phase-4-intervention-probe-pause-resume-abort",
   "probe_work_directory": "src/internal/work_archive/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort",

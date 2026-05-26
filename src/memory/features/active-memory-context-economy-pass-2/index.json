@@ -133,7 +133,7 @@
         "kind": "lines",
         "path": "src/memory/features/active-memory-context-economy-pass-2/index.json",
         "range": [1, 1],
-        "contentHash": "TBD-on-commit"
+        "contentHash": "2bb1fde"
       }
     },
     "intake_governance": {
@@ -183,7 +183,7 @@
   },
   "delivery_report": {
     "path": "src/memory/features/active-memory-context-economy-pass-2/delivery-report.md",
-    "contentHash": "TBD-on-commit"
+    "contentHash": "942ceb3"
   },
   "notifier": {
     "staged_at_utc": "2026-05-10T01:26:00Z",

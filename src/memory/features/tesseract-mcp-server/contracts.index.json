@@ -17,7 +17,7 @@
         "kind": "artifact-symbol",
         "path": "src/internal/packages/@tesseract/mcp-server/README.md",
         "symbol": "# Quickstart",
-        "contentHash": "TBD-on-commit"
+        "contentHash": "d3f9e4c"
       }
     }
   ]

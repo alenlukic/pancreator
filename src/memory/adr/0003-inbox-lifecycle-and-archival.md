@@ -10,42 +10,42 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [267, 267]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD glossary defines Inbox as the bidirectional queue with in/out/thread paths."
   - kind: lines
     path: docs/PRD.md
     range: [1037, 1037]
-    contentHash: TBD-on-commit
+    contentHash: 2ce8e5c
     note: "PRD CLI surface includes `tess inbox` management verbs."
   - kind: lines
     path: AGENTS.md
     range: [101, 103]
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: "AGENTS defines `/src/inbox/in/` as the canonical incoming work queue and `/src/inbox/out/` as staged responses."
   - kind: lines
     path: AGENTS.md
     range: [130, 130]
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: "AGENTS workspace map defines `src/inbox/{in,out,threads}/`."
   - kind: lines
     path: AGENTS.md
     range: [145, 146]
-    contentHash: TBD-on-commit
+    contentHash: e037427
     note: "AGENTS bootstrap status records that runtime/CLI execution wiring is not landed."
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [49, 53]
-    contentHash: TBD-on-commit
+    contentHash: 940935e
     note: "Bootstrap scaffold includes `src/inbox/{in,out,threads}/` as a required repository substrate."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [60, 65]
-    contentHash: TBD-on-commit
+    contentHash: afdc2a6
     note: "Layer 1 requires RFC 2119 keywords for normative statements."
   - kind: lines
     path: src/memory/handbook/contract-style.md
     range: [114, 124]
-    contentHash: TBD-on-commit
+    contentHash: afdc2a6
     note: "Layer 1 forbids weasel words in normative clauses."
 ---
 

@@ -52,17 +52,17 @@ references:
   - kind: lines
     path: docs/PRD.md
     range: [317, 480]
-    contentHash: 2cdbb60373aad0651e54a2da54b8cd8b6a31f330054646c31b312d7708722608
+    contentHash: 2cdbb60
     note: "PRD §4.5 Contract Specification Language — wrapper schema + closed-core kinds + ContractRunner adapter + ContractFailure shape"
   - kind: lines
     path: docs/PRD.md
     range: [483, 610]
-    contentHash: d1a169bb1ddf4c31b9e53c4f38194d831ea437cc18cf6f505c7d1f3e14f08167
+    contentHash: d1a169b
     note: "PRD §4.6 Contract Style Discipline — Layers 1-5 + worked example"
   - kind: lines
     path: docs/PRD.md
     range: [967, 980]
-    contentHash: 9dec58c936f7d055fb594b9cc5da50d6249128e1309f017c834313fc85a305a5
+    contentHash: 9dec58c
     note: "PRD §6 — /src/skills/author-contract.md meta-skill spec (the procedure you execute)"
 ---
 
