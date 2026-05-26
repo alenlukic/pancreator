@@ -13,6 +13,45 @@ const TASK_ID_ARG = {
   required: ["taskId"] as const,
 };
 
+const FEATURE_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    action: {
+      type: "string" as const,
+      enum: ["list", "show"] as const,
+      description: "Read-only feature action (default list)",
+    },
+    featureId: {
+      type: "string" as const,
+      description: "Feature id for action show",
+    },
+  },
+};
+
+const STATUS_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    taskId: {
+      type: "string" as const,
+      description: "Optional feature-delivery task id for task-scoped status",
+    },
+  },
+};
+
+const MEMORY_QUERY_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    query: {
+      type: "string" as const,
+      description: "Free-text query routed through handbook and active memory",
+    },
+  },
+  required: ["query"] as const,
+};
+
 const RESUME_ARG = {
   type: "object" as const,
   additionalProperties: false as const,
@@ -80,13 +119,15 @@ export function listToolDefinitions(): readonly ToolDefinition[] {
     },
     {
       name: "tess.feature",
-      description: "Manage feature-delivery artifacts [deferred: M2]",
-      inputSchema: EMPTY_OBJECT_SCHEMA,
+      description:
+        "Read-only feature memory queries (`action`: list | show) [write paths deferred: M2]",
+      inputSchema: FEATURE_ARG,
     },
     {
       name: "tess.status",
-      description: "Show pipeline and workspace status [deferred: M2]",
-      inputSchema: EMPTY_OBJECT_SCHEMA,
+      description:
+        "Read pipeline and workspace status; pass taskId for task-scoped detail",
+      inputSchema: STATUS_ARG,
     },
     {
       name: "tess.approve",
@@ -95,8 +136,9 @@ export function listToolDefinitions(): readonly ToolDefinition[] {
     },
     {
       name: "tess.memory",
-      description: "Inspect Memory tier indexes [deferred: M2]",
-      inputSchema: EMPTY_OBJECT_SCHEMA,
+      description:
+        "Query handbook routing and active-memory tiers (`query` required) [write paths deferred: M2]",
+      inputSchema: MEMORY_QUERY_ARG,
     },
     {
       name: "tess.contracts",

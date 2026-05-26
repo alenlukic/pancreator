@@ -28,7 +28,8 @@
     "@tesseract/inbox": "workspace:*",
     "@tesseract/intervention": "workspace:*",
     "@tesseract/memory": "workspace:*",
-    "@tesseract/run-logger": "workspace:*"
+    "@tesseract/run-logger": "workspace:*",
+    "yaml": "catalog:"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

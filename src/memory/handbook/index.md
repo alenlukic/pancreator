@@ -77,6 +77,7 @@ lands, operators SHOULD apply this table manually.
 | Choose standard versus complex Cursor subagents | `/src/memory/handbook/subagent-model-tiers.md` | `/src/memory/handbook/context-economy.md`, `/AGENTS.md` | Use standard variants by default; escalate to complex only for documented triggers. |
 | Audit likely token cost sinks | `/src/memory/handbook/context-cost-audit.md` | `/src/memory/handbook/context-economy.md`, `/src/memory/handbook/subagent-model-tiers.md`, `/docs/M1.index.md` | Records current cost sinks and practical controls. |
 | Interpret or update `tesseract.yaml` | `/src/memory/handbook/tesseract-config.md` | `/tesseract.yaml`, `/tesseract-defaults.yaml`, `/src/personas/adopter.md` | Defines `project_root`, live bootstrap tracking, and the boundary between live policy and defaults. |
+| Run or document `tess` CLI commands for operators | `/src/memory/handbook/tesseract-config.md` §“CLI invocation in this workspace” | `/src/memory/handbook/operator-output-contract.md`, `/AGENTS.md` | Use `pnpm -w exec tess …` from repo root; bare `tess` is not on PATH. |
 
 ## Retrieval discipline
 

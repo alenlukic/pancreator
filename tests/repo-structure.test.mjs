@@ -162,6 +162,8 @@ test("workspace, scripts, and workflow use conventional test and docs paths", ()
   assert.match(pkg.scripts["check:phase0a"], /^node src\/internal\/tools\//);
   assert.match(pkg.scripts["context:budget"], /^node src\/internal\/tools\//);
   assert.match(pkg.scripts["repo:structure:test"], /^node --test tests\//);
+  assert.match(pkg.scripts.test, /turbo run test/);
+  assert.match(pkg.scripts.test, /node --test tests\//);
 
   const workflow = read(".github/workflows/phase-0a-scaffold.yml");
   assert.match(workflow, /src\/internal\/packages\/\*\*/);
@@ -171,9 +173,9 @@ test("workspace, scripts, and workflow use conventional test and docs paths", ()
   assert.match(workflow, /\.cursor\/agents\/\*\*/);
   assert.match(workflow, /\.cursor\/hooks\/\*\*/);
   assert.match(workflow, /\.cursor\/rules\/\*\*/);
-  assert.match(workflow, /pnpm run migration:test/);
-  assert.match(workflow, /pnpm run context:budget:test/);
-  assert.match(workflow, /pnpm run repo:structure:test/);
+  assert.match(workflow, /pnpm test/);
+  assert.match(workflow, /node src\/internal\/tools\/run-compliance\.mjs/);
+  assert.match(workflow, /pnpm run check:phase0a/);
 });
 
 test("Cursor indexing excludes active and archived work by default", () => {

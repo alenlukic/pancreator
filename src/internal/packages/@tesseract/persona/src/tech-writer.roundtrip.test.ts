@@ -7,8 +7,8 @@ import { emitCursorAgentsMirror, emitMdcShim, emitPersonaMarkdown } from "./emit
 import { parsePersonaMarkdown } from "./parse.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = join(here, "../../../..");
-const TECH_WRITER = join(REPO_ROOT, "personas", "tech-writer.md");
+const REPO_ROOT = join(here, "../../../../../../");
+const TECH_WRITER = join(REPO_ROOT, "src", "personas", "tech-writer.md");
 
 describe("tech-writer round-trip", () => {
   it("parse → emit → re-parse yields an equivalent frontmatter map and same body", () => {
@@ -26,7 +26,7 @@ describe("tech-writer round-trip", () => {
     const original = readFileSync(TECH_WRITER, "utf8");
     const { spec } = parsePersonaMarkdown(original);
     const mdc = emitMdcShim(spec);
-    const m = mdc.match(/^---\n([\s\S]*?)\n---\n\n@personas\/([^\n]+)\.md\n$/);
+    const m = mdc.match(/^---\n([\s\S]*?)\n---\n\n@src\/personas\/([^\n]+)\.md\n$/);
     expect(m).not.toBeNull();
     const y = parseYaml(m![1] ?? "") as { description: string; globs: string[]; alwaysApply: boolean };
     expect(y.description).toBe(spec.description);

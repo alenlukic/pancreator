@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "attw": "attw --pack . --profile esm-only",
-    "publint": "publint"
+    "publint": "publint",
+    "test": "node -e \"process.exit(0)\""
   },
   "dependencies": {
     "@tesseract/adopter-scan": "workspace:*",

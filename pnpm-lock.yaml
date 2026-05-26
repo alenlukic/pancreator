@@ -77,6 +77,9 @@ importers:
       typescript-eslint:
         specifier: 'catalog:'
         version: 8.59.0(eslint@9.39.4)(typescript@5.9.3)
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
 
   src/internal/packages/@tesseract/adopter-scan:
     dependencies:
@@ -366,6 +369,9 @@ importers:
       '@tesseract/run-logger':
         specifier: workspace:*
         version: link:../run-logger
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'

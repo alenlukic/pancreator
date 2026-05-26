@@ -39,6 +39,37 @@ For this repository, the current live state is Phase 4 in progress with phases `
 
 `docs/BOOTSTRAP.md` remains the phase-contract and milestone reference. `docs/M1.index.md` is the compact route for M1/bootstrap context before loading the full bootstrap or PRD documents.
 
+## CLI invocation in this workspace
+
+The `@tesseract/cli` package exposes the `tess` binary, but this repository
+does **not** install `tess` on the operator shell `PATH`. Agents and operators
+SHALL invoke the CLI from the repository root with the workspace exec prefix:
+
+```bash
+pnpm -w exec tess <subcommand> [arguments...]
+```
+
+Rules:
+
+- Every **runnable** command an agent emits for an operator MUST use the full
+  form `pnpm -w exec tess …`, not bare `tess …`.
+- Prose MAY refer to the logical verb (`tess advance`, `tess run`) when
+  describing behavior; **How** clauses in **Next operator steps** and runbooks
+  MUST use the prefixed invocation.
+- Node maintenance scripts (`node src/internal/tools/…`) are unchanged; only
+  the `tess` CLI requires the prefix.
+- Agents that run `tess` in a shell themselves SHALL use the same prefix unless
+  a ratified global install is documented in an ADR.
+
+Examples:
+
+```bash
+pnpm -w exec tess run feature-delivery src/inbox/in/172981_05-25-26/71701_0613_ci-best-practices-batch.md
+pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/review.md
+pnpm -w exec tess refresh-active-memory --dry-run
+pnpm -w exec tess status <task-id>
+```
+
 ## Editing guidance
 
 When changing `tesseract.yaml`:

@@ -14,7 +14,8 @@
     "migration:test": "node --test tests/migrate-timestamp-naming.test.mjs tests/migrate-inbox-convention.test.mjs",
     "context:budget": "node src/internal/tools/context-budget-report.mjs",
     "context:budget:test": "node --test tests/context-budget-report.test.mjs",
-    "repo:structure:test": "node --test tests/repo-structure.test.mjs"
+    "repo:structure:test": "node --test tests/repo-structure.test.mjs",
+    "test": "turbo run test && node --test tests/repo-structure.test.mjs tests/migrate-json-formatting.test.mjs tests/migrate-timestamp-naming.test.mjs tests/migrate-inbox-convention.test.mjs tests/context-budget-report.test.mjs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
@@ -26,6 +27,7 @@
     "publint": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "yaml": "catalog:"
   }
 }

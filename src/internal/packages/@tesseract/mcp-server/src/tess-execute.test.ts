@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
 import { callTessToolMcp, readTesseractResourceMcp } from "./create-mcp-server.js";
 import { TessDeferredToolError, executeTessTool } from "./tess-execute.js";
 
+const ROOT = path.resolve(import.meta.dirname, "..", "..", "..", "..", "..", "..");
+
 async function mktemp(prefix: string): Promise<string> {
   return await fs.mkdtemp(path.join(os.tmpdir(), prefix));
 }
@@ -70,6 +72,88 @@ describe("readTesseractResource work-run-log", () => {
     );
     expect(mimeType).toBe("application/x-ndjson");
     expect(text).toBe(body);
+  });
+});
+
+describe("read-only tess.feature / tess.status / tess.memory", () => {
+  it("tess.feature list returns typed feature summaries", async () => {
+    const out = await callTessToolMcp("tess.feature", { action: "list" }, { repoRoot: ROOT });
+    expect(out.status).toBe("ok");
+    expect(out.command).toBe("feature.list");
+    expect(Array.isArray(out.features)).toBe(true);
+    expect(JSON.stringify(out)).not.toContain('"stub"');
+  });
+
+  it("tess.feature show returns spec data or structured not-found", async () => {
+    const out = await callTessToolMcp(
+      "tess.feature",
+      { action: "show", featureId: "ci-best-practices-batch" },
+      { repoRoot: ROOT },
+    );
+    expect(out.status).toBe("ok");
+    expect(out.command).toBe("feature.show");
+    expect(out.feature_id).toBe("ci-best-practices-batch");
+    expect(JSON.stringify(out)).not.toContain('"stub"');
+  });
+
+  it("tess.status returns workspace summary without taskId", async () => {
+    const out = await callTessToolMcp("tess.status", {}, { repoRoot: ROOT });
+    expect(out.status).toBe("ok");
+    expect(out.command).toBe("status");
+    expect(Array.isArray(out.activeTasks)).toBe(true);
+    expect(JSON.stringify(out)).not.toContain('"stub"');
+  });
+
+  it("tess.memory.query returns typed memory hits", async () => {
+    const out = await callTessToolMcp(
+      "tess.memory",
+      { query: "context economy" },
+      { repoRoot: ROOT },
+    );
+    expect(out.status).toBe("ok");
+    expect(out.command).toBe("memory.query");
+    expect(Array.isArray(out.hits)).toBe(true);
+    expect(JSON.stringify(out)).not.toContain('"stub"');
+  });
+});
+
+describe("stdio MCP transport read tools", () => {
+  it("does not emit stub envelopes for wired read tools", async () => {
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const { StdioClientTransport } = await import(
+      "@modelcontextprotocol/sdk/client/stdio.js"
+    );
+    const serverEntry = path.join(
+      ROOT,
+      "src/internal/packages/@tesseract/mcp-server/dist/server.js",
+    );
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [serverEntry],
+      cwd: ROOT,
+    });
+    const client = new Client({ name: "tess-read-tools-test", version: "0.0.0" });
+    await client.connect(transport);
+    const cases = [
+      { name: "tess.feature", arguments: { action: "list" } },
+      {
+        name: "tess.feature",
+        arguments: { action: "show", featureId: "tesseract-cli" },
+      },
+      { name: "tess.status", arguments: {} },
+      { name: "tess.memory", arguments: { query: "handbook" } },
+    ] as const;
+    for (const call of cases) {
+      const result = await client.callTool(call);
+      const text = result.content
+        .map((c) => ("text" in c ? c.text : ""))
+        .join("\n");
+      expect(text).not.toContain('"status": "stub"');
+      expect(text).not.toContain('"status":"stub"');
+      const parsed = JSON.parse(text) as { status?: string };
+      expect(parsed.status).not.toBe("stub");
+    }
+    await client.close();
   });
 });
 

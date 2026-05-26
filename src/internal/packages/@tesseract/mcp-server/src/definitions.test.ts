@@ -24,6 +24,10 @@ describe("listToolDefinitions", () => {
       ].sort(),
     );
     expect(tools.find((x) => x.name === "tess.init")?.description).toMatch(/\[deferred: M3\]/);
+    expect(tools.find((x) => x.name === "tess.feature")?.description).toMatch(/Read-only feature memory/);
+    expect(tools.find((x) => x.name === "tess.memory")?.inputSchema).toMatchObject({
+      required: ["query"],
+    });
     for (const t of tools) {
       expect(t.inputSchema).toMatchObject({ type: "object" });
     }
