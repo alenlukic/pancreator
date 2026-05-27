@@ -76,24 +76,30 @@ function parseShippedAtMs(rec: Record<string, unknown>): number | null {
   const delivery = rec["delivery_report"];
 
   let candidate: unknown;
-  if (index && typeof index === "object") {
-    const idx = index as Record<string, unknown>;
-    candidate = idx["completed_at"];
+  // New schema: top-level indexed_at (used by feature-delivery pipeline close-artifacts)
+  if (typeof rec["indexed_at"] === "string") {
+    candidate = rec["indexed_at"];
   }
-  if (typeof candidate !== "string" || Number.isNaN(Date.parse(candidate))) {
+  if (typeof candidate !== "string" || Number.isNaN(Date.parse(candidate as string))) {
+    if (index && typeof index === "object") {
+      const idx = index as Record<string, unknown>;
+      candidate = idx["completed_at"];
+    }
+  }
+  if (typeof candidate !== "string" || Number.isNaN(Date.parse(candidate as string))) {
     candidate =
       handoff && typeof handoff === "object"
         ? (handoff as Record<string, unknown>)["completed_at"]
         : undefined;
   }
-  if (typeof candidate !== "string" || Number.isNaN(Date.parse(candidate))) {
+  if (typeof candidate !== "string" || Number.isNaN(Date.parse(candidate as string))) {
     const ship = rec["shipped"];
     candidate =
       ship && typeof ship === "object"
         ? (ship as Record<string, unknown>)["shipped_at_utc"]
         : undefined;
   }
-  if (typeof candidate !== "string" || Number.isNaN(Date.parse(candidate))) {
+  if (typeof candidate !== "string" || Number.isNaN(Date.parse(candidate as string))) {
     candidate =
       delivery && typeof delivery === "object"
         ? (delivery as Record<string, unknown>)["staged_at_utc"]
@@ -113,7 +119,9 @@ function truncateCell(s: string, maxLen: number): string {
 
 function readDeliverySectionObject(rec: Record<string, unknown>): Record<string, unknown> | undefined {
   const raw = rec["delivery_report"];
-  return raw !== undefined && typeof raw === "object" ? (raw as Record<string, unknown>) : undefined;
+  return raw !== null && raw !== undefined && typeof raw === "object"
+    ? (raw as Record<string, unknown>)
+    : undefined;
 }
 
 function readDeliveryReportPath(rec: Record<string, unknown>): string {
@@ -135,6 +143,19 @@ function readDeliveryReportPath(rec: Record<string, unknown>): string {
       }
     }
   }
+  // New schema: feature_artifacts[].kind === "delivery-report" (used by feature-delivery pipeline close-artifacts)
+  const featureArts = rec["feature_artifacts"];
+  if (Array.isArray(featureArts)) {
+    for (const item of featureArts) {
+      if (item && typeof item === "object") {
+        const kind = (item as Record<string, unknown>)["kind"];
+        const pth = (item as Record<string, unknown>)["path"];
+        if (kind === "delivery-report" && typeof pth === "string") {
+          return pth;
+        }
+      }
+    }
+  }
   return "";
 }
 
@@ -142,6 +163,13 @@ function readOutboxStagingPath(rec: Record<string, unknown>): string {
   const top = readDeliverySectionObject(rec);
   if (top !== undefined && typeof top["staged_to_inbox_out"] === "string") {
     return top["staged_to_inbox_out"] as string;
+  }
+  const shipOutbox = rec["ship_outbox_artifact"];
+  if (shipOutbox !== null && shipOutbox !== undefined && typeof shipOutbox === "object") {
+    const outboxPath = (shipOutbox as Record<string, unknown>)["path"];
+    if (typeof outboxPath === "string") {
+      return outboxPath;
+    }
   }
   const ship = rec["shipped"];
   if (ship && typeof ship === "object" && typeof (ship as Record<string, unknown>)["outbox_artifact"] === "string") {
@@ -154,14 +182,44 @@ function readOutboxStagingPath(rec: Record<string, unknown>): string {
   return "";
 }
 
-function readArchivedInboxPointer(rec: Record<string, unknown>): string {
+function pushInboxPathCandidate(candidates: string[], value: unknown): void {
+  if (typeof value === "string" && value.trim() !== "") {
+    candidates.push(normalizeInboxRel(value));
+    return;
+  }
+  if (
+    value !== null &&
+    value !== undefined &&
+    typeof value === "object" &&
+    typeof (value as Record<string, unknown>)["path"] === "string"
+  ) {
+    candidates.push(normalizeInboxRel((value as Record<string, unknown>)["path"] as string));
+  }
+}
+
+function dedupeInboxCandidates(candidates: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const rel of candidates) {
+    if (seen.has(rel)) continue;
+    seen.add(rel);
+    out.push(rel);
+  }
+  return out;
+}
+
+/** Reads explicit archive pointers recorded at ship/close time (synchronous). */
+export function readExplicitArchivedInboxPointer(rec: Record<string, unknown>): string {
+  if (typeof rec["archived_inbox_source"] === "string") {
+    return normalizeInboxRel(rec["archived_inbox_source"] as string);
+  }
   const top = readDeliverySectionObject(rec);
   if (top !== undefined && typeof top["archived_inbox_source"] === "string") {
-    return top["archived_inbox_source"] as string;
+    return normalizeInboxRel(top["archived_inbox_source"] as string);
   }
   const ship = rec["shipped"];
   if (ship && typeof ship === "object" && typeof (ship as Record<string, unknown>)["archived_inbox_source"] === "string") {
-    return (ship as Record<string, unknown>)["archived_inbox_source"] as string;
+    return normalizeInboxRel((ship as Record<string, unknown>)["archived_inbox_source"] as string);
   }
   const notifier = rec["notifier"];
   if (
@@ -169,9 +227,170 @@ function readArchivedInboxPointer(rec: Record<string, unknown>): string {
     typeof notifier === "object" &&
     typeof (notifier as Record<string, unknown>)["inbox_source_archived_to"] === "string"
   ) {
-    return (notifier as Record<string, unknown>)["inbox_source_archived_to"] as string;
+    return normalizeInboxRel((notifier as Record<string, unknown>)["inbox_source_archived_to"] as string);
   }
   return "";
+}
+
+function collectInboxSourceCandidates(rec: Record<string, unknown>): string[] {
+  const candidates: string[] = [];
+  pushInboxPathCandidate(candidates, rec["source_inbox_item"]);
+  const intake = rec["intake"];
+  if (intake && typeof intake === "object") {
+    pushInboxPathCandidate(candidates, (intake as Record<string, unknown>)["source_inbox_item"]);
+  }
+  const artifactIndex = rec["artifact_index"];
+  if (artifactIndex && typeof artifactIndex === "object") {
+    const lineage = (artifactIndex as Record<string, unknown>)["lineage"];
+    if (lineage && typeof lineage === "object") {
+      pushInboxPathCandidate(candidates, (lineage as Record<string, unknown>)["source_inbox_item"]);
+    }
+  }
+  return dedupeInboxCandidates(candidates);
+}
+
+async function resolveInboxInPathToArchive(
+  repoRoot: string,
+  inboxInRel: string,
+  taskId?: string,
+): Promise<string | null> {
+  const basename = path.posix.basename(inboxInRel);
+  const archiveInRoot = path.join(repoRoot, "src", "inbox", "archive", "in");
+  if (!existsSync(archiveInRoot)) {
+    return null;
+  }
+
+  if (taskId !== undefined) {
+    const dayDirs = await readdir(archiveInRoot, { withFileTypes: true });
+    for (const day of dayDirs) {
+      if (!day.isDirectory()) continue;
+      const candidateRel = path.posix.join("src", "inbox", "archive", "in", day.name, taskId, basename);
+      if (existsSync(path.join(repoRoot, candidateRel))) {
+        return candidateRel;
+      }
+    }
+  }
+
+  const dayDirs = await readdir(archiveInRoot, { withFileTypes: true });
+  for (const day of dayDirs) {
+    if (!day.isDirectory()) continue;
+    const dayAbs = path.join(archiveInRoot, day.name);
+    const nested = await readdir(dayAbs, { withFileTypes: true });
+    for (const entry of nested) {
+      if (!entry.isDirectory()) {
+        if (entry.name === basename) {
+          return path.posix.join("src", "inbox", "archive", "in", day.name, basename);
+        }
+        continue;
+      }
+      const candidateRel = path.posix.join("src", "inbox", "archive", "in", day.name, entry.name, basename);
+      if (existsSync(path.join(repoRoot, candidateRel))) {
+        return candidateRel;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolves the archived inbox source for a feature index record, preferring on-disk
+ * archive paths and falling back to lineage fields when closure predates index backfill.
+ */
+export async function resolveArchivedInboxPointer(
+  repoRoot: string,
+  rec: Record<string, unknown>,
+): Promise<string> {
+  const explicit = readExplicitArchivedInboxPointer(rec);
+  if (explicit !== "") {
+    return explicit;
+  }
+
+  const candidates = collectInboxSourceCandidates(rec);
+  const taskId =
+    typeof rec["task_id"] === "string"
+      ? rec["task_id"]
+      : typeof rec["taskId"] === "string"
+        ? rec["taskId"]
+        : undefined;
+
+  for (const rel of candidates) {
+    if (rel.startsWith("src/inbox/archive/") && existsSync(path.join(repoRoot, rel))) {
+      return rel;
+    }
+  }
+  for (const rel of candidates) {
+    if (existsSync(path.join(repoRoot, rel))) {
+      return rel;
+    }
+  }
+  for (const rel of candidates) {
+    if (!rel.startsWith("src/inbox/in/")) continue;
+    const resolved = await resolveInboxInPathToArchive(repoRoot, rel, taskId);
+    if (resolved !== null) {
+      return resolved;
+    }
+  }
+  for (const rel of candidates) {
+    if (rel.startsWith("src/inbox/archive/")) {
+      return rel;
+    }
+  }
+  return "";
+}
+
+/** Backfills feature index.json with the post-close archived inbox path. */
+export async function patchFeatureIndexArchivedInbox(
+  repoRoot: string,
+  featureId: string,
+  archivedInboxRel: string,
+  priorInboxSourceRel: string,
+): Promise<void> {
+  const indexAbs = path.join(repoRoot, "src", "memory", "features", featureId, "index.json");
+  if (!existsSync(indexAbs)) {
+    return;
+  }
+  const parsed = JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>;
+  parsed["archived_inbox_source"] = archivedInboxRel;
+
+  const sourceInbox = parsed["source_inbox_item"];
+  if (sourceInbox !== undefined && typeof sourceInbox === "object") {
+    (sourceInbox as Record<string, unknown>)["path"] = archivedInboxRel;
+    if (typeof (sourceInbox as Record<string, unknown>)["prior_path"] !== "string") {
+      (sourceInbox as Record<string, unknown>)["prior_path"] = priorInboxSourceRel;
+    }
+  } else {
+    parsed["source_inbox_item"] = {
+      path: archivedInboxRel,
+      prior_path: priorInboxSourceRel,
+    };
+  }
+
+  const intake = parsed["intake"];
+  if (intake && typeof intake === "object") {
+    const intakeRec = intake as Record<string, unknown>;
+    if (typeof intakeRec["source_inbox_item"] === "string") {
+      intakeRec["source_inbox_item"] = archivedInboxRel;
+    }
+  }
+
+  const delivery = parsed["delivery_report"];
+  if (delivery && typeof delivery === "object") {
+    (delivery as Record<string, unknown>)["archived_inbox_source"] = archivedInboxRel;
+  }
+
+  const artifactIndex = parsed["artifact_index"];
+  if (artifactIndex && typeof artifactIndex === "object") {
+    const lineage = (artifactIndex as Record<string, unknown>)["lineage"];
+    if (lineage && typeof lineage === "object") {
+      const lineageRec = lineage as Record<string, unknown>;
+      const src = lineageRec["source_inbox_item"];
+      if (src !== undefined && typeof src === "object") {
+        (src as Record<string, unknown>)["path"] = archivedInboxRel;
+      }
+    }
+  }
+
+  await writeFile(indexAbs, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 }
 
 async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {
@@ -207,7 +426,7 @@ async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {
 
     const deliveryRel = readDeliveryReportPath(parsed);
     const outboxArtifact = readOutboxStagingPath(parsed);
-    const archivedSrc = readArchivedInboxPointer(parsed);
+    const archivedSrc = await resolveArchivedInboxPointer(repoRoot, parsed);
 
     let row = "";
 
@@ -380,6 +599,7 @@ export async function applyActiveMemoryRefreshOnArtifactClosure(
 export async function rewriteActiveMemoryFile(opts: {
   readonly repoRoot: string;
   readonly dryRun: boolean;
+  readonly acceptDerived?: boolean;
   readonly writeOut: (c: string) => void;
   readonly writeErr?: (c: string) => void;
   readonly clock: () => Date;
@@ -428,8 +648,13 @@ export async function rewriteActiveMemoryFile(opts: {
     return 0;
   }
 
-  if (diffChunks.length > 0) {
-    opts.writeErr?.("Active-memory refresh halted: resolve conflicts or pass --dry-run to preview.\n");
+  const shippedOnlyConflict =
+    diffChunks.length === 1 && shippedChunk.length > 0 && notesChunk.length === 0;
+
+  if (diffChunks.length > 0 && !(opts.acceptDerived === true && shippedOnlyConflict)) {
+    opts.writeErr?.(
+      "Active-memory refresh halted: resolve conflicts, pass --dry-run to preview, or pass --accept-derived when only shipped-feature rows drift from index.json.\n",
+    );
     return TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE;
   }
 

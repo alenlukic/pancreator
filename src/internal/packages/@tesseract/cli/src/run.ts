@@ -548,11 +548,17 @@ export async function parseAndRun(
     .command("refresh-active-memory")
     .description("Rewrite shipped Feature table and operator-note refresh stamp in src/memory/active/current.md; Active Feature is human-curated")
     .option("--dry-run", "Print the computed diff without writing current.md", false)
-    .action(async (cmdOpts: { dryRun?: boolean }) => {
+    .option(
+      "--accept-derived",
+      "Apply derived shipped-feature rows when they are the only divergence from index.json",
+      false,
+    )
+    .action(async (cmdOpts: { dryRun?: boolean; acceptDerived?: boolean }) => {
       const dryRun = Boolean(cmdOpts.dryRun);
       const code = await rewriteActiveMemoryFile({
         repoRoot,
         dryRun,
+        acceptDerived: Boolean(cmdOpts.acceptDerived),
         writeOut,
         writeErr,
         clock: options?.clock ?? (() => new Date()),
