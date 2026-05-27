@@ -1,0 +1,54 @@
+{
+  "feature_id": "m1-substrate-runtime-batch",
+  "title": "M1 substrate runtime batch — harness loop, install paths, library mode, Phoenix conformance",
+  "status": "intake-awaiting-ratification",
+  "current_stage": "intake",
+  "work_packages": [
+    {
+      "feature_id": "checkpointer-fs-langgraph-conformance",
+      "label": "WP-A — LangGraph checkpointer conformance"
+    },
+    {
+      "feature_id": "runner-cursor-sdk-invocation",
+      "label": "WP-B — Cursor SDK runner invocation"
+    },
+    {
+      "feature_id": "pipeline-langgraph-stategraph-compiler",
+      "label": "WP-C — Pipeline StateGraph compiler"
+    },
+    {
+      "feature_id": "run-logger-phoenix-conformance",
+      "label": "WP-D — Run-logger Phoenix/Langfuse conformance"
+    },
+    {
+      "feature_id": "library-mode-script-example",
+      "label": "WP-E — Library-mode script example"
+    },
+    {
+      "feature_id": "tess-install-paths",
+      "label": "WP-F — Install paths"
+    }
+  ],
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md",
+      "range": [1, 269],
+      "contentHash": "b8cf506"
+    },
+    "human_approval_gate": "pending_operator_ratification",
+    "wp_d_choice": "option-a",
+    "wp_d_choice_note": "Option A (Phoenix/Langfuse smoke tests) ratified as intake default. Option B (ADR deferral, milestone M2) is fallback when Option A fails in implementation and tech-lead ratifies.",
+    "wp_d_fallback_milestone": "M2"
+  },
+  "contracts": {
+    "clauses": []
+  },
+  "metadata": {
+    "tesseract-bootstrap-only": false
+  }
+}

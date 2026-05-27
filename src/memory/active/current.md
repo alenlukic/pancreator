@@ -52,7 +52,11 @@ read per `src/memory/handbook/context-economy.md`.
 | `tesseract-contract-style` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract-style/delivery-report.md` | `—` | `—` |
 | `tesseract-core` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-core/delivery-report.md` | `—` | `—` |
 | `tesseract-env-isolation` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-env-isolation/delivery-report.md` | `—` | `—` |
-| `tesseract-inbox` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-inbox/delivery-report.md` | `—` | `—` |
+| `tesseract-inbox` | [indexed] (`2026-05-26T09:34:14node --test tests/*.test.mjs
+node src/internal/tools/check-phase-0a-scaffold.mjs
+node src/internal/tools/context-budget-report.mjs
+bash -n .cursor/hooks/enforce-policy-compliance.sh
+.000Z`) | `src/memory/features/tesseract-inbox/delivery-report.md` | `—` | `—` |
 | `tesseract-intervention` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-intervention/delivery-report.md` | `—` | `—` |
 | `tesseract-mcp-server` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-mcp-server/delivery-report.md` | `—` | `—` |
 | `tesseract-memory` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-memory/delivery-report.md` | `—` | `—` |
@@ -67,6 +71,7 @@ read per `src/memory/handbook/context-economy.md`.
 | `json-formatting` | [indexed] (`2026-05-24T00:00:00.000Z`) | `src/memory/features/json-formatting/delivery-report.md` | `—` | `—` |
 | `compliance-tests` | [indexed] (`—`) | `src/memory/features/compliance-tests/delivery-report.md` | `—` | `—` |
 | `inbox-convention-migration` | [indexed] (`—`) | `src/memory/features/inbox-convention-migration/delivery-report.md` | `—` | `—` |
+| `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` | [indexed] (`—`) | `—` | `—` | `—` |
 
 ## Risks and blockers
 
@@ -77,9 +82,10 @@ read per `src/memory/handbook/context-economy.md`.
 
 <!-- tess:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-26T19:12:19.151Z`
+- Active-memory refreshed (UTC): `2026-05-27T17:36:33.622Z`
 
 <!-- /tess:active-memory:operator-notes:auto -->
+
 
 
 

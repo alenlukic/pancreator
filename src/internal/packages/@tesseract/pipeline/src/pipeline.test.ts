@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { compilePipeline } from "./compile.js";
+import { compilePipeline, INTERVENTION_NODE_ID, serializePipelineStages } from "./compile.js";
 import { executePipeline } from "./execute.js";
 import { loadPipelineYaml } from "./load-yaml.js";
 import type { PipelineDefinition } from "./types.js";
@@ -38,6 +38,35 @@ describe("compilePipeline", () => {
       }),
     ).toThrow(/Duplicate pipeline stage id/);
   });
+
+  it("injects a single intervention side-channel node", () => {
+    const compiled = compilePipeline({
+      id: "demo",
+      stages: [{ id: "one" }, { id: "two" }],
+    });
+    const interventionNodes = compiled.nodes.filter((n) => n.kind === "intervention");
+    expect(interventionNodes).toHaveLength(1);
+    expect(interventionNodes[0]?.id).toBe(INTERVENTION_NODE_ID);
+    expect(compiled.edges.some((e) => e.to === INTERVENTION_NODE_ID)).toBe(true);
+    expect(compiled.graph).toBeDefined();
+    expect(typeof compiled.graph.compile).toBe("function");
+  });
+
+  it("rejects unknown personas when knownPersonas is provided", () => {
+    expect(() =>
+      compilePipeline(
+        { id: "x", stages: [{ id: "s", persona: "missing" }] },
+        { knownPersonas: new Set(["coder"]) },
+      ),
+    ).toThrow(/Unknown persona/);
+  });
+
+  it("parse-compile-serialize identity preserves stage ids", () => {
+    const stages = [{ id: "a", persona: "coder" }, { id: "b" }];
+    const roundTrip = serializePipelineStages(stages);
+    const compiled = compilePipeline({ id: "id", stages: roundTrip });
+    expect(compiled.stageIds).toEqual(["a", "b"]);
+  });
 });
 
 describe("loadPipelineYaml", () => {
@@ -61,5 +90,43 @@ stages:
     expect(def.stages).toHaveLength(2);
     expect(def.stages[0]?.persona).toBe("tech-writer");
     await rm(tmp, { recursive: true, force: true });
+  });
+});
+
+describe("MVP pipeline structural checks", () => {
+  const mvpIds = [
+    "feature-delivery",
+    "adopt",
+    "chat-with-persona",
+    "init-greenfield",
+    "knowledge-curation",
+  ];
+
+  it.each(mvpIds)("compiles %s with reachability and intervention node", async (pipelineId) => {
+    const repoRoot = path.resolve(import.meta.dirname, "../../../../../..");
+    const yamlPath = path.join(repoRoot, "src", "pipelines", `${pipelineId}.yaml`);
+    const def = loadPipelineYaml(yamlPath);
+    const compiled = compilePipeline(def);
+    expect(compiled.entryNodeId).toBe(def.stages[0]?.id);
+    expect(compiled.exitNodeId).toBe(def.stages[def.stages.length - 1]?.id);
+    const stageNodeIds = new Set(compiled.nodes.filter((n) => n.kind === "stage").map((n) => n.id));
+    for (const id of compiled.stageIds) {
+      expect(stageNodeIds.has(id)).toBe(true);
+    }
+    const reachable = new Set<string>([compiled.entryNodeId]);
+    let frontier = [compiled.entryNodeId];
+    while (frontier.length > 0) {
+      const next: string[] = [];
+      for (const from of frontier) {
+        for (const e of compiled.edges) {
+          if (e.from === from && e.kind === "next" && !reachable.has(e.to)) {
+            reachable.add(e.to);
+            if (e.to !== INTERVENTION_NODE_ID) next.push(e.to);
+          }
+        }
+      }
+      frontier = next;
+    }
+    expect(reachable.has(compiled.exitNodeId)).toBe(true);
   });
 });

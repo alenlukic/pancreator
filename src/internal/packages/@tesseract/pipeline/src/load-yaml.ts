@@ -46,6 +46,12 @@ export function loadPipelineYaml(path: string): PipelineDefinition {
     if (typeof s.label === "string") {
       stage.label = s.label;
     }
+    if (typeof s.gate === "string") {
+      stage.gate = s.gate;
+    }
+    if (typeof s.loop === "string") {
+      stage.loop = s.loop;
+    }
     outStages.push(stage);
   }
   const def: PipelineDefinition = { id, stages: outStages };
@@ -54,6 +60,19 @@ export function loadPipelineYaml(path: string): PipelineDefinition {
   }
   if (isRecord(data.metadata)) {
     def.metadata = data.metadata;
+  }
+  if (isRecord(data.circuit_breaker)) {
+    const cb = data.circuit_breaker;
+    def.circuit_breaker = {};
+    if (typeof cb.max_iterations === "number") {
+      def.circuit_breaker.max_iterations = cb.max_iterations;
+    }
+    if (typeof cb.max_tokens === "number") {
+      def.circuit_breaker.max_tokens = cb.max_tokens;
+    }
+    if (typeof cb.max_tool_failures_consecutive === "number") {
+      def.circuit_breaker.max_tool_failures_consecutive = cb.max_tool_failures_consecutive;
+    }
   }
   return def;
 }

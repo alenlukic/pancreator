@@ -113,6 +113,40 @@ describe("parseAndRun", () => {
     );
   });
 
+  it("accepts inbox entries as src/inbox/in/... or bucket-relative paths", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-run-inbox-path-"));
+    await seedFeatureDeliveryRepo(root);
+    const bucket = "172980_05-26-26";
+    await mkdir(path.join(root, "src", "inbox", "in", bucket), { recursive: true });
+    const inboxRel = `${bucket}/2597_demo-feature.md`;
+    await writeFile(
+      path.join(root, "src", "inbox", "in", inboxRel),
+      "# Demo Feature\n\nBuild the thing.",
+      "utf8",
+    );
+    const out: string[] = [];
+    const code = await parseAndRun(
+      ["run", "feature-delivery", `src/inbox/in/${inboxRel}`],
+      {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      },
+    );
+    expect(code).toBe(0);
+    const msg = JSON.parse(out.join("")) as {
+      status: string;
+      featureId: string;
+      stateFile: string;
+    };
+    expect(msg.status).toBe("ok");
+    expect(msg.featureId).toBe("demo-feature");
+    const state = JSON.parse(await readFile(path.join(root, msg.stateFile), "utf8")) as {
+      source: { inboxEntry: string };
+    };
+    expect(state.source.inboxEntry).toBe(inboxRel);
+  });
+
   it("advances one stage only with the expected stage artifact", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "tess-advance-"));
     await seedFeatureDeliveryRepo(root);
@@ -669,14 +703,49 @@ describe("operator tooling batch cli wiring", () => {
     await mkdir(path.join(root, "src", "memory", "features"), { recursive: true });
   }
 
+  it("tess init dry-run reports planned scaffold without writes", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-init-dry-"));
+    const out: string[] = [];
+    const code = await parseAndRun(["init", "--dry-run"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+    });
+    expect(code).toBe(0);
+    const msg = JSON.parse(out.join("")) as { command: string; dryRun: boolean; diffs: unknown[] };
+    expect(msg.command).toBe("init");
+    expect(msg.dryRun).toBe(true);
+    expect(existsSync(path.join(root, "tesseract.yaml"))).toBe(false);
+  });
+
+  it("tess init --apply refuses conflicts without --force", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-init-conflict-"));
+    await writeFile(path.join(root, "tesseract.yaml"), "existing\n", "utf8");
+    const code = await parseAndRun(["init", "--apply"], {
+      repoRoot: root,
+      writeOut: () => {},
+      writeErr: () => {},
+    });
+    expect(code).toBe(1);
+  });
+
+  it("create-tesseract scaffolds an empty project directory", async () => {
+    const parent = await mkdtemp(path.join(os.tmpdir(), "tess-create-parent-"));
+    const out: string[] = [];
+    const code = await parseAndRun(["create-tesseract", "demo"], {
+      repoRoot: parent,
+      writeOut: (c) => out.push(c),
+    });
+    expect(code).toBe(0);
+    const msg = JSON.parse(out.join("")) as { command: string; targetDir: string };
+    expect(msg.command).toBe("create-tesseract");
+    expect(existsSync(path.join(msg.targetDir, "tesseract.yaml"))).toBe(true);
+  });
+
   it("exits 125 with deferred envelopes for stubbed verbs", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "tess-deferred-"));
     const batchTracking =
       "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md";
-    const initTracking =
-      "src/inbox/in/172981_05-25-26/64500_0605_tess-init-and-create-tesseract-install-paths.md";
     const matrix: Array<{ argv: string[]; tracking: string }> = [
-      { argv: ["init"], tracking: initTracking },
       { argv: ["approve"], tracking: batchTracking },
       { argv: ["memory"], tracking: batchTracking },
       { argv: ["contracts"], tracking: batchTracking },

@@ -16,9 +16,13 @@ export function runnerCursorStubVersion(): string {
 
 export { CursorRunner } from "./cursor-runner.js";
 export type {
+  CursorRunnerOptions,
   Runner,
   RunnerInvokeInput,
   RunnerInvocationEnvelope,
+  RunnerInvocationMode,
+  RunnerLedgerContext,
   RunnerPersonaInput,
+  RunnerRunLogFragment,
 } from "./types.js";
 export { RUNNER_INVOCATION_SCHEMA_VERSION } from "./types.js";

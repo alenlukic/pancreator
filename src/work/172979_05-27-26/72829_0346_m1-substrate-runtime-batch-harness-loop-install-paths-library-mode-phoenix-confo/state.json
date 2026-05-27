@@ -1,0 +1,151 @@
+{
+  "schemaVersion": "1",
+  "pipelineId": "feature-delivery",
+  "taskId": "72829_0346_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+  "featureId": "m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+  "status": "ready_for_intake_delegation",
+  "currentStage": "intake",
+  "createdAtIso": "2026-05-27T03:46:10.377Z",
+  "source": {
+    "inboxEntry": "172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md",
+    "inboxPath": "src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md"
+  },
+  "artifacts": {
+    "runDir": "src/work/172979_05-27-26/72829_0346_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+    "stateFile": "src/work/172979_05-27-26/72829_0346_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/state.json",
+    "handoffFile": "src/work/172979_05-27-26/72829_0346_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/handoff.md",
+    "runLogFile": "src/work/172979_05-27-26/72829_0346_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/run.log.jsonl",
+    "nextPromptFile": "src/work/172979_05-27-26/72829_0346_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/next-prompt.md"
+  },
+  "stages": [
+    {
+      "id": "intake",
+      "persona": "intake-analyst",
+      "label": "Canonicalize the human directive",
+      "status": "ready",
+      "humanGate": "human_approval",
+      "humanAttention": "Answer intake clarifying questions and ratify the canonical spec before planning."
+    },
+    {
+      "id": "plan",
+      "persona": "tech-lead",
+      "label": "Draft plan, ADR, touch-set, and handoff card",
+      "status": "pending",
+      "humanGate": "human_approval",
+      "humanAttention": "Ratify the plan, ADR draft, touch-set, and handoff before execution."
+    },
+    {
+      "id": "implement",
+      "persona": "coder",
+      "label": "Implement against the declared touch-set from the handoff card",
+      "status": "pending",
+      "humanGate": "operator_intervention_available",
+      "humanAttention": "Use tess pause/resume/abort if implementation drifts, loops, or exceeds scope."
+    },
+    {
+      "id": "review",
+      "persona": "reviewer",
+      "label": "Run modern-code-review and contracts pass with compact must-fix output",
+      "status": "pending",
+      "humanGate": "review_passes_or_reenter_implement",
+      "humanAttention": "Inspect high findings; approve only clean review output or send the run back to implement."
+    },
+    {
+      "id": "report",
+      "persona": "tech-writer",
+      "label": "Author the delivery report",
+      "status": "pending"
+    },
+    {
+      "id": "ship",
+      "persona": "supervisor",
+      "label": "Stage the PR (no auto-push, Q3)",
+      "status": "pending",
+      "humanGate": "local_stage_only",
+      "humanAttention": "Review the local diff and delivery report; no agent may push or open the PR unaudited."
+    },
+    {
+      "id": "index",
+      "persona": "librarian",
+      "label": "Index emitted artifacts and refresh the feature index before librarian artifact closure",
+      "status": "pending",
+      "humanGate": "archive_and_index_audit",
+      "humanAttention": "Verify feature index artifacts; after index is accepted, the generated complete-stage prompt gives the human operator exact archival closure commands."
+    }
+  ],
+  "transitions": [
+    {
+      "from": "created",
+      "on": "invoke",
+      "to": "intake",
+      "humanAttention": "Operator delegates the handoff card to intake-analyst."
+    },
+    {
+      "from": "intake",
+      "on": "human_approval",
+      "to": "plan",
+      "humanAttention": "Canonical spec is ratified or clarified before plan starts."
+    },
+    {
+      "from": "plan",
+      "on": "human_approval",
+      "to": "implement",
+      "humanAttention": "Plan and touch-set are ratified before coder starts."
+    },
+    {
+      "from": "implement",
+      "on": "pause",
+      "to": "paused",
+      "humanAttention": "Use tess pause <task-id> to stop at the next safe boundary."
+    },
+    {
+      "from": "paused",
+      "on": "resume",
+      "to": "implement",
+      "humanAttention": "Use tess resume <task-id> after resolving the blocker."
+    },
+    {
+      "from": "implement",
+      "on": "abort",
+      "to": "aborted",
+      "humanAttention": "Use tess abort <task-id> --reason <text> for failed or superseded runs."
+    },
+    {
+      "from": "implement",
+      "on": "implementation_complete",
+      "to": "review",
+      "humanAttention": "Reviewer receives only the handoff, touch-set, diff, and validation output."
+    },
+    {
+      "from": "review",
+      "on": "must_fix",
+      "to": "implement",
+      "humanAttention": "Bounded re-entry; high findings block shipping."
+    },
+    {
+      "from": "review",
+      "on": "review_passes",
+      "to": "report",
+      "humanAttention": "Human should still inspect review output before report/ship."
+    },
+    {
+      "from": "report",
+      "on": "report_ready",
+      "to": "ship",
+      "humanAttention": "Delivery report must be useful to the operator, not just a changelog."
+    },
+    {
+      "from": "ship",
+      "on": "human_ratifies_local_diff",
+      "to": "index",
+      "humanAttention": "No push occurs before human review."
+    },
+    {
+      "from": "index",
+      "on": "artifacts_indexed",
+      "to": "complete",
+      "humanAttention": "Confirm archive/index state and outbox report."
+    }
+  ],
+  "nextHumanAction": "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan."
+}

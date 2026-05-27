@@ -1,19 +1,53 @@
-import type { PipelineDefinition, PipelineStage } from "./types.js";
+import { compilePipeline } from "./compile.js";
+import type { PipelineDefinition, PipelineExecutionContext, PipelineStage } from "./types.js";
+import type { CompiledPipeline } from "./types.js";
+
+export interface ExecutePipelineOptions {
+  /** Pre-compiled graph; when omitted, {@link compilePipeline} runs on `definition`. */
+  compiled?: CompiledPipeline;
+  /** When true, intervention side-channel is invoked after each stage. */
+  enableInterventionChannel?: boolean;
+}
 
 /**
- * Walks `definition.stages` in order and threads `context` through `stepFn`.
+ * Executes a compiled LangGraph pipeline: invokes the compiled `StateGraph` with
+ * caller-supplied stage handlers in `configurable.stepFn`.
  */
 export async function executePipeline<TContext>(
   definition: PipelineDefinition,
   initialContext: TContext,
-  stepFn: (stage: PipelineStage, context: TContext) => TContext | Promise<TContext>,
+  stepFn: (
+    stage: PipelineStage,
+    context: TContext,
+    exec: PipelineExecutionContext,
+  ) => TContext | Promise<TContext>,
+  options: ExecutePipelineOptions = {},
 ): Promise<TContext> {
-  if (!definition.stages?.length) {
-    throw new Error("PipelineDefinition.stages MUST contain at least one stage.");
-  }
-  let ctx = initialContext;
-  for (const stage of definition.stages) {
-    ctx = await stepFn(stage, ctx);
-  }
-  return ctx;
+  const compiled = options.compiled ?? compilePipeline(definition);
+  const initialExecCtx: PipelineExecutionContext = {
+    currentStageId: compiled.entryNodeId,
+    iteration: 0,
+    halted: false,
+  };
+
+  const runnable = compiled.graph.compile();
+  const finalState = await runnable.invoke(
+    {
+      context: initialContext,
+      execCtx: initialExecCtx,
+    },
+    {
+      configurable: {
+        stepFn: stepFn as (
+          stage: PipelineStage,
+          context: unknown,
+          exec: PipelineExecutionContext,
+        ) => unknown,
+        definition,
+        enableInterventionChannel: options.enableInterventionChannel ?? false,
+      },
+    },
+  );
+
+  return finalState.context as TContext;
 }

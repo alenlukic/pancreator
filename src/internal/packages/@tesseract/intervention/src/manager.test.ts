@@ -7,8 +7,17 @@ import { InMemoryInterventionStore } from "./store.js";
 describe("InterventionManager", () => {
   it("records pause, resume with checkpoint, abort with reason, and gotoStage", async () => {
     const store = new InMemoryInterventionStore();
+    const levers: string[] = [];
     let t = 0;
-    const manager = new InterventionManager(store, () => `2026-04-27T12:00:0${t++}.000Z`);
+    const manager = new InterventionManager(
+      store,
+      () => `2026-04-27T12:00:0${t++}.000Z`,
+      {
+        persistLever: async (_taskId, lever) => {
+          levers.push(lever);
+        },
+      },
+    );
     const taskId = asTaskId("t1");
 
     await manager.pause(taskId);
@@ -28,5 +37,6 @@ describe("InterventionManager", () => {
     const afterAbort = await store.readJournal(taskId);
     expect(afterAbort[3]?.reason).toBe("operator");
     expect(await manager.loadActiveState(taskId)).toBe("aborted");
+    expect(levers).toEqual(["pause", "resume", "goto:review", "abort"]);
   });
 });

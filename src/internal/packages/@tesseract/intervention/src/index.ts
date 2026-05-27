@@ -20,6 +20,7 @@ export {
   type LangGraphInterruptSignal,
   type LangGraphTimeTravel,
 } from "./langgraph-shapes.js";
+export type { InterventionCheckpointPort } from "./checkpoint-port.js";
 export { InterventionManager } from "./manager.js";
 export {
   assertJournalPathInScheduler,

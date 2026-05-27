@@ -1,0 +1,184 @@
+{
+  "taskId": "966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+  "featureId": "m1-substrate-runtime-batch",
+  "stage": "implement",
+  "paths": [
+    "src/internal/packages/@tesseract/checkpointer-fs/src/envelope.ts",
+    "src/internal/packages/@tesseract/checkpointer-fs/src/fs-checkpoint-store.ts",
+    "src/internal/packages/@tesseract/checkpointer-fs/src/index.ts",
+    "src/internal/packages/@tesseract/checkpointer-fs/src/fs-checkpoint-store.test.ts",
+    "src/internal/packages/@tesseract/checkpointer-fs/src/envelope.test.ts",
+    "src/internal/packages/@tesseract/intervention/src/manager.ts",
+    "src/internal/packages/@tesseract/intervention/src/store.ts",
+    "src/internal/packages/@tesseract/intervention/src/manager.test.ts",
+    "src/internal/packages/@tesseract/runner-cursor/src/types.ts",
+    "src/internal/packages/@tesseract/runner-cursor/src/cursor-runner.ts",
+    "src/internal/packages/@tesseract/runner-cursor/src/index.ts",
+    "src/internal/packages/@tesseract/runner-cursor/src/cursor-runner.test.ts",
+    "src/internal/packages/@tesseract/pipeline/src/types.ts",
+    "src/internal/packages/@tesseract/pipeline/src/compile.ts",
+    "src/internal/packages/@tesseract/pipeline/src/execute.ts",
+    "src/internal/packages/@tesseract/pipeline/src/load-yaml.ts",
+    "src/internal/packages/@tesseract/pipeline/src/pipeline.test.ts",
+    "src/internal/packages/@tesseract/run-logger/src/append.ts",
+    "src/internal/packages/@tesseract/run-logger/src/record.ts",
+    "src/internal/packages/@tesseract/run-logger/src/index.ts",
+    "src/internal/packages/@tesseract/run-logger/src/append.test.ts",
+    "src/internal/packages/@tesseract/persona/src/emit.ts",
+    "src/internal/packages/@tesseract/persona/src/validate.ts",
+    "src/internal/packages/@tesseract/cli/src/run.ts",
+    "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+    "src/internal/packages/@tesseract/cli/src/run.test.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+    ".github/workflows/run-logger-conformance.yml",
+    "docs/PRD.summary.md",
+    "src/memory/active/current.md",
+    "src/internal/packages/@tesseract/run-logger/README.md",
+    "examples/library-script/package.json",
+    "examples/library-script/index.mjs",
+    "examples/library-script/README.md",
+    "tests/run-logger-conformance/docker-compose.yml",
+    "tests/run-logger-conformance/README.md",
+    "tests/run-logger-conformance/helpers/boot-phoenix.mjs",
+    "tests/run-logger-conformance/helpers/wait-for-http.mjs",
+    "tests/run-logger-conformance/phoenix-smoke.test.mjs",
+    "tests/run-logger-conformance/fixtures/sample-run-log.jsonl",
+    "src/memory/adr/0007-run-logger-phoenix-conformance-deferral.md"
+  ],
+  "symbols": [
+    {
+      "path": "src/internal/packages/@tesseract/checkpointer-fs/src/fs-checkpoint-store.ts",
+      "symbol": "FsCheckpointStore.put"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/checkpointer-fs/src/envelope.ts",
+      "symbol": "CheckpointEnvelopeV1"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/intervention/src/manager.ts",
+      "symbol": "InterventionManager.resume"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/runner-cursor/src/cursor-runner.ts",
+      "symbol": "CursorRunner.invoke"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/runner-cursor/src/types.ts",
+      "symbol": "RunnerInvocationEnvelope"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/pipeline/src/compile.ts",
+      "symbol": "compilePipeline"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/pipeline/src/execute.ts",
+      "symbol": "executePipeline"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/pipeline/src/load-yaml.ts",
+      "symbol": "loadPipelineYaml"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/run-logger/src/append.ts",
+      "symbol": "appendRunLogRecord"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/run-logger/src/record.ts",
+      "symbol": "RunLogRecord"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/persona/src/validate.ts",
+      "symbol": "assertPersonaSpec"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/persona/src/emit.ts",
+      "symbol": "emitCursorAgentsMirror"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/persona/src/emit.ts",
+      "symbol": "emitMdcShim"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+      "symbol": "parseAndRun"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "symbol": "startFeatureDelivery"
+    },
+    {
+      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "symbol": "advanceFeatureDelivery"
+    }
+  ],
+  "tests": [
+    "src/internal/packages/@tesseract/checkpointer-fs/src/fs-checkpoint-store.test.ts",
+    "src/internal/packages/@tesseract/intervention/src/manager.test.ts",
+    "src/internal/packages/@tesseract/runner-cursor/src/cursor-runner.test.ts",
+    "src/internal/packages/@tesseract/pipeline/src/pipeline.test.ts",
+    "src/internal/packages/@tesseract/run-logger/src/append.test.ts",
+    "src/internal/packages/@tesseract/cli/src/run.test.ts",
+    "tests/run-logger-conformance/phoenix-smoke.test.mjs"
+  ],
+  "validationCommands": {
+    "phase1": [
+      "pnpm --filter @tesseract/checkpointer-fs test",
+      "pnpm --filter @tesseract/runner-cursor test",
+      "pnpm --filter @tesseract/intervention test"
+    ],
+    "phase2": [
+      "pnpm --filter @tesseract/pipeline test",
+      "pnpm --filter @tesseract/cli test -- --runInBand feature-delivery",
+      "pnpm -w exec tess run feature-delivery src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md"
+    ],
+    "phase3": [
+      "pnpm --filter @tesseract/run-logger test",
+      "pnpm test:run-logger-conformance",
+      "pnpm --filter @tesseract/persona test",
+      "pnpm --filter @tesseract/cli test -- --runInBand run.ts"
+    ],
+    "batchIntegration": [
+      "pnpm -w exec tess status 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+      "node src/internal/tools/run-compliance.mjs"
+    ]
+  },
+  "references": [
+    {
+      "kind": "lines",
+      "path": "src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md",
+      "range": [56, 169],
+      "contentHash": "5009d5a"
+    },
+    {
+      "kind": "lines",
+      "path": "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/state.json",
+      "range": [29, 44],
+      "contentHash": "6353af4"
+    },
+    {
+      "kind": "lines",
+      "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+      "range": [194, 241],
+      "contentHash": "896e6a8"
+    },
+    {
+      "kind": "lines",
+      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "range": [994, 1016],
+      "contentHash": "1131dfc"
+    },
+    {
+      "kind": "lines",
+      "path": "src/internal/packages/@tesseract/pipeline/src/compile.ts",
+      "range": [1, 22],
+      "contentHash": "98644dc"
+    },
+    {
+      "kind": "lines",
+      "path": "src/internal/packages/@tesseract/runner-cursor/src/types.ts",
+      "range": [28, 59],
+      "contentHash": "3f56583"
+    }
+  ]
+}

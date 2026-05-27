@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CursorRunner } from "./cursor-runner.js";
+import type { CursorSdkTransport } from "./sdk-transport.js";
 import type { RunnerPersonaInput } from "./types.js";
 
 const samplePersona: RunnerPersonaInput = {
@@ -19,24 +20,60 @@ const samplePersona: RunnerPersonaInput = {
   metadata: { "tesseract-risk-tier": "low" },
 };
 
+const mockSdkTransport: CursorSdkTransport = async (params) => ({
+  status: "ok",
+  resultText: `completed:${params.persona.name}:${params.persona.model}`,
+});
+
 describe("CursorRunner", () => {
-  it("returns a dry-run envelope with resolved routing fields", async () => {
-    const runner = new CursorRunner();
+  it("returns a manual dry-run envelope with resolved routing fields", async () => {
+    const runner = new CursorRunner({ invocation: "manual" });
     const env = await runner.invoke({
       persona: samplePersona,
       message: "Draft the report for feature-1",
       requestId: "req-fixed",
+      stagePromptPath: "src/work/demo/next-prompt.md",
+      artifactPath: "src/work/demo/report.md",
+      ledger: { taskId: "t1", pipelineId: "feature-delivery", stageId: "report" },
     });
     expect(env.dryRun).toBe(true);
+    expect(env.invocation).toBe("manual");
     expect(env.runner).toBe("cursor");
     expect(env.schemaVersion).toBe("1");
     expect(env.requestId).toBe("req-fixed");
     expect(env.personaName).toBe("tech-writer");
-    expect(env.userMessage).toBe("Draft the report for feature-1");
-    expect(env.resolved.model).toBe("gpt-5.4-mini");
-    expect(env.resolved.routingDescription).toBe(samplePersona.description);
-    expect(env.resolved.toolAllowlist).toEqual(["Read", "Write"]);
+    expect(env.resolved.stagePromptPath).toBe("src/work/demo/next-prompt.md");
+    expect(env.resolved.artifactPath).toBe("src/work/demo/report.md");
     expect(env.resolved.maxTurns).toBe(30);
+    expect(env.resolved.toolAllowlist).toEqual(["Read", "Write"]);
+    expect(env.resolved.toolDenylist).toEqual(["Bash(git push:*)"]);
+    expect(env.runLogFragment?.attributes["openinference.span.kind"]).toBe("AGENT");
+    expect(env.sdkResult).toBeUndefined();
+  });
+
+  it("sdk mode invokes transport and returns non-dry-run completion", async () => {
+    const runner = new CursorRunner({ invocation: "sdk", sdkTransport: mockSdkTransport });
+    const env = await runner.invoke({
+      persona: samplePersona,
+      message: "Implement stage",
+      artifactPath: "src/work/demo/implementation-report.md",
+    });
+    expect(env.dryRun).toBe(false);
+    expect(env.invocation).toBe("sdk");
+    expect(env.sdkResult?.status).toBe("ok");
+    expect(env.sdkResult?.artifactPath).toBe("src/work/demo/implementation-report.md");
+    expect(env.sdkResult?.resultText).toContain("tech-writer");
+    expect(env.sdkResult?.resultText).toContain("gpt-5.4-mini");
+  });
+
+  it("sdk mode surfaces transport errors without throwing", async () => {
+    const runner = new CursorRunner({
+      invocation: "sdk",
+      sdkTransport: async () => ({ status: "error", errorMessage: "no api key" }),
+    });
+    const env = await runner.invoke({ persona: samplePersona, message: "m" });
+    expect(env.sdkResult?.status).toBe("error");
+    expect(env.sdkResult?.errorMessage).toBe("no api key");
   });
 
   it("generates a request id when omitted", async () => {

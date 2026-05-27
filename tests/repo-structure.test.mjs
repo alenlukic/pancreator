@@ -280,10 +280,7 @@ test("tess deferral emits JSON envelopes without stub payloads", async () => {
   const { parseAndRun, TESS_DEFERRED_EXIT_CODE } = await import("@tesseract/cli");
   const batchTracking =
     "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md";
-  const initTracking =
-    "src/inbox/in/172981_05-25-26/64500_0605_tess-init-and-create-tesseract-install-paths.md";
   const matrix = [
-    { argv: ["init"], tracking: initTracking },
     { argv: ["approve"], tracking: batchTracking },
     { argv: ["memory"], tracking: batchTracking },
     { argv: ["contracts"], tracking: batchTracking },
