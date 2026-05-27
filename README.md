@@ -50,20 +50,28 @@ ledger after the artifact is accepted.
 
 Use this loop exactly:
 
-1. Put the request in `src/inbox/in/<name>.md`. Do not use `src/inbox/notes/`; it is
-   human-only scratch space.
-2. Start the run:
+1. Put the request in `src/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md` (use
+   `pnpm -w exec tess intake new <slug>` to scaffold). Do not use
+   `src/inbox/notes/`; it is human-only scratch space.
+2. Start the run. Pass `<inbox-entry>` relative to `src/inbox/in/` only (day
+   bucket + filename—the CLI prepends the parent directory):
 
    ```bash
-   pnpm -w exec tess run feature-delivery <name>.md
+   pnpm -w exec tess run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
    # equivalent alias:
-   pnpm -w exec tess feature new <name>.md
+   pnpm -w exec tess feature new <day-bucket>/<SID>_<HHMM>_<slug>.md
+   ```
+
+   Example:
+
+   ```bash
+   pnpm -w exec tess run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
    ```
 
    Optional flags:
 
    ```bash
-   pnpm -w exec tess run feature-delivery <name>.md --feature <feature-id> --task <task-id>
+   pnpm -w exec tess run feature-delivery <day-bucket>/<file>.md --feature <feature-id> --task <task-id>
    ```
 
 3. Read the emitted JSON. The important fields are `taskId`, `featureId`,

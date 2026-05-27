@@ -245,7 +245,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 
 # Usage guidelines
 
-1. Run `pnpm -w exec tess run feature-delivery src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md` from the repository root when you want the harness loop to create `state.json`, `handoff.md`, `next-prompt.md`, and `run.log.jsonl` for the intake stage.
+1. Run `pnpm -w exec tess run feature-delivery 172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md` from the repository root when you want the harness loop to create `state.json`, `handoff.md`, `next-prompt.md`, and `run.log.jsonl` for the intake stage.
 
 ```json
 {

@@ -250,7 +250,7 @@ export async function parseAndRun(
     .command("run")
     .description("Run a pipeline by name (`feature-delivery` only is executable today) [deferred: M2]")
     .argument("<pipeline>", "Pipeline id")
-    .argument("[inboxEntry]", "Inbox file under src/inbox/in/ for feature-delivery")
+    .argument("[inboxEntry]", "<day-bucket>/<file>.md relative to src/inbox/in/ (not the src/inbox/in/ prefix)")
     .option("--feature <featureId>", "Feature id override")
     .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
     .action(async (pipeline: string, inboxEntry: string | undefined, opts: { feature?: string; task?: string }) => {
@@ -299,7 +299,7 @@ export async function parseAndRun(
   feature
     .command("new")
     .description("Start a feature-delivery run from an inbox directive")
-    .argument("<inboxEntry>", "Inbox file under src/inbox/in/")
+    .argument("<inboxEntry>", "<day-bucket>/<file>.md relative to src/inbox/in/ (not the src/inbox/in/ prefix)")
     .option("--feature <featureId>", "Feature id override")
     .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
     .action(async (inboxEntry: string, opts: { feature?: string; task?: string }) => {

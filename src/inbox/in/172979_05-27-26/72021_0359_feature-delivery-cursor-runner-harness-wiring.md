@@ -93,7 +93,7 @@ while preserving today’s manual-delegation path as the default until the opera
   <task-id> --artifact <stage-artifact>` after a stage completes SHALL record a non-stub
   `CursorRunner` invocation in `run.log.jsonl` for that stage transition.
 - When invocation is `manual`, `tess run` and `tess advance` SHALL NOT call `@cursor/sdk`.
-- When `pnpm -w exec tess run feature-delivery src/inbox/in/<bucket>/<file>.md` runs with `sdk`
+- When `pnpm -w exec tess run feature-delivery <day-bucket>/<file>.md` runs with `sdk`
   configured, at least one stage hook SHALL use real persona fields (model, tools, disallowedTools,
   maxTurns) from the persona spec—not `stubPersonaForStage` only.
 - Package tests for `@tesseract/cli` and `@tesseract/runner-cursor` SHALL pass; existing M1

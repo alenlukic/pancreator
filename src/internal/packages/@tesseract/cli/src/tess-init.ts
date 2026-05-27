@@ -176,7 +176,7 @@ export async function runCreateTesseract(input: CreateTesseractInput): Promise<C
     await mkdir(path.dirname(sampleInbox), { recursive: true });
     await writeFile(
       sampleInbox,
-      "# Sample feature\n\nWalk through feature-delivery with `pnpm -w exec tess run feature-delivery src/inbox/in/sample-directive.md`.\n",
+      "# Sample feature\n\nWalk through feature-delivery with `pnpm -w exec tess run feature-delivery sample-directive.md`.\n",
       "utf8",
     );
   }

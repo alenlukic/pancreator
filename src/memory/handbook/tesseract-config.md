@@ -61,10 +61,30 @@ Rules:
 - Agents that run `tess` in a shell themselves SHALL use the same prefix unless
   a ratified global install is documented in an ADR.
 
+### `feature-delivery` inbox entry argument
+
+`pnpm -w exec tess run feature-delivery <inbox-entry>` and `pnpm -w exec tess
+feature new <inbox-entry>` resolve the directive under `src/inbox/in/`. The
+operator MUST pass `<inbox-entry>` as a path **relative to that directory**—the
+day bucket and filename only, not the `src/inbox/in/` prefix.
+
+Canonical form:
+
+```text
+<day-bucket>/<SID>_<HHMM>_<slug>.md
+```
+
+Example: `172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md` for
+`src/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md`.
+
+The CLI MAY accept a legacy argument that still includes the `src/inbox/in/`
+prefix and SHALL normalize it to the bucket-relative form in `state.json`; new
+documentation and agent **How** clauses MUST use the canonical form.
+
 Examples:
 
 ```bash
-pnpm -w exec tess run feature-delivery src/inbox/in/172981_05-25-26/71701_0613_ci-best-practices-batch.md
+pnpm -w exec tess run feature-delivery 172981_05-25-26/71701_0613_ci-best-practices-batch.md
 pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/review.md
 pnpm -w exec tess refresh-active-memory --dry-run
 pnpm -w exec tess status <task-id>

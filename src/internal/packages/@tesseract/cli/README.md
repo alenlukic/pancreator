@@ -25,7 +25,12 @@ pnpm -w exec tess abort <task-id> --reason "superseded"
 
 `run feature-delivery <inboxEntry>` and `feature new <inboxEntry>` read a single
 file from `src/inbox/in/`, load `src/pipelines/feature-delivery.yaml`, derive a
-feature id, and create these active-work artifacts:
+feature id, and create these active-work artifacts.
+
+`<inboxEntry>` MUST be relative to `src/inbox/in/` (for example
+`172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md`). Do not pass the
+`src/inbox/in/` prefix on the command line; legacy prefixed arguments are
+stripped and normalized in persisted state.
 
 - `src/work/<day>/<task-id>/state.json`
 - `src/work/<day>/<task-id>/handoff.md`

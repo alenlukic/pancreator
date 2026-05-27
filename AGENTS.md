@@ -276,7 +276,8 @@ and `71096_0415_phase-4-intervention-probe-pause-resume-abort` are closed.
 Phoenix trace verification remains deferred per
 `src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md` as
 an `@tesseract/run-logger` and `tesseract-engineer` backlog item. `pnpm -w exec
-tess run feature-delivery <inbox-entry>` creates a Phase-5 active-work
+tess run feature-delivery <inbox-entry>` (`<day-bucket>/<file>.md` relative to
+`src/inbox/in/`, not the `src/inbox/in/` prefix) creates a Phase-5 active-work
 state machine, handoff card, bounded next-prompt, and run log. Operators still
 invoke Cursor personas manually, then use `pnpm -w exec tess advance` with the
 accepted stage artifact; `repair-state` is reserved for explicit ledger recovery
