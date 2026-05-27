@@ -25,33 +25,84 @@ export interface RunnerPersonaInput {
   metadata: Readonly<Record<string, unknown>>;
 }
 
+export type RunnerInvocationMode = "manual" | "sdk";
+
+export interface RunnerLedgerContext {
+  taskId: string;
+  pipelineId: string;
+  stageId: string;
+  featureId?: string;
+}
+
+/** OpenInference + OTel GenAI fragment for run-log append. */
+export interface RunnerRunLogFragment {
+  trace_id: string;
+  span_id: string;
+  name: string;
+  attributes: Record<string, unknown>;
+}
+
 export interface RunnerInvokeInput {
   persona: RunnerPersonaInput;
   /** User or operator message for this step. */
   message: string;
   /** Optional correlation id for run logs. */
   requestId?: string;
+  /** Absolute or repo-relative stage prompt path. */
+  stagePromptPath?: string;
+  /** Ledger coordinates for observability. */
+  ledger?: RunnerLedgerContext;
+  /** Expected stage output artifact path. */
+  artifactPath?: string;
+  /** Pre-built run-log fragment (caller may omit for runner-generated span). */
+  runLogFragment?: RunnerRunLogFragment;
 }
 
 export const RUNNER_INVOCATION_SCHEMA_VERSION = "1" as const;
 
+export interface RunnerResolvedInvocation {
+  model: string;
+  routingDescription: string;
+  toolAllowlist: readonly string[];
+  toolDenylist: readonly string[];
+  maxTurns: number;
+  invocation: RunnerInvocationMode;
+  stagePromptPath?: string;
+  artifactPath?: string;
+  ledger?: RunnerLedgerContext;
+}
+
 /**
- * Structured envelope the control plane and observability layers consume; no LLM call in this slice.
+ * Structured envelope the control plane and observability layers consume.
  */
 export interface RunnerInvocationEnvelope {
   schemaVersion: typeof RUNNER_INVOCATION_SCHEMA_VERSION;
   runner: "cursor";
-  dryRun: true;
+  dryRun: boolean;
+  invocation: RunnerInvocationMode;
   personaName: string;
   requestId: string;
   userMessage: string;
-  resolved: {
-    model: string;
-    routingDescription: string;
-    toolAllowlist: readonly string[];
-    toolDenylist: readonly string[];
-    maxTurns: number;
+  resolved: RunnerResolvedInvocation;
+  runLogFragment?: RunnerRunLogFragment;
+  /** Present when SDK transport completes. */
+  sdkResult?: {
+    artifactPath?: string;
+    status: "ok" | "error";
+    errorMessage?: string;
+    resultText?: string;
   };
+}
+
+export interface CursorRunnerOptions {
+  /** Default `manual`; SDK path requires explicit flag or config. */
+  invocation?: RunnerInvocationMode;
+  /** Repo root or workspace cwd for local SDK runs. */
+  cwd?: string;
+  /** Overrides `CURSOR_API_KEY` for SDK transport. */
+  apiKey?: string;
+  /** Injectable SDK transport (defaults to `Agent.prompt`). */
+  sdkTransport?: import("./sdk-transport.js").CursorSdkTransport;
 }
 
 export interface Runner {

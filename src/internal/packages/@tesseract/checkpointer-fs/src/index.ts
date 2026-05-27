@@ -4,6 +4,7 @@
  */
 
 export { FsCheckpointStore } from "./fs-checkpoint-store.js";
+export { FsLangGraphCheckpointSaver, type TesseractCheckpointMetadata } from "./langgraph-saver.js";
 export {
   isCheckpointEnvelopeV1,
   type CheckpointEnvelopeV1,

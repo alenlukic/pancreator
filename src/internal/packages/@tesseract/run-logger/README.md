@@ -16,4 +16,5 @@ pnpm --filter @tesseract/run-logger run typecheck
 ## Scope
 
 - This package depends only on `@tesseract/core` (and Node built-ins).
-- OTLP exporters, Phoenix, and Langfuse are integration targets; local JSONL is the first sink.
+- OTLP exporters and Phoenix import conformance live under `tests/run-logger-conformance/` (Option A). Run `pnpm test:run-logger-conformance` from the repository root.
+- Langfuse and additional backends are deferred to M2; local JSONL remains the first sink.

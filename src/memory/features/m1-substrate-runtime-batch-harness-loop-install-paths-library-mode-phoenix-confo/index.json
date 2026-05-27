@@ -1,0 +1,74 @@
+{
+  "feature_id": "m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+  "task_id": "966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+  "stage": "index",
+  "indexed_at": "2026-05-27T17:35:30Z",
+  "status": "indexed",
+  "source_inbox_item": {
+    "path": "src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md",
+    "content_hash": "b8cf506"
+  },
+  "feature_artifacts": [
+    {
+      "kind": "spec",
+      "path": "src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md",
+      "content_hash": "bf05499"
+    },
+    {
+      "kind": "delivery-report",
+      "path": "src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/delivery-report.md",
+      "content_hash": "0caf5cf"
+    }
+  ],
+  "accepted_ship_artifacts": [
+    {
+      "kind": "plan",
+      "path": "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md",
+      "content_hash": "95320f1"
+    },
+    {
+      "kind": "adr-draft",
+      "path": "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
+      "content_hash": "2013a9f"
+    },
+    {
+      "kind": "touch-set",
+      "path": "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/touch-set.json",
+      "content_hash": "661aca1"
+    },
+    {
+      "kind": "implementation-report",
+      "path": "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
+      "content_hash": "bb8d00a"
+    },
+    {
+      "kind": "review",
+      "path": "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
+      "content_hash": "9ee99b8"
+    },
+    {
+      "kind": "policy-compliance",
+      "path": "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/policy-compliance.json",
+      "content_hash": "c0901a4"
+    }
+  ],
+  "ship_outbox_artifact": {
+    "path": null,
+    "content_hash": null,
+    "status": "not-present-at-index-time"
+  },
+  "active_work_artifacts": [
+    "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md",
+    "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
+    "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/touch-set.json",
+    "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
+    "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
+    "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/policy-compliance.json"
+  ],
+  "archived_work_artifacts": [],
+  "advance_gate": {
+    "human_ratification_required": false,
+    "advance_command": "pnpm -w exec tess advance 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo --artifact src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/index.json",
+    "status": "ready"
+  }
+}

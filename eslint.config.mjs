@@ -10,14 +10,26 @@ export default tseslint.config(
   { ignores: ["**/dist", "**/node_modules", "pnpm-lock.yaml", "src/internal/tools/**/*.mjs"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
-    {
-    files: ["tests/**/*.mjs", "*.config.mjs"],
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
+  {
+    files: ["tests/**/*.mjs", "examples/**/*.mjs", "*.config.mjs"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
       globals: {
+        Buffer: "readonly",
+        clearTimeout: "readonly",
         console: "readonly",
+        fetch: "readonly",
         process: "readonly",
+        setTimeout: "readonly",
       },
     },
   },

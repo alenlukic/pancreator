@@ -1,6 +1,7 @@
 import { asTaskId, type TaskId } from "@tesseract/core";
 import type { InterventionState } from "@tesseract/intervention";
-import { loadPipelineYaml, type PipelineDefinition, type PipelineStage } from "@tesseract/pipeline";
+import { compilePipeline, loadPipelineYaml, type PipelineDefinition, type PipelineStage } from "@tesseract/pipeline";
+import { CursorRunner } from "@tesseract/runner-cursor";
 import {
   appendRunLogRecord,
   newSpanId,
@@ -14,6 +15,7 @@ import path from "node:path";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
 import { applyActiveMemoryRefreshOnArtifactClosure } from "./active-memory-refresh.js";
+import { readCursorInvocationMode } from "./tess-init.js";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
 
@@ -281,10 +283,30 @@ export async function startFeatureDelivery(
       "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan.",
   };
 
+  const compiled = compilePipeline(pipeline);
+  const invocation = await readCursorInvocationMode(repoRoot);
+  const runner = new CursorRunner({ invocation });
+  const intakeStage = pipeline.stages.find((s) => s.id === "intake");
+  if (intakeStage?.persona) {
+    await runner.invoke({
+      persona: stubPersonaForStage(intakeStage),
+      message: "Bootstrap feature-delivery intake stage (SDK path smoke).",
+      stagePromptPath: nextPromptFileRel,
+      artifactPath: handoffFileRel,
+      ledger: {
+        taskId,
+        pipelineId: "feature-delivery",
+        stageId: "intake",
+        featureId,
+      },
+    });
+  }
+
   await writeFile(stateFile, stringifyCliJson(repoRoot, state), "utf8");
   await writeFile(handoffFile, renderHandoff(state, pipeline, directive), "utf8");
   await writeFile(nextPromptFile, renderNextPrompt(state, pipeline), "utf8");
   await appendRunLogRecord(runLogFile, makeInvocationRecord(state, now));
+  void compiled;
 
   return {
     command,
@@ -638,15 +660,22 @@ export async function closeFeatureDeliveryArtifacts(
  * @param {string} label
  */
 function assertInboxInRelativePath(value: string, label: string): string {
-  const norm = value.replace(/\\/gu, "/").replace(/^\/+/, "");
+  let norm = value.replace(/\\/gu, "/").replace(/^\/+/, "");
   if (norm === "" || norm.includes("\0")) {
     throw new Error(`${label} MUST be a non-empty relative path.`);
+  }
+  const inboxPrefix = "src/inbox/in/";
+  if (norm.startsWith(inboxPrefix)) {
+    norm = norm.slice(inboxPrefix.length);
   }
   const segments = norm.split("/").filter(Boolean);
   for (const s of segments) {
     if (s === ".." || s === ".") {
       throw new Error(`${label} MUST NOT contain dot segments.`);
     }
+  }
+  if (segments.length === 0) {
+    throw new Error(`${label} MUST resolve to a path under src/inbox/in/.`);
   }
   return norm;
 }
@@ -1149,6 +1178,26 @@ function makeInterventionRecord(
       token_usage_unavailable: true,
       intervention: { lever: command },
     },
+  };
+}
+
+function stubPersonaForStage(stage: PipelineStage): import("@tesseract/runner-cursor").RunnerPersonaInput {
+  const name = stage.persona ?? stage.id;
+  return {
+    name,
+    description: `When feature-delivery reaches ${stage.id}, ${name} SHALL execute the stage contract.`,
+    model: "composer-2.5",
+    permissionMode: "default",
+    tools: ["Read", "Write"],
+    disallowedTools: ["Bash(git push:*)", "Bash(git commit:*)"],
+    mcpServers: [],
+    maxTurns: 30,
+    skills: [],
+    isolation: "worktree",
+    memory: "project",
+    effort: "medium",
+    color: "green",
+    metadata: { "tesseract-pipeline-stage": stage.id },
   };
 }
 

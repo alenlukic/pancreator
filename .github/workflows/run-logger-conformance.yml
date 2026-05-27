@@ -1,0 +1,24 @@
+name: run-logger-conformance
+
+on:
+  pull_request:
+    paths:
+      - "src/internal/packages/@tesseract/run-logger/**"
+      - "tests/run-logger-conformance/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+jobs:
+  phoenix-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:run-logger-conformance

@@ -1,6 +1,7 @@
 packages:
   - "src/internal/packages/*"
   - "src/internal/packages/@tesseract/*"
+  - "examples/library-script"
 catalog:
   commander: "^12.1.0"
   "@arethetypeswrong/cli": "^0.17.0"

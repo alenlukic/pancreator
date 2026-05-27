@@ -23,11 +23,15 @@
     "publint": "publint"
   },
   "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/langgraph-checkpoint": "1.0.2",
+    "@tesseract/checkpointer-fs": "workspace:*",
     "@tesseract/core": "workspace:*",
     "@tesseract/inbox": "workspace:*",
     "@tesseract/intervention": "workspace:*",
     "@tesseract/pipeline": "workspace:*",
     "@tesseract/run-logger": "workspace:*",
+    "@tesseract/runner-cursor": "workspace:*",
     "commander": "catalog:"
   },
   "devDependencies": {

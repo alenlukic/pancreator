@@ -8,7 +8,7 @@ MVP scope. Read full `docs/PRD.md` when the task requires those surfaces.
 
 Tesseract is a **simulated product-organization** for agentic software
 delivery: personas, pipelines, durable `/src/memory/`, a file inbox, and a future
-control plane (`tess` CLI is not wired in this repository yet).
+control plane (`pnpm -w exec tess` for feature-delivery, init, and inbox flows).
 
 ## MVP focus (from PRD)
 
@@ -33,6 +33,13 @@ Phase 4 remains open until the dogfood exit gaps are ratified. The `tess` CLI
 surface can now invoke `feature-delivery` into a state-machine, handoff, and
 bounded next-prompt scaffold; `tess advance` records validated stage artifacts.
 Full automatic Cursor/model/LangGraph execution is not yet complete.
+
+## Library-mode proof
+
+`examples/library-script/` demonstrates PRD US-8: a standalone script imports only
+`@tesseract/persona`, validates persona markdown, and emits `.cursor/agents/<name>.md`
+plus `.cursor/rules/<name>.mdc` into a temp directory without reading `src/memory/`,
+`src/inbox/`, or `tesseract.yaml`.
 
 ## Where to go next
 

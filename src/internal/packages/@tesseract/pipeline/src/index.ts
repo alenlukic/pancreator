@@ -1,6 +1,6 @@
 /**
  * @packageDocumentation
- * YAML pipeline definitions and an in-process ordered executor (no LangGraph dependency).
+ * YAML pipeline definitions, LangGraph StateGraph compilation, and in-process execution.
  */
 import { TESSERACT_CORE_VERSION } from "@tesseract/core";
 
@@ -14,7 +14,17 @@ export function pipelineStubVersion(): string {
   return TESSERACT_CORE_VERSION;
 }
 
-export type { CompiledPipeline, PipelineDefinition, PipelineStage } from "./types.js";
-export { compilePipeline } from "./compile.js";
+export type {
+  CompiledPipeline,
+  PipelineCircuitBreaker,
+  PipelineDefinition,
+  PipelineExecutionContext,
+  PipelineGraphEdge,
+  PipelineGraphNode,
+  PipelineStage,
+} from "./types.js";
+export { compilePipeline, INTERVENTION_NODE_ID, serializePipelineStages } from "./compile.js";
+export type { CompilePipelineOptions } from "./compile.js";
+export type { ExecutePipelineOptions } from "./execute.js";
 export { executePipeline } from "./execute.js";
 export { loadPipelineYaml } from "./load-yaml.js";

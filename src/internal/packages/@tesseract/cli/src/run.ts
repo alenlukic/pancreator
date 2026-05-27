@@ -19,6 +19,8 @@ import {
   repairFeatureDeliveryState,
   startFeatureDelivery,
 } from "./feature-delivery-run.js";
+import { createInterventionCheckpointPort } from "./intervention-checkpoint.js";
+import { runCreateTesseract, runTessInit } from "./tess-init.js";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
 import {
@@ -37,6 +39,14 @@ const BATCH_DEFERRAL_TRACKING_INTAKE =
 /** `tess init` / MCP `tess.init` deferral tracker — mirror `deferredToolTrackingIntake` in `@tesseract/mcp-server/src/tess-execute.ts`. */
 const TESS_INIT_DEFERRAL_TRACKING_INTAKE =
   "src/inbox/in/172981_05-25-26/64500_0605_tess-init-and-create-tesseract-install-paths.md";
+
+function interventionManager(repoRoot: string): InterventionManager {
+  return new InterventionManager(
+    new FsInterventionStore(repoRoot),
+    undefined,
+    createInterventionCheckpointPort(repoRoot),
+  );
+}
 
 function defaultDeferredTrackingIntake(cliVerb: string): string {
   if (cliVerb === "tess init") {
@@ -193,15 +203,48 @@ export async function parseAndRun(
 
   program
     .command("init")
-    .description("Initialize a Tesseract workspace in the current repository [deferred: M3]")
-    .action(
-      deferredVerbAction(repoRoot, writeOut, exit, {
-        verb: "tess init",
-        milestone: "M3",
-        manual_workaround:
-          "Follow `docs/M1.index.md` adopt flows and manual scaffolding until `tess init` wires installer paths ratified under docs/PRD.md.",
-      }),
-    );
+    .description("Initialize a Tesseract workspace in the current repository (dry-run by default)")
+    .option("--dry-run", "Print planned scaffold writes without applying", true)
+    .option("--apply", "Write scaffold files")
+    .option("--force", "Overwrite conflicting files when applying")
+    .action(async (cmdOpts: { dryRun?: boolean; apply?: boolean; force?: boolean }) => {
+      const dryRun = cmdOpts.apply ? false : Boolean(cmdOpts.dryRun ?? true);
+      try {
+        emit(
+          writeOut,
+          repoRoot,
+          await runTessInit({
+            repoRoot,
+            dryRun,
+            apply: Boolean(cmdOpts.apply),
+            force: Boolean(cmdOpts.force),
+            clock: options?.clock,
+          }),
+        );
+      } catch (e) {
+        const err = e as Error & { exitCode?: number };
+        writeErr(`${err.message}\n`);
+        exit.code = err.exitCode ?? 1;
+      }
+    });
+
+  program
+    .command("create-tesseract")
+    .description("Scaffold a new greenfield Tesseract workspace directory")
+    .argument("<name>", "Project directory name to create")
+    .option("--parent <dir>", "Parent directory", ".")
+    .action(async (name: string, cmdOpts: { parent?: string }) => {
+      const parent = path.resolve(repoRoot, cmdOpts.parent ?? ".");
+      emit(
+        writeOut,
+        repoRoot,
+        await runCreateTesseract({
+          targetDir: parent,
+          projectName: name,
+          clock: options?.clock,
+        }),
+      );
+    });
 
   program
     .command("run")
@@ -291,7 +334,7 @@ export async function parseAndRun(
         exit.code = TESS_DEFERRED_EXIT_CODE;
         return;
       }
-      const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
+      const mgr = interventionManager(repoRoot);
       emit(
         writeOut,
         repoRoot,
@@ -529,7 +572,7 @@ export async function parseAndRun(
     .description("Append a pause intervention for a task")
     .argument("<taskId>", "Task id under src/work/")
     .action(async (taskId: string) => {
-      const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
+      const mgr = interventionManager(repoRoot);
       await mgr.pause(asTaskId(taskId));
       await appendFeatureDeliveryInterventionRunLog({
         repoRoot,
@@ -549,7 +592,7 @@ export async function parseAndRun(
       "Optional checkpoint id for time-travel resume",
     )
     .action(async (taskId: string, opts: { checkpoint?: string }) => {
-      const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
+      const mgr = interventionManager(repoRoot);
       const cp = opts.checkpoint as CheckpointId | undefined;
       await mgr.resume(asTaskId(taskId), cp);
       await appendFeatureDeliveryInterventionRunLog({
@@ -572,7 +615,7 @@ export async function parseAndRun(
     .argument("<taskId>", "Task id under src/work/")
     .option("--reason <text>", "Optional abort reason")
     .action(async (taskId: string, opts: { reason?: string }) => {
-      const mgr = new InterventionManager(new FsInterventionStore(repoRoot));
+      const mgr = interventionManager(repoRoot);
       await mgr.abort(asTaskId(taskId), opts.reason);
       await appendFeatureDeliveryInterventionRunLog({
         repoRoot,

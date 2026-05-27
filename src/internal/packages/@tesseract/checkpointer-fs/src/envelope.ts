@@ -6,6 +6,8 @@ import type { TaskId } from "@tesseract/core";
  */
 export interface CheckpointMetadata {
   run_log_offset: number;
+  /** Git commit for worktree-bound stages (LangGraph metadata extension). */
+  worktree_commit?: string;
   [key: string]: unknown;
 }
 
