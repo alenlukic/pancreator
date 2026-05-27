@@ -24,7 +24,7 @@ todos:
     content: Implement threshold-policy schema (tesseract.yaml + tesseract-defaults.yaml) compiled to Conftest + OPA Rego with SonarQube QualityGate field shape, one working default per risk tier, commands.test|build|lint hooks (US-4 + US-9 coexistence)
     status: pending
   - id: pipelines-mvp
-    content: "Implement MVP pipelines as YAML compiled to LangGraph.js StateGraph: feature-delivery (with intake + tech-writer report stages), chat-with-persona, knowledge-curation, init-greenfield, adopt"
+    content: "Implement M1 MVP pipelines as YAML compiled to LangGraph.js StateGraph: feature-delivery (with intake + tech-writer report stages), knowledge-curation, init-greenfield, adopt. Register chat-with-persona.yaml as a bootstrap skeleton only; runtime lands in M2 backlog."
     status: pending
   - id: control-plane
     content: Implement AgentRunner / MemoryStore (Mem0-CRUD + Letta-tier + dual-anchor citation + MemoryRouter) / Inbox / Notifier / WorktreePool / EnvIsolation / Intervention / Authorizer (Cedar shape) / RunLogger (OpenInference + OTel GenAI) / Checkpointer (LangGraph BaseCheckpointSaver v1) interfaces + Cursor/file/console/git-worktree/fs-checkpointer implementations
@@ -45,8 +45,8 @@ todos:
     content: Implement @tesseract/run-logger emitting OTLP-encoded spans with OpenInference + OTel GenAI semantic conventions; default JSONL local sink to /src/work/<day>/<task-id>/run.log.jsonl; conformance-tested against Phoenix/Langfuse importers
     status: pending
   - id: examples
-    content: "Author three MVP examples: examples/greenfield-react-app (US-9), examples/existing-monorepo (US-9), examples/library-script (US-8 standalone primitive use); plus examples/library-mcp-driven (Tesseract-as-MCP-server controlled by external Claude Code agent — proves SOTA conformance externally)"
-    status: pending
+    content: "Deferred past M1 (backlog): optional examples/ apps — greenfield-react-app (US-9), existing-monorepo (US-9), library-script (US-8), library-mcp-driven (MCP conformance). M1 US-8 proof is package-boundary enforcement, not standalone example apps."
+    status: deferred
   - id: research-dossier
     content: (Optional) Persist all six research reports (3 founding + 3 SOTA-alignment) as /src/memory/research/ founding dossier with dual-anchor citations
     status: pending
@@ -413,12 +413,8 @@ src/internal/packages/
   runner-claude/         # @tesseract/runner-claude — Claude Code AgentRunner adapter (pulled from M7 to M3 to validate substrate abstraction)
   self-improvement/      # @tesseract/self-improvement — GEPA + Voyager-style skill metadata (M8; optional Python sidecar)
   meta/                  # @tesseract — meta-package that re-exports everything
-examples/
-  greenfield-react-app/  # full framework-mode example (covers US-9 greenfield)
-  existing-monorepo/     # adoption example (covers US-9 existing)
-  library-langgraph/     # library-mode: @tesseract/worktree + @tesseract/conflict-planner inside a LangGraph app
-  library-script/        # library-mode: a 50-line Node script that uses @tesseract/persona alone
-  library-mcp-driven/    # MCP-mode: drive Tesseract from Claude Desktop / Cursor agents window without `tess` CLI
+# examples/ (M2+ backlog — not M1 scope): greenfield-react-app, existing-monorepo,
+# library-script, library-mcp-driven, library-langgraph
 ```
 
 **Tooling stack (lifted directly from Mastra `@mastra/core@1.x`, Vercel AI SDK, Temporal SDK):**
@@ -699,7 +695,7 @@ post_run:
 
 - `**init-greenfield**` *(M1, US-9)* — `npx create-tesseract <name>` scaffolds a fresh repo: full Tesseract install + sample app + seeded handbook + working `feature-delivery` example. Idempotent.
 - `**adopt`** *(M1, US-9)* — `npx tesseract init` in an existing repo. Drives the `adopter` persona through the codebase scan, conflict-checks every write, surfaces a per-file diff before applying, writes the scan report to `/src/memory/adoption/scan-<date>.md`, opens an inbox item with proposed initial SMEs and threshold-policy for human ratification.
-- `**chat-with-persona`** *(M1)* — Conversation Mode (US-2). `tess chat <persona> [--feature <id>]` opens a multi-turn thread under `/src/inbox/threads/<thread-id>/`. Any turn may end with `/end --emit <artifact-type>` to promote the dialogue into a canonical artifact. Used by `design-engineer` for US-2 and by SMEs for ad-hoc consults.
+- `**chat-with-persona`** *(M2+, backlog)* — Conversation Mode (US-2). `tess chat <persona> [--feature <id>]` opens a multi-turn thread under `/src/inbox/threads/<thread-id>/`. Any turn may end with `/end --emit <artifact-type>` to promote the dialogue into a canonical artifact. Used by `design-engineer` for US-2 and by SMEs for ad-hoc consults. Bootstrap registers `src/pipelines/chat-with-persona.yaml` as a skeleton only; M1 does not execute this pipeline.
 - `**discovery`** *(M2)* — Researcher → PM → Designer → produces PRD + OST update.
 - `**frontend-delivery`** *(M2)* — Variant of `feature-delivery` (US-3). Mandatory `contracts:from_feature` step pulls all `ux-spec.md` contracts; gate fails on any contract violation; failures route back to `frontend-eng` with the failed contract list. M3+ swaps LLM-judged contract checks for deterministic Playwright/axe-core/visual-diff runs.
 - `**bug-triage`** *(M2)* — Triager → Reviewer (RCA) → Coder → Reviewer (verify) → Tester.
@@ -1107,7 +1103,7 @@ Every stage boundary writes a checkpoint via `BaseCheckpointSaver.put()`. `**@te
 ## 11. MVP Scope (target: ~3 weeks of focused build, single repo)
 
 - `src/personas/`: supervisor, **adopter**, intake-analyst, tech-lead, coder, reviewer, librarian, tech-writer (8 markdown files; `adopter` added in v0.3 for US-9; intake-analyst and tech-writer added in v0.2 for US-1).
-- `src/pipelines/`: `feature-delivery.yaml` (flagship), `chat-with-persona.yaml` (US-2 minimum), `knowledge-curation.yaml`, `**init-greenfield.yaml`** (US-9), `**adopt.yaml`** (US-9).
+- `src/pipelines/`: `feature-delivery.yaml` (flagship), `knowledge-curation.yaml`, `**init-greenfield.yaml`** (US-9), `**adopt.yaml`** (US-9). `chat-with-persona.yaml` is registered as a bootstrap skeleton only; runtime is backlog-deferred to M2.
 - `src/memory/`: scaffolds for handbook, adr, rfc, prd, **features**, **adoption** (US-9), **checkpoints** (US-10), runbooks, postmortems, research; handbook seed (constitution, glossary, run-log schema, citation conventions, contract format, threshold-policy schema, intervention semantics).
 - `src/inbox/`: scaffolds + conventions doc.
 - `src/skills/`: write-adr, write-rfc, modern-code-review, blameless-postmortem, **canonicalize-spec**, **adopt-existing-repo** (US-9) (6 reusable skills, Cursor SKILL.md-compatible).
@@ -1125,10 +1121,7 @@ Every stage boundary writes a checkpoint via `BaseCheckpointSaver.put()`. `**@te
 - `**Intervention` interface + checkpointer** (US-10): supervisor writes a LangGraph checkpoint at every stage boundary; CLI surfaces `tess pause | resume | abort` (full lever spectrum lands in M2 mapped to LangGraph `interrupt()` / `Command(goto)` / `checkpoint_id` time-travel).
 - `Authorizer` interface typed against Cedar `AuthorizationEngine` shape (in-memory `AllowAll` impl in MVP; real Cedar-policy adapter lands in M3 with library-mode hardening).
 - `**@tesseract/mcp-server`** (MVP-skeleton, fully wired in M2): publishes `tess.*` verbs as MCP Tools and `/src/memory/`, `/src/inbox/`, `/src/work/run-log` as MCP Resources; `human.respond` exposed as MCP Elicitation.
-- One end-to-end example for *each* install path:
-  - **Greenfield**: `npx create-tesseract todo-app` → spec dropped in `src/inbox/in/` → intake-analyst clarifies → pipeline runs → delivery report in `src/inbox/out/` + staged PR.
-  - **Existing**: `cd existing-monorepo && tess init` → adopter scan → ratification inbox item → first feature-delivery on a real existing module.
-- **One library-mode example** in `examples/library-script/` (US-8): a 50-line Node script that imports `@tesseract/persona` + `@tesseract/worktree` standalone, with no `tesseract.yaml` and no other Tesseract install.
+- **Install-path proof (US-9, M1):** `pnpm -w exec tess create-tesseract <name>` scaffolds greenfield; `pnpm -w exec tess init` runs adopter scan and emits a ratification inbox item on an existing repo. Standalone `examples/` apps are backlog-deferred past M1.
 
 ---
 
@@ -1137,7 +1130,7 @@ Every stage boundary writes a checkpoint via `BaseCheckpointSaver.put()`. `**@te
 Each milestone lists the new user stories it lights up.
 
 - **M0 — Spec ratification.** Human signs off on this PRD; revise persona/pipeline list, ratify Q1–Q14.
-- **M1 — MVP. Lights up: US-1 (basic), US-8 (boundaries), US-9 (both install paths), US-10 (pause/abort).** Single-repo, Cursor-only, file-based. **Monorepo package layout from day 1** with no horizontal deps between primitives (US-8 baseline; not every primitive ships rich features yet). 8 personas (incl. `adopter`, intake-analyst, tech-writer). `feature-delivery` + `chat-with-persona` + `knowledge-curation` + `**init-greenfield` + `adopt`** pipelines. Threshold-policy schema with one working default. Single-pipeline worktree execution. Delivery-report artifact. Feature index. **Stage-boundary checkpointing + `tess pause/resume/abort`** (US-10 minimum). One library-mode example.
+- **M1 — MVP. Lights up: US-1 (basic), US-8 (boundaries), US-9 (both install paths), US-10 (pause/abort).** Single-repo, Cursor-only, file-based. **Monorepo package layout from day 1** with no horizontal deps between primitives (US-8 baseline; not every primitive ships rich features yet). 8 personas (incl. `adopter`, intake-analyst, tech-writer). `feature-delivery` + `knowledge-curation` + `**init-greenfield` + `adopt`** pipelines. Threshold-policy schema with one working default. Single-pipeline worktree execution. Delivery-report artifact. Feature index. **Stage-boundary checkpointing + `tess pause/resume/abort`** (US-10 minimum). `chat-with-persona` and standalone `examples/` apps are backlog-deferred past M1.
 - **M2 — Discovery, Design, Parallelism, full Intervention. Lights up: US-2, US-3, US-4 (full), US-6 (basic), US-10 (full spectrum).** Add `pm`, `product-researcher`, `design-engineer`, `backend-eng`, `frontend-eng`, `conflict-planner`, `merge-resolver`. Add `discovery`, `frontend-delivery`, `parallel-feature-delivery`, `weekly-review`, `bug-triage` pipelines. Spec-Contract concept implemented (LLM-judged in M2). Slack notifier adapter. Touch-set enforcement. **Full intervention spectrum** (`tess steer | reroute | snapshot | rollback | quarantine | release`). Each `@tesseract/<primitive>` ships its own README "use standalone in 5 minutes" and a non-Tesseract example (US-8).
 - **M3 — Quality, Security, Deterministic Contracts, Grooming. Lights up: US-3 (deterministic), US-6 (semantic merge), US-7.** Add `qa-tester`, `sdet`, `appsec`, `pen-tester`, `**groomer`**. Add `security-review`, `**tech-debt-scan`**, `**debt-grooming**` pipelines; STRIDE skill; ORR-style launch checklist. Swap LLM-judged spec contracts for deterministic harnesses (Playwright, axe-core, visual-diff, schemathesis). Semantic-merge resolver upgrade. `tess debt` CLI surface. Default grooming mode = `propose`; per-repo opt-in to `auto-pr`. **Enable multi-user operation within a single repo.**
 - **M4 — Operations, Scouts, Ensembles, SMEs. Lights up: US-5.** Add `sre`, `release-manager`, `postmortem-author`. Add Scouts, Persona Ensemble framework, long-lived SME pattern. Add `rfc-debate`, `proactive-research-scan`, `incident-response`, `backlog-reprioritize` pipelines. Backlog as live entity owned by `pm`.
@@ -1228,7 +1221,7 @@ Measured on the framework's *own* repo (dogfooding) plus 3 pilot installs.
 - **A10 (US-5).** ≥ 1 scout-emitted RFC accepted into the backlog per month; ensemble-debate dissent surfaces ≥ 2 substantive disagreements per RFC on average; no SMEs idle > 30 days without a Librarian-emitted demotion suggestion; scout total cost ≤ Q8 ceiling 100% of weeks.
 - **A11 (US-6).** Parallel-cohort merge-conflict rate < 5% of cohorts after conflict-planner runs (vs. an unplanned baseline TBD on dogfood); zero silent semantic merges; merge-resolver inbox items resolved within 24h median.
 - **A15 (US-7).** In `propose` mode: ≥ 80% of groomer-emitted refactor RFCs receive human-or-ensemble decision (accept/reject/defer) within 7 days. In `auto-pr` mode: zero behavior-regression incidents traceable to a groomer PR; weekly PR budget never exceeded.
-- **A16 (US-8).** Every primitive in `src/internal/packages/` (a) has a non-Tesseract usage example in `examples/`, (b) passes the conformance test suite at M7, (c) declares an explicit `stability` tier, (d) has zero horizontal package dependencies (CI-enforced from M1).
+- **A16 (US-8).** Every primitive in `src/internal/packages/` (a) passes the conformance test suite at M7, (b) declares an explicit `stability` tier, (c) has zero horizontal package dependencies (CI-enforced from M1). Non-Tesseract usage examples in `examples/` are backlog-deferred past M1 and become required by M7.
 - **A17 (US-9).** `tess init` on 5 representative existing repos (TS monorepo, Python service, Rust binary, Go API, Next.js app) completes non-destructively (zero overwritten files) and produces an `adoption/scan-*.md` rated ≥ 4/5 by repo owners on accuracy.
 - **A18 (US-10).** Median time from operator-issued `tess pause` to actual pause-acknowledgment ≤ 1 stage boundary; zero rollback/abort actions destroy uncommitted human edits; from M5+, watchdog detects ≥ 80% of stuck-state cases that humans would have flagged manually within 5 turns of the human.
 

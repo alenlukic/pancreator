@@ -555,3 +555,33 @@ items:
       - /src/memory/handbook/glossary.md
     evidence: "json-formatting R1 policy covers Markdown-embedded JSON across handbook, inbox threads, work-stage markdown, and delivery reports. The slice reformatted feature delivery reports and tech-writer conformance, while tests currently scan delivery reports and tech-writer only."
     notes: "Extend markdown citation compliance scan (or add scan-markdown-json-citations.mjs) to cover configured globs and run reformat-markdown-citations.mjs (or equivalent) for violations, with allowlisted normative anti-pattern examples only. Surfaces still out of current automated scan scope include src/memory/handbook/**, src/inbox/threads/**, docs/**, other personas, and archived work markdown. SHOULD batch with bootstrap-content-hash-refresh and citation-range-realignment-pass to avoid triple corpus churn."
+
+  - id: chat-with-persona-pipeline-runtime
+    title: Implement chat-with-persona pipeline runtime and tess chat (US-2)
+    source: docs/PRD.md
+    owner: coder
+    milestone: m2
+    status: deferred
+    priority: medium
+    opened_at: "2026-05-27T00:00:00Z"
+    links:
+      - /docs/PRD.md
+      - /src/pipelines/chat-with-persona.yaml
+      - /src/memory/backlog/index.yaml
+    evidence: "Operator scope trim 2026-05-27 removed chat-with-persona from the M1 path. Bootstrap retains src/pipelines/chat-with-persona.yaml as a loadable skeleton only."
+    notes: "Wire tess chat, /src/inbox/threads/<thread-id>/ persistence, and /end --emit artifact promotion when US-2 lights up at M2. Persona Ensemble runtime may still land at M4 per PRD §13."
+
+  - id: examples-apps-deferred
+    title: Optional examples/ apps for US-8, US-9, and MCP conformance proofs
+    source: docs/PRD.md
+    owner: tech-lead
+    milestone: m2
+    status: deferred
+    priority: low
+    opened_at: "2026-05-27T00:00:00Z"
+    links:
+      - /docs/PRD.md
+      - /docs/BOOTSTRAP.md
+      - /src/memory/backlog/index.yaml
+    evidence: "Operator scope trim 2026-05-27 removed standalone examples/ apps from the M1 path as low signal. M1 US-8 proof remains package-boundary enforcement and CI conformance."
+    notes: "Candidate paths when revived: examples/greenfield-react-app/, examples/existing-monorepo/, examples/library-script/, examples/library-mcp-driven/. Not required for Bootstrap Phase 5 exit."

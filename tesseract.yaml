@@ -9,7 +9,7 @@ bootstrap:
   completed_phases: ["-1", "0", "1", "2", "3", "4"]
   placeholder: false
   enforced_today: false
-  current_focus: "Phase 5 M1 hardening: init-greenfield and adopt pipelines on real targets, knowledge-curation seed, example apps, KPI baseline, and deferred Phoenix trace verification via @tesseract/run-logger."
+  current_focus: "Phase 5 M1 hardening: init-greenfield and adopt pipelines on real targets, knowledge-curation seed, KPI baseline, and deferred Phoenix trace verification via @tesseract/run-logger."
   note: "Bootstrap Phase 4 ratified 2026-05-19 after the US-1 dogfood proof bundle close-out. Nested runs 77373_0230_phase-4-dogfood-proof-bundle-evidence-index and 71096_0415_phase-4-intervention-probe-pause-resume-abort are closed. Phase 5 (Rest of M1) is in progress per docs/BOOTSTRAP.md; Phoenix trace verification remains a deferred engineering item for @tesseract/run-logger and the tesseract-engineer backlog."
   evidence:
     - docs/BOOTSTRAP.md Phase 5 defines the current M1 completion gate.

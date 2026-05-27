@@ -2,11 +2,12 @@ id: chat-with-persona
 version: "1"
 metadata:
   tesseract-bootstrap-only: true
+  tesseract-m1-deferred: true
   description: >-
-    PRD §11 MVP pipeline skeleton. Single-stage dispatch to a named persona for
-    a non-delivery conversation. Persona Ensemble runtime lands at M4 per
-    PRD §13; the bootstrap registration carries an ordered single-stage shape
-    that the `chat-with-persona` ensemble will replace once M4 wiring lands.
+    PRD §11 pipeline skeleton only — not on the M1 execution path. Conversation
+    Mode (US-2) runtime, `tess chat`, and Persona Ensemble wiring are backlog-deferred
+    to M2+. The bootstrap registers this YAML so `@tesseract/pipeline` can load and
+    compile the shape; operators MUST NOT treat M1 as blocked on executing this pipeline.
   references:
     - kind: lines
       path: docs/PRD.md

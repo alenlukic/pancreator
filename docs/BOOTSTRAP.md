@@ -227,8 +227,10 @@ works against an empty pipeline.
 Inputs: substrate from Phase 3 + personas from Phase 1 + contracts from Phase 2.
 Outputs: a single staged PR with delivery report = the empirical proof Tesseract works.
 
-- Compile and register the 5 MVP pipelines from PRD §11: `feature-delivery`,
-  `chat-with-persona`, `knowledge-curation`, `init-greenfield`, `adopt`.
+- Compile and register the five PRD §11 pipeline YAML definitions under
+  `src/pipelines/`: `feature-delivery`, `chat-with-persona` (skeleton only),
+  `knowledge-curation`, `init-greenfield`, `adopt`. M1 runtime scope covers
+  `feature-delivery` execution; `chat-with-persona` runtime is backlog-deferred to M2.
 - Drop a real semi-formal spec into `src/inbox/in/`. Walk PRD §3.5 US-1 end-to-end:
   - `intake-analyst` runs the canonicalization dialogue to `/src/memory/features/<id>/spec.md`.
   - `tech-lead` drafts `plan.md` + `adr-draft.md` + `touch-set.json` + per-feature
@@ -255,9 +257,6 @@ tiers / `tesseract.yaml` declare.
   - `init-greenfield` and `adopt` pipelines on real targets (US-9 — pick a TS
     monorepo, a Python service, and a Next.js app per KPI A17).
   - `knowledge-curation` cron seed + Librarian's anti-rot loop.
-  - 4 example apps in `examples/`: `greenfield-react-app/`, `existing-monorepo/`,
-    `library-script/` (US-8 standalone-primitive proof), `library-mcp-driven/` (proves
-    SOTA conformance externally — PRD §11 last bullet).
 - Optional but recommended: persist the 6 founding research reports (PRD §15) to
   `/src/memory/research/` so future agents can cite them.
 - Baseline KPIs A1–A18 + A22–A27 on the dogfood repo; record gaps in

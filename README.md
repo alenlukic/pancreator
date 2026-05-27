@@ -11,8 +11,8 @@ the current workflow.
   packages, static MVP pipeline definitions, and the ratified US-1 dogfood exit
   are present.
 - **Current focus:** Phase 5 M1 hardening per `docs/BOOTSTRAP.md` — init-greenfield
-  and adopt pipelines on real targets, knowledge-curation seed, example apps, and
-  KPI baseline. The Phoenix/Langfuse import gap remains an engineering backlog
+  and adopt pipelines on real targets, knowledge-curation seed, and KPI baseline.
+  The Phoenix/Langfuse import gap remains an engineering backlog
   item for `@tesseract/run-logger` and `tesseract-engineer`, not an open operator
   step.
 - **Runtime caveat:** `tess run feature-delivery <inbox-entry>` creates a
