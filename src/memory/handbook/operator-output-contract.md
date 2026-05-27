@@ -114,6 +114,21 @@ When a step delegates to a persona, the **How** clause MUST state the Cursor
 invocation (`/reviewer-standard`, `/tech-lead-complex`, etc.) and the file the
 operator pastes (`src/work/<day>/<task-id>/next-prompt.md` only per AGENTS §4).
 
+### 3.2a — `feature-delivery` inbox entry paths
+
+`pnpm -w exec tess run feature-delivery` and `pnpm -w exec tess feature new`
+take `<inbox-entry>` relative to `src/inbox/in/` (day bucket + filename). **How**
+clauses MUST NOT prefix `src/inbox/in/` on that argument—the CLI prepends it.
+
+Canonical example:
+
+```bash
+pnpm -w exec tess run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
+```
+
+See `/src/memory/handbook/tesseract-config.md` §“`feature-delivery` inbox entry
+argument”.
+
 ### 3.3 — Read-only versus mutating actions
 
 - **Read-only** steps MUST be labeled `Read-only:` at the start of the **How**
@@ -270,7 +285,7 @@ active task.
 | Pipeline stage complete | Advance to next stage | `pnpm -w exec tess advance <task-id> --artifact <path>` |
 | Human gate | Ratify or reject | Read-only: inspect artifact; mutating: reply in inbox thread or run `pnpm -w exec tess approve <task-id>` when wired |
 | Delegate next persona | Hand off execution | Paste `src/work/<day>/<task-id>/next-prompt.md` into `/<persona>-standard` |
-| Pick up inbox work | Start next feature | Read-only: `ls src/inbox/in/`; mutating: `pnpm -w exec tess run feature-delivery src/inbox/in/<day>/<file>.md` |
+| Pick up inbox work | Start next feature | Read-only: `ls src/inbox/in/`; mutating: `pnpm -w exec tess run feature-delivery <day-bucket>/<file>.md` |
 | Verify only | Confirm artifact | Read-only: open cited path(s) and check acceptance criteria |
 | Governed commit | Stage and commit (operator) | Full `git add <every-path>` then `git commit -m "$(cat <<'EOF' … EOF)"`; verify `src/work/<day>/<task-id>/policy-compliance.json` when required |
 | Run tests before commit | Verify green | `pnpm test` (or the exact `pnpm` script named in `package.json`) |

@@ -250,7 +250,7 @@ export async function parseAndRun(
     .command("run")
     .description("Run a pipeline by name (`feature-delivery` only is executable today) [deferred: M2]")
     .argument("<pipeline>", "Pipeline id")
-    .argument("[inboxEntry]", "Inbox file under src/inbox/in/ for feature-delivery")
+    .argument("[inboxEntry]", "<day-bucket>/<file>.md relative to src/inbox/in/ (not the src/inbox/in/ prefix)")
     .option("--feature <featureId>", "Feature id override")
     .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
     .action(async (pipeline: string, inboxEntry: string | undefined, opts: { feature?: string; task?: string }) => {
@@ -299,7 +299,7 @@ export async function parseAndRun(
   feature
     .command("new")
     .description("Start a feature-delivery run from an inbox directive")
-    .argument("<inboxEntry>", "Inbox file under src/inbox/in/")
+    .argument("<inboxEntry>", "<day-bucket>/<file>.md relative to src/inbox/in/ (not the src/inbox/in/ prefix)")
     .option("--feature <featureId>", "Feature id override")
     .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
     .action(async (inboxEntry: string, opts: { feature?: string; task?: string }) => {
@@ -548,11 +548,17 @@ export async function parseAndRun(
     .command("refresh-active-memory")
     .description("Rewrite shipped Feature table and operator-note refresh stamp in src/memory/active/current.md; Active Feature is human-curated")
     .option("--dry-run", "Print the computed diff without writing current.md", false)
-    .action(async (cmdOpts: { dryRun?: boolean }) => {
+    .option(
+      "--accept-derived",
+      "Apply derived shipped-feature rows when they are the only divergence from index.json",
+      false,
+    )
+    .action(async (cmdOpts: { dryRun?: boolean; acceptDerived?: boolean }) => {
       const dryRun = Boolean(cmdOpts.dryRun);
       const code = await rewriteActiveMemoryFile({
         repoRoot,
         dryRun,
+        acceptDerived: Boolean(cmdOpts.acceptDerived),
         writeOut,
         writeErr,
         clock: options?.clock ?? (() => new Date()),

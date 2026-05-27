@@ -35,7 +35,7 @@ During adoption, the adopter SHOULD:
 
 Live bootstrap state belongs in `tesseract.yaml` under the `bootstrap` block.
 
-For this repository, the current live state is Phase 4 in progress with phases `-1`, `0`, `1`, `2`, and `3` completed.
+For this repository, the current live state is Phase 5 in progress with phases `-1`, `0`, `1`, `2`, `3`, and `4` completed.
 
 `docs/BOOTSTRAP.md` remains the phase-contract and milestone reference. `docs/M1.index.md` is the compact route for M1/bootstrap context before loading the full bootstrap or PRD documents.
 
@@ -61,14 +61,57 @@ Rules:
 - Agents that run `tess` in a shell themselves SHALL use the same prefix unless
   a ratified global install is documented in an ADR.
 
+### `feature-delivery` inbox entry argument
+
+`pnpm -w exec tess run feature-delivery <inbox-entry>` and `pnpm -w exec tess
+feature new <inbox-entry>` resolve the directive under `src/inbox/in/`. The
+operator MUST pass `<inbox-entry>` as a path **relative to that directory**—the
+day bucket and filename only, not the `src/inbox/in/` prefix.
+
+Canonical form:
+
+```text
+<day-bucket>/<SID>_<HHMM>_<slug>.md
+```
+
+Example: `172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md` for
+`src/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md`.
+
+The CLI MAY accept a legacy argument that still includes the `src/inbox/in/`
+prefix and SHALL normalize it to the bucket-relative form in `state.json`; new
+documentation and agent **How** clauses MUST use the canonical form.
+
 Examples:
 
 ```bash
-pnpm -w exec tess run feature-delivery src/inbox/in/172981_05-25-26/71701_0613_ci-best-practices-batch.md
+pnpm -w exec tess run feature-delivery 172981_05-25-26/71701_0613_ci-best-practices-batch.md
 pnpm -w exec tess advance <task-id> --artifact src/work/<day>/<task-id>/review.md
 pnpm -w exec tess refresh-active-memory --dry-run
 pnpm -w exec tess status <task-id>
 ```
+
+## Bootstrap tracking invariants
+
+The `bootstrap` block MUST keep three fields internally consistent:
+
+| Field | Rule |
+|---|---|
+| `phase` | Current active bootstrap phase as a string integer (`"5"`). |
+| `status` | MUST be `phase-<N>-in-progress` where `<N>` equals `phase`. |
+| `completed_phases` | MUST list every phase from `"-1"` through `<N - 1>` with no gaps. |
+
+Ratifying a phase boundary is an **atomic advance**. Operators MUST NOT leave
+`status: phase-<N>-ratified` as a stable end state. After human ratification of
+phase `N`, update all three fields together:
+
+1. Append `"N"` to `completed_phases`.
+2. Set `phase` to `"N + 1"`.
+3. Set `status` to `phase-<N + 1>-in-progress`.
+
+`@tesseract/policy` exports `validateBootstrapTracking()` and
+`nextBootstrapAfterRatification()` for the expected post-ratification shape.
+Repository tests call the validator against live `tesseract.yaml` so partial
+updates fail CI instead of drifting.
 
 ## Editing guidance
 
@@ -76,5 +119,7 @@ When changing `tesseract.yaml`:
 
 - preserve the top-level `project_root` property,
 - update bootstrap phase tracking only after checking `docs/BOOTSTRAP.md`,
+- apply phase ratification as one atomic change across `phase`, `status`, and
+  `completed_phases` per the invariants above,
 - keep defaults in `tesseract-defaults.yaml` separate from live tracking,
 - route adoption-related changes through `src/personas/adopter.md` and `src/skills/adopt-existing-repo/SKILL.md`.

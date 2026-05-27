@@ -41,8 +41,9 @@ read per `src/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
-| `ci-best-practices-batch` | [indexed] (`2026-05-26T18:23:19.000Z`) | `src/memory/features/ci-best-practices-batch/delivery-report.md` | `—` | `—` |
-| `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`2026-05-26T12:00:00.000Z`) | `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md` | `—` | `—` |
+| `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` | [indexed] (`2026-05-27T17:35:30.000Z`) | `src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix…` |
+| `ci-best-practices-batch` | [indexed] (`2026-05-26T18:23:19.000Z`) | `src/memory/features/ci-best-practices-batch/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md` |
+| `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`2026-05-26T12:00:00.000Z`) | `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-vari…` |
 | `tesseract-adopter-scan` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-adopter-scan/delivery-report.md` | `—` | `—` |
 | `tesseract-checkpointer-fs` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-checkpointer-fs/delivery-report.md` | `—` | `—` |
 | `tesseract-cli` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-cli/delivery-report.md` | `—` | `—` |
@@ -52,11 +53,7 @@ read per `src/memory/handbook/context-economy.md`.
 | `tesseract-contract-style` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract-style/delivery-report.md` | `—` | `—` |
 | `tesseract-core` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-core/delivery-report.md` | `—` | `—` |
 | `tesseract-env-isolation` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-env-isolation/delivery-report.md` | `—` | `—` |
-| `tesseract-inbox` | [indexed] (`2026-05-26T09:34:14node --test tests/*.test.mjs
-node src/internal/tools/check-phase-0a-scaffold.mjs
-node src/internal/tools/context-budget-report.mjs
-bash -n .cursor/hooks/enforce-policy-compliance.sh
-.000Z`) | `src/memory/features/tesseract-inbox/delivery-report.md` | `—` | `—` |
+| `tesseract-inbox` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-inbox/delivery-report.md` | `—` | `—` |
 | `tesseract-intervention` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-intervention/delivery-report.md` | `—` | `—` |
 | `tesseract-mcp-server` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-mcp-server/delivery-report.md` | `—` | `—` |
 | `tesseract-memory` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-memory/delivery-report.md` | `—` | `—` |
@@ -67,24 +64,25 @@ bash -n .cursor/hooks/enforce-policy-compliance.sh
 | `tesseract-run-logger` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-run-logger/delivery-report.md` | `—` | `—` |
 | `tesseract-runner-cursor` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-runner-cursor/delivery-report.md` | `—` | `—` |
 | `tesseract-worktree` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-worktree/delivery-report.md` | `—` | `—` |
-| `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`2026-05-26T00:00:00.000Z`) | `src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md` | `—` | `—` |
+| `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`2026-05-26T00:00:00.000Z`) | `src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md` | `—` | `src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-me…` |
 | `json-formatting` | [indexed] (`2026-05-24T00:00:00.000Z`) | `src/memory/features/json-formatting/delivery-report.md` | `—` | `—` |
-| `compliance-tests` | [indexed] (`—`) | `src/memory/features/compliance-tests/delivery-report.md` | `—` | `—` |
+| `compliance-tests` | [indexed] (`—`) | `src/memory/features/compliance-tests/delivery-report.md` | `—` | `src/inbox/archive/in/172991_05-15-26/68576_0457_compliance-tests.md` |
 | `inbox-convention-migration` | [indexed] (`—`) | `src/memory/features/inbox-convention-migration/delivery-report.md` | `—` | `—` |
-| `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` | [indexed] (`—`) | `—` | `—` | `—` |
 
 ## Risks and blockers
 
-- Phoenix OTLP import remains open on the `tesseract-engineer` backlog.
 - Pass-2 extends pass-1 deferred scope; both close as a single operator session.
+- Additional observability backend verification (Langfuse) deferred to M2 under backlog item `bootstrap-external-observability-phoenix-langfuse`; Phoenix Option A smoke tests pass as of `2026-05-27`.
 
 ## Operator notes
 
 <!-- tess:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-27T17:36:33.622Z`
+- Active-memory refreshed (UTC): `2026-05-27T18:58:58.055Z`
 
 <!-- /tess:active-memory:operator-notes:auto -->
+
+
 
 
 

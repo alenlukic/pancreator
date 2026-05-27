@@ -5,8 +5,9 @@ import path from "node:path";
 const SCAFFOLD_FILES: Record<string, string> = {
   "tesseract.yaml": `project_root: "."
 bootstrap:
-  phase: "4"
-  status: phase-4-ratified
+  phase: "5"
+  status: phase-5-in-progress
+  completed_phases: ["-1", "0", "1", "2", "3", "4"]
 risk_tier: medium
 `,
   "AGENTS.md": "# AGENTS.md\n\nOperator card for this Tesseract workspace.\n",
@@ -175,7 +176,7 @@ export async function runCreateTesseract(input: CreateTesseractInput): Promise<C
     await mkdir(path.dirname(sampleInbox), { recursive: true });
     await writeFile(
       sampleInbox,
-      "# Sample feature\n\nWalk through feature-delivery with `pnpm -w exec tess run feature-delivery src/inbox/in/sample-directive.md`.\n",
+      "# Sample feature\n\nWalk through feature-delivery with `pnpm -w exec tess run feature-delivery sample-directive.md`.\n",
       "utf8",
     );
   }

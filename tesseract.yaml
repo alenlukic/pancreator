@@ -4,19 +4,19 @@
 project_root: "."
 
 bootstrap:
-  phase: "4"
-  status: phase-4-ratified
-  completed_phases: ["-1", "0", "1", "2", "3"]
+  phase: "5"
+  status: phase-5-in-progress
+  completed_phases: ["-1", "0", "1", "2", "3", "4"]
   placeholder: false
   enforced_today: false
-  current_focus: "US-1 dogfood proof bundle ratified 2026-05-19; nested runs 77373 and 71096 are closed; Phoenix trace verification remains deferred to the @tesseract/run-logger / tesseract-engineer backlog while M1 hardening continues."
-  note: "Bootstrap Phase 4 is ratified after the US-1 dogfood proof bundle close-out on 2026-05-19. Nested runs 77373_0230_phase-4-dogfood-proof-bundle-evidence-index and 71096_0415_phase-4-intervention-probe-pause-resume-abort are closed, while Phoenix trace verification remains a deferred engineering item for @tesseract/run-logger and the tesseract-engineer backlog."
+  current_focus: "Phase 5 M1 hardening: init-greenfield and adopt pipelines on real targets, knowledge-curation seed, KPI baseline, and deferred Phoenix trace verification via @tesseract/run-logger."
+  note: "Bootstrap Phase 4 ratified 2026-05-19 after the US-1 dogfood proof bundle close-out. Nested runs 77373_0230_phase-4-dogfood-proof-bundle-evidence-index and 71096_0415_phase-4-intervention-probe-pause-resume-abort are closed. Phase 5 (Rest of M1) is in progress per docs/BOOTSTRAP.md; Phoenix trace verification remains a deferred engineering item for @tesseract/run-logger and the tesseract-engineer backlog."
   evidence:
-    - docs/BOOTSTRAP.md Phase 4 defines the current dogfood verification gate.
-    - src/internal/packages/@tesseract/** contains the Phase 3 substrate package implementations.
-    - src/pipelines/*.yaml contains the five MVP pipeline definitions named by Phase 4.
+    - docs/BOOTSTRAP.md Phase 5 defines the current M1 completion gate.
     - src/memory/features/us-1-dogfood-phase-4-exit/phase-4-ratification-request.md records the 2026-05-19 human ratification decision for the US-1 Phase 4 dogfood exit.
     - src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md records the closed nested-run evidence bundle and the remaining Phoenix engineering deferral.
+    - src/internal/packages/@tesseract/** contains the Phase 3 substrate package implementations.
+    - src/pipelines/*.yaml contains the five MVP pipeline definitions.
 
 risk_tier: medium
 threshold_policy: defaults.medium  # from tesseract-defaults.yaml

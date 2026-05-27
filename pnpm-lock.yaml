@@ -88,12 +88,6 @@ importers:
         specifier: 'catalog:'
         version: 2.8.3
 
-  examples/library-script:
-    dependencies:
-      '@tesseract/persona':
-        specifier: workspace:*
-        version: link:../../src/internal/packages/@tesseract/persona
-
   src/internal/packages/@tesseract/adopter-scan:
     dependencies:
       '@tesseract/core':

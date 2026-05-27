@@ -14,7 +14,10 @@ import { mkdir, readFile, readdir, rename, rmdir, stat, writeFile } from "node:f
 import path from "node:path";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
-import { applyActiveMemoryRefreshOnArtifactClosure } from "./active-memory-refresh.js";
+import {
+  applyActiveMemoryRefreshOnArtifactClosure,
+  patchFeatureIndexArchivedInbox,
+} from "./active-memory-refresh.js";
 import { readCursorInvocationMode } from "./tess-init.js";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
@@ -629,6 +632,13 @@ export async function closeFeatureDeliveryArtifacts(
   await appendRunLogRecord(
     path.join(repoRoot, ...state.artifacts.runLogFile.split("/")),
     makeCloseRecord(state, now, previousRunDir, closure.workArchiveRel, closure.inboxSourceRel, closure.inboxArchiveRel),
+  );
+
+  await patchFeatureIndexArchivedInbox(
+    repoRoot,
+    state.featureId,
+    closure.inboxArchiveRel,
+    closure.inboxSourceRel,
   );
 
   const activeMemoryRefresh = await applyActiveMemoryRefreshOnArtifactClosure(repoRoot, {

@@ -19,7 +19,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["tests/**/*.mjs", "examples/**/*.mjs", "*.config.mjs"],
+    files: ["tests/**/*.mjs", "*.config.mjs"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",

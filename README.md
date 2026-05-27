@@ -5,17 +5,18 @@ the current workflow.
 
 ## 1) Current status
 
-- **Current phase tracking:** `tesseract.yaml` records Bootstrap Phase 4 with
-  status `phase-4-ratified`. Phases -1 through 3 are treated as complete
-  for tracking because scaffold, handbook seeds, personas, skills, M1 feature
-  contracts, substrate packages, and static MVP pipeline definitions are
-  present.
-- **Current focus:** the US-1 dogfood proof bundle was ratified on `2026-05-19`
-  after the nested proof-bundle and intervention runs closed. The remaining
-  Phoenix/Langfuse import gap is now an engineering backlog item for
-  `@tesseract/run-logger` and `tesseract-engineer`, not an open operator step.
-- **Runtime caveat:** `tess run feature-delivery <inbox-entry>` now creates a
-  Phase-4 state machine, handoff card, run log, and bounded `next-prompt.md`
+- **Current phase tracking:** `tesseract.yaml` records Bootstrap Phase 5 with
+  status `phase-5-in-progress`. Phases -1 through 4 are complete for tracking:
+  scaffold, handbook seeds, personas, skills, M1 feature contracts, substrate
+  packages, static MVP pipeline definitions, and the ratified US-1 dogfood exit
+  are present.
+- **Current focus:** Phase 5 M1 hardening per `docs/BOOTSTRAP.md` — init-greenfield
+  and adopt pipelines on real targets, knowledge-curation seed, and KPI baseline.
+  The Phoenix/Langfuse import gap remains an engineering backlog
+  item for `@tesseract/run-logger` and `tesseract-engineer`, not an open operator
+  step.
+- **Runtime caveat:** `tess run feature-delivery <inbox-entry>` creates a
+  Phase-5 state machine, handoff card, run log, and bounded `next-prompt.md`
   under `src/work/<day>/<task-id>/`. It does **not** call Cursor, a model, or
   LangGraph automatically. Operators still invoke the named personas/subagents
   at each stage boundary, then run `tess advance` with the accepted stage artifact.
@@ -49,20 +50,28 @@ ledger after the artifact is accepted.
 
 Use this loop exactly:
 
-1. Put the request in `src/inbox/in/<name>.md`. Do not use `src/inbox/notes/`; it is
-   human-only scratch space.
-2. Start the run:
+1. Put the request in `src/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md` (use
+   `pnpm -w exec tess intake new <slug>` to scaffold). Do not use
+   `src/inbox/notes/`; it is human-only scratch space.
+2. Start the run. Pass `<inbox-entry>` relative to `src/inbox/in/` only (day
+   bucket + filename—the CLI prepends the parent directory):
 
    ```bash
-   pnpm -w exec tess run feature-delivery <name>.md
+   pnpm -w exec tess run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
    # equivalent alias:
-   pnpm -w exec tess feature new <name>.md
+   pnpm -w exec tess feature new <day-bucket>/<SID>_<HHMM>_<slug>.md
+   ```
+
+   Example:
+
+   ```bash
+   pnpm -w exec tess run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
    ```
 
    Optional flags:
 
    ```bash
-   pnpm -w exec tess run feature-delivery <name>.md --feature <feature-id> --task <task-id>
+   pnpm -w exec tess run feature-delivery <day-bucket>/<file>.md --feature <feature-id> --task <task-id>
    ```
 
 3. Read the emitted JSON. The important fields are `taskId`, `featureId`,

@@ -25,21 +25,18 @@ control plane (`pnpm -w exec tess` for feature-delivery, init, and inbox flows).
 
 ## Bootstrap state in this repo
 
-`tesseract.yaml` tracks this repo at Bootstrap Phase 4 with status
-`phase-4-in-progress`. Phases -1 through 3 are treated as complete: the repo
+`tesseract.yaml` tracks this repo at Bootstrap Phase 5 with status
+`phase-5-in-progress`. Phases -1 through 4 are complete: the repo
 has scaffold, handbook seeds, personas, skills, M1 contract feature folders,
-Phase 3 substrate packages, and the five static MVP pipeline definition files.
-Phase 4 remains open until the dogfood exit gaps are ratified. The `tess` CLI
-surface can now invoke `feature-delivery` into a state-machine, handoff, and
-bounded next-prompt scaffold; `tess advance` records validated stage artifacts.
+Phase 3 substrate packages, the five static MVP pipeline definition files,
+and a ratified US-1 dogfood exit. The `tess` CLI surface
+invokes `feature-delivery` into a state-machine, handoff, and bounded
+next-prompt scaffold; `tess advance` records validated stage artifacts.
 Full automatic Cursor/model/LangGraph execution is not yet complete.
 
-## Library-mode proof
-
-`examples/library-script/` demonstrates PRD US-8: a standalone script imports only
-`@tesseract/persona`, validates persona markdown, and emits `.cursor/agents/<name>.md`
-plus `.cursor/rules/<name>.mdc` into a temp directory without reading `src/memory/`,
-`src/inbox/`, or `tesseract.yaml`.
+M1 US-8 proof is package-boundary enforcement (no horizontal primitive deps, sub-path
+exports, CI conformance) rather than standalone `examples/` apps. `chat-with-persona`
+runtime and example apps are backlog-deferred past M1; see `src/memory/backlog/index.yaml`.
 
 ## Where to go next
 

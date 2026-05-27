@@ -23,6 +23,13 @@ export type {
   PolicyContractBundleV1,
   PolicyOverridesV1,
 } from "./config-v1.js";
+export type { BootstrapTrackingValidation } from "./bootstrap-tracking.js";
+export {
+  expectedCompletedPhases,
+  nextBootstrapAfterRatification,
+  parsePhaseNumber,
+  validateBootstrapTracking,
+} from "./bootstrap-tracking.js";
 export type { LegacyPolicyLoadOptions } from "./legacy.js";
 export { loadLegacyPolicyConfig } from "./legacy.js";
 export { readPolicyDocument } from "./read-document.js";

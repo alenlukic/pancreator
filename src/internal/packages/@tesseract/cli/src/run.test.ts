@@ -470,13 +470,28 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
     const index = path.join(root, "src", "memory", "features", "demo-feature", "index.json");
-    await writeFile(index, "{}\n", "utf8");
+    const inboxSourceRel = "src/inbox/in/demo-feature.md";
+    await writeFile(
+      index,
+      `${JSON.stringify(
+        {
+          feature_id: "demo-feature",
+          task_id: start.taskId,
+          status: "indexed",
+          indexed_at: "2026-05-10T13:30:00.000Z",
+          source_inbox_item: { path: inboxSourceRel },
+          delivery_report: { path: "src/memory/features/demo-feature/delivery-report.md" },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
     await parseAndRun(["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/index.json"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
-    const inboxSourceRel = "src/inbox/in/demo-feature.md";
     await mkdir(path.join(root, "src", "memory", "active"), { recursive: true });
     await writeFile(
       path.join(root, "src", "memory", "active", "current.md"),
@@ -517,9 +532,17 @@ describe("parseAndRun", () => {
     expect(closed.activeMemoryPath).toBe("src/memory/active/current.md");
     expect(closed.activeFeatureCleared).toBe(true);
 
+    const indexAfterClose = JSON.parse(await readFile(index, "utf8")) as {
+      archived_inbox_source: string;
+      source_inbox_item: { path: string };
+    };
+    expect(indexAfterClose.archived_inbox_source).toBe(closed.archivedInboxPath);
+    expect(indexAfterClose.source_inbox_item.path).toBe(closed.archivedInboxPath);
+
     const currentMd = await readFile(path.join(root, "src", "memory", "active", "current.md"), "utf8");
     expect(currentMd).toContain("- `(none)`");
     expect(currentMd).not.toContain(inboxSourceRel);
+    expect(currentMd).toContain(closed.archivedInboxPath);
     expect(currentMd).toContain("2026-05-10T14:00:00.000Z");
 
     expect(existsSync(path.join(root, "src", "inbox", "in", "demo-feature.md"))).toBe(false);
@@ -843,6 +866,70 @@ describe("operator tooling batch cli wiring", () => {
     );
     const payload = JSON.parse(out.join("")) as { path: string };
     expect(await readFile(path.join(root, payload.path), "utf8")).toContain("## Custom body");
+  });
+
+  it("refresh-active-memory derives Archived source from indexed feature lineage", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "tess-refresh-archived-src-"));
+    await seedMinimalWorkspace(root);
+    const taskId = "24959_1704_ci-best-practices-batch";
+    const archived =
+      "src/inbox/archive/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md";
+    const stale = "src/inbox/in/172981_05-25-26/71701_0613_ci-best-practices-batch.md";
+    await mkdir(path.join(root, ...archived.split("/").slice(0, -1)), { recursive: true });
+    await writeFile(path.join(root, archived), "# batch\n", "utf8");
+    const featureDir = path.join(root, "src", "memory", "features", "ci-best-practices-batch");
+    await mkdir(featureDir, { recursive: true });
+    await writeFile(
+      path.join(featureDir, "index.json"),
+      `${JSON.stringify(
+        {
+          feature_id: "ci-best-practices-batch",
+          task_id: taskId,
+          status: "indexed",
+          indexed_at: "2026-05-26T18:23:19.000Z",
+          intake: { source_inbox_item: stale },
+          delivery_report: { path: "src/memory/features/ci-best-practices-batch/delivery-report.md" },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    await writeFile(path.join(featureDir, "delivery-report.md"), "# Delivery\n", "utf8");
+
+    const currentAbs = path.join(root, "src", "memory", "active", "current.md");
+    await writeFile(
+      currentAbs,
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        "\n- `(none)`\n",
+        "",
+        "## Most recent shipped Features",
+        emptyShippedInner,
+        "",
+        "## Operator notes",
+        opsInnerSynced.trimEnd(),
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const out: string[] = [];
+    const code = await parseAndRun(["refresh-active-memory", "--dry-run"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      writeErr: () => {},
+      clock: () => new Date(refreshIso),
+    });
+    expect(code).toBe(TESS_ACTIVE_MEMORY_CONFLICT_EXIT_CODE);
+    const diff = out.join("");
+    expect(diff).toContain("+++ computed");
+    expect(diff).toContain(archived);
+    expect(diff).toMatch(
+      /\| `ci-best-practices-batch` \| \[indexed\].*71701_0613_ci-best-practices-batch\.md` \|/u,
+    );
   });
 
   it("refresh-active-memory --dry-run stays quiet once sections mirror derivation outputs", async () => {

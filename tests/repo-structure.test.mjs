@@ -3,6 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import yaml from "yaml";
+
+import { validateBootstrapTracking } from "../src/internal/packages/@tesseract/policy/dist/index.js";
 import {
   isExcludedRelPath,
   rewriteJsonText,
@@ -45,6 +48,17 @@ function daysToFdsForSuffix(mmDdYy) {
   return Math.floor((FDS_UTC_MS - dayMs) / 86400000);
 }
 
+const OUT_OF_BAND_MANIFEST = "out-of-band.manifest.json";
+
+function isOutOfBandWorkTask(taskAbs) {
+  const manifestPath = path.join(taskAbs, OUT_OF_BAND_MANIFEST);
+  if (!fs.existsSync(manifestPath)) {
+    return false;
+  }
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  return typeof manifest?.reason === "string" && manifest.reason.trim().length >= 12;
+}
+
 
 test("repository JSON files use two-space formatting", () => {
   const abbrevLen = resolveAbbrevLen(ROOT);
@@ -81,12 +95,22 @@ test("operator-facing root keeps implementation under internal while tests and d
 });
 
 
-test("tesseract.yaml tracks live bootstrap state and embedded project root", () => {
+test("tesseract.yaml tracks live bootstrap state and embedded project root", async () => {
   const config = read("tesseract.yaml");
   assert.match(config, /^project_root:\s+"\."$/m);
-  assert.match(config, /^\s+phase:\s+"4"$/m);
-  assert.match(config, /^\s+status:\s+phase-4-ratified$/m);
-  assert.match(config, /^\s+completed_phases:\s+\["-1", "0", "1", "2", "3"\]$/m);
+
+  const doc = yaml.parse(config);
+  const bootstrap = doc?.bootstrap;
+  const validation = validateBootstrapTracking({
+    phase: bootstrap?.phase,
+    status: bootstrap?.status,
+    completedPhases: bootstrap?.completed_phases ?? bootstrap?.completedPhases,
+  });
+  assert.equal(
+    validation.ok,
+    true,
+    validation.violations.join("\n"),
+  );
 
   const defaults = read("tesseract-defaults.yaml");
   assert.doesNotMatch(defaults, /^bootstrap:\s*$/m);
@@ -143,9 +167,10 @@ test("active work task directories without feature-delivery state are absent", (
       if (allowlist.has(taskEntry.name)) {
         continue;
       }
+      const taskAbs = path.join(dayAbs, taskEntry.name);
       const taskRel = path.posix.join("src", "work", dayEntry.name, taskEntry.name);
-      const statePath = path.join(dayAbs, taskEntry.name, "state.json");
-      if (!fs.existsSync(statePath)) {
+      const statePath = path.join(taskAbs, "state.json");
+      if (!fs.existsSync(statePath) && !isOutOfBandWorkTask(taskAbs)) {
         offenders.push(taskRel);
       }
     }
@@ -153,7 +178,7 @@ test("active work task directories without feature-delivery state are absent", (
   assert.deepEqual(
     offenders,
     [],
-    "src/work/<day>/<task-id>/ without state.json is orphan residue; archive via librarian or write manifests under work_archive",
+    "src/work/<day>/<task-id>/ without state.json is orphan residue; archive via librarian, add out-of-band.manifest.json for active manual work, or write manifests under work_archive",
   );
 });
 test("planning/execution handoff contract is represented across active memory, pipeline, and personas", () => {
