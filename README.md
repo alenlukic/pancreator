@@ -5,17 +5,18 @@ the current workflow.
 
 ## 1) Current status
 
-- **Current phase tracking:** `tesseract.yaml` records Bootstrap Phase 4 with
-  status `phase-4-ratified`. Phases -1 through 3 are treated as complete
-  for tracking because scaffold, handbook seeds, personas, skills, M1 feature
-  contracts, substrate packages, and static MVP pipeline definitions are
-  present.
-- **Current focus:** the US-1 dogfood proof bundle was ratified on `2026-05-19`
-  after the nested proof-bundle and intervention runs closed. The remaining
-  Phoenix/Langfuse import gap is now an engineering backlog item for
-  `@tesseract/run-logger` and `tesseract-engineer`, not an open operator step.
-- **Runtime caveat:** `tess run feature-delivery <inbox-entry>` now creates a
-  Phase-4 state machine, handoff card, run log, and bounded `next-prompt.md`
+- **Current phase tracking:** `tesseract.yaml` records Bootstrap Phase 5 with
+  status `phase-5-in-progress`. Phases -1 through 4 are complete for tracking:
+  scaffold, handbook seeds, personas, skills, M1 feature contracts, substrate
+  packages, static MVP pipeline definitions, and the ratified US-1 dogfood exit
+  are present.
+- **Current focus:** Phase 5 M1 hardening per `docs/BOOTSTRAP.md` — init-greenfield
+  and adopt pipelines on real targets, knowledge-curation seed, example apps, and
+  KPI baseline. The Phoenix/Langfuse import gap remains an engineering backlog
+  item for `@tesseract/run-logger` and `tesseract-engineer`, not an open operator
+  step.
+- **Runtime caveat:** `tess run feature-delivery <inbox-entry>` creates a
+  Phase-5 state machine, handoff card, run log, and bounded `next-prompt.md`
   under `src/work/<day>/<task-id>/`. It does **not** call Cursor, a model, or
   LangGraph automatically. Operators still invoke the named personas/subagents
   at each stage boundary, then run `tess advance` with the accepted stage artifact.

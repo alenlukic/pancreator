@@ -264,18 +264,19 @@ this section in your response.
 
 ## 8 — Bootstrap status (live)
 
-`tesseract.yaml` tracks the repo at Bootstrap Phase 4 with status
-`phase-4-ratified`. Phases -1 through 3 are treated as complete for
+`tesseract.yaml` tracks the repo at Bootstrap Phase 5 with status
+`phase-5-in-progress`. Phases -1 through 4 are complete for
 tracking purposes: the repo contains the scaffold, handbook seeds, persona
 roster, Cursor projections, M1 contract feature folders, substrate package
-implementations, and static MVP pipeline definitions. The US-1 dogfood exit is
-ratified: the proof bundle is accepted, pause/resume/abort evidence is captured,
+implementations, static MVP pipeline definitions, and a ratified US-1 dogfood
+exit. The US-1 dogfood proof bundle was ratified on 2026-05-19: the proof
+bundle is accepted, pause/resume/abort evidence is captured,
 and the nested runs `77373_0230_phase-4-dogfood-proof-bundle-evidence-index`
 and `71096_0415_phase-4-intervention-probe-pause-resume-abort` are closed.
 Phoenix trace verification remains deferred per
 `src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md` as
 an `@tesseract/run-logger` and `tesseract-engineer` backlog item. `pnpm -w exec
-tess run feature-delivery <inbox-entry>` now creates a Phase-4 active-work
+tess run feature-delivery <inbox-entry>` creates a Phase-5 active-work
 state machine, handoff card, bounded next-prompt, and run log. Operators still
 invoke Cursor personas manually, then use `pnpm -w exec tess advance` with the
 accepted stage artifact; `repair-state` is reserved for explicit ledger recovery

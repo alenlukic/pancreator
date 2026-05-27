@@ -25,11 +25,11 @@ control plane (`pnpm -w exec tess` for feature-delivery, init, and inbox flows).
 
 ## Bootstrap state in this repo
 
-`tesseract.yaml` tracks this repo at Bootstrap Phase 4 with status
-`phase-4-ratified`. Phases -1 through 3 are treated as complete: the repo
+`tesseract.yaml` tracks this repo at Bootstrap Phase 5 with status
+`phase-5-in-progress`. Phases -1 through 4 are complete: the repo
 has scaffold, handbook seeds, personas, skills, M1 contract feature folders,
-Phase 3 substrate packages, and the five static MVP pipeline definition files.
-The US-1 dogfood exit is ratified per `tesseract.yaml`. The `tess` CLI surface
+Phase 3 substrate packages, the five static MVP pipeline definition files,
+and a ratified US-1 dogfood exit. The `tess` CLI surface
 invokes `feature-delivery` into a state-machine, handoff, and bounded
 next-prompt scaffold; `tess advance` records validated stage artifacts.
 Full automatic Cursor/model/LangGraph execution is not yet complete.
