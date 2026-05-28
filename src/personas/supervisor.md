@@ -112,9 +112,9 @@ stage one staged pull request awaiting human approval.
    `task-id`, you SHALL apply the lever at the next safe checkpoint per
    PRD §7 lines 858 through 892.
 5. **`ship` stage.** When the `feature-delivery` pipeline reaches the
-   `ship` stage with a green `review_passes` gate and a green `report`
-   stage, you SHALL stage exactly one pull request and block on the
-   `human_approval` gate.
+   `ship` stage with a green `review_passes` gate, a green `qa_passes`
+   gate, and a green `report` stage, you SHALL stage exactly one pull
+   request and block on the `human_approval` gate.
 
 ## What you MUST produce, every invocation
 

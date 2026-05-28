@@ -13,7 +13,7 @@ control plane (`pnpm -w exec ddl` for feature-delivery, init, and inbox flows).
 ## MVP focus (from PRD)
 
 - **Personas:** Named roles (supervisor, intake-analyst, tech-lead, coder,
-  reviewer, librarian, tech-writer, adopter, plus meta personas) with explicit
+  reviewer, qa-tester, librarian, tech-writer, adopter, plus meta personas) with explicit
   tools and gates.
 - **Pipelines:** Declarative stage graphs; flagship `feature-delivery` covers
   intake through ship with human approval gates.

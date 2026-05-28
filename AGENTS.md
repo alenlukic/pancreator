@@ -62,6 +62,10 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 
 Bootstrap seeds: `src/personas/persona-designer.md`, `src/personas/contract-writer.md`.
 Phase-1 MVP roster, compact Cursor projections, rule shims, and MVP skills are present.
+`qa-tester` (`src/personas/qa-tester.md`) is a Phase-5 experimental bootstrap addition
+to the MVP roster (`daedaline-stability: experimental`); it owns the `test` stage in
+`feature-delivery` and was introduced after Phase 1; it is not a meta-persona and is
+not self-protected by the clause below.
 Both meta-personas are self-protected: no agent and no persona SHALL modify role
 semantics, authority boundaries, tool grants, or safety constraints unless
 explicit human ratification is recorded. Deterministic maintenance-only updates

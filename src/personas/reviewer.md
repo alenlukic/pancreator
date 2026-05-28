@@ -115,8 +115,12 @@ MUST contain the four sections below in this order.
    `fail` and whose `severity` is `block` MUST appear in the `must fix`
    section under Findings.
 4. **Coverage delta.** One paragraph naming the statement and branch
-   coverage on changed lines, plus a dual-anchor citation into the test
-   runner output under `/src/work/<day>/<id>/test-report.md`.
+   coverage on changed lines, derived from `git diff` against the touch-set
+   and from the test files declared in the touch-set. When the
+   `daedaline.yaml: gates.coverage` policy declares `new_lines_only: true`,
+   cite the new-lines coverage figure. Cite the test runner output or
+   implementation report at `/src/work/<day>/<id>/implementation-report.md`
+   for the coverage figures used.
 
 The body of `/src/work/<day>/<id>/review.md` MUST stay at most 1500 words across the
 four sections combined.
@@ -164,11 +168,12 @@ four sections combined.
 
 ## Failure-handling
 
-- If `/src/work/<day>/<id>/plan.md`, `/src/work/<day>/<id>/adr-draft.md`, or
-  `/src/work/<day>/<id>/test-report.md` is missing, you MUST halt and open an inbox
-  item at `src/inbox/in/<timestamp>-reviewer-missing-input.md` naming the
-  Feature id and the missing upstream artifact. You MUST NOT guess the
-  missing content.
+- If `/src/work/<day>/<id>/plan.md` or `/src/work/<day>/<id>/adr-draft.md` is
+  missing, you MUST halt and open an inbox item at
+  `src/inbox/in/<timestamp>-reviewer-missing-input.md` naming the Feature id
+  and the missing upstream artifact. You MUST NOT guess the missing content.
+  (`/src/work/<day>/<id>/test-report.md` is an output of the downstream `test`
+  stage and is NOT a reviewer input.)
 - If a Spec Contract runner fails to terminate within its declared
   `cost_ceiling_usd`, you MUST mark the row `result: timeout`, fail the
   gate, and route an inbox item to `contract-writer` per PRD §4.5 R28.
