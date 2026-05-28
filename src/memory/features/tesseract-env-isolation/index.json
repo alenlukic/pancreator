@@ -62,6 +62,11 @@
       "per_feature_index": {
         "path": "src/memory/features/tesseract-env-isolation/index.json"
       }
+    },
+    "implementation_surface": {
+      "primary_package": {
+        "path": "src/internal/packages/@tesseract/env-isolation/"
+      }
     }
   },
   "metadata": {

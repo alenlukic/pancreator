@@ -72,6 +72,11 @@
         "range": [1, 1],
         "contentHash": "e9ce532"
       }
+    },
+    "implementation_surface": {
+      "context_economy": {
+        "path": "src/memory/handbook/context-economy.md"
+      }
     }
   },
   "metadata": {

@@ -235,6 +235,11 @@
         "range": [1, 1],
         "contentHash": "8639086"
       }
+    },
+    "implementation_surface": {
+      "feature_spec": {
+        "path": "src/memory/features/timestamp-naming-conventions/spec.md"
+      }
     }
   },
   "open_followups": [

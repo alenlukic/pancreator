@@ -62,6 +62,11 @@
       "per_feature_index": {
         "path": "src/memory/features/tesseract-persona/index.json"
       }
+    },
+    "implementation_surface": {
+      "primary_package": {
+        "path": "src/internal/packages/@tesseract/persona/"
+      }
     }
   },
   "metadata": {

@@ -30,6 +30,7 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | Subagent standard/complex model tiers | `src/memory/handbook/subagent-model-tiers.md` |
 | Current context cost audit | `src/memory/handbook/context-cost-audit.md` |
 | `tesseract.yaml` phase and `project_root` config | `src/memory/handbook/tesseract-config.md` |
+| Operator how-to (feature delivery, CLI, validation) | `OPERATION.md` |
 | `tess` CLI invocation (`pnpm -w exec tess`) | `src/memory/handbook/tesseract-config.md` §“CLI invocation in this workspace” |
 | Model and context escalation | `src/memory/handbook/context-economy.md` |
 | Active-memory orientation | `src/memory/active/current.md` |
@@ -195,7 +196,9 @@ this section in your response.
 ## 6 — What to do next
 
 1. Read `src/memory/active/current.md` for current pointers unless `simple task
-   mode` applies. For M1/bootstrap routing, read `docs/M1.index.md` before full
+   mode` applies. Operators and agents performing operator-facing work SHALL read
+   `OPERATION.md` for inbox, feature-delivery, CLI, and pre-close validation
+   procedure. For M1/bootstrap routing, read `docs/M1.index.md` before full
    `docs/BOOTSTRAP.md`. Agents SHOULD skim `docs/PRD.summary.md` and `docs/PRD.index.md`
    before loading full `docs/PRD.md`.
 2. Check `/src/inbox/in/` for directives (canonical queue every phase boundary).
@@ -237,8 +240,7 @@ this section in your response.
 /src/memory/rfc/{draft,accepted,rejected}/
 /src/memory/features/<id>/           per-feature artifacts (Spec-Kit aligned)
 /src/memory/smes/<name>/             per-SME private memory (M4+)
-/src/memory/backlog/                 ranked product backlog (M2+)
-/src/memory/debt/                    technical-debt inventory (M3+, US-7)
+/src/memory/backlog/                 ranked product backlog (M2+); debt via `tags: [debt]` on items
 /src/memory/checkpoints/<task-id>/   pipeline-state snapshots (LangGraph BaseCheckpointSaver v1)
 /src/memory/adoption/                adopter scan reports (M1, US-9)
 /src/memory/runbooks/                per-alert runbooks (M4+)

@@ -140,6 +140,14 @@
       "task_id": "173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2",
       "policy_compliance": "src/internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/policy-compliance.json",
       "documentation_impact": "src/internal/work_archive/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/documentation-impact.json"
+    },
+    "implementation_surface": {
+      "active_memory": {
+        "path": "src/memory/active/current.md"
+      },
+      "handbook": {
+        "path": "src/memory/handbook/context-economy.md"
+      }
     }
   },
   "plan": {

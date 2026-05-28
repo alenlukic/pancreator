@@ -16,6 +16,8 @@ anchors drift, search the numbered heading in `docs/PRD.md`.
 | Persona roster and format | §6 (starts line 460) |
 | Pipeline specs including `feature-delivery` | §7 (starts line 629) |
 | Memory layout, Spec Kit paths, citations | §8 (starts line 908) |
+| Technical debt (backlog `tags: [debt]`, US-7) | §3.5 US-7; backlog-format.md § Debt classification |
+| Operator procedure (inbox, feature-delivery, CLI) | `OPERATION.md`; README routes operators there |
 | Human interface, inbox, CLI shape | §9 (starts line 1015) |
 | Observability, control plane, run logs | §10 (starts line 1079) |
 | MVP scope and package list | Prefer `docs/M1.index.md`; open §11 (starts line 1107) only for authoritative PRD wording |

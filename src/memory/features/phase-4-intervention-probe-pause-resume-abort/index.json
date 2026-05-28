@@ -64,5 +64,12 @@
     "human_ratification_required": true,
     "advance_command": "pnpm -w exec tess advance 71096_0415_phase-4-intervention-probe-pause-resume-abort --artifact src/memory/features/phase-4-intervention-probe-pause-resume-abort/index.json",
     "status": "deferred-until-ratified"
+  },
+  "artifact_index": {
+    "implementation_surface": {
+      "intervention_package": {
+        "path": "src/internal/packages/@tesseract/intervention/"
+      }
+    }
   }
 }

@@ -41,6 +41,7 @@ read per `src/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout` | [indexed] (`2026-05-28T01:00:00.000Z`) | `src/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md` | `—` | `src/inbox/archive/in/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/16605_1923…` |
 | `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` | [indexed] (`2026-05-27T17:35:30.000Z`) | `src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix…` |
 | `ci-best-practices-batch` | [indexed] (`2026-05-26T18:23:19.000Z`) | `src/memory/features/ci-best-practices-batch/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md` |
 | `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`2026-05-26T12:00:00.000Z`) | `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-vari…` |
@@ -78,9 +79,10 @@ read per `src/memory/handbook/context-economy.md`.
 
 <!-- tess:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-27T18:58:58.055Z`
+- Active-memory refreshed (UTC): `2026-05-28T00:45:27.739Z`
 
 <!-- /tess:active-memory:operator-notes:auto -->
+
 
 
 

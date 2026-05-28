@@ -571,6 +571,50 @@ items:
     evidence: "Operator scope trim 2026-05-27 removed chat-with-persona from the M1 path. Bootstrap retains src/pipelines/chat-with-persona.yaml as a loadable skeleton only."
     notes: "Wire tess chat, /src/inbox/threads/<thread-id>/ persistence, and /end --emit artifact promotion when US-2 lights up at M2. Persona Ensemble runtime may still land at M4 per PRD §13."
 
+  - id: m1-substrate-runtime-batch
+    title: M1 substrate runtime batch — superseded intake skeleton (relocated from features)
+    source: src/memory/backlog/drafts/m1-substrate-runtime-batch.md
+    owner: tech-lead
+    milestone: m1
+    status: cancelled
+    priority: low
+    opened_at: "2026-05-27T19:30:00Z"
+    links:
+      - /src/memory/backlog/drafts/m1-substrate-runtime-batch.md
+      - /src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/
+    evidence: "Intake skeleton relocated to backlog; implementation shipped under m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo."
+    notes: "Draft preserved at src/memory/backlog/drafts/m1-substrate-runtime-batch.md. Do not recreate src/memory/features/m1-substrate-runtime-batch/."
+
+  - id: bootstrap-ci-narrow-paths-re-enable
+    title: Re-enable default CI on src/work and work_archive when runtime stabilizes
+    source: src/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/spec.md
+    owner: tesseract-engineer
+    milestone: phase-5
+    status: deferred
+    priority: low
+    opened_at: "2026-05-27T19:30:00Z"
+    links:
+      - /.github/workflows/phase-0a-scaffold.yml
+      - /OPERATION.md
+    evidence: "WP-5 removed src/work/** and src/internal/work_archive/** from default phase-0a-scaffold push/PR path filters; librarian pre-close validation covers local gates."
+    notes: "Restore path filters or add targeted workflows when unattended runs no longer generate noisy CI."
+
+  - id: bootstrap-us7-tech-debt-scan
+    title: US-7 tech-debt-scan pipeline and groomer backlog integration
+    source: docs/PRD.md
+    owner: groomer
+    milestone: m3
+    status: deferred
+    priority: medium
+    opened_at: "2026-05-27T19:30:00Z"
+    tags: [debt]
+    links:
+      - /docs/PRD.md
+      - /src/memory/backlog/index.yaml
+      - /src/memory/handbook/backlog-format.md
+    evidence: "PRD US-7 defines tech-debt-scan; debt tracking consolidated into backlog items with tags: [debt]."
+    notes: "Implement cron pipeline and groomer persona when M3 lights up; no src/memory/debt/ tree."
+
   - id: examples-apps-deferred
     title: Optional examples/ apps for US-8, US-9, and MCP conformance proofs
     source: docs/PRD.md

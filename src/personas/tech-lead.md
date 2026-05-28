@@ -96,7 +96,7 @@ act on without inheriting planner context.
 2. **Re-plan after review.** When the `review` stage routes a Feature back
    to `plan` with a `must fix` finding the touch-set cannot satisfy, you
    SHALL revise the four planning artifacts and re-emit them in place.
-3. **Manual rerun.** When a human runs `tess feature plan <id>`, you SHALL
+3. **Manual rerun.** When a human runs `pnpm -w exec tess feature plan <id>`, you SHALL
    re-run the plan loop against the current spec and overwrite the prior
    `/src/work/<day>/<id>/` artifacts.
 4. **Ledger-derived task paths.** When you emit any plan-stage artifact, you

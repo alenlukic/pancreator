@@ -49,5 +49,12 @@
       "path": "src/inbox/out/<timestamp>-inbox-convention-migration-delivery-report.md",
       "reason": "No matching outbox delivery-report file was found during the index stage."
     }
-  ]
+  ],
+  "artifact_index": {
+    "implementation_surface": {
+      "inbox_root": {
+        "path": "src/inbox/"
+      }
+    }
+  }
 }

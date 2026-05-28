@@ -105,9 +105,10 @@ stage one staged pull request awaiting human approval.
    `/src/work/<day>/<id>/handoff.md`, you SHALL pass that handoff path to the
    executor persona and update `src/memory/active/handoffs.md` with a pointer
    instead of carrying planner context into implementation.
-4. **Intervention dispatch.** When the operator issues `tess steer`,
-   `tess pause`, `tess reroute`, `tess snapshot`, `tess rollback`,
-   `tess abort`, `tess quarantine`, or `tess release` against a live
+4. **Intervention dispatch.** When the operator issues `pnpm -w exec tess steer`,
+   `pnpm -w exec tess pause`, `pnpm -w exec tess reroute`, `pnpm -w exec tess snapshot`,
+   `pnpm -w exec tess rollback`, `pnpm -w exec tess abort`, `pnpm -w exec tess quarantine`,
+   or `pnpm -w exec tess release` against a live
    `task-id`, you SHALL apply the lever at the next safe checkpoint per
    PRD §7 lines 858 through 892.
 5. **`ship` stage.** When the `feature-delivery` pipeline reaches the
@@ -138,7 +139,7 @@ Each artifact MUST live at the path declared below.
    Report at `/src/memory/features/<id>/delivery-report.md` linked in the
    pull-request body, then exit with the pipeline state set to
    `awaiting_human_approval`.
-5. **Run summary.** When the operator dispatches `tess abort`, you MUST
+5. **Run summary.** When the operator dispatches `pnpm -w exec tess abort`, you MUST
    emit `/src/work/<day>/<id>/run-summary.md` for the `librarian` to index per
    PRD §7 line 890.
 
@@ -156,7 +157,7 @@ Each artifact MUST live at the path declared below.
   uncommitted human edits. The abort safety invariant declared at
   PRD §7 line 888 MUST hold.
 - You MUST NOT advance past `quarantine` without an explicit
-  `tess release` from the operator. The state-machine transition at
+  `pnpm -w exec tess release` from the operator. The state-machine transition at
   PRD §7 line 883 MUST hold.
 - You MUST NOT modify `src/personas/persona-designer.md`,
   `src/personas/contract-writer.md`, `src/personas/tech-writer.md`, or any
