@@ -18,7 +18,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills:
   - write-adr
 maxTurns: 30
@@ -27,15 +27,15 @@ memory: project
 effort: medium
 color: teal
 metadata:
-  tesseract-risk-tier: low
-  tesseract-pipeline-stages: [index_artifacts, archive_completed_work, update_feature_index, update_backlog, knowledge-curation]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: low
+  daedaline-pipeline-stages: [index_artifacts, archive_completed_work, update_feature_index, update_backlog, knowledge-curation]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -47,9 +47,9 @@ metadata:
     - stale-citation-report-emitted-each-cron-run
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: librarian
-  tesseract-model-tier: standard
-  tesseract-canonical-persona: src/personas/librarian.md
+  daedaline-base-persona: librarian
+  daedaline-model-tier: standard
+  daedaline-canonical-persona: src/personas/librarian.md
 ---
 
 # librarian-standard

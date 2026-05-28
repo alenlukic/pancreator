@@ -8,27 +8,27 @@
  pnpm-lock.yaml                                     |   6 +
  src/inbox/in/inbox_convention_migration.md         |   2 +-
  .../11700_2045_round-01-clarify.md                 |  32 --
- src/internal/packages/@tesseract/cli/README.md     |  14 +-
- src/internal/packages/@tesseract/cli/bin/tess.js   |  50 ++
- src/internal/packages/@tesseract/cli/package.json  |   3 +-
- .../@tesseract/cli/src/feature-delivery-run.ts     | 625 ++++++++++++++++++++-
- .../packages/@tesseract/cli/src/run.test.ts        |  77 +++
- src/internal/packages/@tesseract/cli/src/run.ts    |  43 ++
- src/internal/packages/@tesseract/cli/tsconfig.json |   2 +-
- .../packages/@tesseract/core/tsconfig.json         |   2 +-
- .../@tesseract/inbox/src/file-inbox.test.ts        |  19 +-
- .../packages/@tesseract/inbox/src/file-inbox.ts    |  84 ++-
- .../packages/@tesseract/inbox/tsconfig.json        |   2 +-
- .../packages/@tesseract/intervention/tsconfig.json |   2 +-
- .../packages/@tesseract/mcp-server/README.md       |   2 +-
- .../@tesseract/mcp-server/bin/tess-mcp-server.js   |  50 ++
- .../packages/@tesseract/mcp-server/package.json    |   4 +-
- .../@tesseract/mcp-server/src/tess-execute.test.ts |  16 +-
- .../@tesseract/mcp-server/src/tess-execute.ts      |  36 +-
- .../packages/@tesseract/mcp-server/tsconfig.json   |   2 +-
- .../packages/@tesseract/memory/tsconfig.json       |   2 +-
- .../packages/@tesseract/pipeline/tsconfig.json     |   2 +-
- .../packages/@tesseract/run-logger/tsconfig.json   |   2 +-
+ src/internal/packages/@daedaline/cli/README.md     |  14 +-
+ src/internal/packages/@daedaline/cli/bin/ddl.js   |  50 ++
+ src/internal/packages/@daedaline/cli/package.json  |   3 +-
+ .../@daedaline/cli/src/feature-delivery-run.ts     | 625 ++++++++++++++++++++-
+ .../packages/@daedaline/cli/src/run.test.ts        |  77 +++
+ src/internal/packages/@daedaline/cli/src/run.ts    |  43 ++
+ src/internal/packages/@daedaline/cli/tsconfig.json |   2 +-
+ .../packages/@daedaline/core/tsconfig.json         |   2 +-
+ .../@daedaline/inbox/src/file-inbox.test.ts        |  19 +-
+ .../packages/@daedaline/inbox/src/file-inbox.ts    |  84 ++-
+ .../packages/@daedaline/inbox/tsconfig.json        |   2 +-
+ .../packages/@daedaline/intervention/tsconfig.json |   2 +-
+ .../packages/@daedaline/mcp-server/README.md       |   2 +-
+ .../@daedaline/mcp-server/bin/ddl-mcp-server.js   |  50 ++
+ .../packages/@daedaline/mcp-server/package.json    |   4 +-
+ .../@daedaline/mcp-server/src/ddl-execute.test.ts |  16 +-
+ .../@daedaline/mcp-server/src/ddl-execute.ts      |  36 +-
+ .../packages/@daedaline/mcp-server/tsconfig.json   |   2 +-
+ .../packages/@daedaline/memory/tsconfig.json       |   2 +-
+ .../packages/@daedaline/pipeline/tsconfig.json     |   2 +-
+ .../packages/@daedaline/run-logger/tsconfig.json   |   2 +-
  src/internal/tools/migrate-inbox-convention.mjs    | 517 +++++++++++++++++
  src/internal/tools/migrate-timestamp-naming.mjs    | 177 ++----
  src/memory/active/current.md                       |   9 +-

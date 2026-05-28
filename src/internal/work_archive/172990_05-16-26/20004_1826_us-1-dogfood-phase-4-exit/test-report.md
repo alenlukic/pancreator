@@ -6,4 +6,4 @@ Repository validation still ran from the workspace root per the active handoff. 
 
 Authoritative exit codes and the compliance-run deferral note live in `src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md` under Validation commands and Compliance-run trigger evaluation.
 
-Empirical nested `tess` runs, Phoenix evidence population, pause or resume or abort JSON capture, inbox-out delivery copies, and ratification-driven updates to operator canon files remain **explicitly out of scope** for this scaffold slice (`touch-set.json` slice_scope `scaffold-only` and follow-on `us-1-dogfood-phase-4-exit-evidence`).
+Empirical nested `ddl` runs, Phoenix evidence population, pause or resume or abort JSON capture, inbox-out delivery copies, and ratification-driven updates to operator canon files remain **explicitly out of scope** for this scaffold slice (`touch-set.json` slice_scope `scaffold-only` and follow-on `us-1-dogfood-phase-4-exit-evidence`).

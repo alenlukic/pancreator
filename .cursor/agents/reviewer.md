@@ -12,13 +12,13 @@ tools:
   - "Bash(git diff:*)"
   - "Bash(git status:*)"
   - "Bash(pnpm test:*)"
-  - "Bash(tess lint contracts:*)"
+  - "Bash(ddl lint contracts:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills:
   - modern-code-review
   - write-adr
@@ -28,16 +28,16 @@ memory: project
 effort: medium
 color: blue
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [review]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [review]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -48,9 +48,9 @@ metadata:
     - every-spec-contract-runs-before-gate
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: reviewer
-  tesseract-model-tier: standard-alias
-  tesseract-canonical-persona: src/personas/reviewer.md
+  daedaline-base-persona: reviewer
+  daedaline-model-tier: standard-alias
+  daedaline-canonical-persona: src/personas/reviewer.md
 ---
 
 # reviewer

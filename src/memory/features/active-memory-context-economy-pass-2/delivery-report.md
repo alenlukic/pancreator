@@ -184,12 +184,12 @@ This Feature shipped a five-tier memory model, an `src/memory/active/` operator 
 }
 ```
  |
-| 13 | pass | `tesseract-engineer.mdc` no longer broad-loads persona specs. 
+| 13 | pass | `daedaline-engineer.mdc` no longer broad-loads persona specs. 
 
 ```json
 {
   "kind": "lines",
-  "path": ".cursor/rules/tesseract-engineer.mdc",
+  "path": ".cursor/rules/daedaline-engineer.mdc",
   "range": [3, 27],
   "contentHash": "5f448a1"
 }

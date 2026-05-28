@@ -23,14 +23,14 @@
       ".gitignore",
       "tools/eslint-rules/no-horizontal-primitive-deps.mjs",
       "src/internal/tools/check-phase-0a-scaffold.mjs",
-      "src/internal/packages/@tesseract/*/package.json",
-      "src/internal/packages/@tesseract/*/README.md",
-      "src/internal/packages/@tesseract/*/src/index.ts",
-      "src/internal/packages/@tesseract/*/tsconfig.json",
-      "src/internal/packages/tesseract/package.json",
-      "src/internal/packages/tesseract/README.md",
-      "src/internal/packages/tesseract/src/index.ts",
-      "src/internal/packages/tesseract/tsconfig.json",
+      "src/internal/packages/@daedaline/*/package.json",
+      "src/internal/packages/@daedaline/*/README.md",
+      "src/internal/packages/@daedaline/*/src/index.ts",
+      "src/internal/packages/@daedaline/*/tsconfig.json",
+      "src/internal/packages/daedaline/package.json",
+      "src/internal/packages/daedaline/README.md",
+      "src/internal/packages/daedaline/src/index.ts",
+      "src/internal/packages/daedaline/tsconfig.json",
       "src/inbox/in/60714_0708_bootstrap-phase-0a-closure.md",
       "src/memory/features/bootstrap-phase-0a-closure/spec.md",
       "src/memory/features/bootstrap-phase-0a-closure/index.json",
@@ -40,7 +40,7 @@
       "src/internal/work_archive/173009_04-27-26/60714_0708_bootstrap-phase-0a-closure/touch-set.json"
     ],
     "deferred_items": [
-      "Phase 3 runtime implementation for @tesseract/* packages",
+      "Phase 3 runtime implementation for @daedaline/* packages",
       "Phase 0b handbook refinements",
       "Phase 0c persona and skill evolution"
     ]

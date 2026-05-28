@@ -59,7 +59,7 @@ id: <reverse-DNS string>                      # required
 kind: <closed-core or x-namespaced kind>      # required
 severity: block | warn | info                  # required
 applies_to:                                    # required
-  kind: artifact-symbol | pipeline-telemetry | file-path | run-log-event | tesseract-config
+  kind: artifact-symbol | pipeline-telemetry | file-path | run-log-event | daedaline-config
   # plus discriminator-specific fields (§3 below)
 owner: <persona-name>                          # required; MUST exist in src/personas/
 description: <RFC-2119 normative statement>    # required; Layer 1 disciplined
@@ -73,13 +73,13 @@ references:                                    # required; dual-anchor citations
 runtime:                                       # per-kind payload (§4 below)
   # kind-specific fields
 metadata:                                      # open extension map (§5 below)
-  tesseract.contract_id: <id>
-  tesseract.applies_to: <serialized applies_to>
-  # plus any tesseract.* extensions
+  daedaline.contract_id: <id>
+  daedaline.applies_to: <serialized applies_to>
+  # plus any daedaline.* extensions
 spec: <repo-relative path>                     # optional; sidecar pointer (rego, ts, py)
 module: <repo-relative path>                   # optional; alternative sidecar pointer for rego
 style: prose-ok                                # optional; opt-out from template-slot lint
-tesseract:
+daedaline:
   lint-debt:                                   # optional; tracked Layer 1 deferrals
     - rule-id: <lint rule id>
       reason: <short justification>
@@ -87,11 +87,11 @@ tesseract:
 ```
 
 The `id` field is reverse-DNS to keep clauses globally addressable across
-repos and orgs. Examples: `tesseract.core.no-horizontal-deps`,
+repos and orgs. Examples: `daedaline.core.no-horizontal-deps`,
 `features.checkout.api.401-on-missing-token`,
 `acme.security.threat-model.spoofing-mitigated`.
 
-The wrapper validates against a Zod schema in `@tesseract/contract` from
+The wrapper validates against a Zod schema in `@daedaline/contract` from
 Phase 3 step 2 onward. Until then, hand-check against this file.
 
 ## 2 — Closed-core kind registry
@@ -102,16 +102,16 @@ kind-promotion ADR.
 
 | Milestone | Kinds added | Runner |
 |---|---|---|
-| MVP (M1) | `rego` | `@tesseract/contract-runner-rego` (Conftest + OPA) |
-| MVP (M1) | `llm-judge` | `@tesseract/contract-runner-llm-judge` |
-| M2 | `playwright` | `@tesseract/contract-runner-playwright` |
-| M2 | `schemathesis` | `@tesseract/contract-runner-schemathesis` |
-| M2 | `axe` | `@tesseract/contract-runner-axe` (`@axe-core/playwright`) |
-| M3 | `semgrep` | `@tesseract/contract-runner-semgrep` |
-| M3 | `hypothesis` | `@tesseract/contract-runner-hypothesis` |
-| M3 | `fast-check` | `@tesseract/contract-runner-fast-check` |
-| M3 | `ts-predicate` | `@tesseract/contract-runner-ts-predicate` |
-| M3 | `py-predicate` | `@tesseract/contract-runner-py-predicate` |
+| MVP (M1) | `rego` | `@daedaline/contract-runner-rego` (Conftest + OPA) |
+| MVP (M1) | `llm-judge` | `@daedaline/contract-runner-llm-judge` |
+| M2 | `playwright` | `@daedaline/contract-runner-playwright` |
+| M2 | `schemathesis` | `@daedaline/contract-runner-schemathesis` |
+| M2 | `axe` | `@daedaline/contract-runner-axe` (`@axe-core/playwright`) |
+| M3 | `semgrep` | `@daedaline/contract-runner-semgrep` |
+| M3 | `hypothesis` | `@daedaline/contract-runner-hypothesis` |
+| M3 | `fast-check` | `@daedaline/contract-runner-fast-check` |
+| M3 | `ts-predicate` | `@daedaline/contract-runner-ts-predicate` |
+| M3 | `py-predicate` | `@daedaline/contract-runner-py-predicate` |
 
 Closed-core kinds carry no namespace prefix. The kind name MUST match the
 runner package's published kind identifier.
@@ -169,19 +169,19 @@ contract failures).
 applies_to:
   kind: run-log-event
   span_kind: AGENT
-  attribute: tesseract.contract.id
+  attribute: daedaline.contract.id
   match: "*.security.*"
 ```
 
-### 3.5 — `tesseract-config`
+### 3.5 — `daedaline-config`
 
-For clauses that gate a value inside `tesseract.yaml`,
-`tesseract-defaults.yaml`, or a per-feature `policy.yaml`.
+For clauses that gate a value inside `daedaline.yaml`,
+`daedaline-defaults.yaml`, or a per-feature `policy.yaml`.
 
 ```yaml
 applies_to:
-  kind: tesseract-config
-  path: tesseract.yaml
+  kind: daedaline-config
+  path: daedaline.yaml
   jsonpath: $.gates.coverage.statement.value
 ```
 
@@ -194,8 +194,8 @@ is closed per kind; unknown fields raise a Layer 1 error.
 
 ```yaml
 runtime:
-  package: tesseract.coverage           # OPA package name
-  query: data.tesseract.coverage.deny   # default: data.<package>.deny
+  package: daedaline.coverage           # OPA package name
+  query: data.daedaline.coverage.deny   # default: data.<package>.deny
   bundle: src/internal/packages/policy/rego/         # optional; inherits from /policies/ default
 spec: /src/memory/features/<id>/contracts/<id>.rego  # required for non-inline rego
 ```
@@ -267,15 +267,15 @@ respective milestones land.
 
 The `metadata` map is the open-extension surface. Recognized keys:
 
-- `tesseract.contract_id` — required. Mirrors `clause.id`. Lets sidecar
+- `daedaline.contract_id` — required. Mirrors `clause.id`. Lets sidecar
   artifacts (Rego modules, TypeScript test files) cross-reference the wrapper
   without parsing the YAML.
-- `tesseract.applies_to` — required. Serialized form of the wrapper's
+- `daedaline.applies_to` — required. Serialized form of the wrapper's
   `applies_to`. Lets sidecar artifacts emit failure messages that route via
   ownership.
-- `tesseract.cost-ceiling-usd` — per-clause override of the default cost cap.
-- `tesseract.deprecated-by` — string. Names the superseding clause id.
-- `tesseract.lint-debt` — array of deferred Layer 1 violations (see §1).
+- `daedaline.cost-ceiling-usd` — per-clause override of the default cost cap.
+- `daedaline.deprecated-by` — string. Names the superseding clause id.
+- `daedaline.lint-debt` — array of deferred Layer 1 violations (see §1).
 
 Keys not in this list raise a warning. The warning escalates to error in M3.
 
@@ -299,7 +299,7 @@ opens a kind-promotion ADR instead.
 ## 7 — `ContractRunner` adapter
 
 Every kind ships a runner that conforms to the interface below. Phase 3 step
-2 lands the TypeScript declaration in `@tesseract/contract`.
+2 lands the TypeScript declaration in `@daedaline/contract`.
 
 ```typescript
 export interface ContractRunner<RuntimePayload = unknown, Result = unknown> {
@@ -357,7 +357,7 @@ The example below gates package-shape conformance. It uses the wrapper
 verbatim and ships a sidecar Rego module.
 
 ```yaml
-id: tesseract.core.no-horizontal-deps
+id: daedaline.core.no-horizontal-deps
 kind: rego
 severity: block
 applies_to:
@@ -366,7 +366,7 @@ applies_to:
 owner: contract-writer
 description: |
   When an `src/internal/packages/<primitive>/package.json` declares a runtime dependency
-  on another `@tesseract/<primitive>` package other than `@tesseract/core`,
+  on another `@daedaline/<primitive>` package other than `@daedaline/core`,
   the contract-runner SHALL emit a block-level failure naming the offending
   package and the forbidden dependency.
 references:
@@ -375,13 +375,13 @@ references:
     range: [434, 434]
     contentHash: 79e92d6a6e07045fea4e99afe1714620609d8172e95673e162496155fc76a0c0
     note: "PRD §5.5 — `no horizontal dependencies between primitives` rule."
-spec: /src/memory/features/tesseract-core/contracts/no-horizontal-deps.rego
+spec: /src/memory/features/daedaline-core/contracts/no-horizontal-deps.rego
 runtime:
-  package: tesseract.deps
-  query: data.tesseract.deps.deny
+  package: daedaline.deps
+  query: data.daedaline.deps.deny
 metadata:
-  tesseract.contract_id: tesseract.core.no-horizontal-deps
-  tesseract.applies_to: file-path:src/internal/packages/*/package.json
+  daedaline.contract_id: daedaline.core.no-horizontal-deps
+  daedaline.applies_to: file-path:src/internal/packages/*/package.json
 ```
 
 ## 10 — Worked example: `kind: llm-judge`
@@ -390,7 +390,7 @@ The example below gates a README's adopter-friendliness. It uses a 3-judge
 quorum and a 0.50-USD cost ceiling.
 
 ```yaml
-id: tesseract.adopter.readme.adopter-friendly
+id: daedaline.adopter.readme.adopter-friendly
 kind: llm-judge
 severity: block
 applies_to:
@@ -417,10 +417,10 @@ runtime:
       good:
         - text: |
             ```
-            npm install @tesseract/persona
+            npm install @daedaline/persona
             ```
             Then create `src/personas/me.md` with the 16 frontmatter fields and
-            run `tess persona validate`.
+            run `ddl persona validate`.
           rationale: Two commands; explicit file creation; named verifier.
       bad:
         - text: "Install the package and follow the standard pattern."
@@ -431,8 +431,8 @@ runtime:
     seed: 42
     cost_ceiling_usd: 0.50
 metadata:
-  tesseract.contract_id: tesseract.adopter.readme.adopter-friendly
-  tesseract.applies_to: artifact-symbol:README.md#Quickstart
+  daedaline.contract_id: daedaline.adopter.readme.adopter-friendly
+  daedaline.applies_to: artifact-symbol:README.md#Quickstart
 ```
 
 ## 11 — How clauses register and load
@@ -465,5 +465,5 @@ runner.
 
 This file is the Phase 0b handbook seed. The wrapper field set is closed for
 M1; new fields require an RFC under `/src/memory/rfc/draft/` and a major version
-bump on `@tesseract/contract`. Promotion to `stability: stable` follows
+bump on `@daedaline/contract`. Promotion to `stability: stable` follows
 Phase 5 dogfood validation across the full M1 contract corpus.

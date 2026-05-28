@@ -1,7 +1,7 @@
 id: feature-delivery
 version: "1"
 metadata:
-  tesseract-bootstrap-only: false
+  daedaline-bootstrap-only: false
   description: >-
     PRD §11 MVP pipeline. Walks a semi-formal directive in src/inbox/in/ through
     canonicalization, planning, implementation, review, delivery report, and
@@ -10,7 +10,7 @@ metadata:
     invocation and advancement regenerate a bounded next-prompt.md so stage
     delegation does not rely on prior chat context. The complete-stage prompt is
     a bounded librarian handoff for agent-executed artifact closure with
-    tess close-artifacts after human validation.
+    ddl close-artifacts after human validation.
   references:
     - kind: lines
       path: docs/PRD.md
@@ -47,6 +47,14 @@ stages:
     label: Run modern-code-review and contracts pass with compact must-fix output
     outputs:
       - src/work/<day>/<task-id>/review.md
+  - id: test
+    persona: qa-tester
+    label: Run automated checks and manual verification; emit test-report.md
+    inputs:
+      - src/work/<day>/<task-id>/review.md
+      - src/work/<day>/<task-id>/touch-set.json
+    outputs:
+      - src/work/<day>/<task-id>/test-report.md
   - id: report
     persona: tech-writer
     label: Author the delivery report

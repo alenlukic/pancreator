@@ -63,7 +63,7 @@ The bootstrap workspace does not yet run scheduler automation or automatic struc
 
 ## Decision
 
-Tesseract SHALL use `src/internal/tests/compliance/` for compliance descriptors and `src/internal/tests/compliance/schemas/` for descriptor schemas.
+Daedaline SHALL use `src/internal/tests/compliance/` for compliance descriptors and `src/internal/tests/compliance/schemas/` for descriptor schemas.
 
 When duplicate descriptors or schemas exist under `src/memory/features/compliance-tests/contracts/`, the implement stage MUST remove them or exclude them from staged output.
 

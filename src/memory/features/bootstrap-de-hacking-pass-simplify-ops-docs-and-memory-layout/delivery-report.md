@@ -11,7 +11,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     9,
     50
@@ -23,7 +23,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
   "range": [
     5,
     19
@@ -34,12 +34,12 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 
 ## What shipped
 
-- `OPERATION.md` now holds the canonical operator how-to, and `README.md`, `AGENTS.md`, `docs/M1.index.md`, and `src/memory/handbook/tesseract-config.md` now route readers there.
+- `OPERATION.md` now holds the canonical operator how-to, and `README.md`, `AGENTS.md`, `docs/M1.index.md`, and `src/memory/handbook/daedaline-config.md` now route readers there.
 
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     19,
     24
@@ -48,12 +48,12 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 }
 ```
 
-- Operator-visible prose now has a dedicated checker and test coverage, and the persona set was updated to remove bare `tess` wording from runnable examples.
+- Operator-visible prose now has a dedicated checker and test coverage, and the persona set was updated to remove bare `ddl` wording from runnable examples.
 
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     25,
     31
@@ -67,7 +67,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     9,
     18
@@ -81,7 +81,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     40,
     45
@@ -95,7 +95,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     46,
     50
@@ -111,7 +111,7 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     61,
     71
@@ -123,7 +123,7 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
   "range": [
     5,
     33
@@ -141,7 +141,7 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     73,
     79
@@ -153,7 +153,7 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/tesseract/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+  "path": "/Users/alen/Dev/daedaline/src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
   "range": [
     17,
     33
@@ -168,5 +168,5 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 2. **What:** Advance the run once the human accepts the artifact. **How:** Run:
 
    ```bash
-   pnpm -w exec tess advance 16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout --artifact src/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md
+   pnpm -w exec ddl advance 16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout --artifact src/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md
    ```

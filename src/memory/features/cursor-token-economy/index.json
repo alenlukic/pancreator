@@ -80,7 +80,7 @@
     }
   },
   "metadata": {
-    "tesseract-bootstrap-only": false,
+    "daedaline-bootstrap-only": false,
     "scaffold_only": true,
     "scaffold_note": "Librarian populates the full index at the post_run stage per persona obligation."
   }

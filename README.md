@@ -1,27 +1,27 @@
-# Tesseract
+# Daedaline
 
 *A simulated product organization for agentic software delivery.*
 
-Tesseract gives operators and agents a shared, file-native delivery pipeline:
-personas, pipeline stages, durable memory, inbox workflow, and the `tess` CLI.
+Daedaline gives operators and agents a shared, file-native delivery pipeline:
+personas, pipeline stages, durable memory, inbox workflow, and the `ddl` CLI.
 This repository is the operating surface for running and hardening that loop in
 real projects, not a frontend or design-skill showcase.
 
 [Status](#current-status) · [Operator guide](OPERATION.md) · [AGENTS](AGENTS.md) · [Bootstrap](docs/BOOTSTRAP.md) · [PRD](docs/PRD.summary.md)
 
-> Bootstrap note: Tesseract is in Bootstrap Phase 5 (`phase-5-in-progress`).
+> Bootstrap note: Daedaline is in Bootstrap Phase 5 (`phase-5-in-progress`).
 > Phases -1 through 4 are complete for tracking, and operators still invoke
-> personas manually after `pnpm -w exec tess run feature-delivery`.
+> personas manually after `pnpm -w exec ddl run feature-delivery`.
 
 ## Current status
 
-- **Phase tracking:** `tesseract.yaml` records Bootstrap Phase 5 (`phase-5-in-progress`).
+- **Phase tracking:** `daedaline.yaml` records Bootstrap Phase 5 (`phase-5-in-progress`).
   Phases -1 through 4 are complete for tracking purposes.
 - **Current focus:** Phase 5 M1 hardening per `docs/BOOTSTRAP.md` — init-greenfield
   and adopt pipelines on real targets, knowledge-curation seed, and KPI baseline.
-- **Runtime caveat:** `pnpm -w exec tess run feature-delivery <inbox-entry>` creates
+- **Runtime caveat:** `pnpm -w exec ddl run feature-delivery <inbox-entry>` creates
   the Phase-5 state machine and bounded prompts. Operators still invoke personas
-  manually and advance with `pnpm -w exec tess advance`. See
+  manually and advance with `pnpm -w exec ddl advance`. See
   [OPERATION.md § Feature delivery loop](OPERATION.md#feature-delivery-loop).
 
 ## System overview
@@ -39,7 +39,7 @@ real projects, not a frontend or design-skill showcase.
 
 ## Key paths
 
-- `tesseract.yaml` — live policy and bootstrap phase (`src/memory/handbook/tesseract-config.md`)
+- `daedaline.yaml` — live policy and bootstrap phase (`src/memory/handbook/daedaline-config.md`)
 - `docs/M1.index.md` — compact M1/bootstrap route map
 - `docs/BOOTSTRAP.md` — full phase plan and exit criteria
 - `docs/PRD.summary.md` / `docs/PRD.index.md` — compact PRD routing

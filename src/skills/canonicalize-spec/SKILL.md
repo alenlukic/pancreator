@@ -3,14 +3,14 @@ name: canonicalize-spec
 description: Converts one informal Markdown spec posted under `src/inbox/in/` into one canonical Engineering Spec at `/src/memory/features/<id>/spec.md`. Scaffolds the Feature folder, parses the informal source, runs an inbox-borne clarifying-question dialogue at most 5 rounds, folds each human reply into the working draft, then stages the spec for the `human_approval` gate.
 license: Apache-2.0
 metadata:
-  tesseract-stability: experimental
-  tesseract-bootstrap-only: false
-  tesseract-pipeline-stages: [intake]
-  tesseract-risk-tier: medium
-  tesseract-required-handbook:
+  daedaline-stability: experimental
+  daedaline-bootstrap-only: false
+  daedaline-pipeline-stages: [intake]
+  daedaline-risk-tier: medium
+  daedaline-required-handbook:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
-  tesseract-emits:
+  daedaline-emits:
     - /src/memory/features/<id>/spec.md
     - /src/memory/features/<id>/index.json
     - src/inbox/threads/<thread-id>/<round>.md
@@ -88,7 +88,7 @@ You MUST NOT scaffold sibling files (`plan.md`, `tasks.md`,
 emits its own artifact at the path declared in PRD §7 lines 641 through
 696.
 
-When `tess feature new` or `tess run feature-delivery` has already assigned
+When `ddl feature new` or `ddl run feature-delivery` has already assigned
 a task id, you MUST read `src/work/<day>/<task-id>/state.json` and use
 `source.inboxPath` as the canonical inbox source. When no run state exists
 yet, you MUST derive the path from the informal spec file under

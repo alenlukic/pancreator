@@ -3,14 +3,14 @@ name: blameless-postmortem
 description: Authors one blameless postmortem stub per Allspaw / Etsy `Debriefing Facilitation Guide` after any pipeline abort. Loads the run log, reconstructs the timeline, surfaces the second-story narrative without naming humans, lists action items, then stages `/src/memory/postmortems/<task-id>-stub.md` for human ratification.
 license: Apache-2.0
 metadata:
-  tesseract-stability: experimental
-  tesseract-bootstrap-only: false
-  tesseract-pipeline-stages: [pipeline-supervisor, intervention-dispatch, incident-response]
-  tesseract-risk-tier: medium
-  tesseract-required-handbook:
+  daedaline-stability: experimental
+  daedaline-bootstrap-only: false
+  daedaline-pipeline-stages: [pipeline-supervisor, intervention-dispatch, incident-response]
+  daedaline-risk-tier: medium
+  daedaline-required-handbook:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
-  tesseract-emits:
+  daedaline-emits:
     - /src/memory/postmortems/<task-id>-stub.md
 references:
   - kind: lines
@@ -44,7 +44,7 @@ references:
 
 A reusable 6-step procedure that converts one aborted pipeline run into one
 blameless postmortem stub. The canonical caller is
-`src/personas/supervisor.md` (invokes the skill on every `tess abort` per
+`src/personas/supervisor.md` (invokes the skill on every `ddl abort` per
 PRD §3.5 US-10 line 236 and on every circuit-breaker trip that ends a
 run). M4+ adds `src/personas/postmortem-author.md` as the long-form caller
 inside the `incident-response` pipeline per PRD §7 line 710.
@@ -59,7 +59,7 @@ PRD §8 line 949.
   spans plus the OTel GenAI semconv parallel layer declared at PRD §7
   line 838; an empty or truncated run log fails the gate.
 - `/src/work/<day>/<task-id>/run-summary.md` SHALL exist when the trigger is
-  `tess abort` per PRD §3.5 US-10 line 244; the supervisor emits the
+  `ddl abort` per PRD §3.5 US-10 line 244; the supervisor emits the
   summary on abort per PRD §7 line 890.
 - `/src/memory/postmortems/` SHALL exist as a writable directory; the skill
   scaffolds it on first invocation.
@@ -111,7 +111,7 @@ record `held` or `violated` for each:
 | quarantine preserves complete state for postmortem | PRD §7 line 889 |
 | abort always emits a run-summary artifact for the librarian | PRD §7 line 890 |
 | every intervention dispatch logs the operator identity | PRD §7 line 868 |
-| no advance past `quarantine` without an explicit `tess release` | PRD §7 line 883 |
+| no advance past `quarantine` without an explicit `ddl release` | PRD §7 line 883 |
 
 Each invariant MUST cite the run-log span (or the absence thereof) that
 proves the verdict via dual-anchor citation per PRD §8.

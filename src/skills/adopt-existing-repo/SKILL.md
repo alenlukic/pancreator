@@ -3,14 +3,14 @@ name: adopt-existing-repo
 description: Runs one non-destructive scan of an existing repository at first install. Detects languages, frameworks, test infrastructure, continuous-integration configuration, dependency manifests, conventions, and existing agent contracts; proposes initial SMEs and a threshold policy seeded from the repository's measured baselines; emits one `/src/memory/adoption/scan-<date>.md` plus paired inbox items for human ratification.
 license: Apache-2.0
 metadata:
-  tesseract-stability: experimental
-  tesseract-bootstrap-only: false
-  tesseract-pipeline-stages: [adopt]
-  tesseract-risk-tier: medium
-  tesseract-required-handbook:
+  daedaline-stability: experimental
+  daedaline-bootstrap-only: false
+  daedaline-pipeline-stages: [adopt]
+  daedaline-risk-tier: medium
+  daedaline-required-handbook:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
-  tesseract-emits:
+  daedaline-emits:
     - /src/memory/adoption/scan-<date>.md
     - src/inbox/in/<timestamp>-adopter-sme-<name>.md
     - src/inbox/in/<timestamp>-adopter-thresholds.md
@@ -19,7 +19,7 @@ references:
     path: docs/PRD.md
     range: [504, 504]
     contentHash: 2ce8e5c
-    note: "PRD §6 — MVP roster: adopter runs at first install on existing repos via the `adopt` sub-pipeline; read-only on existing files; write-only to Tesseract-prefixed paths."
+    note: "PRD §6 — MVP roster: adopter runs at first install on existing repos via the `adopt` sub-pipeline; read-only on existing files; write-only to Daedaline-prefixed paths."
   - kind: lines
     path: docs/PRD.md
     range: [207, 223]
@@ -34,7 +34,7 @@ references:
     path: docs/PRD.md
     range: [946, 947]
     contentHash: 2ce8e5c
-    note: "PRD §8 — Memory architecture: `/src/memory/adoption/scan-<date>.md` is a citation-bearing artifact, replayable on `tess re-adopt`."
+    note: "PRD §8 — Memory architecture: `/src/memory/adoption/scan-<date>.md` is a citation-bearing artifact, replayable on `ddl re-adopt`."
 ---
 
 # Skill — `adopt-existing-repo`
@@ -42,7 +42,7 @@ references:
 A reusable 7-step procedure that converts one existing repository into one
 scan report plus a small set of human-ratifiable proposals. The canonical
 caller is `src/personas/adopter.md`. The skill MUST stay non-destructive: every
-write lands under a Tesseract-prefixed path declared at PRD §3.5 lines 215
+write lands under a Daedaline-prefixed path declared at PRD §3.5 lines 215
 through 222, and the dry-run pass MUST exit non-zero rather than touch any
 existing file the human has not ratified.
 
@@ -59,15 +59,15 @@ existing file the human has not ratified.
 
 ## The 7-step adoption loop
 
-Execute these steps in order, once per `tesseract init` invocation.
+Execute these steps in order, once per `daedaline init` invocation.
 
 ### Step 1 — Run the conflict dry-run
 
-Walk every Tesseract-prefixed write target the scan would emit and verify
-no existing file occupies the path. The Tesseract-prefixed write surface
+Walk every Daedaline-prefixed write target the scan would emit and verify
+no existing file occupies the path. The Daedaline-prefixed write surface
 declared at PRD §3.5 lines 215 through 222 is `/src/memory/`, `/src/personas/`,
-`/src/skills/`, `/src/pipelines/`, `/src/inbox/`, `/.tess/`, and `tesseract.yaml`.
-The proposed `tesseract.yaml` block MUST include `project_root`; use `.` when
+`/src/skills/`, `/src/pipelines/`, `/src/inbox/`, `/.ddl/`, and `daedaline.yaml`.
+The proposed `daedaline.yaml` block MUST include `project_root`; use `.` when
 the harness is embedded at the repository root being adopted.
 
 When any target path conflicts with an existing file, the skill MUST exit
@@ -102,7 +102,7 @@ Detect the continuous-integration provider by walking
 commands invoked, and the matrix axes.
 
 When the human's existing CI invokes test commands the skill detects, the
-proposed `tesseract.yaml: commands` block MUST shell out to those commands
+proposed `daedaline.yaml: commands` block MUST shell out to those commands
 rather than replace them per PRD §3.5 line 223.
 
 ### Step 4 — Inventory dependency manifests
@@ -132,12 +132,12 @@ Detect every existing agent-contract file the human has authored:
 `AGENTS.md`, `.cursor/rules/*.mdc`, `.github/agents/*`. For each file, the
 plan MUST classify the file as exactly one of:
 
-- **`keep`.** The file already aligns with Tesseract's contract; the scan
+- **`keep`.** The file already aligns with Daedaline's contract; the scan
   records the alignment and proposes no change.
 - **`augment`.** The file aligns in scope but the scan proposes additive
-  edits the human MUST ratify (e.g., adding a Tesseract delegation
+  edits the human MUST ratify (e.g., adding a Daedaline delegation
   paragraph to an existing `AGENTS.md`).
-- **`conflict`.** The file disagrees with Tesseract's expectations and the
+- **`conflict`.** The file disagrees with Daedaline's expectations and the
   scan MUST surface the conflict to the inbox; the skill MUST NOT
   overwrite a `conflict` file under any flag short of explicit per-file
   human confirmation.
@@ -160,8 +160,8 @@ section MUST carry a dual-anchor citation per PRD §8.
 8. Proposed threshold policy.
 
 The proposed-threshold-policy block MUST be a YAML block keyed against
-`tesseract.yaml`. It MUST include top-level `project_root` as either an
-absolute path, a path relative to the directory containing `tesseract.yaml`, or
+`daedaline.yaml`. It MUST include top-level `project_root` as either an
+absolute path, a path relative to the directory containing `daedaline.yaml`, or
 `.` when the harness is embedded at the adopted repository root. Its numeric
 thresholds are seeded from the repository's current measured baselines per PRD
 §3.5 US-9 line 220 (e.g., the current statement-coverage figure becomes the
@@ -188,14 +188,14 @@ hold:
 When all gates are green, the skill stages the scan report and the inbox
 proposals. The skill MUST NOT commit; the skill MUST NOT push. The
 supervisor or the human applies the threshold-policy proposal to
-`tesseract.yaml` after ratification.
+`daedaline.yaml` after ratification.
 
 ## Stop conditions
 
 - Halt when the working tree is not a git repository; route an inbox item
   rather than scaffold.
 - Halt when the dry-run pass would touch any file outside the
-  Tesseract-prefixed write surface; exit non-zero and post a per-file
+  Daedaline-prefixed write surface; exit non-zero and post a per-file
   diff per PRD §3.5 line 222.
 - Halt when `/src/memory/adoption/scan-*.md` already exists; treat the run as
   a re-scan and emit a delta against the most recent scan rather than
@@ -206,7 +206,7 @@ supervisor or the human applies the threshold-policy proposal to
 
 ## Failure-handling
 
-- If the human runs `npx tesseract init` against a repository that already
+- If the human runs `npx daedaline init` against a repository that already
   carries `/src/memory/adoption/scan-*.md`, the skill MUST treat the run as a
   re-scan and emit a delta report at `/src/memory/adoption/scan-<date>.md`
   for the new date per `src/personas/adopter.md`.

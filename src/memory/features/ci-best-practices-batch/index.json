@@ -49,7 +49,7 @@
     "completed_at": "2026-05-26T18:23:19Z",
     "next_owner": "operator",
     "next_stage": "complete",
-    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run tess advance to complete, then tess close-artifacts for archival closure per complete-stage prompt."
+    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run ddl advance to complete, then ddl close-artifacts for archival closure per complete-stage prompt."
   },
   "index": {
     "indexer": "librarian",
@@ -58,7 +58,7 @@
     "content_hash_refresh_performed": true,
     "abbrev_len_at_index_time": 7,
     "metadata": {
-      "tesseract-bootstrap-only": false
+      "daedaline-bootstrap-only": false
     }
   },
   "review": {
@@ -121,7 +121,7 @@
     "root_test_command": "pnpm test",
     "compliance_runner": "node src/internal/tools/run-compliance.mjs",
     "citation_refresh": "node src/internal/tools/refresh-citations.mjs [--dry-run] [<glob>...]",
-    "mcp_read_tools": ["tess.feature.list", "tess.feature.show", "tess.status", "tess.memory.query"],
+    "mcp_read_tools": ["ddl.feature.list", "ddl.feature.show", "ddl.status", "ddl.memory.query"],
     "citation": {
       "kind": "lines",
       "path": "src/memory/features/ci-best-practices-batch/delivery-report.md",
@@ -156,7 +156,7 @@
     },
     {
       "id": "mcp-write-tools-deferred",
-      "owner": "tesseract-engineer",
+      "owner": "daedaline-engineer",
       "status": "deferred",
       "reason": "Eight MCP write tools remain on structured deferral envelopes per spec out-of-scope.",
       "citation": {
@@ -318,46 +318,46 @@
         }
       },
       "mcp_read_handlers": {
-        "path": "src/internal/packages/@tesseract/mcp-server/src/tess-read-handlers.ts",
+        "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-read-handlers.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@tesseract/mcp-server/src/tess-read-handlers.ts",
+          "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-read-handlers.ts",
           "range": [1, 301],
           "contentHash": "dfa4696"
         }
       },
       "mcp_definitions": {
-        "path": "src/internal/packages/@tesseract/mcp-server/src/definitions.ts",
+        "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@tesseract/mcp-server/src/definitions.ts",
+          "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.ts",
           "range": [1, 204],
           "contentHash": "42b89c1"
         }
       },
-      "mcp_tess_execute": {
-        "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts",
+      "mcp_ddl_execute": {
+        "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts",
+          "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts",
           "range": [1, 307],
           "contentHash": "1296e71"
         }
       },
-      "mcp_tess_execute_tests": {
-        "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts",
+      "mcp_ddl_execute_tests": {
+        "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts",
+          "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts",
           "range": [1, 198],
           "contentHash": "1c3318d"
         }
       },
       "mcp_server_readme": {
-        "path": "src/internal/packages/@tesseract/mcp-server/README.md",
+        "path": "src/internal/packages/@daedaline/mcp-server/README.md",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@tesseract/mcp-server/README.md",
+          "path": "src/internal/packages/@daedaline/mcp-server/README.md",
           "range": [1, 65],
           "contentHash": "178ab3e"
         }
@@ -412,7 +412,7 @@
       "active_work_dir": {
         "path": "src/work/172980_05-26-26/24959_1704_ci-best-practices-batch",
         "task_id": "24959_1704_ci-best-practices-batch",
-        "note": "Work remains under src/work/ until complete-stage tess close-artifacts archival."
+        "note": "Work remains under src/work/ until complete-stage ddl close-artifacts archival."
       }
     }
   },
@@ -420,6 +420,6 @@
     "clauses": []
   },
   "metadata": {
-    "tesseract-bootstrap-only": false
+    "daedaline-bootstrap-only": false
   }
 }

@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 maxTurns: 30
 skills:
   - write-adr
@@ -26,17 +26,17 @@ memory: project
 effort: high
 color: cyan
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [plan]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-color-suffix: cyan-200
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [plan]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-color-suffix: cyan-200
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -72,9 +72,9 @@ references:
     path: AGENTS.md
     range: [95, 103]
     contentHash: e037427
-    note: "AGENTS §4/§6 — stage artifacts live under the active run directory emitted by tess and are delegated from the handoff card."
+    note: "AGENTS §4/§6 — stage artifacts live under the active run directory emitted by ddl and are delegated from the handoff card."
   - kind: lines
-    path: src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts
+    path: src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts
     range: [238, 247]
     contentHash: fe3c1b1
     note: "feature-delivery run creation derives canonical day/task paths from makeDayDir and makeTaskId; planners must not invent alternatives."
@@ -96,7 +96,7 @@ act on without inheriting planner context.
 2. **Re-plan after review.** When the `review` stage routes a Feature back
    to `plan` with a `must fix` finding the touch-set cannot satisfy, you
    SHALL revise the four planning artifacts and re-emit them in place.
-3. **Manual rerun.** When a human runs `pnpm -w exec tess feature plan <id>`, you SHALL
+3. **Manual rerun.** When a human runs `pnpm -w exec ddl feature plan <id>`, you SHALL
    re-run the plan loop against the current spec and overwrite the prior
    `/src/work/<day>/<id>/` artifacts.
 4. **Ledger-derived task paths.** When you emit any plan-stage artifact, you

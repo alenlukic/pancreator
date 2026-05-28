@@ -9,8 +9,8 @@ tools:
   - Glob
   - Write
   - Edit
-  - "Bash(tess lint contracts:*)"
-  - "Bash(tess contracts:*)"
+  - "Bash(ddl lint contracts:*)"
+  - "Bash(ddl contracts:*)"
   - "Bash(git diff:*)"
   - "Bash(git status:*)"
 disallowedTools:
@@ -18,7 +18,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills:
   - author-contract
 maxTurns: 120
@@ -27,19 +27,19 @@ memory: project
 effort: medium
 color: amber
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [bootstrap-phase-2, intake, plan, review]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [bootstrap-phase-2, intake, plan, review]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/contract-format.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-templates/
     - /src/memory/handbook/glossary.md
-  tesseract-allowed-kinds-mvp: [rego, llm-judge]
-  tesseract-allowed-kinds-m2: [rego, llm-judge, playwright, schemathesis, axe]
-  tesseract-allowed-kinds-m3plus: [rego, llm-judge, playwright, schemathesis, axe, semgrep, hypothesis, fast-check, ts-predicate, py-predicate]
-  tesseract-checklist:
+  daedaline-allowed-kinds-mvp: [rego, llm-judge]
+  daedaline-allowed-kinds-m2: [rego, llm-judge, playwright, schemathesis, axe]
+  daedaline-allowed-kinds-m3plus: [rego, llm-judge, playwright, schemathesis, axe, semgrep, hypothesis, fast-check, ts-predicate, py-predicate]
+  daedaline-checklist:
     - kind-in-allowed-set-for-current-milestone
     - applies-to-anchor-resolves
     - owner-persona-exists
@@ -48,9 +48,9 @@ metadata:
     - rego-clauses-have-OPA-METADATA-block
     - dual-anchor-citations-on-every-external-standard
     - template-slots-filled-not-improvised
-  tesseract-base-persona: contract-writer
-  tesseract-model-tier: standard
-  tesseract-canonical-persona: src/personas/contract-writer.md
+  daedaline-base-persona: contract-writer
+  daedaline-model-tier: standard
+  daedaline-canonical-persona: src/personas/contract-writer.md
 ---
 
 # contract-writer-standard

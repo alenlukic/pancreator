@@ -17,10 +17,10 @@ This batch delivered the three operator-facing affordances called for in the fea
 }
 ```
 
-2. **`tess intake new`:** the CLI can scaffold a new inbox directive at the canonical UTC day-bucket path with the required SID and HHMM naming rules.
-3. **`tess refresh-active-memory`:** the CLI can rewrite the Active Feature row, the Most-recent Shipped Features table, and the Operator-notes timestamp from deterministic sources, with dry-run output and conflict detection on real mismatches.
+2. **`ddl intake new`:** the CLI can scaffold a new inbox directive at the canonical UTC day-bucket path with the required SID and HHMM naming rules.
+3. **`ddl refresh-active-memory`:** the CLI can rewrite the Active Feature row, the Most-recent Shipped Features table, and the Operator-notes timestamp from deterministic sources, with dry-run output and conflict detection on real mismatches.
 
-The implementation report records the last remediation pass that closed the live apply-path bug for `tess refresh-active-memory`, restored per-verb `tracking_intake` routing for deferred verbs, and repaired the `AGENTS.md` structure that documents the canonical operator tooling contracts. 
+The implementation report records the last remediation pass that closed the live apply-path bug for `ddl refresh-active-memory`, restored per-verb `tracking_intake` routing for deferred verbs, and repaired the `AGENTS.md` structure that documents the canonical operator tooling contracts. 
 
 ```json
 {
@@ -48,10 +48,10 @@ The reviewer accepted the remediation pass and marked the stage green: `review_p
 
 Validation also passed on the commands that cover the changed surfaces:
 
-- `pnpm --filter @tesseract/cli exec vitest run` -> exit `0` with `22` tests passed.
-- `pnpm --filter @tesseract/mcp-server exec vitest run` -> exit `0` with `9` tests passed.
+- `pnpm --filter @daedaline/cli exec vitest run` -> exit `0` with `22` tests passed.
+- `pnpm --filter @daedaline/mcp-server exec vitest run` -> exit `0` with `9` tests passed.
 - `node --test tests/*.test.mjs` -> exit `0` with `78` tests passed.
-- `pnpm -w exec tess refresh-active-memory` -> exit `0` on the live repo, confirming the apply path now succeeds instead of failing with the earlier conflict exit.
+- `pnpm -w exec ddl refresh-active-memory` -> exit `0` on the live repo, confirming the apply path now succeeds instead of failing with the earlier conflict exit.
 
 The review also confirms that the changed-surface tests now cover the prior gaps: deferred envelope routing for the CLI, deferral tracking parity for the MCP server, and non-dry-run active-memory apply behavior. 
 
@@ -67,7 +67,7 @@ The review also confirms that the changed-surface tests now cover the prior gaps
 
 ## Known gaps and deferrals
 
-The review left one non-blocking governance note open: `src/internal/packages/@tesseract/cli/src/index.ts` is modified in the working tree but not listed in `touch-set.json`. The reviewer judged the export additions coherent, but the operator SHOULD either ratify that carry-over or record it as intentional governance drift. 
+The review left one non-blocking governance note open: `src/internal/packages/@daedaline/cli/src/index.ts` is modified in the working tree but not listed in `touch-set.json`. The reviewer judged the export additions coherent, but the operator SHOULD either ratify that carry-over or record it as intentional governance drift. 
 
 ```json
 {
@@ -96,11 +96,11 @@ The smoke coverage note is also non-blocking: `tests/repo-structure.test.mjs` st
 The human operator SHOULD accept this delivery when all of the following are true:
 
 - Deferred verbs emit the structured deferral envelope with the canonical stable exit behavior, and MCP stubs mirror the same protocol.
-- `tess intake new <slug>` creates a conformant inbox directive without overwriting existing files or archived buckets.
-- `tess refresh-active-memory` rewrites only the three labelled sections, reports conflicts instead of silently clobbering manual edits, and succeeds on the live apply path.
+- `ddl intake new <slug>` creates a conformant inbox directive without overwriting existing files or archived buckets.
+- `ddl refresh-active-memory` rewrites only the three labelled sections, reports conflicts instead of silently clobbering manual edits, and succeeds on the live apply path.
 - The validation commands above remain green, and no new review blocker appears during operator inspection.
 
-The original feature spec still defines the batch boundary and the three work packages, while `AGENTS.md` now names the deferral protocol, `tess intake new`, and `tess refresh-active-memory` as the canonical operator contracts. 
+The original feature spec still defines the batch boundary and the three work packages, while `AGENTS.md` now names the deferral protocol, `ddl intake new`, and `ddl refresh-active-memory` as the canonical operator contracts. 
 
 ```json
 {
@@ -125,8 +125,8 @@ The original feature spec still defines the batch boundary and the three work pa
 
 ## Next operator steps
 
-1. **What:** Accept this delivery report and advance the task. **How:** Run `pnpm -w exec tess advance 22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref --artifact src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md`.
-2. **What:** Decide whether to ratify the `src/internal/packages/@tesseract/cli/src/index.ts` touch-set carry-over. **How:** Compare the reviewer note against `touch-set.json` and either document the carry-over as intentional or queue the governance fix in a follow-up intake.
+1. **What:** Accept this delivery report and advance the task. **How:** Run `pnpm -w exec ddl advance 22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref --artifact src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md`.
+2. **What:** Decide whether to ratify the `src/internal/packages/@daedaline/cli/src/index.ts` touch-set carry-over. **How:** Compare the reviewer note against `touch-set.json` and either document the carry-over as intentional or queue the governance fix in a follow-up intake.
 
 ## References
 

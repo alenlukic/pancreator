@@ -20,19 +20,19 @@ test("check-operator-output passes on repository surfaces", () => {
   );
 });
 
-test("check-operator-output flags bare tess in synthetic block", () => {
+test("check-operator-output flags bare ddl in synthetic block", () => {
   const tmp = path.join(
     os.tmpdir(),
-    `tesseract-operator-output-${process.pid}.md`,
+    `daedaline-operator-output-${process.pid}.md`,
   );
-  fs.writeFileSync(tmp, "```bash\ntess advance foo\n```\n", "utf8");
+  fs.writeFileSync(tmp, "```bash\nddl advance foo\n```\n", "utf8");
   try {
     const r = spawnSync(process.execPath, [CHECKER, tmp], {
       cwd: ROOT,
       encoding: "utf8",
     });
     assert.notEqual(r.status, 0);
-    assert.match(r.stderr + r.stdout, /bare tess/i);
+    assert.match(r.stderr + r.stdout, /bare ddl/i);
   } finally {
     fs.rmSync(tmp, { force: true });
   }

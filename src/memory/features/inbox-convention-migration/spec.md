@@ -55,7 +55,7 @@ references:
     contentHash: 5a02d2d
     note: Ratified timestamp selection precedence used by migration planning.
   - kind: lines
-    path: src/internal/packages/@tesseract/inbox/src/file-inbox.ts
+    path: src/internal/packages/@daedaline/inbox/src/file-inbox.ts
     range: [44, 49]
     contentHash: 9338ed5
     note: Inbox runtime currently rejects nested relative paths; compatibility work SHALL precede nesting enforcement.

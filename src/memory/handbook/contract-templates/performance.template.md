@@ -43,10 +43,10 @@ error budget.
 | `description` | yes | EARS, atomic, SLI-named, window-quantified. |
 | `references` | yes | Cite the SLO doc and the measurement basis. |
 | `runtime` | yes | Per-kind payload. |
-| `metadata.tesseract.sli` | yes | The signal name. |
-| `metadata.tesseract.slo` | yes | The numeric target with units. |
-| `metadata.tesseract.window` | yes | The measurement window (e.g., `5-minute rolling`). |
-| `metadata.tesseract.error-budget` | yes | The permitted SLI miss-rate per window. |
+| `metadata.daedaline.sli` | yes | The signal name. |
+| `metadata.daedaline.slo` | yes | The numeric target with units. |
+| `metadata.daedaline.window` | yes | The measurement window (e.g., `5-minute rolling`). |
+| `metadata.daedaline.error-budget` | yes | The permitted SLI miss-rate per window. |
 
 ## M1 scaffold (`kind: rego` over telemetry JSON)
 
@@ -72,15 +72,15 @@ references:
     note: "Checkout p95-latency SLO."
 spec: /src/memory/features/<id>/contracts/checkout-p95-latency.rego
 runtime:
-  package: tesseract.perf.checkout
-  query: data.tesseract.perf.checkout.deny
+  package: daedaline.perf.checkout
+  query: data.daedaline.perf.checkout.deny
 metadata:
-  tesseract.contract_id: <feature>.perf.checkout-p95-latency
-  tesseract.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms
-  tesseract.sli: checkout.latency.p95_ms
-  tesseract.slo: "300 ms"
-  tesseract.window: "5-minute rolling"
-  tesseract.error-budget: "1.0 percent per window"
+  daedaline.contract_id: <feature>.perf.checkout-p95-latency
+  daedaline.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms
+  daedaline.sli: checkout.latency.p95_ms
+  daedaline.slo: "300 ms"
+  daedaline.window: "5-minute rolling"
+  daedaline.error-budget: "1.0 percent per window"
 ```
 
 Sidecar `checkout-p95-latency.rego`:
@@ -97,13 +97,13 @@ Sidecar `checkout-p95-latency.rego`:
 # references:
 #   - "/src/memory/features/<id>/perf-spec.md"
 # custom:
-#   tesseract.contract_id: <feature>.perf.checkout-p95-latency
-#   tesseract.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms
-#   tesseract.sli: checkout.latency.p95_ms
-#   tesseract.slo: "300 ms"
-#   tesseract.window: "5-minute rolling"
-#   tesseract.error-budget: "1.0 percent per window"
-package tesseract.perf.checkout
+#   daedaline.contract_id: <feature>.perf.checkout-p95-latency
+#   daedaline.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms
+#   daedaline.sli: checkout.latency.p95_ms
+#   daedaline.slo: "300 ms"
+#   daedaline.window: "5-minute rolling"
+#   daedaline.error-budget: "1.0 percent per window"
+package daedaline.perf.checkout
 
 import rego.v1
 

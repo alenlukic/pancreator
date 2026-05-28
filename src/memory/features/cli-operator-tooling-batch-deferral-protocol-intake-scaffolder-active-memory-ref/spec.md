@@ -9,9 +9,9 @@ intake_round: 0
 work_packages:
   - feature_id: cli-stub-verb-deferral-protocol
     label: WP-1 — Stub-verb explicit deferral protocol
-  - feature_id: tess-intake-scaffolder
+  - feature_id: ddl-intake-scaffolder
     label: WP-2 — Intake scaffolder
-  - feature_id: tess-refresh-active-memory
+  - feature_id: ddl-refresh-active-memory
     label: WP-3 — Active-memory refresher
 references:
   - kind: lines
@@ -28,14 +28,14 @@ references:
     path: src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md
     range: [104, 137]
     contentHash: 7f60993
-    note: Required outcomes for WP-2 (tess intake new command, SID/HHMM computation, overwrite refusal, template contract).
+    note: Required outcomes for WP-2 (ddl intake new command, SID/HHMM computation, overwrite refusal, template contract).
   - kind: lines
     path: src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md
     range: [122, 138]
     contentHash: 7f60993
-    note: Required outcomes for WP-3 (tess refresh-active-memory, dry-run flag, source derivation, conflict detection).
+    note: Required outcomes for WP-3 (ddl refresh-active-memory, dry-run flag, source derivation, conflict detection).
   - kind: lines
-    path: src/internal/packages/@tesseract/cli/src/run.ts
+    path: src/internal/packages/@daedaline/cli/src/run.ts
     range: [37, 44]
     contentHash: 8817a0d
     note: stub() helper emits {status:"stub"} with zero exit code; WP-1 replaces this with the deferred envelope and non-zero exit.
@@ -64,21 +64,21 @@ references:
 # Spec
 
 This Feature SHALL deliver three CLI affordances that remove recurring operator
-friction in the Tesseract repository. Each affordance corresponds to a named
+friction in the Daedaline repository. Each affordance corresponds to a named
 work package (WP) that retains its original `feature_id` for downstream tracking.
 
 **WP-1 (`cli-stub-verb-deferral-protocol`)** SHALL replace every bare
-`{"status":"stub"}` envelope in the `tess` CLI and the eight MCP tools with a
+`{"status":"stub"}` envelope in the `ddl` CLI and the eight MCP tools with a
 structured deferral envelope that names the owning milestone, provides a
 tracking pointer, and exits non-zero with a stable error code.
 
-**WP-2 (`tess-intake-scaffolder`)** SHALL add `tess intake new <slug>` to
+**WP-2 (`ddl-intake-scaffolder`)** SHALL add `ddl intake new <slug>` to
 the CLI, computing the day-bucket, SID, and HHMM from the local UTC clock and
 writing a conformant inbox directive file at
 `src/inbox/in/<today-day-bucket>/<sid>_<hhmm>_<slug>.md`.
 
-**WP-3 (`tess-refresh-active-memory`)** SHALL add
-`tess refresh-active-memory [--dry-run]` to the CLI, rewriting the Active
+**WP-3 (`ddl-refresh-active-memory`)** SHALL add
+`ddl refresh-active-memory [--dry-run]` to the CLI, rewriting the Active
 Feature row, the Most-recent Shipped Features table, and the Operator-notes
 timestamp in `src/memory/active/current.md` from deterministic sources, with
 conflict detection when a manually-edited section disagrees with the computed
@@ -88,15 +88,15 @@ value.
 
 ### WP-1 — Stub-verb explicit deferral protocol
 
-- When an operator invokes a currently-stubbed CLI verb (`tess init`,
-  `tess approve`, `tess memory`, `tess contracts`, `tess lint`, or the
-  non-feature-delivery branch of `tess run`), the command SHALL emit a JSON
+- When an operator invokes a currently-stubbed CLI verb (`ddl init`,
+  `ddl approve`, `ddl memory`, `ddl contracts`, `ddl lint`, or the
+  non-feature-delivery branch of `ddl run`), the command SHALL emit a JSON
   envelope conforming exactly to the following shape and exit with a non-zero
   stable error code:
   ```json
   {
     "status": "deferred",
-    "verb": "tess <name>",
+    "verb": "ddl <name>",
     "milestone": "M1 | M2 | M3",
     "tracking_intake": "src/inbox/in/<day>/<file>.md",
     "manual_workaround": "<plain-English paragraph>"
@@ -108,7 +108,7 @@ value.
 - When `tracking_intake` references a work package in this batch, it SHALL
   point to `src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md`;
   when no intake item exists, it SHALL point to the relevant PRD section path.
-- When an operator runs `tess --help` or `tess <verb> --help`, the help output
+- When an operator runs `ddl --help` or `ddl <verb> --help`, the help output
   SHALL mark every deferred verb with a `[deferred: <milestone>]` tag adjacent
   to the command description.
 - A unit test suite SHALL assert that every deferred verb: (a) emits the
@@ -119,7 +119,7 @@ value.
 
 ### WP-2 — Intake scaffolder
 
-- When an operator runs `tess intake new <slug>`, the command SHALL write a new
+- When an operator runs `ddl intake new <slug>`, the command SHALL write a new
   file at `src/inbox/in/<today-day-bucket>/<sid>_<hhmm>_<slug>.md`, where
   `<today-day-bucket>` is the UTC date formatted as `<epoch-day>_<MM>-<DD>-<YY>`,
   SID equals `86400 - secondsSinceMidnightUTC`, and HHMM is the zero-padded
@@ -143,7 +143,7 @@ value.
 - The command SHALL refuse to write into an archived day-bucket and SHALL exit
   non-zero with a message identifying the bucket as archived.
 - The command SHALL exit non-zero with a clear hint when invoked outside an
-  initialized Tesseract repository (i.e., when `tesseract.yaml` is absent from
+  initialized Daedaline repository (i.e., when `daedaline.yaml` is absent from
   the repo root).
 - The day-bucket directory SHALL be created when it does not yet exist.
 - A vitest suite SHALL cover: (a) SID/HHMM computation accuracy across
@@ -153,7 +153,7 @@ value.
 
 ### WP-3 — Active-memory refresher
 
-- When an operator runs `tess refresh-active-memory`, the command SHALL rewrite
+- When an operator runs `ddl refresh-active-memory`, the command SHALL rewrite
   exactly three labelled sections in `src/memory/active/current.md`:
   the Active Feature row, the Most-recent Shipped Features table, and the
   Operator-notes timestamp.
@@ -179,23 +179,23 @@ value.
 ### Cross-cutting
 
 - `AGENTS.md` §6 SHALL be updated to reference: (a) the deferral protocol as
-  the canonical operator-friction contract; (b) `tess intake new` as the
-  canonical operator entry for new directives; and (c) `tess refresh-active-memory`
+  the canonical operator-friction contract; (b) `ddl intake new` as the
+  canonical operator entry for new directives; and (c) `ddl refresh-active-memory`
   as the canonical pre-commit active-memory refresher.
 - The `compliance-auditor` persona's broad-sweep procedure SHALL cite
-  `tess refresh-active-memory` as the auto-remediation for M-01 and M-03 class
+  `ddl refresh-active-memory` as the auto-remediation for M-01 and M-03 class
   active-memory staleness findings.
 
 ## Out of scope
 
 - Implementing the deferred verbs themselves; each requires a separate intake
-  (for example `src/inbox/in/172981_05-25-26/64500_0605_tess-init-and-create-tesseract-install-paths.md`
-  tracks `tess init`).
+  (for example `src/inbox/in/172981_05-25-26/64500_0605_ddl-init-and-create-daedaline-install-paths.md`
+  tracks `ddl init`).
 - Localizing or templating the `manual_workaround` text beyond plain English.
 - Editing existing inbox items; semantic immutability per
   `src/memory/handbook/inbox-lifecycle.md` §3b prohibits mutation.
 - Inbox archival; that is handled by the manual procedure or a separate
-  `tess inbox archive` verb.
+  `ddl inbox archive` verb.
 - MCP elicitation transport for intake or active-memory refresh; that is M2
   scope.
 - Cron or scheduler invocation for active-memory refresh; that is deferred to
@@ -214,7 +214,7 @@ The following persona assignments are RECOMMENDED for the plan stage:
 | WP-1 and WP-2 CLI/MCP wiring, SID/HHMM computation | `coder` |
 | WP-2 intake template contract under `src/memory/handbook/contract-templates/` | `tech-lead` |
 | WP-3 active-memory rotation contract | `librarian` |
-| WP-3 refresher implementation and vitest harness | `tesseract-engineer` |
+| WP-3 refresher implementation and vitest harness | `daedaline-engineer` |
 | Help-output, exit-code, day-boundary, overwrite-refusal audits | `reviewer` |
 | Adopting the refresher into the broad-sweep procedure | `compliance-auditor` |
 

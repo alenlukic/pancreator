@@ -16,14 +16,14 @@ work_packages:
     primary_owner: tech-writer
   - id: wp-3-operator-output-conformance
     label: "WP-3 — Operator-output conformance enforcement"
-    primary_owner: tesseract-engineer
+    primary_owner: daedaline-engineer
     secondary_owner: contract-writer
   - id: wp-4-backlog-debt-consolidation
     label: "WP-4 — Retire src/memory/debt/ and update AGENTS workspace map"
     primary_owner: tech-lead
   - id: wp-5-ci-slim-and-librarian-gate
     label: "WP-5 — Slim CI workflows and define librarian pre-close validation"
-    primary_owner: tesseract-engineer
+    primary_owner: daedaline-engineer
     secondary_owner: librarian
   - id: wp-6-duplication-philosophy-sweep
     label: "WP-6 — Duplication and philosophy sweep across handbook, CLI, and agents"
@@ -57,7 +57,7 @@ references:
     path: src/memory/handbook/operator-output-contract.md
     range: [1, 315]
     contentHash: f4541d7
-    note: "Next operator steps schema — §3.1 tess prefix, §3.4 fully formed copy-paste commands, and §7 prohibited content that WP-3 audits and enforces."
+    note: "Next operator steps schema — §3.1 ddl prefix, §3.4 fully formed copy-paste commands, and §7 prohibited content that WP-3 audits and enforces."
   - kind: lines
     path: src/memory/handbook/inbox-lifecycle.md
     range: [1, 217]
@@ -109,7 +109,7 @@ references:
     contentHash: bb78edf
     note: "Subagent tier policy — single canonical source for standard/complex tier semantics that R1 deduplicates against."
   - kind: lines
-    path: tesseract.yaml
+    path: daedaline.yaml
     range: [1, 39]
     contentHash: afe74d1
     note: "Live phase tracking — Bootstrap Phase 5 in progress; this pass ships inside Phase 5 without changing phase exit semantics."
@@ -197,7 +197,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
 
 - When the operator opens `OPERATION.md`, the document SHALL contain at least
   these top-level sections in this order: `Inbox lifecycle`, `Feature delivery
-  loop`, `tess CLI verbs`, `Active memory refresh`, `Commit and
+  loop`, `ddl CLI verbs`, `Active memory refresh`, `Commit and
   policy-compliance`, and `Troubleshooting`.
 
 - When WP-2 ships, `README.md` SHALL be a short entry point that contains
@@ -205,7 +205,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
   `AGENTS.md`, `docs/M1.index.md`, and `docs/PRD.summary.md`.
 
 - When WP-2 ships, `README.md` SHALL NOT contain the feature-delivery loop
-  procedure, the `tess advance` command table, the post-invocation state
+  procedure, the `ddl advance` command table, the post-invocation state
   machine table, or the manual bootstrap workflow; those bodies SHALL live
   in `OPERATION.md` and SHALL be referenced from `README.md` by anchor link.
 
@@ -235,19 +235,19 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
   `src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md`.
 
 - When the audit report cites a violation, the implementor SHALL classify
-  the violation as one of three labels: `bare-tess-invocation`,
+  the violation as one of three labels: `bare-ddl-invocation`,
   `prose-file-shopping-list`, or `missing-or-vague-how-clause`. The
-  implementor SHALL fix every `bare-tess-invocation` violation in the same
+  implementor SHALL fix every `bare-ddl-invocation` violation in the same
   change set and SHALL fix or backlog-link every other violation.
 
 - When WP-3 ships, no file under `src/personas/`, `.cursor/agents/`,
   `.cursor/rules/`, or `src/memory/handbook/` SHALL contain a runnable
-  copy-paste shell line that invokes bare `tess <subcommand>` without the
-  `pnpm -w exec tess <subcommand>` prefix required by
+  copy-paste shell line that invokes bare `ddl <subcommand>` without the
+  `pnpm -w exec ddl <subcommand>` prefix required by
   `src/memory/handbook/operator-output-contract.md` § 3.1.
 
 - When WP-3 ships, at least one automated lint, compliance descriptor, or
-  maintainer script SHALL detect the `bare-tess-invocation` pattern in
+  maintainer script SHALL detect the `bare-ddl-invocation` pattern in
   operator-visible runnable code blocks across `src/personas/`,
   `.cursor/agents/`, `.cursor/rules/`, `src/memory/handbook/`, `AGENTS.md`,
   `README.md`, and `OPERATION.md`, and SHALL fail with a non-zero exit code
@@ -275,11 +275,11 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
 
 - When WP-4 ships, every prior reference to `src/memory/debt/` across
   `docs/`, `src/memory/handbook/`, `src/personas/`, `.cursor/agents/`,
-  `.cursor/rules/`, and `src/internal/packages/@tesseract/mcp-server/`
+  `.cursor/rules/`, and `src/internal/packages/@daedaline/mcp-server/`
   SHALL redirect to `src/memory/backlog/index.yaml` or SHALL be removed.
 
 - When WP-4 ships, the MCP resource list under
-  `src/internal/packages/@tesseract/mcp-server/` SHALL NOT advertise
+  `src/internal/packages/@daedaline/mcp-server/` SHALL NOT advertise
   `src/memory/debt/` as a discoverable resource.
 
 ### WP-5 — CI slimming and librarian pre-close validation
@@ -299,7 +299,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
 - When WP-5 ships, the librarian persona at `src/personas/librarian.md`
   SHALL document a **pre-close validation** obligation that the librarian
   (or the coder delegated under a librarian prompt) executes before
-  invoking `pnpm -w exec tess close-artifacts <task-id>`.
+  invoking `pnpm -w exec ddl close-artifacts <task-id>`.
 
 - When WP-5 ships, the pre-close validation obligation SHALL enumerate at
   minimum these checks: `pnpm -w test` for the repository test suite,
@@ -352,7 +352,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
 
 - When WP-6 ships, `compliance-auditor` SHALL run a broad sweep against
   `tests/compliance/schemas/latest.yaml` and SHALL report zero
-  `block`-severity findings tied to bare-`tess` invocations, missing
+  `block`-severity findings tied to bare-`ddl` invocations, missing
   `OPERATION.md` references, residual `src/memory/debt/` paths, or
   feature-folder skeletons.
 
@@ -397,7 +397,7 @@ treated as non-exhaustive starting candidates.
 | WP-1 | `src/memory/features/<each-audited-folder>/`, `src/memory/backlog/index.yaml`, `src/memory/backlog/drafts/`, `src/memory/features/index.json`, `src/memory/active/current.md`, `src/memory/adr/<new-archival-or-deletion-adr>.md` |
 | WP-2 | `OPERATION.md` (new), `README.md`, `AGENTS.md` § 6, `docs/M1.index.md`, at least one page under `src/memory/handbook/` recording the OPERATION-update obligation |
 | WP-3 | `src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md`, `src/personas/*.md`, `.cursor/agents/*.md`, `.cursor/rules/*.mdc`, `src/memory/handbook/operator-output-contract.md`, the new lint or compliance descriptor under `src/internal/tools/` or `tests/compliance/` |
-| WP-4 | `AGENTS.md` § 7, `src/memory/handbook/backlog-format.md`, `src/memory/handbook/memory-tiers.md`, `src/internal/packages/@tesseract/mcp-server/`, `docs/PRD.index.md`, `src/memory/backlog/index.yaml` |
+| WP-4 | `AGENTS.md` § 7, `src/memory/handbook/backlog-format.md`, `src/memory/handbook/memory-tiers.md`, `src/internal/packages/@daedaline/mcp-server/`, `docs/PRD.index.md`, `src/memory/backlog/index.yaml` |
 | WP-5 | `.github/workflows/phase-0a-scaffold.yml`, `.github/workflows/run-logger-conformance.yml`, `src/personas/librarian.md`, `src/skills/<librarian-skill-if-needed>/SKILL.md`, `OPERATION.md`, `src/memory/backlog/index.yaml` |
 | WP-6 | `src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md`, paths cited by the inventory, `src/memory/adr/<new-intentional-dual-location-adr>.md` if any |
 
@@ -420,7 +420,7 @@ code alongside the four commands above.
 
 When WP-5 lands the librarian pre-close validation contract, the librarian
 SHALL execute the documented check list before running
-`pnpm -w exec tess close-artifacts 16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout`.
+`pnpm -w exec ddl close-artifacts 16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout`.
 
 ## Documentation impact
 
@@ -454,14 +454,14 @@ gates are non-negotiable and SHALL fire in this order:
 2. **plan_ratification** — operator ratifies `plan.md`, `adr-draft.md`,
    `touch-set.json`, and `handoff.md` before implement starts.
 3. **implement_pause_resume_available** — operator MAY pause, resume, or
-   abort the implement stage with `pnpm -w exec tess pause | resume | abort`.
+   abort the implement stage with `pnpm -w exec ddl pause | resume | abort`.
 4. **review_pass** — operator accepts the review verdict or routes the run
    back to implement.
 5. **report_acceptance** — operator accepts the delivery report.
 6. **ship_local_diff_ratification** — operator ratifies the local diff; no
    agent SHALL push or open a pull request.
 7. **index_audit** — operator accepts the per-feature index before
-   `pnpm -w exec tess close-artifacts` runs.
+   `pnpm -w exec ddl close-artifacts` runs.
 
 ## Out of scope
 
@@ -475,11 +475,11 @@ gates are non-negotiable and SHALL fire in this order:
   to PRD-summary, PRD-index, or M1-index pointers are permitted when WP-2
   changes the operator doc layout.
 - Phase exit ratification or any change to bootstrap phase semantics in
-  `tesseract.yaml`. Phase 5 stays Phase 5.
+  `daedaline.yaml`. Phase 5 stays Phase 5.
 - Rewriting historical artifacts under `src/internal/work_archive/`.
 - Reading, citing, ingesting, or modifying any file under
   `src/inbox/notes/` per AGENTS § 5 and inbox-lifecycle § 1a.
-- Renaming `@tesseract/*` packages or changing CLI subcommand grammar
+- Renaming `@daedaline/*` packages or changing CLI subcommand grammar
   beyond the OPERATION.md table-of-contents extraction.
 - Migrating any existing feature folder out of `keep-implemented` status
   without an explicit disposition-table row in WP-1.

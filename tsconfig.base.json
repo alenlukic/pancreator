@@ -12,31 +12,31 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
-      "@tesseract/adopter-scan": ["src/internal/packages/@tesseract/adopter-scan/src/index.ts"],
-      "@tesseract/checkpointer-fs": ["src/internal/packages/@tesseract/checkpointer-fs/src/index.ts"],
-      "@tesseract/cli": ["src/internal/packages/@tesseract/cli/src/index.ts"],
-      "@tesseract/contract": ["src/internal/packages/@tesseract/contract/src/index.ts"],
-      "@tesseract/contract-runner-llm-judge": ["src/internal/packages/@tesseract/contract-runner-llm-judge/src/index.ts"],
-      "@tesseract/contract-runner-rego": ["src/internal/packages/@tesseract/contract-runner-rego/src/index.ts"],
-      "@tesseract/contract-style": ["src/internal/packages/@tesseract/contract-style/src/index.ts"],
-      "@tesseract/core": ["src/internal/packages/@tesseract/core/src/index.ts"],
-      "@tesseract/env-isolation": ["src/internal/packages/@tesseract/env-isolation/src/index.ts"],
-      "@tesseract/inbox": ["src/internal/packages/@tesseract/inbox/src/index.ts"],
-      "@tesseract/intervention": ["src/internal/packages/@tesseract/intervention/src/index.ts"],
-      "@tesseract/mcp-server": ["src/internal/packages/@tesseract/mcp-server/src/index.ts"],
-      "@tesseract/memory": ["src/internal/packages/@tesseract/memory/src/index.ts"],
-      "@tesseract/notifier": ["src/internal/packages/@tesseract/notifier/src/index.ts"],
-      "@tesseract/persona": ["src/internal/packages/@tesseract/persona/src/index.ts"],
-      "@tesseract/pipeline": ["src/internal/packages/@tesseract/pipeline/src/index.ts"],
-      "@tesseract/policy": ["src/internal/packages/@tesseract/policy/src/index.ts"],
-      "@tesseract/run-logger": ["src/internal/packages/@tesseract/run-logger/src/index.ts"],
-      "@tesseract/runner-cursor": ["src/internal/packages/@tesseract/runner-cursor/src/index.ts"],
-      "@tesseract/worktree": ["src/internal/packages/@tesseract/worktree/src/index.ts"]
+      "@daedaline/adopter-scan": ["src/internal/packages/@daedaline/adopter-scan/src/index.ts"],
+      "@daedaline/checkpointer-fs": ["src/internal/packages/@daedaline/checkpointer-fs/src/index.ts"],
+      "@daedaline/cli": ["src/internal/packages/@daedaline/cli/src/index.ts"],
+      "@daedaline/contract": ["src/internal/packages/@daedaline/contract/src/index.ts"],
+      "@daedaline/contract-runner-llm-judge": ["src/internal/packages/@daedaline/contract-runner-llm-judge/src/index.ts"],
+      "@daedaline/contract-runner-rego": ["src/internal/packages/@daedaline/contract-runner-rego/src/index.ts"],
+      "@daedaline/contract-style": ["src/internal/packages/@daedaline/contract-style/src/index.ts"],
+      "@daedaline/core": ["src/internal/packages/@daedaline/core/src/index.ts"],
+      "@daedaline/env-isolation": ["src/internal/packages/@daedaline/env-isolation/src/index.ts"],
+      "@daedaline/inbox": ["src/internal/packages/@daedaline/inbox/src/index.ts"],
+      "@daedaline/intervention": ["src/internal/packages/@daedaline/intervention/src/index.ts"],
+      "@daedaline/mcp-server": ["src/internal/packages/@daedaline/mcp-server/src/index.ts"],
+      "@daedaline/memory": ["src/internal/packages/@daedaline/memory/src/index.ts"],
+      "@daedaline/notifier": ["src/internal/packages/@daedaline/notifier/src/index.ts"],
+      "@daedaline/persona": ["src/internal/packages/@daedaline/persona/src/index.ts"],
+      "@daedaline/pipeline": ["src/internal/packages/@daedaline/pipeline/src/index.ts"],
+      "@daedaline/policy": ["src/internal/packages/@daedaline/policy/src/index.ts"],
+      "@daedaline/run-logger": ["src/internal/packages/@daedaline/run-logger/src/index.ts"],
+      "@daedaline/runner-cursor": ["src/internal/packages/@daedaline/runner-cursor/src/index.ts"],
+      "@daedaline/worktree": ["src/internal/packages/@daedaline/worktree/src/index.ts"]
     }
   },
   "include": [
-    "src/internal/packages/tesseract/src/**/*.ts",
-    "src/internal/packages/@tesseract/*/src/**/*.ts"
+    "src/internal/packages/daedaline/src/**/*.ts",
+    "src/internal/packages/@daedaline/*/src/**/*.ts"
   ],
   "exclude": ["node_modules", "**/dist", "**/node_modules"]
 }

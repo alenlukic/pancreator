@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "daedaline.pipeline.package_shape",
+      "path": "/src/memory/features/daedaline-pipeline/contracts/daedaline.pipeline.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "src/internal/packages/@daedaline/pipeline/**"
+      }
+    },
+    {
+      "id": "daedaline.pipeline.readme_ergonomics",
+      "path": "/src/memory/features/daedaline-pipeline/contracts/daedaline.pipeline.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "src/internal/packages/@daedaline/pipeline/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "b4b8703"
+      }
+    }
+  ]
+}

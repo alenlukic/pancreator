@@ -68,25 +68,25 @@
   "archived_work_artifacts": [],
   "advance_gate": {
     "human_ratification_required": false,
-    "advance_command": "pnpm -w exec tess advance 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo --artifact src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/index.json",
+    "advance_command": "pnpm -w exec ddl advance 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo --artifact src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/index.json",
     "status": "ready"
   },
   "artifact_index": {
     "implementation_surface": {
       "checkpointer_package": {
-        "path": "src/internal/packages/@tesseract/checkpointer-fs/"
+        "path": "src/internal/packages/@daedaline/checkpointer-fs/"
       },
       "runner_cursor_package": {
-        "path": "src/internal/packages/@tesseract/runner-cursor/"
+        "path": "src/internal/packages/@daedaline/runner-cursor/"
       },
       "pipeline_package": {
-        "path": "src/internal/packages/@tesseract/pipeline/"
+        "path": "src/internal/packages/@daedaline/pipeline/"
       },
       "run_logger_package": {
-        "path": "src/internal/packages/@tesseract/run-logger/"
+        "path": "src/internal/packages/@daedaline/run-logger/"
       },
       "cli_package": {
-        "path": "src/internal/packages/@tesseract/cli/"
+        "path": "src/internal/packages/@daedaline/cli/"
       }
     }
   }

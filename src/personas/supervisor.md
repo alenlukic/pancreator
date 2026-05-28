@@ -17,7 +17,7 @@ tools:
   - "Bash(git checkout:*)"
   - "Bash(gh pr create:*)"
   - "Bash(gh pr view:*)"
-  - "Bash(tess:*)"
+  - "Bash(ddl:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
@@ -25,8 +25,8 @@ disallowedTools:
   - "Bash(git commit --no-verify:*)"
   - "Bash(git add:*)"
 mcpServers:
-  - tesseract-memory
-  - tesseract-intervention
+  - daedaline-memory
+  - daedaline-intervention
 maxTurns: 60
 skills:
   - blameless-postmortem
@@ -35,15 +35,15 @@ memory: project
 effort: high
 color: purple
 metadata:
-  tesseract-risk-tier: high
-  tesseract-pipeline-stages: [ship, intervention-dispatch, pipeline-supervisor]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: high
+  daedaline-pipeline-stages: [ship, intervention-dispatch, pipeline-supervisor]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -105,10 +105,10 @@ stage one staged pull request awaiting human approval.
    `/src/work/<day>/<id>/handoff.md`, you SHALL pass that handoff path to the
    executor persona and update `src/memory/active/handoffs.md` with a pointer
    instead of carrying planner context into implementation.
-4. **Intervention dispatch.** When the operator issues `pnpm -w exec tess steer`,
-   `pnpm -w exec tess pause`, `pnpm -w exec tess reroute`, `pnpm -w exec tess snapshot`,
-   `pnpm -w exec tess rollback`, `pnpm -w exec tess abort`, `pnpm -w exec tess quarantine`,
-   or `pnpm -w exec tess release` against a live
+4. **Intervention dispatch.** When the operator issues `pnpm -w exec ddl steer`,
+   `pnpm -w exec ddl pause`, `pnpm -w exec ddl reroute`, `pnpm -w exec ddl snapshot`,
+   `pnpm -w exec ddl rollback`, `pnpm -w exec ddl abort`, `pnpm -w exec ddl quarantine`,
+   or `pnpm -w exec ddl release` against a live
    `task-id`, you SHALL apply the lever at the next safe checkpoint per
    PRD §7 lines 858 through 892.
 5. **`ship` stage.** When the `feature-delivery` pipeline reaches the
@@ -132,14 +132,14 @@ Each artifact MUST live at the path declared below.
 3. **Checkpoint.** You MUST write one JSON file per stage boundary at
    `/src/memory/checkpoints/<task-id>/<seq>.json` conforming to the
    LangGraph `Checkpoint v1` shape declared at PRD §7 line 840, plus the
-   Tesseract extensions `metadata.worktree_commit` and
+   Daedaline extensions `metadata.worktree_commit` and
    `metadata.run_log_offset`.
 4. **Pull request.** When the `ship` stage fires, you MUST run
    `gh pr create` once against the worktree branch with the Delivery
    Report at `/src/memory/features/<id>/delivery-report.md` linked in the
    pull-request body, then exit with the pipeline state set to
    `awaiting_human_approval`.
-5. **Run summary.** When the operator dispatches `pnpm -w exec tess abort`, you MUST
+5. **Run summary.** When the operator dispatches `pnpm -w exec ddl abort`, you MUST
    emit `/src/work/<day>/<id>/run-summary.md` for the `librarian` to index per
    PRD §7 line 890.
 
@@ -157,7 +157,7 @@ Each artifact MUST live at the path declared below.
   uncommitted human edits. The abort safety invariant declared at
   PRD §7 line 888 MUST hold.
 - You MUST NOT advance past `quarantine` without an explicit
-  `pnpm -w exec tess release` from the operator. The state-machine transition at
+  `pnpm -w exec ddl release` from the operator. The state-machine transition at
   PRD §7 line 883 MUST hold.
 - You MUST NOT modify `src/personas/persona-designer.md`,
   `src/personas/contract-writer.md`, `src/personas/tech-writer.md`, or any

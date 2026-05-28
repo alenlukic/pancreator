@@ -15,7 +15,7 @@ import {
 
 function makeTempRepo() {
   const root = mkdtempSync(path.join(tmpdir(), "refresh-citations-"));
-  process.env.TESS_JSON_FORMAT_ABBREV_LEN = "7";
+  process.env.DDL_JSON_FORMAT_ABBREV_LEN = "7";
   return root;
 }
 

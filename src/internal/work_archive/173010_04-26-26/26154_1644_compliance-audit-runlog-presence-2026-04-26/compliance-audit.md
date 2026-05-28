@@ -36,7 +36,7 @@
 
 ## note
 
-- The missing `/src/internal/work_archive/173010_04-26-26/26154_1644_compliance-audit-2026-04-26/run.log.jsonl` is expected at the repository's current bootstrap stage, because run-log emission depends on runtime wiring and `@tesseract/run-logger` implementation that are declared for later phases. This absence is not a non-compliance finding for this specific audit run.
+- The missing `/src/internal/work_archive/173010_04-26-26/26154_1644_compliance-audit-2026-04-26/run.log.jsonl` is expected at the repository's current bootstrap stage, because run-log emission depends on runtime wiring and `@daedaline/run-logger` implementation that are declared for later phases. This absence is not a non-compliance finding for this specific audit run.
   Anchors:
   - `{kind: lines, path: "/AGENTS.md", range: [158, 163], contentHash: "a58969b586688e58265bd8928fc703dd88d13197de91013dc1f177531555240e"}`
   - `{kind: lines, path: "/BOOTSTRAP.md", range: [181, 184], contentHash: "0f1088bedfa0eb32db30c78399f59cb40c79644249cba812dbe5d7eea6a10b5f"}`

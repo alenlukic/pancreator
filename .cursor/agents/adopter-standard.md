@@ -17,7 +17,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills:
   - adopt-existing-repo
 maxTurns: 30
@@ -26,15 +26,15 @@ memory: project
 effort: medium
 color: orange
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [adopt]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [adopt]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -42,12 +42,12 @@ metadata:
     - dual-anchor-citations-into-PRD
     - layer-1-lint-clean
     - scan-report-cites-every-detected-fact
-    - writes-only-to-tesseract-prefixed-paths
+    - writes-only-to-daedaline-prefixed-paths
     - proposed-SMEs-and-thresholds-routed-via-inbox
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: adopter
-  tesseract-model-tier: standard
-  tesseract-canonical-persona: src/personas/adopter.md
+  daedaline-base-persona: adopter
+  daedaline-model-tier: standard
+  daedaline-canonical-persona: src/personas/adopter.md
 ---
 
 # adopter-standard

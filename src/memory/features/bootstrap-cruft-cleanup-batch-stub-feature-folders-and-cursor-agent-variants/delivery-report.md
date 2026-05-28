@@ -6,7 +6,7 @@
 - Status: human-accepted
 
 ## Summary
-Work package A normalized 20 `tesseract-*` feature folders by prepending YAML frontmatter to each `spec.md`, creating stub `delivery-report.md` and `index.json` files, and clearing global coverage gaps in `src/memory/features/index.json`. Work package B is corrected and reverted: the `-standard` and `-complex` mirrors remain in the tree, and the AGENTS, handbook, emit, and context-budget deletion pass is not part of the final diff. Canonical invocation stays suffix-aware: `/persona-standard` or `/persona` alias for default use, and `/persona-complex` for escalation.
+Work package A normalized 20 `daedaline-*` feature folders by prepending YAML frontmatter to each `spec.md`, creating stub `delivery-report.md` and `index.json` files, and clearing global coverage gaps in `src/memory/features/index.json`. Work package B is corrected and reverted: the `-standard` and `-complex` mirrors remain in the tree, and the AGENTS, handbook, emit, and context-budget deletion pass is not part of the final diff. Canonical invocation stays suffix-aware: `/persona-standard` or `/persona` alias for default use, and `/persona-complex` for escalation.
 
 ```json
 {
@@ -29,7 +29,7 @@ Work package A normalized 20 `tesseract-*` feature folders by prepending YAML fr
 ## What shipped
 
 ### Work package A — `resolve-package-stub-feature-folders`
-Twenty `tesseract-*` folders now carry the normalized stub shape: YAML frontmatter on `spec.md`, a stub `delivery-report.md`, a stub `index.json`, and a global `src/memory/features/index.json` pairing that clears `coverage_gaps` to `[]`. Contracts, plans, tasks, and contract wrappers stay untouched.
+Twenty `daedaline-*` folders now carry the normalized stub shape: YAML frontmatter on `spec.md`, a stub `delivery-report.md`, a stub `index.json`, and a global `src/memory/features/index.json` pairing that clears `coverage_gaps` to `[]`. Contracts, plans, tasks, and contract wrappers stay untouched.
 
 ```json
 {
@@ -145,7 +145,7 @@ The `node --test tests/*.test.mjs` run also prints repeated `fatal: not a git re
 
 ## Operator acceptance criteria
 
-- Verify the 20 `tesseract-*` folders each contain `spec.md` frontmatter, a stub `delivery-report.md`, and a stub `index.json`.
+- Verify the 20 `daedaline-*` folders each contain `spec.md` frontmatter, a stub `delivery-report.md`, and a stub `index.json`.
 
 ```json
 {
@@ -156,7 +156,7 @@ The `node --test tests/*.test.mjs` run also prints repeated `fatal: not a git re
 }
 ```
 
-- Verify `src/memory/features/index.json` pairs each `tesseract-*` row with a per-feature `index.json` and clears `coverage_gaps` to `[]`.
+- Verify `src/memory/features/index.json` pairs each `daedaline-*` row with a per-feature `index.json` and clears `coverage_gaps` to `[]`.
 
 ```json
 {
@@ -191,7 +191,7 @@ The `node --test tests/*.test.mjs` run also prints repeated `fatal: not a git re
 
 ## Documentation impact
 
-The final tree actually changes the 20 `tesseract-*` feature folders and `src/memory/features/index.json`. The touch-set documentation-impact surfaces still mention AGENTS, handbook, emit, and context-budget paths, but those Work package B surfaces were reverted and are not present in the final diff.
+The final tree actually changes the 20 `daedaline-*` feature folders and `src/memory/features/index.json`. The touch-set documentation-impact surfaces still mention AGENTS, handbook, emit, and context-budget paths, but those Work package B surfaces were reverted and are not present in the final diff.
 
 ```json
 {
@@ -223,7 +223,7 @@ The final tree actually changes the 20 `tesseract-*` feature folders and `src/me
 ## Next operator steps
 
 1. **What:** Review this delivery report and accept the stage.
-   **How:** Run `pnpm -w exec tess advance 54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants --artifact src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md`.
+   **How:** Run `pnpm -w exec ddl advance 54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants --artifact src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md`.
 
 2. **What:** Do not advance the task before human acceptance.
    **How:** Leave the report in place until the operator confirms the final state.

@@ -1,4 +1,4 @@
-# Tesseract operator how-to
+# Daedaline operator how-to
 
 Canonical operator procedure for bootstrap Phase 5. For the cross-tool agent
 contract read `AGENTS.md`. For product and bootstrap routing read
@@ -10,7 +10,7 @@ contract read `AGENTS.md`. For product and bootstrap routing read
    Scaffold with:
 
    ```bash
-   pnpm -w exec tess intake new <slug>
+   pnpm -w exec ddl intake new <slug>
    ```
 
 2. Do **not** use `src/inbox/notes/` for agent work; it is human-only scratch space.
@@ -36,21 +36,21 @@ Use this loop exactly:
 2. Start the run (path relative to `src/inbox/in/` only):
 
    ```bash
-   pnpm -w exec tess run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
+   pnpm -w exec ddl run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
    # equivalent alias:
-   pnpm -w exec tess feature new <day-bucket>/<SID>_<HHMM>_<slug>.md
+   pnpm -w exec ddl feature new <day-bucket>/<SID>_<HHMM>_<slug>.md
    ```
 
    Example:
 
    ```bash
-   pnpm -w exec tess run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
+   pnpm -w exec ddl run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
    ```
 
    Optional flags:
 
    ```bash
-   pnpm -w exec tess run feature-delivery <day-bucket>/<file>.md --feature <feature-id> --task <task-id>
+   pnpm -w exec ddl run feature-delivery <day-bucket>/<file>.md --feature <feature-id> --task <task-id>
    ```
 
 3. Read the emitted JSON (`taskId`, `featureId`, `runDir`, `handoffFile`,
@@ -58,16 +58,18 @@ Use this loop exactly:
 4. Delegate `nextPromptFile` to the persona named by `currentStage`.
 5. Human-check the stage artifact. If it is wrong or incomplete, do **not** run
    `advance`; send the task back to the same persona with corrections.
-6. When the artifact is accepted, run the matching `pnpm -w exec tess advance`
-   command from the table in § "tess CLI verbs".
+6. When the artifact is accepted, run the matching `pnpm -w exec ddl advance`
+   command from the table in § "ddl CLI verbs".
 7. Repeat until `currentStage` becomes `complete`.
 8. At `complete`, delegate the librarian `next-prompt.md` and run
-   `pnpm -w exec tess close-artifacts <task-id>` once after final validation.
+   `pnpm -w exec ddl close-artifacts <task-id>` once after final validation.
 
 `advance` runs after every accepted non-terminal stage: `intake`, `plan`,
-`implement`, `review`, `report`, `ship`, and `index`. The only branch is `review`:
-passing review advances to `report`; must-fix review uses `--event must_fix` and
-returns to `implement`. Do not run `advance` after the final `complete` state.
+`implement`, `review`, `test`, `report`, `ship`, and `index`. Review has two
+branches: passing review advances to `test`; must-fix review uses `--event must_fix`
+and returns to `implement`. Test has two branches: passing test advances to `report`;
+qa-fail uses `--event qa_fails` and returns to `implement`. Do not run `advance`
+after the final `complete` state.
 
 ### Post-invocation state machine
 
@@ -80,14 +82,15 @@ with `currentStage: intake`.
 | `intake` | `intake-analyst` | `human_approval` via advance on spec | Accept canonical spec |
 | `plan` | `tech-lead` | `human_approval` via advance on touch-set | Accept plan and scope |
 | `implement` | `coder` | `implementation_complete` | Accept implementation report |
-| `review` | `reviewer` | `review_passes` or `must_fix` | Pass or return to implement |
+| `review` | `reviewer` | `review_passes` or `must_fix` | Pass (→ test) or return to implement |
+| `test` | `qa-tester` | `qa_passes` or `qa_fails` | Pass (→ report) or return to implement |
 | `report` | `tech-writer` | `report_ready` | Accept delivery report |
 | `ship` | `supervisor` | `human_ratifies_local_diff` | Ratify local diff |
 | `index` | `librarian` | `artifacts_indexed` | Accept feature index |
 | `complete` | `librarian` | `artifacts_closed` via close-artifacts | Validate closure |
 
-Interventions journal under `.tess/scheduler/interventions/<task-id>.jsonl`.
-Use `pnpm -w exec tess repair-state` only after explicit out-of-band work.
+Interventions journal under `.ddl/scheduler/interventions/<task-id>.jsonl`.
+Use `pnpm -w exec ddl repair-state` only after explicit out-of-band work.
 
 ### Manual bootstrap workflow
 
@@ -100,31 +103,33 @@ For non-runtime tasks:
    then delegate to the owning persona.
 5. Stage local diffs; obtain human ratification at phase boundaries.
 
-## tess CLI verbs
+## ddl CLI verbs
 
-Every runnable operator command uses `pnpm -w exec tess …` from the repository root.
+Every runnable operator command uses `pnpm -w exec ddl …` from the repository root.
 
 | Current stage | Delegate to | Required artifact | After acceptance |
 |---|---|---|---|
-| `intake` | `intake-analyst` | `src/memory/features/<feature-id>/spec.md` | `pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/spec.md` |
-| `plan` | `tech-lead` | `<runDir>/plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/touch-set.json` |
-| `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/implementation-report.md` |
-| `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/review.md` |
-| `review` (must-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec tess advance <task-id> --event must_fix --artifact <runDir>/review.md` |
-| `report` | `tech-writer` | `src/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/delivery-report.md` |
-| `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/policy-compliance.json` |
-| `index` | `librarian` | `src/memory/features/<feature-id>/index.json` | `pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/index.json` |
-| `complete` | `librarian` | policy-compliance + index | `pnpm -w exec tess close-artifacts <task-id>` |
+| `intake` | `intake-analyst` | `src/memory/features/<feature-id>/spec.md` | `pnpm -w exec ddl advance <task-id> --artifact src/memory/features/<feature-id>/spec.md` |
+| `plan` | `tech-lead` | `<runDir>/plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/touch-set.json` |
+| `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/implementation-report.md` |
+| `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/review.md` |
+| `review` (must-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec ddl advance <task-id> --event must_fix --artifact <runDir>/review.md` |
+| `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/test-report.md` |
+| `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec ddl advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
+| `report` | `tech-writer` | `src/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec ddl advance <task-id> --artifact src/memory/features/<feature-id>/delivery-report.md` |
+| `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/policy-compliance.json` |
+| `index` | `librarian` | `src/memory/features/<feature-id>/index.json` | `pnpm -w exec ddl advance <task-id> --artifact src/memory/features/<feature-id>/index.json` |
+| `complete` | `librarian` | policy-compliance + index | `pnpm -w exec ddl close-artifacts <task-id>` |
 
 Inspection and recovery:
 
 ```bash
-pnpm -w exec tess status <task-id>
-pnpm -w exec tess refresh-prompt <task-id>
-pnpm -w exec tess pause <task-id>
-pnpm -w exec tess resume <task-id>
-pnpm -w exec tess abort <task-id> --reason "superseded or unsafe"
-pnpm -w exec tess repair-state <task-id> --stage review \
+pnpm -w exec ddl status <task-id>
+pnpm -w exec ddl refresh-prompt <task-id>
+pnpm -w exec ddl pause <task-id>
+pnpm -w exec ddl resume <task-id>
+pnpm -w exec ddl abort <task-id> --reason "superseded or unsafe"
+pnpm -w exec ddl repair-state <task-id> --stage review \
   --artifact src/work/<day>/<task-id>/review.md \
   --reason "out-of-band work reached review before advance"
 ```
@@ -134,9 +139,9 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 ## Active memory refresh
 
 - Set **Active Feature** in `src/memory/active/current.md` explicitly when work starts.
-- Run `pnpm -w exec tess refresh-active-memory [--dry-run]` before governed commits when
+- Run `pnpm -w exec ddl refresh-active-memory [--dry-run]` before governed commits when
   shipped-feature rows or the managed operator-notes stamp drift from indexed artifacts.
-- `pnpm -w exec tess close-artifacts <task-id>` refreshes shipped rows and clears Active
+- `pnpm -w exec ddl close-artifacts <task-id>` refreshes shipped rows and clears Active
   Feature to `(none)` when it matched the archived inbox source.
 - `src/memory/features/*/index.json` remain the indexed source of truth for features.
 
@@ -150,7 +155,7 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 
 ### Librarian pre-close validation
 
-Before `pnpm -w exec tess close-artifacts <task-id>`, the librarian (or operator
+Before `pnpm -w exec ddl close-artifacts <task-id>`, the librarian (or operator
 acting as closer) SHALL run these checks from the repository root and SHALL fix
 bounded failures in the same session when policy allows:
 
@@ -172,11 +177,11 @@ narrow paths; default push/PR CI no longer watches generated `src/work/**` or
 | Symptom | Likely cause | Action |
 |---|---|---|
 | `advance` rejects missing artifact | Stage work incomplete | Finish artifact; do not edit `state.json` manually |
-| Ledger behind out-of-band work | Skipped `advance` | `pnpm -w exec tess repair-state` with evidence artifact |
-| Wrong persona in prompt | Stale `next-prompt.md` | `pnpm -w exec tess refresh-prompt <task-id>` |
-| Bare `tess` command fails | CLI not on PATH | Use `pnpm -w exec tess …` per `src/memory/handbook/tesseract-config.md` |
-| Active memory drift | Skipped refresh | `pnpm -w exec tess refresh-active-memory --dry-run` then apply |
-| Operator-output lint fails | Bare `tess` in runnable block | Run `node src/internal/tools/check-operator-output.mjs` and fix cited paths |
+| Ledger behind out-of-band work | Skipped `advance` | `pnpm -w exec ddl repair-state` with evidence artifact |
+| Wrong persona in prompt | Stale `next-prompt.md` | `pnpm -w exec ddl refresh-prompt <task-id>` |
+| Bare `ddl` command fails | CLI not on PATH | Use `pnpm -w exec ddl …` per `src/memory/handbook/daedaline-config.md` |
+| Active memory drift | Skipped refresh | `pnpm -w exec ddl refresh-active-memory --dry-run` then apply |
+| Operator-output lint fails | Bare `ddl` in runnable block | Run `node src/internal/tools/check-operator-output.mjs` and fix cited paths |
 
 For deferred CLI verbs, read the JSON envelope (`milestone`, `tracking_intake`,
 `manual_workaround`) and follow the documented manual workaround.

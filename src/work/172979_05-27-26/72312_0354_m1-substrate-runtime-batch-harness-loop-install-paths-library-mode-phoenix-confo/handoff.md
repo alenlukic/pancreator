@@ -14,7 +14,7 @@
 
 Input: src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md
 Output: src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md
-Advance after human ratification: pnpm -w exec tess advance 72312_0354_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo --artifact src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md
+Advance after human ratification: pnpm -w exec ddl advance 72312_0354_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo --artifact src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md
 
 ## In-scope paths
 

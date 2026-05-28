@@ -39,27 +39,27 @@ references:
 
 Cursor cache-read volume on routine repository invocations can load large historical and duplicated surfaces before a task requires them. The repository contains durable artifacts under `src/work/**`, generated manifests under `src/memory/**` and `src/work/**`, duplicated agent instruction surfaces, full PRD text, and broad Cursor rule globs. Those surfaces remain valuable for explicit human and agent reads, but they add avoidable default indexing cost.
 
-ADR-0002 states that Tesseract is still a document-first repository substrate, and runtime MemoryRouter execution remains future work. This slice therefore uses repository files, Cursor indexing policy, and handbook routing guidance rather than runtime retrieval enforcement. ADR-0004 requires documentation-impact decisions when guidance and reference surfaces change.
+ADR-0002 states that Daedaline is still a document-first repository substrate, and runtime MemoryRouter execution remains future work. This slice therefore uses repository files, Cursor indexing policy, and handbook routing guidance rather than runtime retrieval enforcement. ADR-0004 requires documentation-impact decisions when guidance and reference surfaces change.
 
 ## Decision
 
-When routine Cursor retrieval runs, Tesseract SHALL prefer indexed summary surfaces and explicit reads over broad default corpus activation.
+When routine Cursor retrieval runs, Daedaline SHALL prefer indexed summary surfaces and explicit reads over broad default corpus activation.
 
-When indexing policy lands, Tesseract SHALL track one root `.cursorindexingignore` file and SHALL stop ignoring it in `.gitignore`.
+When indexing policy lands, Daedaline SHALL track one root `.cursorindexingignore` file and SHALL stop ignoring it in `.gitignore`.
 
-When default indexing excludes historical or generated surfaces, Tesseract SHALL preserve explicit read access to `PRD.md`, `BOOTSTRAP.md`, `src/memory/**`, and `src/work/**`.
+When default indexing excludes historical or generated surfaces, Daedaline SHALL preserve explicit read access to `PRD.md`, `BOOTSTRAP.md`, `src/memory/**`, and `src/work/**`.
 
-When Cursor rule activation is audited, Tesseract SHALL narrow over-broad `.cursor/rules/*.mdc` globs and SHALL record prior globs, new globs, and rationale in a work artifact.
+When Cursor rule activation is audited, Daedaline SHALL narrow over-broad `.cursor/rules/*.mdc` globs and SHALL record prior globs, new globs, and rationale in a work artifact.
 
-When `.cursor/rules/tesseract-engineer.mdc` changes, Tesseract MUST exclude `src/work/**/*` from default activation unless the rule targets run logs, plans, reviews, or delivery reports.
+When `.cursor/rules/daedaline-engineer.mdc` changes, Daedaline MUST exclude `src/work/**/*` from default activation unless the rule targets run logs, plans, reviews, or delivery reports.
 
-When PRD retrieval guidance changes, Tesseract SHALL add `PRD.summary.md` for orientation and `PRD.index.md` for section-trigger routing before routine agents load full `PRD.md`.
+When PRD retrieval guidance changes, Daedaline SHALL add `PRD.summary.md` for orientation and `PRD.index.md` for section-trigger routing before routine agents load full `PRD.md`.
 
-When handbook routing changes, Tesseract SHALL add `src/memory/handbook/context-economy.md` and SHALL route context-budgeting decisions from `src/memory/handbook/index.md`.
+When handbook routing changes, Daedaline SHALL add `src/memory/handbook/context-economy.md` and SHALL route context-budgeting decisions from `src/memory/handbook/index.md`.
 
-When protected surfaces change, Tesseract MUST require human ratification for AGENTS.md slimming, `.cursor/agents/**` indexing exclusion validation, newly discovered over-broad rule edits, and mirrored Cursor rule glob edits.
+When protected surfaces change, Daedaline MUST require human ratification for AGENTS.md slimming, `.cursor/agents/**` indexing exclusion validation, newly discovered over-broad rule edits, and mirrored Cursor rule glob edits.
 
-When implementation completes, Tesseract SHALL produce documentation-impact and policy-compliance artifacts under the work folder, and SHALL link any deferral to `src/memory/backlog/index.yaml`.
+When implementation completes, Daedaline SHALL produce documentation-impact and policy-compliance artifacts under the work folder, and SHALL link any deferral to `src/memory/backlog/index.yaml`.
 
 ## Status
 

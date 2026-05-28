@@ -50,5 +50,5 @@ src/memory/features/m1-substrate-runtime-batch/spec.md
 Human operator SHALL review `src/memory/features/m1-substrate-runtime-batch/spec.md`
 and either:
 
-- **Accept:** stage the spec and run `pnpm -w exec tess advance` to move the `intake` stage to `plan`, then invoke `tech-lead` for the plan stage.
+- **Accept:** stage the spec and run `pnpm -w exec ddl advance` to move the `intake` stage to `plan`, then invoke `tech-lead` for the plan stage.
 - **Reject with edits:** reply to this inbox item with required changes; the `intake-analyst` SHALL fold the reply into the spec and re-stage.

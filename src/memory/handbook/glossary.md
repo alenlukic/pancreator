@@ -1,5 +1,5 @@
 ---
-title: Tesseract Glossary
+title: Daedaline Glossary
 slug: glossary
 stability: experimental
 bootstrap-only: false
@@ -34,7 +34,7 @@ related:
 
 # Glossary
 
-Canonical lexicon for Tesseract. The ubiquitous-language source of truth.
+Canonical lexicon for Daedaline. The ubiquitous-language source of truth.
 
 ## How to use this file
 
@@ -56,7 +56,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `skills`, `isolation`, `memory`, `effort`, `color`, `hooks`, `initialPrompt`,
   `background`). Two lifecycles: *ephemeral* (spawned per task) and *long-lived*
   (SMEs). See `/src/memory/handbook/persona-spec.md`.
-- **Persona Spec Format** — the 16-field YAML frontmatter plus a Tesseract
+- **Persona Spec Format** — the 16-field YAML frontmatter plus a Daedaline
   `metadata` map. Authored once at `src/personas/<name>.md`; a build step emits a
   Cursor `.cursor/rules/<name>.mdc` shim from the same source.
 - **Subagent** — a runtime instance of a persona. The persona is the spec; the
@@ -76,8 +76,17 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   (papers, changelogs, dependency releases, competitor sites) and emits
   canonical artifacts. M4+.
 - **Bootstrap-canonical persona** — a persona authored by hand during Phase 0c
-  whose `metadata.tesseract-bootstrap-only: false` declares it persists past
+  whose `metadata.daedaline-bootstrap-only: false` declares it persists past
   the bootstrap. The MVP set is `persona-designer` and `contract-writer`.
+- **qa-tester** — the `feature-delivery` persona that owns the `test` stage.
+  Runs after `reviewer` emits `review_passes: true`. Executes automated
+  verification (lint, typecheck, compliance suite, and tests), performs manual
+  verification proportional to the touch-set, applies straightforward fixes
+  (typos, lint autofixes, missing citations), and emits
+  `/src/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict. When
+  `qa_passes: false`, routes re-entry to `implement` with a compact must-fix
+  list. Canonical spec: `src/personas/qa-tester.md`. See PRD §6 line 519 and
+  PRD §7 lines 675–678.
 - **Skill** — a reusable procedure under `src/skills/<name>/SKILL.md` conforming to
   the Agent Skills open spec (`agentskills.io`). Personas reference skills via
   the `skills:` field; multiple personas MAY share one skill.
@@ -96,9 +105,9 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   inputs and outputs, and MAY declare a `gate`.
 - **Gate** — a verification step that blocks stage advance until the named
   predicate passes. Common gates: `human_approval`, `review_passes`,
-  `contracts:from_feature`.
+  `qa_passes`, `contracts:from_feature`.
 - **Threshold Policy** — the per-pipeline numeric and categorical thresholds
-  declared in `tesseract.yaml`. Lowered to Conftest + OPA Rego at evaluation
+  declared in `daedaline.yaml`. Lowered to Conftest + OPA Rego at evaluation
   time. See PRD §7 for the YAML schema.
 - **Risk tier** — `low | medium | high | any`. Selects the default contract
   bundle and human-approval policy. `low` defaults to allow; `medium` notifies
@@ -117,9 +126,9 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   graph across the cohort and either splits or serializes overlapping
   touch-sets. M2+.
 - **Worktree Pool** — managed pool of `git worktree` directories under
-  `.tess/worktrees/<task-id>/`. Each pipeline runs inside a dedicated worktree.
+  `.ddl/worktrees/<task-id>/`. Each pipeline runs inside a dedicated worktree.
 - **EnvIsolation** — pluggable allocator for non-filesystem environment state
-  per worktree (PORT, DB_NAME, COMPOSE_PROJECT_NAME, `.env.tess` overrides).
+  per worktree (PORT, DB_NAME, COMPOSE_PROJECT_NAME, `.env.ddl` overrides).
   Default: `PortRegistryEnvIsolation`. Closes the silent-collision risk that
   worktree filesystem isolation alone cannot.
 - **Sandbox Pool** — alternative to Worktree Pool for untrusted code. Container
@@ -150,7 +159,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   without halting; `info` is documentation-only.
 - **Applies-to anchor** — a dual-anchor citation that pins the artifact a
   clause gates. Discriminator is one of `artifact-symbol`,
-  `pipeline-telemetry`, `file-path`, `run-log-event`, `tesseract-config`.
+  `pipeline-telemetry`, `file-path`, `run-log-event`, `daedaline-config`.
 - **LLM judge** — a kind that delegates the assertion to a model panel. Every
   `severity: block` LLM-judge clause MUST carry a quorum policy and a cost
   ceiling.
@@ -159,7 +168,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
 - **Cost ceiling** — the `cost_ceiling_usd` field on a clause. Hard kill at
   the ceiling. Default 1.00 USD per clause.
 - **Lint debt** — a documented Layer 1 violation deferred to a later milestone
-  via the `tesseract.lint-debt` field on the clause. Permitted only on
+  via the `daedaline.lint-debt` field on the clause. Permitted only on
   `severity: warn` and `severity: info` clauses in M1.
 - **Behavior preservation contract** — the 5-tier contract that gates a
   refactor: existing tests, mutation-test score, property tests, public-API
@@ -265,7 +274,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   outputs, compliance bundles, and structured logs excluded from default
   semantic indexing unless a task documents inclusion.
 - **MemoryStore** — the runtime adapter that exposes Mem0-shaped CRUD plus a
-  Letta-shaped tier overlay plus Tesseract-native dual-anchor citations.
+  Letta-shaped tier overlay plus Daedaline-native dual-anchor citations.
 - **MemoryRouter** — reads `/src/memory/handbook/index.md` and loads top-K topic
   files for a given intent. Prevents context-window overload as the handbook
   grows.
@@ -290,10 +299,10 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `/src/memory/handbook/operator-output-contract.md`. Each step states **What**
   and **How**; read-only verification is labeled `Read-only:`; multiple options
   add **When to choose** and **Impact**.
-- **`tess` CLI invocation** — in this workspace, runnable operator commands use
-  `pnpm -w exec tess <subcommand> …` from the repository root because `tess` is
-  not on the shell `PATH`. Agents MUST NOT emit bare `tess …` in copy-paste
-  **How** clauses. Policy: `/src/memory/handbook/tesseract-config.md`.
+- **`ddl` CLI invocation** — in this workspace, runnable operator commands use
+  `pnpm -w exec ddl <subcommand> …` from the repository root because `ddl` is
+  not on the shell `PATH`. Agents MUST NOT emit bare `ddl …` in copy-paste
+  **How** clauses. Policy: `/src/memory/handbook/daedaline-config.md`.
 - **Copy-paste next-step commands** — **Next operator steps** shell procedures
   MUST be fully formed fenced command blocks listing every path and flag. Agents
   MUST NOT use underspecified file lists or offload automatable commands to the
@@ -306,23 +315,23 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
 
 - **Control Plane** — thin orchestration layer: `AgentRunner`, `MemoryStore`,
   `Inbox`, `Notifier`, `WorktreePool`, `Scheduler`, `Intervention`,
-  `Authorizer`. Decouples the rest of Tesseract from any one harness.
-- **Primitive** — a single, independently importable piece of Tesseract under
-  `@tesseract/<name>`. Each primitive depends only on `@tesseract/core` and
+  `Authorizer`. Decouples the rest of Daedaline from any one harness.
+- **Primitive** — a single, independently importable piece of Daedaline under
+  `@daedaline/<name>`. Each primitive depends only on `@daedaline/core` and
   external libraries.
 - **Framework Mode** — opinionated install of the entire ecosystem (full org,
   conventions, CLI, scheduler, watchdog). The default install path.
 - **Library Mode** — independent import of one or more primitives into another
-  toolchain, with no dependency on the Tesseract CLI, conventions, or
-  `tesseract.yaml`.
+  toolchain, with no dependency on the Daedaline CLI, conventions, or
+  `daedaline.yaml`.
 - **AGENTS.md** — repo-level Markdown briefing per the Linux Foundation
-  Agentic AI Foundation standard. Tesseract's primary cross-tool contract.
+  Agentic AI Foundation standard. Daedaline's primary cross-tool contract.
   The repository keeps this file as the sole root operating card; it does not
   ship `.github/copilot-instructions.md`. Cursor loads `AGENTS.md` natively.
-- **MCP server (`@tesseract/mcp-server`)** — publishes Tesseract primitives as
+- **MCP server (`@daedaline/mcp-server`)** — publishes Daedaline primitives as
   MCP Tools and Resources. Stdio in MVP; HTTP at M5.
-- **A2A (`@tesseract/a2a`)** — Linux-Foundation-hosted Agent-to-Agent v1.x.
-  Each Tesseract org serves `/.well-known/agent-card.json`. M5+.
+- **A2A (`@daedaline/a2a`)** — Linux-Foundation-hosted Agent-to-Agent v1.x.
+  Each Daedaline org serves `/.well-known/agent-card.json`. M5+.
 - **Run-log** — append-only OTLP-encoded stream under `/src/work/<day>/<id>/run.log.jsonl`
   carrying OpenInference primary attributes plus an OTel GenAI semconv parallel
   layer. The basis for Phoenix and Langfuse import.

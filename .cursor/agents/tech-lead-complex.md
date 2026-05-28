@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills:
   - write-adr
   - write-rfc
@@ -26,17 +26,17 @@ memory: project
 effort: high
 color: cyan
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [plan]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-color-suffix: cyan-200
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [plan]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-color-suffix: cyan-200
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -47,9 +47,9 @@ metadata:
     - touch-set-resolves-against-repo-symbols
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: tech-lead
-  tesseract-model-tier: complex
-  tesseract-canonical-persona: src/personas/tech-lead.md
+  daedaline-base-persona: tech-lead
+  daedaline-model-tier: complex
+  daedaline-canonical-persona: src/personas/tech-lead.md
 ---
 
 # tech-lead-complex

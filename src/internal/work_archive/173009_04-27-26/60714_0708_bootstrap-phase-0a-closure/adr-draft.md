@@ -39,11 +39,11 @@ ADR 0002 separates CURRENT repository substrate from FUTURE runtime behavior. Ph
 
 ## Decision
 
-When Phase 0a closure implements the scaffold, `coder` MUST use `pnpm` workspaces with catalogs, Turborepo, Changesets linked releases, `tsup --dts`, `@arethetypeswrong/cli`, `publint`, ESLint, and a local `@tesseract/no-horizontal-primitive-deps` rule.
+When Phase 0a closure implements the scaffold, `coder` MUST use `pnpm` workspaces with catalogs, Turborepo, Changesets linked releases, `tsup --dts`, `@arethetypeswrong/cli`, `publint`, ESLint, and a local `@daedaline/no-horizontal-primitive-deps` rule.
 
 When `coder` creates package skeletons, each package MUST receive only `package.json`, `README.md`, and `src/index.ts` scaffold files. The scaffold MAY export versioned placeholder symbols, but it MUST NOT implement package runtime behavior.
 
-When `coder` reconciles package inventory, existing `src/internal/packages/@tesseract/*` directories MUST remain in place. The unscoped `src/internal/packages/tesseract/` meta package MUST be added because PRD §11 names the `tesseract` meta package.
+When `coder` reconciles package inventory, existing `src/internal/packages/@daedaline/*` directories MUST remain in place. The unscoped `src/internal/packages/daedaline/` meta package MUST be added because PRD §11 names the `daedaline` meta package.
 
 When `coder` wires verification, CI MUST run the root scaffold commands that prove workspace installation, builds, type declarations, public API packaging, and dependency-boundary checks.
 

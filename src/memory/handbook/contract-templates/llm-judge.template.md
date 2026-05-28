@@ -56,7 +56,7 @@ id: <reverse-DNS id>                                # REQUIRED
 kind: llm-judge
 severity: <block | warn | info>                     # REQUIRED
 applies_to:
-  kind: <artifact-symbol | pipeline-telemetry | file-path | run-log-event | tesseract-config>
+  kind: <artifact-symbol | pipeline-telemetry | file-path | run-log-event | daedaline-config>
   # discriminator-specific fields
 owner: <persona-name>                               # REQUIRED
 description: |                                      # REQUIRED — EARS, atomic
@@ -88,14 +88,14 @@ runtime:
     seed: 42
     cost_ceiling_usd: 0.50
 metadata:
-  tesseract.contract_id: <id>                       # REQUIRED — mirrors clause.id
-  tesseract.applies_to: <serialized applies_to>     # REQUIRED
+  daedaline.contract_id: <id>                       # REQUIRED — mirrors clause.id
+  daedaline.applies_to: <serialized applies_to>     # REQUIRED
 ```
 
 ## Worked example
 
 ```yaml
-id: tesseract.adopter.readme.adopter-friendly
+id: daedaline.adopter.readme.adopter-friendly
 kind: llm-judge
 severity: block
 applies_to:
@@ -122,10 +122,10 @@ runtime:
       good:
         - text: |
             ```
-            npm install @tesseract/persona
+            npm install @daedaline/persona
             ```
             Then create `src/personas/me.md` with the 16 frontmatter fields and
-            run `tess persona validate`.
+            run `ddl persona validate`.
           rationale: Two commands; explicit file creation; named verifier.
       bad:
         - text: "Install the package and follow the standard pattern."
@@ -136,8 +136,8 @@ runtime:
     seed: 42
     cost_ceiling_usd: 0.50
 metadata:
-  tesseract.contract_id: tesseract.adopter.readme.adopter-friendly
-  tesseract.applies_to: artifact-symbol:README.md#Quickstart
+  daedaline.contract_id: daedaline.adopter.readme.adopter-friendly
+  daedaline.applies_to: artifact-symbol:README.md#Quickstart
 ```
 
 ## Failure-handling

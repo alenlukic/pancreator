@@ -2,7 +2,7 @@
 
 ## Architecture Summary
 
-This slice closes the Phase 0a scaffold gap by turning the existing repository shell into a runnable TypeScript monorepo baseline. The live repo already contains `AGENTS.md`, the always-apply Cursor rule, the canonical top-level directories, `tesseract.yaml`, `tesseract-defaults.yaml`, handbook seeds, personas, skills, and package README placeholders. The live repo lacks root workspace/tooling manifests, package manifests, package `src/index.ts` stubs, declaration-build wiring, a horizontal primitive dependency lint rule, a CI conformance check, and a Phase 0a verification record. The implementation MUST add only those scaffold files and MUST NOT implement Phase 0b handbook content, Phase 0c persona or skill content, Phase 2 contract clauses, or Phase 3 runtime behavior.
+This slice closes the Phase 0a scaffold gap by turning the existing repository shell into a runnable TypeScript monorepo baseline. The live repo already contains `AGENTS.md`, the always-apply Cursor rule, the canonical top-level directories, `daedaline.yaml`, `daedaline-defaults.yaml`, handbook seeds, personas, skills, and package README placeholders. The live repo lacks root workspace/tooling manifests, package manifests, package `src/index.ts` stubs, declaration-build wiring, a horizontal primitive dependency lint rule, a CI conformance check, and a Phase 0a verification record. The implementation MUST add only those scaffold files and MUST NOT implement Phase 0b handbook content, Phase 0c persona or skill content, Phase 2 contract clauses, or Phase 3 runtime behavior.
 
 ## Touch Set
 
@@ -12,15 +12,15 @@ This slice closes the Phase 0a scaffold gap by turning the existing repository s
 - Tooling files: `tools/eslint-rules/no-horizontal-primitive-deps.mjs`, `src/internal/tools/check-phase-0a-scaffold.mjs`.
 - CI files: `.github/workflows/phase-0a-scaffold.yml`.
 - Verification record: `src/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md` and `src/memory/features/bootstrap-phase-0a-closure/index.json`.
-- Package skeleton files under every existing `src/internal/packages/@tesseract/*/` directory: `package.json`, `README.md`, `src/index.ts`.
-- Meta package skeleton files under `src/internal/packages/tesseract/`: `package.json`, `README.md`, `src/index.ts`.
+- Package skeleton files under every existing `src/internal/packages/@daedaline/*/` directory: `package.json`, `README.md`, `src/index.ts`.
+- Meta package skeleton files under `src/internal/packages/daedaline/`: `package.json`, `README.md`, `src/index.ts`.
 
 ## Execution Steps
 
-1. Reconcile package inventory. `coder` MUST preserve the existing package directories and MUST add only the missing meta package directory `src/internal/packages/tesseract/` for the unscoped `tesseract` package.
-2. Add root monorepo configuration. `coder` MUST configure `pnpm` workspaces and catalogs, Turborepo build dependencies and cache outputs, Changesets linked releases for `@tesseract/*` plus `tesseract`, and root scripts for `build`, `lint`, `lint:deps`, `typecheck`, `attw`, `publint`, and `check:phase0a`.
+1. Reconcile package inventory. `coder` MUST preserve the existing package directories and MUST add only the missing meta package directory `src/internal/packages/daedaline/` for the unscoped `daedaline` package.
+2. Add root monorepo configuration. `coder` MUST configure `pnpm` workspaces and catalogs, Turborepo build dependencies and cache outputs, Changesets linked releases for `@daedaline/*` plus `daedaline`, and root scripts for `build`, `lint`, `lint:deps`, `typecheck`, `attw`, `publint`, and `check:phase0a`.
 3. Add package skeletons. `coder` MUST add one manifest and one `src/index.ts` stub per package. Each public package MUST expose `.` through sub-path-ready `exports` and MUST build declarations through `tsup --dts`.
-4. Add the dependency boundary guard. `coder` MUST implement `@tesseract/no-horizontal-primitive-deps` as local ESLint rule wiring that fails any primitive import or dependency on another primitive except `@tesseract/core`.
+4. Add the dependency boundary guard. `coder` MUST implement `@daedaline/no-horizontal-primitive-deps` as local ESLint rule wiring that fails any primitive import or dependency on another primitive except `@daedaline/core`.
 5. Add CI scaffold verification. `coder` MUST wire a CI workflow that installs with `pnpm`, runs build, lint, dependency-boundary lint, type checks, `@arethetypeswrong/cli`, `publint`, and the Phase 0a scaffold checker.
 6. Record operator verification. `coder` MUST write the feature verification record with observed commands, package inventory, keep/add/defer decisions, and any failures.
 
@@ -38,8 +38,8 @@ This slice closes the Phase 0a scaffold gap by turning the existing repository s
 
 ## Risks And Boundaries
 
-- The existing `src/internal/packages/@tesseract/contract*` directories remain skeleton-only. This plan includes manifests for them because the directories already exist and the dependency-order bootstrap needs stable package identities, but `coder` MUST NOT add contract runner behavior.
-- The root `tesseract.yaml` files already contain Phase 2 policy defaults. `coder` SHOULD leave those files unchanged unless a root script name must be referenced.
+- The existing `src/internal/packages/@daedaline/contract*` directories remain skeleton-only. This plan includes manifests for them because the directories already exist and the dependency-order bootstrap needs stable package identities, but `coder` MUST NOT add contract runner behavior.
+- The root `daedaline.yaml` files already contain Phase 2 policy defaults. `coder` SHOULD leave those files unchanged unless a root script name must be referenced.
 - The package README placeholders may stay short. `coder` SHOULD update them only enough to describe package boundary and scaffold status.
 - Runtime implementation for `runner-cursor`, `pipeline`, `memory`, `mcp-server`, `cli`, and related packages is deferred to Phase 3.
 

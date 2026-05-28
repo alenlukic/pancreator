@@ -17,7 +17,7 @@ tools:
   - "Bash(git checkout:*)"
   - "Bash(gh pr create:*)"
   - "Bash(gh pr view:*)"
-  - "Bash(tess:*)"
+  - "Bash(ddl:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
@@ -25,8 +25,8 @@ disallowedTools:
   - "Bash(git commit --no-verify:*)"
   - "Bash(git add:*)"
 mcpServers:
-  - tesseract-memory
-  - tesseract-intervention
+  - daedaline-memory
+  - daedaline-intervention
 skills:
   - blameless-postmortem
 maxTurns: 60
@@ -35,15 +35,15 @@ memory: project
 effort: high
 color: purple
 metadata:
-  tesseract-risk-tier: high
-  tesseract-pipeline-stages: [ship, intervention-dispatch, pipeline-supervisor]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: high
+  daedaline-pipeline-stages: [ship, intervention-dispatch, pipeline-supervisor]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -54,9 +54,9 @@ metadata:
     - checkpoint-emitted-at-every-stage-boundary
     - intervention-action-logged-with-operator-identity
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: supervisor
-  tesseract-model-tier: complex
-  tesseract-canonical-persona: src/personas/supervisor.md
+  daedaline-base-persona: supervisor
+  daedaline-model-tier: complex
+  daedaline-canonical-persona: src/personas/supervisor.md
 ---
 
 # supervisor-complex

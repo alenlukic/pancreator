@@ -1,12 +1,12 @@
 id: chat-with-persona
 version: "1"
 metadata:
-  tesseract-bootstrap-only: true
-  tesseract-m1-deferred: true
+  daedaline-bootstrap-only: true
+  daedaline-m1-deferred: true
   description: >-
     PRD §11 pipeline skeleton only — not on the M1 execution path. Conversation
-    Mode (US-2) runtime, `tess chat`, and Persona Ensemble wiring are backlog-deferred
-    to M2+. The bootstrap registers this YAML so `@tesseract/pipeline` can load and
+    Mode (US-2) runtime, `ddl chat`, and Persona Ensemble wiring are backlog-deferred
+    to M2+. The bootstrap registers this YAML so `@daedaline/pipeline` can load and
     compile the shape; operators MUST NOT treat M1 as blocked on executing this pipeline.
   references:
     - kind: lines

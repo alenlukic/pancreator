@@ -24,7 +24,7 @@
       "operation": "modify",
       "category": "operating-contract",
       "workPackage": "wp-2-operation-md-extraction/wp-3-operator-output-conformance/wp-4-backlog-debt-consolidation",
-      "rationale": "Add OPERATION.md route, remove debt path, fix runnable tess examples, and refresh workspace map."
+      "rationale": "Add OPERATION.md route, remove debt path, fix runnable ddl examples, and refresh workspace map."
     },
     {
       "path": "docs/M1.index.md",
@@ -139,7 +139,7 @@
       "rationale": "Reference the automated operator-output check and fix scoped examples."
     },
     {
-      "path": "src/memory/handbook/tesseract-config.md",
+      "path": "src/memory/handbook/daedaline-config.md",
       "operation": "modify",
       "category": "handbook",
       "workPackage": "wp-2-operation-md-extraction/wp-6-duplication-philosophy-sweep",
@@ -167,14 +167,14 @@
       "rationale": "Record mirror obligations only if AGENTS.md authoring guidance duplicates another canonical source."
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
       "operation": "modify-if-needed",
       "category": "cli-help",
       "workPackage": "wp-6-duplication-philosophy-sweep",
       "rationale": "Align CLI help with OPERATION.md only if duplication inventory finds drift."
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
       "operation": "modify-if-needed",
       "category": "cli-help",
       "workPackage": "wp-6-duplication-philosophy-sweep",
@@ -185,7 +185,7 @@
       "operation": "create",
       "category": "validation",
       "workPackage": "wp-3-operator-output-conformance",
-      "rationale": "Detect bare tess invocations in runnable operator-visible code blocks."
+      "rationale": "Detect bare ddl invocations in runnable operator-visible code blocks."
     },
     {
       "path": "tests/operator-output-contract.test.mjs",
@@ -349,140 +349,140 @@
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-adopter-scan/index.json",
+      "path": "src/memory/features/daedaline-adopter-scan/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-checkpointer-fs/index.json",
+      "path": "src/memory/features/daedaline-checkpointer-fs/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-cli/index.json",
+      "path": "src/memory/features/daedaline-cli/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-contract/index.json",
+      "path": "src/memory/features/daedaline-contract/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-contract-runner-llm-judge/index.json",
+      "path": "src/memory/features/daedaline-contract-runner-llm-judge/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-contract-runner-rego/index.json",
+      "path": "src/memory/features/daedaline-contract-runner-rego/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-contract-style/index.json",
+      "path": "src/memory/features/daedaline-contract-style/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-core/index.json",
+      "path": "src/memory/features/daedaline-core/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-env-isolation/index.json",
+      "path": "src/memory/features/daedaline-env-isolation/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-inbox/index.json",
+      "path": "src/memory/features/daedaline-inbox/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-intervention/index.json",
+      "path": "src/memory/features/daedaline-intervention/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-mcp-server/index.json",
+      "path": "src/memory/features/daedaline-mcp-server/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-memory/index.json",
+      "path": "src/memory/features/daedaline-memory/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-notifier/index.json",
+      "path": "src/memory/features/daedaline-notifier/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-persona/index.json",
+      "path": "src/memory/features/daedaline-persona/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-pipeline/index.json",
+      "path": "src/memory/features/daedaline-pipeline/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-policy/index.json",
+      "path": "src/memory/features/daedaline-policy/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-run-logger/index.json",
+      "path": "src/memory/features/daedaline-run-logger/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-runner-cursor/index.json",
+      "path": "src/memory/features/daedaline-runner-cursor/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
       "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
     },
     {
-      "path": "src/memory/features/tesseract-worktree/index.json",
+      "path": "src/memory/features/daedaline-worktree/index.json",
       "operation": "modify",
       "category": "feature-index",
       "workPackage": "wp-1-feature-folder-audit",
@@ -510,12 +510,12 @@
       "rationale": "CLI entrypoint for operator-output lint."
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
       "name": "run",
       "rationale": "CLI help/prose alignment if duplication inventory requires it."
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
       "name": "runFeatureDelivery",
       "rationale": "Generated prompt/prose alignment if duplication inventory requires it."
     }
@@ -541,6 +541,6 @@
     "src/internal/work_archive/**",
     "full unattended feature-delivery automation",
     "v0 operator dashboard",
-    "tesseract.yaml phase semantics"
+    "daedaline.yaml phase semantics"
   ]
 }

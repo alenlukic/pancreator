@@ -62,7 +62,7 @@ references:
 # Spec
 
 This spec canonicalizes the `src/inbox/archive/in/172991_05-15-26/68576_0457_compliance-tests.md` directive into a
-governed compliance-test capability for Tesseract. The round-04 rejection
+governed compliance-test capability for Daedaline. The round-04 rejection
 artifact reopened this feature for plan-stage remediation, the round-05
 approval artifact ratified remediation closure, and the round-06 approval
 artifact confirmed the handoff to planning remains in force.

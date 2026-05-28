@@ -100,23 +100,23 @@
 }
 ```
 
-- `src/internal/packages/@tesseract/mcp-server/src/tess-read-handlers.ts` exports the typed read handlers for feature listing, feature detail, memory query, and workspace status.
+- `src/internal/packages/@daedaline/mcp-server/src/ddl-read-handlers.ts` exports the typed read handlers for feature listing, feature detail, memory query, and workspace status.
 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/mcp-server/src/tess-read-handlers.ts",
+  "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-read-handlers.ts",
   "range": [1, 302],
   "contentHash": "4ab9284"
 }
 ```
 
-- `src/internal/packages/@tesseract/mcp-server/src/definitions.ts` publishes the read-tool definitions and resource templates, and `src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts` wires the shared deferral envelope plus the read-only tool router.
+- `src/internal/packages/@daedaline/mcp-server/src/definitions.ts` publishes the read-tool definitions and resource templates, and `src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts` wires the shared deferral envelope plus the read-only tool router.
 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/mcp-server/src/definitions.ts",
+  "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.ts",
   "range": [1, 204],
   "contentHash": "42b89c1"
 }
@@ -125,7 +125,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.ts",
+  "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts",
   "range": [1, 308],
   "contentHash": "927c649"
 }
@@ -197,12 +197,12 @@
 }
 ```
 
-- Use `tess.feature list`, `tess.feature show`, `tess.status`, and `tess.memory query` as read-only MCP calls when you need typed feature, workspace, or handbook answers instead of stub envelopes.
+- Use `ddl.feature list`, `ddl.feature show`, `ddl.status`, and `ddl.memory query` as read-only MCP calls when you need typed feature, workspace, or handbook answers instead of stub envelopes.
 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts",
+  "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts",
   "range": [78, 117],
   "contentHash": "c475848"
 }
@@ -211,14 +211,14 @@
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/mcp-server/src/tess-execute.test.ts",
+  "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts",
   "range": [120, 155],
   "contentHash": "c475848"
 }
 ```
 
 ## Testing
-The validation delta is command-level rather than numeric: the implementation report records passing `pnpm test`, `node src/internal/tools/run-compliance.mjs`, `node --test tests/*.test.mjs`, `pnpm --filter @tesseract/mcp-server test`, `node src/internal/tools/check-phase-0a-scaffold.mjs`, `node src/internal/tools/context-budget-report.mjs`, and `bash -n .cursor/hooks/enforce-policy-compliance.sh`. The review also notes that statement and branch coverage were not reported in the stage workspace, so there is no line-level coverage delta to quote yet.
+The validation delta is command-level rather than numeric: the implementation report records passing `pnpm test`, `node src/internal/tools/run-compliance.mjs`, `node --test tests/*.test.mjs`, `pnpm --filter @daedaline/mcp-server test`, `node src/internal/tools/check-phase-0a-scaffold.mjs`, `node src/internal/tools/context-budget-report.mjs`, and `bash -n .cursor/hooks/enforce-policy-compliance.sh`. The review also notes that statement and branch coverage were not reported in the stage workspace, so there is no line-level coverage delta to quote yet.
 
 ```json
 {

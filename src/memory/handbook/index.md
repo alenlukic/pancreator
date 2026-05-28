@@ -42,7 +42,7 @@ related:
   - /src/memory/handbook/memory-tiers.md
   - /src/memory/handbook/subagent-model-tiers.md
   - /src/memory/handbook/context-cost-audit.md
-  - /src/memory/handbook/tesseract-config.md
+  - /src/memory/handbook/daedaline-config.md
 ---
 
 # Handbook Routing Index
@@ -76,8 +76,8 @@ lands, operators SHOULD apply this table manually.
 | Reduce default AI context load and decide what to index versus explicit-read | `/src/memory/handbook/context-economy.md` | `/src/memory/handbook/index.md`, `/src/memory/active/current.md`, `/src/memory/active/handoffs.md`, `/src/memory/handbook/memory-tiers.md`, `/src/memory/handbook/context-cost-audit.md`, `/docs/PRD.summary.md`, `/docs/PRD.index.md`, `/docs/M1.index.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, planning/execution handoffs, PRD/M1 summary-first discipline, and operator verification expectations. |
 | Choose standard versus complex Cursor subagents | `/src/memory/handbook/subagent-model-tiers.md` | `/src/memory/handbook/context-economy.md`, `/AGENTS.md` | Use standard variants by default; escalate to complex only for documented triggers. |
 | Audit likely token cost sinks | `/src/memory/handbook/context-cost-audit.md` | `/src/memory/handbook/context-economy.md`, `/src/memory/handbook/subagent-model-tiers.md`, `/docs/M1.index.md` | Records current cost sinks and practical controls. |
-| Interpret or update `tesseract.yaml` | `/src/memory/handbook/tesseract-config.md` | `/tesseract.yaml`, `/tesseract-defaults.yaml`, `/src/personas/adopter.md` | Defines `project_root`, live bootstrap tracking, and the boundary between live policy and defaults. |
-| Run or document `tess` CLI commands for operators | `/src/memory/handbook/tesseract-config.md` §“CLI invocation in this workspace” | `/src/memory/handbook/operator-output-contract.md`, `/AGENTS.md` | Use `pnpm -w exec tess …` from repo root; bare `tess` is not on PATH. |
+| Interpret or update `daedaline.yaml` | `/src/memory/handbook/daedaline-config.md` | `/daedaline.yaml`, `/daedaline-defaults.yaml`, `/src/personas/adopter.md` | Defines `project_root`, live bootstrap tracking, and the boundary between live policy and defaults. |
+| Run or document `ddl` CLI commands for operators | `/src/memory/handbook/daedaline-config.md` §“CLI invocation in this workspace” | `/src/memory/handbook/operator-output-contract.md`, `/AGENTS.md` | Use `pnpm -w exec ddl …` from repo root; bare `ddl` is not on PATH. |
 
 ## Retrieval discipline
 

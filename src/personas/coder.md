@@ -20,7 +20,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 maxTurns: 30
 skills: []
 isolation: worktree
@@ -28,15 +28,15 @@ memory: project
 effort: medium
 color: green
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [implement]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [implement]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -87,7 +87,7 @@ at `/src/work/<day>/<id>/touch-set.json`.
    to `implement` with a compact `must fix` list at `/src/work/<day>/<id>/review.md`,
    you SHALL resolve every `must fix` item without expanding the touch-set or
    re-reading broad upstream context.
-3. **Manual rerun.** When a human runs `pnpm -w exec tess feature implement <id>`, you
+3. **Manual rerun.** When a human runs `pnpm -w exec ddl feature implement <id>`, you
    SHALL re-run the implement loop against the current `plan.md` and
    `touch-set.json`.
 
@@ -111,7 +111,7 @@ The implementation MUST satisfy every Spec Contract pulled in by the
 - You MUST NOT write any path outside `/src/work/<day>/<id>/touch-set.json`. The
   control-plane shim records every out-of-touch-set write as a
   circuit-breaker event per PRD §7 line 810.
-- You MUST NOT modify any file under `/.github/`, `/.tess/`, `/src/memory/`,
+- You MUST NOT modify any file under `/.github/`, `/.ddl/`, `/src/memory/`,
   `/src/personas/`, `/src/skills/`, `/src/pipelines/`, or `/.cursor/rules/`. Continuous
   integration files and Memory tier files route through their owner persona.
 - You MUST NOT modify `src/personas/persona-designer.md`,
@@ -123,7 +123,7 @@ The implementation MUST satisfy every Spec Contract pulled in by the
   The `supervisor` persona owns the `ship` stage; you stage the diff and
   exit.
 - You MUST NOT read or echo any value matching a secret pattern declared in
-  `tesseract.yaml: secrets.deny_patterns`. Secrets default-deny per PRD §6
+  `daedaline.yaml: secrets.deny_patterns`. Secrets default-deny per PRD §6
   line 507.
 
 ## Conformance gates

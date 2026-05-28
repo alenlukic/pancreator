@@ -63,7 +63,7 @@ This Feature reduces default Cursor cache-read volume while preserving explicit 
 }
 ```
 
-- Cursor rule activation narrows to reduce default context load, and `tesseract-engineer` drops broad `src/work/**/*` activation unless the rule targets run logs, plans, reviews, or delivery reports. 
+- Cursor rule activation narrows to reduce default context load, and `daedaline-engineer` drops broad `src/work/**/*` activation unless the rule targets run logs, plans, reviews, or delivery reports. 
 
 ```json
 {

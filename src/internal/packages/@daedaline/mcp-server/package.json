@@ -1,0 +1,42 @@
+{
+  "name": "@daedaline/mcp-server",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ddl-mcp-server": "./bin/ddl-mcp-server.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["bin", "dist"],
+  "scripts": {
+    "build": "tsup src/index.ts src/server.ts --format esm --dts --clean",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "attw": "attw --pack . --profile esm-only",
+    "publint": "publint"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@daedaline/core": "workspace:*",
+    "@daedaline/inbox": "workspace:*",
+    "@daedaline/intervention": "workspace:*",
+    "@daedaline/memory": "workspace:*",
+    "@daedaline/run-logger": "workspace:*",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@types/node": "^22.10.0",
+    "publint": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

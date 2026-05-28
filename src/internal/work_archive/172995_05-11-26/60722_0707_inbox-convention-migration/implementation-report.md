@@ -11,12 +11,12 @@
 ### 1. Standalone inbox migration write safety
 
 - `migrate-inbox-convention.mjs --write` **no longer** calls `planInboxConventionMigration` and applies a freshly computed plan.
-- **`--write` requires `--manifest <path>`** to a persisted JSON document with schema `tesseract.inbox-convention-migration-manifest.v1` (the normal dry-run output).
+- **`--write` requires `--manifest <path>`** to a persisted JSON document with schema `daedaline.inbox-convention-migration-manifest.v1` (the normal dry-run output).
 - Apply path reads **`renames`** and **`referenceUpdates`** from that file only, then:
   - `applyInboxRenamesFromManifest` (moves, then empty-dir cleanup steps),
   - `applyReferenceUpdatesFromManifest` (imported from `migrate-timestamp-naming.mjs`) so cross-repo path strings match the approved manifest,
   - `writeInboxArtifactIndex`.
-- **`TESSERACT_MIGRATION_GO=1`** is still required for `--write`.
+- **`DAEDALINE_MIGRATION_GO=1`** is still required for `--write`.
 - **Rollback / inversion safety:** unchanged for operators using `migrate-timestamp-naming.mjs --rollback --manifest <same-approved-file>`; that tool inverts `sourceRel` ↔ `targetRel` from the stored manifest. Inbox-only writes must still ship a dry-run manifest that rollback can consume if it includes the inbox steps.
 
 **Routing:** Combined repo migrations that include work + inbox should continue to use **`migrate-timestamp-naming.mjs --write --manifest …`** with the **combined** timestamp manifest (not this standalone path).

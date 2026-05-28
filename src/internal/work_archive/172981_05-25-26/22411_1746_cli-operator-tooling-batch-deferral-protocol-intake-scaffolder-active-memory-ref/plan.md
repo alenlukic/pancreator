@@ -7,25 +7,25 @@ The implementation SHOULD extend existing CLI and MCP command routing in place, 
 ## Implementation phases
 
 1. Baseline and guardrails
-   1. Capture baseline behavior in `run.ts` and `tess-execute.ts` around stub responses.
+   1. Capture baseline behavior in `run.ts` and `ddl-execute.ts` around stub responses.
    2. Add constants for deferred envelope shape and stable non-zero return handling.
    3. Keep command parsing and existing feature-delivery workflow semantics unchanged.
 2. WP-1 deferred envelope protocol
    1. Replace CLI stub payloads with `status: "deferred"` envelopes containing verb, milestone, tracking pointer, and workaround text.
    2. Ensure deferred CLI invocations return a stable non-zero code without changing non-deferred command success paths.
    3. Mirror the envelope in MCP tool stubs keyed by tool name and map to a non-success MCP response path.
-   4. Add deferred milestone tags to `tess --help` and deferred subcommand help text.
-3. WP-2 intake scaffolder (`tess intake new <slug>`)
+   4. Add deferred milestone tags to `ddl --help` and deferred subcommand help text.
+3. WP-2 intake scaffolder (`ddl intake new <slug>`)
    1. Add a new `intake` command group and `new` subcommand in CLI routing.
    2. Compute `<day-bucket>`, SID, HHMM, and `created_at` from UTC clock only.
-   3. Enforce overwrite refusal, archived-bucket refusal, and missing `tesseract.yaml` refusal.
+   3. Enforce overwrite refusal, archived-bucket refusal, and missing `daedaline.yaml` refusal.
    4. Implement default template and optional `--from-template` body loading from handbook templates.
-4. WP-3 active-memory refresher (`tess refresh-active-memory [--dry-run]`)
+4. WP-3 active-memory refresher (`ddl refresh-active-memory [--dry-run]`)
    1. Add command wiring in CLI with deterministic derivation from `src/inbox/in/` and `src/memory/features/*/index.json`.
    2. Restrict writes to the three labeled sections only.
    3. Add dry-run diff output and mismatch conflict detection with non-zero exit.
 5. Cross-cutting documentation updates
-   1. Update `AGENTS.md` section 6 references for deferral protocol, `tess intake new`, and `tess refresh-active-memory`.
+   1. Update `AGENTS.md` section 6 references for deferral protocol, `ddl intake new`, and `ddl refresh-active-memory`.
    2. Update `src/personas/compliance-auditor.md` broad-sweep behavior text to cite refresher usage for M-01/M-03 class staleness findings.
 6. Verification
    1. Run `node --test tests/*.test.mjs`.
@@ -38,7 +38,7 @@ The implementation SHOULD extend existing CLI and MCP command routing in place, 
 - Help-output regressions from Commander wiring changes; mitigate by asserting deferred tags in CLI tests.
 - Time-derived filename drift around UTC boundaries; mitigate with deterministic clock injection tests.
 - Active-memory clobber risk in manually curated sections; mitigate with strict labeled-slice editing and conflict exits.
-- MCP/CLI envelope drift; mitigate with shared fixture assertions across `run.test.ts` and `tess-execute.test.ts`.
+- MCP/CLI envelope drift; mitigate with shared fixture assertions across `run.test.ts` and `ddl-execute.test.ts`.
 - Documentation drift from cross-cutting acceptance criteria; mitigate with explicit doc-surface entries in touch-set and completion checklist.
 
 ## Documentation impact decision

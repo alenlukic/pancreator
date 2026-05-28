@@ -76,7 +76,7 @@ references:
 
 ## Context
 
-Tesseract requires one architecture map that operators can inspect before every
+Daedaline requires one architecture map that operators can inspect before every
 phase-boundary ratification. The map MUST separate current implemented
 repository substrate from runtime elements that are planned but not yet landed.
 Without that separation, operators cannot validate scope or phase claims
@@ -94,7 +94,7 @@ flowchart TB
       HANDBOOK["src/memory/handbook/\nCURRENT"]
       PERSONAS["src/personas/*.md\nCURRENT"]
       COMPLIANCE["src/personas/compliance-auditor.md\nCURRENT"]
-      TENGINEER["src/personas/tesseract-engineer.md\nCURRENT"]
+      TENGINEER["src/personas/daedaline-engineer.md\nCURRENT"]
       SKILLS["src/skills/*/SKILL.md\nCURRENT"]
       BOOT["docs/BOOTSTRAP.md + docs/PRD.md\nCURRENT"]
     end
@@ -102,10 +102,10 @@ flowchart TB
     subgraph Runtime["Runtime and Orchestration (FUTURE / NOT YET IMPLEMENTED)"]
       PIPELINES["src/pipelines/*.yaml runtime execution\nFUTURE (Phase 4+)"]
       ENSEMBLES["src/ensembles/*.yaml orchestration\nFUTURE (M4+)"]
-      RUNNER["@tesseract/runner-* + AgentRunner\nFUTURE"]
+      RUNNER["@daedaline/runner-* + AgentRunner\nFUTURE"]
       MEMORY["MemoryStore + MemoryRouter services\nFUTURE"]
-      CLI["tess CLI + MCP server\nFUTURE"]
-      CONTROL[".tess scheduler/worktree automation\nFUTURE"]
+      CLI["ddl CLI + MCP server\nFUTURE"]
+      CONTROL[".ddl scheduler/worktree automation\nFUTURE"]
     end
 
     Human --> INBOX
@@ -130,13 +130,13 @@ flowchart TB
 ```
 
 The current repository already contains authoritative docs, persona specs
-(including `compliance-auditor` and `tesseract-engineer`), skills, inbox
+(including `compliance-auditor` and `daedaline-engineer`), skills, inbox
 queues, ADR memory, and backlog memory. The current repository does not yet run
 those assets through a fully implemented pipeline runtime.
 
 ## Decision
 
-Tesseract SHALL adopt this ADR as the baseline architecture system map for
+Daedaline SHALL adopt this ADR as the baseline architecture system map for
 bootstrap operations. Every architecture-facing operator document MUST reference
 this ADR when it describes cross-component relationships in the current
 repository state.

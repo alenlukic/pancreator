@@ -1,5 +1,5 @@
 {
-  "schema": "tesseract.feature-artifact-index.v1",
+  "schema": "daedaline.feature-artifact-index.v1",
   "featureId": "inbox-convention-migration",
   "taskId": "60722_0707_inbox-convention-migration",
   "pipeline": "feature-delivery",
@@ -28,7 +28,7 @@
     }
   ],
   "interfaceNotes": [
-    "Standalone inbox migration writes require --manifest <path> and TESSERACT_MIGRATION_GO=1.",
+    "Standalone inbox migration writes require --manifest <path> and DAEDALINE_MIGRATION_GO=1.",
     "Combined work-plus-inbox migrations continue to use migrate-timestamp-naming.mjs --write --manifest with the combined timestamp manifest.",
     "Legacy thread discovery recurses nested legacy feature directories while skipping already-migrated day and task subtrees."
   ],

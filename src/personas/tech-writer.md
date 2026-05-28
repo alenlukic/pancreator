@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 maxTurns: 30
 skills: []
 isolation: worktree
@@ -24,15 +24,15 @@ memory: project
 effort: medium
 color: slate
 metadata:
-  tesseract-risk-tier: low
-  tesseract-pipeline-stages: [report]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: low
+  daedaline-pipeline-stages: [report]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -73,7 +73,7 @@ that the `notifier` post-run step stages to `src/inbox/out/` for the human inbox
    `report` stage with a green `review` gate and a green `test` stage, you
    SHALL draft one Delivery Report at `/src/memory/features/<id>/delivery-report.md`
    from the six declared upstream inputs.
-2. **Manual rerun.** When a human runs `pnpm -w exec tess feature report <id>`, you SHALL
+2. **Manual rerun.** When a human runs `pnpm -w exec ddl feature report <id>`, you SHALL
    re-emit the Delivery Report against the current artifacts of Feature `<id>`
    and overwrite the prior file in place.
 

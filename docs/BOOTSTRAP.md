@@ -1,6 +1,6 @@
-# Tesseract Bootstrap Sequence
+# Daedaline Bootstrap Sequence
 
-> **Intent.** Carry Tesseract from a bare git repo to a self-hosting Delivery Pipeline that
+> **Intent.** Carry Daedaline from a bare git repo to a self-hosting Delivery Pipeline that
 > implements the rest of M1 under its own Contracts + Personas + Pipelines. Each phase
 > has named owner(s), explicit inputs/outputs, and a hard exit criterion that the next
 > phase depends on. Phases are intentionally incremental — the bootstrap closes its own
@@ -39,16 +39,16 @@ Three sub-phases; do them in order. None of them require an LLM.
 
 ### 0a. Monorepo + repo scaffold (per §5.5 + §11)
 
-- pnpm workspace + pnpm catalogs + Turborepo + Changesets (`linked: [["@tesseract/*"]]`)
+- pnpm workspace + pnpm catalogs + Turborepo + Changesets (`linked: [["@daedaline/*"]]`)
   + `@arethetypeswrong/cli` + `publint` + `tsup --dts` + sub-path exports.
-- ESLint rule `@tesseract/no-horizontal-primitive-deps` + a CI conformance check that
-  fails on any horizontal dep between `@tesseract/<primitive>` packages, except
-  `@tesseract/cli`, which MAY depend on other primitives as the workspace composer
-  for `tess` (Phase 3 step 8).
-- `@tesseract/mcp-server` uses the same composer carveout as `@tesseract/cli` so it
+- ESLint rule `@daedaline/no-horizontal-primitive-deps` + a CI conformance check that
+  fails on any horizontal dep between `@daedaline/<primitive>` packages, except
+  `@daedaline/cli`, which MAY depend on other primitives as the workspace composer
+  for `ddl` (Phase 3 step 8).
+- `@daedaline/mcp-server` uses the same composer carveout as `@daedaline/cli` so it
   MAY compose other workspace primitives for the MCP bridge (Phase 3 step 9).
 - Empty package skeletons (just `package.json` + `README.md` + `src/index.ts` stub) for
-  every M1 `@tesseract/*` listed in PRD §11. Boundaries from day 1; rich features
+  every M1 `@daedaline/*` listed in PRD §11. Boundaries from day 1; rich features
   ratchet up later (PRD R13).
 - Top-level dirs: `AGENTS.md` (sole root agent operating card per PRD §4 glossary),
   `.cursor/rules/`, `src/personas/`, `src/skills/`,
@@ -56,8 +56,8 @@ Three sub-phases; do them in order. None of them require an LLM.
   `src/inbox/{in,out,threads,notes}/` (where `src/inbox/notes/` is a human-only
   operator sandbox excluded from agent traversal per
   `/src/memory/handbook/inbox-lifecycle.md` §1a), `src/work/`,
-  `.tess/{worktrees,sandboxes,scheduler}/`.
-- `tesseract.yaml` + `tesseract-defaults.yaml` placeholders (one working default
+  `.ddl/{worktrees,sandboxes,scheduler}/`.
+- `daedaline.yaml` + `daedaline-defaults.yaml` placeholders (one working default
   contract bundle per risk tier lands in Phase 2).
 
 ### 0b. Handbook seed (the canon Persona Designer + Contract Writer will read)
@@ -79,7 +79,7 @@ not edit casually.
   Layer 3: `ux-spec.template.md`, `api-spec.template.md`, `security.template.md`,
   `performance.template.md`, `behavior-preservation.template.md`, `llm-judge.template.md`.
 - `/src/memory/handbook/run-log-schema.md` — OpenInference + OTel GenAI semconv reference
-  (so Phase 3's `@tesseract/run-logger` has a spec to conform to).
+  (so Phase 3's `@daedaline/run-logger` has a spec to conform to).
 - `/src/memory/handbook/contract-format.md` — PRD §4.5 wrapper schema reference.
 
 ### 0c. Bootstrap meta-personas + meta-skills  *(hand-authored)*
@@ -112,7 +112,7 @@ specs + their `.cursor/rules/*.mdc` shims.
   `tech-lead`, `coder`, `reviewer`, `librarian`, `tech-writer`.
 - Each spec: Anthropic 16-field; passes Layer 1 lint by hand-checklist (RFC 2119,
   EARS, atomic, active voice, glossary discipline, dual-anchor citations into PRD §6
-  + relevant US-* in §3.5); declares `metadata.tesseract-pipeline-stages` so Phase 3's
+  + relevant US-* in §3.5); declares `metadata.daedaline-pipeline-stages` so Phase 3's
   pipeline runtime can load it correctly; declares `skills:` referencing only skills
   that exist or are scheduled in the same phase.
 - Auto-emit `.cursor/rules/<persona>.mdc` shims (single-source from `src/personas/<name>.md`
@@ -130,7 +130,7 @@ including the 2 from Phase 0c); human-reviewed for format + content + cross-refe
 Inputs: PRD §5.5 (package layout), §11 (MVP scope), §4.5 (wrapper schema), §4.6 (style),
 handbook templates. Outputs: per-package feature folders with delivery contracts.
 
-- For each M1 `@tesseract/*` package in PRD §11, author a feature folder
+- For each M1 `@daedaline/*` package in PRD §11, author a feature folder
   `/src/memory/features/<package-slug>/` with Spec-Kit-aligned files: `spec.md` (canonical
   engineering spec, US-1 shape), `plan.md` (architecture + touch-set), `tasks.md`
   (decomposed task list), and `contracts/` (extracted sidecar contract clauses).
@@ -142,21 +142,21 @@ handbook templates. Outputs: per-package feature folders with delivery contracts
   M3 kind) is expressed as `kind: rego` over JSON output of standard tools:
   `tsc --noEmit --pretty false`, `vitest --reporter=json`, `publint --json`,
   `attw --format json`, `eslint --format json`. The toolchain is the SOTA conformance
-  surface (PRD §5.5 cross-cutting design rules) — Tesseract just gates on it.
-- Seed `tesseract.yaml` + `tesseract-defaults.yaml` with one working contract bundle
+  surface (PRD §5.5 cross-cutting design rules) — Daedaline just gates on it.
+- Seed `daedaline.yaml` + `daedaline-defaults.yaml` with one working contract bundle
   per risk tier (low/medium/high) using `kind: rego` for the telemetry gates from
   PRD §7's worked example (coverage floor, bundle-size delta, feature-contracts-pull).
 - Author the contracts in **dependency order** (Phase 3 builds in this order; getting
   the order right means Coder always has runnable contracts to gate against):
-  1. `@tesseract/core`
-  2. `@tesseract/contract` + `@tesseract/contract-runner-rego` + `@tesseract/contract-runner-llm-judge` + `@tesseract/contract-style`
-  3. `@tesseract/run-logger` + `@tesseract/checkpointer-fs`
-  4. `@tesseract/memory` + `@tesseract/inbox` + `@tesseract/notifier`
-  5. `@tesseract/persona` + `@tesseract/pipeline` + `@tesseract/runner-cursor`
-  6. `@tesseract/worktree` + `@tesseract/env-isolation`
-  7. `@tesseract/intervention`
-  8. `@tesseract/adopter-scan` + `@tesseract/policy` (compat shim) + `@tesseract/cli`
-  9. `@tesseract/mcp-server` (skeleton)
+  1. `@daedaline/core`
+  2. `@daedaline/contract` + `@daedaline/contract-runner-rego` + `@daedaline/contract-runner-llm-judge` + `@daedaline/contract-style`
+  3. `@daedaline/run-logger` + `@daedaline/checkpointer-fs`
+  4. `@daedaline/memory` + `@daedaline/inbox` + `@daedaline/notifier`
+  5. `@daedaline/persona` + `@daedaline/pipeline` + `@daedaline/runner-cursor`
+  6. `@daedaline/worktree` + `@daedaline/env-isolation`
+  7. `@daedaline/intervention`
+  8. `@daedaline/adopter-scan` + `@daedaline/policy` (compat shim) + `@daedaline/cli`
+  9. `@daedaline/mcp-server` (skeleton)
 
 **Exit criterion.** Every M1 substrate package has a feature folder with spec/plan/
 tasks/contracts; every `severity: block` clause passes Layer 1 lint by hand-checklist;
@@ -167,45 +167,45 @@ for the contracts that gate the contract spine itself (mitigates BR2).
 
 ## Phase 3 — Coder → Substrate (the self-hosting step)  *(coder, hand-orchestrated in Cursor)*
 
-Inputs: contracts from Phase 2. Outputs: working `@tesseract/*` packages + a runnable
+Inputs: contracts from Phase 2. Outputs: working `@daedaline/*` packages + a runnable
 Delivery Pipeline + green CI conformance suite.
 
 > **Why hand-orchestrated.** Until 3.5 lands, the AgentRunner that would invoke Coder
 > is itself one of the things being built. The Coder runs through Cursor's native
 > harness directly; the contract runners from 3.2 are the gating substrate. From 3.5
-> onward, Tesseract-native invocation becomes possible; Phase 4 is the first
+> onward, Daedaline-native invocation becomes possible; Phase 4 is the first
 > end-to-end pipeline-driven step.
 
 Build in the dependency order from Phase 2. Each step's package contracts must run
 green (gated by 3.2's runners from step 3.2 onward) before moving to the next:
 
-1. **`@tesseract/core`** — types only, zero runtime deps.
-2. **Contract spine** — `@tesseract/contract` + `@tesseract/contract-runner-rego` +
-   `@tesseract/contract-runner-llm-judge` + `@tesseract/contract-style`. Once green,
+1. **`@daedaline/core`** — types only, zero runtime deps.
+2. **Contract spine** — `@daedaline/contract` + `@daedaline/contract-runner-rego` +
+   `@daedaline/contract-runner-llm-judge` + `@daedaline/contract-style`. Once green,
    every subsequent package's contracts run automatically — this is the moment the
    bootstrap stops being purely hand-checked.
-3. **Observability + state** — `@tesseract/run-logger` (OpenInference + OTel GenAI;
+3. **Observability + state** — `@daedaline/run-logger` (OpenInference + OTel GenAI;
    conformance check: a sample run-log opens cleanly in **Phoenix** *and* **Langfuse**
-   without adapter code — KPI A20 day 1) + `@tesseract/checkpointer-fs` (conformance
+   without adapter code — KPI A20 day 1) + `@daedaline/checkpointer-fs` (conformance
    check: passes LangGraph's own `BaseCheckpointSaver` v1 test suite verbatim).
-4. **Memory + I/O surface** — `@tesseract/memory` (FileMemoryStore + MemoryRouter +
-   dual-anchor citation methods) + `@tesseract/inbox` (FileInbox) + `@tesseract/notifier`
+4. **Memory + I/O surface** — `@daedaline/memory` (FileMemoryStore + MemoryRouter +
+   dual-anchor citation methods) + `@daedaline/inbox` (FileInbox) + `@daedaline/notifier`
    (Console + Inbox).
-5. **Persona / pipeline / runner — closes the harness loop** — `@tesseract/persona`
-   (16-field parser + `.mdc` shim emitter) + `@tesseract/pipeline` (YAML →
-   LangGraph.js `StateGraph` compiler) + `@tesseract/runner-cursor`. After this lands,
-   pipelines can run end-to-end through Tesseract.
-6. **Worktree + env isolation** — `@tesseract/worktree` (`GitWorktreePool`,
-   single-pipeline-at-a-time per Q7) + `@tesseract/env-isolation`
+5. **Persona / pipeline / runner — closes the harness loop** — `@daedaline/persona`
+   (16-field parser + `.mdc` shim emitter) + `@daedaline/pipeline` (YAML →
+   LangGraph.js `StateGraph` compiler) + `@daedaline/runner-cursor`. After this lands,
+   pipelines can run end-to-end through Daedaline.
+6. **Worktree + env isolation** — `@daedaline/worktree` (`GitWorktreePool`,
+   single-pipeline-at-a-time per Q7) + `@daedaline/env-isolation`
    (`PortRegistryEnvIsolation` — closes the silent-collision US-6 gap from PRD §7).
-7. **Intervention** — `@tesseract/intervention` wired to LangGraph
+7. **Intervention** — `@daedaline/intervention` wired to LangGraph
    `interrupt()` / `Command(goto)` / `checkpoint_id` time-travel; MVP CLI surfaces:
-   `tess pause | resume | abort` (full 7-lever spectrum is M2 per PRD US-10).
-8. **User surface** — `@tesseract/adopter-scan` + `@tesseract/policy` (compat shim
-   per Q23 with deprecation warning + `tess upgrade --apply`) + `@tesseract/cli`
-   (`tess init/run/src/inbox/feature/status/approve/src/memory/contracts/pause/resume/abort/lint`).
-9. **MCP skeleton** — `@tesseract/mcp-server` skeleton (stdio transport; full wire-up
-   is M2 per Q18). Publishes MVP `tess.*` verbs as MCP Tools and `/src/memory/`,
+   `ddl pause | resume | abort` (full 7-lever spectrum is M2 per PRD US-10).
+8. **User surface** — `@daedaline/adopter-scan` + `@daedaline/policy` (compat shim
+   per Q23 with deprecation warning + `ddl upgrade --apply`) + `@daedaline/cli`
+   (`ddl init/run/src/inbox/feature/status/approve/src/memory/contracts/pause/resume/abort/lint`).
+9. **MCP skeleton** — `@daedaline/mcp-server` skeleton (stdio transport; full wire-up
+   is M2 per Q18). Publishes MVP `ddl.*` verbs as MCP Tools and `/src/memory/`,
    `/src/inbox/`, `/src/work/run-log` as MCP Resources.
 
 **CI conformance gates** (each becomes blocking from the moment its target package
@@ -214,18 +214,18 @@ lands; protects against PRD R18/R19 transitive-dep drift):
 - LangGraph `BaseCheckpointSaver` v1 test suite green (own-suite-as-conformance).
 - OpenInference + OTel GenAI sample run-log opens cleanly in Phoenix and Langfuse.
 - `@arethetypeswrong/cli` + `publint` green on every published package.
-- `@tesseract/no-horizontal-primitive-deps` ESLint rule green.
+- `@daedaline/no-horizontal-primitive-deps` ESLint rule green.
 - Cursor `.mdc` shim emitter round-trip (parse → emit → re-parse) is identity.
 
 **Exit criterion.** All 9 build steps green; CI conformance gates green; one manual
-`tess inbox` + `tess feature new` + `tess pause`/`tess resume`/`tess abort` smoke
+`ddl inbox` + `ddl feature new` + `ddl pause`/`ddl resume`/`ddl abort` smoke
 works against an empty pipeline.
 
 
 ## Phase 4 — US-1 dogfood (bootstrap verification)  *(supervisor + delivery pipeline)*
 
 Inputs: substrate from Phase 3 + personas from Phase 1 + contracts from Phase 2.
-Outputs: a single staged PR with delivery report = the empirical proof Tesseract works.
+Outputs: a single staged PR with delivery report = the empirical proof Daedaline works.
 
 - Compile and register the five PRD §11 pipeline YAML definitions under
   `src/pipelines/`: `feature-delivery`, `chat-with-persona` (skeleton only),
@@ -238,7 +238,7 @@ Outputs: a single staged PR with delivery report = the empirical proof Tesseract
   - `coder` implements; `reviewer` runs the `style:contracts` step + contracts-runner
     pass; `tech-writer` drafts `delivery-report.md`; `supervisor` stages PR (no
     auto-push per Q3); `librarian` indexes; checkpoints persist at every stage boundary.
-  - Manually exercise `tess pause` mid-implement → `tess resume` → `tess abort` on a
+  - Manually exercise `ddl pause` mid-implement → `ddl resume` → `ddl abort` on a
     second run.
 - Verify the run-log file renders cleanly in Phoenix or Langfuse (KPI A20 banked from
   day one — proves "we conform, not parallel-design" per PRD §5.5).
@@ -250,8 +250,8 @@ Outputs: a single staged PR with delivery report = the empirical proof Tesseract
 ## Phase 5 — Rest of M1 (self-hosted)  *(delivery pipeline)*
 
 The Delivery Pipeline now implements its own remaining M1 deliverables. From this
-point forward Tesseract is dogfooding itself; humans only act at the gates Q3 / risk
-tiers / `tesseract.yaml` declare.
+point forward Daedaline is dogfooding itself; humans only act at the gates Q3 / risk
+tiers / `daedaline.yaml` declare.
 
 - Use `feature-delivery` to flesh out and harden:
   - `init-greenfield` and `adopt` pipelines on real targets (US-9 — pick a TS
@@ -274,7 +274,7 @@ green; KPIs baselined; ready for M2 (US-2, US-3, US-6 basic, US-10 full spectrum
   page cites its sources as `{kind: 'symbol', path, symbol, contentHash}` (preferred)
   or `{kind: 'lines', path, range, contentHash}` (fallback). PRD §4 + §8.
 - **Commit trailer:** `Bootstrap-Phase: <N>` on every commit so the bootstrap is
-  replayable end-to-end and `tess re-adopt` can later rebuild the lineage.
+  replayable end-to-end and `ddl re-adopt` can later rebuild the lineage.
 - **Human is the in-loop reviewer at every phase boundary.** Cedar `Authorizer` MVP
   default = `LocalUserAuthorizer` (PRD §10). Ombudsperson is M5; until then, the
   human plays that role at the gates.
@@ -293,16 +293,16 @@ green; KPIs baselined; ready for M2 (US-2, US-3, US-6 basic, US-10 full spectrum
   (persona-designer authors `tech-writer`, human ratifies) catches it before Phase 1
   multiplies the error 8×.
 - **BR2 — Contract Writer authors its own gating contracts in Phase 2 with no
-  Tesseract-native peer reviewer.** *Mitigation:* human review at the Phase 2
+  Daedaline-native peer reviewer.** *Mitigation:* human review at the Phase 2
   boundary, focused specifically on the contract-spine packages
-  (`@tesseract/contract*`); Phase 4 dogfood is the empirical ratification.
+  (`@daedaline/contract*`); Phase 4 dogfood is the empirical ratification.
 - **BR3 — Coder runs ahead of Contract Writer on a substrate package.** *Mitigation:*
   the Phase 2 → Phase 3 build order is non-negotiable; CI refuses to build a package
   whose feature folder is missing a `contracts/` subdirectory.
 - **BR4 — Phase 3 hand-orchestration drifts from how the runner will eventually
-  invoke Coder.** *Mitigation:* Phase 3 step 5 (`@tesseract/runner-cursor`) lands a
+  invoke Coder.** *Mitigation:* Phase 3 step 5 (`@daedaline/runner-cursor`) lands a
   CLI smoke test that re-runs the same prompts that drove Coder by hand, asserting
-  byte-equivalent inputs/outputs. From step 5 onward, prefer Tesseract-native
+  byte-equivalent inputs/outputs. From step 5 onward, prefer Daedaline-native
   invocation; Phase 4 is the first fully pipeline-driven run.
 - **BR5 — Phase 0b handbook seed contains errors that propagate through every
   subsequent artifact via dual-anchor citations.** *Mitigation:* the handbook seed

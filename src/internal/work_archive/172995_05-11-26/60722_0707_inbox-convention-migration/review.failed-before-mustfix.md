@@ -4,7 +4,7 @@
 
 # Summary of branch diff reviewed
 
-Reviewed the committed branch diff from `git merge-base HEAD origin/tess-fdp` (`e002e7f3413e7c5ac0ad587fa453c0e0de9d565d`) through `HEAD`, plus the current worktree diff. The feature changes touched `src/internal/tools/migrate-inbox-convention.mjs`, `src/internal/packages/@tesseract/inbox/src/file-inbox.ts`, `tests/migrate-inbox-convention.test.mjs`, `src/memory/features/inbox-convention-migration/spec.md`, `src/memory/handbook/inbox-lifecycle.md`, and the feature-delivery state artifacts under `src/work/172995_05-11-26/60722_0707_inbox-convention-migration/`.
+Reviewed the committed branch diff from `git merge-base HEAD origin/ddl-fdp` (`e002e7f3413e7c5ac0ad587fa453c0e0de9d565d`) through `HEAD`, plus the current worktree diff. The feature changes touched `src/internal/tools/migrate-inbox-convention.mjs`, `src/internal/packages/@daedaline/inbox/src/file-inbox.ts`, `tests/migrate-inbox-convention.test.mjs`, `src/memory/features/inbox-convention-migration/spec.md`, `src/memory/handbook/inbox-lifecycle.md`, and the feature-delivery state artifacts under `src/work/172995_05-11-26/60722_0707_inbox-convention-migration/`.
 
 # Findings
 
@@ -22,7 +22,7 @@ Reviewed the committed branch diff from `git merge-base HEAD origin/tess-fdp` (`
 
 # Validation commands
 
-- `git merge-base HEAD origin/tess-fdp`
+- `git merge-base HEAD origin/ddl-fdp`
 - `git diff --name-only "$BASE_REF"...HEAD`
 - `git diff "$BASE_REF"...HEAD`
 - `git diff --name-only`

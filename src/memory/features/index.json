@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "tesseract-bootstrap-only": true,
+    "daedaline-bootstrap-only": true,
     "generated_by": "librarian",
     "completed_at": "2026-04-27T18:10:00Z",
     "note": "This global feature index is bootstrap-only until runtime feature indexing ships."
@@ -43,241 +43,241 @@
       }
     },
     {
-      "feature_id": "tesseract-adopter-scan",
-      "title": "Engineering Spec - @tesseract/adopter-scan",
+      "feature_id": "daedaline-adopter-scan",
+      "title": "Engineering Spec - @daedaline/adopter-scan",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-adopter-scan/index.json",
+        "path": "src/memory/features/daedaline-adopter-scan/index.json",
         "range": [1, 79],
         "contentHash": "fbd303f"
       }
     },
     {
-      "feature_id": "tesseract-checkpointer-fs",
-      "title": "Engineering Spec - @tesseract/checkpointer-fs",
+      "feature_id": "daedaline-checkpointer-fs",
+      "title": "Engineering Spec - @daedaline/checkpointer-fs",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-checkpointer-fs/index.json",
+        "path": "src/memory/features/daedaline-checkpointer-fs/index.json",
         "range": [1, 79],
         "contentHash": "d8d2a2c"
       }
     },
     {
-      "feature_id": "tesseract-cli",
-      "title": "Engineering Spec - @tesseract/cli",
+      "feature_id": "daedaline-cli",
+      "title": "Engineering Spec - @daedaline/cli",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-cli/index.json",
+        "path": "src/memory/features/daedaline-cli/index.json",
         "range": [1, 79],
         "contentHash": "b9b306e"
       }
     },
     {
-      "feature_id": "tesseract-contract",
-      "title": "Engineering Spec - @tesseract/contract",
+      "feature_id": "daedaline-contract",
+      "title": "Engineering Spec - @daedaline/contract",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-contract/index.json",
+        "path": "src/memory/features/daedaline-contract/index.json",
         "range": [1, 79],
         "contentHash": "bd986a6"
       }
     },
     {
-      "feature_id": "tesseract-contract-runner-llm-judge",
-      "title": "Engineering Spec - @tesseract/contract-runner-llm-judge",
+      "feature_id": "daedaline-contract-runner-llm-judge",
+      "title": "Engineering Spec - @daedaline/contract-runner-llm-judge",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-contract-runner-llm-judge/index.json",
+        "path": "src/memory/features/daedaline-contract-runner-llm-judge/index.json",
         "range": [1, 79],
         "contentHash": "63aea19"
       }
     },
     {
-      "feature_id": "tesseract-contract-runner-rego",
-      "title": "Engineering Spec - @tesseract/contract-runner-rego",
+      "feature_id": "daedaline-contract-runner-rego",
+      "title": "Engineering Spec - @daedaline/contract-runner-rego",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-contract-runner-rego/index.json",
+        "path": "src/memory/features/daedaline-contract-runner-rego/index.json",
         "range": [1, 79],
         "contentHash": "7b43492"
       }
     },
     {
-      "feature_id": "tesseract-contract-style",
-      "title": "Engineering Spec - @tesseract/contract-style",
+      "feature_id": "daedaline-contract-style",
+      "title": "Engineering Spec - @daedaline/contract-style",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-contract-style/index.json",
+        "path": "src/memory/features/daedaline-contract-style/index.json",
         "range": [1, 79],
         "contentHash": "8a058c1"
       }
     },
     {
-      "feature_id": "tesseract-core",
-      "title": "Engineering Spec - @tesseract/core",
+      "feature_id": "daedaline-core",
+      "title": "Engineering Spec - @daedaline/core",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-core/index.json",
+        "path": "src/memory/features/daedaline-core/index.json",
         "range": [1, 79],
         "contentHash": "9ff62a3"
       }
     },
     {
-      "feature_id": "tesseract-env-isolation",
-      "title": "Engineering Spec - @tesseract/env-isolation",
+      "feature_id": "daedaline-env-isolation",
+      "title": "Engineering Spec - @daedaline/env-isolation",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-env-isolation/index.json",
+        "path": "src/memory/features/daedaline-env-isolation/index.json",
         "range": [1, 79],
         "contentHash": "3ae38f3"
       }
     },
     {
-      "feature_id": "tesseract-inbox",
-      "title": "Engineering Spec - @tesseract/inbox",
+      "feature_id": "daedaline-inbox",
+      "title": "Engineering Spec - @daedaline/inbox",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-inbox/index.json",
+        "path": "src/memory/features/daedaline-inbox/index.json",
         "range": [1, 79],
         "contentHash": "d1f283d"
       }
     },
     {
-      "feature_id": "tesseract-intervention",
-      "title": "Engineering Spec - @tesseract/intervention",
+      "feature_id": "daedaline-intervention",
+      "title": "Engineering Spec - @daedaline/intervention",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-intervention/index.json",
+        "path": "src/memory/features/daedaline-intervention/index.json",
         "range": [1, 79],
         "contentHash": "006496e"
       }
     },
     {
-      "feature_id": "tesseract-mcp-server",
-      "title": "Engineering Spec - @tesseract/mcp-server",
+      "feature_id": "daedaline-mcp-server",
+      "title": "Engineering Spec - @daedaline/mcp-server",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-mcp-server/index.json",
+        "path": "src/memory/features/daedaline-mcp-server/index.json",
         "range": [1, 79],
         "contentHash": "b4e93fc"
       }
     },
     {
-      "feature_id": "tesseract-memory",
-      "title": "Engineering Spec - @tesseract/memory",
+      "feature_id": "daedaline-memory",
+      "title": "Engineering Spec - @daedaline/memory",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-memory/index.json",
+        "path": "src/memory/features/daedaline-memory/index.json",
         "range": [1, 79],
         "contentHash": "1ed61a3"
       }
     },
     {
-      "feature_id": "tesseract-notifier",
-      "title": "Engineering Spec - @tesseract/notifier",
+      "feature_id": "daedaline-notifier",
+      "title": "Engineering Spec - @daedaline/notifier",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-notifier/index.json",
+        "path": "src/memory/features/daedaline-notifier/index.json",
         "range": [1, 79],
         "contentHash": "44c684f"
       }
     },
     {
-      "feature_id": "tesseract-persona",
-      "title": "Engineering Spec - @tesseract/persona",
+      "feature_id": "daedaline-persona",
+      "title": "Engineering Spec - @daedaline/persona",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-persona/index.json",
+        "path": "src/memory/features/daedaline-persona/index.json",
         "range": [1, 79],
         "contentHash": "9710e8a"
       }
     },
     {
-      "feature_id": "tesseract-pipeline",
-      "title": "Engineering Spec - @tesseract/pipeline",
+      "feature_id": "daedaline-pipeline",
+      "title": "Engineering Spec - @daedaline/pipeline",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-pipeline/index.json",
+        "path": "src/memory/features/daedaline-pipeline/index.json",
         "range": [1, 79],
         "contentHash": "0c229e7"
       }
     },
     {
-      "feature_id": "tesseract-policy",
-      "title": "Engineering Spec - @tesseract/policy",
+      "feature_id": "daedaline-policy",
+      "title": "Engineering Spec - @daedaline/policy",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-policy/index.json",
+        "path": "src/memory/features/daedaline-policy/index.json",
         "range": [1, 79],
         "contentHash": "b265b72"
       }
     },
     {
-      "feature_id": "tesseract-run-logger",
-      "title": "Engineering Spec - @tesseract/run-logger",
+      "feature_id": "daedaline-run-logger",
+      "title": "Engineering Spec - @daedaline/run-logger",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-run-logger/index.json",
+        "path": "src/memory/features/daedaline-run-logger/index.json",
         "range": [1, 79],
         "contentHash": "e613b01"
       }
     },
     {
-      "feature_id": "tesseract-runner-cursor",
-      "title": "Engineering Spec - @tesseract/runner-cursor",
+      "feature_id": "daedaline-runner-cursor",
+      "title": "Engineering Spec - @daedaline/runner-cursor",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-runner-cursor/index.json",
+        "path": "src/memory/features/daedaline-runner-cursor/index.json",
         "range": [1, 79],
         "contentHash": "e3e7713"
       }
     },
     {
-      "feature_id": "tesseract-worktree",
-      "title": "Engineering Spec - @tesseract/worktree",
+      "feature_id": "daedaline-worktree",
+      "title": "Engineering Spec - @daedaline/worktree",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/tesseract-worktree/index.json",
+        "path": "src/memory/features/daedaline-worktree/index.json",
         "range": [1, 79],
         "contentHash": "f8a1d07"
       }

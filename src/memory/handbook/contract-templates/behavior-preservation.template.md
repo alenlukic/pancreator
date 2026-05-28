@@ -45,7 +45,7 @@ independently and aggregated under one wrapper.
 | 5 | Snapshot tests pass. | `rego` over snapshot-runner JSON | `jest` / `verify` / `approval-tests` |
 
 The M1 contract gates tiers 1, 4, and 5 deterministically; tiers 2 and 3
-SHALL be tracked as `tesseract.lint-debt` until their runners land in M3.
+SHALL be tracked as `daedaline.lint-debt` until their runners land in M3.
 
 ## Slot map
 
@@ -59,8 +59,8 @@ SHALL be tracked as `tesseract.lint-debt` until their runners land in M3.
 | `description` | yes | EARS, atomic, tier-named. |
 | `references` | yes | Cite the refactor RFC and the test-suite baseline. |
 | `runtime` | yes | Per-kind payload. |
-| `metadata.tesseract.tiers-enforced` | yes | Array subset of `[1, 2, 3, 4, 5]`. |
-| `metadata.tesseract.tiers-deferred` | yes | Array subset of `[1, 2, 3, 4, 5]` with `tesseract.lint-debt` justifications. |
+| `metadata.daedaline.tiers-enforced` | yes | Array subset of `[1, 2, 3, 4, 5]`. |
+| `metadata.daedaline.tiers-deferred` | yes | Array subset of `[1, 2, 3, 4, 5]` with `daedaline.lint-debt` justifications. |
 
 ## M1 scaffold (`kind: rego` — composite)
 
@@ -92,14 +92,14 @@ references:
     note: "PRD §7 — behavior-preservation 5-tier definition."
 spec: /src/memory/features/<id>/contracts/behavior-preservation.rego
 runtime:
-  package: tesseract.refactor.behavior_preservation
-  query: data.tesseract.refactor.behavior_preservation.deny
+  package: daedaline.refactor.behavior_preservation
+  query: data.daedaline.refactor.behavior_preservation.deny
 metadata:
-  tesseract.contract_id: <feature>.behavior-preservation
-  tesseract.applies_to: pipeline-telemetry:debt-grooming#aggregated-behavior-preservation
-  tesseract.tiers-enforced: [1, 4, 5]
-  tesseract.tiers-deferred: [2, 3]
-tesseract:
+  daedaline.contract_id: <feature>.behavior-preservation
+  daedaline.applies_to: pipeline-telemetry:debt-grooming#aggregated-behavior-preservation
+  daedaline.tiers-enforced: [1, 4, 5]
+  daedaline.tiers-deferred: [2, 3]
+daedaline:
   lint-debt:
     - rule-id: behavior-preservation.tier-2-mutation-score
       reason: "Stryker runner lands at M3; manual review until then."
@@ -123,9 +123,9 @@ Sidecar `behavior-preservation.rego`:
 # references:
 #   - "/src/memory/handbook/contract-templates/behavior-preservation.template.md"
 # custom:
-#   tesseract.contract_id: <feature>.behavior-preservation
-#   tesseract.applies_to: pipeline-telemetry:debt-grooming#aggregated-behavior-preservation
-package tesseract.refactor.behavior_preservation
+#   daedaline.contract_id: <feature>.behavior-preservation
+#   daedaline.applies_to: pipeline-telemetry:debt-grooming#aggregated-behavior-preservation
+package daedaline.refactor.behavior_preservation
 
 import rego.v1
 

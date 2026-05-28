@@ -61,7 +61,7 @@ references:
 
 ## Context
 
-Tesseract already defines `/src/memory/backlog/` as a durable memory tier and as
+Daedaline already defines `/src/memory/backlog/` as a durable memory tier and as
 the live ranked roadmap, but the repo does not yet ratify one canonical file
 path for tracking open and deferred work items. This gap creates inconsistent
 capture across chat threads, bootstrap notes, and artifact reviews.
@@ -73,7 +73,7 @@ surface.
 
 ## Decision
 
-Tesseract SHALL track every open or deferred item in
+Daedaline SHALL track every open or deferred item in
 `/src/memory/backlog/index.yaml`; `/src/memory/handbook/backlog-format.md` SHALL define
 the human-readable schema for that index; and during bootstrap, every open or
 deferred item recorded in chat notes or bootstrap notes MUST be copied into the

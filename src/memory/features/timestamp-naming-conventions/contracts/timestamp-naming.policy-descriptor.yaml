@@ -1,4 +1,4 @@
-id: tesseract.features.timestamp_naming.policy_descriptor
+id: daedaline.features.timestamp_naming.policy_descriptor
 kind: tests
 severity: block
 applies_to:
@@ -22,6 +22,6 @@ runtime:
   compliance_descriptor: "tests/compliance/timestamp-naming-conventions.yaml"
   schema_ref: "tests/compliance/schemas/latest.yaml"
 metadata:
-  tesseract.contract_id: tesseract.features.timestamp_naming.policy_descriptor
-  tesseract.applies_to: "file-path:tests/compliance/timestamp-naming-conventions.yaml"
-  tesseract-bootstrap-only: false
+  daedaline.contract_id: daedaline.features.timestamp_naming.policy_descriptor
+  daedaline.applies_to: "file-path:tests/compliance/timestamp-naming-conventions.yaml"
+  daedaline-bootstrap-only: false
