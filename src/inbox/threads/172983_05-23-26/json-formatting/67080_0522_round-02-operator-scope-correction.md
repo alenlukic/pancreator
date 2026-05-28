@@ -138,4 +138,4 @@ acceptable in ratified stage artifacts.
 2. Overwrite `spec.md` per R6.
 3. Post no new clarifying round unless a genuine blocker remains; operator
    considers this round ratified.
-4. Leave `pnpm -w exec tess advance 67055_0522_json-formatting --artifact src/memory/features/json-formatting/spec.md` to the human operator after spec review.
+4. Leave `pnpm -w exec ddl advance 67055_0522_json-formatting --artifact src/memory/features/json-formatting/spec.md` to the human operator after spec review.

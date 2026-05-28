@@ -8,9 +8,9 @@
   "work_packages": [
     {
       "id": "resolve-package-stub-feature-folders",
-      "label": "Resolve stub @tesseract/* feature folders",
+      "label": "Resolve stub @daedaline/* feature folders",
       "status": "shipped",
-      "outcome": "Twenty tesseract-* folders normalized with spec frontmatter plus stub delivery-report.md and index.json; global feature index pairing cleared coverage_gaps."
+      "outcome": "Twenty daedaline-* folders normalized with spec frontmatter plus stub delivery-report.md and index.json; global feature index pairing cleared coverage_gaps."
     },
     {
       "id": "consolidate-cursor-agent-variants",
@@ -41,7 +41,7 @@
     "completed_at": "2026-05-26T12:00:00Z",
     "next_owner": "operator",
     "next_stage": "complete",
-    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and Work package A normalization surface. After human accepts this index artifact, run tess advance to complete, then tess close-artifacts for archival closure per complete-stage prompt."
+    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and Work package A normalization surface. After human accepts this index artifact, run ddl advance to complete, then ddl close-artifacts for archival closure per complete-stage prompt."
   },
   "index": {
     "indexer": "librarian",
@@ -50,7 +50,7 @@
     "content_hash_refresh_performed": true,
     "abbrev_len_at_index_time": 7,
     "metadata": {
-      "tesseract-bootstrap-only": true
+      "daedaline-bootstrap-only": true
     }
   },
   "review": {
@@ -120,7 +120,7 @@
       "id": "per-feature-index-dual-anchor-parity",
       "owner": "librarian",
       "status": "deferred",
-      "reason": "Stub tesseract-* index.json files use path-only per_feature_index entries to avoid self-referential contentHash loops; richer dual-anchor parity can wait for tooling that stabilizes self-citations.",
+      "reason": "Stub daedaline-* index.json files use path-only per_feature_index entries to avoid self-referential contentHash loops; richer dual-anchor parity can wait for tooling that stabilizes self-citations.",
       "citation": {
         "kind": "lines",
         "path": "src/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
@@ -236,7 +236,7 @@
           "range": [1, 300],
           "contentHash": "183e34a"
         },
-        "note": "Twenty tesseract-* rows now pair with per-feature index.json; coverage_gaps is []."
+        "note": "Twenty daedaline-* rows now pair with per-feature index.json; coverage_gaps is []."
       },
       "subagent_model_tiers": {
         "path": "src/memory/handbook/subagent-model-tiers.md",
@@ -248,46 +248,46 @@
         },
         "note": "Unchanged in final diff after Work package B revert; canonical tier invocation remains suffix-aware."
       },
-      "tesseract_cli_representative": {
-        "spec_path": "src/memory/features/tesseract-cli/spec.md",
-        "index_path": "src/memory/features/tesseract-cli/index.json",
+      "daedaline_cli_representative": {
+        "spec_path": "src/memory/features/daedaline-cli/spec.md",
+        "index_path": "src/memory/features/daedaline-cli/index.json",
         "citation": {
           "kind": "lines",
-          "path": "src/memory/features/tesseract-cli/spec.md",
+          "path": "src/memory/features/daedaline-cli/spec.md",
           "range": [1, 24],
           "contentHash": "26b1233"
         },
         "index_citation": {
           "kind": "lines",
-          "path": "src/memory/features/tesseract-cli/index.json",
+          "path": "src/memory/features/daedaline-cli/index.json",
           "range": [1, 71],
           "contentHash": "f362024"
         },
-        "note": "Representative Work package A normalization; nineteen sibling tesseract-* folders follow the same stub shape."
+        "note": "Representative Work package A normalization; nineteen sibling daedaline-* folders follow the same stub shape."
       },
-      "tesseract_package_folders_normalized": {
+      "daedaline_package_folders_normalized": {
         "count": 20,
         "folders": [
-          "tesseract-adopter-scan",
-          "tesseract-checkpointer-fs",
-          "tesseract-cli",
-          "tesseract-contract",
-          "tesseract-contract-runner-llm-judge",
-          "tesseract-contract-runner-rego",
-          "tesseract-contract-style",
-          "tesseract-core",
-          "tesseract-env-isolation",
-          "tesseract-inbox",
-          "tesseract-intervention",
-          "tesseract-mcp-server",
-          "tesseract-memory",
-          "tesseract-notifier",
-          "tesseract-persona",
-          "tesseract-pipeline",
-          "tesseract-policy",
-          "tesseract-run-logger",
-          "tesseract-runner-cursor",
-          "tesseract-worktree"
+          "daedaline-adopter-scan",
+          "daedaline-checkpointer-fs",
+          "daedaline-cli",
+          "daedaline-contract",
+          "daedaline-contract-runner-llm-judge",
+          "daedaline-contract-runner-rego",
+          "daedaline-contract-style",
+          "daedaline-core",
+          "daedaline-env-isolation",
+          "daedaline-inbox",
+          "daedaline-intervention",
+          "daedaline-mcp-server",
+          "daedaline-memory",
+          "daedaline-notifier",
+          "daedaline-persona",
+          "daedaline-pipeline",
+          "daedaline-policy",
+          "daedaline-run-logger",
+          "daedaline-runner-cursor",
+          "daedaline-worktree"
         ],
         "artifacts_per_folder": ["spec.md", "delivery-report.md", "index.json"],
         "preserved_surfaces": ["plan.md", "tasks.md", "contracts/", "contracts.index.json"]
@@ -309,6 +309,6 @@
     "clauses": []
   },
   "metadata": {
-    "tesseract-bootstrap-only": true
+    "daedaline-bootstrap-only": true
   }
 }

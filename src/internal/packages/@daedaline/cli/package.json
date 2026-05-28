@@ -1,0 +1,45 @@
+{
+  "name": "@daedaline/cli",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ddl": "./bin/ddl.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["bin", "dist"],
+  "scripts": {
+    "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "attw": "attw --pack . --profile esm-only",
+    "publint": "publint"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/langgraph-checkpoint": "1.0.2",
+    "@daedaline/checkpointer-fs": "workspace:*",
+    "@daedaline/core": "workspace:*",
+    "@daedaline/inbox": "workspace:*",
+    "@daedaline/intervention": "workspace:*",
+    "@daedaline/pipeline": "workspace:*",
+    "@daedaline/run-logger": "workspace:*",
+    "@daedaline/runner-cursor": "workspace:*",
+    "commander": "catalog:"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@types/node": "^22.10.0",
+    "publint": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

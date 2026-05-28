@@ -1,0 +1,39 @@
+# Bootstrap repo policy and live tracking state.
+# `project_root: "."` is the self-hosting value: this harness is embedded in
+# the same repository it is currently developing.
+project_root: "."
+
+bootstrap:
+  phase: "5"
+  status: phase-5-in-progress
+  completed_phases: ["-1", "0", "1", "2", "3", "4"]
+  placeholder: false
+  enforced_today: false
+  current_focus: "Phase 5 M1 hardening: init-greenfield and adopt pipelines on real targets, knowledge-curation seed, KPI baseline, and deferred Phoenix trace verification via @daedaline/run-logger."
+  note: "Bootstrap Phase 4 ratified 2026-05-19 after the US-1 dogfood proof bundle close-out. Nested runs 77373_0230_phase-4-dogfood-proof-bundle-evidence-index and 71096_0415_phase-4-intervention-probe-pause-resume-abort are closed. Phase 5 (Rest of M1) is in progress per docs/BOOTSTRAP.md; Phoenix trace verification remains a deferred engineering item for @daedaline/run-logger and the daedaline-engineer backlog."
+  evidence:
+    - docs/BOOTSTRAP.md Phase 5 defines the current M1 completion gate.
+    - src/memory/features/us-1-dogfood-phase-4-exit/phase-4-ratification-request.md records the 2026-05-19 human ratification decision for the US-1 Phase 4 dogfood exit.
+    - src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md records the closed nested-run evidence bundle and the remaining Phoenix engineering deferral.
+    - src/internal/packages/@daedaline/** contains the Phase 3 substrate package implementations.
+    - src/pipelines/*.yaml contains the five MVP pipeline definitions.
+
+risk_tier: medium
+threshold_policy: defaults.medium  # from daedaline-defaults.yaml
+contract_bundle:
+  kind: rego
+  telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]
+
+commands:
+  # Local project hooks used by future policy/pipeline runners.
+  test: "npm test"
+  build: "npm run build"
+  lint: "npm run lint"
+
+# Minimal override shape for bootstrap:
+# keep empty unless a local bootstrap experiment needs an explicit override.
+overrides:
+  gates: {}
+  gates_on_failure: {}
+  commands:
+    hooks: {}

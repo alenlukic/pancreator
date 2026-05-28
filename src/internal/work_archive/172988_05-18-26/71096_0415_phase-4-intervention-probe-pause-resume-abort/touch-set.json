@@ -50,19 +50,19 @@
       "planned_children": ["<timestamp>-phase-4-intervention-probe-pause-resume-abort-delivery-report.md"]
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
       "access": "update",
       "reason": "Ratified: appendFeatureDeliveryInterventionRunLog emits OpenInference JSONL rows so pause-resume-abort-evidence.json can cite trace_id:span_id per nested spec and US-1 acceptance group."
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
       "access": "update",
       "reason": "Ratified: wires pause/resume/abort CLI commands to run-log append for feature-delivery task state files."
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
       "access": "update",
-      "reason": "Ratified: regression coverage for intervention run-log emission on tess pause."
+      "reason": "Ratified: regression coverage for intervention run-log emission on ddl pause."
     }
   ],
   "symbols": [],

@@ -7,8 +7,8 @@ status: open
 created_at: 2026-05-25T06:12:00Z
 references:
   - kind: path
-    path: src/memory/features/tesseract-cli/spec.md
-    note: 17-line Phase-2 placeholder; identical pattern across 16 sibling tesseract-* feature folders.
+    path: src/memory/features/daedaline-cli/spec.md
+    note: 17-line Phase-2 placeholder; identical pattern across 16 sibling daedaline-* feature folders.
   - kind: path
     path: .cursor/agents/
     note: 36 agent files for 12 personas (base + -standard + -complex per persona); plus 12 .cursor/rules/*.mdc; plus general-purpose.
@@ -37,7 +37,7 @@ tracking and downstream feature-folder creation.
 
 | Work package | Original `feature_id` |
 |---|---|
-| Resolve stub `@tesseract/*` feature folders | `resolve-package-stub-feature-folders` |
+| Resolve stub `@daedaline/*` feature folders | `resolve-package-stub-feature-folders` |
 | Consolidate Cursor agent variants | `consolidate-cursor-agent-variants` |
 
 ## Problem
@@ -46,10 +46,10 @@ Two classes of premature surface area inflate audit noise and operator
 confusion without adding runtime value:
 
 1. **Stub feature folders.** `src/memory/features/` carries 17 folders of the
-   form `tesseract-<pkg>/` where each `spec.md` is a 17-line shell pointing
+   form `daedaline-<pkg>/` where each `spec.md` is a 17-line shell pointing
    at a non-existent contract index. None has `plan.md`, `tasks.md`, a
    delivery report, or `contracts/`. They fail Layer-1 lint by inspection and
-   pollute listings that `librarian` and `tess feature` operate against.
+   pollute listings that `librarian` and `ddl feature` operate against.
 
 2. **Triplicated Cursor agent files.** Every MVP persona has three Cursor
    projections: `.cursor/agents/<name>.md`, `<name>-standard.md`, and
@@ -70,7 +70,7 @@ canonical surface per package and per persona.
 ### Work package A — `resolve-package-stub-feature-folders`
 
 1. A tech-lead-authored disposition table classifies each of the 17
-   `tesseract-<pkg>/` folders into one of three buckets:
+   `daedaline-<pkg>/` folders into one of three buckets:
    - `author`: complete spec/plan/tasks/contracts to Phase-2 standard.
    - `consolidate`: fold into a `phase-2-substrate-contracts/` umbrella
      feature folder.
@@ -89,7 +89,7 @@ canonical surface per package and per persona.
    persona and one `.cursor/rules/<name>.mdc` shim where the rule layer
    still requires it.
 2. Standard-vs-complex selection is expressed in persona metadata (for
-   example `metadata.tesseract-subagent-tiers`) and resolved at invocation
+   example `metadata.daedaline-subagent-tiers`) and resolved at invocation
    time, not by file suffix.
 3. The 24 `<name>-standard.md` and `<name>-complex.md` files are deleted in
    the same change set.
@@ -124,7 +124,7 @@ canonical surface per package and per persona.
 - Reauthoring the persona spec format or changing `subagent-model-tiers.md`
   semantics.
 - Removing `general-purpose.md`.
-- Renaming `@tesseract/*` packages whose implementation surface is otherwise
+- Renaming `@daedaline/*` packages whose implementation surface is otherwise
   stable.
 
 ## Recommended downstream owners

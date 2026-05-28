@@ -1,0 +1,43 @@
+{
+  "task_id": "daedaline-mcp-server-impl",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "BOOTSTRAP.md",
+    "src/memory/handbook/constitution.md",
+    "src/memory/handbook/documentation-impact-contract.md",
+    "src/memory/handbook/policy-compliance-contract.md",
+    "PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Phase 3 step 9 implements the @daedaline/mcp-server skeleton: stdio MCP server, twelve ddl.* MCP Tools (real wiring for src/inbox/pause/resume/abort; JSON stubs for the rest), and resources for memory://, inbox://, and work-run-log://<taskId>. Adds @daedaline/mcp-server as a second workspace composer alongside @daedaline/cli; the no-horizontal-primitive-deps ESLint rule and the check:phase0a scaffold checker now whitelist both, with the carveout documented in BOOTSTRAP.md Phase 0a.",
+    "changed_surfaces": [
+      "src/internal/packages/@daedaline/mcp-server/**",
+      "tools/eslint-rules/no-horizontal-primitive-deps.mjs",
+      "src/internal/tools/check-phase-0a-scaffold.mjs",
+      "BOOTSTRAP.md",
+      "src/memory/features/daedaline-mcp-server/tasks.md",
+      "pnpm-lock.yaml"
+    ],
+    "deferred_items": [
+      {
+        "id": "daedaline-mcp-server-q18-full-wireup",
+        "rationale": "Full MCP transport hardening, auth, and non-stdio topologies are deferred to M2 per BOOTSTRAP step 9 and Q18."
+      },
+      {
+        "id": "daedaline-mcp-server-stub-verbs",
+        "rationale": "ddl.init/run/feature/status/approve/src/memory/contracts/lint return JSON stubs until Phase 4 pipeline wiring lands, mirroring the CLI."
+      },
+      {
+        "id": "daedaline-mcp-server-readme-ergonomics-llm-judge",
+        "rationale": "daedaline.mcp_server.readme_ergonomics LLM-judge contract requires the runner panel and refreshed contentHash anchors; deferred to the contract runner pass."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Slice stages diffs locally, preserves the in-loop human gate at the phase boundary, and extends the composer-carveout policy in lock-step in both the ESLint rule and the scaffold checker.",
+    "constitution_alignment": "Slice keeps mcp-server artifacts traceable; the composer carveout is documented in BOOTSTRAP.md Phase 0a so future agents discover the rule shape; the package preserves the meta-compatible stub exports so the meta package remains self-protected.",
+    "prd_alignment": "Slice satisfies BOOTSTRAP Phase 3 step 9 (stdio MCP skeleton + MVP ddl.* tools + src/memory/src/inbox/run-log resources) while honoring the Q18 M2 deferral on full wire-up.",
+    "required_updates": []
+  }
+}

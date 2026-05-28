@@ -1,7 +1,7 @@
 id: adopt
 version: "1"
 metadata:
-  tesseract-bootstrap-only: false
+  daedaline-bootstrap-only: false
   description: >-
     PRD §11 MVP pipeline. Non-destructive adoption of an existing repo.
     `adopter` scans languages, frameworks, test infrastructure, CI, and

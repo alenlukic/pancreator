@@ -20,7 +20,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills: []
 maxTurns: 30
 isolation: worktree
@@ -28,15 +28,15 @@ memory: project
 effort: medium
 color: green
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [implement]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [implement]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -47,9 +47,9 @@ metadata:
     - one-test-per-public-symbol
     - circuit-breaker-thresholds-honored
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: coder
-  tesseract-model-tier: complex
-  tesseract-canonical-persona: src/personas/coder.md
+  daedaline-base-persona: coder
+  daedaline-model-tier: complex
+  daedaline-canonical-persona: src/personas/coder.md
 ---
 
 # coder-complex

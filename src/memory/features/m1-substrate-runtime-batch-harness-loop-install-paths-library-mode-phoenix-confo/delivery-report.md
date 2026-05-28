@@ -65,7 +65,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/runner-cursor/src/cursor-runner.ts",
+  "path": "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts",
   "range": [17, 75],
   "contentHash": "5ff594a"
 }
@@ -87,7 +87,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [946, 1040],
   "contentHash": "69c9245"
 }
@@ -100,7 +100,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/runner-cursor/src/cursor-runner.ts",
+  "path": "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts",
   "range": [27, 75],
   "contentHash": "5ff594a"
 }
@@ -109,7 +109,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/runner-cursor/src/cursor-runner.test.ts",
+  "path": "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.test.ts",
   "range": [28, 77],
   "contentHash": "2bd723f"
 }
@@ -120,7 +120,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/pipeline/src/compile.ts",
+  "path": "src/internal/packages/@daedaline/pipeline/src/compile.ts",
   "range": [33, 126],
   "contentHash": "4b61fab"
 }
@@ -129,18 +129,18 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/pipeline/src/pipeline.test.ts",
+  "path": "src/internal/packages/@daedaline/pipeline/src/pipeline.test.ts",
   "range": [29, 131],
   "contentHash": "9d4360d"
 }
 ```
 
-- `parseAndRun` now owns the CLI surface for `run`, `feature new`, `advance`, `refresh-prompt`, `close-artifacts`, `init`, and `create-tesseract`, and the install-path verbs keep the deferred-envelope behavior only where the stage contract still requires it.
+- `parseAndRun` now owns the CLI surface for `run`, `feature new`, `advance`, `refresh-prompt`, `close-artifacts`, `init`, and `create-daedaline`, and the install-path verbs keep the deferred-envelope behavior only where the stage contract still requires it.
 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.ts",
   "range": [183, 284],
   "contentHash": "283c1e3"
 }
@@ -149,7 +149,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [706, 742],
   "contentHash": "39d956c"
 }
@@ -160,7 +160,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [228, 324],
   "contentHash": "2382654"
 }
@@ -169,7 +169,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [74, 177],
   "contentHash": "a6f0e2d"
 }
@@ -245,12 +245,12 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 
 # Usage guidelines
 
-1. Run `pnpm -w exec tess run feature-delivery 172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md` from the repository root when you want the harness loop to create `state.json`, `handoff.md`, `next-prompt.md`, and `run.log.jsonl` for the intake stage.
+1. Run `pnpm -w exec ddl run feature-delivery 172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md` from the repository root when you want the harness loop to create `state.json`, `handoff.md`, `next-prompt.md`, and `run.log.jsonl` for the intake stage.
 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [74, 114],
   "contentHash": "a6f0e2d"
 }
@@ -259,18 +259,18 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [228, 324],
   "contentHash": "2382654"
 }
 ```
 
-2. Run `pnpm -w exec tess init --dry-run` when you want a non-writing scaffold preview, `pnpm -w exec tess init --apply` when you want actual writes, and `pnpm -w exec tess create-tesseract demo` when you want a greenfield workspace scaffold.
+2. Run `pnpm -w exec ddl init --dry-run` when you want a non-writing scaffold preview, `pnpm -w exec ddl init --apply` when you want actual writes, and `pnpm -w exec ddl create-daedaline demo` when you want a greenfield workspace scaffold.
 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [706, 742],
   "contentHash": "39d956c"
 }
@@ -279,7 +279,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.ts",
   "range": [204, 247],
   "contentHash": "7adb7c4"
 }
@@ -305,12 +305,12 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 }
 ```
 
-4. Run `pnpm -w exec tess advance <taskId> --artifact src/memory/features/<id>/delivery-report.md` after human acceptance when you want the pipeline to move from `report` to `ship`.
+4. Run `pnpm -w exec ddl advance <taskId> --artifact src/memory/features/<id>/delivery-report.md` after human acceptance when you want the pipeline to move from `report` to `ship`.
 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [1037, 1040],
   "contentHash": "da87c35"
 }
@@ -319,7 +319,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [353, 420],
   "contentHash": "8c9a636"
 }
@@ -327,7 +327,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 
 # Testing
 
-The validation delta is command-level, not numeric: the implementation report records passing package suites for `@tesseract/checkpointer-fs`, `@tesseract/runner-cursor`, `@tesseract/intervention`, `@tesseract/pipeline`, `@tesseract/cli`, `@tesseract/run-logger`, and `@tesseract/persona`, plus `pnpm test:run-logger-conformance`, `node --test tests/*.test.mjs`, `node src/internal/tools/check-phase-0a-scaffold.mjs`, `node src/internal/tools/context-budget-report.mjs`, and `bash -n .cursor/hooks/enforce-policy-compliance.sh`. The review agrees that the gate passes, but it also notes that changed-line coverage is not emitted yet, so there is no coverage-number delta to quote.
+The validation delta is command-level, not numeric: the implementation report records passing package suites for `@daedaline/checkpointer-fs`, `@daedaline/runner-cursor`, `@daedaline/intervention`, `@daedaline/pipeline`, `@daedaline/cli`, `@daedaline/run-logger`, and `@daedaline/persona`, plus `pnpm test:run-logger-conformance`, `node --test tests/*.test.mjs`, `node src/internal/tools/check-phase-0a-scaffold.mjs`, `node src/internal/tools/context-budget-report.mjs`, and `bash -n .cursor/hooks/enforce-policy-compliance.sh`. The review agrees that the gate passes, but it also notes that changed-line coverage is not emitted yet, so there is no coverage-number delta to quote.
 
 ```json
 {

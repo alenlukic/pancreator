@@ -50,7 +50,7 @@ When any agent or automated script emits JSON on any in-scope surface, writers S
 
 When a JSON field represents a git commit hash or a `contentHash`, writers SHALL store and emit the abbreviated prefix length derived from `git rev-parse --short HEAD` at write time across file, markdown, terminal/CLI, and agent-chat surfaces.
 
-When implementation runs, slice A (`coder`) SHALL land formatter call-site alignment, compliance/test extensions, and glossary updates before slice B (`tesseract-engineer`) performs one-shot `.json` bulk migration and records idempotency evidence.
+When implementation runs, slice A (`coder`) SHALL land formatter call-site alignment, compliance/test extensions, and glossary updates before slice B (`daedaline-engineer`) performs one-shot `.json` bulk migration and records idempotency evidence.
 
 When enforcement is delivered, the project SHALL keep compliance tests as the primary gate and SHALL not add pre-commit hooks or Cursor rule enforcement in this feature.
 

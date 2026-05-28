@@ -1,4 +1,4 @@
-id: tesseract.features.timestamp_naming.reference_update_audit
+id: daedaline.features.timestamp_naming.reference_update_audit
 kind: tests
 severity: block
 applies_to:
@@ -25,6 +25,6 @@ runtime:
     - "inventoryReferences"
     - "applyReferenceUpdatesFromManifest"
 metadata:
-  tesseract.contract_id: tesseract.features.timestamp_naming.reference_update_audit
-  tesseract.applies_to: "file-path:src/internal/tools/migrate-timestamp-naming.mjs"
-  tesseract-bootstrap-only: false
+  daedaline.contract_id: daedaline.features.timestamp_naming.reference_update_audit
+  daedaline.applies_to: "file-path:src/internal/tools/migrate-timestamp-naming.mjs"
+  daedaline-bootstrap-only: false

@@ -27,7 +27,7 @@ references:
     note: "Manual inbox archival and ratification are common next-step targets."
 related:
   - /AGENTS.md
-  - /src/memory/handbook/tesseract-config.md
+  - /src/memory/handbook/daedaline-config.md
   - /src/memory/handbook/persona-spec.md
   - /src/memory/handbook/inbox-lifecycle.md
   - /src/memory/handbook/documentation-impact-contract.md
@@ -74,8 +74,8 @@ Maintainers SHALL run `node src/internal/tools/check-operator-output.mjs` from t
 repository root before governed commits that touch operator-visible surfaces.
 The checker scans runnable fenced code blocks in `AGENTS.md`, `README.md`,
 `OPERATION.md`, `src/personas/`, `.cursor/agents/`, `.cursor/rules/`, and
-`src/memory/handbook/` and exits non-zero when a line invokes bare `tess …`
-without the `pnpm -w exec tess …` prefix. Repository tests include
+`src/memory/handbook/` and exits non-zero when a line invokes bare `ddl …`
+without the `pnpm -w exec ddl …` prefix. Repository tests include
 `tests/operator-output-contract.test.mjs`.
 
 ## 3 — Action entry shape
@@ -93,20 +93,20 @@ Each step MUST be one numbered list item. Every item MUST include:
 Agents MUST NOT use vague verbs ("review as needed", "check things") without
 naming the path, command, or gate.
 
-### 3.1 — `tess` CLI invocation prefix
+### 3.1 — `ddl` CLI invocation prefix
 
-This workspace does not expose bare `tess` on the shell `PATH`. When a step
+This workspace does not expose bare `ddl` on the shell `PATH`. When a step
 invokes the CLI, the **How** clause MUST use the workspace exec form from the
 repository root:
 
 ```bash
-pnpm -w exec tess <subcommand> [arguments...]
+pnpm -w exec ddl <subcommand> [arguments...]
 ```
 
-Agents MUST NOT tell the operator to run bare `tess …` in copy-paste commands.
-Prose MAY name the logical verb (`tess advance`) when explaining behavior; only
+Agents MUST NOT tell the operator to run bare `ddl …` in copy-paste commands.
+Prose MAY name the logical verb (`ddl advance`) when explaining behavior; only
 runnable shell lines require the prefix. See
-`/src/memory/handbook/tesseract-config.md` §“CLI invocation in this workspace”.
+`/src/memory/handbook/daedaline-config.md` §“CLI invocation in this workspace”.
 
 ### 3.2 — Command and path specificity
 
@@ -114,7 +114,7 @@ When a step invokes the CLI, the **How** clause MUST state the full invocation,
 for example:
 
 ```bash
-pnpm -w exec tess advance 67055_0522_json-formatting --artifact src/work/172983_05-23-26/67055_0522_json-formatting/review.md
+pnpm -w exec ddl advance 67055_0522_json-formatting --artifact src/work/172983_05-23-26/67055_0522_json-formatting/review.md
 ```
 
 When a step edits files, the **How** clause MUST list every path the operator
@@ -126,24 +126,24 @@ operator pastes (`src/work/<day>/<task-id>/next-prompt.md` only per AGENTS §4).
 
 ### 3.2a — `feature-delivery` inbox entry paths
 
-`pnpm -w exec tess run feature-delivery` and `pnpm -w exec tess feature new`
+`pnpm -w exec ddl run feature-delivery` and `pnpm -w exec ddl feature new`
 take `<inbox-entry>` relative to `src/inbox/in/` (day bucket + filename). **How**
 clauses MUST NOT prefix `src/inbox/in/` on that argument—the CLI prepends it.
 
 Canonical example:
 
 ```bash
-pnpm -w exec tess run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
+pnpm -w exec ddl run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
 ```
 
-See `/src/memory/handbook/tesseract-config.md` §“`feature-delivery` inbox entry
+See `/src/memory/handbook/daedaline-config.md` §“`feature-delivery` inbox entry
 argument”.
 
 ### 3.3 — Read-only versus mutating actions
 
 - **Read-only** steps MUST be labeled `Read-only:` at the start of the **How**
   clause or in the item title.
-- Mutating steps (commit, `pnpm -w exec tess advance`, inbox promotion, file edit) MUST NOT
+- Mutating steps (commit, `pnpm -w exec ddl advance`, inbox promotion, file edit) MUST NOT
   use the read-only label.
 - Steps that only open or read files for human judgment (diff review, delivery
   report read, compliance audit read) are read-only even when the operator
@@ -160,7 +160,7 @@ Rules:
 1. **Fenced `bash` blocks.** Put runnable commands in a fenced code block on
    their own lines. Inline backticks are for single paths or flags inside
    prose, not for multi-command procedures.
-2. **Complete invocations.** Every `git add`, `git commit`, `pnpm`, and `tess`
+2. **Complete invocations.** Every `git add`, `git commit`, `pnpm`, and `ddl`
    line MUST list explicit paths and arguments. The operator MUST NOT need to
    infer "and the other touched files" or "etc."
 3. **No manual assembly steps.** Phrases such as "stage the changed files",
@@ -181,7 +181,7 @@ Rules:
 **Disallowed example:**
 
 ```markdown
-**How:** Stage `AGENTS.md`, `src/memory/handbook/tesseract-config.md`,
+**How:** Stage `AGENTS.md`, `src/memory/handbook/daedaline-config.md`,
 `src/memory/handbook/operator-output-contract.md`, and the other touched
 handbook/persona files, then `git commit` with a message describing the change.
 ```
@@ -194,7 +194,7 @@ handbook/persona files, then `git commit` with a message describing the change.
 
 ```bash
 git add AGENTS.md \
-  src/memory/handbook/tesseract-config.md \
+  src/memory/handbook/daedaline-config.md \
   src/memory/handbook/operator-output-contract.md
 
 git commit -m "$(cat <<'EOF'
@@ -231,7 +231,7 @@ If the step is read-only, prefix **How** with `Read-only:`.
 ## Next operator steps
 
 1. **What:** Record the accepted review artifact and advance the feature-delivery run to the report stage.
-   **How:** Run `pnpm -w exec tess advance 67055_0522_json-formatting --artifact src/work/172983_05-23-26/67055_0522_json-formatting/review.md`. Confirm `src/work/172983_05-23-26/67055_0522_json-formatting/state.json` shows `current_stage: report` before delegating `tech-writer`.
+   **How:** Run `pnpm -w exec ddl advance 67055_0522_json-formatting --artifact src/work/172983_05-23-26/67055_0522_json-formatting/review.md`. Confirm `src/work/172983_05-23-26/67055_0522_json-formatting/state.json` shows `current_stage: report` before delegating `tech-writer`.
 ```
 
 **Example (single read-only step):**
@@ -280,7 +280,7 @@ requires a strict sequence; when sequence matters, state that in option 1
    **Impact:** The run advances to `implement`; the coder may modify paths listed in `touch-set.json` only.
 
 2. **What:** Send the plan back for revision without advancing the run.
-   **How:** Add a new thread round under `src/inbox/threads/<day>/<feature-slug>/` with required edits; do not run `pnpm -w exec tess advance …` until a superseding plan artifact exists.
+   **How:** Add a new thread round under `src/inbox/threads/<day>/<feature-slug>/` with required edits; do not run `pnpm -w exec ddl advance …` until a superseding plan artifact exists.
    **When to choose:** The touch-set is incomplete or the ADR draft misses a constraint.
    **Impact:** The run stays at `plan`; no implementation work should start.
 ```
@@ -292,14 +292,14 @@ active task.
 
 | Situation | What (typical) | How (typical) |
 |---|---|---|
-| Pipeline stage complete | Advance to next stage | `pnpm -w exec tess advance <task-id> --artifact <path>` |
-| Human gate | Ratify or reject | Read-only: inspect artifact; mutating: reply in inbox thread or run `pnpm -w exec tess approve <task-id>` when wired |
+| Pipeline stage complete | Advance to next stage | `pnpm -w exec ddl advance <task-id> --artifact <path>` |
+| Human gate | Ratify or reject | Read-only: inspect artifact; mutating: reply in inbox thread or run `pnpm -w exec ddl approve <task-id>` when wired |
 | Delegate next persona | Hand off execution | Paste `src/work/<day>/<task-id>/next-prompt.md` into `/<persona>-standard` |
-| Pick up inbox work | Start next feature | Read-only: `ls src/inbox/in/`; mutating: `pnpm -w exec tess run feature-delivery <day-bucket>/<file>.md` |
+| Pick up inbox work | Start next feature | Read-only: `ls src/inbox/in/`; mutating: `pnpm -w exec ddl run feature-delivery <day-bucket>/<file>.md` |
 | Verify only | Confirm artifact | Read-only: open cited path(s) and check acceptance criteria |
 | Governed commit | Stage and commit (operator) | Full `git add <every-path>` then `git commit -m "$(cat <<'EOF' … EOF)"`; verify `src/work/<day>/<task-id>/policy-compliance.json` when required |
 | Run tests before commit | Verify green | `pnpm test` (or the exact `pnpm` script named in `package.json`) |
-| Close run | Archive after acceptance | `pnpm -w exec tess close-artifacts <task-id>` after human validates index |
+| Close run | Archive after acceptance | `pnpm -w exec ddl close-artifacts <task-id>` after human validates index |
 | Blocked task | Unblock or escalate | State owner persona and the file the operator must edit or the ratification required |
 
 ## 7 — Prohibited content

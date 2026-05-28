@@ -5,7 +5,7 @@
   "auditor": "compliance-auditor-standard",
   "structural_changes": [
     {
-      "path": "src/internal/packages/@tesseract/cli/src/active-memory-refresh.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/active-memory-refresh.ts",
       "change_type": "modify",
       "rationale": "Additive schema-compat fix: read indexed_at and feature_artifacts[].kind from new index.json format emitted by feature-delivery close-artifacts. No API surface change. 28 CLI tests pass.",
       "finding": "M-02",
@@ -14,7 +14,7 @@
     {
       "path": "docs/PRD.summary.md",
       "change_type": "modify",
-      "rationale": "Phase status corrected from phase-4-in-progress to phase-4-ratified to align with AGENTS.md §8 and tesseract.yaml ground truth.",
+      "rationale": "Phase status corrected from phase-4-in-progress to phase-4-ratified to align with AGENTS.md §8 and daedaline.yaml ground truth.",
       "finding": "M-04",
       "risk_tier": "low"
     }

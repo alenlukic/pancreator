@@ -82,7 +82,7 @@
   "archived_work_artifacts": [],
   "advance_gate": {
     "human_ratification_required": true,
-    "advance_command": "pnpm -w exec tess advance 20004_1826_us-1-dogfood-phase-4-exit --artifact src/memory/features/us-1-dogfood-phase-4-exit/index.json",
+    "advance_command": "pnpm -w exec ddl advance 20004_1826_us-1-dogfood-phase-4-exit --artifact src/memory/features/us-1-dogfood-phase-4-exit/index.json",
     "status": "deferred-until-ratified"
   },
   "artifact_index": {

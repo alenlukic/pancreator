@@ -143,7 +143,7 @@ The body prose MUST satisfy:
 - p95 sentence length at most 40 words across the clause.
 
 The cap MAY be exceeded for one fenced code block, one bulleted list, or one
-table per clause. Exceedances MUST carry a `tesseract.lint-debt` entry with
+table per clause. Exceedances MUST carry a `daedaline.lint-debt` entry with
 a documented justification.
 
 ### Rule 1.9 — Dual-anchor citation on every external standard
@@ -155,7 +155,7 @@ symbol or kind: lines, plus path and contentHash).
 
 URLs without a content-hash anchor fail the lint pass for `severity: block`
 clauses. URLs MAY appear in `severity: warn` clauses with a documented
-`tesseract.lint-debt` entry.
+`daedaline.lint-debt` entry.
 
 ## 2 — Layer 2: per-kind structural conformance
 
@@ -176,9 +176,9 @@ The Rego module MUST carry an OPA `# METADATA` block at the top:
 # references:
 #   - "<path-or-URL with content hash>"
 # custom:
-#   tesseract.contract_id: <wrapper.id>
-#   tesseract.applies_to: <serialized applies_to>
-package tesseract.<area>
+#   daedaline.contract_id: <wrapper.id>
+#   daedaline.applies_to: <serialized applies_to>
+package daedaline.<area>
 ```
 
 Additional rules:
@@ -186,7 +186,7 @@ Additional rules:
 - `deny` rules MUST return strings. The string MUST quote the wrapper's
   `description` verbatim.
 - `import` statements MUST be explicit; wildcard imports fail Layer 2.
-- The package name MUST start with the `tesseract.` namespace for clauses
+- The package name MUST start with the `daedaline.` namespace for clauses
   authored under `/src/memory/`. Vendor-authored modules MUST use the
   `vendor.<owner>.<area>` namespace.
 
@@ -233,7 +233,7 @@ routing is grep-friendly.
 ### 2.4 — `kind: schemathesis` (M2+)
 
 The clause MUST include at least one passing example and one failing
-example per assertion. The OpenAPI extension `x-tesseract.contract_id` MUST
+example per assertion. The OpenAPI extension `x-daedaline.contract_id` MUST
 appear on the gated path or operation and MUST link back to `wrapper.id`.
 
 ### 2.5 — `kind: axe` (M2+)
@@ -310,7 +310,7 @@ runner refuses orphan clauses.
 
 ### Rule 4.2 — Owner is in scope
 
-Every `wrapper.owner`'s `metadata.tesseract-pipeline-stages` MUST include the
+Every `wrapper.owner`'s `metadata.daedaline-pipeline-stages` MUST include the
 stage that triggers the clause. The reviewer flags clauses whose owner is
 out-of-scope for the gate.
 
@@ -323,7 +323,7 @@ clause. Multiple `severity: warn` clauses on the same anchor are permitted.
 ### Rule 4.4 — Kind allowlist enforcement
 
 Every clause's `kind` MUST appear in the current milestone's allowlist on the
-authoring persona's `metadata.tesseract-allowed-kinds-<milestone>` field.
+authoring persona's `metadata.daedaline-allowed-kinds-<milestone>` field.
 Refusal opens a kind-promotion ADR.
 
 ### Rule 4.5 — No self-gating loops
@@ -357,7 +357,7 @@ escalating to `severity: error`.
 
 ### Rule 5.4 — Lint debt has budgets
 
-The aggregate `tesseract.lint-debt` count across the repo MUST be at most:
+The aggregate `daedaline.lint-debt` count across the repo MUST be at most:
 
 - 50 entries in M1.
 - 25 entries in M2.
@@ -378,7 +378,7 @@ The author runs the lint loop after Step 4 of the `author-contract` skill.
 4. After three consecutive self-correction rounds without convergence,
    escalate via inbox per the R29 friction-circuit-breaker pattern.
 
-From Phase 3 step 2 onward, `tess lint contracts --explain` automates steps 1
+From Phase 3 step 2 onward, `ddl lint contracts --explain` automates steps 1
 through 3 and reports the violated rule, a suggested EARS rewrite, and the
 relevant template-section reference. Until then, hand-check.
 

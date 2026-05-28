@@ -32,7 +32,7 @@ describe("run-logger Phoenix conformance (Option A)", () => {
       assert.equal(rec.kind, "span");
       assert.ok(rec.attributes["openinference.span.kind"]);
       assert.ok(rec.attributes["gen_ai.request.model"]);
-      assert.ok(rec.tesseract.task_id);
+      assert.ok(rec.daedaline.task_id);
     }
   });
 
@@ -59,10 +59,10 @@ describe("run-logger Phoenix conformance (Option A)", () => {
     const payload = {
       resourceSpans: [
         {
-          resource: { attributes: [{ key: "service.name", value: { stringValue: "tesseract" } }] },
+          resource: { attributes: [{ key: "service.name", value: { stringValue: "daedaline" } }] },
           scopeSpans: [
             {
-              scope: { name: "tesseract-run-logger-conformance" },
+              scope: { name: "daedaline-run-logger-conformance" },
               spans: records.map((r) => ({
                 traceId: Buffer.from(r.trace_id.padEnd(32, "0")).toString("hex"),
                 spanId: Buffer.from(r.span_id.padEnd(16, "0")).toString("hex"),

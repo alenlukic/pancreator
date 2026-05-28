@@ -11,7 +11,7 @@
     "src/memory/handbook/context-economy.md",
     "src/memory/backlog/index.yaml",
     ".cursor/rules/00-agents-md.mdc",
-    ".cursor/rules/tesseract-engineer.mdc",
+    ".cursor/rules/daedaline-engineer.mdc",
     ".cursorindexingignore",
     ".gitignore",
     "package.json",

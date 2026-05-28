@@ -36,7 +36,7 @@ references:
 
 ## Context
 
-Tesseract task execution regularly changes artifacts, paths, and behavior
+Daedaline task execution regularly changes artifacts, paths, and behavior
 descriptions. Without an explicit per-task documentation-impact check, agents
 can land implementation changes that leave references, indexes, or operator
 guidance stale. That drift increases handoff risk and weakens phase-gate

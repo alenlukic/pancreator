@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills:
   - canonicalize-spec
 maxTurns: 30
@@ -25,16 +25,16 @@ memory: project
 effort: high
 color: cyan
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [intake]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-color-suffix: cyan-100
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [intake]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-color-suffix: cyan-100
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -45,9 +45,9 @@ metadata:
     - canonical-spec-passes-Spec-Kit-shape
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: intake-analyst
-  tesseract-model-tier: complex
-  tesseract-canonical-persona: src/personas/intake-analyst.md
+  daedaline-base-persona: intake-analyst
+  daedaline-model-tier: complex
+  daedaline-canonical-persona: src/personas/intake-analyst.md
 ---
 
 # intake-analyst-complex

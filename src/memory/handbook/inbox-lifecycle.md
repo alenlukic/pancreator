@@ -200,7 +200,7 @@ apply time. Pruning MUST NOT traverse or modify `/src/inbox/notes/`.
 
 ## 4 - Future automated mechanism
 
-The runtime SHOULD expose an explicit archival operation (`tess inbox archive`
+The runtime SHOULD expose an explicit archival operation (`ddl inbox archive`
 or equivalent) that:
 
 - validates `responded` preconditions,

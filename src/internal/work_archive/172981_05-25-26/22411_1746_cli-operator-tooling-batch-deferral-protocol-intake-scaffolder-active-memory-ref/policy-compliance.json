@@ -14,7 +14,7 @@
     "deferred_items": [
       {
         "id": "TASK-22411-TOUCHSET-ALIGNMENT",
-        "rationale": "The local diff contains carry-over paths outside touch-set.json (including src/internal/packages/@tesseract/cli/src/index.ts), so the operator should ratify or reconcile touch-set scope before governed commit."
+        "rationale": "The local diff contains carry-over paths outside touch-set.json (including src/internal/packages/@daedaline/cli/src/index.ts), so the operator should ratify or reconcile touch-set scope before governed commit."
       }
     ]
   },

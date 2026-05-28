@@ -12,7 +12,7 @@ references:
     contentHash: "5009d5a"
     note: WP-B acceptance — SDK invocation and feature-delivery smoke without manual paste.
   - kind: lines
-    path: src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts
+    path: src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts
     range: [286, 309]
     contentHash: "1131dfc"
     note: Current wiring — single intake smoke invoke; compiled graph discarded.
@@ -20,7 +20,7 @@ references:
     path: src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md
     range: [69, 82]
     contentHash: "pending"
-    note: Known gaps — tess run default manual; CLI does not load .env.
+    note: Known gaps — ddl run default manual; CLI does not load .env.
   - kind: path
     path: src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md
     note: Parent M1 batch (WP-B partial delivery).
@@ -34,8 +34,8 @@ references:
 ## Problem
 
 M1 batch task `966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo`
-delivered `@tesseract/runner-cursor` with live `@cursor/sdk` transport and LangGraph pipeline
-compilation, but **`tess run feature-delivery` and `tess advance` do not use the runner as the
+delivered `@daedaline/runner-cursor` with live `@cursor/sdk` transport and LangGraph pipeline
+compilation, but **`ddl run feature-delivery` and `ddl advance` do not use the runner as the
 stage executor**.
 
 Today `startFeatureDelivery` only:
@@ -43,10 +43,10 @@ Today `startFeatureDelivery` only:
 1. Calls `CursorRunner.invoke` **once** at run creation for the **intake** stage.
 2. Uses **`stubPersonaForStage`**, not the real persona markdown from `src/personas/`.
 3. Discards the compiled graph (`void compiled`) and never calls `executePipeline`.
-4. Leaves **`tess advance`** entirely manual (handoff / `next-prompt.md` / operator paste).
+4. Leaves **`ddl advance`** entirely manual (handoff / `next-prompt.md` / operator paste).
 
 Operators with `CURSOR_API_KEY` in repo-root `.env` can prove SDK transport via a standalone
-smoke script, but **`tess` does not load `.env`** and repo `tesseract.yaml` has no
+smoke script, but **`ddl` does not load `.env`** and repo `daedaline.yaml` has no
 `runner.cursor.invocation: sdk`, so the CLI path remains **`manual` by default**.
 
 This gap blocks WP-B acceptance as written in the M1 feature spec: *“When an end-to-end smoke
@@ -56,7 +56,7 @@ that stage without a manual paste step.”*
 ## Goal
 
 Close the harness-loop gap so **`feature-delivery` can optionally execute stages through
-`CursorRunner`** (SDK or manual per `tesseract.yaml`), with checkpoint/run-log alignment,
+`CursorRunner`** (SDK or manual per `daedaline.yaml`), with checkpoint/run-log alignment,
 while preserving today’s manual-delegation path as the default until the operator opts in.
 
 ## Required outcomes
@@ -80,23 +80,23 @@ while preserving today’s manual-delegation path as the default until the opera
    operator pattern; loading `.env` is preferred for dogfood parity with local `.env` setup.
 
 5. **Configuration.** Document and support `runner.cursor.invocation: manual | sdk` in
-   `tesseract.yaml` (already read by `readCursorInvocationMode`); add an example block to
-   `tesseract-defaults.yaml` or handbook if missing.
+   `daedaline.yaml` (already read by `readCursorInvocationMode`); add an example block to
+   `daedaline-defaults.yaml` or handbook if missing.
 
 6. **Tests.** Vitest coverage for: advance + sdk invokes transport (mocked); full inbox path on
-   `tess run feature-delivery`; manual mode still does not call SDK; persona resolution fails
+   `ddl run feature-delivery`; manual mode still does not call SDK; persona resolution fails
    closed on unknown persona.
 
 ## Acceptance criteria
 
-- When `runner.cursor.invocation` is `sdk` and `CURSOR_API_KEY` is set, `pnpm -w exec tess advance
+- When `runner.cursor.invocation` is `sdk` and `CURSOR_API_KEY` is set, `pnpm -w exec ddl advance
   <task-id> --artifact <stage-artifact>` after a stage completes SHALL record a non-stub
   `CursorRunner` invocation in `run.log.jsonl` for that stage transition.
-- When invocation is `manual`, `tess run` and `tess advance` SHALL NOT call `@cursor/sdk`.
-- When `pnpm -w exec tess run feature-delivery <day-bucket>/<file>.md` runs with `sdk`
+- When invocation is `manual`, `ddl run` and `ddl advance` SHALL NOT call `@cursor/sdk`.
+- When `pnpm -w exec ddl run feature-delivery <day-bucket>/<file>.md` runs with `sdk`
   configured, at least one stage hook SHALL use real persona fields (model, tools, disallowedTools,
   maxTurns) from the persona spec—not `stubPersonaForStage` only.
-- Package tests for `@tesseract/cli` and `@tesseract/runner-cursor` SHALL pass; existing M1
+- Package tests for `@daedaline/cli` and `@daedaline/runner-cursor` SHALL pass; existing M1
   touch-set regressions SHALL remain green.
 - Implementation report or feature spec SHALL cite this inbox item as the tracking intake for
   harness-loop runner wiring.
@@ -113,7 +113,7 @@ while preserving today’s manual-delegation path as the default until the opera
 | Area | Persona |
 |---|---|
 | Contract / touch-set | `tech-lead` |
-| CLI + runner + pipeline wiring | `tesseract-engineer` or `coder` |
+| CLI + runner + pipeline wiring | `daedaline-engineer` or `coder` |
 | Review + compliance | `reviewer` |
 
 ## Traceability

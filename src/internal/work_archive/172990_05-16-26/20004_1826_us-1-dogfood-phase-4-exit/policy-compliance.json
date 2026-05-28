@@ -8,7 +8,7 @@
       "AGENTS.md",
       "README.md",
       "docs/M1.index.md",
-      "tesseract.yaml",
+      "daedaline.yaml",
       "src/memory/active/current.md",
       "src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md",
       "src/memory/features/us-1-dogfood-phase-4-exit/index.json",
@@ -29,7 +29,7 @@
     "constitution_alignment": "The task preserves documentation and reference stewardship by recording the affected surfaces and keeping the deferred ratification work explicit.",
     "prd_alignment": "The task keeps the phase-4 exit aligned with the product requirement for ratified and traceable delivery artifacts.",
     "required_updates": [
-      "tesseract.yaml",
+      "daedaline.yaml",
       "README.md",
       "AGENTS.md",
       "docs/M1.index.md",

@@ -100,12 +100,12 @@ ordering so later packages build on verified earlier guarantees.
      contentHash: "22be0fb"}`.
 
 4. **WP-D - Wire MCP read-only handlers to typed responses.**
-   - When `tess.feature.list`, `tess.feature.show`, `tess.status`, and
-     `tess.memory.query` are called through MCP transport, handlers SHALL return
+   - When `ddl.feature.list`, `ddl.feature.show`, `ddl.status`, and
+     `ddl.memory.query` are called through MCP transport, handlers SHALL return
      typed non-stub envelopes.
    - Shared envelope and tests SHALL assert no handler emits
      `{"status":"stub"}`.
-   - `@tesseract/mcp-server` README SHALL document implemented read-only tools
+   - `@daedaline/mcp-server` README SHALL document implemented read-only tools
      and remaining deferred write tools.
    - Traceability citation: `{kind: lines, path:
      "src/memory/features/ci-best-practices-batch/spec.md", range: [183, 205],
@@ -129,7 +129,7 @@ ordering so later packages build on verified earlier guarantees.
 - **Rationale:** This feature changes CI execution behavior, adds two operator
   tools, and replaces MCP read stubs with typed behavior; these changes affect
   operator and agent-facing surfaces.
-- **Required updates in scope:** `@tesseract/mcp-server/README.md` and
+- **Required updates in scope:** `@daedaline/mcp-server/README.md` and
   downstream delivery-report documentation.
 - **Deferred items:** none at plan stage; implementation stage SHALL capture any
   additional doc deltas if touched paths expand.

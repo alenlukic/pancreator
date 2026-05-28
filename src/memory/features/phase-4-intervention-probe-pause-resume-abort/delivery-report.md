@@ -28,7 +28,7 @@ The CLI now appends intervention rows through `appendFeatureDeliveryIntervention
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [297, 325],
   "contentHash": "fd4e60a"
 }
@@ -38,7 +38,7 @@ The CLI now appends intervention rows through `appendFeatureDeliveryIntervention
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.ts",
   "range": [255, 316],
   "contentHash": "4460e5b"
 }
@@ -139,7 +139,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [297, 325],
   "contentHash": "fd4e60a"
 }
@@ -149,7 +149,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [999, 1037],
   "contentHash": "fd4e60a"
 }
@@ -160,7 +160,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [999, 1037],
   "contentHash": "fd4e60a"
 }
@@ -181,7 +181,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.ts",
   "range": [255, 316],
   "contentHash": "4460e5b"
 }
@@ -191,7 +191,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
   "range": [297, 325],
   "contentHash": "fd4e60a"
 }
@@ -271,7 +271,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [55, 95],
   "contentHash": "2355826"
 }
@@ -292,7 +292,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [97, 133],
   "contentHash": "2355826"
 }
@@ -313,7 +313,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [359, 408],
   "contentHash": "2355826"
 }
@@ -334,7 +334,7 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
   "range": [248, 330],
   "contentHash": "2355826"
 }

@@ -248,7 +248,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 }
 ```
 
-- The slice rejects immediate write-mode execution and keeps `TESSERACT_MIGRATION_GO=1` as the explicit guard before any rename write. 
+- The slice rejects immediate write-mode execution and keeps `DAEDALINE_MIGRATION_GO=1` as the explicit guard before any rename write. 
 
 ```json
 {
@@ -290,7 +290,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 
 
 ### Deferrals and follow-ups
-- `timestamp-naming-conventions-migration-write` MUST wait for the `human_approval` gate, MUST require `TESSERACT_MIGRATION_GO=1`, and MUST use the manifest as the rollback map if a partial write occurs. 
+- `timestamp-naming-conventions-migration-write` MUST wait for the `human_approval` gate, MUST require `DAEDALINE_MIGRATION_GO=1`, and MUST use the manifest as the rollback map if a partial write occurs. 
 
 ```json
 {
@@ -392,7 +392,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 }
 ```
 
-- The script MUST keep the `TESSERACT_MIGRATION_GO=1` guard, `--strict-references` audit, and manifest-backed rollback path intact so the later write commit stays auditable. 
+- The script MUST keep the `DAEDALINE_MIGRATION_GO=1` guard, `--strict-references` audit, and manifest-backed rollback path intact so the later write commit stays auditable. 
 
 ```json
 {

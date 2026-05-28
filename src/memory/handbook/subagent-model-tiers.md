@@ -18,7 +18,7 @@ related:
 
 Cursor subagent invocations select a fixed agent definition. The runtime cannot
 reliably choose a different model for the same subagent at call time, so
-Tesseract exposes two model tiers per persona.
+Daedaline exposes two model tiers per persona.
 
 ## Tiers
 

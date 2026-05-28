@@ -72,7 +72,7 @@ references:
 
 ## Context
 
-Tesseract mixes short-term coordination, durable Feature memory, and historical
+Daedaline mixes short-term coordination, durable Feature memory, and historical
 pipeline outputs in one repository. Pass 1 narrowed default Cursor context, yet
 operators still need one explicit model that separates routine orientation
 from durable specs and from archival runs without deleting history. Citation:
@@ -89,7 +89,7 @@ Citations:
 
 ## Decision
 
-When Tesseract classifies repository memory for default retrieval, Tesseract
+When Daedaline classifies repository memory for default retrieval, Daedaline
 SHALL use six tiers:
 **active-memory**,
 **active-work**,
@@ -100,7 +100,7 @@ and **generated-machine-artifact** per glossary and handbook policy. Citations:
 `{kind: lines, path: src/memory/handbook/glossary.md, range: [212, 226], contentHash: 31546d1}`;
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [34, 122], contentHash: a00f149}`.
 
-When routine orientation starts among Memory paths, Tesseract SHALL treat
+When routine orientation starts among Memory paths, Daedaline SHALL treat
 `src/memory/active/**` as the only **active-memory** tier intended for default
 orientation. Citation:
 `{kind: lines, path: src/memory/handbook/context-economy.md, range: [75, 77], contentHash: 108ea6a}`.
@@ -112,17 +112,17 @@ while keeping linked archival paths reachable by explicit read. Citations:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [45, 57], contentHash: a00f149}`;
 `{kind: lines, path: src/memory/active/README.md, range: [36, 67], contentHash: 248cc86}`.
 
-When Tesseract classifies `src/work/**`, Tesseract SHALL treat that prefix as
+When Daedaline classifies `src/work/**`, Daedaline SHALL treat that prefix as
 **active-work** because it holds in-progress pipeline workspace artifacts.
 
-When Tesseract classifies `src/internal/work_archive/**`, `src/inbox/out/**`, and
-`src/inbox/threads/**`, Tesseract SHALL treat those prefixes as **archival-memory**
+When Daedaline classifies `src/internal/work_archive/**`, `src/inbox/out/**`, and
+`src/inbox/threads/**`, Daedaline SHALL treat those prefixes as **archival-memory**
 because they hold historical pipeline workspaces, operator threads, staged
 responses, plans, reviews, and run outputs rather than day-zero orientation. Citation:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [75, 80], contentHash: a00f149}`.
 
-When Tesseract loads **archival-memory** by default inside Cursor indexing or
-agent retrieval, Tesseract SHALL treat that tier as explicit-read only so bulk
+When Daedaline loads **archival-memory** by default inside Cursor indexing or
+agent retrieval, Daedaline SHALL treat that tier as explicit-read only so bulk
 run history does not inflate routine context. Citations:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [82, 87], contentHash: a00f149}`;
 `{kind: lines, path: src/memory/handbook/context-economy.md, range: [79, 80], contentHash: 108ea6a}`.
@@ -132,40 +132,40 @@ paths or attachments; exclusion from default indexing MUST NOT block access.
 Citation:
 `{kind: lines, path: src/memory/handbook/context-economy.md, range: [98, 108], contentHash: 108ea6a}`.
 
-When Tesseract classifies `src/memory/features/**`, `src/memory/adr/**`, and
-`src/memory/backlog/**`, Tesseract SHALL treat those prefixes as **durable-memory**
+When Daedaline classifies `src/memory/features/**`, `src/memory/adr/**`, and
+`src/memory/backlog/**`, Daedaline SHALL treat those prefixes as **durable-memory**
 loaded by explicit route. Citation:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [59, 69], contentHash: a00f149}`.
 
-When Tesseract classifies `src/memory/handbook/**`, `src/personas/**`, `src/skills/**`,
-`.cursor/rules/**`, and `.cursor/agents/**`, Tesseract SHALL treat those paths
+When Daedaline classifies `src/memory/handbook/**`, `src/personas/**`, `src/skills/**`,
+`.cursor/rules/**`, and `.cursor/agents/**`, Daedaline SHALL treat those paths
 as **internal-operating-content** distinct from **active-memory**. Citation:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [92, 104], contentHash: a00f149}`.
 
-When Tesseract classifies generated JSON, manifests, dry-run outputs, post-write
-outputs, and lockfiles, Tesseract SHALL treat those artifacts as
+When Daedaline classifies generated JSON, manifests, dry-run outputs, post-write
+outputs, and lockfiles, Daedaline SHALL treat those artifacts as
 **generated-machine-artifact** surfaces excluded from default semantic indexing
 unless one task documents inclusion. Citation:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [106, 118], contentHash: a00f149}`.
 
-When Tesseract completes a run under `src/work/**`, Tesseract SHALL rely on the
+When Daedaline completes a run under `src/work/**`, Daedaline SHALL rely on the
 `librarian` maintenance role to move completed run artifacts into
 `src/internal/work_archive/**`, update references, and leave active runs in `src/work/**`.
 Citation:
 `{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [46, 46], contentHash: 58bbab6}`.
 
-When Tesseract ships executable budget-warning tooling for **active-memory**
-soft caps, Tesseract SHALL defer that tooling to backlog item
+When Daedaline ships executable budget-warning tooling for **active-memory**
+soft caps, Daedaline SHALL defer that tooling to backlog item
 `active-memory-budget-warning-tool` so reporting and enforcement slices stay
 separated. Citation:
 `{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [48, 48], contentHash: 58bbab6}`.
 
-When Tesseract narrows Cursor rule globs for mirror-parity risk, Tesseract
+When Daedaline narrows Cursor rule globs for mirror-parity risk, Daedaline
 SHALL track ratification work under backlog item
 `active-memory-rule-glob-ratification`. Citation:
 `{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [49, 49], contentHash: 58bbab6}`.
 
-When Tesseract records plan-stage glossary policy, Tesseract SHALL treat the
+When Daedaline records plan-stage glossary policy, Daedaline SHALL treat the
 reversed glossary deferral as closed: tier nouns now live in
 `src/memory/handbook/glossary.md` per plan deferral list item 2 instead of
 remaining undefined.

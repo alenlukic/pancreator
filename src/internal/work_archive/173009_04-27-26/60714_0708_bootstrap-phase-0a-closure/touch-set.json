@@ -32,189 +32,189 @@
       "path": "packages",
       "operation": "add-meta-package",
       "plannedFiles": [
-        "src/internal/packages/tesseract/package.json",
-        "src/internal/packages/tesseract/README.md",
-        "src/internal/packages/tesseract/src/index.ts"
+        "src/internal/packages/daedaline/package.json",
+        "src/internal/packages/daedaline/README.md",
+        "src/internal/packages/daedaline/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/adopter-scan",
+      "path": "src/internal/packages/@daedaline/adopter-scan",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/adopter-scan/package.json",
-        "src/internal/packages/@tesseract/adopter-scan/README.md",
-        "src/internal/packages/@tesseract/adopter-scan/src/index.ts"
+        "src/internal/packages/@daedaline/adopter-scan/package.json",
+        "src/internal/packages/@daedaline/adopter-scan/README.md",
+        "src/internal/packages/@daedaline/adopter-scan/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/checkpointer-fs",
+      "path": "src/internal/packages/@daedaline/checkpointer-fs",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/checkpointer-fs/package.json",
-        "src/internal/packages/@tesseract/checkpointer-fs/README.md",
-        "src/internal/packages/@tesseract/checkpointer-fs/src/index.ts"
+        "src/internal/packages/@daedaline/checkpointer-fs/package.json",
+        "src/internal/packages/@daedaline/checkpointer-fs/README.md",
+        "src/internal/packages/@daedaline/checkpointer-fs/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/cli",
+      "path": "src/internal/packages/@daedaline/cli",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/cli/package.json",
-        "src/internal/packages/@tesseract/cli/README.md",
-        "src/internal/packages/@tesseract/cli/src/index.ts"
+        "src/internal/packages/@daedaline/cli/package.json",
+        "src/internal/packages/@daedaline/cli/README.md",
+        "src/internal/packages/@daedaline/cli/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/contract",
+      "path": "src/internal/packages/@daedaline/contract",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/contract/package.json",
-        "src/internal/packages/@tesseract/contract/README.md",
-        "src/internal/packages/@tesseract/contract/src/index.ts"
+        "src/internal/packages/@daedaline/contract/package.json",
+        "src/internal/packages/@daedaline/contract/README.md",
+        "src/internal/packages/@daedaline/contract/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/contract-runner-llm-judge",
+      "path": "src/internal/packages/@daedaline/contract-runner-llm-judge",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/contract-runner-llm-judge/package.json",
-        "src/internal/packages/@tesseract/contract-runner-llm-judge/README.md",
-        "src/internal/packages/@tesseract/contract-runner-llm-judge/src/index.ts"
+        "src/internal/packages/@daedaline/contract-runner-llm-judge/package.json",
+        "src/internal/packages/@daedaline/contract-runner-llm-judge/README.md",
+        "src/internal/packages/@daedaline/contract-runner-llm-judge/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/contract-runner-rego",
+      "path": "src/internal/packages/@daedaline/contract-runner-rego",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/contract-runner-rego/package.json",
-        "src/internal/packages/@tesseract/contract-runner-rego/README.md",
-        "src/internal/packages/@tesseract/contract-runner-rego/src/index.ts"
+        "src/internal/packages/@daedaline/contract-runner-rego/package.json",
+        "src/internal/packages/@daedaline/contract-runner-rego/README.md",
+        "src/internal/packages/@daedaline/contract-runner-rego/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/contract-style",
+      "path": "src/internal/packages/@daedaline/contract-style",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/contract-style/package.json",
-        "src/internal/packages/@tesseract/contract-style/README.md",
-        "src/internal/packages/@tesseract/contract-style/src/index.ts"
+        "src/internal/packages/@daedaline/contract-style/package.json",
+        "src/internal/packages/@daedaline/contract-style/README.md",
+        "src/internal/packages/@daedaline/contract-style/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/core",
+      "path": "src/internal/packages/@daedaline/core",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/core/package.json",
-        "src/internal/packages/@tesseract/core/README.md",
-        "src/internal/packages/@tesseract/core/src/index.ts"
+        "src/internal/packages/@daedaline/core/package.json",
+        "src/internal/packages/@daedaline/core/README.md",
+        "src/internal/packages/@daedaline/core/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/env-isolation",
+      "path": "src/internal/packages/@daedaline/env-isolation",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/env-isolation/package.json",
-        "src/internal/packages/@tesseract/env-isolation/README.md",
-        "src/internal/packages/@tesseract/env-isolation/src/index.ts"
+        "src/internal/packages/@daedaline/env-isolation/package.json",
+        "src/internal/packages/@daedaline/env-isolation/README.md",
+        "src/internal/packages/@daedaline/env-isolation/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/inbox",
+      "path": "src/internal/packages/@daedaline/inbox",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/inbox/package.json",
-        "src/internal/packages/@tesseract/inbox/README.md",
-        "src/internal/packages/@tesseract/inbox/src/index.ts"
+        "src/internal/packages/@daedaline/inbox/package.json",
+        "src/internal/packages/@daedaline/inbox/README.md",
+        "src/internal/packages/@daedaline/inbox/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/intervention",
+      "path": "src/internal/packages/@daedaline/intervention",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/intervention/package.json",
-        "src/internal/packages/@tesseract/intervention/README.md",
-        "src/internal/packages/@tesseract/intervention/src/index.ts"
+        "src/internal/packages/@daedaline/intervention/package.json",
+        "src/internal/packages/@daedaline/intervention/README.md",
+        "src/internal/packages/@daedaline/intervention/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/mcp-server",
+      "path": "src/internal/packages/@daedaline/mcp-server",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/mcp-server/package.json",
-        "src/internal/packages/@tesseract/mcp-server/README.md",
-        "src/internal/packages/@tesseract/mcp-server/src/index.ts"
+        "src/internal/packages/@daedaline/mcp-server/package.json",
+        "src/internal/packages/@daedaline/mcp-server/README.md",
+        "src/internal/packages/@daedaline/mcp-server/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/memory",
+      "path": "src/internal/packages/@daedaline/memory",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/memory/package.json",
-        "src/internal/packages/@tesseract/memory/README.md",
-        "src/internal/packages/@tesseract/memory/src/index.ts"
+        "src/internal/packages/@daedaline/memory/package.json",
+        "src/internal/packages/@daedaline/memory/README.md",
+        "src/internal/packages/@daedaline/memory/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/notifier",
+      "path": "src/internal/packages/@daedaline/notifier",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/notifier/package.json",
-        "src/internal/packages/@tesseract/notifier/README.md",
-        "src/internal/packages/@tesseract/notifier/src/index.ts"
+        "src/internal/packages/@daedaline/notifier/package.json",
+        "src/internal/packages/@daedaline/notifier/README.md",
+        "src/internal/packages/@daedaline/notifier/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/persona",
+      "path": "src/internal/packages/@daedaline/persona",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/persona/package.json",
-        "src/internal/packages/@tesseract/persona/README.md",
-        "src/internal/packages/@tesseract/persona/src/index.ts"
+        "src/internal/packages/@daedaline/persona/package.json",
+        "src/internal/packages/@daedaline/persona/README.md",
+        "src/internal/packages/@daedaline/persona/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/pipeline",
+      "path": "src/internal/packages/@daedaline/pipeline",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/pipeline/package.json",
-        "src/internal/packages/@tesseract/pipeline/README.md",
-        "src/internal/packages/@tesseract/pipeline/src/index.ts"
+        "src/internal/packages/@daedaline/pipeline/package.json",
+        "src/internal/packages/@daedaline/pipeline/README.md",
+        "src/internal/packages/@daedaline/pipeline/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/policy",
+      "path": "src/internal/packages/@daedaline/policy",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/policy/package.json",
-        "src/internal/packages/@tesseract/policy/README.md",
-        "src/internal/packages/@tesseract/policy/src/index.ts"
+        "src/internal/packages/@daedaline/policy/package.json",
+        "src/internal/packages/@daedaline/policy/README.md",
+        "src/internal/packages/@daedaline/policy/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/run-logger",
+      "path": "src/internal/packages/@daedaline/run-logger",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/run-logger/package.json",
-        "src/internal/packages/@tesseract/run-logger/README.md",
-        "src/internal/packages/@tesseract/run-logger/src/index.ts"
+        "src/internal/packages/@daedaline/run-logger/package.json",
+        "src/internal/packages/@daedaline/run-logger/README.md",
+        "src/internal/packages/@daedaline/run-logger/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/runner-cursor",
+      "path": "src/internal/packages/@daedaline/runner-cursor",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/runner-cursor/package.json",
-        "src/internal/packages/@tesseract/runner-cursor/README.md",
-        "src/internal/packages/@tesseract/runner-cursor/src/index.ts"
+        "src/internal/packages/@daedaline/runner-cursor/package.json",
+        "src/internal/packages/@daedaline/runner-cursor/README.md",
+        "src/internal/packages/@daedaline/runner-cursor/src/index.ts"
       ]
     },
     {
-      "path": "src/internal/packages/@tesseract/worktree",
+      "path": "src/internal/packages/@daedaline/worktree",
       "operation": "complete-package-skeleton",
       "plannedFiles": [
-        "src/internal/packages/@tesseract/worktree/package.json",
-        "src/internal/packages/@tesseract/worktree/README.md",
-        "src/internal/packages/@tesseract/worktree/src/index.ts"
+        "src/internal/packages/@daedaline/worktree/package.json",
+        "src/internal/packages/@daedaline/worktree/README.md",
+        "src/internal/packages/@daedaline/worktree/src/index.ts"
       ]
     }
   ],

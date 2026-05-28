@@ -63,12 +63,12 @@ importers:
       '@eslint/js':
         specifier: 'catalog:'
         version: 9.39.4
-      '@tesseract/cli':
+      '@daedaline/cli':
         specifier: workspace:*
-        version: link:src/internal/packages/@tesseract/cli
-      '@tesseract/mcp-server':
+        version: link:src/internal/packages/@daedaline/cli
+      '@daedaline/mcp-server':
         specifier: workspace:*
-        version: link:src/internal/packages/@tesseract/mcp-server
+        version: link:src/internal/packages/@daedaline/mcp-server
       eslint:
         specifier: 'catalog:'
         version: 9.39.4
@@ -88,9 +88,9 @@ importers:
         specifier: 'catalog:'
         version: 2.8.3
 
-  src/internal/packages/@tesseract/adopter-scan:
+  src/internal/packages/@daedaline/adopter-scan:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -113,7 +113,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/checkpointer-fs:
+  src/internal/packages/@daedaline/checkpointer-fs:
     dependencies:
       '@langchain/core':
         specifier: ^0.3.0
@@ -124,7 +124,7 @@ importers:
       '@langchain/langgraph-checkpoint':
         specifier: 1.0.2
         version: 1.0.2(@langchain/core@0.3.80)
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -147,7 +147,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/cli:
+  src/internal/packages/@daedaline/cli:
     dependencies:
       '@langchain/core':
         specifier: ^0.3.0
@@ -155,25 +155,25 @@ importers:
       '@langchain/langgraph-checkpoint':
         specifier: 1.0.2
         version: 1.0.2(@langchain/core@0.3.80)
-      '@tesseract/checkpointer-fs':
+      '@daedaline/checkpointer-fs':
         specifier: workspace:*
         version: link:../checkpointer-fs
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
-      '@tesseract/inbox':
+      '@daedaline/inbox':
         specifier: workspace:*
         version: link:../inbox
-      '@tesseract/intervention':
+      '@daedaline/intervention':
         specifier: workspace:*
         version: link:../intervention
-      '@tesseract/pipeline':
+      '@daedaline/pipeline':
         specifier: workspace:*
         version: link:../pipeline
-      '@tesseract/run-logger':
+      '@daedaline/run-logger':
         specifier: workspace:*
         version: link:../run-logger
-      '@tesseract/runner-cursor':
+      '@daedaline/runner-cursor':
         specifier: workspace:*
         version: link:../runner-cursor
       commander:
@@ -199,9 +199,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/contract:
+  src/internal/packages/@daedaline/contract:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -221,9 +221,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/contract-runner-llm-judge:
+  src/internal/packages/@daedaline/contract-runner-llm-judge:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -243,9 +243,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/contract-runner-rego:
+  src/internal/packages/@daedaline/contract-runner-rego:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -265,9 +265,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/contract-style:
+  src/internal/packages/@daedaline/contract-style:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -287,7 +287,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/core:
+  src/internal/packages/@daedaline/core:
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -302,34 +302,9 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
-  src/internal/packages/@tesseract/env-isolation:
+  src/internal/packages/@daedaline/env-isolation:
     dependencies:
-      '@tesseract/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@arethetypeswrong/cli':
-        specifier: 'catalog:'
-        version: 0.17.4
-      '@types/node':
-        specifier: ^22.10.0
-        version: 22.19.17
-      publint:
-        specifier: 'catalog:'
-        version: 0.2.12
-      tsup:
-        specifier: 'catalog:'
-        version: 8.5.1(postcss@8.5.12)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-      vitest:
-        specifier: 'catalog:'
-        version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
-
-  src/internal/packages/@tesseract/inbox:
-    dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -352,9 +327,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/intervention:
+  src/internal/packages/@daedaline/inbox:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -377,24 +352,49 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/mcp-server:
+  src/internal/packages/@daedaline/intervention:
+    dependencies:
+      '@daedaline/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.17.4
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.17
+      publint:
+        specifier: 'catalog:'
+        version: 0.2.12
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.1(postcss@8.5.12)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
+
+  src/internal/packages/@daedaline/mcp-server:
     dependencies:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
-      '@tesseract/inbox':
+      '@daedaline/inbox':
         specifier: workspace:*
         version: link:../inbox
-      '@tesseract/intervention':
+      '@daedaline/intervention':
         specifier: workspace:*
         version: link:../intervention
-      '@tesseract/memory':
+      '@daedaline/memory':
         specifier: workspace:*
         version: link:../memory
-      '@tesseract/run-logger':
+      '@daedaline/run-logger':
         specifier: workspace:*
         version: link:../run-logger
       yaml:
@@ -420,9 +420,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/memory:
+  src/internal/packages/@daedaline/memory:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -445,9 +445,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/notifier:
+  src/internal/packages/@daedaline/notifier:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -470,9 +470,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/persona:
+  src/internal/packages/@daedaline/persona:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
       yaml:
@@ -498,7 +498,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/pipeline:
+  src/internal/packages/@daedaline/pipeline:
     dependencies:
       '@langchain/core':
         specifier: ^1.1.44
@@ -509,7 +509,7 @@ importers:
       '@langchain/langgraph-checkpoint':
         specifier: 1.0.2
         version: 1.0.2(@langchain/core@1.1.48)
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
       yaml:
@@ -535,9 +535,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/policy:
+  src/internal/packages/@daedaline/policy:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
       yaml:
@@ -563,9 +563,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/run-logger:
+  src/internal/packages/@daedaline/run-logger:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -588,12 +588,12 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/runner-cursor:
+  src/internal/packages/@daedaline/runner-cursor:
     dependencies:
       '@cursor/sdk':
         specifier: 1.0.13
         version: 1.0.13
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -616,9 +616,9 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/@tesseract/worktree:
+  src/internal/packages/@daedaline/worktree:
     dependencies:
-      '@tesseract/core':
+      '@daedaline/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -641,68 +641,68 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(yaml@2.8.3)
 
-  src/internal/packages/tesseract:
+  src/internal/packages/daedaline:
     dependencies:
-      '@tesseract/adopter-scan':
+      '@daedaline/adopter-scan':
         specifier: workspace:*
-        version: link:../@tesseract/adopter-scan
-      '@tesseract/checkpointer-fs':
+        version: link:../@daedaline/adopter-scan
+      '@daedaline/checkpointer-fs':
         specifier: workspace:*
-        version: link:../@tesseract/checkpointer-fs
-      '@tesseract/cli':
+        version: link:../@daedaline/checkpointer-fs
+      '@daedaline/cli':
         specifier: workspace:*
-        version: link:../@tesseract/cli
-      '@tesseract/contract':
+        version: link:../@daedaline/cli
+      '@daedaline/contract':
         specifier: workspace:*
-        version: link:../@tesseract/contract
-      '@tesseract/contract-runner-llm-judge':
+        version: link:../@daedaline/contract
+      '@daedaline/contract-runner-llm-judge':
         specifier: workspace:*
-        version: link:../@tesseract/contract-runner-llm-judge
-      '@tesseract/contract-runner-rego':
+        version: link:../@daedaline/contract-runner-llm-judge
+      '@daedaline/contract-runner-rego':
         specifier: workspace:*
-        version: link:../@tesseract/contract-runner-rego
-      '@tesseract/contract-style':
+        version: link:../@daedaline/contract-runner-rego
+      '@daedaline/contract-style':
         specifier: workspace:*
-        version: link:../@tesseract/contract-style
-      '@tesseract/core':
+        version: link:../@daedaline/contract-style
+      '@daedaline/core':
         specifier: workspace:*
-        version: link:../@tesseract/core
-      '@tesseract/env-isolation':
+        version: link:../@daedaline/core
+      '@daedaline/env-isolation':
         specifier: workspace:*
-        version: link:../@tesseract/env-isolation
-      '@tesseract/inbox':
+        version: link:../@daedaline/env-isolation
+      '@daedaline/inbox':
         specifier: workspace:*
-        version: link:../@tesseract/inbox
-      '@tesseract/intervention':
+        version: link:../@daedaline/inbox
+      '@daedaline/intervention':
         specifier: workspace:*
-        version: link:../@tesseract/intervention
-      '@tesseract/mcp-server':
+        version: link:../@daedaline/intervention
+      '@daedaline/mcp-server':
         specifier: workspace:*
-        version: link:../@tesseract/mcp-server
-      '@tesseract/memory':
+        version: link:../@daedaline/mcp-server
+      '@daedaline/memory':
         specifier: workspace:*
-        version: link:../@tesseract/memory
-      '@tesseract/notifier':
+        version: link:../@daedaline/memory
+      '@daedaline/notifier':
         specifier: workspace:*
-        version: link:../@tesseract/notifier
-      '@tesseract/persona':
+        version: link:../@daedaline/notifier
+      '@daedaline/persona':
         specifier: workspace:*
-        version: link:../@tesseract/persona
-      '@tesseract/pipeline':
+        version: link:../@daedaline/persona
+      '@daedaline/pipeline':
         specifier: workspace:*
-        version: link:../@tesseract/pipeline
-      '@tesseract/policy':
+        version: link:../@daedaline/pipeline
+      '@daedaline/policy':
         specifier: workspace:*
-        version: link:../@tesseract/policy
-      '@tesseract/run-logger':
+        version: link:../@daedaline/policy
+      '@daedaline/run-logger':
         specifier: workspace:*
-        version: link:../@tesseract/run-logger
-      '@tesseract/runner-cursor':
+        version: link:../@daedaline/run-logger
+      '@daedaline/runner-cursor':
         specifier: workspace:*
-        version: link:../@tesseract/runner-cursor
-      '@tesseract/worktree':
+        version: link:../@daedaline/runner-cursor
+      '@daedaline/worktree':
         specifier: workspace:*
-        version: link:../@tesseract/worktree
+        version: link:../@daedaline/worktree
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'

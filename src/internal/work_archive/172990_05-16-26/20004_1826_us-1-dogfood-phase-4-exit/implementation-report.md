@@ -21,22 +21,22 @@ Concrete repo changes:
 
 ## Explicitly out of scope for this agent invocation
 
-Per `touch-set.json` `non_goals` and `follow_on_slice.deferred_artifacts`, nested `pnpm -w exec tess run feature-delivery …` executions, Phoenix imports, supervisor ship staging, librarian inbox-out copies, populated nested-task identifiers in proof tables, and `src/inbox/out/` delivery-report copies **were not run** inside this scaffold slice. Those remain **operator-led** pipeline actions with human gates. No simulated run telemetry was recorded as proof.
+Per `touch-set.json` `non_goals` and `follow_on_slice.deferred_artifacts`, nested `pnpm -w exec ddl run feature-delivery …` executions, Phoenix imports, supervisor ship staging, librarian inbox-out copies, populated nested-task identifiers in proof tables, and `src/inbox/out/` delivery-report copies **were not run** inside this scaffold slice. Those remain **operator-led** pipeline actions with human gates. No simulated run telemetry was recorded as proof.
 
 ## Nested runs — identifiers
 
 | Run | Directive | Nested task id | Status |
 | --- | --- | --- | --- |
-| End-to-end proof index | `src/inbox/in/phase-4-dogfood-proof-bundle-index.md` | _pending_ | Operator starts `tess run`, advances stages, preserves `run.log.jsonl`. |
+| End-to-end proof index | `src/inbox/in/phase-4-dogfood-proof-bundle-index.md` | _pending_ | Operator starts `ddl run`, advances stages, preserves `run.log.jsonl`. |
 | Intervention probe | `src/inbox/in/phase-4-intervention-probe.md` | _pending_ | Operator performs pause/resume/abort at live `plan`, fills JSON evidence. |
 
 ## Documentation-impact decision
 
-Conditional updates to `AGENTS.md`, `docs/M1.index.md`, `tesseract.yaml`, and `src/memory/active/current.md` **deferred** until accepted proof bundle and human ratification (see `policy-compliance.json` deferred item `PHASE4-RATIFICATION-DOCS`).
+Conditional updates to `AGENTS.md`, `docs/M1.index.md`, `daedaline.yaml`, and `src/memory/active/current.md` **deferred** until accepted proof bundle and human ratification (see `policy-compliance.json` deferred item `PHASE4-RATIFICATION-DOCS`).
 
 ## Validation commands
 
-All commands invoked from repository root `/Users/alen/Dev/tesseract`; aggregate pipeline exit code **0**.
+All commands invoked from repository root `/Users/alen/Dev/daedaline`; aggregate pipeline exit code **0**.
 
 | Command | Exit code |
 | --- | ---: |
@@ -59,4 +59,4 @@ Adds inbox directives and updates feature memory JSON indexing plus markdown pro
 4. Complete supervisor ship-stage staging and tech-writer delivery report plus timestamped `src/inbox/out/` copy per spec.
 5. After reviewing this artifact, run exactly one advance command if accepting implementation stage output:
 
-   `pnpm -w exec tess advance 20004_1826_us-1-dogfood-phase-4-exit --artifact src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md`
+   `pnpm -w exec ddl advance 20004_1826_us-1-dogfood-phase-4-exit --artifact src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md`

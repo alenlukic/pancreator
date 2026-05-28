@@ -10,7 +10,7 @@ references:
     path: .cursor/rules/00-agents-md.mdc
     note: Always-on Cursor rule currently loads AGENTS.md for every invocation.
   - kind: path
-    path: .cursor/rules/tesseract-engineer.mdc
+    path: .cursor/rules/daedaline-engineer.mdc
     note: Broad glob surface appears likely to activate large internal context.
   - kind: path
     path: AGENTS.md
@@ -50,7 +50,7 @@ This harms token economy and may also degrade agent quality by increasing irrele
 
 ## Goal
 
-Implement a comprehensive context-economy pass that reduces default Cursor context exposure while preserving the Tesseract repo’s core operating model.
+Implement a comprehensive context-economy pass that reduces default Cursor context exposure while preserving the Daedaline repo’s core operating model.
 
 The system SHALL optimize for:
 
@@ -112,12 +112,12 @@ Audit every `.cursor/rules/*.mdc` file and identify rules whose `globs` activate
 At minimum, review:
 
 - `.cursor/rules/00-agents-md.mdc`
-- `.cursor/rules/tesseract-engineer.mdc`
+- `.cursor/rules/daedaline-engineer.mdc`
 - `.cursor/rules/intake-analyst.mdc`
 - `.cursor/rules/tech-writer.mdc`
 - `.cursor/rules/supervisor.mdc`
 
-The `tesseract-engineer` rule currently appears too broad. Replace broad corpus globs such as:
+The `daedaline-engineer` rule currently appears too broad. Replace broad corpus globs such as:
 
 ```yaml
 globs: ["AGENTS.md", "BOOTSTRAP.md", "src/memory/**/*", "src/personas/**/*", "src/skills/**/*", "src/work/**/*", ".cursor/agents/**/*", ".cursor/rules/**/*"]
@@ -128,13 +128,13 @@ with narrower triggers such as:
 ```yaml
 globs:
   - "src/inbox/in/**/*.md"
-  - "src/internal/packages/@tesseract/**"
-  - "src/internal/packages/tesseract/**"
+  - "src/internal/packages/@daedaline/**"
+  - "src/internal/packages/daedaline/**"
   - "tools/**/*.mjs"
   - "tests/**/*.ts"
   - "tests/**/*.mjs"
-  - "tesseract.yaml"
-  - "tesseract-defaults.yaml"
+  - "daedaline.yaml"
+  - "daedaline-defaults.yaml"
   - "src/memory/handbook/**/*.md"
   - "src/skills/**/SKILL.md"
   - ".cursor/rules/*.mdc"

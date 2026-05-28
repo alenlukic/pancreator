@@ -38,27 +38,27 @@ references:
 
 ## Context
 
-Tesseract stores active operator guidance, durable feature memory, historical work outputs, internal persona guidance, and generated machine artifacts in one repository. Pass 1 reduced default Cursor context through `.cursorindexingignore`, summary-first PRD routing, and a context-budget report. Pass 2 requires a tier model that separates routine orientation from archival and durable memory without deleting history. Citation: `{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [193, 210], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`.
+Daedaline stores active operator guidance, durable feature memory, historical work outputs, internal persona guidance, and generated machine artifacts in one repository. Pass 1 reduced default Cursor context through `.cursorindexingignore`, summary-first PRD routing, and a context-budget report. Pass 2 requires a tier model that separates routine orientation from archival and durable memory without deleting history. Citation: `{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [193, 210], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`.
 
 ADR-0003 defines inbox archive boundaries, ADR-0004 defines backlog-linked documentation deferrals, and ADR-0005 defines migration rollback discipline. This ADR builds on those decisions rather than moving historical files during the same slice. Citations: `{kind: lines, path: src/memory/adr/0003-inbox-lifecycle-and-archival.md, range: [52, 109], contentHash: TBD-on-commit}`; `{kind: lines, path: src/memory/adr/0004-documentation-impact-contract.md, range: [49, 75], contentHash: TBD-on-commit}`; `{kind: lines, path: src/memory/adr/0005-timestamp-naming-conventions.md, range: [35, 60], contentHash: TBD-on-commit}`.
 
 ## Decision
 
-When Tesseract classifies repository memory, Tesseract SHALL use five tiers: active memory, durable memory, archival memory, internal operating content, and generated machine artifacts.
+When Daedaline classifies repository memory, Daedaline SHALL use five tiers: active memory, durable memory, archival memory, internal operating content, and generated machine artifacts.
 
-When routine orientation starts, Tesseract SHALL load `src/memory/active/**` as the only memory tier intended for default orientation.
+When routine orientation starts, Daedaline SHALL load `src/memory/active/**` as the only memory tier intended for default orientation.
 
-When a summary outgrows active use, Tesseract SHALL promote the retained knowledge into durable memory and SHALL leave the source artifact reachable by explicit read.
+When a summary outgrows active use, Daedaline SHALL promote the retained knowledge into durable memory and SHALL leave the source artifact reachable by explicit read.
 
-When Tesseract classifies `src/work/**`, `src/inbox/out/**`, and `src/inbox/threads/**`, Tesseract SHALL treat those paths as archival memory and explicit-read surfaces.
+When Daedaline classifies `src/work/**`, `src/inbox/out/**`, and `src/inbox/threads/**`, Daedaline SHALL treat those paths as archival memory and explicit-read surfaces.
 
-When Tesseract classifies `src/memory/features/**`, `src/memory/adr/**`, and `src/memory/backlog/**`, Tesseract SHALL treat those paths as durable memory.
+When Daedaline classifies `src/memory/features/**`, `src/memory/adr/**`, and `src/memory/backlog/**`, Daedaline SHALL treat those paths as durable memory.
 
-When Tesseract classifies `src/memory/handbook/**`, `src/personas/**`, `src/skills/**`, `.cursor/rules/**`, and `.cursor/agents/**`, Tesseract SHALL treat those paths as internal operating content loaded by route.
+When Daedaline classifies `src/memory/handbook/**`, `src/personas/**`, `src/skills/**`, `.cursor/rules/**`, and `.cursor/agents/**`, Daedaline SHALL treat those paths as internal operating content loaded by route.
 
-When Tesseract classifies generated JSON, manifests, dry-run outputs, post-write outputs, and lockfiles, Tesseract SHALL treat those paths as generated machine artifacts excluded from default semantic indexing unless a task justifies inclusion.
+When Daedaline classifies generated JSON, manifests, dry-run outputs, post-write outputs, and lockfiles, Daedaline SHALL treat those paths as generated machine artifacts excluded from default semantic indexing unless a task justifies inclusion.
 
-When Tesseract evaluates physical migration of `src/work/**` or existing `src/memory/**` trees, Tesseract SHALL defer migration until one slice ships reference updates, compatibility shims, tests, a migration manifest, and rollback notes.
+When Daedaline evaluates physical migration of `src/work/**` or existing `src/memory/**` trees, Daedaline SHALL defer migration until one slice ships reference updates, compatibility shims, tests, a migration manifest, and rollback notes.
 
 ## Status
 

@@ -19,13 +19,13 @@ references:
 ## Problem
 
 Phase 4 exit requires a second real `feature-delivery` invocation that exercises
-`tess pause`, `tess resume`, and `tess abort` against live ledger state.
+`ddl pause`, `ddl resume`, and `ddl abort` against live ledger state.
 
 ## Goal
 
-Start `pnpm -w exec tess run feature-delivery src/inbox/in/phase-4-intervention-probe.md`,
+Start `pnpm -w exec ddl run feature-delivery src/inbox/in/phase-4-intervention-probe.md`,
 advance until the nested run reaches live `plan`, then pause, resume to the same
-stage, and abort before implementation using `tess abort <task-id> --reason <text>`.
+stage, and abort before implementation using `ddl abort <task-id> --reason <text>`.
 Record outcomes in `src/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json`.
 
 ## Non-goals

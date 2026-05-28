@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills: []
 maxTurns: 30
 isolation: worktree
@@ -24,15 +24,15 @@ memory: project
 effort: medium
 color: slate
 metadata:
-  tesseract-risk-tier: low
-  tesseract-pipeline-stages: [report]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: low
+  daedaline-pipeline-stages: [report]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -43,9 +43,9 @@ metadata:
     - delivery-report-summary-at-most-150-words
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: tech-writer
-  tesseract-model-tier: complex
-  tesseract-canonical-persona: src/personas/tech-writer.md
+  daedaline-base-persona: tech-writer
+  daedaline-model-tier: complex
+  daedaline-canonical-persona: src/personas/tech-writer.md
 ---
 
 # tech-writer-complex

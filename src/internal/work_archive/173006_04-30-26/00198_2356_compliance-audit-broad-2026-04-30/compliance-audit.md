@@ -10,7 +10,7 @@ audit_interaction:
 - **Trigger:** Broad sweep per persona spec §"When you are invoked" #1; no run-log selector; no `audit_interaction.mode` provided.
 - **Run-log selector:** none.
 - **Invocation timestamp:** 2026-04-30T23:56:42-04:00 (2026-05-01T03:56:42Z UTC).
-- **Repo:** `/Users/alen/Dev/tesseract` — branch `main`, HEAD `c9c5def`.
+- **Repo:** `/Users/alen/Dev/daedaline` — branch `main`, HEAD `c9c5def`.
 - **Working tree:** clean (no staged or unstaged changes at invocation).
 - **Exact path set audited:**
   - `src/personas/*.md` (12 files)
@@ -36,7 +36,7 @@ audit_interaction:
 | `persona-16-field-completeness` | Verified all 16 Anthropic frontmatter fields are present in each persona file. | persona-spec.md §2 | pass |
 | `persona-description-ears-rfc2119` | Checked each `description` field for at least one RFC 2119 obligation keyword (MUST, SHALL, SHOULD, etc.). | persona-spec.md §2; contract-style.md Layer 1 Rule 1.1 | **fail — 2 violations** |
 | `persona-color-palette-conformance` | Checked each `color` field against the closed palette defined in persona-spec.md §6 (violet, amber, blue, green, cyan, purple, teal, slate, orange, red). | persona-spec.md §6 | **fail — 1 invalid, 2 reserved/collision** |
-| `persona-metadata-required-keys` | Checked required metadata keys (tesseract-risk-tier, tesseract-pipeline-stages, tesseract-bootstrap-only, tesseract-stability, tesseract-checklist) in each persona. | persona-spec.md §3 | pass |
+| `persona-metadata-required-keys` | Checked required metadata keys (daedaline-risk-tier, daedaline-pipeline-stages, daedaline-bootstrap-only, daedaline-stability, daedaline-checklist) in each persona. | persona-spec.md §3 | pass |
 | `persona-metadata-recognized-keys` | Checked metadata map for keys not in the recognized list per persona-spec.md §7. | persona-spec.md §7 | **fail — 1 unknown key** |
 | `persona-body-sections-check` | Verified three required body sections ("When you are invoked", "What you MUST produce, every invocation", "What you MUST NOT do") present in each persona. | persona-spec.md §4 | pass |
 | `cursor-mdc-parity` | Verified each `.cursor/rules/<name>.mdc` has `description` matching the persona verbatim, `alwaysApply: false`, and `@src/personas/<name>.md` body import. | persona-spec.md §5.2 | pass |
@@ -63,9 +63,9 @@ None.
 
 - Anchor A: `{kind: lines, path: src/personas/contract-writer.md, range: [4, 4], contentHash: TBD-on-commit}` — `description:` field.
 - Anchor B: `{kind: lines, path: src/memory/handbook/persona-spec.md, range: [71, 72], contentHash: TBD-on-commit}` — §2 table row 2: "description … EARS one-liner; at most 50 words; shown to other agents at routing time."
-- **Note:** `contract-writer` carries `tesseract-self-protection: true` (implied by AGENTS.md §3 meta-persona classification). Fixing the description requires explicit human ratification. No auto-remediation applied.
+- **Note:** `contract-writer` carries `daedaline-self-protection: true` (implied by AGENTS.md §3 meta-persona classification). Fixing the description requires explicit human ratification. No auto-remediation applied.
 
-**[MA-002]** `src/personas/persona-designer.md` `description` field does not contain any RFC 2119 obligation keyword. The description reads "Authors Tesseract subagent persona specifications…" with no SHALL, MUST, or SHOULD.
+**[MA-002]** `src/personas/persona-designer.md` `description` field does not contain any RFC 2119 obligation keyword. The description reads "Authors Daedaline subagent persona specifications…" with no SHALL, MUST, or SHOULD.
 
 - Anchor A: `{kind: lines, path: src/personas/persona-designer.md, range: [4, 4], contentHash: TBD-on-commit}` — `description:` field.
 - Anchor B: `{kind: lines, path: src/memory/handbook/persona-spec.md, range: [71, 72], contentHash: TBD-on-commit}` — §2 table row 2.
@@ -85,16 +85,16 @@ None.
 - Anchor B: `{kind: lines, path: src/memory/handbook/persona-spec.md, range: [208, 208], contentHash: TBD-on-commit}` — palette table row: `red | ombudsperson, watchdog | reserved`.
 - **Note:** The existing backlog item `bootstrap-colorblind-safe-palette-migration` covers a future palette migration. The `compliance-auditor` color reassignment SHOULD be bundled with that migration. No auto-remediation applied; deferred.
 
-**[MI-002]** `src/personas/coder.md` and `src/personas/tesseract-engineer.md` both declare `color: green`, creating a palette collision. Persona-spec.md §6 states "pick from the unused palette."
+**[MI-002]** `src/personas/coder.md` and `src/personas/daedaline-engineer.md` both declare `color: green`, creating a palette collision. Persona-spec.md §6 states "pick from the unused palette."
 
 - Anchor A: `{kind: lines, path: src/personas/coder.md, range: [29, 29], contentHash: TBD-on-commit}` — `color: green`.
-- Anchor B: `{kind: lines, path: src/personas/tesseract-engineer.md, range: [31, 31], contentHash: TBD-on-commit}` — `color: green`.
+- Anchor B: `{kind: lines, path: src/personas/daedaline-engineer.md, range: [31, 31], contentHash: TBD-on-commit}` — `color: green`.
 - Anchor C: `{kind: lines, path: src/memory/handbook/persona-spec.md, range: [210, 210], contentHash: TBD-on-commit}` — §6: "When the palette runs out, append a row here; do not improvise."
-- **Note:** Suggested fix: reassign `tesseract-engineer` to a currently unused color (e.g., `purple` if `supervisor` migrates away, or a new palette entry). Deferred to `persona-designer` with the `bootstrap-colorblind-safe-palette-migration` batch.
+- **Note:** Suggested fix: reassign `daedaline-engineer` to a currently unused color (e.g., `purple` if `supervisor` migrates away, or a new palette entry). Deferred to `persona-designer` with the `bootstrap-colorblind-safe-palette-migration` batch.
 
-**[MI-003]** `src/personas/tech-lead.md` metadata block contains the key `tesseract-color-suffix: cyan-200`. This key does not appear in the recognized-key list in persona-spec.md §7. Unknown keys raise a Layer 1 warning (escalating to error in M3).
+**[MI-003]** `src/personas/tech-lead.md` metadata block contains the key `daedaline-color-suffix: cyan-200`. This key does not appear in the recognized-key list in persona-spec.md §7. Unknown keys raise a Layer 1 warning (escalating to error in M3).
 
-- Anchor A: `{kind: lines, path: src/personas/tech-lead.md, range: [33, 33], contentHash: TBD-on-commit}` — `tesseract-color-suffix: cyan-200`.
+- Anchor A: `{kind: lines, path: src/personas/tech-lead.md, range: [33, 33], contentHash: TBD-on-commit}` — `daedaline-color-suffix: cyan-200`.
 - Anchor B: `{kind: lines, path: src/memory/handbook/persona-spec.md, range: [218, 230], contentHash: TBD-on-commit}` — §7 recognized key list.
 - **Note:** The key appears to be an improvised UX hint. Suggested remediation: remove the key and document the need in an RFC if a fine-grained color shading system is desired. Deferred to `persona-designer`.
 
@@ -102,7 +102,7 @@ None.
 
 - Anchor A: `{kind: lines, path: src/inbox/in/timestamp_naming_conventions.md, range: [1, 1], contentHash: TBD-on-commit}` — filename with no SID/HHMM prefix.
 - Anchor B: `{kind: lines, path: src/memory/adr/0005-timestamp-naming-conventions.md, range: [45, 45], contentHash: TBD-on-commit}` — decision: "the agent MUST append the two time prefixes before downstream processing continues."
-- **Note:** The spec was processed before ADR-0005 was ratified (or the intake-analyst did not yet apply the rename rule). The rename SHOULD be applied with a corresponding reference-update pass per ADR-0005. Deferred to `intake-analyst` / `tesseract-engineer`.
+- **Note:** The spec was processed before ADR-0005 was ratified (or the intake-analyst did not yet apply the rename rule). The rename SHOULD be applied with a corresponding reference-update pass per ADR-0005. Deferred to `intake-analyst` / `daedaline-engineer`.
 
 ### note
 
@@ -120,7 +120,7 @@ None.
 
 ## 4. Auto-remediations applied
 
-None. All findings require human ratification (MA-001, MA-002: self-protected meta-personas) or persona-designer ownership routing (MA-003, MI-001, MI-002, MI-003) or intake-analyst/tesseract-engineer routing (MI-004). No safe local fixes were identified within the non-interactive guardrails for this invocation.
+None. All findings require human ratification (MA-001, MA-002: self-protected meta-personas) or persona-designer ownership routing (MA-003, MI-001, MI-002, MI-003) or intake-analyst/daedaline-engineer routing (MI-004). No safe local fixes were identified within the non-interactive guardrails for this invocation.
 
 ---
 
@@ -154,7 +154,7 @@ documentation_impact:
         ownership and human approval of the proposed color assignment.
     - id: compliance-audit-broad-2026-04-30-mi-palette-batch
       rationale: >
-        MI-001 and MI-002 (compliance-auditor red reservation, coder/tesseract-engineer
+        MI-001 and MI-002 (compliance-auditor red reservation, coder/daedaline-engineer
         green collision) are bundled with the existing backlog item
         bootstrap-colorblind-safe-palette-migration for a future batch fix.
 ```
@@ -187,7 +187,7 @@ documentation_impact:
   - `{kind: lines, path: src/personas/contract-writer.md, range: [4, 4], contentHash: TBD-on-commit}`
   - `{kind: lines, path: src/personas/persona-designer.md, range: [4, 4], contentHash: TBD-on-commit}`
   - `{kind: lines, path: src/memory/handbook/contract-style.md, range: [62, 65], contentHash: TBD-on-commit}`
-- **proposed_change:** Add `description-rfc2119-keyword-present` to `tesseract-checklist` in the persona-spec.md §3 required checklist, add a Layer 1 lint rule in the `author-persona` skill that rejects a `description` with no RFC 2119 keyword, and fix both meta-persona descriptions through the human-ratification channel.
+- **proposed_change:** Add `description-rfc2119-keyword-present` to `daedaline-checklist` in the persona-spec.md §3 required checklist, add a Layer 1 lint rule in the `author-persona` skill that rejects a `description` with no RFC 2119 keyword, and fix both meta-persona descriptions through the human-ratification channel.
 - **expected_impact:** Prevents future EARS description violations at authoring time; closes MA-001 and MA-002 after human ratification of the prose fixes.
 - **risk_note:** Adds one lint gate to persona authoring. The cost is low; the benefit is uniform EARS conformance across all personas.
 - **owner_recommendation:** `persona-designer` (spec update) + `coder` (lint rule automation, Phase 3)
@@ -218,8 +218,8 @@ predicate: >
 | `ma002-description-fix` | MA-002: persona-designer description lacks RFC2119 keyword | Human (for ratification) → persona-designer (for edit) | After human ratifies prose rewrite for `src/personas/persona-designer.md` description field. |
 | `ma003-supervisor-color` | MA-003: supervisor uses out-of-palette color `magenta` | persona-designer | After persona-designer proposes a conforming color assignment and human approves. |
 | `mi001-compliance-auditor-red` | MI-001: compliance-auditor uses reserved red | persona-designer (batch with `bootstrap-colorblind-safe-palette-migration`) | When `bootstrap-colorblind-safe-palette-migration` backlog item is actioned. |
-| `mi002-green-collision` | MI-002: coder and tesseract-engineer share `color: green` | persona-designer (batch with palette migration) | When `bootstrap-colorblind-safe-palette-migration` backlog item is actioned. |
-| `mi003-unrecognized-key` | MI-003: tech-lead has unrecognized `tesseract-color-suffix` metadata key | persona-designer | On next persona maintenance pass; remove key or open RFC. |
-| `mi004-inbox-rename` | MI-004: `src/inbox/in/timestamp_naming_conventions.md` missing SID/HHMM prefix | intake-analyst / tesseract-engineer | On next intake-analyst invocation or maintenance pass per ADR-0005. |
+| `mi002-green-collision` | MI-002: coder and daedaline-engineer share `color: green` | persona-designer (batch with palette migration) | When `bootstrap-colorblind-safe-palette-migration` backlog item is actioned. |
+| `mi003-unrecognized-key` | MI-003: tech-lead has unrecognized `daedaline-color-suffix` metadata key | persona-designer | On next persona maintenance pass; remove key or open RFC. |
+| `mi004-inbox-rename` | MI-004: `src/inbox/in/timestamp_naming_conventions.md` missing SID/HHMM prefix | intake-analyst / daedaline-engineer | On next intake-analyst invocation or maintenance pass per ADR-0005. |
 | `pa001-supervisor-color-migration` | PA-001: supervisor color migration proposal | persona-designer | Human approves proposal PA-001; persona-designer implements; rerun broad audit. |
 | `pa002-description-ears-enforcement` | PA-002: EARS validation in author-persona skill | persona-designer + coder (Phase 3) | Human approves proposal PA-002; persona-designer updates spec; rerun broad audit post-Phase-3. |

@@ -82,7 +82,7 @@ test("tests/compliance/json-formatting.yaml matches schema-ref contract surface"
 });
 
 test("resolveAbbrevLen: git-derived length succeeds on this repository", () => {
-  const key = "TESS_JSON_FORMAT_ABBREV_LEN";
+  const key = "DDL_JSON_FORMAT_ABBREV_LEN";
   const had = Object.hasOwn(process.env, key);
   const prev = process.env[key];
   delete process.env[key];
@@ -99,7 +99,7 @@ test("resolveAbbrevLen: git-derived length succeeds on this repository", () => {
 });
 
 test("resolveAbbrevLen: env override yields deterministic abbreviation length", () => {
-  const key = "TESS_JSON_FORMAT_ABBREV_LEN";
+  const key = "DDL_JSON_FORMAT_ABBREV_LEN";
   const had = Object.hasOwn(process.env, key);
   const prev = process.env[key];
   process.env[key] = "11";
@@ -157,7 +157,7 @@ test("formatCanonicalJson nests objects inside arrays across multiple lines", ()
 });
 
 test("isExcludedRelPath and collectRepoJson skip node_modules and package-lock", () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tess-jsonfmt-"));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ddl-jsonfmt-"));
   try {
     const nested = path.join(tmp, "node_modules", "pkg");
     fs.mkdirSync(nested, { recursive: true });
@@ -250,7 +250,7 @@ test("migrate-json-formatting dry-run emits parseable canonically indented JSON 
 });
 
 test("migration dry-run on canonically rewritten temp repo reports zero wouldRewrite count", () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tess-json-canonical-"));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ddl-json-canonical-"));
   try {
     fs.mkdirSync(path.join(tmp, "data"), { recursive: true });
     const obj = { a: 1, tags: ["x"] };
@@ -260,7 +260,7 @@ test("migration dry-run on canonically rewritten temp repo reports zero wouldRew
     const out = execFileSync(process.execPath, [migrateScript, "--dry-run", "--root", tmp], {
       cwd: ROOT,
       encoding: "utf8",
-      env: { ...process.env, TESS_JSON_FORMAT_ABBREV_LEN: "7" },
+      env: { ...process.env, DDL_JSON_FORMAT_ABBREV_LEN: "7" },
     });
     const summary = JSON.parse(out.trimEnd());
     assert.equal(summary.wouldRewrite, 0);

@@ -16,7 +16,7 @@ references:
     path: .cursor/rules/00-agents-md.mdc
     note: Always-on Cursor rule loading AGENTS.md.
   - kind: path
-    path: .cursor/rules/tesseract-engineer.mdc
+    path: .cursor/rules/daedaline-engineer.mdc
     note: Still includes broad internal-context triggers such as handbook/persona paths.
   - kind: path
     path: src/memory/handbook/context-economy.md
@@ -90,7 +90,7 @@ The target is not to delete or hide context. The target is to make context retri
 
 This task SHALL NOT delete historical artifacts.
 
-This task SHALL NOT break existing Tesseract pipeline behavior, run logging, inbox processing, Cursor custom agent discovery, or policy-compliance gates.
+This task SHALL NOT break existing Daedaline pipeline behavior, run logging, inbox processing, Cursor custom agent discovery, or policy-compliance gates.
 
 This task SHALL NOT perform risky large-scale path migrations without either compatibility shims or explicit deferral.
 
@@ -383,7 +383,7 @@ Focus especially on rules that still cause internal content to activate broadly.
 
 At minimum, review:
 
-- `.cursor/rules/tesseract-engineer.mdc`
+- `.cursor/rules/daedaline-engineer.mdc`
 - `.cursor/rules/persona-designer.mdc`
 - `.cursor/rules/intake-analyst.mdc`
 - `.cursor/rules/supervisor.mdc`
@@ -392,7 +392,7 @@ At minimum, review:
 
 Specific guidance:
 
-- Remove `src/personas/**/*.md` from `tesseract-engineer` unless the task is persona work.
+- Remove `src/personas/**/*.md` from `daedaline-engineer` unless the task is persona work.
 - Avoid broad `src/memory/handbook/**/*.md` triggers where a narrower route is sufficient.
 - Keep `src/work/**` out of default rule activation except for rules that specifically operate on run artifacts.
 - Keep generated JSON out of semantic triggers unless a rule explicitly processes machine artifacts.
@@ -493,7 +493,7 @@ This task is complete when all of the following are true:
 10. Simple task mode is documented with clear default behavior and escalation criteria.
 11. `AGENTS.md` is slimmed further if safe, or the decision not to slim it further is documented.
 12. `.cursor/rules/*.mdc` have been audited for remaining broad triggers.
-13. `tesseract-engineer` no longer broadly activates persona/handbook context unless justified.
+13. `daedaline-engineer` no longer broadly activates persona/handbook context unless justified.
 14. `src/internal/tools/context-budget-report.mjs` reports approximate footprint by tier.
 15. Context-budget tests are updated or added.
 16. `.cursorindexingignore` aligns with the new tier model.

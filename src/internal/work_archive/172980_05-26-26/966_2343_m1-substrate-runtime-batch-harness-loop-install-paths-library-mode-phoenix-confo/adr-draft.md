@@ -12,7 +12,7 @@ The run is at the `plan` stage and SHALL emit a bounded implement touch-set for 
 ## Decision
 
 1. **WP-A — LangGraph BaseCheckpointSaver conformance**
-   - The implementation SHALL align `@tesseract/checkpointer-fs` with LangGraph saver-compatible semantics while retaining Tesseract metadata extensions in checkpoint metadata.
+   - The implementation SHALL align `@daedaline/checkpointer-fs` with LangGraph saver-compatible semantics while retaining Daedaline metadata extensions in checkpoint metadata.
    - Intervention flows SHALL consume saver-aligned checkpoint APIs instead of maintaining separate persistence channels.
 
 2. **WP-B — SDK runner feature flag**
@@ -27,16 +27,16 @@ The run is at the `plan` stage and SHALL emit a bounded implement touch-set for 
    - Option A (Phoenix Docker smoke test) SHALL be the default acceptance path for this batch.
    - **Phoenix provisioning:** The conformance harness SHALL ship `tests/run-logger-conformance/docker-compose.yml` with a pinned `arizephoenix/phoenix` image. Smoke tests SHALL boot Phoenix via Docker Compose, wait for health on `:6006`, export/replay OTLP from the sample fixture, assert span hierarchy via Phoenix query APIs, and tear down containers on exit.
    - **Additional backends deferred:** Langfuse and other interchangeability backends SHALL NOT ship in M1. Verification of at least one additional OTel-compatible backend is deferred to milestone `M2` under backlog item `bootstrap-external-observability-phoenix-langfuse`.
-   - **CI provisioning:** A dedicated path-filtered workflow (`.github/workflows/run-logger-conformance.yml`) SHALL run `pnpm test:run-logger-conformance` on PRs touching `@tesseract/run-logger` or `tests/run-logger-conformance/**`.
+   - **CI provisioning:** A dedicated path-filtered workflow (`.github/workflows/run-logger-conformance.yml`) SHALL run `pnpm test:run-logger-conformance` on PRs touching `@daedaline/run-logger` or `tests/run-logger-conformance/**`.
    - Option B deferral SHALL be allowed only when Option A is blocked with evidence and after explicit tech-lead ratification, then recorded as ADR `0007` with milestone `M2`.
 
 5. **WP-E — library-mode primitive**
-   - The library-mode proof SHALL use `@tesseract/persona` primitives (`parsePersonaMarkdown`, `assertPersonaSpec`, `emitCursorAgentsMirror`, `emitMdcShim`) to avoid horizontal dependencies.
+   - The library-mode proof SHALL use `@daedaline/persona` primitives (`parsePersonaMarkdown`, `assertPersonaSpec`, `emitCursorAgentsMirror`, `emitMdcShim`) to avoid horizontal dependencies.
    - The script SHALL execute from outside monorepo context and SHALL emit exactly two files to an isolated temp output path.
 
 6. **WP-F — install-path strategy**
-   - `tess init` SHALL move from deferred envelope to real dry-run-first behavior with apply mode and non-destructive conflict handling.
-   - `create-tesseract` scaffolding SHALL ship as a repeatable greenfield entrypoint that produces a runnable M1 workspace independent of this repository layout.
+   - `ddl init` SHALL move from deferred envelope to real dry-run-first behavior with apply mode and non-destructive conflict handling.
+   - `create-daedaline` scaffolding SHALL ship as a repeatable greenfield entrypoint that produces a runnable M1 workspace independent of this repository layout.
 
 ## Consequences
 
@@ -54,7 +54,7 @@ The run is at the `plan` stage and SHALL emit a bounded implement touch-set for 
 
 ### Neutral
 
-- Human ratification boundaries and `tess advance` artifact contracts remain unchanged.
+- Human ratification boundaries and `ddl advance` artifact contracts remain unchanged.
 - Option B remains a controlled fallback, not a default delivery path.
 
 ## Alternatives considered
@@ -79,10 +79,10 @@ The run is at the `plan` stage and SHALL emit a bounded implement touch-set for 
 - {kind: lines, path: "src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md", range: [76, 130], contentHash: "5009d5a"}
 - {kind: lines, path: "src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md", range: [131, 169], contentHash: "5009d5a"}
 - {kind: lines, path: "src/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/state.json", range: [29, 44], contentHash: "6353af4"}
-- {kind: symbol, path: "src/internal/packages/@tesseract/checkpointer-fs/src/fs-checkpoint-store.ts", symbol: "FsCheckpointStore", contentHash: "e0b1e0c"}
-- {kind: symbol, path: "src/internal/packages/@tesseract/runner-cursor/src/cursor-runner.ts", symbol: "CursorRunner.invoke", contentHash: "0c74713"}
-- {kind: symbol, path: "src/internal/packages/@tesseract/pipeline/src/compile.ts", symbol: "compilePipeline", contentHash: "98644dc"}
-- {kind: symbol, path: "src/internal/packages/@tesseract/cli/src/run.ts", symbol: "parseAndRun", contentHash: "896e6a8"}
-- {kind: symbol, path: "src/internal/packages/@tesseract/persona/src/emit.ts", symbol: "emitMdcShim", contentHash: "4f1eac5"}
+- {kind: symbol, path: "src/internal/packages/@daedaline/checkpointer-fs/src/fs-checkpoint-store.ts", symbol: "FsCheckpointStore", contentHash: "e0b1e0c"}
+- {kind: symbol, path: "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts", symbol: "CursorRunner.invoke", contentHash: "0c74713"}
+- {kind: symbol, path: "src/internal/packages/@daedaline/pipeline/src/compile.ts", symbol: "compilePipeline", contentHash: "98644dc"}
+- {kind: symbol, path: "src/internal/packages/@daedaline/cli/src/run.ts", symbol: "parseAndRun", contentHash: "896e6a8"}
+- {kind: symbol, path: "src/internal/packages/@daedaline/persona/src/emit.ts", symbol: "emitMdcShim", contentHash: "4f1eac5"}
 - {kind: lines, path: "src/memory/adr/0002-system-architecture-map.md", range: [137, 169], contentHash: "31ef906"}
 - {kind: lines, path: "src/memory/adr/0004-documentation-impact-contract.md", range: [49, 90], contentHash: "175d5b3"}

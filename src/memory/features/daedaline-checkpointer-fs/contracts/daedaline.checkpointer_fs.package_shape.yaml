@@ -1,0 +1,27 @@
+id: daedaline.checkpointer_fs.package_shape
+kind: rego
+severity: block
+applies_to:
+  kind: file-path
+  glob: "src/internal/packages/@daedaline/checkpointer-fs/**"
+owner: contract-writer
+description: |
+  When the Phase 2 scaffold for `src/internal/packages/@daedaline/checkpointer-fs` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
+references:
+  - kind: lines
+    path: docs/BOOTSTRAP.md
+    range: [122, 159]
+    contentHash: f54eb5e
+    note: "Bootstrap Phase 2 package contract requirement and dependency order."
+  - kind: lines
+    path: docs/PRD.md
+    range: [1116, 1126]
+    contentHash: 6e43642
+    note: "M1 substrate package scope and interfaces."
+spec: /src/memory/features/daedaline-checkpointer-fs/contracts/daedaline.checkpointer_fs.package_shape.rego
+runtime:
+  package: daedaline.phase2.checkpointer_fs
+  query: data.daedaline.phase2.checkpointer_fs.deny
+metadata:
+  daedaline.contract_id: daedaline.checkpointer_fs.package_shape
+  daedaline.applies_to: file-path:src/internal/packages/@daedaline/checkpointer-fs/**

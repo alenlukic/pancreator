@@ -33,9 +33,9 @@ intake_notes:
     `docs/BOOTSTRAP.md` Phase 4 enumerates exactly those two tools at
     lines 241 to 242 and the glossary defines run-log conformance against
     the same pair.
-  - The directive references `tess pause`, `tess resume`, and `tess abort`.
-    `AGENTS.md` lines 248 to 253 record that the `@tesseract/cli` runtime
-    exposes those verbs through `tess run` and `tess advance` orchestration
+  - The directive references `ddl pause`, `ddl resume`, and `ddl abort`.
+    `AGENTS.md` lines 248 to 253 record that the `@daedaline/cli` runtime
+    exposes those verbs through `ddl run` and `ddl advance` orchestration
     today. The plan stage owns the choice of dogfood scenario that exercises
     each verb.
 references:
@@ -73,7 +73,7 @@ references:
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [79, 84]
     contentHash: 414a8f4
-    note: "Source directive section 3 specifies a second controlled dogfood exercise that empirically exercises `tess pause`, `tess resume`, and `tess abort`."
+    note: "Source directive section 3 specifies a second controlled dogfood exercise that empirically exercises `ddl pause`, `ddl resume`, and `ddl abort`."
   - kind: lines
     path: src/inbox/in/us-1-dogfood-phase-4-exit.md
     range: [86, 95]
@@ -113,7 +113,7 @@ references:
     path: AGENTS.md
     range: [241, 259]
     contentHash: 03ff3cd
-    note: "AGENTS bootstrap-status section records that Phase 4 remains open until the US-1 dogfood exit gaps ratify and that `tess run`, `tess advance`, and `tess close-artifacts` orchestrate Phase 4 active-work."
+    note: "AGENTS bootstrap-status section records that Phase 4 remains open until the US-1 dogfood exit gaps ratify and that `ddl run`, `ddl advance`, and `ddl close-artifacts` orchestrate Phase 4 active-work."
   - kind: lines
     path: AGENTS.md
     range: [141, 148]
@@ -158,7 +158,7 @@ sufficient proof per the non-goals at
   new real intake item under `src/inbox/in/` and MUST NOT reuse a previously
   archived inbox item.
 - When the Feature opens the dogfood run, the Feature MUST start the
-  `feature-delivery` Pipeline through `tess run feature-delivery
+  `feature-delivery` Pipeline through `ddl run feature-delivery
   <inbox-entry>` per the runtime contract at
   `{kind: lines, path: AGENTS.md, range: [249, 253], contentHash: 03ff3cd}`.
 - When the run reaches the intake stage, the `intake-analyst` Persona MUST
@@ -181,7 +181,7 @@ sufficient proof per the non-goals at
   `{kind: lines, path: docs/BOOTSTRAP.md, range: [236, 240], contentHash: 940935e}`.
 - When the run reaches the index stage, the `librarian` Persona MUST index
   the emitted artifacts, MUST refresh the per-feature `index.json`, and MUST
-  execute `tess close-artifacts <task-id>` after human validation per the
+  execute `ddl close-artifacts <task-id>` after human validation per the
   closure contract at
   `{kind: lines, path: AGENTS.md, range: [254, 259], contentHash: 03ff3cd}`.
 - When every stage completes, the run MUST preserve the stage-boundary
@@ -210,18 +210,18 @@ sufficient proof per the non-goals at
 - When the Feature stages the intervention exercise, the Feature MUST run a
   second `feature-delivery` Pipeline invocation distinct from the
   end-to-end run scored under the first acceptance group.
-- When the second run reaches a live stage, the operator MUST invoke `tess
+- When the second run reaches a live stage, the operator MUST invoke `ddl
   pause <task-id>` and the Pipeline state MUST transition to `paused`.
 - When the Feature records the pause outcome, the evidence MUST list the
   task identifier, the originating stage, the timestamp of the pause, and
   the state diff captured before and after the pause.
-- When the paused run is ready to continue, the operator MUST invoke `tess
+- When the paused run is ready to continue, the operator MUST invoke `ddl
   resume <task-id>` and the Pipeline state MUST transition back to the
   prior stage.
 - When the Feature records the resume outcome, the evidence MUST list the
   task identifier, the resumed stage, the timestamp of the resume, and the
   state diff captured before and after the resume.
-- When the second run is ready to abort, the operator MUST invoke `tess
+- When the second run is ready to abort, the operator MUST invoke `ddl
   abort <task-id> --reason <text>` and the Pipeline state MUST transition
   to `aborted`.
 - When the Feature records the abort outcome, the evidence MUST list the
@@ -263,7 +263,7 @@ sufficient proof per the non-goals at
   Phase 4 exit or record the remaining blocker list under a dated
   ratification note inside the proof bundle.
 - When the ratification record marks the exit as ratified, the Feature
-  MUST update `tesseract.yaml` to advance the bootstrap phase tracker
+  MUST update `daedaline.yaml` to advance the bootstrap phase tracker
   beyond `phase-4-in-progress`.
 - While the ratification record remains unsigned, the Feature SHALL NOT
   start any Phase 5 M1 backlog deliverable enumerated at
@@ -276,7 +276,7 @@ sufficient proof per the non-goals at
   per the policy-compliance contract cited in `AGENTS.md` working agreement.
 - When the Feature completes the slice, the Feature MUST record the
   documentation-impact decision for `AGENTS.md`, `docs/M1.index.md`,
-  `tesseract.yaml`, and `src/memory/active/current.md` either as applied
+  `daedaline.yaml`, and `src/memory/active/current.md` either as applied
   updates or as deferred items with backlog linkage.
 - When the Feature reads, traverses, or cites repository content, the
   Feature MUST NOT touch any path under `/src/inbox/notes/` per the
@@ -330,8 +330,8 @@ slot the source directive grants the implementation.
   verification: either Phoenix or Langfuse. The directive authorizes the
   implementation to choose at
   `{kind: lines, path: src/inbox/in/us-1-dogfood-phase-4-exit.md, range: [74, 77], contentHash: 414a8f4}`.
-- D3. Choose the second-run scenario that exercises `tess pause`, `tess
-  resume`, and `tess abort` in a live stage context. The plan stage MUST
+- D3. Choose the second-run scenario that exercises `ddl pause`, `ddl
+  resume`, and `ddl abort` in a live stage context. The plan stage MUST
   pick a scenario that touches a real stage rather than a no-op fixture.
 - D4. Choose the proof-bundle storage path: either the per-feature
   directory at `src/memory/features/us-1-dogfood-phase-4-exit/` or a
@@ -355,7 +355,7 @@ slot the source directive grants the implementation.
 
 ## Cross-references
 
-- This Feature targets the bootstrap exit gate tracked by `tesseract.yaml`
+- This Feature targets the bootstrap exit gate tracked by `daedaline.yaml`
   at `bootstrap.phase: 4` and `status: phase-4-in-progress` per the M1
   index at
   `{kind: lines, path: docs/M1.index.md, range: [18, 34], contentHash: 63d0c43}`.

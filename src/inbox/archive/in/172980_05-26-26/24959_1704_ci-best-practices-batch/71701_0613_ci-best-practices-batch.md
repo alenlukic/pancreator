@@ -16,7 +16,7 @@ references:
     path: src/memory/features/timestamp-naming-conventions/citation-rot-scan.md
     note: Documents 501 TBD-on-commit contentHash placeholders.
   - kind: path
-    path: src/internal/packages/@tesseract/mcp-server/
+    path: src/internal/packages/@daedaline/mcp-server/
     note: Four of twelve MCP tools wired; eight return stub envelopes.
   - kind: path
     path: src/internal/work_archive/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md
@@ -25,7 +25,7 @@ references:
     path: src/internal/tools/canonical-json-format.mjs
     note: Hash abbreviation utilities for citation refresh.
   - kind: path
-    path: src/internal/packages/@tesseract/cli/src/run.test.ts
+    path: src/internal/packages/@daedaline/cli/src/run.test.ts
     note: Package vitests exist but are not exercised in CI.
 ---
 
@@ -62,7 +62,7 @@ clients.
    across ADRs, feature specs, and handbook anchors. Hand-fixing is
    impractical; compliance-auditor records `m-02` on every broad sweep.
 
-4. **MCP read tools.** `@tesseract/mcp-server` wires four tools; eight return
+4. **MCP read tools.** `@daedaline/mcp-server` wires four tools; eight return
    `{"status":"stub"}`. The four highest-value read-only tools
    (`feature.list`, `feature.show`, `status`, `memory.query`) need only
    handler wiring over existing primitives.
@@ -80,7 +80,7 @@ tools—without expanding write surfaces or adding net-new product scope.
 1. `package.json` adds a `"test"` script running `turbo run test` plus
    existing node-test suites (`repo-structure`, `migrate-json-formatting`,
    migration, context-budget).
-2. Each `@tesseract/*` package declares a `test` script so `turbo run test`
+2. Each `@daedaline/*` package declares a `test` script so `turbo run test`
    executes existing vitest configs.
 3. CI runs `pnpm test` after `lint`, `typecheck`, `attw`, and `publint`.
 4. Integration smoke tests needing external services run in a separate
@@ -115,12 +115,12 @@ tools—without expanding write surfaces or adding net-new product scope.
 
 ### Work package D — `mcp-server-readonly-tool-wireup`
 
-1. `tess.feature.list`, `tess.feature.show`, `tess.status`, and
-   `tess.memory.query` return typed results (not stub envelopes).
+1. `ddl.feature.list`, `ddl.feature.show`, `ddl.status`, and
+   `ddl.memory.query` return typed results (not stub envelopes).
 2. Results share a common envelope and propagate dual-anchor citation
    metadata where applicable.
 3. A vitest suite exercises all four tools through the stdio MCP transport.
-4. `@tesseract/mcp-server` README documents the wired surface and Q18
+4. `@daedaline/mcp-server` README documents the wired surface and Q18
    curated-then-expansion plan.
 5. Remaining write tools stay stubbed with the structured deferral protocol
    when that protocol ships (may depend on operator-tooling batch).
@@ -144,7 +144,7 @@ tools—without expanding write surfaces or adding net-new product scope.
 
 - New tests beyond what already exists (except harness tests for new tools).
 - Coverage gating (M2 threshold-policy work).
-- `tess compliance run` CLI verb (node script is sufficient until M2).
+- `ddl compliance run` CLI verb (node script is sufficient until M2).
 - LLM-judge descriptor execution (M2 per PRD §4.5).
 - Resolving `gone` citations whose target files no longer exist.
 - MCP write tools, HTTP transport, or MCP elicitations.
@@ -153,8 +153,8 @@ tools—without expanding write surfaces or adding net-new product scope.
 
 | Work package | Primary owners |
 |---|---|
-| A — CI test aggregation | `tesseract-engineer` (aggregator + package scripts); `coder` (workflow); `reviewer` (runtime budget) |
-| B — Compliance runner | `tesseract-engineer` (runner + CI); `compliance-auditor` (adapter contract); `reviewer` (exit codes) |
-| C — Citation refresh | `tesseract-engineer` (tool + tests); `librarian` (post-merge sweep); `compliance-auditor` (m-02 closure) |
-| D — MCP read tools | `tech-lead` (result envelope); `tesseract-engineer` (handlers + vitest); `reviewer` (no-write audit) |
+| A — CI test aggregation | `daedaline-engineer` (aggregator + package scripts); `coder` (workflow); `reviewer` (runtime budget) |
+| B — Compliance runner | `daedaline-engineer` (runner + CI); `compliance-auditor` (adapter contract); `reviewer` (exit codes) |
+| C — Citation refresh | `daedaline-engineer` (tool + tests); `librarian` (post-merge sweep); `compliance-auditor` (m-02 closure) |
+| D — MCP read tools | `tech-lead` (result envelope); `daedaline-engineer` (handlers + vitest); `reviewer` (no-write audit) |
 | Batch integration | `supervisor` (sequencing); `tech-writer` (handbook/contract-format doc for refresh tool) |

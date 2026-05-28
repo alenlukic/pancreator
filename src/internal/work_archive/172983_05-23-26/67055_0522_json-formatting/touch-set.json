@@ -7,7 +7,7 @@
   "decisions": {
     "scope_basis": "all-r1-json-surfaces",
     "canonical_formatter_owner": "coder",
-    "bulk_migration_owner": "tesseract-engineer",
+    "bulk_migration_owner": "daedaline-engineer",
     "migration_script_path": "src/internal/tools/migrate-json-formatting.mjs",
     "compliance_descriptor_path": "tests/compliance/json-formatting.yaml",
     "compliance_schema_path": "tests/compliance/schemas/latest.yaml",
@@ -39,11 +39,11 @@
       "access": "update"
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/feature-delivery-run.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
       "access": "update"
     },
     {
-      "path": "src/internal/packages/@tesseract/cli/src/run.test.ts",
+      "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
       "access": "update"
     },
     {

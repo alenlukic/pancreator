@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
-import tesseractPlugin from "./src/internal/tools/eslint-rules/no-horizontal-primitive-deps.mjs";
+import daedalinePlugin from "./src/internal/tools/eslint-rules/no-horizontal-primitive-deps.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,7 +34,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/internal/packages/@tesseract/**/bin/*.js"],
+    files: ["src/internal/packages/@daedaline/**/bin/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -46,8 +46,8 @@ export default tseslint.config(
   },
   {
     files: [
-      "src/internal/packages/tesseract/src/**/*.ts",
-      "src/internal/packages/@tesseract/**/*.ts",
+      "src/internal/packages/daedaline/src/**/*.ts",
+      "src/internal/packages/@daedaline/**/*.ts",
     ],
     languageOptions: {
       parser: tseslint.parser,
@@ -58,10 +58,10 @@ export default tseslint.config(
       },
     },
     plugins: {
-      "@tesseract": tesseractPlugin,
+      "@daedaline": daedalinePlugin,
     },
     rules: {
-      "@tesseract/no-horizontal-primitive-deps": "error",
+      "@daedaline/no-horizontal-primitive-deps": "error",
     },
   },
 );

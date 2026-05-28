@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "daedaline.run_logger.package_shape",
+      "path": "/src/memory/features/daedaline-run-logger/contracts/daedaline.run_logger.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "src/internal/packages/@daedaline/run-logger/**"
+      }
+    },
+    {
+      "id": "daedaline.run_logger.readme_ergonomics",
+      "path": "/src/memory/features/daedaline-run-logger/contracts/daedaline.run_logger.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "src/internal/packages/@daedaline/run-logger/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "38ade8a"
+      }
+    }
+  ]
+}

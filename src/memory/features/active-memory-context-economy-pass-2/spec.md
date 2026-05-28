@@ -95,7 +95,7 @@ references:
     path: src/inbox/in/token-economy-enhanced.md
     range: [378, 402]
     contentHash: fb1ac76
-    note: "Required implementation §8 specifies the second Cursor rule audit covering tesseract-engineer, persona-designer, intake-analyst, supervisor, tech-lead, and tech-writer."
+    note: "Required implementation §8 specifies the second Cursor rule audit covering daedaline-engineer, persona-designer, intake-analyst, supervisor, tech-lead, and tech-writer."
   - kind: lines
     path: src/inbox/in/token-economy-enhanced.md
     range: [403, 426]
@@ -373,11 +373,11 @@ for explicit human and agent reads per the non-goals at
 ### Narrow remaining Cursor rule triggers
 
 - When the Feature audits `.cursor/rules/*.mdc`, the audit MUST cover at least
-  `tesseract-engineer.mdc`, `persona-designer.mdc`, `intake-analyst.mdc`,
+  `daedaline-engineer.mdc`, `persona-designer.mdc`, `intake-analyst.mdc`,
   `supervisor.mdc`, `tech-lead.mdc`, and `tech-writer.mdc` per the directive
   at
   `{kind: lines, path: src/inbox/in/token-economy-enhanced.md, range: [378, 402], contentHash: fb1ac76}`.
-- When the Feature narrows `.cursor/rules/tesseract-engineer.mdc`, the
+- When the Feature narrows `.cursor/rules/daedaline-engineer.mdc`, the
   Feature MUST remove `src/personas/**/*.md` from the default activation set
   unless the rule body specifically targets persona authoring.
 - When the Feature audits the rule files, the Feature MUST avoid broad
@@ -604,7 +604,7 @@ slot the directive grants the implementation.
   `src/memory/features/active-memory-context-economy-pass-2/index.json`.
 - The `src/inbox/in/token-economy-enhanced.md` directive cites
   `src/internal/tools/context-budget-report.mjs`, `AGENTS.md`,
-  `.cursor/rules/tesseract-engineer.mdc`,
+  `.cursor/rules/daedaline-engineer.mdc`,
   `src/memory/handbook/context-economy.md`, `.cursorindexingignore`, the `src/work/`
   tree, and the `src/memory/` tree as the surfaces this Feature edits or
   classifies; intake-stage produces this spec only and routes downstream

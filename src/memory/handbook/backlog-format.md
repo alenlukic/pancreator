@@ -33,7 +33,7 @@ related:
 
 # Backlog Index Schema
 
-Tesseract SHALL track open, in-flight, deferred, blocked, completed, and
+Daedaline SHALL track open, in-flight, deferred, blocked, completed, and
 cancelled work items in one canonical file:
 `/src/memory/backlog/index.yaml`.
 

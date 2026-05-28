@@ -42,7 +42,7 @@ The plan stage SHALL enforce a minimal-surface evidence decision:
 - Positive: Scope remains safe because parent-feature writes are limited to
   two explicitly named files.
 - Positive: Human ratification can validate readiness from stable artifacts
-  before any subsequent `tess advance`.
+  before any subsequent `ddl advance`.
 - Negative: The bounded scope requires follow-on work for any unrelated
   evidence gaps discovered during review.
 - Negative: Operators must maintain strict sequencing and snapshot discipline

@@ -10,7 +10,7 @@ Phase 4 remains open until the repository proves a real US-1 dogfood run, extern
 
 The proof bundle depends on inbox lifecycle discipline because the dogfood run starts from `src/inbox/in/` and ends with delivery artifacts under `src/inbox/out/`. ADR 0003 records the active inbox queue and archive boundaries: `{kind: lines, path: src/memory/adr/0003-inbox-lifecycle-and-archival.md, range: [66, 91], contentHash: fbd44e8b8627bd14c06e8e86d720984f2cf34f25669737289d43ac92e9678995}`.
 
-The proof bundle also depends on documentation-impact discipline because Phase 4 ratification can update `tesseract.yaml`, active memory, and operator guidance. ADR 0004 requires each task to record documentation and reference impact: `{kind: lines, path: src/memory/adr/0004-documentation-impact-contract.md, range: [49, 75], contentHash: f0ee449a848d71b22c21dec91d0581392e8e556c2537fc3dfe169e02db642a8c}`.
+The proof bundle also depends on documentation-impact discipline because Phase 4 ratification can update `daedaline.yaml`, active memory, and operator guidance. ADR 0004 requires each task to record documentation and reference impact: `{kind: lines, path: src/memory/adr/0004-documentation-impact-contract.md, range: [49, 75], contentHash: f0ee449a848d71b22c21dec91d0581392e8e556c2537fc3dfe169e02db642a8c}`.
 
 ## Decision
 

@@ -10,7 +10,7 @@ those surfaces.
 ## What changed (high level)
 
 - Added root `.cursorindexingignore` and stopped ignoring it in `.gitignore`.
-- Narrowed `.cursor/rules/tesseract-engineer.mdc` and `.cursor/rules/00-agents-md.mdc` globs; recorded audit in `rule-audit.md`.
+- Narrowed `.cursor/rules/daedaline-engineer.mdc` and `.cursor/rules/00-agents-md.mdc` globs; recorded audit in `rule-audit.md`.
 - Added `src/memory/handbook/context-economy.md` and routed it from `src/memory/handbook/index.md`.
 - Added `PRD.summary.md` and `PRD.index.md`; updated `AGENTS.md` and `README.md` for summary-first retrieval.
 - Added `src/internal/tools/context-budget-report.mjs` plus `pnpm run context:budget` and `context:budget:test`.

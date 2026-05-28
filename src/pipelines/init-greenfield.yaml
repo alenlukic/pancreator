@@ -1,7 +1,7 @@
 id: init-greenfield
 version: "1"
 metadata:
-  tesseract-bootstrap-only: false
+  daedaline-bootstrap-only: false
   description: >-
     PRD §11 MVP pipeline. Greenfield repo bootstrap: scaffold the AGENTS.md +
     handbook seeds + persona roster, draft the inaugural feature spec, and

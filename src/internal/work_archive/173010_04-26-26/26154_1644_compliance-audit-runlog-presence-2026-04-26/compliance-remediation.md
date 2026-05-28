@@ -11,5 +11,5 @@
 
 ## Next-owner routing
 
-- `tech-lead` and `coder`: continue Phase 3 substrate delivery for `@tesseract/run-logger` and runtime wiring per bootstrap plan.
+- `tech-lead` and `coder`: continue Phase 3 substrate delivery for `@daedaline/run-logger` and runtime wiring per bootstrap plan.
 - `supervisor`: verify run-log emission in Phase 4 dogfood gate where run-log rendering is an explicit exit check.

@@ -7,9 +7,9 @@
 #   - "src/memory/handbook/constitution.md:[108,116]#00874481f8aaaa6618a4b6ab4d3d115ebfffd5dcf61d3d2ef38bb2076ed17432"
 #   - "src/memory/handbook/policy-compliance-contract.md:[49,55]#6a7a1e5d27a3c1c0dec59b19c5267e817ea03dcef969b2eba3d6c11cc42a228a"
 # custom:
-#   tesseract.contract_id: tesseract.governance.normalize-dual-anchor-contenthash-corpus
-#   tesseract.applies_to: file-path:{AGENTS.md,src/memory/handbook/**/*.md,src/personas/**/*.md,.cursor/agents/**/*.md,src/memory/features/**/contracts/**/*.{yaml,yml,md}}
-package tesseract.governance.dual_anchor_contenthash
+#   daedaline.contract_id: daedaline.governance.normalize-dual-anchor-contenthash-corpus
+#   daedaline.applies_to: file-path:{AGENTS.md,src/memory/handbook/**/*.md,src/personas/**/*.md,.cursor/agents/**/*.md,src/memory/features/**/contracts/**/*.{yaml,yml,md}}
+package daedaline.governance.dual_anchor_contenthash
 
 import rego.v1
 

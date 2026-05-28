@@ -1,0 +1,204 @@
+const EMPTY_OBJECT_SCHEMA = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {} as const,
+};
+
+const TASK_ID_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    taskId: { type: "string" as const, description: "Task id under src/work/" },
+  },
+  required: ["taskId"] as const,
+};
+
+const FEATURE_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    action: {
+      type: "string" as const,
+      enum: ["list", "show"] as const,
+      description: "Read-only feature action (default list)",
+    },
+    featureId: {
+      type: "string" as const,
+      description: "Feature id for action show",
+    },
+  },
+};
+
+const STATUS_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    taskId: {
+      type: "string" as const,
+      description: "Optional feature-delivery task id for task-scoped status",
+    },
+  },
+};
+
+const MEMORY_QUERY_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    query: {
+      type: "string" as const,
+      description: "Free-text query routed through handbook and active memory",
+    },
+  },
+  required: ["query"] as const,
+};
+
+const RESUME_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    taskId: { type: "string" as const, description: "Task id under src/work/" },
+    checkpoint: {
+      type: "string" as const,
+      description: "Optional checkpoint id for time-travel resume",
+    },
+  },
+  required: ["taskId"] as const,
+};
+
+const ABORT_ARG = {
+  type: "object" as const,
+  additionalProperties: false as const,
+  properties: {
+    taskId: { type: "string" as const, description: "Task id under src/work/" },
+    reason: { type: "string" as const, description: "Optional abort reason" },
+  },
+  required: ["taskId"] as const,
+};
+
+export type DdlToolName =
+  | "ddl.init"
+  | "ddl.run"
+  | "ddl.inbox"
+  | "ddl.feature"
+  | "ddl.status"
+  | "ddl.approve"
+  | "ddl.memory"
+  | "ddl.contracts"
+  | "ddl.lint"
+  | "ddl.pause"
+  | "ddl.resume"
+  | "ddl.abort";
+
+export interface ToolDefinition {
+  name: DdlToolName;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
+/**
+ * The tools array SHALL match the MVP `ddl` CLI command surface
+ * (`parseAndRun` in `@daedaline/cli`).
+ */
+export function listToolDefinitions(): readonly ToolDefinition[] {
+  return [
+    {
+      name: "ddl.init",
+      description:
+        "Initialize a Daedaline workspace in the current repository [deferred: M3]",
+      inputSchema: EMPTY_OBJECT_SCHEMA,
+    },
+    {
+      name: "ddl.run",
+      description: "Run a pipeline by name [deferred: M2]",
+      inputSchema: EMPTY_OBJECT_SCHEMA,
+    },
+    {
+      name: "ddl.inbox",
+      description: "List pending human directives under src/inbox/in/",
+      inputSchema: EMPTY_OBJECT_SCHEMA,
+    },
+    {
+      name: "ddl.feature",
+      description:
+        "Read-only feature memory queries (`action`: list | show) [write paths deferred: M2]",
+      inputSchema: FEATURE_ARG,
+    },
+    {
+      name: "ddl.status",
+      description:
+        "Read pipeline and workspace status; pass taskId for task-scoped detail",
+      inputSchema: STATUS_ARG,
+    },
+    {
+      name: "ddl.approve",
+      description: "Approve a gated action [deferred: M3]",
+      inputSchema: EMPTY_OBJECT_SCHEMA,
+    },
+    {
+      name: "ddl.memory",
+      description:
+        "Query handbook routing and active-memory tiers (`query` required) [write paths deferred: M2]",
+      inputSchema: MEMORY_QUERY_ARG,
+    },
+    {
+      name: "ddl.contracts",
+      description: "List or evaluate Spec Contracts [deferred: M2]",
+      inputSchema: EMPTY_OBJECT_SCHEMA,
+    },
+    {
+      name: "ddl.lint",
+      description: "Run repository lint and policy gates [deferred: M1]",
+      inputSchema: EMPTY_OBJECT_SCHEMA,
+    },
+    {
+      name: "ddl.pause",
+      description: "Append a pause intervention for a task",
+      inputSchema: TASK_ID_ARG,
+    },
+    {
+      name: "ddl.resume",
+      description: "Append a resume intervention for a task",
+      inputSchema: RESUME_ARG,
+    },
+    {
+      name: "ddl.abort",
+      description: "Append an abort intervention for a task",
+      inputSchema: ABORT_ARG,
+    },
+  ];
+}
+
+/**
+ * The resource templates SHALL cover `/src/memory/`, Inbox, and `src/work/<taskId>/run.log.jsonl` reads.
+ */
+export interface ResourceDefinitionEntry {
+  readonly name: string;
+  readonly uriTemplate: string;
+  readonly description: string;
+  readonly mimeType?: string;
+}
+
+export function listResourceDefinitions(): readonly ResourceDefinitionEntry[] {
+  return [
+    {
+      name: "daedaline-memory-areas",
+      uriTemplate: "memory://",
+      description:
+        "JSON text listing one Memory directory name for each child of `/src/memory/`.",
+      mimeType: "application/json",
+    },
+    {
+      name: "daedaline-inbox-queues",
+      uriTemplate: "inbox://",
+      description:
+        "JSON text listing file names in `src/inbox/in/`, `src/inbox/out/`, and `src/inbox/threads/`.",
+      mimeType: "application/json",
+    },
+    {
+      name: "daedaline-work-run-log",
+      uriTemplate: "work-run-log://{taskId}",
+      description: "Text contents of `src/work/<taskId>/run.log.jsonl` when the file exists.",
+      mimeType: "application/x-ndjson",
+    },
+  ];
+}

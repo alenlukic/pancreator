@@ -36,7 +36,7 @@
       },
       {
         "id": "timestamp-naming-conventions-migration-write-followup",
-        "rationale": "The migration write-mode follow-up task remains the next implement slice for this feature; the env-var guard (TESSERACT_MIGRATION_GO=1) and the manifest-based rollback path are documented in plan.md, ADR 0005, the PR draft, the delivery report, and the refreshed feature index handoff block."
+        "rationale": "The migration write-mode follow-up task remains the next implement slice for this feature; the env-var guard (DAEDALINE_MIGRATION_GO=1) and the manifest-based rollback path are documented in plan.md, ADR 0005, the PR draft, the delivery report, and the refreshed feature index handoff block."
       }
     ]
   },

@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 skills:
   - author-persona
 maxTurns: 30
@@ -25,15 +25,15 @@ memory: project
 effort: medium
 color: violet
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [bootstrap-phase-1, sme-spawn]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [bootstrap-phase-1, sme-spawn]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - skills-resolve-to-existing-files
@@ -42,9 +42,9 @@ metadata:
     - dual-anchor-citations-into-PRD
     - layer-1-lint-clean
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: persona-designer
-  tesseract-model-tier: standard-alias
-  tesseract-canonical-persona: src/personas/persona-designer.md
+  daedaline-base-persona: persona-designer
+  daedaline-model-tier: standard-alias
+  daedaline-canonical-persona: src/personas/persona-designer.md
 ---
 
 # persona-designer

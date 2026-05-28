@@ -45,26 +45,26 @@ read per `src/memory/handbook/context-economy.md`.
 | `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` | [indexed] (`2026-05-27T17:35:30.000Z`) | `src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix…` |
 | `ci-best-practices-batch` | [indexed] (`2026-05-26T18:23:19.000Z`) | `src/memory/features/ci-best-practices-batch/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md` |
 | `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`2026-05-26T12:00:00.000Z`) | `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-vari…` |
-| `tesseract-adopter-scan` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-adopter-scan/delivery-report.md` | `—` | `—` |
-| `tesseract-checkpointer-fs` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-checkpointer-fs/delivery-report.md` | `—` | `—` |
-| `tesseract-cli` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-cli/delivery-report.md` | `—` | `—` |
-| `tesseract-contract` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract/delivery-report.md` | `—` | `—` |
-| `tesseract-contract-runner-llm-judge` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract-runner-llm-judge/delivery-report.md` | `—` | `—` |
-| `tesseract-contract-runner-rego` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract-runner-rego/delivery-report.md` | `—` | `—` |
-| `tesseract-contract-style` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-contract-style/delivery-report.md` | `—` | `—` |
-| `tesseract-core` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-core/delivery-report.md` | `—` | `—` |
-| `tesseract-env-isolation` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-env-isolation/delivery-report.md` | `—` | `—` |
-| `tesseract-inbox` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-inbox/delivery-report.md` | `—` | `—` |
-| `tesseract-intervention` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-intervention/delivery-report.md` | `—` | `—` |
-| `tesseract-mcp-server` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-mcp-server/delivery-report.md` | `—` | `—` |
-| `tesseract-memory` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-memory/delivery-report.md` | `—` | `—` |
-| `tesseract-notifier` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-notifier/delivery-report.md` | `—` | `—` |
-| `tesseract-persona` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-persona/delivery-report.md` | `—` | `—` |
-| `tesseract-pipeline` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-pipeline/delivery-report.md` | `—` | `—` |
-| `tesseract-policy` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-policy/delivery-report.md` | `—` | `—` |
-| `tesseract-run-logger` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-run-logger/delivery-report.md` | `—` | `—` |
-| `tesseract-runner-cursor` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-runner-cursor/delivery-report.md` | `—` | `—` |
-| `tesseract-worktree` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/tesseract-worktree/delivery-report.md` | `—` | `—` |
+| `daedaline-adopter-scan` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-adopter-scan/delivery-report.md` | `—` | `—` |
+| `daedaline-checkpointer-fs` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-checkpointer-fs/delivery-report.md` | `—` | `—` |
+| `daedaline-cli` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-cli/delivery-report.md` | `—` | `—` |
+| `daedaline-contract` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-contract/delivery-report.md` | `—` | `—` |
+| `daedaline-contract-runner-llm-judge` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-contract-runner-llm-judge/delivery-report.md` | `—` | `—` |
+| `daedaline-contract-runner-rego` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-contract-runner-rego/delivery-report.md` | `—` | `—` |
+| `daedaline-contract-style` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-contract-style/delivery-report.md` | `—` | `—` |
+| `daedaline-core` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-core/delivery-report.md` | `—` | `—` |
+| `daedaline-env-isolation` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-env-isolation/delivery-report.md` | `—` | `—` |
+| `daedaline-inbox` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-inbox/delivery-report.md` | `—` | `—` |
+| `daedaline-intervention` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-intervention/delivery-report.md` | `—` | `—` |
+| `daedaline-mcp-server` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-mcp-server/delivery-report.md` | `—` | `—` |
+| `daedaline-memory` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-memory/delivery-report.md` | `—` | `—` |
+| `daedaline-notifier` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-notifier/delivery-report.md` | `—` | `—` |
+| `daedaline-persona` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-persona/delivery-report.md` | `—` | `—` |
+| `daedaline-pipeline` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-pipeline/delivery-report.md` | `—` | `—` |
+| `daedaline-policy` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-policy/delivery-report.md` | `—` | `—` |
+| `daedaline-run-logger` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-run-logger/delivery-report.md` | `—` | `—` |
+| `daedaline-runner-cursor` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-runner-cursor/delivery-report.md` | `—` | `—` |
+| `daedaline-worktree` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-worktree/delivery-report.md` | `—` | `—` |
 | `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`2026-05-26T00:00:00.000Z`) | `src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md` | `—` | `src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-me…` |
 | `json-formatting` | [indexed] (`2026-05-24T00:00:00.000Z`) | `src/memory/features/json-formatting/delivery-report.md` | `—` | `—` |
 | `compliance-tests` | [indexed] (`—`) | `src/memory/features/compliance-tests/delivery-report.md` | `—` | `src/inbox/archive/in/172991_05-15-26/68576_0457_compliance-tests.md` |
@@ -77,11 +77,11 @@ read per `src/memory/handbook/context-economy.md`.
 
 ## Operator notes
 
-<!-- tess:active-memory:operator-notes:auto -->
+<!-- ddl:active-memory:operator-notes:auto -->
 
 - Active-memory refreshed (UTC): `2026-05-28T00:45:27.739Z`
 
-<!-- /tess:active-memory:operator-notes:auto -->
+<!-- /ddl:active-memory:operator-notes:auto -->
 
 
 
@@ -96,4 +96,4 @@ read per `src/memory/handbook/context-economy.md`.
 - During Phase 4 dogfood, planning stages SHOULD emit a compact handoff card and
   delegate execution to the next persona instead of continuing implementation in
   the same parent context.
-- Run `pnpm -w exec tess refresh-active-memory [--dry-run]` before committing when shipped-feature rows or the managed refresh stamp drift from `status: indexed` artifacts outside `pnpm -w exec tess close-artifacts`; set Active Feature manually when work starts — `pnpm -w exec tess close-artifacts` clears it to `(none)` when the archived inbox source matched.
+- Run `pnpm -w exec ddl refresh-active-memory [--dry-run]` before committing when shipped-feature rows or the managed refresh stamp drift from `status: indexed` artifacts outside `pnpm -w exec ddl close-artifacts`; set Active Feature manually when work starts — `pnpm -w exec ddl close-artifacts` clears it to `(none)` when the archived inbox source matched.

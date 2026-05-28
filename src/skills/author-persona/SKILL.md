@@ -1,17 +1,17 @@
 ---
 name: author-persona
-description: Authors a Tesseract subagent persona spec to the Anthropic Claude Agent SDK 16-field YAML frontmatter spec, emits the matching Cursor `.cursor/rules/<name>.mdc` shim, and self-checks against the Layer 1 lint discipline before submission.
+description: Authors a Daedaline subagent persona spec to the Anthropic Claude Agent SDK 16-field YAML frontmatter spec, emits the matching Cursor `.cursor/rules/<name>.mdc` shim, and self-checks against the Layer 1 lint discipline before submission.
 license: Apache-2.0
 metadata:
-  tesseract-stability: experimental
-  tesseract-bootstrap-only: false
-  tesseract-pipeline-stages: [bootstrap-phase-1, sme-spawn, ad-hoc-persona-new]
-  tesseract-risk-tier: medium
-  tesseract-required-handbook:
+  daedaline-stability: experimental
+  daedaline-bootstrap-only: false
+  daedaline-pipeline-stages: [bootstrap-phase-1, sme-spawn, ad-hoc-persona-new]
+  daedaline-risk-tier: medium
+  daedaline-required-handbook:
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
-  tesseract-emits:
+  daedaline-emits:
     - src/personas/<name>.md
     - .cursor/rules/<name>.mdc
 references:
@@ -29,7 +29,7 @@ references:
 
 # Skill — `author-persona`
 
-A reusable 7-step procedure for authoring one Tesseract subagent persona spec. The
+A reusable 7-step procedure for authoring one Daedaline subagent persona spec. The
 canonical caller is `src/personas/persona-designer.md`; the Librarian MAY invoke it
 directly when proposing an SME draft (M4+).
 
@@ -53,7 +53,7 @@ specialization per PRD §6 M2), you MUST identify the base persona and inherit i
 `tools`, `disallowedTools`, and `mcpServers` defaults unless the inbox ask declares
 an explicit override.
 
-If the proposed scope overlaps an existing persona's `tesseract-pipeline-stages` by
+If the proposed scope overlaps an existing persona's `daedaline-pipeline-stages` by
 more than 50%, halt and open an inbox item proposing either a merge or an explicit
 scope-split ADR.
 
@@ -75,7 +75,7 @@ For each field, apply the rule:
 - `description` MUST follow EARS — typically `When <trigger>, the <persona> SHALL
   <response>` — and MUST be at most 50 words. This field is shown to other agents at
   routing time per Anthropic spec; treat it as the persona's elevator pitch.
-- `model` defaults to `inherit` unless the persona's `tesseract-risk-tier` is
+- `model` defaults to `inherit` unless the persona's `daedaline-risk-tier` is
   `high`, in which case the operator pins a strong model explicitly.
 - `permissionMode` defaults to `default`; `read-only` for review-only personas.
 - `tools` MUST be the minimal allowlist required for the persona's job. Read,
@@ -95,21 +95,21 @@ For each field, apply the rule:
 - `color` is a UX hint only; pick from the unused palette in `/src/memory/handbook/persona-colors.md`.
 - `hooks`, `initialPrompt`, `background` MAY be omitted when no value applies.
 
-### Step 4 — Populate the `metadata` map with Tesseract extensions
+### Step 4 — Populate the `metadata` map with Daedaline extensions
 
 Required extensions:
 
-- `tesseract-risk-tier` ∈ `{low, medium, high, any}` — drives default contract
+- `daedaline-risk-tier` ∈ `{low, medium, high, any}` — drives default contract
   bundle per PRD §7.
-- `tesseract-pipeline-stages` — array of stage IDs the persona is invoked in.
-- `tesseract-bootstrap-only` — boolean; `true` means the persona retires after the
+- `daedaline-pipeline-stages` — array of stage IDs the persona is invoked in.
+- `daedaline-bootstrap-only` — boolean; `true` means the persona retires after the
   bootstrap; `false` (default) means it persists.
-- `tesseract-stability` ∈ `{experimental, stable, deprecated}`; new personas land
+- `daedaline-stability` ∈ `{experimental, stable, deprecated}`; new personas land
   as `experimental` and promote on green dogfood usage for 4 consecutive weeks.
-- `tesseract-handbook-anchors` — array of paths the persona reads at invocation.
+- `daedaline-handbook-anchors` — array of paths the persona reads at invocation.
   Every persona SHOULD anchor `/src/memory/handbook/operator-output-contract.md`
   when the persona emits operator-visible chat output.
-- `tesseract-checklist` — array of named conformance checks the reviewer step runs.
+- `daedaline-checklist` — array of named conformance checks the reviewer step runs.
   Every checklist MUST include `next-operator-steps-on-completion`.
 
 ### Step 5 — Author the body prose
@@ -139,14 +139,14 @@ The shim is exactly 5 lines: a `description:` field copied from the persona,
 `globs:` and `alwaysApply:` per the recipe, then a single body line that is an
 `@`-include of the canonical persona file (`@src/personas/<name>.md`).
 
-The shim MUST round-trip through the `@tesseract/persona` parser identically once
+The shim MUST round-trip through the `@daedaline/persona` parser identically once
 that package lands (Phase 3 step 5).
 
 ### Step 7 — Self-check, then submit
 
 Before handing off, the persona-designer MUST:
 
-1. Run the `tesseract-checklist` items as a hand-checklist; fix violations.
+1. Run the `daedaline-checklist` items as a hand-checklist; fix violations.
 2. Verify every dual-anchor citation resolves against the cited file's current
    content hash. When a hash mismatches, refresh the citation; when a path is gone,
    open an inbox item rather than guess the new location.

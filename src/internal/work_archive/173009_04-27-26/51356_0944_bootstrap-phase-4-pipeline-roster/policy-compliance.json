@@ -10,7 +10,7 @@
   ],
   "documentation_impact": {
     "applies": true,
-    "rationale": "Phase 4 prelude registers the five PRD §11 MVP pipelines (feature-delivery, chat-with-persona, knowledge-curation, init-greenfield, adopt) under /src/pipelines/ as YAML documents that load through @tesseract/pipeline.loadPipelineYaml and compile through compilePipeline. Adds /src/pipelines/README.md as the authoring index. These are the structural prerequisite for the Phase 4 dogfood walkthrough.",
+    "rationale": "Phase 4 prelude registers the five PRD §11 MVP pipelines (feature-delivery, chat-with-persona, knowledge-curation, init-greenfield, adopt) under /src/pipelines/ as YAML documents that load through @daedaline/pipeline.loadPipelineYaml and compile through compilePipeline. Adds /src/pipelines/README.md as the authoring index. These are the structural prerequisite for the Phase 4 dogfood walkthrough.",
     "changed_surfaces": [
       "src/pipelines/feature-delivery.yaml",
       "src/pipelines/chat-with-persona.yaml",

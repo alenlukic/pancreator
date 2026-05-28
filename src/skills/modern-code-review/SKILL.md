@@ -3,15 +3,15 @@ name: modern-code-review
 description: Runs Modern Code Review per Bacchelli/Bird and Google `eng-practices` against one Feature touch-set. Loads the Engineering Spec, plan, and ADR draft; classifies every finding under `must fix`, `consider`, or `nit`; runs every Spec Contract pulled in by `contracts:from_feature`; emits one `/src/work/<day>/<id>/review.md` for the `review_passes` gate.
 license: Apache-2.0
 metadata:
-  tesseract-stability: experimental
-  tesseract-bootstrap-only: false
-  tesseract-pipeline-stages: [review]
-  tesseract-risk-tier: medium
-  tesseract-required-handbook:
+  daedaline-stability: experimental
+  daedaline-bootstrap-only: false
+  daedaline-pipeline-stages: [review]
+  daedaline-risk-tier: medium
+  daedaline-required-handbook:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  tesseract-emits:
+  daedaline-emits:
     - /src/work/<day>/<id>/review.md
 references:
   - kind: lines
@@ -122,7 +122,7 @@ the diff adds or modifies carries at least one test under the touch-set's
 declared test paths per `src/personas/coder.md`. A missing test routes a
 `must fix` finding citing the symbol.
 
-When the threshold policy in `tesseract.yaml: gates.coverage` declares
+When the threshold policy in `daedaline.yaml: gates.coverage` declares
 `new_lines_only: true`, the reviewer MUST cite the new-lines coverage
 figure rather than the global coverage figure.
 

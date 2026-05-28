@@ -42,7 +42,7 @@ clause lives alongside the service's OpenAPI document.
 | `description` | yes | EARS, atomic, quantified (status codes, latency). |
 | `references` | yes | Cite the OpenAPI section and the upstream RFC (e.g., RFC 7235 for auth). |
 | `runtime` | yes | Per-kind payload. |
-| `metadata.tesseract.openapi-operation-id` | yes | Operation ID being gated. |
+| `metadata.daedaline.openapi-operation-id` | yes | Operation ID being gated. |
 
 ## M1 scaffold (`kind: rego` over OpenAPI JSON)
 
@@ -68,12 +68,12 @@ references:
     note: "POST /checkout declaration."
 spec: /src/memory/features/<id>/contracts/401-on-missing-token.rego
 runtime:
-  package: tesseract.api.checkout
-  query: data.tesseract.api.checkout.deny
+  package: daedaline.api.checkout
+  query: data.daedaline.api.checkout.deny
 metadata:
-  tesseract.contract_id: <feature>.api.401-on-missing-token
-  tesseract.applies_to: artifact-symbol:apis/<service>/openapi.yaml#paths./checkout.post.responses.401
-  tesseract.openapi-operation-id: createCheckout
+  daedaline.contract_id: <feature>.api.401-on-missing-token
+  daedaline.applies_to: artifact-symbol:apis/<service>/openapi.yaml#paths./checkout.post.responses.401
+  daedaline.openapi-operation-id: createCheckout
 ```
 
 Sidecar `401-on-missing-token.rego`:
@@ -89,9 +89,9 @@ Sidecar `401-on-missing-token.rego`:
 # references:
 #   - "/src/memory/handbook/contract-templates/api-spec.template.md"
 # custom:
-#   tesseract.contract_id: <feature>.api.401-on-missing-token
-#   tesseract.applies_to: artifact-symbol:apis/<service>/openapi.yaml#paths./checkout.post.responses.401
-package tesseract.api.checkout
+#   daedaline.contract_id: <feature>.api.401-on-missing-token
+#   daedaline.applies_to: artifact-symbol:apis/<service>/openapi.yaml#paths./checkout.post.responses.401
+package daedaline.api.checkout
 
 import rego.v1
 
@@ -140,9 +140,9 @@ runtime:
       curl -X POST http://localhost:<port>/checkout -H "Authorization: Bearer valid"
       # expects: 200; failing this test means the auth check is broken
 metadata:
-  tesseract.contract_id: <feature>.api.401-on-missing-token
-  tesseract.applies_to: artifact-symbol:apis/<service>/openapi.yaml#paths./checkout.post
-  tesseract.openapi-operation-id: createCheckout
+  daedaline.contract_id: <feature>.api.401-on-missing-token
+  daedaline.applies_to: artifact-symbol:apis/<service>/openapi.yaml#paths./checkout.post
+  daedaline.openapi-operation-id: createCheckout
 ```
 
 ## Failure-handling

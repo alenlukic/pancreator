@@ -5,8 +5,8 @@
 
 ## Summary
 
-Phase 0a delivered the M1 primitive package skeleton under `src/internal/packages/@tesseract/`,
-the unscoped meta package at `src/internal/packages/tesseract`, workspace build/lint/typecheck
+Phase 0a delivered the M1 primitive package skeleton under `src/internal/packages/@daedaline/`,
+the unscoped meta package at `src/internal/packages/daedaline`, workspace build/lint/typecheck
 scripts, and the `phase-0a-verification.md` record capturing observed command exits.
 
 ## Verification evidence
@@ -20,8 +20,8 @@ Observed local run (exit 0): `pnpm install`, `pnpm run build`, `pnpm run lint`,
 
 ## Implementation surface
 
-- Package primitives: `src/internal/packages/@tesseract/*`
-- Meta re-export: `src/internal/packages/tesseract`
+- Package primitives: `src/internal/packages/@daedaline/*`
+- Meta re-export: `src/internal/packages/daedaline`
 - CI workflow: `.github/workflows/phase-0a-scaffold.yml`
 - Scaffold checker: `src/internal/tools/check-phase-0a-scaffold.mjs`
 

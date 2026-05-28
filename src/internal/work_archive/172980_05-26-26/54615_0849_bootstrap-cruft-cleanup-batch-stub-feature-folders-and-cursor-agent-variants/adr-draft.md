@@ -9,17 +9,17 @@
 
 The batch intake requests one coordinated cleanup across two noisy surfaces:
 
-1. `src/memory/features/tesseract-*/` folders that must be dispositioned and brought to a maintainable Phase-2 shape.
+1. `src/memory/features/daedaline-*/` folders that must be dispositioned and brought to a maintainable Phase-2 shape.
 2. `.cursor/agents/` per-persona suffix variants (`-standard`, `-complex`) that duplicate tier semantics already documented in handbook policy.
 
-At plan time, the 20 `tesseract-*` feature folders already contain authored package contracts (`contracts/`) and planning scaffolds (`plan.md`, `tasks.md`). The remaining structural gap is missing per-folder `index.json` and `delivery-report.md` surfaces in the reference shape used by normalized features.
+At plan time, the 20 `daedaline-*` feature folders already contain authored package contracts (`contracts/`) and planning scaffolds (`plan.md`, `tasks.md`). The remaining structural gap is missing per-folder `index.json` and `delivery-report.md` surfaces in the reference shape used by normalized features.
 
 ## Decision
 
 The implementation stage SHALL execute this two-part strategy:
 
 1. **Feature-folder normalization without destructive deletion.**  
-   Classify all 20 `tesseract-*` folders as `author`; preserve current contract and planning artifacts; add missing `index.json` and `delivery-report.md`; then update `src/memory/features/index.json` in lockstep.
+   Classify all 20 `daedaline-*` folders as `author`; preserve current contract and planning artifacts; add missing `index.json` and `delivery-report.md`; then update `src/memory/features/index.json` in lockstep.
 
 2. **Single Cursor projection file per persona.**  
    Keep only `.cursor/agents/<persona>.md` plus `.cursor/agents/general-purpose.md`; delete all `-standard` and `-complex` files in one change set; update docs/tests so tier choice remains standard-by-default with explicit complex escalation but no filename-suffix dependency.
@@ -46,7 +46,7 @@ The implementation stage SHALL execute this two-part strategy:
 
 ## Alternatives considered
 
-1. **Delete all 20 `tesseract-*` feature folders.** Rejected because current folders already contain package contract artifacts and planned work structure.
+1. **Delete all 20 `daedaline-*` feature folders.** Rejected because current folders already contain package contract artifacts and planned work structure.
 2. **Consolidate all 20 folders into one umbrella feature.** Rejected for this batch because it couples cleanup with a larger information-architecture migration.
 3. **Keep suffix files and only edit docs.** Rejected because three-file projection maintenance is the operational cost driver.
 

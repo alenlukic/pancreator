@@ -3,14 +3,14 @@
  * JSON formatting migration: read-parse-format-write for in-scope `.json` files.
  *
  * Dry-run (`--dry-run`, default) reports candidate paths, exclusion counts, and planned
- * edits without writes. `--write` mutates disk only when `TESSERACT_MIGRATION_GO=1`,
+ * edits without writes. `--write` mutates disk only when `DAEDALINE_MIGRATION_GO=1`,
  * mirroring migrate-timestamp-naming.mjs.
  *
  * Canonical formatting and hash abbreviation live in `canonical-json-format.mjs`
  * (`formatCanonicalJson`, `resolveAbbrevLen`, `abbreviateHashes`).
  *
  * Abbreviation length derives from `git rev-parse --short HEAD` against `repoRoot` unless
- * `TESS_JSON_FORMAT_ABBREV_LEN` (decimal digits only) overrides it for deterministic tests.
+ * `DDL_JSON_FORMAT_ABBREV_LEN` (decimal digits only) overrides it for deterministic tests.
  *
  * @see tests/compliance/json-formatting.yaml
  * @see src/memory/features/json-formatting/spec.md
@@ -176,9 +176,9 @@ async function main() {
   const repoRoot = args.root;
 
   if (args.write) {
-    if (process.env.TESSERACT_MIGRATION_GO !== "1") {
+    if (process.env.DAEDALINE_MIGRATION_GO !== "1") {
       console.error(
-        "[migrate-json-formatting] refuse --write without TESSERACT_MIGRATION_GO=1",
+        "[migrate-json-formatting] refuse --write without DAEDALINE_MIGRATION_GO=1",
       );
       process.exitCode = 1;
       return;
@@ -228,7 +228,7 @@ async function main() {
   if (args.write) {
     const { rewritten } = runMigration({ repoRoot, write: true });
     console.log(
-      `[migrate-json-formatting] write complete (TESSERACT_MIGRATION_GO=1), files rewritten=${rewritten}`,
+      `[migrate-json-formatting] write complete (DAEDALINE_MIGRATION_GO=1), files rewritten=${rewritten}`,
     );
   }
 }

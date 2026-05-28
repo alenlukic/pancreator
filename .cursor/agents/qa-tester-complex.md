@@ -20,29 +20,29 @@ tools:
   - "Bash(node src/internal/tools/check-phase-0a-scaffold.mjs:*)"
   - "Bash(node src/internal/tools/context-budget-report.mjs:*)"
   - "Bash(node src/internal/tools/check-operator-output.mjs:*)"
-  - "Bash(pnpm -w exec tess status:*)"
-  - "Bash(pnpm -w exec tess refresh-prompt:*)"
+  - "Bash(pnpm -w exec ddl status:*)"
+  - "Bash(pnpm -w exec ddl refresh-prompt:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 maxTurns: 40
 isolation: worktree
 memory: project
 effort: high
 color: orange
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [test]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [test]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -54,9 +54,9 @@ metadata:
     - manual-verification-documented
     - re-entry-target-is-implement
     - human-ratified-at-phase-boundary
-  tesseract-base-persona: qa-tester
-  tesseract-model-tier: complex
-  tesseract-canonical-persona: src/personas/qa-tester.md
+  daedaline-base-persona: qa-tester
+  daedaline-model-tier: complex
+  daedaline-canonical-persona: src/personas/qa-tester.md
 ---
 
 # qa-tester-complex

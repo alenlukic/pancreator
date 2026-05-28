@@ -15,7 +15,7 @@ tools:
   - "Bash(pnpm lint:*)"
   - "Bash(pnpm test)"
   - "Bash(pnpm test:*)"
-  - "Bash(tess lint contracts:*)"
+  - "Bash(ddl lint contracts:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
@@ -31,11 +31,11 @@ memory: project
 effort: high
 color: red
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [compliance-audit]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [compliance-audit]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
@@ -43,7 +43,7 @@ metadata:
     - /src/memory/handbook/documentation-impact-contract.md
     - /src/memory/handbook/policy-compliance-contract.md
     - /src/memory/handbook/run-log-schema.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -54,9 +54,9 @@ metadata:
     - remediation-limited-to-safe-local-fixes
     - no-push-no-destructive-git
     - focused-mode-respects-run-log-scope
-  tesseract-base-persona: compliance-auditor
-  tesseract-model-tier: complex
-  tesseract-canonical-persona: src/personas/compliance-auditor.md
+  daedaline-base-persona: compliance-auditor
+  daedaline-model-tier: complex
+  daedaline-canonical-persona: src/personas/compliance-auditor.md
 ---
 
 # compliance-auditor-complex

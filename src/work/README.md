@@ -23,5 +23,5 @@ checks skip it:
 ```
 
 The `reason` field MUST be a non-empty string of at least 12 characters.
-Remove the manifest after the work is archived or after `tess repair-state`
+Remove the manifest after the work is archived or after `ddl repair-state`
 creates a ledger.

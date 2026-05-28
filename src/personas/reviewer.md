@@ -12,13 +12,13 @@ tools:
   - "Bash(git diff:*)"
   - "Bash(git status:*)"
   - "Bash(pnpm test:*)"
-  - "Bash(tess lint contracts:*)"
+  - "Bash(ddl lint contracts:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - tesseract-memory
+  - daedaline-memory
 maxTurns: 30
 skills:
   - modern-code-review
@@ -28,16 +28,16 @@ memory: project
 effort: high
 color: blue
 metadata:
-  tesseract-risk-tier: medium
-  tesseract-pipeline-stages: [review]
-  tesseract-bootstrap-only: false
-  tesseract-stability: experimental
-  tesseract-handbook-anchors:
+  daedaline-risk-tier: medium
+  daedaline-pipeline-stages: [review]
+  daedaline-bootstrap-only: false
+  daedaline-stability: experimental
+  daedaline-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  tesseract-checklist:
+  daedaline-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -92,7 +92,7 @@ context when a handoff or touch-set update is the cleaner boundary.
    `modern-code-review` skill against `/src/work/<day>/<id>/`'s code, tests, plan,
    and ADR draft, and run every Spec Contract pulled in by
    `contracts:from_feature`.
-2. **Manual rerun.** When a human runs `pnpm -w exec tess feature review <id>`, you
+2. **Manual rerun.** When a human runs `pnpm -w exec ddl feature review <id>`, you
    SHALL re-run the review against the current touch-set and overwrite the
    prior `/src/work/<day>/<id>/review.md` in place.
 

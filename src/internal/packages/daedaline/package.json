@@ -1,0 +1,49 @@
+{
+  "name": "daedaline",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "attw": "attw --pack . --profile esm-only",
+    "publint": "publint",
+    "test": "node -e \"process.exit(0)\""
+  },
+  "dependencies": {
+    "@daedaline/adopter-scan": "workspace:*",
+    "@daedaline/checkpointer-fs": "workspace:*",
+    "@daedaline/cli": "workspace:*",
+    "@daedaline/contract": "workspace:*",
+    "@daedaline/contract-runner-llm-judge": "workspace:*",
+    "@daedaline/contract-runner-rego": "workspace:*",
+    "@daedaline/contract-style": "workspace:*",
+    "@daedaline/core": "workspace:*",
+    "@daedaline/env-isolation": "workspace:*",
+    "@daedaline/inbox": "workspace:*",
+    "@daedaline/intervention": "workspace:*",
+    "@daedaline/mcp-server": "workspace:*",
+    "@daedaline/memory": "workspace:*",
+    "@daedaline/notifier": "workspace:*",
+    "@daedaline/persona": "workspace:*",
+    "@daedaline/pipeline": "workspace:*",
+    "@daedaline/policy": "workspace:*",
+    "@daedaline/run-logger": "workspace:*",
+    "@daedaline/runner-cursor": "workspace:*",
+    "@daedaline/worktree": "workspace:*"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:"
+  }
+}
