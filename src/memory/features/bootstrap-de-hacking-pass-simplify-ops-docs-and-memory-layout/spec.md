@@ -69,15 +69,10 @@ references:
     contentHash: 04957f6
     note: "Backlog index — current ranked items and schema target for WP-1 relocated skeletons and WP-4 debt rollup."
   - kind: lines
-    path: .github/workflows/phase-0a-scaffold.yml
-    range: [1, 102]
-    contentHash: 6244616
-    note: "Primary CI workflow — build, lint, typecheck, attw, publint, pnpm test, compliance descriptors, and phase-0a scaffold script that WP-5 evaluates for slimming."
-  - kind: lines
-    path: .github/workflows/run-logger-conformance.yml
-    range: [1, 24]
-    contentHash: 5c69c1d
-    note: "Secondary CI workflow — run-logger conformance trigger that WP-5 evaluates for librarian pre-close substitution."
+    path: OPERATION.md
+    range: [156, 180]
+    contentHash: pending
+    note: "Librarian pre-close validation — local quality gate that replaced GitHub Actions workflows removed in bootstrap."
   - kind: lines
     path: src/personas/librarian.md
     range: [1, 185]
@@ -398,7 +393,7 @@ treated as non-exhaustive starting candidates.
 | WP-2 | `OPERATION.md` (new), `README.md`, `AGENTS.md` § 6, `docs/M1.index.md`, at least one page under `src/memory/handbook/` recording the OPERATION-update obligation |
 | WP-3 | `src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md`, `src/personas/*.md`, `.cursor/agents/*.md`, `.cursor/rules/*.mdc`, `src/memory/handbook/operator-output-contract.md`, the new lint or compliance descriptor under `src/internal/tools/` or `tests/compliance/` |
 | WP-4 | `AGENTS.md` § 7, `src/memory/handbook/backlog-format.md`, `src/memory/handbook/memory-tiers.md`, `src/internal/packages/@daedaline/mcp-server/`, `docs/PRD.index.md`, `src/memory/backlog/index.yaml` |
-| WP-5 | `.github/workflows/phase-0a-scaffold.yml`, `.github/workflows/run-logger-conformance.yml`, `src/personas/librarian.md`, `src/skills/<librarian-skill-if-needed>/SKILL.md`, `OPERATION.md`, `src/memory/backlog/index.yaml` |
+| WP-5 | `src/personas/librarian.md`, `src/personas/qa-tester.md`, `src/skills/<librarian-skill-if-needed>/SKILL.md`, `OPERATION.md`, `src/memory/backlog/index.yaml` |
 | WP-6 | `src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md`, paths cited by the inventory, `src/memory/adr/<new-intentional-dual-location-adr>.md` if any |
 
 ## Validation expectations
@@ -467,7 +462,7 @@ gates are non-negotiable and SHALL fire in this order:
 
 - Implementing full unattended `feature-delivery` automation. The separate
   inbox item at
-  `src/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring.md`
+  `src/inbox/archive/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md`
   owns that work.
 - Building the v0 operator dashboard UI. This pass MAY record API or CLI
   hooks the dashboard will consume, but SHALL NOT add dashboard surfaces.
@@ -494,12 +489,10 @@ gates are non-negotiable and SHALL fire in this order:
   implementation-surface anchors, and `src/memory/active/current.md`
   shipped-feature rows. Backlog linkage: `wp-1-feature-folder-audit`.
 
-- **CI posture per workflow for WP-5.** The exact disposition
-  (`keep-as-is`, `narrow-paths`, `workflow-dispatch-only`,
-  `disable-with-rationale`, or `delete-with-rationale`) for each workflow
-  under `.github/workflows/` SHALL be authored by the plan stage with
-  recorded rationale and re-enable trigger. Backlog linkage:
-  `wp-5-ci-slim-and-librarian-gate`.
+- **CI posture per workflow for WP-5.** Final disposition: `delete-with-rationale`
+  for all files under `.github/workflows/` (removed 2026-05-28). Local gates are
+  `src/personas/qa-tester.md` and `OPERATION.md` § "Librarian pre-close
+  validation". Backlog linkage: `bootstrap-ci-narrow-paths-re-enable` (cancelled).
 
 - **Pre-close check list final shape for WP-5.** The minimum check list
   documented in this spec MAY be extended with additional checks

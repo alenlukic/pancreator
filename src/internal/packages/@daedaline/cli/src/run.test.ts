@@ -39,6 +39,79 @@ stages:
   );
 }
 
+async function completeFeatureDeliveryRunForClose(
+  root: string,
+  taskId: string,
+  featureId: string,
+  dayDir: string,
+): Promise<{ activeRunDirRel: string; inboxSourceRel: string }> {
+  const activeRunDirRel = `src/work/${dayDir}/${taskId}`;
+  const activeRunDir = path.join(root, activeRunDirRel);
+
+  const spec = path.join(root, "src", "memory", "features", featureId, "spec.md");
+  await mkdir(path.dirname(spec), { recursive: true });
+  await writeFile(spec, "# Spec", "utf8");
+  await parseAndRun(["advance", taskId, "--artifact", `src/memory/features/${featureId}/spec.md`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  await writeFile(path.join(activeRunDir, "plan.md"), "# Plan", "utf8");
+  await writeFile(path.join(activeRunDir, "touch-set.json"), "{}\n", "utf8");
+  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  await writeFile(path.join(activeRunDir, "implementation-report.md"), "# Impl", "utf8");
+  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/implementation-report.md`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  await writeFile(path.join(activeRunDir, "review.md"), "review_passes: true", "utf8");
+  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/review.md`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  await writeFile(path.join(activeRunDir, "test-report.md"), "qa_passes: true", "utf8");
+  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/test-report.md`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  const report = path.join(root, "src", "memory", "features", featureId, "delivery-report.md");
+  await writeFile(report, "# Delivery", "utf8");
+  await parseAndRun(["advance", taskId, "--artifact", `src/memory/features/${featureId}/delivery-report.md`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  await writeFile(path.join(activeRunDir, "policy-compliance.json"), "{}\n", "utf8");
+  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/policy-compliance.json`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  const inboxSourceRel = "src/inbox/in/demo-feature.md";
+  const index = path.join(root, "src", "memory", "features", featureId, "index.json");
+  await writeFile(
+    index,
+    `${JSON.stringify(
+      {
+        feature_id: featureId,
+        task_id: taskId,
+        status: "indexed",
+        indexed_at: "2026-05-10T13:30:00.000Z",
+        source_inbox_item: { path: inboxSourceRel },
+        delivery_report: { path: `src/memory/features/${featureId}/delivery-report.md` },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+  await parseAndRun(["advance", taskId, "--artifact", `src/memory/features/${featureId}/index.json`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  return { activeRunDirRel, inboxSourceRel };
+}
+
 describe("parseAndRun", () => {
   let hadAbbrevEnv: boolean;
   let prevAbbrevEnv: string | undefined;
@@ -569,6 +642,113 @@ describe("parseAndRun", () => {
     const status = JSON.parse(statusOut.join("")) as { pipelineStatus: string; runDir: string };
     expect(status.pipelineStatus).toBe("closed");
     expect(status.runDir).toBe(closed.archivedRunDir);
+  });
+
+  it("rolls back archive moves when active-memory refresh fails during close-artifacts", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ddl-close-artifacts-rollback-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    const dayDir = "172996_05-10-26";
+    const { activeRunDirRel, inboxSourceRel } = await completeFeatureDeliveryRunForClose(
+      root,
+      start.taskId,
+      "demo-feature",
+      dayDir,
+    );
+
+    await mkdir(path.join(root, "src", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "src", "memory", "active", "current.md"),
+      "# Current focus\n\n## Most recent shipped Features\n\nbad\n",
+      "utf8",
+    );
+
+    const closeOut: string[] = [];
+    const closeCode = await parseAndRun(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => closeOut.push(c),
+      clock: () => new Date("2026-05-10T14:00:00.000Z"),
+    });
+    expect(closeCode).toBe(1);
+    const payload = JSON.parse(closeOut.join("")) as { message: string };
+    expect(payload.message).toContain("Heading \"## Active Feature\" is missing from current.md");
+    const archivedRunDirRel = `src/internal/work_archive/${dayDir}/${start.taskId}`;
+    const archivedInboxRel = `src/inbox/archive/in/${dayDir}/${start.taskId}/demo-feature.md`;
+    expect(existsSync(path.join(root, activeRunDirRel))).toBe(true);
+    expect(existsSync(path.join(root, inboxSourceRel))).toBe(true);
+    expect(existsSync(path.join(root, archivedRunDirRel))).toBe(false);
+    expect(existsSync(path.join(root, archivedInboxRel))).toBe(false);
+
+    const statusOut: string[] = [];
+    await parseAndRun(["status", start.taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
+    const status = JSON.parse(statusOut.join("")) as { pipelineStatus: string; runDir: string };
+    expect(status.pipelineStatus).toBe("complete");
+    expect(status.runDir).toBe(activeRunDirRel);
+  });
+
+  it("refreshes shipped-feature rows on close even when active feature was already none", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "ddl-close-artifacts-refresh-shipped-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    const dayDir = "172996_05-10-26";
+    const { inboxSourceRel } = await completeFeatureDeliveryRunForClose(
+      root,
+      start.taskId,
+      "demo-feature",
+      dayDir,
+    );
+
+    await mkdir(path.join(root, "src", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "src", "memory", "active", "current.md"),
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        "\n- `(none)`\n",
+        "",
+        "## Most recent shipped Features",
+        "\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+        "",
+        "## Operator notes",
+        "\n<!-- ddl:active-memory:operator-notes:auto -->\n\n- Active-memory refreshed (UTC): `2020-01-01T00:00:00.000Z`\n\n<!-- /ddl:active-memory:operator-notes:auto -->\n",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const closeOut: string[] = [];
+    const code = await parseAndRun(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => closeOut.push(c),
+      clock: () => new Date("2026-05-10T14:00:00.000Z"),
+    });
+    expect(code).toBe(0);
+    const closed = JSON.parse(closeOut.join("")) as {
+      archivedInboxPath: string;
+      activeFeatureCleared: boolean;
+    };
+    expect(closed.activeFeatureCleared).toBe(false);
+    expect(closed.archivedInboxPath).not.toBe(inboxSourceRel);
+
+    const currentMd = await readFile(path.join(root, "src", "memory", "active", "current.md"), "utf8");
+    expect(currentMd).toContain("| `demo-feature` | [indexed] (`2026-05-10T13:30:00.000Z`) |");
+    expect(currentMd).toContain(closed.archivedInboxPath);
+    expect(currentMd).toContain("- `(none)`");
   });
 
   it("refreshes prompt files for an existing feature-delivery ledger", async () => {

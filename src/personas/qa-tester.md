@@ -13,8 +13,12 @@ tools:
   - "Bash(git status:*)"
   - "Bash(pnpm lint:*)"
   - "Bash(pnpm lint-staged:*)"
+  - "Bash(pnpm run build:*)"
+  - "Bash(pnpm run lint:deps:*)"
   - "Bash(pnpm typecheck:*)"
   - "Bash(pnpm test:*)"
+  - "Bash(pnpm run attw:*)"
+  - "Bash(pnpm run publint:*)"
   - "Bash(node --test:*)"
   - "Bash(node src/internal/tools/run-compliance.mjs:*)"
   - "Bash(node src/internal/tools/check-phase-0a-scaffold.mjs:*)"
@@ -123,7 +127,12 @@ the command, exit code, pass/fail, and a log path in the Automated checks table.
 
 ```bash
 pnpm lint
+pnpm run build
+pnpm run lint:deps
 pnpm typecheck
+pnpm run attw
+pnpm run publint
+pnpm test
 node --test tests/*.test.mjs
 node src/internal/tools/run-compliance.mjs
 node src/internal/tools/check-phase-0a-scaffold.mjs
