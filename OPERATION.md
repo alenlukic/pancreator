@@ -160,7 +160,15 @@ acting as closer) SHALL run these checks from the repository root and SHALL fix
 bounded failures in the same session when policy allows:
 
 ```bash
+pnpm run build
+pnpm lint
+pnpm run lint:deps
+pnpm typecheck
+pnpm run attw
+pnpm run publint
+pnpm test
 node --test tests/*.test.mjs
+node src/internal/tools/run-compliance.mjs
 node src/internal/tools/check-phase-0a-scaffold.mjs
 node src/internal/tools/context-budget-report.mjs
 bash -n .cursor/hooks/enforce-policy-compliance.sh
@@ -168,9 +176,11 @@ node src/internal/tools/check-operator-output.mjs
 ```
 
 When a check fails for reasons outside the closing task touch-set, the closer SHALL
-open or link a backlog item instead of expanding scope. CI runs the same checks on
-narrow paths; default push/PR CI no longer watches generated `src/work/**` or
-`src/internal/work_archive/**` (see backlog `bootstrap-ci-narrow-paths-re-enable`).
+open or link a backlog item instead of expanding scope.
+
+This repository does not ship GitHub Actions workflows under `.github/workflows/`.
+The qa-tester stage and librarian pre-close validation above are the canonical
+quality gates during bootstrap.
 
 ## Troubleshooting
 

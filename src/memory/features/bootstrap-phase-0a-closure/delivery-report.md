@@ -22,8 +22,8 @@ Observed local run (exit 0): `pnpm install`, `pnpm run build`, `pnpm run lint`,
 
 - Package primitives: `src/internal/packages/@daedaline/*`
 - Meta re-export: `src/internal/packages/daedaline`
-- CI workflow: `.github/workflows/phase-0a-scaffold.yml`
 - Scaffold checker: `src/internal/tools/check-phase-0a-scaffold.mjs`
+- Local validation gate: `OPERATION.md` § "Librarian pre-close validation"
 
 ## Operator note
 

@@ -586,18 +586,19 @@ items:
     notes: "Draft preserved at src/memory/backlog/drafts/m1-substrate-runtime-batch.md. Do not recreate src/memory/features/m1-substrate-runtime-batch/."
 
   - id: bootstrap-ci-narrow-paths-re-enable
-    title: Re-enable default CI on src/work and work_archive when runtime stabilizes
+    title: Re-enable GitHub Actions CI when runtime stabilizes
     source: src/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/spec.md
     owner: daedaline-engineer
     milestone: phase-5
-    status: deferred
+    status: cancelled
     priority: low
     opened_at: "2026-05-27T19:30:00Z"
     links:
-      - /.github/workflows/phase-0a-scaffold.yml
       - /OPERATION.md
-    evidence: "WP-5 removed src/work/** and src/internal/work_archive/** from default phase-0a-scaffold push/PR path filters; librarian pre-close validation covers local gates."
-    notes: "Restore path filters or add targeted workflows when unattended runs no longer generate noisy CI."
+      - /src/personas/qa-tester.md
+      - /src/personas/librarian.md
+    evidence: "GitHub workflow files under .github/workflows/ were removed; qa-tester and OPERATION.md librarian pre-close validation cover the former CI gate locally."
+    notes: "Reintroduce .github/workflows/ only when unattended push/PR validation is worth the latency cost."
 
   - id: bootstrap-us7-tech-debt-scan
     title: US-7 tech-debt-scan pipeline and groomer backlog integration

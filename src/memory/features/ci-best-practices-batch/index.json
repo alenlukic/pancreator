@@ -290,14 +290,9 @@
           "contentHash": "31789e8"
         }
       },
-      "ci_workflow": {
-        "path": ".github/workflows/phase-0a-scaffold.yml",
-        "citation": {
-          "kind": "lines",
-          "path": ".github/workflows/phase-0a-scaffold.yml",
-          "range": [1, 102],
-          "contentHash": "0e9eaf1"
-        }
+      "ci_posture": {
+        "path": "OPERATION.md",
+        "note": "Former phase-0a-scaffold.yml CI gate replaced by local qa-tester and librarian pre-close validation."
       },
       "run_compliance_tool": {
         "path": "src/internal/tools/run-compliance.mjs",

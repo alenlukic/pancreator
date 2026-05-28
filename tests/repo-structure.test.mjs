@@ -205,7 +205,7 @@ test("planning/execution handoff contract is represented across active memory, p
   assert.match(supervisor, /src\/memory\/active\/handoffs\.md/);
 });
 
-test("workspace, scripts, and workflow use conventional test and docs paths", () => {
+test("workspace and scripts use conventional test and docs paths", () => {
   const workspace = read("pnpm-workspace.yaml");
   assert.match(workspace, /src\/internal\/packages\/\*/);
   assert.match(workspace, /src\/internal\/packages\/@daedaline\/\*/);
@@ -216,18 +216,7 @@ test("workspace, scripts, and workflow use conventional test and docs paths", ()
   assert.match(pkg.scripts["repo:structure:test"], /^node --test tests\//);
   assert.match(pkg.scripts.test, /turbo run test/);
   assert.match(pkg.scripts.test, /node --test tests\//);
-
-  const workflow = read(".github/workflows/phase-0a-scaffold.yml");
-  assert.match(workflow, /src\/internal\/packages\/\*\*/);
-  assert.match(workflow, /src\/internal\/tools\/\*\*/);
-  assert.match(workflow, /docs\/\*\*/);
-  assert.match(workflow, /tests\/\*\*/);
-  assert.match(workflow, /\.cursor\/agents\/\*\*/);
-  assert.match(workflow, /\.cursor\/hooks\/\*\*/);
-  assert.match(workflow, /\.cursor\/rules\/\*\*/);
-  assert.match(workflow, /pnpm test/);
-  assert.match(workflow, /node src\/internal\/tools\/run-compliance\.mjs/);
-  assert.match(workflow, /pnpm run check:phase0a/);
+  assert.match(pkg.scripts["test:run-logger-conformance"], /tests\/run-logger-conformance/);
 });
 
 test("Cursor indexing excludes active and archived work by default", () => {

@@ -237,3 +237,9 @@ The validation delta is command-level rather than numeric: the implementation re
   "contentHash": "98d9b2a"
 }
 ```
+
+## Supersession (2026-05-28)
+
+GitHub workflow files under `.github/workflows/` were removed after bootstrap. The
+former `phase-0a-scaffold.yml` gate now lives in `OPERATION.md` § "Librarian
+pre-close validation" and the qa-tester stage.

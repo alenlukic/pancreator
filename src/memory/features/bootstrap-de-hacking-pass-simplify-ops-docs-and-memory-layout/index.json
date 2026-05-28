@@ -333,13 +333,9 @@
         },
         "note": "Superseded m1-substrate-runtime-batch feature folder relocated to backlog draft; feature folder deleted."
       },
-      "ci_phase_0a_scaffold": {
-        "path": ".github/workflows/phase-0a-scaffold.yml",
-        "note": "Narrowed path filters; removed src/work and work_archive from default triggers."
-      },
-      "ci_run_logger_conformance": {
-        "path": ".github/workflows/run-logger-conformance.yml",
-        "note": "workflow_dispatch only; Phoenix smoke available on demand."
+      "ci_posture": {
+        "path": "OPERATION.md",
+        "note": "GitHub workflow files removed; qa-tester and librarian pre-close validation are the local gates."
       },
       "active_memory_orientation": {
         "path": "src/memory/active/current.md",

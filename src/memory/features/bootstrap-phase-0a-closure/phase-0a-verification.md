@@ -2,7 +2,7 @@
 
 **Date (observed).** 2026-04-27  
 **Feature id.** `bootstrap-phase-0a-closure`  
-**Environment (local).** Node 20+ (per CI workflow), pnpm 9.15.0 (see root `package.json` `packageManager`).
+**Environment (local).** Node 20+ (see root `package.json` engines), pnpm 9.15.0 (see root `package.json` `packageManager`).
 
 ## Package inventory (keep / add)
 
@@ -35,4 +35,4 @@
 
 ## Git scope expectation
 
-- Intended to include only: root workspace and tooling, `tools/`, `.github/workflows/phase-0a-scaffold.yml`, `src/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md` and `index.json`, and `packages/**` skeleton files (and `pnpm-lock.yaml`). Build outputs under `dist/` are gitignored; run `pnpm build` in CI and locally as needed.
+- Intended to include only: root workspace and tooling, `tools/`, `src/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md` and `index.json`, and `packages/**` skeleton files (and `pnpm-lock.yaml`). Build outputs under `dist/` are gitignored; run `pnpm build` and the checks in `OPERATION.md` locally as needed.
