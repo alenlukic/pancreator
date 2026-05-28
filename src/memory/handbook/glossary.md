@@ -78,6 +78,15 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
 - **Bootstrap-canonical persona** — a persona authored by hand during Phase 0c
   whose `metadata.tesseract-bootstrap-only: false` declares it persists past
   the bootstrap. The MVP set is `persona-designer` and `contract-writer`.
+- **qa-tester** — the `feature-delivery` persona that owns the `test` stage.
+  Runs after `reviewer` emits `review_passes: true`. Executes automated
+  verification (lint, typecheck, compliance suite, and tests), performs manual
+  verification proportional to the touch-set, applies straightforward fixes
+  (typos, lint autofixes, missing citations), and emits
+  `/src/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict. When
+  `qa_passes: false`, routes re-entry to `implement` with a compact must-fix
+  list. Canonical spec: `src/personas/qa-tester.md`. See PRD §6 line 519 and
+  PRD §7 lines 675–678.
 - **Skill** — a reusable procedure under `src/skills/<name>/SKILL.md` conforming to
   the Agent Skills open spec (`agentskills.io`). Personas reference skills via
   the `skills:` field; multiple personas MAY share one skill.
@@ -96,7 +105,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   inputs and outputs, and MAY declare a `gate`.
 - **Gate** — a verification step that blocks stage advance until the named
   predicate passes. Common gates: `human_approval`, `review_passes`,
-  `contracts:from_feature`.
+  `qa_passes`, `contracts:from_feature`.
 - **Threshold Policy** — the per-pipeline numeric and categorical thresholds
   declared in `tesseract.yaml`. Lowered to Conftest + OPA Rego at evaluation
   time. See PRD §7 for the YAML schema.

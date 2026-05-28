@@ -47,6 +47,14 @@ stages:
     label: Run modern-code-review and contracts pass with compact must-fix output
     outputs:
       - src/work/<day>/<task-id>/review.md
+  - id: test
+    persona: qa-tester
+    label: Run automated checks and manual verification; emit test-report.md
+    inputs:
+      - src/work/<day>/<task-id>/review.md
+      - src/work/<day>/<task-id>/touch-set.json
+    outputs:
+      - src/work/<day>/<task-id>/test-report.md
   - id: report
     persona: tech-writer
     label: Author the delivery report

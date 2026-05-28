@@ -10,7 +10,7 @@ an `id`, an optional `version`, an ordered list of `stages` with optional
 
 | File | Pipeline `id` | Owner persona(s) |
 |---|---|---|
-| `feature-delivery.yaml` | `feature-delivery` | `intake-analyst` → `tech-lead` → `coder` → `reviewer` → `tech-writer` → `supervisor` → `librarian` |
+| `feature-delivery.yaml` | `feature-delivery` | `intake-analyst` → `tech-lead` → `coder` → `reviewer` → `qa-tester` → `tech-writer` → `supervisor` → `librarian` |
 | `chat-with-persona.yaml` | `chat-with-persona` | backlog-deferred (M2+; skeleton registered at bootstrap) |
 | `knowledge-curation.yaml` | `knowledge-curation` | `librarian` → `librarian` → `tech-writer` |
 | `init-greenfield.yaml` | `init-greenfield` | scaffold → `intake-analyst` → `tech-lead` |

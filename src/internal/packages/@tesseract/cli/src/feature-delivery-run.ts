@@ -28,6 +28,7 @@ const FEATURE_DELIVERY_STAGES = [
   "plan",
   "implement",
   "review",
+  "test",
   "report",
   "ship",
   "index",
@@ -158,7 +159,7 @@ export interface AdvanceFeatureDeliveryResult {
   nextPromptFile: string;
   nextPersona: string | null;
   nextHumanAction: string;
-  /** True when implement-stage advance with review.md chained implementation_complete and review_passes. */
+  /** True when implement-stage advance with review.md chained implementation_complete and review_passes, landing at test. */
   reviewReentry?: boolean;
 }
 
@@ -857,6 +858,11 @@ function stageGate(stage: PipelineStage): Pick<FeatureDeliveryStageState, "human
         humanGate: "review_passes_or_reenter_implement",
         humanAttention: "Inspect high findings; approve only clean review output or send the run back to implement.",
       };
+    case "test":
+      return {
+        humanGate: "qa_passes_or_reenter_implement",
+        humanAttention: "Inspect test-report.md; approve only when qa_passes is true or send the run back to implement.",
+      };
     case "ship":
       return {
         humanGate: "local_stage_only",
@@ -925,8 +931,20 @@ function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
     {
       from: "review",
       on: "review_passes",
+      to: "test",
+      humanAttention: "Human should still inspect review output before qa-tester runs.",
+    },
+    {
+      from: "test",
+      on: "qa_passes",
       to: "report",
-      humanAttention: "Human should still inspect review output before report/ship.",
+      humanAttention: "Human should inspect test-report.md before report/ship.",
+    },
+    {
+      from: "test",
+      on: "qa_fails",
+      to: "implement",
+      humanAttention: "Bounded re-entry; qa failures block shipping.",
     },
     {
       from: "report",
@@ -978,6 +996,7 @@ ${stageContractMarkdown(state, stage)}
 - ${state.artifacts.runDir}/touch-set.json
 - ${state.artifacts.runDir}/implementation-report.md
 - ${state.artifacts.runDir}/review.md
+- ${state.artifacts.runDir}/test-report.md
 - src/memory/features/${state.featureId}/delivery-report.md
 - src/inbox/out/<timestamp>-${state.featureId}-delivery-report.md
 
@@ -1040,14 +1059,16 @@ function stageContractMarkdown(state: FeatureDeliveryState, stage: string): stri
       const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/implementation-report.md`;
       const lastAdvance = lastAdvanceEntry(state);
       if (lastAdvance?.event === "must_fix" && lastAdvance.from === "review") {
-        return `${base}\nAfter must_fix fixes, when ${state.artifacts.runDir}/review.md already records review_passes: true, chain to report in one step: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md`;
+        return `${base}\nAfter must_fix fixes, when ${state.artifacts.runDir}/review.md already records review_passes: true, chain to test in one step: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md`;
       }
       return base;
     }
     case "review":
       return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md\nReturn to implement on must-fix: pnpm -w exec tess advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
+    case "test":
+      return `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nAdvance on pass: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/test-report.md\nReturn to implement on qa-fail: pnpm -w exec tess advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
-      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md\nOutput: src/memory/features/${state.featureId}/delivery-report.md\nAdvance after report is accepted: pnpm -w exec tess advance ${state.taskId} --artifact src/memory/features/${state.featureId}/delivery-report.md`;
+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: src/memory/features/${state.featureId}/delivery-report.md\nAdvance after report is accepted: pnpm -w exec tess advance ${state.taskId} --artifact src/memory/features/${state.featureId}/delivery-report.md`;
     case "ship":
       return `Inputs: local diff, validation output, src/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: pnpm -w exec tess advance ${state.taskId} --artifact ${state.artifacts.runDir}/policy-compliance.json`;
     case "index":
@@ -1496,7 +1517,7 @@ async function tryResolveReviewReentryAdvance(
       `Cannot advance ${state.taskId} with ${reviewArtifact} from implement after must_fix: ` +
         `review.md must contain review_passes: true. ` +
         `Advance with ${path.posix.join(state.artifacts.runDir, "implementation-report.md")} to return to review, ` +
-        `or update review.md and retry.`,
+        `or update review.md and retry. When review passes, the chain lands at test stage.`,
     );
   }
 
@@ -1558,7 +1579,7 @@ async function advanceReviewReentryFromImplement(input: {
     (candidate) => candidate.from === "review" && candidate.on === "review_passes",
   );
   if (reviewTransition === undefined) {
-    throw new Error("feature-delivery pipeline is missing review → report transition.");
+    throw new Error("feature-delivery pipeline is missing review → test transition.");
   }
   assertStageArtifact(repoRoot, state, "review", reentry.reviewArtifact, "review_passes");
 
@@ -1610,6 +1631,8 @@ function defaultEventForStage(stage: string): string {
       return "implementation_complete";
     case "review":
       return "review_passes";
+    case "test":
+      return "qa_passes";
     case "report":
       return "report_ready";
     case "ship":
@@ -1638,7 +1661,7 @@ function assertStageArtifact(
       lastAdvance?.event === "must_fix" &&
       lastAdvance.from === "review";
     const hint = afterMustFix
-      ? ` After must_fix re-entry, advance with review.md when it records review_passes: true to chain implement→review→report, or advance with ${expected.acceptedArtifacts.join(", ")} first.`
+      ? ` After must_fix re-entry, advance with review.md when it records review_passes: true to chain implement→review→test, or advance with ${expected.acceptedArtifacts.join(", ")} first.`
       : "";
     throw new Error(
       `Artifact ${artifact} is not valid for ${stage} on ${event}; expected one of: ${expected.acceptedArtifacts.join(", ")}.${hint}`,
@@ -1681,6 +1704,13 @@ function expectedArtifactsForStage(
       }
       return { acceptedArtifacts: [review], requiredArtifacts: [review] };
     }
+    case "test": {
+      const testReport = path.posix.join(run, "test-report.md");
+      if (event !== "qa_passes" && event !== "qa_fails") {
+        throw new Error(`Test stage only supports qa_passes or qa_fails, got ${event}.`);
+      }
+      return { acceptedArtifacts: [testReport], requiredArtifacts: [testReport] };
+    }
     case "report": {
       const report = path.posix.join("src", "memory", "features", state.featureId, "delivery-report.md");
       return { acceptedArtifacts: [report], requiredArtifacts: [report] };
@@ -1707,6 +1737,13 @@ function applyStageStatuses(
   if (event === "must_fix") {
     return stages.map((stage) => {
       if (stage.id === "review") return { ...stage, status: "blocked" };
+      if (stage.id === "implement") return { ...stage, status: "ready" };
+      return stage;
+    });
+  }
+  if (event === "qa_fails") {
+    return stages.map((stage) => {
+      if (stage.id === "test") return { ...stage, status: "blocked" };
       if (stage.id === "implement") return { ...stage, status: "ready" };
       return stage;
     });
@@ -1747,6 +1784,8 @@ function nextHumanActionForStage(
       return `${prefix}Delegate next-prompt.md to coder; monitor drift and require ${state.artifacts.runDir}/implementation-report.md before review.`;
     case "review":
       return `${prefix}Delegate next-prompt.md to reviewer; inspect ${state.artifacts.runDir}/review.md and choose pass or must-fix.`;
+    case "test":
+      return `${prefix}Delegate next-prompt.md to qa-tester; inspect ${state.artifacts.runDir}/test-report.md and choose pass or qa-fail.`;
     case "report":
       return `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before ship.`;
     case "ship":

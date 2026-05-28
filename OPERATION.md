@@ -65,9 +65,11 @@ Use this loop exactly:
    `pnpm -w exec tess close-artifacts <task-id>` once after final validation.
 
 `advance` runs after every accepted non-terminal stage: `intake`, `plan`,
-`implement`, `review`, `report`, `ship`, and `index`. The only branch is `review`:
-passing review advances to `report`; must-fix review uses `--event must_fix` and
-returns to `implement`. Do not run `advance` after the final `complete` state.
+`implement`, `review`, `test`, `report`, `ship`, and `index`. Review has two
+branches: passing review advances to `test`; must-fix review uses `--event must_fix`
+and returns to `implement`. Test has two branches: passing test advances to `report`;
+qa-fail uses `--event qa_fails` and returns to `implement`. Do not run `advance`
+after the final `complete` state.
 
 ### Post-invocation state machine
 
@@ -80,7 +82,8 @@ with `currentStage: intake`.
 | `intake` | `intake-analyst` | `human_approval` via advance on spec | Accept canonical spec |
 | `plan` | `tech-lead` | `human_approval` via advance on touch-set | Accept plan and scope |
 | `implement` | `coder` | `implementation_complete` | Accept implementation report |
-| `review` | `reviewer` | `review_passes` or `must_fix` | Pass or return to implement |
+| `review` | `reviewer` | `review_passes` or `must_fix` | Pass (→ test) or return to implement |
+| `test` | `qa-tester` | `qa_passes` or `qa_fails` | Pass (→ report) or return to implement |
 | `report` | `tech-writer` | `report_ready` | Accept delivery report |
 | `ship` | `supervisor` | `human_ratifies_local_diff` | Ratify local diff |
 | `index` | `librarian` | `artifacts_indexed` | Accept feature index |
@@ -111,6 +114,8 @@ Every runnable operator command uses `pnpm -w exec tess …` from the repository
 | `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/implementation-report.md` |
 | `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/review.md` |
 | `review` (must-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec tess advance <task-id> --event must_fix --artifact <runDir>/review.md` |
+| `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/test-report.md` |
+| `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec tess advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
 | `report` | `tech-writer` | `src/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/delivery-report.md` |
 | `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec tess advance <task-id> --artifact <runDir>/policy-compliance.json` |
 | `index` | `librarian` | `src/memory/features/<feature-id>/index.json` | `pnpm -w exec tess advance <task-id> --artifact src/memory/features/<feature-id>/index.json` |

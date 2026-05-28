@@ -26,6 +26,8 @@ stages:
     persona: coder
   - id: review
     persona: reviewer
+  - id: test
+    persona: qa-tester
   - id: report
     persona: tech-writer
   - id: ship
@@ -330,14 +332,14 @@ describe("parseAndRun", () => {
     expect(reentry.reviewReentry).toBe(true);
     expect(reentry.fromStage).toBe("implement");
     expect(reentry.event).toBe("review_passes");
-    expect(reentry.currentStage).toBe("report");
-    expect(reentry.nextPersona).toBe("tech-writer");
+    expect(reentry.currentStage).toBe("test");
+    expect(reentry.nextPersona).toBe("qa-tester");
 
     const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
       currentStage: string;
       advanceHistory: Array<{ event: string; from: string; to: string }>;
     };
-    expect(state.currentStage).toBe("report");
+    expect(state.currentStage).toBe("test");
     expect(state.advanceHistory.at(-2)).toMatchObject({
       from: "implement",
       to: "review",
@@ -345,7 +347,7 @@ describe("parseAndRun", () => {
     });
     expect(state.advanceHistory.at(-1)).toMatchObject({
       from: "review",
-      to: "report",
+      to: "test",
       event: "review_passes",
     });
   });
@@ -386,6 +388,12 @@ describe("parseAndRun", () => {
 
     await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
     await parseAndRun(["advance", start.taskId, "--artifact", `src/work/172996_05-10-26/${start.taskId}/review.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    await writeFile(path.join(runDir, "test-report.md"), "qa_passes: true", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `src/work/172996_05-10-26/${start.taskId}/test-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -455,6 +463,11 @@ describe("parseAndRun", () => {
     });
     await writeFile(path.join(activeRunDir, "review.md"), "review_passes: true", "utf8");
     await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/review.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(activeRunDir, "test-report.md"), "qa_passes: true", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/test-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
