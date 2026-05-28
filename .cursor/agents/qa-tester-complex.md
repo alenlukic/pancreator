@@ -1,7 +1,7 @@
 ---
 name: qa-tester-complex
 description: "Complex high-effort `qa-tester` subagent. Use only when standard mode is insufficient: ambiguous architecture, policy/compliance reasoning, broad repo audit, historical reconstruction, or high-risk cross-cutting work."
-model: claude-opus-4-7
+model: gpt-5.5
 permissionMode: default
 tools:
   - Read

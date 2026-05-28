@@ -1,7 +1,7 @@
 ---
 name: qa-tester-standard
 description: "Standard `qa-tester` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: gpt-5.3-codex
+model: gpt-5.5
 permissionMode: default
 tools:
   - Read

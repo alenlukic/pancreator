@@ -1,7 +1,7 @@
 ---
 name: qa-tester
 description: "Backward-compatible standard alias for `qa-tester-standard`. Use for routine qa-tester work; invoke `qa-tester-complex` when the task is ambiguous, cross-cutting, policy-sensitive, or explicitly escalated."
-model: gpt-5.3-codex
+model: gpt-5.5
 permissionMode: default
 tools:
   - Read
