@@ -74,6 +74,19 @@ Every item in `items` MUST include:
 Writers MAY include additional keys, but extra keys MUST NOT replace or weaken
 the required fields above.
 
+### Debt classification (M3+ US-7)
+
+Technical-debt tracking SHALL live in this backlog index, not in a separate
+`/src/memory/debt/` tree. When an item records groomer or tech-debt-scan work,
+the writer MUST add:
+
+```yaml
+tags: [debt]
+```
+
+Debt items MUST still provide `owner`, `milestone`, `status`, and `priority`.
+Writers MAY add free-form context in `notes`; they MUST NOT omit required fields.
+
 ## 3 - Status enum
 
 `status` is a closed enum:

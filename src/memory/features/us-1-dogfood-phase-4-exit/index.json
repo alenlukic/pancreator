@@ -84,5 +84,12 @@
     "human_ratification_required": true,
     "advance_command": "pnpm -w exec tess advance 20004_1826_us-1-dogfood-phase-4-exit --artifact src/memory/features/us-1-dogfood-phase-4-exit/index.json",
     "status": "deferred-until-ratified"
+  },
+  "artifact_index": {
+    "implementation_surface": {
+      "feature_folder": {
+        "path": "src/memory/features/us-1-dogfood-phase-4-exit/"
+      }
+    }
   }
 }

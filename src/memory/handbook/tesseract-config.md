@@ -113,6 +113,16 @@ phase `N`, update all three fields together:
 Repository tests call the validator against live `tesseract.yaml` so partial
 updates fail CI instead of drifting.
 
+## Operator documentation (`OPERATION.md`)
+
+When a change affects operator-facing interfaces (CLI flags or subcommands,
+documented paths under `src/inbox/`, `src/work/`, or `src/memory/features/`,
+default values, or environment variables), the author SHALL update
+`OPERATION.md` in the same change set. `README.md` SHALL remain a short entry
+point that routes to `OPERATION.md` for procedure. `AGENTS.md` and
+`docs/M1.index.md` SHALL keep a pointer to `OPERATION.md` in operator-routing
+sections.
+
 ## Editing guidance
 
 When changing `tesseract.yaml`:

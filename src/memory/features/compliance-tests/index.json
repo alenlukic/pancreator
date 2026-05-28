@@ -248,6 +248,11 @@
           "contentHash": "bd497cd"
         }
       }
+    },
+    "implementation_surface": {
+      "compliance_fixtures": {
+        "path": "tests/compliance/"
+      }
     }
   }
 }

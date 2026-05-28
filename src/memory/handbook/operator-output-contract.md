@@ -68,6 +68,16 @@ subagent block was visible in the parent chat surface.
 - Earlier sections MAY summarize work performed; this block MUST contain only
   forward-looking operator actions.
 
+## 2.1 — Automated conformance check
+
+Maintainers SHALL run `node src/internal/tools/check-operator-output.mjs` from the
+repository root before governed commits that touch operator-visible surfaces.
+The checker scans runnable fenced code blocks in `AGENTS.md`, `README.md`,
+`OPERATION.md`, `src/personas/`, `.cursor/agents/`, `.cursor/rules/`, and
+`src/memory/handbook/` and exits non-zero when a line invokes bare `tess …`
+without the `pnpm -w exec tess …` prefix. Repository tests include
+`tests/operator-output-contract.test.mjs`.
+
 ## 3 — Action entry shape
 
 Each step MUST be one numbered list item. Every item MUST include:

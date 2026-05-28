@@ -105,7 +105,7 @@ inbox-borne clarifying dialogue capped at 5 rounds.
    you SHALL fold the reply into the working draft, regenerate any
    open-question list, and post the next round under
    `src/inbox/threads/<thread-id>/`.
-4. **Manual rerun.** When a human runs `tess feature intake <id>`, you
+4. **Manual rerun.** When a human runs `pnpm -w exec tess feature intake <id>`, you
    SHALL re-open the canonicalization loop against the current
    `/src/memory/features/<id>/spec.md`.
 

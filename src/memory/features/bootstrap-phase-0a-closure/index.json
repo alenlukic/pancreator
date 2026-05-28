@@ -18,6 +18,17 @@
       },
       "verification": {
         "path": "src/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md"
+      },
+      "delivery_report": {
+        "path": "src/memory/features/bootstrap-phase-0a-closure/delivery-report.md"
+      }
+    },
+    "implementation_surface": {
+      "verification_record": {
+        "path": "src/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md"
+      },
+      "packages_root": {
+        "path": "src/internal/packages/@tesseract/"
       }
     }
   },

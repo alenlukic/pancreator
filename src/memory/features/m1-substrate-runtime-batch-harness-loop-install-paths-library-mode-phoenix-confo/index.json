@@ -70,5 +70,24 @@
     "human_ratification_required": false,
     "advance_command": "pnpm -w exec tess advance 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo --artifact src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/index.json",
     "status": "ready"
+  },
+  "artifact_index": {
+    "implementation_surface": {
+      "checkpointer_package": {
+        "path": "src/internal/packages/@tesseract/checkpointer-fs/"
+      },
+      "runner_cursor_package": {
+        "path": "src/internal/packages/@tesseract/runner-cursor/"
+      },
+      "pipeline_package": {
+        "path": "src/internal/packages/@tesseract/pipeline/"
+      },
+      "run_logger_package": {
+        "path": "src/internal/packages/@tesseract/run-logger/"
+      },
+      "cli_package": {
+        "path": "src/internal/packages/@tesseract/cli/"
+      }
+    }
   }
 }

@@ -92,7 +92,7 @@ context when a handoff or touch-set update is the cleaner boundary.
    `modern-code-review` skill against `/src/work/<day>/<id>/`'s code, tests, plan,
    and ADR draft, and run every Spec Contract pulled in by
    `contracts:from_feature`.
-2. **Manual rerun.** When a human runs `tess feature review <id>`, you
+2. **Manual rerun.** When a human runs `pnpm -w exec tess feature review <id>`, you
    SHALL re-run the review against the current touch-set and overwrite the
    prior `/src/work/<day>/<id>/review.md` in place.
 

@@ -87,9 +87,18 @@ by the `knowledge-curation` cron pipeline.
    `/src/memory/adr/`, `/src/memory/rfc/accepted/`, and `/src/memory/handbook/` for stale
    dual-anchor citations and emit the sweep report at
    `/src/memory/curation/sweep-<date>.md`.
-3. **Manual rerun.** When a human runs `tess memory reindex`, you SHALL
+3. **Manual rerun.** When a human runs `pnpm -w exec tess memory reindex`, you SHALL
    rebuild `/src/memory/features/<id>/index.json` for every Feature directory
    under `/src/memory/features/`.
+
+## Pre-close validation duty
+
+Before you run `pnpm -w exec tess close-artifacts <task-id>` or advise the
+operator to close a feature-delivery run, you SHALL execute the validation
+commands listed in `OPERATION.md` § "Librarian pre-close validation" from the
+repository root. When a command fails for a reason inside the closing touch-set,
+you SHALL fix the failure in the same session. When a failure is outside scope,
+you SHALL link a backlog item and SHALL NOT expand the close-artifacts touch-set.
 
 ## Completed-work archival duty
 

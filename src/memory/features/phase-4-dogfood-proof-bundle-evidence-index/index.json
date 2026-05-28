@@ -64,5 +64,12 @@
     "human_ratification_required": true,
     "advance_command": "pnpm -w exec tess advance 77373_0230_phase-4-dogfood-proof-bundle-evidence-index --artifact src/memory/features/phase-4-dogfood-proof-bundle-evidence-index/index.json",
     "status": "deferred-until-ratified"
+  },
+  "artifact_index": {
+    "implementation_surface": {
+      "feature_folder": {
+        "path": "src/memory/features/phase-4-dogfood-proof-bundle-evidence-index/"
+      }
+    }
   }
 }

@@ -80,7 +80,9 @@ When an agent names **durable-memory**, the agent SHALL treat the tier as
 long-term ratified project memory.
 
 Expected path prefixes include `src/memory/features/`, `src/memory/adr/`, and
-`src/memory/backlog/`.
+`src/memory/backlog/`. Technical-debt inventory and groomer backlog items SHALL
+use `src/memory/backlog/index.yaml` with `tags: [debt]` per
+`src/memory/handbook/backlog-format.md`; there is no separate debt tier path.
 
 When an agent loads durable memory, the agent SHALL load explicit routes only
 and SHALL avoid wholesale tree traversal unless the task names the Feature or

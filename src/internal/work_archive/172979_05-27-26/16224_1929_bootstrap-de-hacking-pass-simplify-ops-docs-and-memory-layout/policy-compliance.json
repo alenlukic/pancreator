@@ -1,0 +1,60 @@
+{
+  "task_id": "16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout",
+  "governing_sources_checked": [
+    "AGENTS.md",
+    "src/memory/handbook/constitution.md",
+    "docs/PRD.md"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "This shipment updates operator-facing procedures, handbook governance guidance, CI workflow triggers, persona operating duties, feature-memory records, and validation tooling, so documentation and reference stewardship obligations apply.",
+    "changed_surfaces": [
+      "OPERATION.md",
+      "README.md",
+      "AGENTS.md",
+      "docs/M1.index.md",
+      "docs/PRD.index.md",
+      "docs/PRD.md",
+      ".github/workflows/phase-0a-scaffold.yml",
+      ".github/workflows/run-logger-conformance.yml",
+      "src/memory/handbook/backlog-format.md",
+      "src/memory/handbook/memory-tiers.md",
+      "src/memory/handbook/operator-output-contract.md",
+      "src/memory/handbook/tesseract-config.md",
+      "src/memory/backlog/index.yaml",
+      "src/memory/active/current.md",
+      "src/personas/librarian.md",
+      "src/personas/coder.md",
+      "src/personas/intake-analyst.md",
+      "src/personas/reviewer.md",
+      "src/personas/supervisor.md",
+      "src/personas/tech-lead.md",
+      "src/personas/tech-writer.md",
+      "src/internal/tools/check-operator-output.mjs",
+      "tests/operator-output-contract.test.mjs",
+      "src/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md",
+      "src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+      "src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md"
+    ],
+    "deferred_items": [
+      {
+        "id": "m1-substrate-runtime-batch",
+        "rationale": "The legacy feature folder was retired and converted to backlog draft scope; remaining runtime-batch behavior is tracked as backlog debt instead of feature-memory implementation surface."
+      },
+      {
+        "id": "bootstrap-ci-narrow-paths-re-enable",
+        "rationale": "CI path filter narrowing shipped for phase-0a, while additional broadened trigger policy and regression hardening remain tracked as follow-on debt."
+      },
+      {
+        "id": "bootstrap-us7-tech-debt-scan",
+        "rationale": "The pass consolidated debt handling into backlog tags and documented policy updates; broader US-7 debt scan execution remains explicitly backlog-tracked."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The changes honor AGENTS working agreement by keeping the human ratification gate, avoiding commit/push side effects, producing the required ship-stage policy artifact, and preserving operator-output command conventions.",
+    "constitution_alignment": "The artifact records documentation-impact decisions and backlog-linked deferrals with explicit rationale, matching constitutional requirements for traceable stewardship and bootstrap best-effort enforcement.",
+    "prd_alignment": "Centralized OPERATION guidance, operator-output conformance checks, CI/workflow tightening, and memory/index cleanup support PRD goals for supervised pipeline operation, durable citation-backed memory, and auditable operator control.",
+    "required_updates": []
+  }
+}

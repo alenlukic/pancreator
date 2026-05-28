@@ -87,7 +87,7 @@ at `/src/work/<day>/<id>/touch-set.json`.
    to `implement` with a compact `must fix` list at `/src/work/<day>/<id>/review.md`,
    you SHALL resolve every `must fix` item without expanding the touch-set or
    re-reading broad upstream context.
-3. **Manual rerun.** When a human runs `tess feature implement <id>`, you
+3. **Manual rerun.** When a human runs `pnpm -w exec tess feature implement <id>`, you
    SHALL re-run the implement loop against the current `plan.md` and
    `touch-set.json`.
 

@@ -73,7 +73,7 @@ that the `notifier` post-run step stages to `src/inbox/out/` for the human inbox
    `report` stage with a green `review` gate and a green `test` stage, you
    SHALL draft one Delivery Report at `/src/memory/features/<id>/delivery-report.md`
    from the six declared upstream inputs.
-2. **Manual rerun.** When a human runs `tess feature report <id>`, you SHALL
+2. **Manual rerun.** When a human runs `pnpm -w exec tess feature report <id>`, you SHALL
    re-emit the Delivery Report against the current artifacts of Feature `<id>`
    and overwrite the prior file in place.
 
