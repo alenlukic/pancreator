@@ -51,8 +51,9 @@ skill's classification rubric and adds its own contract bundle.
   §7 lines 671 through 676: code, tests, `/src/work/<day>/<id>/plan.md`,
   `/src/work/<day>/<id>/adr-draft.md`, and the contracts pulled in by
   `contracts:from_feature`.
-- `/src/work/<day>/<id>/test-report.md` SHALL exist (emitted by the upstream `test`
-  stage) and SHALL carry a coverage delta the review cites.
+- Coverage figures SHALL be derived from the touch-set diff and test files
+  directly; `/src/work/<day>/<id>/test-report.md` is an output of the
+  downstream `test` stage and is NOT a review prerequisite.
 - `/src/memory/handbook/glossary.md`, `/src/memory/handbook/contract-style.md`, and
   `/src/memory/handbook/contract-format.md` SHALL exist; the review body
   satisfies Layer 1 lint per PRD §4.6 and the contract result table
@@ -116,11 +117,15 @@ the `must fix` section under Findings. An omitted clause fails the gate.
 
 ### Step 4 — Verify the coverage delta and the test plan
 
-Read `/src/work/<day>/<id>/test-report.md` and record the statement and branch
-coverage on the changed lines. The reviewer MUST verify each public symbol
-the diff adds or modifies carries at least one test under the touch-set's
-declared test paths per `src/personas/coder.md`. A missing test routes a
-`must fix` finding citing the symbol.
+Derive statement and branch coverage on the changed lines from the touch-set
+diff and the test files declared in the touch-set (`/src/work/<day>/<id>/touch-set.json`).
+The reviewer MUST verify each public symbol the diff adds or modifies carries at
+least one test under the touch-set's declared test paths per
+`src/personas/coder.md`. A missing test routes a `must fix` finding citing the
+symbol. When `/src/work/<day>/<id>/implementation-report.md` contains coverage
+figures the coder captured, the reviewer MAY cite those figures and MUST record
+the source path. (`/src/work/<day>/<id>/test-report.md` is emitted by the
+downstream `test` stage and is NOT available at review time.)
 
 When the threshold policy in `daedaline.yaml: gates.coverage` declares
 `new_lines_only: true`, the reviewer MUST cite the new-lines coverage
@@ -138,7 +143,9 @@ declared in `src/personas/reviewer.md`:
    and `nit`.
 3. **Spec Contract results.** The table built in Step 3.
 4. **Coverage delta.** The figures captured in Step 4 plus a dual-anchor
-   citation into `/src/work/<day>/<id>/test-report.md`.
+   citation into the source (diff, touch-set test paths, or
+   `/src/work/<day>/<id>/implementation-report.md`) from which the
+   coverage figures were derived.
 
 The full body MUST stay at most 1500 words across the four sections.
 
@@ -180,11 +187,12 @@ The MVP loop cap declared in PRD §3.5 US-1 line 120 MUST hold.
 
 ## Failure-handling
 
-- If `/src/work/<day>/<id>/plan.md`, `/src/work/<day>/<id>/adr-draft.md`, or
-  `/src/work/<day>/<id>/test-report.md` is missing, the review MUST halt and open
-  one inbox item at `src/inbox/in/<timestamp>-reviewer-missing-input.md`
-  naming the Feature id and the missing upstream artifact. The reviewer
-  MUST NOT guess the missing content.
+- If `/src/work/<day>/<id>/plan.md` or `/src/work/<day>/<id>/adr-draft.md` is
+  missing, the review MUST halt and open one inbox item at
+  `src/inbox/in/<timestamp>-reviewer-missing-input.md` naming the Feature id
+  and the missing upstream artifact. The reviewer MUST NOT guess the missing
+  content. (`/src/work/<day>/<id>/test-report.md` is an output of the downstream
+  `test` stage and is NOT a review prerequisite.)
 - If the implement → review loop has run 5 times without a green
   `review_passes` gate, the reviewer MUST halt and escalate via inbox per
   PRD §3.5 US-1 line 120; the supervisor MAY dispatch `pause` or
