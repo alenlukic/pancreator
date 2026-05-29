@@ -1,7 +1,7 @@
 ---
 name: tech-lead-complex
 description: "Complex high-effort `tech-lead` subagent. Use only when standard mode is insufficient: ambiguous architecture, policy/compliance reasoning, broad repo audit, historical reconstruction, or high-risk cross-cutting work."
-model: gpt-5.5-medium
+model: gpt-5.5
 permissionMode: default
 tools:
   - Read

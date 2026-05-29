@@ -1,13 +1,69 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import type { CursorSdkTransport } from "@daedaline/runner-cursor";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { parseAndRun, DDL_ACTIVE_MEMORY_CONFLICT_EXIT_CODE, DDL_DEFERRED_EXIT_CODE } from "./run.js";
+import { loadRepoEnv } from "./repo-env.js";
+import { PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 
 const JSON_FORMAT_ABBREV_ENV = "DDL_JSON_FORMAT_ABBREV_LEN";
+const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
+
+const FEATURE_DELIVERY_PERSONAS = [
+  "intake-analyst",
+  "tech-lead",
+  "coder",
+  "reviewer",
+  "qa-tester",
+  "tech-writer",
+  "supervisor",
+  "librarian",
+] as const;
+
+async function seedCanonicalPersonas(root: string): Promise<void> {
+  const personasDir = path.join(root, "src", "personas");
+  await mkdir(personasDir, { recursive: true });
+  for (const persona of FEATURE_DELIVERY_PERSONAS) {
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "src", "personas", `${persona}.md`),
+      path.join(personasDir, `${persona}.md`),
+    );
+  }
+}
+
+async function writeRunnerInvocationConfig(root: string, invocation: "manual" | "sdk"): Promise<void> {
+  await writeFile(
+    path.join(root, "daedaline.yaml"),
+    `project_root: "."
+runner:
+  cursor:
+    invocation: ${invocation}
+`,
+    "utf8",
+  );
+}
+
+function mockSdkTransport(onInvoke?: () => void): CursorSdkTransport {
+  return async () => {
+    onInvoke?.();
+    return { status: "ok", resultText: "mocked-sdk" };
+  };
+}
+
+function runnerInvokeLogLines(logText: string): string[] {
+  return logText
+    .split("\n")
+    .filter(Boolean)
+    .filter(
+      (line) =>
+        line.includes('"gen_ai.provider.name":"cursor"') ||
+        line.includes('"gen_ai.provider.name": "cursor"'),
+    );
+}
 
 async function seedFeatureDeliveryRepo(root: string): Promise<void> {
   await mkdir(path.join(root, "src", "inbox", "in"), { recursive: true });
@@ -1258,5 +1314,312 @@ describe("operator tooling batch cli wiring", () => {
     expect(written).toContain(clockNow.toISOString());
     expect(written).not.toContain(staleIso);
     expect(out.join("")).toContain('"status": "ok"');
+  });
+
+  describe("cursor runner harness", () => {
+    it("invokes CursorRunner once on sdk run and advance", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "ddl-sdk-run-advance-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "sdk");
+      await writeFile(
+        path.join(root, "src", "inbox", "in", "demo-feature.md"),
+        "# Demo Feature\n\nBuild the thing.",
+        "utf8",
+      );
+      let invokeCount = 0;
+      const transport = mockSdkTransport(() => {
+        invokeCount += 1;
+      });
+      const out: string[] = [];
+      const code = await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { sdkTransport: transport },
+      });
+      if (code !== 0) {
+        throw new Error(`sdk run failed: ${out.join("")}`);
+      }
+      expect(invokeCount).toBe(1);
+      const start = JSON.parse(out.join("")) as { taskId: string; runLogFile: string };
+      const runLogAfterStart = await readFile(path.join(root, start.runLogFile), "utf8");
+      expect(runnerInvokeLogLines(runLogAfterStart)).toHaveLength(1);
+
+      invokeCount = 0;
+      const spec = path.join(root, "src", "memory", "features", "demo-feature", "spec.md");
+      await mkdir(path.dirname(spec), { recursive: true });
+      await writeFile(spec, "# Spec\n\nfeature: demo\n", "utf8");
+      const advanceCode = await parseAndRun(
+        ["advance", start.taskId, "--artifact", "src/memory/features/demo-feature/spec.md"],
+        {
+          repoRoot: root,
+          writeOut: () => undefined,
+          testHooks: { sdkTransport: transport },
+        },
+      );
+      expect(advanceCode).toBe(0);
+      expect(invokeCount).toBe(1);
+      const runLogAfterAdvance = await readFile(path.join(root, start.runLogFile), "utf8");
+      expect(runnerInvokeLogLines(runLogAfterAdvance)).toHaveLength(2);
+    });
+
+    it("does not call SDK transport for manual mode across run and advance", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "ddl-manual-no-sdk-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(
+        path.join(root, "src", "inbox", "in", "demo-feature.md"),
+        "# Demo Feature\n\nBuild the thing.",
+        "utf8",
+      );
+      let invokeCount = 0;
+      const out: string[] = [];
+      const code = await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { sdkTransport: mockSdkTransport(() => { invokeCount += 1; }) },
+      });
+      expect(code).toBe(0);
+      expect(invokeCount).toBe(0);
+      const start = JSON.parse(out.join("")) as { taskId: string; runLogFile: string };
+      const specRel = "src/memory/features/demo-feature/spec.md";
+      await mkdir(path.dirname(path.join(root, specRel)), { recursive: true });
+      await writeFile(path.join(root, specRel), "# Spec", "utf8");
+      await parseAndRun(["advance", start.taskId, "--artifact", specRel], {
+        repoRoot: root,
+        writeOut: () => undefined,
+        testHooks: { sdkTransport: mockSdkTransport(() => { invokeCount += 1; }) },
+      });
+      expect(invokeCount).toBe(0);
+      const logText = await readFile(path.join(root, start.runLogFile), "utf8");
+      expect(runnerInvokeLogLines(logText)).toHaveLength(0);
+    });
+
+    it("exits non-zero without state.json when persona resolution fails on sdk run", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "ddl-persona-fail-"));
+      await seedFeatureDeliveryRepo(root);
+      await writeRunnerInvocationConfig(root, "sdk");
+      await writeFile(
+        path.join(root, "src", "pipelines", "feature-delivery.yaml"),
+        `id: feature-delivery
+version: "1"
+stages:
+  - id: intake
+    persona: missing-persona
+`,
+        "utf8",
+      );
+      await writeFile(path.join(root, "src", "inbox", "in", "demo.md"), "# Demo", "utf8");
+      const out: string[] = [];
+      const code = await parseAndRun(["run", "feature-delivery", "demo.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        writeErr: () => undefined,
+        testHooks: { sdkTransport: mockSdkTransport() },
+      });
+      expect(code).toBe(1);
+      expect(out.join("")).toContain("Unknown persona");
+      const workRoot = path.join(root, "src", "work");
+      if (existsSync(workRoot)) {
+        const dayDirs = await readdir(workRoot);
+        for (const day of dayDirs) {
+          const tasks = await readdir(path.join(workRoot, day));
+          for (const task of tasks) {
+            expect(existsSync(path.join(workRoot, day, task, "state.json"))).toBe(false);
+          }
+        }
+      }
+    });
+
+    it("loads repo-root .env without echoing secrets to run logs", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "ddl-env-load-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "sdk");
+      await writeFile(
+        path.join(root, ".env"),
+        'CURSOR_API_KEY="super-secret-test-key"\n# comment\nPLAIN=value\n',
+        "utf8",
+      );
+      delete process.env.CURSOR_API_KEY;
+      loadRepoEnv(root);
+      expect(process.env.CURSOR_API_KEY).toBe("super-secret-test-key");
+      await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+      const out: string[] = [];
+      await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { sdkTransport: mockSdkTransport() },
+      });
+      const start = JSON.parse(out.join("")) as { runLogFile: string };
+      const logText = await readFile(path.join(root, start.runLogFile), "utf8");
+      expect(logText).not.toContain("super-secret-test-key");
+      delete process.env.CURSOR_API_KEY;
+    });
+
+    it("resolves real persona markdown for runner input", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "ddl-persona-resolve-"));
+      await seedCanonicalPersonas(root);
+      const persona = await resolvePersona(root, "coder");
+      expect(persona.name).toBe("coder");
+      expect(persona.tools.length).toBeGreaterThan(0);
+      await expect(resolvePersona(root, "not-a-persona")).rejects.toBeInstanceOf(PersonaResolveError);
+    });
+
+    async function advanceSdkRunToImplement(
+      root: string,
+      taskId: string,
+      featureId: string,
+      runDirRel: string,
+      transport: CursorSdkTransport,
+    ): Promise<void> {
+      const specRel = `src/memory/features/${featureId}/spec.md`;
+      await mkdir(path.dirname(path.join(root, specRel)), { recursive: true });
+      await writeFile(path.join(root, specRel), "# Spec\n", "utf8");
+      const specCode = await parseAndRun(["advance", taskId, "--artifact", specRel], {
+        repoRoot: root,
+        writeOut: () => undefined,
+        testHooks: { sdkTransport: transport },
+      });
+      expect(specCode).toBe(0);
+      await writeFile(path.join(root, runDirRel, "plan.md"), "# Plan\n", "utf8");
+      await writeFile(path.join(root, runDirRel, "touch-set.json"), "{}\n", "utf8");
+      const planCode = await parseAndRun(
+        ["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`],
+        { repoRoot: root, writeOut: () => undefined, testHooks: { sdkTransport: transport } },
+      );
+      expect(planCode).toBe(0);
+    }
+
+    it("sdk auto-chains review_passes to test and qa_passes to report without extra advance", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "ddl-sdk-auto-chain-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "sdk");
+      await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+      const transport = mockSdkTransport();
+      const out: string[] = [];
+      const runCode = await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { sdkTransport: transport },
+      });
+      expect(runCode).toBe(0);
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; featureId: string };
+      const runDirRel = path.posix.dirname(start.stateFile);
+      await advanceSdkRunToImplement(root, start.taskId, start.featureId, runDirRel, transport);
+      await writeFile(
+        path.join(root, runDirRel, "review.md"),
+        "review_passes: true\n",
+        "utf8",
+      );
+      await writeFile(
+        path.join(root, runDirRel, "test-report.md"),
+        "qa_passes: true\n",
+        "utf8",
+      );
+      await writeFile(path.join(root, runDirRel, "implementation-report.md"), "# Impl\n", "utf8");
+      const advanceOut: string[] = [];
+      const advanceCode = await parseAndRun(
+        ["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`],
+        {
+          repoRoot: root,
+          writeOut: (c) => advanceOut.push(c),
+          testHooks: { sdkTransport: transport },
+        },
+      );
+      expect(advanceCode).toBe(0);
+      const result = JSON.parse(advanceOut.join("")) as { currentStage: string };
+      expect(result.currentStage).toBe("report");
+      const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        currentStage: string;
+      };
+      expect(state.currentStage).toBe("report");
+    });
+
+    it("sdk auto-chains review must_fix back to implement", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "ddl-sdk-auto-must-fix-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "sdk");
+      await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+      const transport = mockSdkTransport();
+      const out: string[] = [];
+      await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { sdkTransport: transport },
+      });
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; featureId: string };
+      const runDirRel = path.posix.dirname(start.stateFile);
+      await advanceSdkRunToImplement(root, start.taskId, start.featureId, runDirRel, transport);
+      await writeFile(
+        path.join(root, runDirRel, "review.md"),
+        "review_passes: false\n",
+        "utf8",
+      );
+      await writeFile(path.join(root, runDirRel, "implementation-report.md"), "# Impl\n", "utf8");
+      const advanceOut: string[] = [];
+      const advanceCode = await parseAndRun(
+        ["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`],
+        {
+          repoRoot: root,
+          writeOut: (c) => advanceOut.push(c),
+          testHooks: { sdkTransport: transport },
+        },
+      );
+      expect(advanceCode).toBe(0);
+      const result = JSON.parse(advanceOut.join("")) as { currentStage: string };
+      expect(result.currentStage).toBe("implement");
+      const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        currentStage: string;
+      };
+      expect(state.currentStage).toBe("implement");
+    });
+
+    it("halts sdk automation when retry budget is exceeded via advance", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "ddl-retry-halt-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "sdk");
+      await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+      const transport = mockSdkTransport();
+      const out: string[] = [];
+      await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { sdkTransport: transport },
+      });
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string };
+      const stateAbs = path.join(root, start.stateFile);
+      const patched = JSON.parse(await readFile(stateAbs, "utf8")) as {
+        currentStage: string;
+        automation?: { runnerInvocation: string; cumulativeRetryCount: number };
+      };
+      patched.currentStage = "review";
+      patched.automation = { runnerInvocation: "sdk", cumulativeRetryCount: 3 };
+      await writeFile(stateAbs, `${JSON.stringify(patched, null, 2)}\n`, "utf8");
+      const runDir = path.dirname(start.stateFile);
+      await writeFile(path.join(root, runDir, "review.md"), "review_passes: false\n", "utf8");
+      const haltCode = await parseAndRun(
+        ["advance", start.taskId, "--event", "must_fix", "--artifact", `${runDir}/review.md`],
+        { repoRoot: root, writeOut: (c) => out.push(c), testHooks: { sdkTransport: transport } },
+      );
+      expect(haltCode).toBe(1);
+      expect(out.join("")).toContain("retry limit halt");
+      const halted = JSON.parse(await readFile(stateAbs, "utf8")) as {
+        status: string;
+        automation?: { cumulativeRetryCount: number };
+      };
+      expect(halted.status).toBe("halted");
+      expect(halted.automation?.cumulativeRetryCount).toBe(4);
+    });
   });
 });

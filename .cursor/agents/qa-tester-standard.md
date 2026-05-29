@@ -22,12 +22,14 @@ tools:
   - "Bash(node src/internal/tools/check-operator-output.mjs:*)"
   - "Bash(pnpm -w exec ddl status:*)"
   - "Bash(pnpm -w exec ddl refresh-prompt:*)"
+  - "Bash(pnpm --filter client:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
   - daedaline-memory
+  - cursor-ide-browser
 maxTurns: 40
 isolation: worktree
 memory: project

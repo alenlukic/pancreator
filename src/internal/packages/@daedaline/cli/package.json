@@ -29,6 +29,7 @@
     "@daedaline/core": "workspace:*",
     "@daedaline/inbox": "workspace:*",
     "@daedaline/intervention": "workspace:*",
+    "@daedaline/persona": "workspace:*",
     "@daedaline/pipeline": "workspace:*",
     "@daedaline/run-logger": "workspace:*",
     "@daedaline/runner-cursor": "workspace:*",

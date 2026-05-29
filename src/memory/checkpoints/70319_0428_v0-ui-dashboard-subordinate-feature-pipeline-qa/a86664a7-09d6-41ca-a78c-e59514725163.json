@@ -1,0 +1,30 @@
+{
+  "v": 1,
+  "task_id": "70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa",
+  "seq": 0,
+  "created_ts": "2026-05-29T04:39:26.990Z",
+  "metadata": {
+    "run_log_offset": 0,
+    "intervention_lever": "abort"
+  },
+  "channel_values": {
+    "langgraph_checkpoint": {
+      "v": 4,
+      "id": "a86664a7-09d6-41ca-a78c-e59514725163",
+      "ts": "2026-05-29T04:39:26.990Z",
+      "channel_values": {
+        "intervention_lever": "abort"
+      },
+      "channel_versions": {},
+      "versions_seen": {}
+    },
+    "checkpoint_id": "a86664a7-09d6-41ca-a78c-e59514725163",
+    "langgraph_metadata": {
+      "source": "update",
+      "step": 0,
+      "parents": {},
+      "run_log_offset": 0,
+      "intervention_lever": "abort"
+    }
+  }
+}

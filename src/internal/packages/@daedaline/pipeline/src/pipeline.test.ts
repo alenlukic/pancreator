@@ -3,9 +3,53 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { compilePipeline, INTERVENTION_NODE_ID, serializePipelineStages } from "./compile.js";
-import { executePipeline } from "./execute.js";
+import { executePipeline, executeStageSlice, slicePipelineDefinitionForStage } from "./execute.js";
 import { loadPipelineYaml } from "./load-yaml.js";
 import type { PipelineDefinition } from "./types.js";
+
+describe("executeStageSlice", () => {
+  it("ignores a full-pipeline compiled graph when entry node does not match the slice stage", async () => {
+    const def: PipelineDefinition = {
+      id: "test",
+      stages: [
+        { id: "a", persona: "coder" },
+        { id: "b", persona: "coder" },
+      ],
+    };
+    const fullCompiled = compilePipeline(def);
+    const log: string[] = [];
+    await executeStageSlice(
+      def,
+      "b",
+      { n: 0 },
+      (stage) => {
+        log.push(stage.id);
+        return { n: 1 };
+      },
+      { compiled: fullCompiled },
+    );
+    expect(log).toEqual(["b"]);
+    expect(fullCompiled.entryNodeId).toBe("a");
+  });
+
+  it("runs only the requested stage through the compiled graph", async () => {
+    const def: PipelineDefinition = {
+      id: "test",
+      stages: [
+        { id: "a", persona: "coder" },
+        { id: "b" },
+      ],
+    };
+    const log: string[] = [];
+    const out = await executeStageSlice(def, "b", { n: 0 }, (stage, ctx) => {
+      log.push(stage.id);
+      return { n: ctx.n + 1 };
+    });
+    expect(log).toEqual(["b"]);
+    expect(out.n).toBe(1);
+    expect(slicePipelineDefinitionForStage(def, "b").stages).toHaveLength(1);
+  });
+});
 
 describe("executePipeline", () => {
   it("runs stages in order and threads context", async () => {
@@ -90,6 +134,19 @@ stages:
     expect(def.stages).toHaveLength(2);
     expect(def.stages[0]?.persona).toBe("tech-writer");
     await rm(tmp, { recursive: true, force: true });
+  });
+});
+
+describe("feature-delivery stage slice", () => {
+  it("executes the intake stage slice from the canonical pipeline", async () => {
+    const repoRoot = path.resolve(import.meta.dirname, "../../../../../..");
+    const def = loadPipelineYaml(path.join(repoRoot, "src", "pipelines", "feature-delivery.yaml"));
+    const visited: string[] = [];
+    await executeStageSlice(def, "intake", { ok: true }, (stage) => {
+      visited.push(stage.id);
+      return { ok: true };
+    });
+    expect(visited).toEqual(["intake"]);
   });
 });
 

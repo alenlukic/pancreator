@@ -1,3 +1,5 @@
+import { ensureCursorSdkRipgrepConfigured } from "./cursor-sdk-prereqs.js";
+import { resolveSdkModelId } from "./sdk-model.js";
 import type { RunnerPersonaInput } from "./types.js";
 
 export interface CursorSdkInvokeParams {
@@ -47,13 +49,23 @@ export function createDefaultCursorSdkTransport(): CursorSdkTransport {
       };
     }
 
+    const cwd = params.cwd ?? process.cwd();
+    if (!ensureCursorSdkRipgrepConfigured(cwd)) {
+      return {
+        status: "error",
+        errorMessage:
+          `Ripgrep binary not found for @cursor/sdk-${process.platform}-${process.arch}. Install @cursor/sdk optional platform binaries or set CURSOR_RIPGREP_PATH to an absolute rg path.`,
+      };
+    }
+
     const { Agent, CursorAgentError } = await import("@cursor/sdk");
     const prompt = buildSdkPrompt(params);
+    const sdkModelId = resolveSdkModelId(params.persona.model);
     try {
       const result = await Agent.prompt(prompt, {
         apiKey,
-        model: { id: params.persona.model },
-        local: { cwd: params.cwd ?? process.cwd() },
+        model: { id: sdkModelId },
+        local: { cwd },
       });
       if (result.status === "error") {
         return {

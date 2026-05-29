@@ -26,9 +26,17 @@ contract read `AGENTS.md`. For product and bootstrap routing read
 ## Feature delivery loop
 
 The `feature-delivery` runtime is a state ledger plus prompt/artifact generator.
-It tracks which stage is active; it does **not** execute stage work by itself. The
-human operator delegates each generated `next-prompt.md`, checks the resulting
-repo-local artifact, and advances the ledger after acceptance.
+By default (`runner.cursor.invocation: manual` or omitted key) it tracks which
+stage is active but does **not** execute stage work: the human operator delegates
+each generated `next-prompt.md`, checks the resulting repo-local artifact, and
+advances the ledger after acceptance.
+
+When `runner.cursor.invocation: sdk` is set in `daedaline.yaml`, `ddl run` and
+`ddl advance` invoke `CursorRunner` for the entering stage (mocked in unit tests;
+live SDK calls remain operator-scheduled). The CLI loads repo-root `.env` before
+SDK construction. Automatic `review` / `test` loopbacks, a cumulative retry
+budget of 3, retry-limit halt outbox artifacts, and the report approval gate apply
+only in SDK mode; manual mode preserves today's handoff-and-paste loop unchanged.
 
 Use this loop exactly:
 
@@ -91,6 +99,34 @@ with `currentStage: intake`.
 
 Interventions journal under `.ddl/scheduler/interventions/<task-id>.jsonl`.
 Use `pnpm -w exec ddl repair-state` only after explicit out-of-band work.
+
+### SDK mode (`runner.cursor.invocation: sdk`)
+
+1. Add to `daedaline.yaml`:
+
+   ```yaml
+   runner:
+     cursor:
+       invocation: sdk
+   ```
+
+2. Ensure repo-root `.env` defines `CURSOR_API_KEY` when using live SDK transport.
+3. Run and advance as in the manual loop; the CLI invokes the entering persona and
+   appends one runner observability record per invocation to `run.log.jsonl`.
+4. After `review` or `test` artifacts exist, SDK mode MAY auto-advance when
+   `review_passes` / `qa_passes` or route on `must_fix` / `qa_fails` without a
+   separate operator `advance` for that branch.
+5. When cumulative `must_fix` and `qa_fails` retries exceed 3, the run halts with
+   `status: halted` and one timestamp-prefixed file under
+   `src/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
+6. When `delivery-report.md` exists at the `report` stage, the runtime writes one
+   timestamp-prefixed approval artifact under `src/inbox/out/<day-bucket>/` with
+   front matter `gate: report_approval` and `decision: approve | needs_changes`.
+   Resume with:
+
+   ```bash
+   pnpm -w exec ddl advance <task-id> --artifact src/inbox/out/<day-bucket>/<approval-file>.md
+   ```
 
 ### Manual bootstrap workflow
 

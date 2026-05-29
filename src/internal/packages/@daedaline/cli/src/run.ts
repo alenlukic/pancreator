@@ -63,6 +63,8 @@ export interface CliRunOptions {
   writeErr?: (chunk: string) => void;
   /** Test hook for deterministic timestamped work paths. */
   clock?: () => Date;
+  /** Injectable Cursor SDK transport for feature-delivery runner tests. */
+  testHooks?: import("./feature-delivery-runner.js").FeatureDeliveryTestHooks;
 }
 
 function emit(
@@ -277,6 +279,7 @@ export async function parseAndRun(
             featureId: opts.feature,
             taskId: opts.task,
             clock: options?.clock,
+            testHooks: options?.testHooks,
           },
           "run",
         ),
@@ -313,6 +316,7 @@ export async function parseAndRun(
             featureId: opts.feature,
             taskId: opts.task,
             clock: options?.clock,
+            testHooks: options?.testHooks,
           },
           "feature new",
         ),
@@ -361,6 +365,7 @@ export async function parseAndRun(
           artifact: opts.artifact,
           event: opts.event,
           clock: options?.clock,
+          testHooks: options?.testHooks,
         }),
       );
     });

@@ -1,6 +1,6 @@
 ---
 name: qa-tester
-description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests) and manual verification against the touch-set, and emit `/src/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
+description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests), visual QA via Browser automation when the touch-set includes UI surfaces, manual verification against the touch-set, and emit `/src/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
 model: gpt-5.5
 permissionMode: default
 tools:
@@ -26,12 +26,14 @@ tools:
   - "Bash(node src/internal/tools/check-operator-output.mjs:*)"
   - "Bash(pnpm -w exec ddl status:*)"
   - "Bash(pnpm -w exec ddl refresh-prompt:*)"
+  - "Bash(pnpm --filter client:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
   - daedaline-memory
+  - cursor-ide-browser
 maxTurns: 40
 skills: []
 isolation: worktree
@@ -57,6 +59,7 @@ metadata:
     - qa-passes-gate-recorded
     - automated-checks-table-complete
     - manual-verification-documented
+    - visual-qa-browser-check-when-ui-in-touch-set
     - re-entry-target-is-implement
     - human-ratified-at-phase-boundary
 references:
@@ -156,6 +159,32 @@ exercises include:
 
 You SHOULD tailor the exercise list to the specific touch-set. You MUST record
 every exercise and its observed result in the Manual verification section.
+
+## Visual QA (browser)
+
+When the touch-set declares a `client/` web application or other operator-facing
+UI surface, you MUST perform visual QA via Browser automation before setting
+`qa_passes: true`.
+
+1. **Start or attach to the dev server.** Run the documented startup command
+   (for example `pnpm --filter client dev`) and confirm the local URL is reachable.
+2. **Navigate with Browser MCP.** Use the `cursor-ide-browser` MCP server:
+   `browser_navigate` to the dashboard URL, then `browser_snapshot` to inspect
+   the DOM. Use `browser_click`, `browser_type`, and related tools to exercise
+   interactive affordances.
+3. **Verify functionality in the DOM.** You MUST confirm, via snapshot evidence,
+   that navigation renders the declared repo domains, directory drill-down and
+   file open behave without error toasts, the inline modal displays and saves
+   file content, and the activity feed lists events in reverse-chronological
+   order.
+4. **Verify visual design.** When the spec or handoff names a palette, you MUST
+   confirm the primary surface, text/chrome, and accent colors match the named
+   tokens and that layout hierarchy is legible (header, primary nav, content
+   pane, secondary panels).
+5. **Record outcomes.** Every browser step, DOM observation, and pass/fail
+   finding MUST appear in the Manual verification section. Any functional or
+   visual defect MUST set `qa_passes: false` and generate a Re-entry must-fix
+   entry targeting `implement`.
 
 ## Straightforward fixes
 

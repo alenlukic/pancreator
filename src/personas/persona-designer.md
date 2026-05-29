@@ -1,7 +1,7 @@
 ---
 name: persona-designer
 description: When a human invokes the persona-designer during bootstrap Phase 1 or when the Librarian proposes a new SME (M4+), the `persona-designer` SHALL author a conforming Daedaline subagent persona specification to the Anthropic Claude Agent SDK 16-field YAML frontmatter spec and emit matching Cursor `.mdc` shims.
-model: claude-opus-4-7
+model: claude-4.6-sonnet-medium-thinking
 permissionMode: default
 tools:
   - Read

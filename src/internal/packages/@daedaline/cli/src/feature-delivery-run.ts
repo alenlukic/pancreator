@@ -1,7 +1,6 @@
 import { asTaskId, type TaskId } from "@daedaline/core";
 import type { InterventionState } from "@daedaline/intervention";
-import { compilePipeline, loadPipelineYaml, type PipelineDefinition, type PipelineStage } from "@daedaline/pipeline";
-import { CursorRunner } from "@daedaline/runner-cursor";
+import { loadPipelineYaml, type PipelineDefinition, type PipelineStage } from "@daedaline/pipeline";
 import {
   appendRunLogRecord,
   newSpanId,
@@ -19,6 +18,19 @@ import {
   patchFeatureIndexArchivedInbox,
 } from "./active-memory-refresh.js";
 import { readCursorInvocationMode } from "./ddl-init.js";
+import {
+  applySdkRetrySideEffects,
+  compileFeatureDeliveryPipeline,
+  ensureAutomationState,
+  invokeFeatureDeliveryEnteringStage,
+  maybePauseForReportApproval,
+  parseReportApprovalArtifact,
+  readCursorInvocationForState,
+  resolveTestStageAdvanceEvent,
+  trySdkAutoChainAfterStageWork,
+  type FeatureDeliveryAutomationState,
+  type FeatureDeliveryTestHooks,
+} from "./feature-delivery-runner.js";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
 
@@ -46,7 +58,8 @@ export type PipelineStatus =
   | "waiting_for_human_gate"
   | "complete"
   | "closed"
-  | "repaired";
+  | "repaired"
+  | "halted";
 
 export interface FeatureDeliveryStageState {
   id: string;
@@ -97,7 +110,10 @@ export interface FeatureDeliveryState {
   transitions: FeatureDeliveryTransition[];
   nextHumanAction: string;
   advanceHistory?: FeatureDeliveryAdvanceHistoryEntry[];
+  automation?: FeatureDeliveryAutomationState;
 }
+
+export type { FeatureDeliveryAutomationState, FeatureDeliveryTestHooks };
 
 export interface StartFeatureDeliveryInput {
   repoRoot: string;
@@ -105,6 +121,7 @@ export interface StartFeatureDeliveryInput {
   featureId?: string;
   taskId?: string;
   clock?: () => Date;
+  testHooks?: FeatureDeliveryTestHooks;
 }
 
 export interface StartFeatureDeliveryResult {
@@ -143,6 +160,7 @@ export interface AdvanceFeatureDeliveryInput {
   artifact: string;
   event?: string;
   clock?: () => Date;
+  testHooks?: FeatureDeliveryTestHooks;
 }
 
 export interface AdvanceFeatureDeliveryResult {
@@ -249,6 +267,8 @@ export async function startFeatureDelivery(
   );
   const taskId = sanitizeTaskId(input.taskId ?? makeTaskId(now, featureId));
   const dayDir = makeDayDir(now);
+  const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
+
   const runDirRel = path.posix.join("src", "work", dayDir, taskId);
   const runDir = path.join(repoRoot, "src", "work", dayDir, taskId);
   const stateFileRel = path.posix.join(runDirRel, "state.json");
@@ -259,8 +279,6 @@ export async function startFeatureDelivery(
   const handoffFile = path.join(runDir, "handoff.md");
   const runLogFile = path.join(runDir, "run.log.jsonl");
   const nextPromptFile = path.join(runDir, "next-prompt.md");
-
-  await mkdir(runDir, { recursive: true });
 
   const state: FeatureDeliveryState = {
     schemaVersion: FEATURE_DELIVERY_STATE_SCHEMA_VERSION,
@@ -287,30 +305,27 @@ export async function startFeatureDelivery(
       "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan.",
   };
 
-  const compiled = compilePipeline(pipeline);
   const invocation = await readCursorInvocationMode(repoRoot);
-  const runner = new CursorRunner({ invocation });
-  const intakeStage = pipeline.stages.find((s) => s.id === "intake");
-  if (intakeStage?.persona) {
-    await runner.invoke({
-      persona: stubPersonaForStage(intakeStage),
-      message: "Bootstrap feature-delivery intake stage (SDK path smoke).",
-      stagePromptPath: nextPromptFileRel,
-      artifactPath: handoffFileRel,
-      ledger: {
-        taskId,
-        pipelineId: "feature-delivery",
-        stageId: "intake",
-        featureId,
-      },
+  ensureAutomationState(state, invocation);
+
+  await mkdir(runDir, { recursive: true });
+  await writeFile(handoffFile, renderHandoff(state, pipeline, directive), "utf8");
+  await writeFile(nextPromptFile, renderNextPrompt(state, pipeline), "utf8");
+
+  if (invocation === "sdk") {
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot,
+      state,
+      pipeline,
+      stageId: "intake",
+      compiled,
+      now,
+      testHooks: input.testHooks,
     });
   }
 
   await writeFile(stateFile, stringifyCliJson(repoRoot, state), "utf8");
-  await writeFile(handoffFile, renderHandoff(state, pipeline, directive), "utf8");
-  await writeFile(nextPromptFile, renderNextPrompt(state, pipeline), "utf8");
   await appendRunLogRecord(runLogFile, makeInvocationRecord(state, now));
-  void compiled;
 
   return {
     command,
@@ -424,10 +439,26 @@ export async function advanceFeatureDelivery(
       stateFileRel: stateFile.rel,
       reentry,
       now,
+      testHooks: input.testHooks,
     });
   }
 
-  const event = input.event ?? defaultEventForStage(state.currentStage);
+  const reportApproval = await tryAdvanceFromReportApproval({
+    repoRoot,
+    taskId,
+    state,
+    pipeline,
+    stateFileRel: stateFile.rel,
+    artifactRel: artifact.rel,
+    now,
+    testHooks: input.testHooks,
+  });
+  if (reportApproval !== null) {
+    return reportApproval;
+  }
+
+  const requestedEvent = input.event ?? defaultEventForStage(state.currentStage);
+  const event = await resolveTestStageAdvanceEvent(repoRoot, state, requestedEvent, artifact.rel);
   const transition = state.transitions.find(
     (candidate) => candidate.from === state.currentStage && candidate.on === event,
   );
@@ -437,6 +468,69 @@ export async function advanceFeatureDelivery(
   assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
 
   const applied = applyFeatureDeliveryTransition(state, transition, event, artifact.rel, now);
+  const invocation = await readCursorInvocationForState(repoRoot, state);
+  ensureAutomationState(state, invocation);
+
+  if (invocation === "sdk") {
+    const haltSummary = await applySdkRetrySideEffects({
+      repoRoot,
+      state,
+      event: applied.event,
+      fromStage: applied.fromStage,
+      now,
+    });
+    if (haltSummary !== null) {
+      await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+      await appendRunLogRecord(
+        path.join(repoRoot, state.artifacts.runLogFile),
+        makeAdvanceRecord(state, now, applied.fromStage, applied.toStage, applied.event, applied.artifact),
+      );
+      const haltError = new Error(`Feature-delivery retry limit halt: ${haltSummary}`) as Error & {
+        haltSummary: string;
+      };
+      haltError.haltSummary = haltSummary;
+      throw haltError;
+    }
+
+    const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot,
+      state,
+      pipeline,
+      stageId: state.currentStage,
+      compiled,
+      now,
+      testHooks: input.testHooks,
+    });
+
+    await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot,
+      state,
+      pipeline,
+      completedStageId: state.currentStage,
+      compiled,
+      now,
+      testHooks: input.testHooks,
+      advanceFn: async (chainEvent, chainArtifact) =>
+        advanceFeatureDelivery({
+          repoRoot,
+          taskId,
+          artifact: chainArtifact,
+          event: chainEvent,
+          clock: input.clock,
+          testHooks: input.testHooks,
+        }),
+    });
+
+    if (!chained) {
+      await maybePauseForReportApproval({ repoRoot, state, now });
+    } else {
+      const refreshed = await readFeatureDeliveryState(stateFile.abs);
+      Object.assign(state, refreshed);
+    }
+  }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
   await appendRunLogRecord(
@@ -1018,6 +1112,12 @@ function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
       humanAttention: "Bounded re-entry; qa failures block shipping.",
     },
     {
+      from: "test",
+      on: "qa_fails_plan_invalidating",
+      to: "plan",
+      humanAttention: "Plan-invalidating QA failure; re-plan before re-implementing.",
+    },
+    {
       from: "report",
       on: "report_ready",
       to: "ship",
@@ -1280,26 +1380,6 @@ function makeInterventionRecord(
       token_usage_unavailable: true,
       intervention: { lever: command },
     },
-  };
-}
-
-function stubPersonaForStage(stage: PipelineStage): import("@daedaline/runner-cursor").RunnerPersonaInput {
-  const name = stage.persona ?? stage.id;
-  return {
-    name,
-    description: `When feature-delivery reaches ${stage.id}, ${name} SHALL execute the stage contract.`,
-    model: "composer-2.5",
-    permissionMode: "default",
-    tools: ["Read", "Write"],
-    disallowedTools: ["Bash(git push:*)", "Bash(git commit:*)"],
-    mcpServers: [],
-    maxTurns: 30,
-    skills: [],
-    isolation: "worktree",
-    memory: "project",
-    effort: "medium",
-    color: "green",
-    metadata: { "daedaline-pipeline-stage": stage.id },
   };
 }
 
@@ -1603,6 +1683,147 @@ async function tryResolveReviewReentryAdvance(
   return { reviewArtifact, implementationReport };
 }
 
+async function tryAdvanceFromReportApproval(input: {
+  repoRoot: string;
+  taskId: string;
+  state: FeatureDeliveryState;
+  pipeline: PipelineDefinition;
+  stateFileRel: string;
+  artifactRel: string;
+  now: Date;
+  testHooks?: FeatureDeliveryTestHooks;
+}): Promise<AdvanceFeatureDeliveryResult | null> {
+  if (!input.artifactRel.startsWith("src/inbox/out/")) {
+    return null;
+  }
+  const content = await readFile(path.join(input.repoRoot, input.artifactRel), "utf8");
+  const decision = parseReportApprovalArtifact(content);
+  if (decision === null) {
+    return null;
+  }
+  if (input.state.automation?.reportApprovalPending !== true && input.state.status !== "waiting_for_human_gate") {
+    throw new Error(
+      `Artifact ${input.artifactRel} is a report-approval decision but task ${input.taskId} is not awaiting report approval.`,
+    );
+  }
+
+  if (decision.decision === "approve") {
+    const transition = input.state.transitions.find(
+      (candidate) => candidate.from === "report" && candidate.on === "report_ready",
+    );
+    if (transition === undefined) {
+      throw new Error("feature-delivery pipeline is missing report → ship transition.");
+    }
+    const applied = applyFeatureDeliveryTransition(
+      input.state,
+      transition,
+      "report_ready",
+      input.artifactRel,
+      input.now,
+    );
+    input.state.automation = {
+      ...(input.state.automation ?? { runnerInvocation: "sdk", cumulativeRetryCount: 0 }),
+      reportApprovalPending: false,
+    };
+    return finishAdvanceAfterTransition({
+      ...input,
+      applied,
+    });
+  }
+
+  if (decision.requiredChanges.trim().length === 0) {
+    throw new Error("needs_changes report approval requires non-empty required_changes.");
+  }
+  const targetStage = decision.targetStage ?? "implement";
+  assertFeatureDeliveryStage(targetStage);
+  const fromStage = input.state.currentStage;
+  input.state.currentStage = targetStage;
+  input.state.status = "ready_for_stage_delegation";
+  input.state.nextHumanAction = nextHumanActionForStage(
+    input.state,
+    targetStage,
+    `Report approval needs_changes: ${decision.requiredChanges}`,
+  );
+  input.state.stages = repairStageStatuses(input.state.stages, targetStage);
+  input.state.advanceHistory = [
+    ...(input.state.advanceHistory ?? []),
+    {
+      atIso: rfc3339UtcMs(input.now),
+      kind: "advance",
+      from: fromStage,
+      to: targetStage,
+      event: "needs_changes",
+      artifact: input.artifactRel,
+    },
+  ];
+  const applied: AppliedFeatureDeliveryTransition = {
+    fromStage,
+    toStage: targetStage,
+    event: "needs_changes",
+    artifact: input.artifactRel,
+  };
+  input.state.automation = {
+    ...(input.state.automation ?? { runnerInvocation: "sdk", cumulativeRetryCount: 0 }),
+    reportApprovalPending: false,
+  };
+  return finishAdvanceAfterTransition({
+    ...input,
+    applied,
+  });
+}
+
+async function finishAdvanceAfterTransition(input: {
+  repoRoot: string;
+  taskId: string;
+  state: FeatureDeliveryState;
+  pipeline: PipelineDefinition;
+  stateFileRel: string;
+  applied: AppliedFeatureDeliveryTransition;
+  now: Date;
+  testHooks?: FeatureDeliveryTestHooks;
+}): Promise<AdvanceFeatureDeliveryResult> {
+  const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
+  if (invocation === "sdk" && input.state.status !== "halted") {
+    const compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot: input.repoRoot,
+      state: input.state,
+      pipeline: input.pipeline,
+      stageId: input.state.currentStage,
+      compiled,
+      now: input.now,
+      testHooks: input.testHooks,
+    });
+  }
+  await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+  await appendRunLogRecord(
+    path.join(input.repoRoot, input.state.artifacts.runLogFile),
+    makeAdvanceRecord(
+      input.state,
+      input.now,
+      input.applied.fromStage,
+      input.applied.toStage,
+      input.applied.event,
+      input.applied.artifact,
+    ),
+  );
+  return {
+    command: "advance",
+    status: "ok",
+    taskId: input.taskId,
+    featureId: input.state.featureId,
+    fromStage: input.applied.fromStage,
+    event: input.applied.event,
+    currentStage: input.state.currentStage,
+    artifact: input.applied.artifact,
+    stateFile: input.stateFileRel,
+    handoffFile: input.state.artifacts.handoffFile,
+    nextPromptFile: requireNextPromptFile(input.state),
+    nextPersona: personaForStage(input.pipeline, input.state.currentStage),
+    nextHumanAction: input.state.nextHumanAction,
+  };
+}
+
 async function advanceReviewReentryFromImplement(input: {
   repoRoot: string;
   taskId: string;
@@ -1611,6 +1832,7 @@ async function advanceReviewReentryFromImplement(input: {
   stateFileRel: string;
   reentry: ReviewReentryAdvancePlan;
   now: Date;
+  testHooks?: FeatureDeliveryTestHooks;
 }): Promise<AdvanceFeatureDeliveryResult> {
   const { repoRoot, taskId, state, pipeline, stateFileRel, reentry, now } = input;
   const implementTransition = state.transitions.find(
@@ -1672,6 +1894,20 @@ async function advanceReviewReentryFromImplement(input: {
       second.artifact,
     ),
   );
+
+  const invocation = await readCursorInvocationForState(repoRoot, state);
+  if (invocation === "sdk") {
+    const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot,
+      state,
+      pipeline,
+      stageId: state.currentStage,
+      compiled,
+      now,
+      testHooks: input.testHooks,
+    });
+  }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
 
@@ -1777,8 +2013,10 @@ function expectedArtifactsForStage(
     }
     case "test": {
       const testReport = path.posix.join(run, "test-report.md");
-      if (event !== "qa_passes" && event !== "qa_fails") {
-        throw new Error(`Test stage only supports qa_passes or qa_fails, got ${event}.`);
+      if (event !== "qa_passes" && event !== "qa_fails" && event !== "qa_fails_plan_invalidating") {
+        throw new Error(
+          `Test stage only supports qa_passes, qa_fails, or qa_fails_plan_invalidating, got ${event}.`,
+        );
       }
       return { acceptedArtifacts: [testReport], requiredArtifacts: [testReport] };
     }
@@ -1817,6 +2055,17 @@ function applyStageStatuses(
       if (stage.id === "test") return { ...stage, status: "blocked" };
       if (stage.id === "implement") return { ...stage, status: "ready" };
       return stage;
+    });
+  }
+  if (event === "qa_fails_plan_invalidating") {
+    const planIndex = FEATURE_DELIVERY_STAGES.indexOf("plan");
+    return stages.map((stage) => {
+      const index = FEATURE_DELIVERY_STAGES.indexOf(stage.id as FeatureDeliveryStageId);
+      if (index < 0) return stage;
+      if (stage.id === "test") return { ...stage, status: "blocked" };
+      if (index < planIndex) return { ...stage, status: "complete" };
+      if (stage.id === "plan") return { ...stage, status: "ready" };
+      return { ...stage, status: "pending" };
     });
   }
   return stages.map((stage) => {

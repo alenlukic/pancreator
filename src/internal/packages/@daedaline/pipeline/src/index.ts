@@ -26,5 +26,9 @@ export type {
 export { compilePipeline, INTERVENTION_NODE_ID, serializePipelineStages } from "./compile.js";
 export type { CompilePipelineOptions } from "./compile.js";
 export type { ExecutePipelineOptions } from "./execute.js";
-export { executePipeline } from "./execute.js";
+export {
+  executePipeline,
+  executeStageSlice,
+  slicePipelineDefinitionForStage,
+} from "./execute.js";
 export { loadPipelineYaml } from "./load-yaml.js";
