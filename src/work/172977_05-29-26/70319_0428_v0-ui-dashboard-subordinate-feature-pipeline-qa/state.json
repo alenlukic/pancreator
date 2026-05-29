@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "1",
+  "pipelineId": "feature-delivery",
+  "taskId": "70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa",
+  "featureId": "v0-ui-dashboard-subordinate-feature-pipeline-qa",
+  "status": "ready_for_stage_delegation",
+  "currentStage": "implement",
+  "createdAtIso": "2026-05-29T04:28:00.215Z",
+  "source": {
+    "inboxEntry": "172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
+    "inboxPath": "src/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md"
+  },
+  "artifacts": {
+    "runDir": "src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa",
+    "stateFile": "src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/state.json",
+    "handoffFile": "src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/handoff.md",
+    "runLogFile": "src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/run.log.jsonl",
+    "nextPromptFile": "src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/next-prompt.md"
+  },
+  "stages": [
+    {
+      "id": "intake",
+      "persona": "intake-analyst",
+      "label": "Canonicalize the human directive",
+      "status": "complete",
+      "humanGate": "human_approval",
+      "humanAttention": "Answer intake clarifying questions and ratify the canonical spec before planning."
+    },
+    {
+      "id": "plan",
+      "persona": "tech-lead",
+      "label": "Draft plan, ADR, touch-set, and handoff card",
+      "status": "complete",
+      "humanGate": "human_approval",
+      "humanAttention": "Ratify the plan, ADR draft, touch-set, and handoff before execution."
+    },
+    {
+      "id": "implement",
+      "persona": "coder",
+      "label": "Implement against the declared touch-set from the handoff card",
+      "status": "ready",
+      "humanGate": "operator_intervention_available",
+      "humanAttention": "Use ddl pause/resume/abort if implementation drifts, loops, or exceeds scope."
+    },
+    {
+      "id": "review",
+      "persona": "reviewer",
+      "label": "Run modern-code-review and contracts pass with compact must-fix output",
+      "status": "pending",
+      "humanGate": "review_passes_or_reenter_implement",
+      "humanAttention": "Inspect high findings; approve only clean review output or send the run back to implement."
+    },
+    {
+      "id": "test",
+      "persona": "qa-tester",
+      "label": "Run automated checks and manual verification; emit test-report.md",
+      "status": "pending",
+      "humanGate": "qa_passes_or_reenter_implement",
+      "humanAttention": "Inspect test-report.md; approve only when qa_passes is true or send the run back to implement."
+    },
+    {
+      "id": "report",
+      "persona": "tech-writer",
+      "label": "Author the delivery report",
+      "status": "pending"
+    },
+    {
+      "id": "ship",
+      "persona": "supervisor",
+      "label": "Stage the PR (no auto-push, Q3)",
+      "status": "pending",
+      "humanGate": "local_stage_only",
+      "humanAttention": "Review the local diff and delivery report; no agent may push or open the PR unaudited."
+    },
+    {
+      "id": "index",
+      "persona": "librarian",
+      "label": "Index emitted artifacts and refresh the feature index before librarian artifact closure",
+      "status": "pending",
+      "humanGate": "archive_and_index_audit",
+      "humanAttention": "Verify feature index artifacts; after index is accepted, the generated complete-stage prompt gives the human operator exact archival closure commands."
+    }
+  ],
+  "transitions": [
+    {
+      "from": "created",
+      "on": "invoke",
+      "to": "intake",
+      "humanAttention": "Operator delegates the handoff card to intake-analyst."
+    },
+    {
+      "from": "intake",
+      "on": "human_approval",
+      "to": "plan",
+      "humanAttention": "Canonical spec is ratified or clarified before plan starts."
+    },
+    {
+      "from": "plan",
+      "on": "human_approval",
+      "to": "implement",
+      "humanAttention": "Plan and touch-set are ratified before coder starts."
+    },
+    {
+      "from": "implement",
+      "on": "pause",
+      "to": "paused",
+      "humanAttention": "Use ddl pause <task-id> to stop at the next safe boundary."
+    },
+    {
+      "from": "paused",
+      "on": "resume",
+      "to": "implement",
+      "humanAttention": "Use ddl resume <task-id> after resolving the blocker."
+    },
+    {
+      "from": "implement",
+      "on": "abort",
+      "to": "aborted",
+      "humanAttention": "Use ddl abort <task-id> --reason <text> for failed or superseded runs."
+    },
+    {
+      "from": "implement",
+      "on": "implementation_complete",
+      "to": "review",
+      "humanAttention": "Reviewer receives only the handoff, touch-set, diff, and validation output."
+    },
+    {
+      "from": "review",
+      "on": "must_fix",
+      "to": "implement",
+      "humanAttention": "Bounded re-entry; high findings block shipping."
+    },
+    {
+      "from": "review",
+      "on": "review_passes",
+      "to": "test",
+      "humanAttention": "Human should still inspect review output before qa-tester runs."
+    },
+    {
+      "from": "test",
+      "on": "qa_passes",
+      "to": "report",
+      "humanAttention": "Human should inspect test-report.md before report/ship."
+    },
+    {
+      "from": "test",
+      "on": "qa_fails",
+      "to": "implement",
+      "humanAttention": "Bounded re-entry; qa failures block shipping."
+    },
+    {
+      "from": "test",
+      "on": "qa_fails_plan_invalidating",
+      "to": "plan",
+      "humanAttention": "Plan-invalidating QA failure; re-plan before re-implementing."
+    },
+    {
+      "from": "report",
+      "on": "report_ready",
+      "to": "ship",
+      "humanAttention": "Delivery report must be useful to the operator, not just a changelog."
+    },
+    {
+      "from": "ship",
+      "on": "human_ratifies_local_diff",
+      "to": "index",
+      "humanAttention": "No push occurs before human review."
+    },
+    {
+      "from": "index",
+      "on": "artifacts_indexed",
+      "to": "complete",
+      "humanAttention": "Confirm archive/index state and outbox report."
+    }
+  ],
+  "nextHumanAction": "Plan and touch-set are ratified before coder starts. Delegate next-prompt.md to coder; monitor drift and require src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md before review.",
+  "automation": {
+    "runnerInvocation": "manual",
+    "cumulativeRetryCount": 0
+  },
+  "advanceHistory": [
+    {
+      "atIso": "2026-05-29T04:28:38.368Z",
+      "kind": "advance",
+      "from": "intake",
+      "to": "plan",
+      "event": "human_approval",
+      "artifact": "src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md"
+    },
+    {
+      "atIso": "2026-05-29T04:34:33.852Z",
+      "kind": "advance",
+      "from": "plan",
+      "to": "implement",
+      "event": "human_approval",
+      "artifact": "src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/touch-set.json"
+    }
+  ]
+}

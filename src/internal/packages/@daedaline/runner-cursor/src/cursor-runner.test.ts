@@ -66,6 +66,23 @@ describe("CursorRunner", () => {
     expect(env.sdkResult?.resultText).toContain("gpt-5.4-mini");
   });
 
+  it("sdk mode preserves IDE model qualifiers on the persona passed to transport", async () => {
+    const captured: string[] = [];
+    const runner = new CursorRunner({
+      invocation: "sdk",
+      sdkTransport: async (params) => {
+        captured.push(params.persona.model);
+        return { status: "ok", resultText: "ok" };
+      },
+    });
+    const env = await runner.invoke({
+      persona: { ...samplePersona, name: "coder", model: "composer-2.5[fast=false]" },
+      message: "Implement stage",
+    });
+    expect(captured).toEqual(["composer-2.5[fast=false]"]);
+    expect(env.resolved.model).toBe("composer-2.5[fast=false]");
+  });
+
   it("sdk mode surfaces transport errors without throwing", async () => {
     const runner = new CursorRunner({
       invocation: "sdk",

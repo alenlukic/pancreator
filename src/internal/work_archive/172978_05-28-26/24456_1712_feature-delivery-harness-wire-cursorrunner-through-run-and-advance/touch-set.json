@@ -1,0 +1,162 @@
+{
+  "taskId": "24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance",
+  "featureId": "feature-delivery-harness-wire-cursorrunner-through-run-and-advance",
+  "stage": "implement",
+  "paths": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "daedaline.yaml",
+    "OPERATION.md",
+    "src/memory/handbook/daedaline-config.md",
+    "src/memory/handbook/inbox-lifecycle.md",
+    "src/internal/packages/@daedaline/cli/package.json",
+    "src/internal/packages/@daedaline/cli/src/run.ts",
+    "src/internal/packages/@daedaline/cli/src/ddl-init.ts",
+    "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+    "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.ts",
+    "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.test.ts",
+    "src/internal/packages/@daedaline/cli/src/persona-resolve.ts",
+    "src/internal/packages/@daedaline/cli/src/repo-env.ts",
+    "src/internal/packages/@daedaline/cli/src/run.test.ts",
+    "src/internal/packages/@daedaline/pipeline/src/types.ts",
+    "src/internal/packages/@daedaline/pipeline/src/compile.ts",
+    "src/internal/packages/@daedaline/pipeline/src/execute.ts",
+    "src/internal/packages/@daedaline/pipeline/src/index.ts",
+    "src/internal/packages/@daedaline/pipeline/src/pipeline.test.ts",
+    "src/internal/packages/@daedaline/runner-cursor/src/types.ts",
+    "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts",
+    "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.test.ts",
+    "src/internal/packages/@daedaline/runner-cursor/src/index.ts",
+    "src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/index.json",
+    "src/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance"
+  ],
+  "symbols": [
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "startFeatureDelivery"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "advanceFeatureDelivery"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "FeatureDeliveryState"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "featureDeliveryTransitions"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "applyFeatureDeliveryTransition"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "expectedArtifactsForStage"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "renderHandoff"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "renderNextPrompt"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.ts",
+      "symbol": "invokeFeatureDeliveryEnteringStage"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.ts",
+      "symbol": "trySdkAutoChainAfterStageWork"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.ts",
+      "symbol": "resolveTestStageAdvanceEvent"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/persona-resolve.ts",
+      "symbol": "resolvePersona"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/repo-env.ts",
+      "symbol": "loadRepoEnv"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/ddl-init.ts",
+      "symbol": "readCursorInvocationMode"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+      "symbol": "parseAndRun"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/pipeline/src/compile.ts",
+      "symbol": "compilePipeline"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/pipeline/src/execute.ts",
+      "symbol": "executePipeline"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts",
+      "symbol": "CursorRunner.invoke"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/runner-cursor/src/types.ts",
+      "symbol": "RunnerInvokeInput"
+    },
+    {
+      "path": "src/internal/packages/@daedaline/runner-cursor/src/types.ts",
+      "symbol": "RunnerInvocationEnvelope"
+    }
+  ],
+  "tests": [
+    "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.test.ts",
+    "src/internal/packages/@daedaline/cli/src/run.test.ts",
+    "src/internal/packages/@daedaline/pipeline/src/pipeline.test.ts",
+    "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.test.ts",
+    "tests/*.test.mjs"
+  ],
+  "validationCommands": {
+    "targeted": [
+      "pnpm --filter @daedaline/cli test",
+      "pnpm --filter @daedaline/pipeline test",
+      "pnpm --filter @daedaline/runner-cursor test"
+    ],
+    "handoff": [
+      "node --test tests/*.test.mjs",
+      "node src/internal/tools/check-phase-0a-scaffold.mjs",
+      "node src/internal/tools/context-budget-report.mjs",
+      "bash -n .cursor/hooks/enforce-policy-compliance.sh"
+    ]
+  },
+  "nonGoals": [
+    "Do not change src/pipelines/feature-delivery.yaml stage inventory or persona ownership.",
+    "Do not change the manual-mode default for runner.cursor.invocation.",
+    "Do not add live Cursor SDK calls to the default CI matrix.",
+    "Do not implement final ship, index, or close-artifacts automation beyond existing human gates.",
+    "Do not read or write src/inbox/notes/**."
+  ],
+  "references": [
+    {
+      "kind": "lines",
+      "path": "src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md",
+      "range": [123, 181],
+      "contentHash": "a96eccf"
+    },
+    {
+      "kind": "lines",
+      "path": "src/pipelines/feature-delivery.yaml",
+      "range": [25, 67],
+      "contentHash": "a247fa7"
+    },
+    {
+      "kind": "symbol",
+      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "symbol": "advanceFeatureDelivery",
+      "contentHash": "7c5e4d7"
+    }
+  ]
+}

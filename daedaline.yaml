@@ -20,6 +20,12 @@ bootstrap:
 
 risk_tier: medium
 threshold_policy: defaults.medium  # from daedaline-defaults.yaml
+
+# Feature-delivery runner invocation (opt-in). Omit this block or set `manual` to keep
+# the handoff-and-paste operator loop. Set `sdk` to invoke CursorRunner on run/advance.
+runner:
+  cursor:
+    invocation: sdk
 contract_bundle:
   kind: rego
   telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]

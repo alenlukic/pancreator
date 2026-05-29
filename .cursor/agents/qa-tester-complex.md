@@ -1,7 +1,7 @@
 ---
 name: qa-tester-complex
 description: "Complex high-effort `qa-tester` subagent. Use only when standard mode is insufficient: ambiguous architecture, policy/compliance reasoning, broad repo audit, historical reconstruction, or high-risk cross-cutting work."
-model: claude-opus-4-7
+model: gpt-5.5
 permissionMode: default
 tools:
   - Read
@@ -22,12 +22,14 @@ tools:
   - "Bash(node src/internal/tools/check-operator-output.mjs:*)"
   - "Bash(pnpm -w exec ddl status:*)"
   - "Bash(pnpm -w exec ddl refresh-prompt:*)"
+  - "Bash(pnpm --filter client:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
   - daedaline-memory
+  - cursor-ide-browser
 maxTurns: 40
 isolation: worktree
 memory: project

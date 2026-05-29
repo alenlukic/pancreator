@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
-    "lint": "eslint .",
+    "lint": "eslint . --ignore-pattern client",
     "lint:deps": "node src/internal/tools/check-phase-0a-scaffold.mjs",
     "typecheck": "tsc -p tsconfig.base.json",
     "attw": "turbo run attw",

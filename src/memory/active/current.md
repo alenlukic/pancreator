@@ -41,6 +41,8 @@ read per `src/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `v0-ui-dashboard-subordinate-feature-pipeline-qa` | [indexed] (`2026-05-29T22:00:00.000Z`) | `src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md` | `—` | `src/inbox/archive/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboa…` |
+| `feature-delivery-harness-wire-cursorrunner-through-run-and-advance` | [indexed] (`2026-05-29T12:00:00.000Z`) | `src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/delivery-report.md` | `—` | `src/inbox/archive/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021…` |
 | `bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout` | [indexed] (`2026-05-28T01:00:00.000Z`) | `src/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md` | `—` | `src/inbox/archive/in/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/16605_1923…` |
 | `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` | [indexed] (`2026-05-27T17:35:30.000Z`) | `src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix…` |
 | `ci-best-practices-batch` | [indexed] (`2026-05-26T18:23:19.000Z`) | `src/memory/features/ci-best-practices-batch/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md` |
@@ -79,9 +81,11 @@ read per `src/memory/handbook/context-economy.md`.
 
 <!-- ddl:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-28T00:45:27.739Z`
+- Active-memory refreshed (UTC): `2026-05-29T21:06:02.736Z`
 
 <!-- /ddl:active-memory:operator-notes:auto -->
+
+
 
 
 

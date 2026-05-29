@@ -90,6 +90,30 @@ pnpm -w exec ddl refresh-active-memory --dry-run
 pnpm -w exec ddl status <task-id>
 ```
 
+### `runner.cursor.invocation` (feature-delivery)
+
+`daedaline.yaml` MAY declare how the feature-delivery CLI invokes stage work:
+
+```yaml
+runner:
+  cursor:
+    invocation: manual  # manual | sdk
+```
+
+Rules:
+
+- When the key is omitted, the CLI SHALL resolve `manual` (handoff-and-paste; no
+  `@cursor/sdk` transport).
+- When set to `sdk`, `pnpm -w exec ddl run feature-delivery` and
+  `pnpm -w exec ddl advance` SHALL invoke `CursorRunner` for the entering stage
+  after ledger validation, using persona markdown from `src/personas/<name>.md`.
+- The CLI SHALL load repo-root `.env` before constructing `CursorRunner` when
+  the file exists; secret values MUST NOT be written to stdout, stderr, or
+  `run.log.jsonl`.
+- SDK-only automatic `review` / `test` loopbacks, the cumulative retry budget
+  (max 3), retry-limit halt artifacts, and the report approval gate are defined
+  in `OPERATION.md` and apply only under `sdk` mode.
+
 ## Bootstrap tracking invariants
 
 The `bootstrap` block MUST keep three fields internally consistent:

@@ -1,7 +1,7 @@
 ---
 name: daedaline-engineer
 description: When a human or pipeline submits Daedaline-internal engineering work, the `daedaline-engineer` SHALL normalize non-contract inputs through `contract-writer`, then execute implementation or remediation inside the internal corpus and emit ratification-ready execution artifacts.
-model: claude-4.6-sonnet-medium-thinking
+model: gpt-5.3-codex
 permissionMode: default
 tools:
   - Read

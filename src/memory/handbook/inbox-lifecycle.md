@@ -134,6 +134,21 @@ When an outbox artifact in `/src/inbox/out/` requests operator answers for an
 active thread, operators SHALL post replies under the referenced thread path in
 `/src/inbox/threads/` (nested paths MUST stay under `<day>/<feature-slug>/` with timestamp-prefixed basenames; other inbox queues use `<day>/` leaves without per-file task subdirectories).
 
+### 3a.1 — Feature-delivery system outbox artifacts (SDK mode)
+
+When `runner.cursor.invocation` is `sdk`, the feature-delivery runtime MAY write
+timestamp-prefixed leaves under `/src/inbox/out/<day-bucket>/` with basename shape
+`{SID-prefix}_{HHMM}_{semantic-suffix}.md` per
+`src/memory/features/timestamp-naming-conventions/spec.md`.
+
+| Artifact | Front matter | Operator action |
+|---|---|---|
+| Retry-limit halt | `gate: retry_limit_halt`, `task_id`, `feature_id`, `failing_stage`, `retry_count` | Inspect halt summary; use `repair-state` or ratify closure before restarting |
+| Report approval gate | `gate: report_approval`, `decision: approve \| needs_changes`, `required_changes` | Edit decision; `pnpm -w exec ddl advance <task-id> --artifact <outbox-path>` |
+
+These artifacts are system-produced responses; operators MUST NOT move them into
+`/src/inbox/in/`.
+
 Operators MUST NOT move outbox artifacts into `/src/inbox/in/`.
 
 Only inbound source items are archived by moving from `/src/inbox/in/` to

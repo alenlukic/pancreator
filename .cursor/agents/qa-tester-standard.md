@@ -1,7 +1,7 @@
 ---
 name: qa-tester-standard
 description: "Standard `qa-tester` subagent. Use for bounded, routine, or simple-task-mode work with the model declared in this agent frontmatter."
-model: gpt-5.3-codex
+model: gpt-5.5
 permissionMode: default
 tools:
   - Read
@@ -22,12 +22,14 @@ tools:
   - "Bash(node src/internal/tools/check-operator-output.mjs:*)"
   - "Bash(pnpm -w exec ddl status:*)"
   - "Bash(pnpm -w exec ddl refresh-prompt:*)"
+  - "Bash(pnpm --filter client:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
   - daedaline-memory
+  - cursor-ide-browser
 maxTurns: 40
 isolation: worktree
 memory: project
