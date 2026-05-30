@@ -1,0 +1,30 @@
+{
+  "v": 1,
+  "task_id": "27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap",
+  "seq": 361811,
+  "created_ts": "2026-05-30T16:53:42.480Z",
+  "metadata": {
+    "run_log_offset": 0,
+    "intervention_lever": "pause"
+  },
+  "channel_values": {
+    "langgraph_checkpoint": {
+      "v": 4,
+      "id": "faae3d6f-a308-4ced-97f9-7fd3dce483ff",
+      "ts": "2026-05-30T16:53:42.480Z",
+      "channel_values": {
+        "intervention_lever": "pause"
+      },
+      "channel_versions": {},
+      "versions_seen": {}
+    },
+    "checkpoint_id": "faae3d6f-a308-4ced-97f9-7fd3dce483ff",
+    "langgraph_metadata": {
+      "source": "update",
+      "step": 0,
+      "parents": {},
+      "run_log_offset": 0,
+      "intervention_lever": "pause"
+    }
+  }
+}

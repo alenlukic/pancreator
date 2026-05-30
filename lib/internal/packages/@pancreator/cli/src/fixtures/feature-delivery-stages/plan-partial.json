@@ -6,11 +6,23 @@
   "handoffFile": "work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
   "stagePrompt": "# Plan stage\nEmit plan.md, adr-draft.md, touch-set.json, and handoff.md.",
   "writesOnSuccess": [
-    { "path": "work/172996_05-10-26/38670_1315_demo-feature/touch-set.json", "content": "{}\n" }
+    {
+      "path": "work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+      "content": "{}\n"
+    }
   ],
   "writesOnRemediation": [
-    { "path": "work/172996_05-10-26/38670_1315_demo-feature/plan.md", "content": "# Plan\n" },
-    { "path": "work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md", "content": "# ADR\n" },
-    { "path": "work/172996_05-10-26/38670_1315_demo-feature/handoff.md", "content": "# Handoff\n" }
+    {
+      "path": "work/172996_05-10-26/38670_1315_demo-feature/plan.md",
+      "content": "# Plan\n"
+    },
+    {
+      "path": "work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
+      "content": "# ADR\n"
+    },
+    {
+      "path": "work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
+      "content": "# Handoff\n"
+    }
   ]
 }

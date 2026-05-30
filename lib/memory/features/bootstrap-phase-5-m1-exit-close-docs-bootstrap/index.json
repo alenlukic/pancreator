@@ -1,0 +1,234 @@
+{
+  "feature_id": "bootstrap-phase-5-m1-exit-close-docs-bootstrap",
+  "task_id": "27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap",
+  "stage": "index",
+  "indexed_at": "2026-05-30T16:53:12Z",
+  "status": "pending-human-ratification",
+  "source_inbox_item": {
+    "path": "archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-m1-exit.md",
+    "content_hash": "34f39bc",
+    "prior_path": "lib/inbox/in/172976_05-30-26/60751_0707_bootstrap-phase-5-m1-exit.md"
+  },
+  "feature_artifacts": [
+    {
+      "kind": "spec",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
+      "content_hash": "457d931"
+    },
+    {
+      "kind": "delivery-report",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md",
+      "content_hash": "a771fc0"
+    },
+    {
+      "kind": "greenfield-evidence-schema",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.schema.json",
+      "content_hash": "3b9afdb"
+    },
+    {
+      "kind": "greenfield-evidence-fixture",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json",
+      "content_hash": "aad1c85"
+    },
+    {
+      "kind": "kpi-baseline-evidence",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/kpi-baseline-evidence.json",
+      "content_hash": "bee6bb7"
+    }
+  ],
+  "accepted_ship_artifacts": [
+    {
+      "kind": "plan",
+      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/plan.md",
+      "content_hash": "54158f4"
+    },
+    {
+      "kind": "adr-draft",
+      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/adr-draft.md",
+      "content_hash": "403f5c3"
+    },
+    {
+      "kind": "touch-set",
+      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/touch-set.json",
+      "content_hash": "c2cf769"
+    },
+    {
+      "kind": "implementation-report",
+      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/implementation-report.md",
+      "content_hash": "41d5721"
+    },
+    {
+      "kind": "review",
+      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/review.md",
+      "content_hash": "40e78f2"
+    },
+    {
+      "kind": "test-report",
+      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/test-report.md",
+      "content_hash": "80c85d3"
+    },
+    {
+      "kind": "policy-compliance",
+      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json",
+      "content_hash": "e035840"
+    }
+  ],
+  "ship_outbox_artifact": {
+    "path": null,
+    "content_hash": null,
+    "status": "not-present-at-index-time"
+  },
+  "active_work_artifacts": [
+    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/plan.md",
+    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/adr-draft.md",
+    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/touch-set.json",
+    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/implementation-report.md",
+    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/review.md",
+    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/test-report.md",
+    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
+  ],
+  "archived_work_artifacts": [],
+  "implementation_surface": [
+    {
+      "kind": "greenfield-evidence-evaluator",
+      "path": "lib/internal/tools/evaluate-greenfield-evidence.mjs",
+      "content_hash": "f23a4e3"
+    },
+    {
+      "kind": "greenfield-evidence-tests",
+      "path": "tests/evaluate-greenfield-evidence.test.mjs",
+      "content_hash": "c913abf"
+    },
+    {
+      "kind": "knowledge-curation-pipeline",
+      "path": "lib/pipelines/knowledge-curation.yaml",
+      "content_hash": "c3b3a48"
+    },
+    {
+      "kind": "pipelines-readme",
+      "path": "lib/pipelines/README.md",
+      "content_hash": "b592d72"
+    },
+    {
+      "kind": "repository-readme",
+      "path": "README.md",
+      "content_hash": "09ce7fc"
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-touch-set",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
+        "cited_path": "lib/inbox/in/172976_05-30-26/60751_0707_bootstrap-phase-5-m1-exit.md",
+        "recorded_content_hash": "7dafd8f",
+        "live_content_hash": "34f39bc",
+        "verifier_status": "changed",
+        "note": "Five frontmatter and inline inbox citations retain intake-stage hash; live source body changed after canonicalization."
+      },
+      {
+        "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
+        "cited_path": "docs/BOOTSTRAP.md",
+        "recorded_content_hash": "0f53881",
+        "live_content_hash": "a2a5312",
+        "verifier_status": "changed",
+        "note": "Two BOOTSTRAP citations in spec frontmatter and prose retain pre-ship hash."
+      },
+      {
+        "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
+        "cited_path": "docs/M1.index.md",
+        "recorded_content_hash": "2307223",
+        "live_content_hash": "64ec3a8",
+        "verifier_status": "changed",
+        "note": "M1 index citation in spec frontmatter retains intake-stage hash."
+      },
+      {
+        "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
+        "cited_path": "AGENTS.md",
+        "recorded_content_hash": "c8e2c55",
+        "live_content_hash": "cbf75dc",
+        "verifier_status": "changed",
+        "note": "Two AGENTS citations in spec frontmatter and prose retain intake-stage hash."
+      },
+      {
+        "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
+        "cited_path": "docs/PRD.md",
+        "recorded_content_hash": "d5ccdbd",
+        "live_content_hash": "01a7f3a",
+        "verifier_status": "changed",
+        "note": "Two PRD citations in spec frontmatter and prose retain intake-stage hash."
+      },
+      {
+        "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
+        "cited_path": "lib/pipelines/init-greenfield.yaml",
+        "recorded_content_hash": "a5cfccf",
+        "live_content_hash": "bad5daf",
+        "verifier_status": "changed",
+        "note": "Symbol citation in spec frontmatter retains intake-stage hash."
+      }
+    ],
+    "repo_wide_followup": "bootstrap-content-hash-refresh",
+    "followup_backlog_path": "lib/memory/backlog/index.yaml"
+  },
+  "open_followups": [
+    {
+      "id": "WP5-state-transition",
+      "owner": "tech-lead",
+      "status": "deferred",
+      "reason": "pancreator.yaml, docs/M1.index.md, and AGENTS.md bootstrap-status updates remain blocked until follow-on US-9 evidence passes per plan decision D4.",
+      "source": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
+    },
+    {
+      "id": "WP4-handbook-promotions",
+      "owner": "librarian",
+      "status": "deferred",
+      "reason": "Handbook stability promotions route to tech-lead/reviewer/librarian stages with inventory captured in kpi-baseline-evidence.json.",
+      "source": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
+    },
+    {
+      "id": "lib/memory/adr/0002-m1-baseline.md",
+      "owner": "tech-writer",
+      "status": "deferred",
+      "reason": "ADR authoring is owned by tech-writer stage; implement stage supplies kpi-baseline-evidence.json input package only.",
+      "source": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
+    }
+  ],
+  "operator_setup": {
+    "wp1_greenfield_us9": {
+      "candidate_monorepo_slot": "<operator fills absolute path to external monorepo>",
+      "evaluator_command": "node lib/internal/tools/evaluate-greenfield-evidence.mjs --input <artifact.json>",
+      "fixture_command": "node lib/internal/tools/evaluate-greenfield-evidence.mjs --input lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json",
+      "required_env": ["CANDIDATE_REPO"]
+    },
+    "wp2_knowledge_curation_cron_seed": {
+      "cadence": "daily (active bootstrap) / weekly (quiet)",
+      "pipeline_definition": "lib/pipelines/knowledge-curation.yaml",
+      "commands": [
+        "pnpm -w exec pan refresh-active-memory --dry-run",
+        "node lib/internal/tools/refresh-citations.mjs",
+        "node lib/internal/tools/run-compliance.mjs"
+      ]
+    }
+  },
+  "advance_gate": {
+    "human_ratification_required": true,
+    "advance_command": "pnpm -w exec pan advance 27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap --artifact lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json",
+    "status": "deferred-until-ratified"
+  },
+  "artifact_index": {
+    "implementation_surface": {
+      "feature_folder": {
+        "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/"
+      },
+      "evaluator": {
+        "path": "lib/internal/tools/evaluate-greenfield-evidence.mjs"
+      },
+      "pipeline_cron_seed": {
+        "path": "lib/pipelines/knowledge-curation.yaml",
+        "symbol": "metadata.cron_seed"
+      }
+    }
+  },
+  "archived_inbox_source": "archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-m1-exit.md"
+}
