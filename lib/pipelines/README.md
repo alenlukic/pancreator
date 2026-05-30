@@ -28,3 +28,18 @@ The pipelines are registered through `loadPipelineYaml`. `pan run feature-delive
 - `metadata.pancreator-bootstrap-only: true` flags pipelines that exist only
   to satisfy the bootstrap and SHALL be retired or formalized once the
   runtime substrate lands.
+
+## knowledge-curation cron seed (M1)
+
+The `knowledge-curation` pipeline carries an operator-invoked cron seed in
+`metadata.cron_seed` (see `knowledge-curation.yaml`). Until M4 scheduler wiring
+lands, operators SHALL run the seed manually:
+
+1. **Cadence:** daily during active bootstrap work; weekly minimum during quiet periods.
+2. **Trigger:** run the commands listed under `metadata.cron_seed.operator_commands`,
+   then delegate the librarian persona through the `scan`, `curate`, and `report`
+   stages using a dedicated inbox directive when drift work is required.
+3. **Destinations:** drift reports land in `lib/inbox/out/`; per-feature citation
+   scans land under `lib/memory/features/<feature-id>/citation-rot-scan.md`.
+4. **Ownership:** the librarian persona owns the anti-rot loop; scheduler automation
+   deferral is recorded under `metadata.cron_seed.anti_rot_loop.scheduler_deferral`.

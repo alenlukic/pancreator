@@ -1,6 +1,6 @@
 metadata:
   schema_version: 1
-  generated_at: "2026-05-23T00:00:00Z"
+  generated_at: "2026-05-30T16:51:24Z"
   owners: [tech-lead, librarian]
   source_of_truth: /lib/memory/backlog/index.yaml
   schema_ref: /lib/memory/handbook/backlog-format.md
@@ -646,3 +646,21 @@ items:
       - /lib/memory/features/repository-layout-restructure-and-archive-migration/index.json
     evidence: "One-shot migration consolidated archives under archive/, active work under work/, and source under lib/; retired agent tier variants; validation gates green per delivery-report.md and test-report.md."
     notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure."
+
+  - id: bootstrap-phase-5-m1-exit-close-docs-bootstrap-shipped
+    title: Bootstrap Phase 5 M1 exit close docs bootstrap delivered
+    source: lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md
+    owner: librarian
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-05-30T16:13:35Z"
+    delivered_at: "2026-05-30T16:53:12Z"
+    links:
+      - /lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md
+      - /lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md
+      - /lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
+      - /lib/internal/tools/evaluate-greenfield-evidence.mjs
+      - /lib/pipelines/knowledge-curation.yaml
+    evidence: "Feature shipped WP1 greenfield evidence kit, deterministic evaluator, WP2 knowledge-curation cron-seed guidance, and WP3 KPI baseline evidence; review and qa gates passed per delivery-report.md; WP5 state-transition docs intentionally deferred per plan decision D4."
+    notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure. Deferred follow-ons tracked in index.json open_followups and policy-compliance.json deferred_items."

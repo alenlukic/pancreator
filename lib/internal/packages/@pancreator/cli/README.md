@@ -24,7 +24,7 @@ pnpm -w exec pan abort <task-id> --reason "superseded"
 ## Feature-delivery invocation
 
 `run feature-delivery <inboxEntry>` and `feature new <inboxEntry>` read a single
-file from `lib/inbox/in/`, load `lib/pipelines/feature-delivery.yaml`, derive a
+file from `lib/inbox/in/` (gitignored local storage), load `lib/pipelines/feature-delivery.yaml`, derive a
 feature id, and create these active-work artifacts.
 
 `<inboxEntry>` MUST be relative to `lib/inbox/in/` (for example

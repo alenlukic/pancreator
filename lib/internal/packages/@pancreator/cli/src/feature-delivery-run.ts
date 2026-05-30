@@ -494,15 +494,17 @@ export async function advanceFeatureDelivery(
     }
 
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
-    await invokeFeatureDeliveryEnteringStage({
-      repoRoot,
-      state,
-      pipeline,
-      stageId: state.currentStage,
-      compiled,
-      now,
-      testHooks: input.testHooks,
-    });
+    if (state.currentStage !== TERMINAL_STAGE) {
+      await invokeFeatureDeliveryEnteringStage({
+        repoRoot,
+        state,
+        pipeline,
+        stageId: state.currentStage,
+        compiled,
+        now,
+        testHooks: input.testHooks,
+      });
+    }
 
     await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
 
@@ -1784,7 +1786,7 @@ async function finishAdvanceAfterTransition(input: {
   testHooks?: FeatureDeliveryTestHooks;
 }): Promise<AdvanceFeatureDeliveryResult> {
   const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
-  if (invocation === "sdk" && input.state.status !== "halted") {
+  if (invocation === "sdk" && input.state.status !== "halted" && input.state.currentStage !== TERMINAL_STAGE) {
     const compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
     await invokeFeatureDeliveryEnteringStage({
       repoRoot: input.repoRoot,

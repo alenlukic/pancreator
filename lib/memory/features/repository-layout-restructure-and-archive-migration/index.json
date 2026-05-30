@@ -57,10 +57,7 @@
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172976_05-30-26/65996_0540_repo-layout-restructure.md",
-      "range": [
-        1,
-        302
-      ],
+      "range": [1, 302],
       "contentHash": "be9a5bd"
     },
     "human_approval_gate": "ratified",
@@ -103,10 +100,7 @@
     "citation": {
       "kind": "lines",
       "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
-      "range": [
-        1,
-        30
-      ],
+      "range": [1, 30],
       "contentHash": "889e2c1"
     }
   },
@@ -127,10 +121,7 @@
     "citation": {
       "kind": "lines",
       "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
-      "range": [
-        1,
-        58
-      ],
+      "range": [1, 58],
       "contentHash": "d73559f"
     }
   },
@@ -140,19 +131,13 @@
     "citation": {
       "kind": "lines",
       "path": "lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md",
-      "range": [
-        1,
-        41
-      ],
+      "range": [1, 41],
       "contentHash": "f9551b4"
     },
     "report_approval_citation": {
       "kind": "lines",
       "path": "lib/inbox/out/172976_05-30-26/62732_0634_repository-layout-restructure-and-archive-migration-report-approval.md",
-      "range": [
-        1,
-        18
-      ],
+      "range": [1, 18],
       "contentHash": "3f2871f"
     },
     "archived_inbox_source": "archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md"
@@ -169,10 +154,7 @@
     "citation": {
       "kind": "lines",
       "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
-      "range": [
-        1,
-        74
-      ],
+      "range": [1, 74],
       "contentHash": "76bd7f1"
     }
   },
@@ -185,10 +167,7 @@
       "citation": {
         "kind": "lines",
         "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
-        "range": [
-          1,
-          30
-        ],
+        "range": [1, 30],
         "contentHash": "889e2c1"
       }
     },
@@ -200,10 +179,7 @@
       "citation": {
         "kind": "lines",
         "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
-        "range": [
-          1,
-          106
-        ],
+        "range": [1, 106],
         "contentHash": "21b1ca7"
       }
     },
@@ -215,10 +191,7 @@
       "citation": {
         "kind": "lines",
         "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
-        "range": [
-          1,
-          106
-        ],
+        "range": [1, 106],
         "contentHash": "21b1ca7"
       }
     },
@@ -230,10 +203,7 @@
       "citation": {
         "kind": "lines",
         "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
-        "range": [
-          1,
-          106
-        ],
+        "range": [1, 106],
         "contentHash": "21b1ca7"
       }
     }
@@ -245,10 +215,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/memory/features/repository-layout-restructure-and-archive-migration/spec.md",
-          "range": [
-            1,
-            206
-          ],
+          "range": [1, 206],
           "contentHash": "9dccd53"
         }
       },
@@ -257,10 +224,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md",
-          "range": [
-            1,
-            41
-          ],
+          "range": [1, 41],
           "contentHash": "f9551b4"
         }
       },
@@ -274,10 +238,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/plan.md",
-          "range": [
-            1,
-            87
-          ],
+          "range": [1, 87],
           "contentHash": "79b4ed3"
         }
       },
@@ -286,10 +247,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/adr-draft.md",
-          "range": [
-            1,
-            50
-          ],
+          "range": [1, 50],
           "contentHash": "a658ffd"
         }
       },
@@ -298,10 +256,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/touch-set.json",
-          "range": [
-            1,
-            407
-          ],
+          "range": [1, 407],
           "contentHash": "7d8adff"
         }
       },
@@ -310,10 +265,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
-          "range": [
-            1,
-            106
-          ],
+          "range": [1, 106],
           "contentHash": "21b1ca7"
         }
       },
@@ -322,10 +274,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
-          "range": [
-            1,
-            30
-          ],
+          "range": [1, 30],
           "contentHash": "889e2c1"
         }
       },
@@ -334,10 +283,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
-          "range": [
-            1,
-            58
-          ],
+          "range": [1, 58],
           "contentHash": "d73559f"
         }
       },
@@ -346,10 +292,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
-          "range": [
-            1,
-            74
-          ],
+          "range": [1, 74],
           "contentHash": "76bd7f1"
         }
       },
@@ -358,10 +301,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/handoff.md",
-          "range": [
-            1,
-            48
-          ],
+          "range": [1, 48],
           "contentHash": "1313ba2"
         }
       },
@@ -370,10 +310,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/run.log.jsonl",
-          "range": [
-            1,
-            27
-          ],
+          "range": [1, 27],
           "contentHash": "85b2295"
         }
       }
@@ -384,10 +321,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/internal/tools/migrate-repository-layout.mjs",
-          "range": [
-            1,
-            413
-          ],
+          "range": [1, 413],
           "contentHash": "b40f2dc"
         }
       },
@@ -396,10 +330,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/internal/tools/validate-repository-layout.mjs",
-          "range": [
-            1,
-            158
-          ],
+          "range": [1, 158],
           "contentHash": "a08ba45"
         }
       },
@@ -408,10 +339,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/internal/tools/migrate-repository-layout.test.mjs",
-          "range": [
-            1,
-            57
-          ],
+          "range": [1, 57],
           "contentHash": "8c4e2ce"
         }
       },
@@ -420,10 +348,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
-          "range": [
-            1,
-            2236
-          ],
+          "range": [1, 2236],
           "contentHash": "4a54d43"
         }
       },
@@ -432,10 +357,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
-          "range": [
-            1,
-            667
-          ],
+          "range": [1, 667],
           "contentHash": "27234e4"
         }
       },
@@ -444,10 +366,7 @@
         "citation": {
           "kind": "lines",
           "path": "tests/repo-structure.test.mjs",
-          "range": [
-            1,
-            321
-          ],
+          "range": [1, 321],
           "contentHash": "39c08e5"
         }
       },
@@ -456,10 +375,7 @@
         "citation": {
           "kind": "lines",
           "path": "AGENTS.md",
-          "range": [
-            1,
-            296
-          ],
+          "range": [1, 296],
           "contentHash": "cbf75dc"
         },
         "note": "Workspace map and routing contracts updated to archive/, work/, and lib/ roots."
@@ -469,10 +385,7 @@
         "citation": {
           "kind": "lines",
           "path": "OPERATION.md",
-          "range": [
-            1,
-            233
-          ],
+          "range": [1, 233],
           "contentHash": "0688845"
         },
         "note": "Operator how-to paths updated for post-migration layout."
@@ -484,10 +397,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172976_05-30-26/65996_0540_repo-layout-restructure.md",
-          "range": [
-            1,
-            302
-          ],
+          "range": [1, 302],
           "contentHash": "be9a5bd"
         }
       },
@@ -496,10 +406,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/out/172976_05-30-26/62732_0634_repository-layout-restructure-and-archive-migration-report-approval.md",
-          "range": [
-            1,
-            18
-          ],
+          "range": [1, 18],
           "contentHash": "3f2871f"
         }
       }

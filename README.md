@@ -17,8 +17,9 @@ real projects, not a frontend or design-skill showcase.
 
 - **Phase tracking:** `pancreator.yaml` records Bootstrap Phase 5 (`phase-5-in-progress`).
   Phases -1 through 4 are complete for tracking purposes.
-- **Current focus:** Phase 5 M1 hardening per `docs/BOOTSTRAP.md` — init-greenfield
-  and adopt pipelines on real targets, knowledge-curation seed, and KPI baseline.
+- **Current focus:** Phase 5 M1 hardening per `docs/BOOTSTRAP.md` — US-9 evidence
+  kit (`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/`),
+  knowledge-curation cron seed, and KPI baseline evidence.
 - **Runtime caveat:** `pnpm -w exec pan run feature-delivery <inbox-entry>` creates
   the Phase-5 state machine and bounded prompts. Operators still invoke personas
   manually and advance with `pnpm -w exec pan advance`. See
@@ -33,7 +34,7 @@ real projects, not a frontend or design-skill showcase.
 | Personas | `lib/personas/` | Agent roles and constraints |
 | Skills | `lib/personas/skills/` | Reusable procedures |
 | Handbook | `lib/memory/handbook/` | Canon: glossary, contracts, context economy |
-| Inbox | `lib/inbox/in`, `out`, `threads` | Operator control plane (`notes/` is human-only) |
+| Inbox | `lib/inbox/in`, `out`, `threads` | Local transient comms (gitignored; `notes/` is human-only) |
 | Memory | `lib/memory/` | ADRs, backlog, features, active pointers |
 | Implementation | `lib/internal/` | Packages, tools, work archive |
 
@@ -50,6 +51,8 @@ real projects, not a frontend or design-skill showcase.
 - `lib/internal/packages/` — TypeScript workspace packages
 - `tests/` — repository tests and compliance fixtures
 - `lib/internal/tools/` — validation and maintenance scripts
+- `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/` — US-9
+  greenfield evidence schema, fixture, evaluator, and KPI baseline evidence (Phase 5)
 
 ## Architecture and core docs
 

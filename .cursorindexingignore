@@ -5,10 +5,8 @@
 # Active and archived run artifacts
 work/**
 archive/work/**
-lib/inbox/out/**
+lib/inbox/**
 archive/inbox/**
-lib/inbox/threads/**
-lib/inbox/notes/**
 
 # Full high-volume specs; use compact route docs first
 docs/PRD.md

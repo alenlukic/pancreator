@@ -64,6 +64,14 @@ related:
 This page defines canonical paths and the minimum operator procedure for moving
 completed inbound requests out of the active queue.
 
+## 0 - Local-only storage
+
+`/lib/inbox/` is **gitignored** and holds transient local comms only. Operators
+and tools MUST NOT commit inbox artifacts to version control. Fresh clones and
+new workspaces materialize queue directories on demand (`pnpm -w exec pan init`,
+`pnpm -w exec pan intake new`, or agent/tool writes). Durable copies of completed
+inbound items belong under `/archive/inbox/in/` per Section 3.
+
 ## 1 - Canonical locations
 
 Operators SHALL use these canonical paths:
@@ -197,8 +205,8 @@ after a reshape).
 
 When an agent or migration tool moves the last artifact out of an inbox
 directory, that agent or tool MUST remove every resulting empty parent directory
-under the affected queue, except queue roots that intentionally retain only
-`.gitkeep`.
+under the affected queue. Pruning MUST NOT remove queue roots that still contain
+artifacts.
 
 The migration tool `lib/internal/tools/migrate-inbox-convention.mjs` SHALL run
 empty-directory pruning automatically after every inbox write pass. Operators and

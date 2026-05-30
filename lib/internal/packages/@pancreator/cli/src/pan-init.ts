@@ -11,7 +11,6 @@ bootstrap:
 risk_tier: medium
 `,
   "AGENTS.md": "# AGENTS.md\n\nOperator card for this Pancreator workspace.\n",
-  "lib/inbox/in/.gitkeep": "",
   "lib/memory/active/current.md": "# Active memory\n\n## Active Feature\n\n- `(none)`\n",
   "lib/pipelines/feature-delivery.yaml": `id: feature-delivery
 version: "1"
@@ -56,11 +55,21 @@ export interface PanInitResult {
   inboxRatificationItem?: string;
 }
 
+const INBOX_QUEUE_DIRS = ["in", "out", "threads", "notes"] as const;
+
 function utcDayStamp(d: Date): string {
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+async function ensureInboxLayout(repoRoot: string): Promise<void> {
+  await Promise.all(
+    INBOX_QUEUE_DIRS.map((queue) =>
+      mkdir(path.join(repoRoot, "lib", "inbox", queue), { recursive: true }),
+    ),
+  );
 }
 
 export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
@@ -102,6 +111,8 @@ export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
   let adoptionReport: string | undefined;
   let inboxRatificationItem: string | undefined;
   if (!dryRun) {
+    await ensureInboxLayout(repoRoot);
+
     const now = input.clock?.() ?? new Date();
     const day = utcDayStamp(now);
     const adoptionDir = path.join(repoRoot, "lib", "memory", "adoption");

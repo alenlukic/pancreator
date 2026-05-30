@@ -6,6 +6,11 @@ contract read `AGENTS.md`. For product and bootstrap routing read
 
 ## Inbox lifecycle
 
+`lib/inbox/` is gitignored local storage for transient operator ↔ org comms.
+Fresh workspaces materialize queue directories on first use (`pan init` or
+`pan intake new`). Archive completed inbound items to `archive/inbox/in/` when
+policy requires a durable copy.
+
 1. Author new directives under `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
    Scaffold with:
 
