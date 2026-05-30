@@ -26,11 +26,11 @@ describe("DashboardPage", () => {
     expect(screen.getByTestId("domain-personas")).toBeInTheDocument();
     expect(screen.getByTestId("domain-work")).toBeInTheDocument();
     expect(screen.getByTestId("domain-packages")).toBeInTheDocument();
-    expect(screen.getByTestId("domain-inbox")).toHaveTextContent("src/inbox/");
-    expect(screen.getByTestId("domain-memory")).toHaveTextContent("src/memory/");
-    expect(screen.getByTestId("domain-personas")).toHaveTextContent("src/personas/");
-    expect(screen.getByTestId("domain-work")).toHaveTextContent("src/work/");
-    expect(screen.getByTestId("domain-packages")).toHaveTextContent("src/internal/packages/");
+    expect(screen.getByTestId("domain-inbox")).toHaveTextContent("lib/inbox/");
+    expect(screen.getByTestId("domain-memory")).toHaveTextContent("lib/memory/");
+    expect(screen.getByTestId("domain-personas")).toHaveTextContent("lib/personas/");
+    expect(screen.getByTestId("domain-work")).toHaveTextContent("work/");
+    expect(screen.getByTestId("domain-packages")).toHaveTextContent("lib/internal/packages/");
   });
 
   it("opens the inline modal with file content", async () => {
@@ -42,7 +42,7 @@ describe("DashboardPage", () => {
       if (url.includes("/api/list")) {
         return new Response(
           JSON.stringify({
-            entries: [{ path: "src/memory/sample.md", name: "sample.md", kind: "file" }],
+            entries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
           }),
           { status: 200 },
         );
@@ -73,18 +73,18 @@ describe("DashboardPage", () => {
       if (url.includes("/api/activity")) {
         return new Response(JSON.stringify([]), { status: 200 });
       }
-      if (url.includes("/api/list?path=src%2Fmemory%2Ffeatures")) {
+      if (url.includes("/api/list?path=lib%2Fmemory%2Ffeatures")) {
         return new Response(
           JSON.stringify({
-            entries: [{ path: "src/memory/features/spec.md", name: "spec.md", kind: "file" }],
+            entries: [{ path: "lib/memory/features/spec.md", name: "spec.md", kind: "file" }],
           }),
           { status: 200 },
         );
       }
-      if (url.includes("/api/list?path=src%2Fmemory")) {
+      if (url.includes("/api/list?path=lib%2Fmemory")) {
         return new Response(
           JSON.stringify({
-            entries: [{ path: "src/memory/features", name: "features", kind: "directory" }],
+            entries: [{ path: "lib/memory/features", name: "features", kind: "directory" }],
           }),
           { status: 200 },
         );
@@ -103,7 +103,7 @@ describe("DashboardPage", () => {
     screen.getByText("features").click();
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/list?path=src%2Fmemory%2Ffeatures"));
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/list?path=lib%2Fmemory%2Ffeatures"));
       expect(screen.getByText("spec.md")).toBeInTheDocument();
     });
   });

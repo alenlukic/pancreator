@@ -5,10 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { resolveAbbrevLen } from "../src/internal/tools/canonical-json-format.mjs";
+import { resolveAbbrevLen } from "../lib/internal/tools/canonical-json-format.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const TOOL = path.join(ROOT, "src/internal/tools/refresh-tbd-contenthash.mjs");
+const TOOL = path.join(ROOT, "lib/internal/tools/refresh-tbd-contenthash.mjs");
 
 test("SHA-256 full-file digest matches glossary contract", () => {
   const body = "hello\n";

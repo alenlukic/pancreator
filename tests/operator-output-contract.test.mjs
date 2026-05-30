@@ -6,7 +6,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const CHECKER = path.join(ROOT, "src/internal/tools/check-operator-output.mjs");
+const CHECKER = path.join(ROOT, "lib/internal/tools/check-operator-output.mjs");
 
 test("check-operator-output passes on repository surfaces", () => {
   const r = spawnSync(process.execPath, [CHECKER], {

@@ -1,0 +1,110 @@
+{
+  "taskId": "54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+  "featureId": "bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+  "stage": "plan",
+  "paths": [
+    "AGENTS.md",
+    "lib/memory/features/index.json",
+    "lib/memory/handbook/subagent-model-tiers.md",
+    "lib/memory/handbook/persona-spec.md",
+    "lib/memory/handbook/context-economy.md",
+    "lib/memory/handbook/operator-output-contract.md",
+    "lib/internal/tools/context-budget-report.mjs",
+    "tests/context-budget-report.test.mjs",
+    "lib/internal/packages/@pancreator/persona/lib/emit.ts",
+    ".cursor/agents/adopter.md",
+    ".cursor/agents/coder.md",
+    ".cursor/agents/compliance-auditor.md",
+    ".cursor/agents/contract-writer.md",
+    ".cursor/agents/general-purpose.md",
+    ".cursor/agents/intake-analyst.md",
+    ".cursor/agents/librarian.md",
+    ".cursor/agents/persona-designer.md",
+    ".cursor/agents/reviewer.md",
+    ".cursor/agents/supervisor.md",
+    ".cursor/agents/tech-lead.md",
+    ".cursor/agents/tech-writer.md",
+    ".cursor/agents/pancreator-engineer.md",
+    ".cursor/agents/adopter-standard.md",
+    ".cursor/agents/adopter-complex.md",
+    ".cursor/agents/coder-standard.md",
+    ".cursor/agents/coder-complex.md",
+    ".cursor/agents/compliance-auditor-standard.md",
+    ".cursor/agents/compliance-auditor-complex.md",
+    ".cursor/agents/contract-writer-standard.md",
+    ".cursor/agents/contract-writer-complex.md",
+    ".cursor/agents/intake-analyst-standard.md",
+    ".cursor/agents/intake-analyst-complex.md",
+    ".cursor/agents/librarian-standard.md",
+    ".cursor/agents/librarian-complex.md",
+    ".cursor/agents/persona-designer-standard.md",
+    ".cursor/agents/persona-designer-complex.md",
+    ".cursor/agents/reviewer-standard.md",
+    ".cursor/agents/reviewer-complex.md",
+    ".cursor/agents/supervisor-standard.md",
+    ".cursor/agents/supervisor-complex.md",
+    ".cursor/agents/tech-lead-standard.md",
+    ".cursor/agents/tech-lead-complex.md",
+    ".cursor/agents/tech-writer-standard.md",
+    ".cursor/agents/tech-writer-complex.md",
+    ".cursor/agents/pancreator-engineer-standard.md",
+    ".cursor/agents/pancreator-engineer-complex.md",
+    "lib/memory/features/pancreator-adopter-scan",
+    "lib/memory/features/pancreator-checkpointer-fs",
+    "lib/memory/features/pancreator-cli",
+    "lib/memory/features/pancreator-contract",
+    "lib/memory/features/pancreator-contract-runner-llm-judge",
+    "lib/memory/features/pancreator-contract-runner-rego",
+    "lib/memory/features/pancreator-contract-style",
+    "lib/memory/features/pancreator-core",
+    "lib/memory/features/pancreator-env-isolation",
+    "lib/memory/features/pancreator-inbox",
+    "lib/memory/features/pancreator-intervention",
+    "lib/memory/features/pancreator-mcp-server",
+    "lib/memory/features/pancreator-memory",
+    "lib/memory/features/pancreator-notifier",
+    "lib/memory/features/pancreator-persona",
+    "lib/memory/features/pancreator-pipeline",
+    "lib/memory/features/pancreator-policy",
+    "lib/memory/features/pancreator-run-logger",
+    "lib/memory/features/pancreator-runner-cursor",
+    "lib/memory/features/pancreator-worktree"
+  ],
+  "symbols": [
+    {
+      "path": "lib/internal/tools/context-budget-report.mjs",
+      "symbol": "printReport"
+    },
+    {
+      "path": "lib/internal/tools/context-budget-report.mjs",
+      "symbol": "countMatchingChars"
+    },
+    {
+      "path": "lib/internal/tools/context-budget-report.mjs",
+      "symbol": "classifyExclusiveTier"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/persona/lib/emit.ts",
+      "symbol": "emitCursorAgentsMirror"
+    }
+  ],
+  "tests": [
+    "node --test tests/*.test.mjs",
+    "node lib/internal/tools/check-phase-0a-scaffold.mjs",
+    "node lib/internal/tools/context-budget-report.mjs",
+    "bash -n .cursor/hooks/enforce-policy-compliance.sh"
+  ],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The implementation mutates canonical agent projection layout and handbook/operator invocation guidance.",
+    "changed-surfaces": [
+      "AGENTS.md",
+      "lib/memory/handbook/subagent-model-tiers.md",
+      "lib/memory/handbook/persona-spec.md",
+      "lib/memory/handbook/context-economy.md",
+      "lib/memory/handbook/operator-output-contract.md",
+      "lib/memory/features/index.json"
+    ],
+    "deferred-items": []
+  }
+}

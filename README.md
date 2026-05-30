@@ -30,31 +30,31 @@ real projects, not a frontend or design-skill showcase.
 |---|---|---|
 | Operating contract | `AGENTS.md` | Cross-tool rules, routing, bootstrap status |
 | Operator how-to | `OPERATION.md` | Inbox, feature-delivery loop, CLI, validation |
-| Personas | `src/personas/` | Agent roles and constraints |
-| Skills | `src/skills/` | Reusable procedures |
-| Handbook | `src/memory/handbook/` | Canon: glossary, contracts, context economy |
-| Inbox | `src/inbox/in`, `out`, `threads` | Operator control plane (`notes/` is human-only) |
-| Memory | `src/memory/` | ADRs, backlog, features, active pointers |
-| Implementation | `src/internal/` | Packages, tools, work archive |
+| Personas | `lib/personas/` | Agent roles and constraints |
+| Skills | `lib/personas/skills/` | Reusable procedures |
+| Handbook | `lib/memory/handbook/` | Canon: glossary, contracts, context economy |
+| Inbox | `lib/inbox/in`, `out`, `threads` | Operator control plane (`notes/` is human-only) |
+| Memory | `lib/memory/` | ADRs, backlog, features, active pointers |
+| Implementation | `lib/internal/` | Packages, tools, work archive |
 
 ## Key paths
 
-- `pancreator.yaml` — live policy and bootstrap phase (`src/memory/handbook/pancreator-config.md`)
+- `pancreator.yaml` — live policy and bootstrap phase (`lib/memory/handbook/pancreator-config.md`)
 - `docs/M1.index.md` — compact M1/bootstrap route map
 - `docs/BOOTSTRAP.md` — full phase plan and exit criteria
 - `docs/PRD.summary.md` / `docs/PRD.index.md` — compact PRD routing
 - `docs/PRD.md` — full product requirements
-- `src/memory/active/current.md` — active-memory orientation
-- `src/memory/active/handoffs.md` — pointer-only handoff map
-- `src/work/` — active runs (archived to `src/internal/work_archive/`)
-- `src/internal/packages/` — TypeScript workspace packages
+- `lib/memory/active/current.md` — active-memory orientation
+- `lib/memory/active/handoffs.md` — pointer-only handoff map
+- `work/` — active runs (archived to `archive/work/`)
+- `lib/internal/packages/` — TypeScript workspace packages
 - `tests/` — repository tests and compliance fixtures
-- `src/internal/tools/` — validation and maintenance scripts
+- `lib/internal/tools/` — validation and maintenance scripts
 
 ## Architecture and core docs
 
-- [System architecture ADR](src/memory/adr/0002-system-architecture-map.md)
-- [Backlog tracking ADR](src/memory/adr/0001-backlog-tracking.md)
+- [System architecture ADR](lib/memory/adr/0002-system-architecture-map.md)
+- [Backlog tracking ADR](lib/memory/adr/0001-backlog-tracking.md)
 - [M1 route map](docs/M1.index.md)
 - [Bootstrap plan](docs/BOOTSTRAP.md)
 - [PRD summary](docs/PRD.summary.md) · [PRD index](docs/PRD.index.md) · [Full PRD](docs/PRD.md)

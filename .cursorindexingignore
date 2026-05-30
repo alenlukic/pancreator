@@ -3,12 +3,12 @@
 # Explicit @-mentions and intentional reads still reach excluded paths.
 
 # Active and archived run artifacts
-src/work/**
-src/internal/work_archive/**
-src/inbox/out/**
-src/inbox/archive/**
-src/inbox/threads/**
-src/inbox/notes/**
+work/**
+archive/work/**
+lib/inbox/out/**
+archive/inbox/**
+lib/inbox/threads/**
+lib/inbox/notes/**
 
 # Full high-volume specs; use compact route docs first
 docs/PRD.md
@@ -21,17 +21,17 @@ docs/BOOTSTRAP.md
 **/*.write.json
 
 # Generated or low-signal durable indexes/reports
-src/memory/**/*.json
-src/memory/**/delivery-report.md
-src/memory/**/index.json
+lib/memory/**/*.json
+lib/memory/**/delivery-report.md
+lib/memory/**/index.json
 
 # Lockfile rarely needed for semantic repo reasoning
 pnpm-lock.yaml
 
 # Internal operating content: narrow default semantic sweeps; route reads via handbook index and personas when needed.
-src/memory/handbook/**
-src/personas/**
-src/skills/**
+lib/memory/handbook/**
+lib/personas/**
+lib/personas/skills/**
 .cursor/rules/**
 
 # Cursor-native mirrors are runtime surfaces, not semantic source of truth.

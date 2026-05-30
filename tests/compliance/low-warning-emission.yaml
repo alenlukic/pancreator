@@ -7,8 +7,8 @@ trigger_modes:
 scope:
   surface: "warning-and-backlog-routing"
   artifacts:
-    - "src/memory/backlog/index.yaml"
-    - "src/inbox/out/"
+    - "lib/memory/backlog/index.yaml"
+    - "lib/inbox/out/"
 assertion:
-  statement: "Low findings create backlog items and emit warnings to console and src/inbox/out."
+  statement: "Low findings create backlog items and emit warnings to console and lib/inbox/out."
   pass_criteria: "Run output records backlog id plus warning emissions for both required channels."

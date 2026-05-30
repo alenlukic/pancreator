@@ -1,0 +1,49 @@
+{
+  "task_id": "15300_2230_symlink-removal-agents-cursor",
+  "governing_sources_checked": ["AGENTS.md", "lib/memory/handbook/constitution.md", "docs/PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "The worktree removes duplicate agent entrypoints (root CLAUDE.md symlink, redundant Cursor rule shim, `.github/copilot-instructions.md` symlink) and updates AGENTS, PRD, handbook, workflows, hooks, personas, feature specs, and archives so references stay coherent with `AGENTS.md` as the sole root operating card.",
+    "changed_surfaces": [
+      "AGENTS.md",
+      "docs/BOOTSTRAP.md",
+      "docs/PRD.md",
+      ".github/workflows/phase-0a-scaffold.yml",
+      "archive/inbox/in/172997_05-09-26/11951_2040_cursor-token-economy_token-economy/11951_2040_token_economy.md",
+      "lib/inbox/threads/172996_05-10-26/81349_0124_inbox-directory-hierarchy-migration_round-01-clarify/11700_2045_round-01-clarify.md",
+      "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+      "lib/memory/active/current.md",
+      "lib/memory/active/runs.md",
+      "lib/memory/features/active-memory-context-economy-pass-2/index.json",
+      "lib/memory/features/active-memory-context-economy-pass-2/spec.md",
+      "lib/memory/features/cursor-token-economy/spec.md",
+      "lib/memory/features/inbox-directory-hierarchy-migration/index.json",
+      "lib/memory/features/inbox-directory-hierarchy-migration/spec.md",
+      "lib/memory/handbook/agents-md-authoring.md",
+      "lib/memory/handbook/glossary.md",
+      "lib/memory/handbook/persona-spec.md",
+      "lib/personas/adopter.md",
+      "lib/personas/skills/adopt-existing-repo/SKILL.md"
+    ],
+    "deferred_items": []
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Retires symlinked and mirrored instruction surfaces so `AGENTS.md` is the only repository root operating card; preserves governed-commit policy-compliance staging for structural edits outside docs-only paths.",
+    "constitution_alignment": "Preserves traceable documentation and reference stewardship by updating handbook, PRD, CI path filters, and dependent memory surfaces when entrypoints change.",
+    "prd_alignment": "Aligns documented operator and agent entry behavior with a single canonical operating card and bootstrap wording without changing phase-exit authority.",
+    "required_updates": [
+      "AGENTS.md",
+      "docs/BOOTSTRAP.md",
+      "docs/PRD.md",
+      ".cursor/hooks/enforce-policy-compliance.sh",
+      ".cursorindexingignore",
+      ".github/workflows/phase-0a-scaffold.yml",
+      "lib/memory/handbook/agents-md-authoring.md",
+      "lib/memory/handbook/glossary.md",
+      "lib/memory/handbook/persona-spec.md",
+      "lib/memory/features/cursor-token-economy/spec.md",
+      "lib/personas/adopter.md",
+      "lib/personas/skills/adopt-existing-repo/SKILL.md"
+    ]
+  }
+}

@@ -11,11 +11,11 @@ export type ActivityEvent = {
 };
 
 const DOMAIN_PATHS = [
-  "src/inbox",
-  "src/memory",
-  "src/personas",
-  "src/work",
-  "src/internal/packages",
+  "lib/inbox",
+  "lib/memory",
+  "lib/personas",
+  "work",
+  "lib/internal/packages",
 ] as const;
 
 const MAX_SCAN_DEPTH = 6;

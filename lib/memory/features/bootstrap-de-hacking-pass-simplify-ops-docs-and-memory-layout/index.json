@@ -1,0 +1,370 @@
+{
+  "feature_id": "bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout",
+  "title": "Bootstrap de-hacking pass — simplify ops, docs, and memory layout",
+  "task_id": "16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "work_packages": [
+    {
+      "id": "wp-1-feature-folder-audit",
+      "label": "WP-1 — Audit and move feature skeletons to backlog",
+      "status": "shipped",
+      "outcome": "Relocated m1-substrate-runtime-batch to backlog draft; deleted feature folder; added implementation_surface on keep-implemented indexes; reconciled active-memory shipped table."
+    },
+    {
+      "id": "wp-2-operation-md-extraction",
+      "label": "WP-2 — Extract OPERATION.md and slim README.md",
+      "status": "shipped",
+      "outcome": "OPERATION.md is canonical operator how-to; README, AGENTS.md, docs/M1.index.md, and pancreator-config handbook route there."
+    },
+    {
+      "id": "wp-3-operator-output-conformance",
+      "label": "WP-3 — Operator-output conformance enforcement",
+      "status": "shipped",
+      "outcome": "check-operator-output.mjs, operator-output-contract tests, persona bare-pan fixes, and full operator-output-audit.md coverage matrices."
+    },
+    {
+      "id": "wp-4-backlog-debt-consolidation",
+      "label": "WP-4 — Retire lib/memory/debt/ and update AGENTS workspace map",
+      "status": "shipped",
+      "outcome": "Backlog tags: [debt] documented; memory-tiers and PRD routes point debt tracking at backlog; AGENTS workspace map no longer lists /lib/memory/debt/."
+    },
+    {
+      "id": "wp-5-ci-slim-and-librarian-gate",
+      "label": "WP-5 — Slim CI workflows and define librarian pre-close validation",
+      "status": "shipped",
+      "outcome": "phase-0a-scaffold path filters narrowed; run-logger-conformance is workflow_dispatch only; librarian pre-close validation duty recorded in persona and OPERATION.md."
+    },
+    {
+      "id": "wp-6-duplication-philosophy-sweep",
+      "label": "WP-6 — Duplication and philosophy sweep across handbook, CLI, and agents",
+      "status": "shipped",
+      "outcome": "duplication-inventory.md labels all findings; no further handbook or CLI help edits required per inventory."
+    }
+  ],
+  "intake": {
+    "round": 1,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "archive/inbox/in/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/16605_1923_bootstrap-de-hacking-pass.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md",
+      "range": [1, 196],
+      "contentHash": "763212f"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Spec ratified at plan advance per state.json advanceHistory intake→plan event."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-05-28T01:00:00Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run pan advance to complete, then delegate the generated complete-stage prompt for close-artifacts archival closure."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-05-28T01:00:00Z",
+    "artifacts_indexed": 14,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": true
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 0,
+    "nit_count": 1,
+    "spec_contracts_executed": 5,
+    "spec_contracts_set_state": "validation.* command clauses in spec.md",
+    "verification_gates": {
+      "node_test_suite": "pass (102/102)",
+      "check_phase0a": "pass",
+      "context_budget_report": "pass",
+      "policy_compliance_hook_syntax": "pass",
+      "operator_output_check": "pass"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+      "range": [1, 46],
+      "contentHash": "c3334c3"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md",
+    "staged_to_inbox_out": null,
+    "staged_to_inbox_out_note": "Canonical delivery report lives under lib/memory/features/; no matching lib/inbox/out/*-bootstrap-de-hacking-pass*-delivery-report.md artifact was present at index time.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md",
+      "range": [1, 173],
+      "contentHash": "74a58dc"
+    },
+    "archived_inbox_source": "archive/inbox/in/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/16605_1923_bootstrap-de-hacking-pass.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "policy_compliance_artifact": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/policy-compliance.json",
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/policy-compliance.json",
+      "range": [1, 61],
+      "contentHash": "3fc9ca5"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "prd-summary-routing-deferral",
+      "owner": "operator",
+      "status": "deferred",
+      "reason": "docs/PRD.summary.md remained modify-if-needed; README/OPERATION split did not require summary-route change.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+        "range": [73, 79],
+        "contentHash": "c50cbd9"
+      }
+    },
+    {
+      "id": "global-features-index-m1-row",
+      "owner": "operator",
+      "status": "deferred",
+      "reason": "lib/memory/features/index.json had no m1-substrate-runtime-batch row to remove at ship time.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+        "range": [73, 79],
+        "contentHash": "c50cbd9"
+      }
+    },
+    {
+      "id": "handbook-deferred-verb-prose",
+      "owner": "backlog",
+      "status": "deferred",
+      "reason": "Non-runnable handbook examples mentioning deferred pan verbs left unchanged; existing backlog items cover automation gaps.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+        "range": [73, 79],
+        "contentHash": "c50cbd9"
+      }
+    },
+    {
+      "id": "node-test-git-noise-nit",
+      "owner": "backlog",
+      "status": "open",
+      "reason": "node --test tests/*.test.mjs prints repeated fatal: not a git repository subprocess noise while exiting 0.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+        "range": [16, 19],
+        "contentHash": "c3334c3"
+      }
+    }
+  ],
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/spec.md",
+          "range": [1, 525],
+          "contentHash": "6bd7d79"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md",
+          "range": [1, 173],
+          "contentHash": "74a58dc"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "plan": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/plan.md",
+          "range": [1, 67],
+          "contentHash": "646e8be"
+        }
+      },
+      "adr_draft": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/adr-draft.md",
+          "range": [1, 34],
+          "contentHash": "05842cc"
+        }
+      },
+      "touch_set": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/touch-set.json",
+          "range": [1, 547],
+          "contentHash": "ba34866"
+        }
+      },
+      "implementation_report": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+          "range": [1, 123],
+          "contentHash": "c50cbd9"
+        }
+      },
+      "review_report": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+          "range": [1, 46],
+          "contentHash": "c3334c3"
+        }
+      },
+      "operator_output_audit": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md",
+          "range": [1, 131],
+          "contentHash": "fca7b40"
+        }
+      },
+      "duplication_inventory": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md",
+          "range": [1, 19],
+          "contentHash": "597045a"
+        }
+      },
+      "policy_compliance": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/policy-compliance.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/policy-compliance.json",
+          "range": [1, 61],
+          "contentHash": "3fc9ca5"
+        }
+      },
+      "handoff": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/handoff.md",
+          "range": [1, 48],
+          "contentHash": "5709127"
+        }
+      },
+      "run_log": {
+        "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/run.log.jsonl",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/run.log.jsonl",
+          "range": [1, 10],
+          "contentHash": "42a9016"
+        }
+      }
+    },
+    "implementation_surface": {
+      "operator_howto": {
+        "path": "OPERATION.md",
+        "citation": {
+          "kind": "lines",
+          "path": "OPERATION.md",
+          "range": [1, 183],
+          "contentHash": "49a1123"
+        }
+      },
+      "operator_output_check": {
+        "path": "lib/internal/tools/check-operator-output.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/internal/tools/check-operator-output.mjs",
+          "range": [1, 90],
+          "contentHash": "aa1c6c9"
+        }
+      },
+      "operator_output_tests": {
+        "path": "tests/operator-output-contract.test.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "tests/operator-output-contract.test.mjs",
+          "range": [1, 40],
+          "contentHash": "2a04be3"
+        }
+      },
+      "backlog_relocated_m1_draft": {
+        "path": "lib/memory/backlog/drafts/m1-substrate-runtime-batch.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/backlog/drafts/m1-substrate-runtime-batch.md",
+          "range": [1, 176],
+          "contentHash": "bf05499"
+        },
+        "note": "Superseded m1-substrate-runtime-batch feature folder relocated to backlog draft; feature folder deleted."
+      },
+      "ci_posture": {
+        "path": "OPERATION.md",
+        "note": "GitHub workflow files removed; qa-tester and librarian pre-close validation are the local gates."
+      },
+      "active_memory_orientation": {
+        "path": "lib/memory/active/current.md",
+        "note": "Shipped table reconciled to keep-implemented feature folders only."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": "archive/inbox/in/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/16605_1923_bootstrap-de-hacking-pass.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md",
+          "range": [1, 196],
+          "contentHash": "763212f"
+        }
+      }
+    }
+  },
+  "contracts": {
+    "clauses": []
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": true,
+    "librarian_populated": true,
+    "placeholder": false
+  },
+  "archived_inbox_source": "archive/inbox/in/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/16605_1923_bootstrap-de-hacking-pass.md",
+  "source_inbox_item": {
+    "path": "archive/inbox/in/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/16605_1923_bootstrap-de-hacking-pass.md",
+    "prior_path": "lib/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md"
+  }
+}

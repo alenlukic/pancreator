@@ -1,0 +1,56 @@
+{
+  "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
+  "governing_sources_checked": ["AGENTS.md", "lib/memory/handbook/constitution.md", "PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Implement stage completes pass-2 documentation and governance; slice 7 refreshes task-local documentation-impact and policy-compliance artifacts for governed non-work paths.",
+    "changed_surfaces": [
+      "lib/memory/backlog/index.yaml",
+      "lib/memory/features/active-memory-context-economy-pass-2/index.json",
+      "README.md",
+      "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+      "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+      "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md"
+    ],
+    "deferred_items": [
+      {
+        "id": "active-memory-physical-tier-migration",
+        "rationale": "Deferred physical migration with backlog linkage per plan and ratified Engineering Spec."
+      },
+      {
+        "id": "active-memory-budget-warning-tool",
+        "rationale": "Deferred executable budget warnings; reporting and documented budgets shipped in pass 2."
+      },
+      {
+        "id": "active-memory-rule-glob-ratification",
+        "rationale": "Deferred owner ratification for any rule glob the audit could not prove safe to narrow."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "AGENTS.md implements slimmer routing, preserves no-push and operator-sandbox rules, and retains mandatory documentation-impact and policy-compliance gates. Operator ratification of the protected AGENTS.md diff remains required before merge per the feature index intake record. Implement waves edited AGENTS.md and six Cursor rule projections (00-agents-md, pancreator-engineer, persona-designer, intake-analyst, tech-lead, tech-writer); supervisor.mdc was audited and kept as-is. Merge still requires explicit approval of the final AGENTS.md and mirrored .cursor/rules/*.mdc diffs.",
+    "constitution_alignment": "Governance artifacts remain under the task work path; deferrals link to lib/memory/backlog/index.yaml; no constitution edits were required.",
+    "prd_alignment": "Pass 2 delivers memory-tier documentation, active-memory orientation, ADR-0006, context-budget reporting, indexing alignment, preservation invariants, and governance artifacts per the feature scope. PRD.md was not modified.",
+    "required_updates": [
+      "lib/memory/backlog/index.yaml",
+      "lib/memory/features/active-memory-context-economy-pass-2/index.json",
+      "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+      "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+      "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md"
+    ]
+  },
+  "references": [
+    {
+      "kind": "lines",
+      "path": "lib/memory/handbook/policy-compliance-contract.md",
+      "range": [47, 98],
+      "contentHash": "971f594"
+    },
+    {
+      "kind": "lines",
+      "path": "AGENTS.md",
+      "range": [101, 109],
+      "contentHash": "884bc58"
+    }
+  ]
+}

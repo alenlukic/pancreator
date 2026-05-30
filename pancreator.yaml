@@ -13,10 +13,10 @@ bootstrap:
   note: "Bootstrap Phase 4 ratified 2026-05-19 after the US-1 dogfood proof bundle close-out. Nested runs 77373_0230_phase-4-dogfood-proof-bundle-evidence-index and 71096_0415_phase-4-intervention-probe-pause-resume-abort are closed. Phase 5 (Rest of M1) is in progress per docs/BOOTSTRAP.md; Phoenix trace verification remains a deferred engineering item for @pancreator/run-logger and the pancreator-engineer backlog."
   evidence:
     - docs/BOOTSTRAP.md Phase 5 defines the current M1 completion gate.
-    - src/memory/features/us-1-dogfood-phase-4-exit/phase-4-ratification-request.md records the 2026-05-19 human ratification decision for the US-1 Phase 4 dogfood exit.
-    - src/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md records the closed nested-run evidence bundle and the remaining Phoenix engineering deferral.
-    - src/internal/packages/@pancreator/** contains the Phase 3 substrate package implementations.
-    - src/pipelines/*.yaml contains the five MVP pipeline definitions.
+    - lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-ratification-request.md records the 2026-05-19 human ratification decision for the US-1 Phase 4 dogfood exit.
+    - lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md records the closed nested-run evidence bundle and the remaining Phoenix engineering deferral.
+    - lib/internal/packages/@pancreator/** contains the Phase 3 substrate package implementations.
+    - lib/pipelines/*.yaml contains the five MVP pipeline definitions.
 
 risk_tier: medium
 threshold_policy: defaults.medium  # from pancreator-defaults.yaml

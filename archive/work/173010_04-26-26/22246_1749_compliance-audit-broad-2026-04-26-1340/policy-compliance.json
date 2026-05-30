@@ -1,0 +1,39 @@
+{
+  "task_id": "compliance-audit-broad-2026-04-26-1340",
+  "governing_sources_checked": ["AGENTS.md", "lib/memory/handbook/constitution.md", "PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "This execution normalized governance and contract reference hashes across the declared corpus scope and produced updated compliance execution artifacts with explicit protected-file deferrals.",
+    "changed_surfaces": [
+      ".cursor/agents/**",
+      "lib/memory/handbook/**",
+      "lib/memory/features/**/contracts/**",
+      "lib/personas/** (excluding protected persona files)",
+      "archive/work/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/compliance-audit.md",
+      "archive/work/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/compliance-remediation.md",
+      "archive/work/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
+      "archive/work/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md"
+    ],
+    "deferred_items": [
+      {
+        "id": "normalize-dual-anchor-contenthash-corpus-protected-personas",
+        "rationale": "Five remaining placeholders are in self-protected persona files that this invocation is not permitted to modify directly."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "The execution enforced the dual-anchor governance obligation and preserved protected-persona change-control boundaries.",
+    "constitution_alignment": "The execution improved citation immutability while recording explicit unresolved ownership and rerun conditions.",
+    "prd_alignment": "The execution advanced machine-checkable governance consistency across canonical contract and persona surfaces.",
+    "required_updates": [
+      ".cursor/agents/**",
+      "lib/memory/handbook/**",
+      "lib/memory/features/**/contracts/**",
+      "lib/personas/** (excluding protected persona files)",
+      "archive/work/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/compliance-audit.md",
+      "archive/work/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/compliance-remediation.md",
+      "archive/work/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
+      "archive/work/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md"
+    ]
+  }
+}

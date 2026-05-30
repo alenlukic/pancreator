@@ -1,0 +1,27 @@
+id: pancreator.worktree.package_shape
+kind: rego
+severity: block
+applies_to:
+  kind: file-path
+  glob: "lib/internal/packages/@pancreator/worktree/**"
+owner: contract-writer
+description: |
+  When the Phase 2 scaffold for `lib/internal/packages/@pancreator/worktree` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `lib/index.ts` exist in that package directory.
+references:
+  - kind: lines
+    path: docs/BOOTSTRAP.md
+    range: [122, 159]
+    contentHash: f54eb5e
+    note: "Bootstrap Phase 2 package contract requirement and dependency order."
+  - kind: lines
+    path: docs/PRD.md
+    range: [1116, 1126]
+    contentHash: 6e43642
+    note: "M1 substrate package scope and interfaces."
+spec: /lib/memory/features/pancreator-worktree/contracts/pancreator.worktree.package_shape.rego
+runtime:
+  package: pancreator.phase2.worktree
+  query: data.pancreator.phase2.worktree.deny
+metadata:
+  pancreator.contract_id: pancreator.worktree.package_shape
+  pancreator.applies_to: file-path:lib/internal/packages/@pancreator/worktree/**

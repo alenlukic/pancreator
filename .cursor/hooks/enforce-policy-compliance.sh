@@ -41,7 +41,7 @@ is_docs_metadata_path() {
     AGENTS.md|docs/PRD.md|docs/BOOTSTRAP.md)
       return 0
       ;;
-    src/memory/*|src/inbox/*|docs/*)
+    lib/memory/*|lib/inbox/*|docs/*)
       case "$path" in
         *.md|*.mdc|*.txt|*.yaml|*.yml|*.json)
           return 0
@@ -54,7 +54,7 @@ is_docs_metadata_path() {
 
 requires_artifact=0
 for path in "${staged_files[@]}"; do
-  if [[ "$path" == src/work/* ]]; then
+  if [[ "$path" == work/* ]]; then
     continue
   fi
   if is_docs_metadata_path "$path"; then
@@ -72,15 +72,15 @@ fi
 artifacts=()
 for path in "${staged_files[@]}"; do
   # Accept only the timestamp-naming three-level shape
-  # `src/work/<day>/<task>/policy-compliance.json`.
-  if [[ "$path" =~ ^src/work/[^/]+/[^/]+/policy-compliance\.json$ ]]; then
+  # `work/<day>/<task>/policy-compliance.json`.
+  if [[ "$path" =~ ^work/[^/]+/[^/]+/policy-compliance\.json$ ]]; then
     artifacts+=("$path")
   fi
 done
 
 if [[ ${#artifacts[@]} -eq 0 ]]; then
   cat <<'JSON'
-{"permission":"deny","user_message":"Commit blocked: stage at least one src/work/<day>/<task-id>/policy-compliance.json artifact for non-work structural changes.","agent_message":"Policy-compliance gate failed because no staged policy-compliance artifact was found."}
+{"permission":"deny","user_message":"Commit blocked: stage at least one work/<day>/<task-id>/policy-compliance.json artifact for non-work structural changes.","agent_message":"Policy-compliance gate failed because no staged policy-compliance artifact was found."}
 JSON
   exit 0
 fi
@@ -96,11 +96,11 @@ staged_files = set(json.loads(sys.argv[1]))
 artifact_paths = sys.argv[2:]
 required_sources = {
     "AGENTS.md",
-    "src/memory/handbook/constitution.md",
+    "lib/memory/handbook/constitution.md",
     "docs/PRD.md",
 }
 
-doc_prefixes = ("src/memory/", "docs/", "src/inbox/")
+doc_prefixes = ("lib/memory/", "docs/", "lib/inbox/")
 doc_root_names = {
     "AGENTS.md",
     "docs/PRD.md",

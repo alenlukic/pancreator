@@ -1,0 +1,546 @@
+{
+  "schemaVersion": "1",
+  "featureId": "bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout",
+  "taskId": "16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout",
+  "stage": "implement",
+  "pathCount": 71,
+  "paths": [
+    {
+      "path": "OPERATION.md",
+      "operation": "create",
+      "category": "operator-docs",
+      "workPackage": "wp-2-operation-md-extraction",
+      "rationale": "Canonical operator how-to with required sections."
+    },
+    {
+      "path": "README.md",
+      "operation": "modify",
+      "category": "operator-docs",
+      "workPackage": "wp-2-operation-md-extraction",
+      "rationale": "Slim entry point and route procedure to OPERATION.md."
+    },
+    {
+      "path": "AGENTS.md",
+      "operation": "modify",
+      "category": "operating-contract",
+      "workPackage": "wp-2-operation-md-extraction/wp-3-operator-output-conformance/wp-4-backlog-debt-consolidation",
+      "rationale": "Add OPERATION.md route, remove debt path, fix runnable pan examples, and refresh workspace map."
+    },
+    {
+      "path": "docs/M1.index.md",
+      "operation": "modify",
+      "category": "docs-routing",
+      "workPackage": "wp-2-operation-md-extraction",
+      "rationale": "Route operator workflow readers to OPERATION.md."
+    },
+    {
+      "path": "docs/PRD.summary.md",
+      "operation": "modify-if-needed",
+      "category": "docs-routing",
+      "workPackage": "wp-2-operation-md-extraction",
+      "rationale": "Add cross-reference only if README/OPERATION split changes summary routing."
+    },
+    {
+      "path": "docs/PRD.index.md",
+      "operation": "modify",
+      "category": "docs-routing",
+      "workPackage": "wp-4-backlog-debt-consolidation",
+      "rationale": "Update route triggers for backlog-backed debt and operator docs."
+    },
+    {
+      "path": "docs/PRD.md",
+      "operation": "modify",
+      "category": "docs-routing",
+      "workPackage": "wp-4-backlog-debt-consolidation",
+      "rationale": "Surgically redirect current lib/memory/debt references to backlog-backed debt items without changing M3 scope."
+    },
+    {
+      "path": ".github/workflows/phase-0a-scaffold.yml",
+      "operation": "modify",
+      "category": "ci",
+      "workPackage": "wp-5-ci-slim-and-librarian-gate",
+      "rationale": "Disposition: narrow-paths; remove generated active-work/archive triggers from default CI."
+    },
+    {
+      "path": ".github/workflows/run-logger-conformance.yml",
+      "operation": "modify",
+      "category": "ci",
+      "workPackage": "wp-5-ci-slim-and-librarian-gate",
+      "rationale": "Disposition: workflow-dispatch-only; keep Phoenix smoke available on demand."
+    },
+    {
+      "path": "lib/personas/librarian.md",
+      "operation": "modify",
+      "category": "persona",
+      "workPackage": "wp-5-ci-slim-and-librarian-gate",
+      "rationale": "Add pre-close validation obligation and bounded-failure fix policy."
+    },
+    {
+      "path": "lib/personas/coder.md",
+      "operation": "modify",
+      "category": "persona",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Fix scoped operator-output conformance violations if audit confirms them."
+    },
+    {
+      "path": "lib/personas/intake-analyst.md",
+      "operation": "modify",
+      "category": "persona",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Fix scoped operator-output conformance violations if audit confirms them."
+    },
+    {
+      "path": "lib/personas/reviewer.md",
+      "operation": "modify",
+      "category": "persona",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Fix scoped operator-output conformance violations if audit confirms them."
+    },
+    {
+      "path": "lib/personas/supervisor.md",
+      "operation": "modify",
+      "category": "persona",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Fix scoped operator-output conformance violations if audit confirms them."
+    },
+    {
+      "path": "lib/personas/tech-lead.md",
+      "operation": "modify",
+      "category": "persona",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Fix scoped operator-output conformance violations if audit confirms them."
+    },
+    {
+      "path": "lib/personas/tech-writer.md",
+      "operation": "modify",
+      "category": "persona",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Fix scoped operator-output conformance violations if audit confirms them."
+    },
+    {
+      "path": "lib/memory/handbook/backlog-format.md",
+      "operation": "modify",
+      "category": "handbook",
+      "workPackage": "wp-4-backlog-debt-consolidation",
+      "rationale": "Document tags: [debt] as the debt encoding."
+    },
+    {
+      "path": "lib/memory/handbook/memory-tiers.md",
+      "operation": "modify",
+      "category": "handbook",
+      "workPackage": "wp-4-backlog-debt-consolidation",
+      "rationale": "Remove retired debt tier and point debt tracking to backlog."
+    },
+    {
+      "path": "lib/memory/handbook/operator-output-contract.md",
+      "operation": "modify",
+      "category": "handbook",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Reference the automated operator-output check and fix scoped examples."
+    },
+    {
+      "path": "lib/memory/handbook/pancreator-config.md",
+      "operation": "modify",
+      "category": "handbook",
+      "workPackage": "wp-2-operation-md-extraction/wp-6-duplication-philosophy-sweep",
+      "rationale": "Require OPERATION.md updates for operator-facing interface changes and consolidate CLI invocation doctrine."
+    },
+    {
+      "path": "lib/memory/handbook/context-economy.md",
+      "operation": "modify-if-needed",
+      "category": "handbook",
+      "workPackage": "wp-6-duplication-philosophy-sweep",
+      "rationale": "Collapse duplicate context policy only if the inventory marks a duplicate."
+    },
+    {
+      "path": "lib/memory/handbook/subagent-model-tiers.md",
+      "operation": "modify-if-needed",
+      "category": "handbook",
+      "workPackage": "wp-6-duplication-philosophy-sweep",
+      "rationale": "Collapse duplicate model-tier policy only if the inventory marks a duplicate."
+    },
+    {
+      "path": "lib/memory/handbook/agents-md-authoring.md",
+      "operation": "modify-if-needed",
+      "category": "handbook",
+      "workPackage": "wp-6-duplication-philosophy-sweep",
+      "rationale": "Record mirror obligations only if AGENTS.md authoring guidance duplicates another canonical source."
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/cli/lib/run.ts",
+      "operation": "modify-if-needed",
+      "category": "cli-help",
+      "workPackage": "wp-6-duplication-philosophy-sweep",
+      "rationale": "Align CLI help with OPERATION.md only if duplication inventory finds drift."
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/cli/lib/feature-delivery-run.ts",
+      "operation": "modify-if-needed",
+      "category": "cli-help",
+      "workPackage": "wp-6-duplication-philosophy-sweep",
+      "rationale": "Align generated prompt or help prose with OPERATION.md only if duplication inventory finds drift."
+    },
+    {
+      "path": "lib/internal/tools/check-operator-output.mjs",
+      "operation": "create",
+      "category": "validation",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Detect bare pan invocations in runnable operator-visible code blocks."
+    },
+    {
+      "path": "tests/operator-output-contract.test.mjs",
+      "operation": "create",
+      "category": "validation",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Exercise the operator-output checker under node --test tests/*.test.mjs."
+    },
+    {
+      "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md",
+      "operation": "create",
+      "category": "run-artifact",
+      "workPackage": "wp-3-operator-output-conformance",
+      "rationale": "Audit scoped persona, projection, rule, and handbook output examples."
+    },
+    {
+      "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md",
+      "operation": "create",
+      "category": "run-artifact",
+      "workPackage": "wp-6-duplication-philosophy-sweep",
+      "rationale": "Inventory duplication findings and remediation choices."
+    },
+    {
+      "path": "work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+      "operation": "create",
+      "category": "run-artifact",
+      "workPackage": "cross-cutting",
+      "rationale": "Record implementation summary, validation command exits, and deferrals."
+    },
+    {
+      "path": "lib/memory/backlog/index.yaml",
+      "operation": "modify",
+      "category": "backlog",
+      "workPackage": "wp-1-feature-folder-audit/wp-4-backlog-debt-consolidation/wp-5-ci-slim-and-librarian-gate",
+      "rationale": "Relocate superseded feature, encode debt tags, and add CI re-enable trigger if required."
+    },
+    {
+      "path": "lib/memory/backlog/drafts/m1-substrate-runtime-batch.md",
+      "operation": "create",
+      "category": "backlog",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Preserve superseded draft spec before deleting the feature folder."
+    },
+    {
+      "path": "lib/memory/features/index.json",
+      "operation": "modify",
+      "category": "feature-memory",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Remove relocated skeleton row and refresh keep-implemented rows."
+    },
+    {
+      "path": "lib/memory/active/current.md",
+      "operation": "modify",
+      "category": "active-memory",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure most recent shipped rows map only to keep-implemented folders."
+    },
+    {
+      "path": "lib/memory/features/m1-substrate-runtime-batch/index.json",
+      "operation": "delete",
+      "category": "feature-memory",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Relocated superseded intake skeleton to backlog."
+    },
+    {
+      "path": "lib/memory/features/m1-substrate-runtime-batch/spec.md",
+      "operation": "delete",
+      "category": "feature-memory",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Relocated superseded intake skeleton to backlog draft."
+    },
+    {
+      "path": "lib/memory/features/bootstrap-phase-0a-closure/delivery-report.md",
+      "operation": "create",
+      "category": "feature-memory",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Complete keep-implemented folder shape from existing verification evidence."
+    },
+    {
+      "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Update active feature index stage and artifact references produced by this run."
+    },
+    {
+      "path": "lib/memory/features/bootstrap-phase-0a-closure/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/ci-best-practices-batch/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/compliance-tests/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/cursor-token-economy/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/inbox-convention-migration/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/json-formatting/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/phase-4-intervention-probe-pause-resume-abort/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-adopter-scan/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-checkpointer-fs/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-cli/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-contract/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-contract-runner-llm-judge/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-contract-runner-rego/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-contract-style/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-core/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-env-isolation/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-inbox/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-intervention/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-mcp-server/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-memory/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-notifier/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-persona/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-pipeline/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-policy/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-run-logger/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-runner-cursor/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/pancreator-worktree/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/timestamp-naming-conventions/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    },
+    {
+      "path": "lib/memory/features/us-1-dogfood-phase-4-exit/index.json",
+      "operation": "modify",
+      "category": "feature-index",
+      "workPackage": "wp-1-feature-folder-audit",
+      "rationale": "Ensure implementation_surface exists for keep-implemented disposition."
+    }
+  ],
+  "symbols": [
+    {
+      "path": "lib/internal/tools/check-operator-output.mjs",
+      "name": "main",
+      "rationale": "CLI entrypoint for operator-output lint."
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/cli/lib/run.ts",
+      "name": "run",
+      "rationale": "CLI help/prose alignment if duplication inventory requires it."
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/cli/lib/feature-delivery-run.ts",
+      "name": "runFeatureDelivery",
+      "rationale": "Generated prompt/prose alignment if duplication inventory requires it."
+    }
+  ],
+  "tests": [
+    "node --test tests/*.test.mjs",
+    "node lib/internal/tools/check-phase-0a-scaffold.mjs",
+    "node lib/internal/tools/context-budget-report.mjs",
+    "bash -n .cursor/hooks/enforce-policy-compliance.sh",
+    "node lib/internal/tools/check-operator-output.mjs"
+  ],
+  "readOnlyAuditScopes": [
+    "lib/personas/*.md",
+    ".cursor/agents/*.md",
+    ".cursor/rules/*.mdc",
+    "lib/memory/handbook/*.md",
+    "AGENTS.md",
+    "README.md",
+    "OPERATION.md"
+  ],
+  "outOfScope": [
+    "lib/inbox/notes/**",
+    "archive/work/**",
+    "full unattended feature-delivery automation",
+    "v0 operator dashboard",
+    "pancreator.yaml phase semantics"
+  ]
+}

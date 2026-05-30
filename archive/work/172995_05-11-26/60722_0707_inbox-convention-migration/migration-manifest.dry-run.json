@@ -1,0 +1,224 @@
+{
+  "schema": "pancreator.inbox-convention-migration-manifest.v1",
+  "mode": "dry-run",
+  "generatedAt": "2026-05-26T19:21:55.814Z",
+  "repoRoot": "/Users/alen/Dev/pancreator",
+  "summary": {
+    "legacyArtifacts": 4,
+    "plannedFileRenames": 4,
+    "threadFeatureDirsRemoved": 4
+  },
+  "renames": [
+    {
+      "sourceRel": "archive/inbox/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md",
+      "targetRel": "archive/inbox/in/172981_05-25-26/64020_0613_ci-best-practices-batch.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-25T06:13:00.000Z",
+        "source": "frontmatter"
+      }
+    },
+    {
+      "sourceRel": "archive/inbox/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/71700_0612_bootstrap-cruft-cleanup-batch.md",
+      "targetRel": "archive/inbox/in/172981_05-25-26/64080_0612_bootstrap-cruft-cleanup-batch.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-25T06:12:00.000Z",
+        "source": "frontmatter"
+      }
+    },
+    {
+      "sourceRel": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "targetRel": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-25T06:05:12.000Z",
+        "source": "frontmatter"
+      }
+    },
+    {
+      "sourceRel": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+      "targetRel": "archive/inbox/in/172980_05-26-26/50991_0950_timestamp-naming-conventions.md",
+      "kind": "inbox-nested-file",
+      "timestamp": {
+        "iso": "2026-05-26T04:40:16-04:00",
+        "source": "git"
+      }
+    },
+    {
+      "sourceRel": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/",
+      "targetRel": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/",
+      "kind": "inbox-remove-empty-dir",
+      "timestamp": {
+        "iso": "",
+        "source": "cleanup"
+      }
+    },
+    {
+      "sourceRel": "archive/inbox/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/",
+      "targetRel": "archive/inbox/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/",
+      "kind": "inbox-remove-empty-dir",
+      "timestamp": {
+        "iso": "",
+        "source": "cleanup"
+      }
+    },
+    {
+      "sourceRel": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/",
+      "targetRel": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/",
+      "kind": "inbox-remove-empty-dir",
+      "timestamp": {
+        "iso": "",
+        "source": "cleanup"
+      }
+    },
+    {
+      "sourceRel": "archive/inbox/in/172980_05-26-26/24959_1704_ci-best-practices-batch/",
+      "targetRel": "archive/inbox/in/172980_05-26-26/24959_1704_ci-best-practices-batch/",
+      "kind": "inbox-remove-empty-dir",
+      "timestamp": {
+        "iso": "",
+        "source": "cleanup"
+      }
+    }
+  ],
+  "referenceUpdates": [
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json",
+      "line": 26,
+      "column": 27,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json",
+      "line": 29,
+      "column": 16,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json",
+      "line": 360,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json",
+      "line": 363,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+      "line": 7,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+      "line": 18,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+      "line": 23,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+      "line": 28,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+      "line": 33,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
+      "line": 109,
+      "column": 13,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "archive/inbox/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/71700_0612_bootstrap-cruft-cleanup-batch.md",
+      "line": 28,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "after": "archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md"
+    },
+    {
+      "file": "lib/memory/features/timestamp-naming-conventions/index.json",
+      "line": 13,
+      "column": 27,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+      "after": "archive/inbox/in/172980_05-26-26/50991_0950_timestamp-naming-conventions.md"
+    },
+    {
+      "file": "lib/memory/features/timestamp-naming-conventions/index.json",
+      "line": 440,
+      "column": 18,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+      "after": "archive/inbox/in/172980_05-26-26/50991_0950_timestamp-naming-conventions.md"
+    },
+    {
+      "file": "lib/memory/features/timestamp-naming-conventions/spec.md",
+      "line": 7,
+      "column": 20,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+      "after": "archive/inbox/in/172980_05-26-26/50991_0950_timestamp-naming-conventions.md"
+    },
+    {
+      "file": "lib/memory/features/timestamp-naming-conventions/spec.md",
+      "line": 12,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+      "after": "archive/inbox/in/172980_05-26-26/50991_0950_timestamp-naming-conventions.md"
+    },
+    {
+      "file": "lib/memory/features/timestamp-naming-conventions/spec.md",
+      "line": 17,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+      "after": "archive/inbox/in/172980_05-26-26/50991_0950_timestamp-naming-conventions.md"
+    },
+    {
+      "file": "lib/memory/features/timestamp-naming-conventions/spec.md",
+      "line": 22,
+      "column": 11,
+      "jsonPointer": null,
+      "before": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+      "after": "archive/inbox/in/172980_05-26-26/50991_0950_timestamp-naming-conventions.md"
+    }
+  ],
+  "collisions": []
+}

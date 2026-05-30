@@ -1,0 +1,36 @@
+{
+  "task_id": "pancreator-contract-spine-impl",
+  "governing_sources_checked": ["AGENTS.md", "lib/memory/handbook/constitution.md", "PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Phase 3 step 2 implements the contract spine: @pancreator/contract wrapper types and structural guards, @pancreator/contract-runner-rego input helpers, @pancreator/contract-runner-llm-judge MVP panel defaults, and @pancreator/contract-style Layer-1 weasel scan. Adds vitest catalog entry, turbo test/typecheck pipelines, README Quickstarts, and updates the four feature task lists.",
+    "changed_surfaces": [
+      "lib/internal/packages/@pancreator/contract/**",
+      "lib/internal/packages/@pancreator/contract-runner-rego/**",
+      "lib/internal/packages/@pancreator/contract-runner-llm-judge/**",
+      "lib/internal/packages/@pancreator/contract-style/**",
+      "lib/memory/features/pancreator-contract/tasks.md",
+      "lib/memory/features/pancreator-contract-runner-rego/tasks.md",
+      "lib/memory/features/pancreator-contract-runner-llm-judge/tasks.md",
+      "lib/memory/features/pancreator-contract-style/tasks.md",
+      "pnpm-workspace.yaml",
+      "turbo.json"
+    ],
+    "deferred_items": [
+      {
+        "id": "pancreator.contract*.readme_ergonomics-llm-judge-run",
+        "rationale": "LLM-judge README contracts use TBD-on-commit content hashes and require the runner panel; deferred to the contract runner pass."
+      },
+      {
+        "id": "pancreator-contract-zod-validation",
+        "rationale": "Handbook Zod schema validation is not implemented in this slice; structural guards only. Will be part of the contract-runner wiring slice."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Slice stages diffs locally, preserves the human gate at the phase boundary, and observes the no-horizontal-primitive-deps rule (only @pancreator/core dependencies).",
+    "constitution_alignment": "Slice keeps governance and contract artifacts traceable while limiting scope to package boundaries declared in BOOTSTRAP.md step 2.",
+    "prd_alignment": "Slice satisfies PRD §11 contract spine package responsibilities and aligns with §4.5 wrapper schema for the structural guard layer.",
+    "required_updates": []
+  }
+}

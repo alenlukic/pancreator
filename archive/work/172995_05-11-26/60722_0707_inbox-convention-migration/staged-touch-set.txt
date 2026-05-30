@@ -1,0 +1,5 @@
+work/172995_05-11-26/60722_0707_inbox-convention-migration/handoff.md
+work/172995_05-11-26/60722_0707_inbox-convention-migration/next-prompt.md
+work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
+work/172995_05-11-26/60722_0707_inbox-convention-migration/state-repair.md
+work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json

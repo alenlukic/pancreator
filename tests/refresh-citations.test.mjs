@@ -11,7 +11,7 @@ import {
   parseRefreshArgs,
   refreshCitationBody,
   refreshCitations,
-} from "../src/internal/tools/refresh-citations.mjs";
+} from "../lib/internal/tools/refresh-citations.mjs";
 
 function makeTempRepo() {
   const root = mkdtempSync(path.join(tmpdir(), "refresh-citations-"));
@@ -20,8 +20,8 @@ function makeTempRepo() {
 }
 
 test("classifyPath refuses inbox notes and warns on immutable inbox queues", () => {
-  assert.equal(classifyPath("src/inbox/notes/draft.md").refuse, true);
-  assert.match(classifyPath("src/inbox/in/foo.md").warn ?? "", /immutable inbox/);
+  assert.equal(classifyPath("lib/inbox/notes/draft.md").refuse, true);
+  assert.match(classifyPath("lib/inbox/in/foo.md").warn ?? "", /immutable inbox/);
 });
 
 test("refreshCitationBody patches YAML frontmatter references", () => {
@@ -113,10 +113,10 @@ test("refreshCitations is idempotent on second invocation", () => {
   assert.equal(second.filesChanged, 0);
 });
 
-test("refreshCitations refuses src/inbox/notes paths", () => {
+test("refreshCitations refuses lib/inbox/notes paths", () => {
   const root = makeTempRepo();
-  mkdirSync(path.join(root, "src/inbox/notes"), { recursive: true });
-  const rel = "src/inbox/notes/secret.md";
+  mkdirSync(path.join(root, "lib/inbox/notes"), { recursive: true });
+  const rel = "lib/inbox/notes/secret.md";
   writeFileSync(
     path.join(root, rel),
     "contentHash: TBD-on-commit\n",
@@ -124,7 +124,7 @@ test("refreshCitations refuses src/inbox/notes paths", () => {
   );
   assert.throws(
     () => refreshCitations({ repoRoot: root, globs: [rel] }),
-    /Refusing to write paths under src\/inbox\/notes\//,
+    /Refusing to write paths under lib\/inbox\/notes\//,
   );
 });
 
@@ -133,16 +133,16 @@ test("parseRefreshArgs recognizes --dry-run and globs", () => {
     "node",
     "refresh-citations.mjs",
     "--dry-run",
-    "src/memory/**/*.md",
+    "lib/memory/**/*.md",
   ]);
   assert.equal(parsed.dryRun, true);
-  assert.deepEqual(parsed.globs, ["src/memory/**/*.md"]);
+  assert.deepEqual(parsed.globs, ["lib/memory/**/*.md"]);
 });
 
 test("matchesGlobPattern supports single-segment wildcards", () => {
-  assert.equal(matchesGlobPattern("src/memory/*.md", "src/memory/current.md"), true);
-  assert.equal(matchesGlobPattern("src/memory/**/*.md", "src/memory/active/current.md"), true);
-  assert.equal(matchesGlobPattern("src/memory/*.md", "src/inbox/in/a.md"), false);
+  assert.equal(matchesGlobPattern("lib/memory/*.md", "lib/memory/current.md"), true);
+  assert.equal(matchesGlobPattern("lib/memory/**/*.md", "lib/memory/active/current.md"), true);
+  assert.equal(matchesGlobPattern("lib/memory/*.md", "lib/inbox/in/a.md"), false);
 });
 
 test("digestContentHash abbreviates to requested width", () => {

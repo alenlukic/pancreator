@@ -12,31 +12,31 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
-      "@pancreator/adopter-scan": ["src/internal/packages/@pancreator/adopter-scan/src/index.ts"],
-      "@pancreator/checkpointer-fs": ["src/internal/packages/@pancreator/checkpointer-fs/src/index.ts"],
-      "@pancreator/cli": ["src/internal/packages/@pancreator/cli/src/index.ts"],
-      "@pancreator/contract": ["src/internal/packages/@pancreator/contract/src/index.ts"],
-      "@pancreator/contract-runner-llm-judge": ["src/internal/packages/@pancreator/contract-runner-llm-judge/src/index.ts"],
-      "@pancreator/contract-runner-rego": ["src/internal/packages/@pancreator/contract-runner-rego/src/index.ts"],
-      "@pancreator/contract-style": ["src/internal/packages/@pancreator/contract-style/src/index.ts"],
-      "@pancreator/core": ["src/internal/packages/@pancreator/core/src/index.ts"],
-      "@pancreator/env-isolation": ["src/internal/packages/@pancreator/env-isolation/src/index.ts"],
-      "@pancreator/inbox": ["src/internal/packages/@pancreator/inbox/src/index.ts"],
-      "@pancreator/intervention": ["src/internal/packages/@pancreator/intervention/src/index.ts"],
-      "@pancreator/mcp-server": ["src/internal/packages/@pancreator/mcp-server/src/index.ts"],
-      "@pancreator/memory": ["src/internal/packages/@pancreator/memory/src/index.ts"],
-      "@pancreator/notifier": ["src/internal/packages/@pancreator/notifier/src/index.ts"],
-      "@pancreator/persona": ["src/internal/packages/@pancreator/persona/src/index.ts"],
-      "@pancreator/pipeline": ["src/internal/packages/@pancreator/pipeline/src/index.ts"],
-      "@pancreator/policy": ["src/internal/packages/@pancreator/policy/src/index.ts"],
-      "@pancreator/run-logger": ["src/internal/packages/@pancreator/run-logger/src/index.ts"],
-      "@pancreator/runner-cursor": ["src/internal/packages/@pancreator/runner-cursor/src/index.ts"],
-      "@pancreator/worktree": ["src/internal/packages/@pancreator/worktree/src/index.ts"]
+      "@pancreator/adopter-scan": ["lib/internal/packages/@pancreator/adopter-scan/src/index.ts"],
+      "@pancreator/checkpointer-fs": ["lib/internal/packages/@pancreator/checkpointer-fs/src/index.ts"],
+      "@pancreator/cli": ["lib/internal/packages/@pancreator/cli/src/index.ts"],
+      "@pancreator/contract": ["lib/internal/packages/@pancreator/contract/src/index.ts"],
+      "@pancreator/contract-runner-llm-judge": ["lib/internal/packages/@pancreator/contract-runner-llm-judge/src/index.ts"],
+      "@pancreator/contract-runner-rego": ["lib/internal/packages/@pancreator/contract-runner-rego/src/index.ts"],
+      "@pancreator/contract-style": ["lib/internal/packages/@pancreator/contract-style/src/index.ts"],
+      "@pancreator/core": ["lib/internal/packages/@pancreator/core/src/index.ts"],
+      "@pancreator/env-isolation": ["lib/internal/packages/@pancreator/env-isolation/src/index.ts"],
+      "@pancreator/inbox": ["lib/internal/packages/@pancreator/inbox/src/index.ts"],
+      "@pancreator/intervention": ["lib/internal/packages/@pancreator/intervention/src/index.ts"],
+      "@pancreator/mcp-server": ["lib/internal/packages/@pancreator/mcp-server/src/index.ts"],
+      "@pancreator/memory": ["lib/internal/packages/@pancreator/memory/src/index.ts"],
+      "@pancreator/notifier": ["lib/internal/packages/@pancreator/notifier/src/index.ts"],
+      "@pancreator/persona": ["lib/internal/packages/@pancreator/persona/src/index.ts"],
+      "@pancreator/pipeline": ["lib/internal/packages/@pancreator/pipeline/src/index.ts"],
+      "@pancreator/policy": ["lib/internal/packages/@pancreator/policy/src/index.ts"],
+      "@pancreator/run-logger": ["lib/internal/packages/@pancreator/run-logger/src/index.ts"],
+      "@pancreator/runner-cursor": ["lib/internal/packages/@pancreator/runner-cursor/src/index.ts"],
+      "@pancreator/worktree": ["lib/internal/packages/@pancreator/worktree/src/index.ts"]
     }
   },
   "include": [
-    "src/internal/packages/pancreator/src/**/*.ts",
-    "src/internal/packages/@pancreator/*/src/**/*.ts"
+    "lib/internal/packages/pancreator/src/**/*.ts",
+    "lib/internal/packages/@pancreator/*/src/**/*.ts"
   ],
   "exclude": ["node_modules", "**/dist", "**/node_modules"]
 }

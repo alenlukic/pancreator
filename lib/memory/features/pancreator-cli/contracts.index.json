@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "pancreator.cli.package_shape",
+      "path": "/lib/memory/features/pancreator-cli/contracts/pancreator.cli.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "lib/internal/packages/@pancreator/cli/**"
+      }
+    },
+    {
+      "id": "pancreator.cli.readme_ergonomics",
+      "path": "/lib/memory/features/pancreator-cli/contracts/pancreator.cli.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "lib/internal/packages/@pancreator/cli/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "13a5e4a"
+      }
+    }
+  ]
+}

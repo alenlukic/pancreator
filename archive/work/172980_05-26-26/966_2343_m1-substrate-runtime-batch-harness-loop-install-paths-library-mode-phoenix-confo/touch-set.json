@@ -1,0 +1,184 @@
+{
+  "taskId": "966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+  "featureId": "m1-substrate-runtime-batch",
+  "stage": "implement",
+  "paths": [
+    "lib/internal/packages/@pancreator/checkpointer-fs/lib/envelope.ts",
+    "lib/internal/packages/@pancreator/checkpointer-fs/lib/fs-checkpoint-store.ts",
+    "lib/internal/packages/@pancreator/checkpointer-fs/lib/index.ts",
+    "lib/internal/packages/@pancreator/checkpointer-fs/lib/fs-checkpoint-store.test.ts",
+    "lib/internal/packages/@pancreator/checkpointer-fs/lib/envelope.test.ts",
+    "lib/internal/packages/@pancreator/intervention/lib/manager.ts",
+    "lib/internal/packages/@pancreator/intervention/lib/store.ts",
+    "lib/internal/packages/@pancreator/intervention/lib/manager.test.ts",
+    "lib/internal/packages/@pancreator/runner-cursor/lib/types.ts",
+    "lib/internal/packages/@pancreator/runner-cursor/lib/cursor-runner.ts",
+    "lib/internal/packages/@pancreator/runner-cursor/lib/index.ts",
+    "lib/internal/packages/@pancreator/runner-cursor/lib/cursor-runner.test.ts",
+    "lib/internal/packages/@pancreator/pipeline/lib/types.ts",
+    "lib/internal/packages/@pancreator/pipeline/lib/compile.ts",
+    "lib/internal/packages/@pancreator/pipeline/lib/execute.ts",
+    "lib/internal/packages/@pancreator/pipeline/lib/load-yaml.ts",
+    "lib/internal/packages/@pancreator/pipeline/lib/pipeline.test.ts",
+    "lib/internal/packages/@pancreator/run-logger/lib/append.ts",
+    "lib/internal/packages/@pancreator/run-logger/lib/record.ts",
+    "lib/internal/packages/@pancreator/run-logger/lib/index.ts",
+    "lib/internal/packages/@pancreator/run-logger/lib/append.test.ts",
+    "lib/internal/packages/@pancreator/persona/lib/emit.ts",
+    "lib/internal/packages/@pancreator/persona/lib/validate.ts",
+    "lib/internal/packages/@pancreator/cli/lib/run.ts",
+    "lib/internal/packages/@pancreator/cli/lib/feature-delivery-run.ts",
+    "lib/internal/packages/@pancreator/cli/lib/run.test.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+    ".github/workflows/run-logger-conformance.yml",
+    "docs/PRD.summary.md",
+    "lib/memory/active/current.md",
+    "lib/internal/packages/@pancreator/run-logger/README.md",
+    "examples/library-script/package.json",
+    "examples/library-script/index.mjs",
+    "examples/library-script/README.md",
+    "tests/run-logger-conformance/docker-compose.yml",
+    "tests/run-logger-conformance/README.md",
+    "tests/run-logger-conformance/helpers/boot-phoenix.mjs",
+    "tests/run-logger-conformance/helpers/wait-for-http.mjs",
+    "tests/run-logger-conformance/phoenix-smoke.test.mjs",
+    "tests/run-logger-conformance/fixtures/sample-run-log.jsonl",
+    "lib/memory/adr/0007-run-logger-phoenix-conformance-deferral.md"
+  ],
+  "symbols": [
+    {
+      "path": "lib/internal/packages/@pancreator/checkpointer-fs/lib/fs-checkpoint-store.ts",
+      "symbol": "FsCheckpointStore.put"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/checkpointer-fs/lib/envelope.ts",
+      "symbol": "CheckpointEnvelopeV1"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/intervention/lib/manager.ts",
+      "symbol": "InterventionManager.resume"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/runner-cursor/lib/cursor-runner.ts",
+      "symbol": "CursorRunner.invoke"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/runner-cursor/lib/types.ts",
+      "symbol": "RunnerInvocationEnvelope"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/pipeline/lib/compile.ts",
+      "symbol": "compilePipeline"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/pipeline/lib/execute.ts",
+      "symbol": "executePipeline"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/pipeline/lib/load-yaml.ts",
+      "symbol": "loadPipelineYaml"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/run-logger/lib/append.ts",
+      "symbol": "appendRunLogRecord"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/run-logger/lib/record.ts",
+      "symbol": "RunLogRecord"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/persona/lib/validate.ts",
+      "symbol": "assertPersonaSpec"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/persona/lib/emit.ts",
+      "symbol": "emitCursorAgentsMirror"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/persona/lib/emit.ts",
+      "symbol": "emitMdcShim"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/cli/lib/run.ts",
+      "symbol": "parseAndRun"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/cli/lib/feature-delivery-run.ts",
+      "symbol": "startFeatureDelivery"
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/cli/lib/feature-delivery-run.ts",
+      "symbol": "advanceFeatureDelivery"
+    }
+  ],
+  "tests": [
+    "lib/internal/packages/@pancreator/checkpointer-fs/lib/fs-checkpoint-store.test.ts",
+    "lib/internal/packages/@pancreator/intervention/lib/manager.test.ts",
+    "lib/internal/packages/@pancreator/runner-cursor/lib/cursor-runner.test.ts",
+    "lib/internal/packages/@pancreator/pipeline/lib/pipeline.test.ts",
+    "lib/internal/packages/@pancreator/run-logger/lib/append.test.ts",
+    "lib/internal/packages/@pancreator/cli/lib/run.test.ts",
+    "tests/run-logger-conformance/phoenix-smoke.test.mjs"
+  ],
+  "validationCommands": {
+    "phase1": [
+      "pnpm --filter @pancreator/checkpointer-fs test",
+      "pnpm --filter @pancreator/runner-cursor test",
+      "pnpm --filter @pancreator/intervention test"
+    ],
+    "phase2": [
+      "pnpm --filter @pancreator/pipeline test",
+      "pnpm --filter @pancreator/cli test -- --runInBand feature-delivery",
+      "pnpm -w exec pan run feature-delivery lib/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md"
+    ],
+    "phase3": [
+      "pnpm --filter @pancreator/run-logger test",
+      "pnpm test:run-logger-conformance",
+      "pnpm --filter @pancreator/persona test",
+      "pnpm --filter @pancreator/cli test -- --runInBand run.ts"
+    ],
+    "batchIntegration": [
+      "pnpm -w exec pan status 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+      "node lib/internal/tools/run-compliance.mjs"
+    ]
+  },
+  "references": [
+    {
+      "kind": "lines",
+      "path": "lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md",
+      "range": [56, 169],
+      "contentHash": "5009d5a"
+    },
+    {
+      "kind": "lines",
+      "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/state.json",
+      "range": [29, 44],
+      "contentHash": "6353af4"
+    },
+    {
+      "kind": "lines",
+      "path": "lib/internal/packages/@pancreator/cli/lib/run.ts",
+      "range": [194, 241],
+      "contentHash": "896e6a8"
+    },
+    {
+      "kind": "lines",
+      "path": "lib/internal/packages/@pancreator/cli/lib/feature-delivery-run.ts",
+      "range": [994, 1016],
+      "contentHash": "1131dfc"
+    },
+    {
+      "kind": "lines",
+      "path": "lib/internal/packages/@pancreator/pipeline/lib/compile.ts",
+      "range": [1, 22],
+      "contentHash": "98644dc"
+    },
+    {
+      "kind": "lines",
+      "path": "lib/internal/packages/@pancreator/runner-cursor/lib/types.ts",
+      "range": [28, 59],
+      "contentHash": "3f56583"
+    }
+  ]
+}

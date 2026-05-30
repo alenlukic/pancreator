@@ -7,7 +7,7 @@ MVP scope. Read full `docs/PRD.md` when the task requires those surfaces.
 ## What Pancreator is
 
 Pancreator is a **simulated product-organization** for agentic software
-delivery: personas, pipelines, durable `/src/memory/`, a file inbox, and a future
+delivery: personas, pipelines, durable `/lib/memory/`, a file inbox, and a future
 control plane (`pnpm -w exec pan` for feature-delivery, init, and inbox flows).
 
 ## MVP focus (from PRD)
@@ -18,9 +18,9 @@ control plane (`pnpm -w exec pan` for feature-delivery, init, and inbox flows).
 - **Pipelines:** Declarative stage graphs; flagship `feature-delivery` covers
   intake through ship with human approval gates.
 - **Memory:** Handbook canon, ADRs, backlog, per-Feature folders under
-  `/src/memory/features/<id>/` with `spec.md` as the Engineering Spec.
+  `/lib/memory/features/<id>/` with `spec.md` as the Engineering Spec.
 - **Governance:** Dual-anchor citations, documentation-impact decisions,
-  policy-compliance artifacts for non-`src/work/` structural changes, local stage
+  policy-compliance artifacts for non-`work/` structural changes, local stage
   only (no auto-push).
 
 ## Bootstrap state in this repo
@@ -36,7 +36,7 @@ Full automatic Cursor/model/LangGraph execution is not yet complete.
 
 M1 US-8 proof is package-boundary enforcement (no horizontal primitive deps, sub-path
 exports, CI conformance) rather than standalone `examples/` apps. `chat-with-persona`
-runtime and example apps are backlog-deferred past M1; see `src/memory/backlog/index.yaml`.
+runtime and example apps are backlog-deferred past M1; see `lib/memory/backlog/index.yaml`.
 
 ## Where to go next
 
@@ -44,8 +44,8 @@ runtime and example apps are backlog-deferred past M1; see `src/memory/backlog/i
 - Section map and deep topics: `docs/PRD.index.md`
 - Full normative spec: `docs/PRD.md` only for exact requirements or citations
 - Phase plan: `docs/BOOTSTRAP.md` only when `docs/M1.index.md` is insufficient
-- Context and indexing policy: `src/memory/handbook/context-economy.md`
-- Live config and project root: `src/memory/handbook/pancreator-config.md`
+- Context and indexing policy: `lib/memory/handbook/context-economy.md`
+- Live config and project root: `lib/memory/handbook/pancreator-config.md`
 
 ## Token-economy rule
 

@@ -1,0 +1,24 @@
+id: knowledge-curation
+version: "1"
+metadata:
+  pancreator-bootstrap-only: false
+  description: >-
+    PRD §11 MVP pipeline. Librarian-driven anti-rot loop: scan handbook seeds,
+    refresh stale citations, and flag drift. Cron cadence wires in M4 per
+    BOOTSTRAP §6.1; until then, agents trigger this pipeline on demand.
+  references:
+    - kind: lines
+      path: AGENTS.md
+      range: [124, 134]
+      contentHash: e037427
+      note: §6.1 Compliance-run trigger guidance covers manual on-demand cadence.
+stages:
+  - id: scan
+    persona: librarian
+    label: Scan handbook seeds and citations
+  - id: curate
+    persona: librarian
+    label: Refresh stale citations and emit drift report
+  - id: report
+    persona: tech-writer
+    label: Stage curation summary to lib/inbox/out

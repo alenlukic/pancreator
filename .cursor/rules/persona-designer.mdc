@@ -14,8 +14,8 @@ globs:
   - ".cursor/rules/tech-lead.mdc"
   - ".cursor/rules/tech-writer.mdc"
   - ".cursor/rules/pancreator-engineer.mdc"
-  - "src/personas/**/*.md"
+  - "lib/personas/**/*.md"
 alwaysApply: false
 ---
 
-@src/personas/persona-designer.md
+@lib/personas/persona-designer.md

@@ -1,0 +1,171 @@
+{
+  "schemaVersion": "1",
+  "taskId": "68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa",
+  "featureId": "v0-ui-dashboard-subordinate-feature-pipeline-qa",
+  "stage": "plan",
+  "subordinateQaContext": true,
+  "worktreeHygieneGate": "disabled",
+  "worktreeHygieneGateReason": "Subordinate QA exercise (spec front matter subordinate_qa_context: true). Normal touch-set and orphan-work-dir enforcement is suspended so parent-harness noise, sibling task dirs, and pipeline-generated artifacts do not block stage advancement.",
+  "paths": [
+    {
+      "path": "client/**",
+      "access": "create-update",
+      "reason": "New top-level Next.js dashboard workspace, API routes, UI, tests, and README."
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "access": "update",
+      "reason": "Register client as a workspace package."
+    },
+    {
+      "path": "package.json",
+      "access": "update-if-needed",
+      "reason": "Allow only workspace script or dependency metadata needed by the client package."
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "access": "update",
+      "reason": "Record client package and dependency resolution."
+    },
+    {
+      "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
+      "access": "create-update",
+      "reason": "Implement-stage evidence artifact."
+    },
+    {
+      "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+      "access": "create-update",
+      "reason": "Expected reviewer-stage subordinate pipeline artifact."
+    },
+    {
+      "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+      "access": "create-update",
+      "reason": "Expected qa-tester-stage subordinate pipeline artifact."
+    },
+    {
+      "path": "lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md",
+      "access": "create-update",
+      "reason": "Expected report-stage evidence artifact."
+    },
+    {
+      "path": "lib/inbox/out/*v0-ui-dashboard-subordinate-feature-pipeline-qa-delivery-report.md",
+      "access": "create-update",
+      "reason": "Expected operator-visible delivery report copy."
+    },
+    {
+      "path": ".pan/scheduler/interventions/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa.jsonl",
+      "access": "create-update-if-runtime-emits",
+      "reason": "Expected subordinate intervention ledger when runtime emits intervention evidence."
+    }
+  ],
+  "readOnlyPaths": [
+    "AGENTS.md",
+    "lib/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
+    "lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md",
+    "lib/pipelines/feature-delivery.yaml",
+    "lib/memory/adr/0002-system-architecture-map.md",
+    "lib/memory/adr/0005-timestamp-naming-conventions.md",
+    "lib/memory/handbook/documentation-impact-contract.md"
+  ],
+  "forbiddenPaths": [
+    "lib/inbox/notes/**",
+    "lib/personas/**",
+    "lib/personas/skills/**",
+    "lib/pipelines/**",
+    ".cursor/rules/**",
+    "lib/memory/handbook/**",
+    "lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/**"
+  ],
+  "symbols": [
+    {
+      "name": "resolveRepoPath",
+      "path": "client/lib/lib/repo-paths.ts",
+      "action": "create",
+      "reason": "Normalize repo-relative paths and reject traversal, symlink escapes, and human-only notes paths."
+    },
+    {
+      "name": "readRepoFile",
+      "path": "client/lib/lib/repo-files.ts",
+      "action": "create",
+      "reason": "Read UTF-8 file content after path authorization."
+    },
+    {
+      "name": "writeRepoFile",
+      "path": "client/lib/lib/repo-files.ts",
+      "action": "create",
+      "reason": "Persist UTF-8 content after path authorization and structured write logging."
+    },
+    {
+      "name": "getActivityFeed",
+      "path": "client/lib/lib/activity.ts",
+      "action": "create",
+      "reason": "Return reverse-chronological repo activity events for the dashboard API."
+    },
+    {
+      "name": "GET",
+      "path": "client/lib/app/api/activity/route.ts",
+      "action": "create",
+      "reason": "Serve reverse-chronological activity JSON."
+    },
+    {
+      "name": "GET",
+      "path": "client/lib/app/api/file/route.ts",
+      "action": "create",
+      "reason": "Serve authorized file content."
+    },
+    {
+      "name": "POST",
+      "path": "client/lib/app/api/file/route.ts",
+      "action": "create",
+      "reason": "Persist authorized file edits."
+    },
+    {
+      "name": "DashboardPage",
+      "path": "client/lib/app/page.tsx",
+      "action": "create",
+      "reason": "Render relationship navigation, inline modal file view, edit flow, and activity feed."
+    },
+    {
+      "name": "palette",
+      "path": "client/lib/lib/theme.ts",
+      "action": "create",
+      "reason": "Define Ink Black, Celadon, Brown Red, and Amber Flame once."
+    }
+  ],
+  "tests": [
+    {
+      "path": "client/lib/app/api/activity/route.test.ts",
+      "covers": ["GET /api/activity returns reverse-chronological events"]
+    },
+    {
+      "path": "client/lib/app/api/file/route.test.ts",
+      "covers": [
+        "GET /api/file reads authorized UTF-8 content",
+        "POST /api/file writes authorized UTF-8 content",
+        "GET or POST /api/file denies path traversal"
+      ]
+    },
+    {
+      "path": "client/lib/app/page.test.tsx",
+      "covers": [
+        "navigation renders lib/inbox, lib/memory, lib/personas, lib/work, and lib/internal/packages",
+        "inline modal opens with file content",
+        "activity feed renders reverse-chronological entries"
+      ]
+    }
+  ],
+  "validationCommands": [
+    "pnpm --filter client lint",
+    "pnpm --filter client test",
+    "pnpm --filter client build",
+    "node --test tests/*.test.mjs",
+    "node lib/internal/tools/check-phase-0a-scaffold.mjs",
+    "node lib/internal/tools/context-budget-report.mjs"
+  ],
+  "notes": [
+    "The implement stage may add additional files under client/** without re-planning.",
+    "Any path outside paths[] or client/** requires re-entry to plan before write.",
+    "The client app is operator-local only; authentication, deployment, and production hardening are out of scope.",
+    "worktreeHygieneGate is disabled for this subordinate run. Reviewer and qa-tester SHALL NOT block advancement on sibling work directories, parent-branch diffs (e.g. feature-delivery-run.ts), or paths outside touch-set.json when those findings are hygiene-only and implementation scope is otherwise satisfied."
+  ]
+}

@@ -1,0 +1,47 @@
+id: pancreator.checkpointer_fs.readme_ergonomics
+kind: llm-judge
+severity: block
+applies_to:
+  kind: artifact-symbol
+  path: lib/internal/packages/@pancreator/checkpointer-fs/README.md
+  symbol: "# Quickstart"
+  contentHash: 5a82cdb
+owner: contract-writer
+description: |
+  When `README.md` under `lib/internal/packages/@pancreator/checkpointer-fs` is evaluated for MVP library-mode onboarding, the judge panel SHALL return a mean score of at least 0.75 for command clarity and first-run completeness within 5 commands.
+references:
+  - kind: lines
+    path: docs/BOOTSTRAP.md
+    range: [131, 134]
+    contentHash: d0608f9
+    note: "Phase 2 allows llm-judge for README and DX quality gates."
+  - kind: lines
+    path: docs/PRD.md
+    range: [438, 438]
+    contentHash: dfce0a3
+    note: "Primitive README discipline for standalone usage."
+runtime:
+  rubric:
+    scale: [1.0, 0.5, 0.0]
+    threshold: 0.75
+    examples:
+      good:
+        - text: |
+            npm install @pancreator/checkpointer-fs
+            npm run build
+            npm test
+          rationale: The sequence uses explicit commands and names a verification step.
+      bad:
+        - text: |
+            Install this package and follow the standard setup.
+          rationale: The sentence uses weasel wording and omits executable commands.
+    references:
+      - /lib/memory/handbook/contract-templates/llm-judge.template.md
+  panel:
+    quorum: 2-of-3
+    judges: [haiku, haiku, sonnet]
+    seed: 42
+    cost_ceiling_usd: 0.50
+metadata:
+  pancreator.contract_id: pancreator.checkpointer_fs.readme_ergonomics
+  pancreator.applies_to: artifact-symbol:lib/internal/packages/@pancreator/checkpointer-fs/README.md#Quickstart

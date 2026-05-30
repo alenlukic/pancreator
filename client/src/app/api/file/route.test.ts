@@ -12,8 +12,8 @@ describe("/api/file", () => {
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-file-api-"));
     fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
-    fs.mkdirSync(path.join(tempRoot, "src", "memory"), { recursive: true });
-    fs.writeFileSync(path.join(tempRoot, "src", "memory", "sample.md"), "initial");
+    fs.mkdirSync(path.join(tempRoot, "lib", "memory"), { recursive: true });
+    fs.writeFileSync(path.join(tempRoot, "lib", "memory", "sample.md"), "initial");
     fs.mkdirSync(path.join(tempRoot, "client", ".local"), { recursive: true });
   });
 
@@ -22,14 +22,14 @@ describe("/api/file", () => {
   });
 
   it("reads authorized UTF-8 content via GET", async () => {
-    const content = await readRepoFile("src/memory/sample.md", tempRoot);
+    const content = await readRepoFile("lib/memory/sample.md", tempRoot);
     expect(content).toBe("initial");
 
     const originalRoot = process.cwd();
     process.chdir(tempRoot);
     try {
       const response = await GET(
-        new Request("http://localhost/api/file?path=src/memory/sample.md"),
+        new Request("http://localhost/api/file?path=lib/memory/sample.md"),
       );
       const payload = (await response.json()) as { content: string };
       expect(response.status).toBe(200);
@@ -47,11 +47,11 @@ describe("/api/file", () => {
         new Request("http://localhost/api/file", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: "src/memory/sample.md", content: "updated" }),
+          body: JSON.stringify({ path: "lib/memory/sample.md", content: "updated" }),
         }),
       );
       expect(response.status).toBe(200);
-      expect(fs.readFileSync(resolveRepoPath("src/memory/sample.md", tempRoot), "utf8")).toBe(
+      expect(fs.readFileSync(resolveRepoPath("lib/memory/sample.md", tempRoot), "utf8")).toBe(
         "updated",
       );
     } finally {
@@ -73,8 +73,8 @@ describe("/api/file", () => {
   });
 
   it("logs structured write metadata", async () => {
-    const entry = await writeRepoFile("src/memory/sample.md", "logged", tempRoot);
-    expect(entry.path).toBe("src/memory/sample.md");
+    const entry = await writeRepoFile("lib/memory/sample.md", "logged", tempRoot);
+    expect(entry.path).toBe("lib/memory/sample.md");
     expect(entry.bytes_written).toBe(Buffer.byteLength("logged", "utf8"));
     expect(entry.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });

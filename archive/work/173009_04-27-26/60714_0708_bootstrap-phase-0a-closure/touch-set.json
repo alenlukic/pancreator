@@ -1,0 +1,264 @@
+{
+  "paths": [
+    {
+      "path": ".",
+      "operation": "add-root-scaffold",
+      "plannedFiles": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "turbo.json",
+        "tsconfig.base.json",
+        "eslint.config.mjs",
+        ".changeset/config.json",
+        "tools/eslint-rules/no-horizontal-primitive-deps.mjs",
+        "lib/internal/tools/check-phase-0a-scaffold.mjs"
+      ]
+    },
+    {
+      "path": ".github",
+      "operation": "add-ci-check",
+      "plannedFiles": [".github/workflows/phase-0a-scaffold.yml"]
+    },
+    {
+      "path": "lib/memory/features/bootstrap-phase-0a-closure",
+      "operation": "update-feature-record",
+      "plannedFiles": [
+        "lib/memory/features/bootstrap-phase-0a-closure/index.json",
+        "lib/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md"
+      ]
+    },
+    {
+      "path": "packages",
+      "operation": "add-meta-package",
+      "plannedFiles": [
+        "lib/internal/packages/pancreator/package.json",
+        "lib/internal/packages/pancreator/README.md",
+        "lib/internal/packages/pancreator/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/adopter-scan",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/adopter-scan/package.json",
+        "lib/internal/packages/@pancreator/adopter-scan/README.md",
+        "lib/internal/packages/@pancreator/adopter-scan/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/checkpointer-fs",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/checkpointer-fs/package.json",
+        "lib/internal/packages/@pancreator/checkpointer-fs/README.md",
+        "lib/internal/packages/@pancreator/checkpointer-fs/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/cli",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/cli/package.json",
+        "lib/internal/packages/@pancreator/cli/README.md",
+        "lib/internal/packages/@pancreator/cli/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/contract",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/contract/package.json",
+        "lib/internal/packages/@pancreator/contract/README.md",
+        "lib/internal/packages/@pancreator/contract/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/contract-runner-llm-judge",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/contract-runner-llm-judge/package.json",
+        "lib/internal/packages/@pancreator/contract-runner-llm-judge/README.md",
+        "lib/internal/packages/@pancreator/contract-runner-llm-judge/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/contract-runner-rego",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/contract-runner-rego/package.json",
+        "lib/internal/packages/@pancreator/contract-runner-rego/README.md",
+        "lib/internal/packages/@pancreator/contract-runner-rego/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/contract-style",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/contract-style/package.json",
+        "lib/internal/packages/@pancreator/contract-style/README.md",
+        "lib/internal/packages/@pancreator/contract-style/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/core",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/core/package.json",
+        "lib/internal/packages/@pancreator/core/README.md",
+        "lib/internal/packages/@pancreator/core/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/env-isolation",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/env-isolation/package.json",
+        "lib/internal/packages/@pancreator/env-isolation/README.md",
+        "lib/internal/packages/@pancreator/env-isolation/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/inbox",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/inbox/package.json",
+        "lib/internal/packages/@pancreator/inbox/README.md",
+        "lib/internal/packages/@pancreator/inbox/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/intervention",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/intervention/package.json",
+        "lib/internal/packages/@pancreator/intervention/README.md",
+        "lib/internal/packages/@pancreator/intervention/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/mcp-server",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/mcp-server/package.json",
+        "lib/internal/packages/@pancreator/mcp-server/README.md",
+        "lib/internal/packages/@pancreator/mcp-server/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/memory",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/memory/package.json",
+        "lib/internal/packages/@pancreator/memory/README.md",
+        "lib/internal/packages/@pancreator/memory/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/notifier",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/notifier/package.json",
+        "lib/internal/packages/@pancreator/notifier/README.md",
+        "lib/internal/packages/@pancreator/notifier/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/persona",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/persona/package.json",
+        "lib/internal/packages/@pancreator/persona/README.md",
+        "lib/internal/packages/@pancreator/persona/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/pipeline",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/pipeline/package.json",
+        "lib/internal/packages/@pancreator/pipeline/README.md",
+        "lib/internal/packages/@pancreator/pipeline/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/policy",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/policy/package.json",
+        "lib/internal/packages/@pancreator/policy/README.md",
+        "lib/internal/packages/@pancreator/policy/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/run-logger",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/run-logger/package.json",
+        "lib/internal/packages/@pancreator/run-logger/README.md",
+        "lib/internal/packages/@pancreator/run-logger/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/runner-cursor",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/runner-cursor/package.json",
+        "lib/internal/packages/@pancreator/runner-cursor/README.md",
+        "lib/internal/packages/@pancreator/runner-cursor/lib/index.ts"
+      ]
+    },
+    {
+      "path": "lib/internal/packages/@pancreator/worktree",
+      "operation": "complete-package-skeleton",
+      "plannedFiles": [
+        "lib/internal/packages/@pancreator/worktree/package.json",
+        "lib/internal/packages/@pancreator/worktree/README.md",
+        "lib/internal/packages/@pancreator/worktree/lib/index.ts"
+      ]
+    }
+  ],
+  "symbols": [],
+  "tests": [
+    {
+      "kind": "command",
+      "name": "install",
+      "command": "pnpm install"
+    },
+    {
+      "kind": "command",
+      "name": "build",
+      "command": "pnpm build"
+    },
+    {
+      "kind": "command",
+      "name": "lint",
+      "command": "pnpm lint"
+    },
+    {
+      "kind": "command",
+      "name": "dependency-boundary",
+      "command": "pnpm lint:deps"
+    },
+    {
+      "kind": "command",
+      "name": "typecheck",
+      "command": "pnpm typecheck"
+    },
+    {
+      "kind": "command",
+      "name": "are-the-types-wrong",
+      "command": "pnpm attw"
+    },
+    {
+      "kind": "command",
+      "name": "publint",
+      "command": "pnpm publint"
+    },
+    {
+      "kind": "command",
+      "name": "phase-0a-scaffold",
+      "command": "pnpm check:phase0a"
+    }
+  ]
+}

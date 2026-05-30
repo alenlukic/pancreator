@@ -1,0 +1,275 @@
+{
+  "schemaVersion": "1",
+  "pipelineId": "feature-delivery",
+  "taskId": "67055_0522_json-formatting",
+  "featureId": "json-formatting",
+  "status": "closed",
+  "currentStage": "complete",
+  "createdAtIso": "2026-05-23T05:22:24.838Z",
+  "source": {
+    "inboxEntry": "json_formatting.md",
+    "inboxPath": "lib/inbox/in/json_formatting.md"
+  },
+  "artifacts": {
+    "runDir": "archive/work/172983_05-23-26/67055_0522_json-formatting",
+    "stateFile": "archive/work/172983_05-23-26/67055_0522_json-formatting/state.json",
+    "handoffFile": "archive/work/172983_05-23-26/67055_0522_json-formatting/handoff.md",
+    "runLogFile": "archive/work/172983_05-23-26/67055_0522_json-formatting/run.log.jsonl",
+    "nextPromptFile": "archive/work/172983_05-23-26/67055_0522_json-formatting/next-prompt.md"
+  },
+  "stages": [
+    {
+      "id": "intake",
+      "persona": "intake-analyst",
+      "label": "Canonicalize the human directive",
+      "status": "complete",
+      "humanGate": "human_approval",
+      "humanAttention": "Answer intake clarifying questions and ratify the canonical spec before planning."
+    },
+    {
+      "id": "plan",
+      "persona": "tech-lead",
+      "label": "Draft plan, ADR, touch-set, and handoff card",
+      "status": "complete",
+      "humanGate": "human_approval",
+      "humanAttention": "Ratify the plan, ADR draft, touch-set, and handoff before execution."
+    },
+    {
+      "id": "implement",
+      "persona": "coder",
+      "label": "Implement against the declared touch-set from the handoff card",
+      "status": "complete",
+      "humanGate": "operator_intervention_available",
+      "humanAttention": "Use pan pause/resume/abort if implementation drifts, loops, or exceeds scope."
+    },
+    {
+      "id": "review",
+      "persona": "reviewer",
+      "label": "Run modern-code-review and contracts pass with compact must-fix output",
+      "status": "complete",
+      "humanGate": "review_passes_or_reenter_implement",
+      "humanAttention": "Inspect high findings; approve only clean review output or send the run back to implement."
+    },
+    {
+      "id": "report",
+      "persona": "tech-writer",
+      "label": "Author the delivery report",
+      "status": "complete"
+    },
+    {
+      "id": "ship",
+      "persona": "supervisor",
+      "label": "Stage the PR (no auto-push, Q3)",
+      "status": "complete",
+      "humanGate": "local_stage_only",
+      "humanAttention": "Review the local diff and delivery report; no agent may push or open the PR unaudited."
+    },
+    {
+      "id": "index",
+      "persona": "librarian",
+      "label": "Index emitted artifacts and refresh the feature index before librarian artifact closure",
+      "status": "complete",
+      "humanGate": "archive_and_index_audit",
+      "humanAttention": "Verify feature index artifacts; after index is accepted, the generated complete-stage prompt gives the human operator exact archival closure commands."
+    }
+  ],
+  "transitions": [
+    {
+      "from": "created",
+      "on": "invoke",
+      "to": "intake",
+      "humanAttention": "Operator delegates the handoff card to intake-analyst."
+    },
+    {
+      "from": "intake",
+      "on": "human_approval",
+      "to": "plan",
+      "humanAttention": "Canonical spec is ratified or clarified before plan starts."
+    },
+    {
+      "from": "plan",
+      "on": "human_approval",
+      "to": "implement",
+      "humanAttention": "Plan and touch-set are ratified before coder starts."
+    },
+    {
+      "from": "implement",
+      "on": "pause",
+      "to": "paused",
+      "humanAttention": "Use pan pause <task-id> to stop at the next safe boundary."
+    },
+    {
+      "from": "paused",
+      "on": "resume",
+      "to": "implement",
+      "humanAttention": "Use pan resume <task-id> after resolving the blocker."
+    },
+    {
+      "from": "implement",
+      "on": "abort",
+      "to": "aborted",
+      "humanAttention": "Use pan abort <task-id> --reason <text> for failed or superseded runs."
+    },
+    {
+      "from": "implement",
+      "on": "implementation_complete",
+      "to": "review",
+      "humanAttention": "Reviewer receives only the handoff, touch-set, diff, and validation output."
+    },
+    {
+      "from": "review",
+      "on": "must_fix",
+      "to": "implement",
+      "humanAttention": "Bounded re-entry; high findings block shipping."
+    },
+    {
+      "from": "review",
+      "on": "review_passes",
+      "to": "report",
+      "humanAttention": "Human should still inspect review output before report/ship."
+    },
+    {
+      "from": "report",
+      "on": "report_ready",
+      "to": "ship",
+      "humanAttention": "Delivery report must be useful to the operator, not just a changelog."
+    },
+    {
+      "from": "ship",
+      "on": "human_ratifies_local_diff",
+      "to": "index",
+      "humanAttention": "No push occurs before human review."
+    },
+    {
+      "from": "index",
+      "on": "artifacts_indexed",
+      "to": "complete",
+      "humanAttention": "Confirm archive/index state and outbox report."
+    }
+  ],
+  "nextHumanAction": "Artifact closure complete; active work and source inbox directive are archived. No further feature-delivery action is required.",
+  "advanceHistory": [
+    {
+      "atIso": "2026-05-23T05:28:54.196Z",
+      "kind": "advance",
+      "from": "intake",
+      "to": "plan",
+      "event": "human_approval",
+      "artifact": "lib/memory/features/json-formatting/spec.md"
+    },
+    {
+      "atIso": "2026-05-23T05:37:42.982Z",
+      "kind": "advance",
+      "from": "plan",
+      "to": "implement",
+      "event": "human_approval",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/handoff.md"
+    },
+    {
+      "atIso": "2026-05-23T07:34:03.350Z",
+      "kind": "advance",
+      "from": "implement",
+      "to": "review",
+      "event": "implementation_complete",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md"
+    },
+    {
+      "atIso": "2026-05-23T07:36:24.516Z",
+      "kind": "advance",
+      "from": "review",
+      "to": "implement",
+      "event": "must_fix",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/review.md"
+    },
+    {
+      "atIso": "2026-05-23T08:43:49.841Z",
+      "kind": "advance",
+      "from": "implement",
+      "to": "review",
+      "event": "implementation_complete",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md"
+    },
+    {
+      "atIso": "2026-05-23T18:52:29.976Z",
+      "kind": "advance",
+      "from": "review",
+      "to": "report",
+      "event": "review_passes",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/review.md"
+    },
+    {
+      "atIso": "2026-05-23T19:31:16.064Z",
+      "kind": "repair",
+      "from": "report",
+      "to": "intake",
+      "event": "manual_repair",
+      "artifact": "lib/memory/features/json-formatting/spec.md",
+      "reason": "Operator scope correction: policy must cover all agent JSON output (markdown prose, chat, terminal), not only .json files; prior spec narrowed scope incorrectly."
+    },
+    {
+      "atIso": "2026-05-23T20:01:41.994Z",
+      "kind": "advance",
+      "from": "intake",
+      "to": "plan",
+      "event": "human_approval",
+      "artifact": "lib/memory/features/json-formatting/spec.md"
+    },
+    {
+      "atIso": "2026-05-23T20:07:09.648Z",
+      "kind": "advance",
+      "from": "plan",
+      "to": "implement",
+      "event": "human_approval",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/touch-set.json"
+    },
+    {
+      "atIso": "2026-05-23T20:32:04.230Z",
+      "kind": "advance",
+      "from": "implement",
+      "to": "review",
+      "event": "implementation_complete",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md"
+    },
+    {
+      "atIso": "2026-05-23T20:34:25.798Z",
+      "kind": "advance",
+      "from": "review",
+      "to": "report",
+      "event": "review_passes",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/review.md"
+    },
+    {
+      "atIso": "2026-05-24T21:35:47.667Z",
+      "kind": "advance",
+      "from": "report",
+      "to": "ship",
+      "event": "report_ready",
+      "artifact": "lib/memory/features/json-formatting/delivery-report.md"
+    },
+    {
+      "atIso": "2026-05-25T03:55:34.939Z",
+      "kind": "advance",
+      "from": "ship",
+      "to": "index",
+      "event": "human_ratifies_local_diff",
+      "artifact": "work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json"
+    },
+    {
+      "atIso": "2026-05-25T03:56:39.097Z",
+      "kind": "advance",
+      "from": "index",
+      "to": "complete",
+      "event": "artifacts_indexed",
+      "artifact": "lib/memory/features/json-formatting/index.json"
+    },
+    {
+      "atIso": "2026-05-25T04:03:30.097Z",
+      "kind": "close",
+      "from": "complete",
+      "to": "complete",
+      "event": "artifacts_closed",
+      "artifact": "archive/work/172983_05-23-26/67055_0522_json-formatting",
+      "reason": "Archived active run from work/172983_05-23-26/67055_0522_json-formatting and source inbox directive from lib/inbox/in/json_formatting.md."
+    }
+  ]
+}

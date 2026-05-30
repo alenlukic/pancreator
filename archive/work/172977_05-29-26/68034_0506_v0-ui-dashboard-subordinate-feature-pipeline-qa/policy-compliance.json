@@ -1,0 +1,28 @@
+{
+  "task_id": "68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa",
+  "governing_sources_checked": ["AGENTS.md", "lib/memory/handbook/constitution.md", "docs/PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "This local diff changes operator-facing documentation and governance references, including OPERATION and handbook/persona projections, so documentation-impact tracking is required in the same governed commit scope.",
+    "changed_surfaces": [
+      "OPERATION.md",
+      "lib/memory/handbook/pancreator-config.md",
+      "lib/memory/handbook/inbox-lifecycle.md",
+      "lib/personas/qa-tester.md",
+      "lib/personas/supervisor.md",
+      "lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md"
+    ],
+    "deferred_items": [
+      {
+        "id": "parent-harness-json-formatting-drift",
+        "rationale": "node --test tests/*.test.mjs fails the repository JSON formatting check on parent-harness artifacts outside this subordinate touch-set, and the exception is already documented in the delivery report and review artifacts."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Human-gated stage advancement is preserved; this artifact is produced at ship stage without git commit, push, or pan advance, and the operator must ratify local diff before advancing.",
+    "constitution_alignment": "Documentation/reference stewardship is satisfied by recording changed surfaces and explicit deferred follow-up for known out-of-scope validation drift.",
+    "prd_alignment": "Feature-delivery governance goals remain aligned: stage outputs are auditable, validation evidence is recorded, and human approval remains required before advancing beyond ship gate.",
+    "required_updates": []
+  }
+}

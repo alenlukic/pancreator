@@ -8,13 +8,13 @@ scope:
   surface: "json-formatting-policy-migration-and-hashes"
   artifacts:
     - "tests/compliance/json-formatting.yaml"
-    - "src/memory/features/json-formatting/spec.md"
-    - "src/internal/tools/canonical-json-format.mjs"
-    - "src/internal/tools/migrate-json-formatting.mjs"
+    - "lib/memory/features/json-formatting/spec.md"
+    - "lib/internal/tools/canonical-json-format.mjs"
+    - "lib/internal/tools/migrate-json-formatting.mjs"
     - "tests/migrate-json-formatting.test.mjs"
     - "tests/fixtures/json-formatting/agent-chat-payload-expectation.json"
     - "tests/fixtures/json-formatting/forbidden-inline-citation-snippet.raw"
-    - "src/memory/handbook/glossary.md"
+    - "lib/memory/handbook/glossary.md"
 assertion:
   statement: >
     Every in-scope repository JSON artifact SHALL serialize with indent 2, one object

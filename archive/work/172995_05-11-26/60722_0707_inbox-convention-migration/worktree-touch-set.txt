@@ -1,0 +1,5 @@
+lib/internal/tools/migrate-inbox-convention.mjs
+work/172995_05-11-26/60722_0707_inbox-convention-migration/next-prompt.md
+work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
+work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json
+tests/migrate-inbox-convention.test.mjs

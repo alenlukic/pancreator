@@ -1,0 +1,19 @@
+{
+  "task_id": "173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2",
+  "applies": true,
+  "rationale": "Intake stage adds a new Feature folder, a canonical Engineering Spec, and a per-Feature index. Documentation-impact contract requires a recorded decision when a new artifact is introduced and references downstream librarian indexing.",
+  "changed_surfaces": [
+    "lib/memory/features/active-memory-context-economy-pass-2/spec.md",
+    "lib/memory/features/active-memory-context-economy-pass-2/index.json"
+  ],
+  "deferred_items": [
+    {
+      "id": "active-memory-context-economy-pass-2-global-feature-index-update",
+      "rationale": "Global lib/memory/features/index.json is librarian-owned; intake stage stages the per-Feature artifacts and routes the global index update to the librarian post_run stage."
+    },
+    {
+      "id": "active-memory-context-economy-pass-2-glossary-memory-tier-entry",
+      "rationale": "Layer 1 glossary discipline requires memory-tier vocabulary in lib/memory/handbook/glossary.md; the implementation slice authors the glossary entry alongside lib/memory/handbook/memory-tiers.md."
+    }
+  ]
+}

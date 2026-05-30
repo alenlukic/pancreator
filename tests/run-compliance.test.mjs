@@ -11,14 +11,14 @@ import {
   runCompliance,
   runDescriptorAssertion,
   validateDescriptorStructure,
-} from "../src/internal/tools/run-compliance.mjs";
+} from "../lib/internal/tools/run-compliance.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
 /** Synthetic work dir for --run-id tests; must not collide with real task ids. */
 const SYNTHETIC_TASK_ID = "run_compliance_test_fixture";
 const SYNTHETIC_DAY = "99999_test_fixture";
-const SYNTHETIC_WORK_DIR = path.join(ROOT, "src", "work", SYNTHETIC_DAY, SYNTHETIC_TASK_ID);
+const SYNTHETIC_WORK_DIR = path.join(ROOT, "work", SYNTHETIC_DAY, SYNTHETIC_TASK_ID);
 
 function setupSyntheticWorkDir() {
   mkdirSync(SYNTHETIC_WORK_DIR, { recursive: true });
@@ -26,7 +26,7 @@ function setupSyntheticWorkDir() {
 
 function teardownSyntheticWorkDir() {
   rmSync(SYNTHETIC_WORK_DIR, { recursive: true, force: true });
-  const dayDir = path.join(ROOT, "src", "work", SYNTHETIC_DAY);
+  const dayDir = path.join(ROOT, "work", SYNTHETIC_DAY);
   if (existsSync(dayDir)) {
     rmSync(dayDir, { recursive: true, force: true });
   }
@@ -72,7 +72,7 @@ test("resolveRunOutputDir locates active work directory", () => {
   }
 });
 
-test("--run-id emits compliance-result.json under src/work", async () => {
+test("--run-id emits compliance-result.json under lib/work", async () => {
   setupSyntheticWorkDir();
   try {
     const { exitCode, report } = await runCompliance(undefined, { runId: SYNTHETIC_TASK_ID });
