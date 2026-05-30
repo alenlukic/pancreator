@@ -1,1 +1,0 @@
-- Migrate `inbox` to follow the same naming and organizational conventions as `work` (i.e. day-oriented top-level directories, HHMM-oriented subdirectories, ensuring reverse chron order using future anchor prefixes, descriptive suffixes)
