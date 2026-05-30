@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Detect bare `ddl` invocations in runnable fenced code blocks across operator-visible surfaces.
+ * Detect bare `pan` invocations in runnable fenced code blocks across operator-visible surfaces.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -27,7 +27,7 @@ const RUNNABLE_LANGS = new Set([
   "terminal",
 ]);
 
-const BARE_DDL_RE = /(?:^|[\s;&|])(?<!\bpnpm\s+-w\s+exec\s+)ddl\s+[a-z]/i;
+const BARE_PAN_RE = /(?:^|[\s;&|])(?<!\bpnpm\s+-w\s+exec\s+)pan\s+[a-z]/i;
 
 let failures = 0;
 
@@ -58,9 +58,9 @@ function checkMarkdown(rel) {
     for (const line of body.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith("#")) continue;
-      if (BARE_DDL_RE.test(line)) {
+      if (BARE_PAN_RE.test(line)) {
         failures += 1;
-        console.error(`[check-operator-output] ${display}: bare ddl in runnable block: ${trimmed}`);
+        console.error(`[check-operator-output] ${display}: bare pan in runnable block: ${trimmed}`);
       }
     }
   }

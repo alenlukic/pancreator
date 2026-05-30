@@ -33,7 +33,7 @@ export function findRepoRoot(startDir: string = process.cwd()): string {
 function walkUpToRepoRoot(startDir: string): string {
   let dir = path.resolve(startDir);
   while (true) {
-    if (fs.existsSync(path.join(dir, "daedaline.yaml"))) {
+    if (fs.existsSync(path.join(dir, "pancreator.yaml"))) {
       return dir;
     }
     const parent = path.dirname(dir);

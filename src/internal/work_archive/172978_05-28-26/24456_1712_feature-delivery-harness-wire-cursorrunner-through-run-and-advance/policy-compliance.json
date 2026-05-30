@@ -6,8 +6,8 @@
     "rationale": "This task changes feature-delivery runtime behavior, SDK invocation prerequisites, and operator-facing run guidance, so documentation and policy surfaces are impacted and updated in the same working diff.",
     "changed_surfaces": [
       "OPERATION.md",
-      "daedaline.yaml",
-      "src/memory/handbook/daedaline-config.md",
+      "pancreator.yaml",
+      "src/memory/handbook/pancreator-config.md",
       "src/memory/handbook/inbox-lifecycle.md",
       "src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/delivery-report.md"
     ],

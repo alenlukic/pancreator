@@ -20,7 +20,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills: []
 maxTurns: 30
 isolation: worktree
@@ -28,15 +28,15 @@ memory: project
 effort: medium
 color: green
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [implement]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [implement]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -47,9 +47,9 @@ metadata:
     - one-test-per-public-symbol
     - circuit-breaker-thresholds-honored
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: coder
-  daedaline-model-tier: complex
-  daedaline-canonical-persona: src/personas/coder.md
+  pancreator-base-persona: coder
+  pancreator-model-tier: complex
+  pancreator-canonical-persona: src/personas/coder.md
 ---
 
 # coder-complex

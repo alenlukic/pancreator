@@ -1,0 +1,27 @@
+id: pancreator.pipeline.package_shape
+kind: rego
+severity: block
+applies_to:
+  kind: file-path
+  glob: "src/internal/packages/@pancreator/pipeline/**"
+owner: contract-writer
+description: |
+  When the Phase 2 scaffold for `src/internal/packages/@pancreator/pipeline` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `src/index.ts` exist in that package directory.
+references:
+  - kind: lines
+    path: docs/BOOTSTRAP.md
+    range: [122, 159]
+    contentHash: f54eb5e
+    note: "Bootstrap Phase 2 package contract requirement and dependency order."
+  - kind: lines
+    path: docs/PRD.md
+    range: [1116, 1126]
+    contentHash: 6e43642
+    note: "M1 substrate package scope and interfaces."
+spec: /src/memory/features/pancreator-pipeline/contracts/pancreator.pipeline.package_shape.rego
+runtime:
+  package: pancreator.phase2.pipeline
+  query: data.pancreator.phase2.pipeline.deny
+metadata:
+  pancreator.contract_id: pancreator.pipeline.package_shape
+  pancreator.applies_to: file-path:src/internal/packages/@pancreator/pipeline/**

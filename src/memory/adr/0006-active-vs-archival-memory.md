@@ -72,7 +72,7 @@ references:
 
 ## Context
 
-Daedaline mixes short-term coordination, durable Feature memory, and historical
+Pancreator mixes short-term coordination, durable Feature memory, and historical
 pipeline outputs in one repository. Pass 1 narrowed default Cursor context, yet
 operators still need one explicit model that separates routine orientation
 from durable specs and from archival runs without deleting history. Citation:
@@ -89,7 +89,7 @@ Citations:
 
 ## Decision
 
-When Daedaline classifies repository memory for default retrieval, Daedaline
+When Pancreator classifies repository memory for default retrieval, Pancreator
 SHALL use six tiers:
 **active-memory**,
 **active-work**,
@@ -100,7 +100,7 @@ and **generated-machine-artifact** per glossary and handbook policy. Citations:
 `{kind: lines, path: src/memory/handbook/glossary.md, range: [212, 226], contentHash: 31546d1}`;
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [34, 122], contentHash: a00f149}`.
 
-When routine orientation starts among Memory paths, Daedaline SHALL treat
+When routine orientation starts among Memory paths, Pancreator SHALL treat
 `src/memory/active/**` as the only **active-memory** tier intended for default
 orientation. Citation:
 `{kind: lines, path: src/memory/handbook/context-economy.md, range: [75, 77], contentHash: 108ea6a}`.
@@ -112,17 +112,17 @@ while keeping linked archival paths reachable by explicit read. Citations:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [45, 57], contentHash: a00f149}`;
 `{kind: lines, path: src/memory/active/README.md, range: [36, 67], contentHash: 248cc86}`.
 
-When Daedaline classifies `src/work/**`, Daedaline SHALL treat that prefix as
+When Pancreator classifies `src/work/**`, Pancreator SHALL treat that prefix as
 **active-work** because it holds in-progress pipeline workspace artifacts.
 
-When Daedaline classifies `src/internal/work_archive/**`, `src/inbox/out/**`, and
-`src/inbox/threads/**`, Daedaline SHALL treat those prefixes as **archival-memory**
+When Pancreator classifies `src/internal/work_archive/**`, `src/inbox/out/**`, and
+`src/inbox/threads/**`, Pancreator SHALL treat those prefixes as **archival-memory**
 because they hold historical pipeline workspaces, operator threads, staged
 responses, plans, reviews, and run outputs rather than day-zero orientation. Citation:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [75, 80], contentHash: a00f149}`.
 
-When Daedaline loads **archival-memory** by default inside Cursor indexing or
-agent retrieval, Daedaline SHALL treat that tier as explicit-read only so bulk
+When Pancreator loads **archival-memory** by default inside Cursor indexing or
+agent retrieval, Pancreator SHALL treat that tier as explicit-read only so bulk
 run history does not inflate routine context. Citations:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [82, 87], contentHash: a00f149}`;
 `{kind: lines, path: src/memory/handbook/context-economy.md, range: [79, 80], contentHash: 108ea6a}`.
@@ -132,40 +132,40 @@ paths or attachments; exclusion from default indexing MUST NOT block access.
 Citation:
 `{kind: lines, path: src/memory/handbook/context-economy.md, range: [98, 108], contentHash: 108ea6a}`.
 
-When Daedaline classifies `src/memory/features/**`, `src/memory/adr/**`, and
-`src/memory/backlog/**`, Daedaline SHALL treat those prefixes as **durable-memory**
+When Pancreator classifies `src/memory/features/**`, `src/memory/adr/**`, and
+`src/memory/backlog/**`, Pancreator SHALL treat those prefixes as **durable-memory**
 loaded by explicit route. Citation:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [59, 69], contentHash: a00f149}`.
 
-When Daedaline classifies `src/memory/handbook/**`, `src/personas/**`, `src/skills/**`,
-`.cursor/rules/**`, and `.cursor/agents/**`, Daedaline SHALL treat those paths
+When Pancreator classifies `src/memory/handbook/**`, `src/personas/**`, `src/skills/**`,
+`.cursor/rules/**`, and `.cursor/agents/**`, Pancreator SHALL treat those paths
 as **internal-operating-content** distinct from **active-memory**. Citation:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [92, 104], contentHash: a00f149}`.
 
-When Daedaline classifies generated JSON, manifests, dry-run outputs, post-write
-outputs, and lockfiles, Daedaline SHALL treat those artifacts as
+When Pancreator classifies generated JSON, manifests, dry-run outputs, post-write
+outputs, and lockfiles, Pancreator SHALL treat those artifacts as
 **generated-machine-artifact** surfaces excluded from default semantic indexing
 unless one task documents inclusion. Citation:
 `{kind: lines, path: src/memory/handbook/memory-tiers.md, range: [106, 118], contentHash: a00f149}`.
 
-When Daedaline completes a run under `src/work/**`, Daedaline SHALL rely on the
+When Pancreator completes a run under `src/work/**`, Pancreator SHALL rely on the
 `librarian` maintenance role to move completed run artifacts into
 `src/internal/work_archive/**`, update references, and leave active runs in `src/work/**`.
 Citation:
 `{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [46, 46], contentHash: 58bbab6}`.
 
-When Daedaline ships executable budget-warning tooling for **active-memory**
-soft caps, Daedaline SHALL defer that tooling to backlog item
+When Pancreator ships executable budget-warning tooling for **active-memory**
+soft caps, Pancreator SHALL defer that tooling to backlog item
 `active-memory-budget-warning-tool` so reporting and enforcement slices stay
 separated. Citation:
 `{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [48, 48], contentHash: 58bbab6}`.
 
-When Daedaline narrows Cursor rule globs for mirror-parity risk, Daedaline
+When Pancreator narrows Cursor rule globs for mirror-parity risk, Pancreator
 SHALL track ratification work under backlog item
 `active-memory-rule-glob-ratification`. Citation:
 `{kind: lines, path: src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [49, 49], contentHash: 58bbab6}`.
 
-When Daedaline records plan-stage glossary policy, Daedaline SHALL treat the
+When Pancreator records plan-stage glossary policy, Pancreator SHALL treat the
 reversed glossary deferral as closed: tier nouns now live in
 `src/memory/handbook/glossary.md` per plan deferral list item 2 instead of
 remaining undefined.

@@ -3,7 +3,7 @@
  * Timestamp naming migration planner and optional writer.
  *
  * Write mode (`--write`) MUST NOT run unless the environment variable
- * `DAEDALINE_MIGRATION_GO` equals `1`. This guard keeps accidental mutating
+ * `PANCREATOR_MIGRATION_GO` equals `1`. This guard keeps accidental mutating
  * runs out of CI and local defaults; operators set the variable only for
  * audited post-`ship` migration commits.
  *
@@ -751,7 +751,7 @@ async function buildDryRunManifest(opts) {
   }
 
   const manifest = {
-    schema: "daedaline.timestamp-migration-manifest.v1",
+    schema: "pancreator.timestamp-migration-manifest.v1",
     mode: "dry-run",
     generatedAt: new Date().toISOString(),
     repoRoot,
@@ -872,9 +872,9 @@ async function main() {
   }
 
   if (args.write) {
-    if (process.env.DAEDALINE_MIGRATION_GO !== "1") {
+    if (process.env.PANCREATOR_MIGRATION_GO !== "1") {
       console.error(
-        "[migrate-timestamp-naming] refuse --write without DAEDALINE_MIGRATION_GO=1",
+        "[migrate-timestamp-naming] refuse --write without PANCREATOR_MIGRATION_GO=1",
       );
       process.exitCode = 1;
       return;
@@ -898,7 +898,7 @@ async function main() {
     inboxMod.applyInboxRenamesFromManifest(renames, repoRoot);
     inboxMod.writeInboxArtifactIndex(repoRoot, renames);
     console.log(
-      `[migrate-timestamp-naming] write applied from ${mp} (DAEDALINE_MIGRATION_GO=1)`,
+      `[migrate-timestamp-naming] write applied from ${mp} (PANCREATOR_MIGRATION_GO=1)`,
     );
     return;
   }

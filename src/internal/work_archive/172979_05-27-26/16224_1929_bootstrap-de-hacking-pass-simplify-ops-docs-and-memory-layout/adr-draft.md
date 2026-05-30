@@ -12,15 +12,15 @@ ADR-0001 establishes `src/memory/backlog/index.yaml` as the canonical open and d
 
 ## Decision
 
-Daedaline SHALL use `OPERATION.md` as the canonical operator how-to. `README.md` SHALL remain the short repository entry point. `AGENTS.md` SHALL keep cross-tool operating policy and route operators to `OPERATION.md` for procedural loops.
+Pancreator SHALL use `OPERATION.md` as the canonical operator how-to. `README.md` SHALL remain the short repository entry point. `AGENTS.md` SHALL keep cross-tool operating policy and route operators to `OPERATION.md` for procedural loops.
 
-Daedaline SHALL retire `src/memory/debt/` as a bootstrap memory tier. Debt SHALL be encoded in `src/memory/backlog/index.yaml` with `tags: [debt]`. This decision preserves one backlog schema while allowing debt filtering without a second durable directory.
+Pancreator SHALL retire `src/memory/debt/` as a bootstrap memory tier. Debt SHALL be encoded in `src/memory/backlog/index.yaml` with `tags: [debt]`. This decision preserves one backlog schema while allowing debt filtering without a second durable directory.
 
-Daedaline SHALL keep Feature folders only when they have an implemented surface, a ratified evidence bundle, or an active-run exception. The implementation stage SHALL relocate `m1-substrate-runtime-batch` to backlog draft storage because its successor `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` has shipped the runtime batch evidence.
+Pancreator SHALL keep Feature folders only when they have an implemented surface, a ratified evidence bundle, or an active-run exception. The implementation stage SHALL relocate `m1-substrate-runtime-batch` to backlog draft storage because its successor `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` has shipped the runtime batch evidence.
 
-Daedaline SHALL make local librarian pre-close validation the default quality gate for active runs. CI SHALL remain available but bootstrap-generated run artifacts SHALL not trigger the heavy default workflow. Run-logger conformance SHALL move to `workflow_dispatch` until the re-enable trigger is ratified.
+Pancreator SHALL make local librarian pre-close validation the default quality gate for active runs. CI SHALL remain available but bootstrap-generated run artifacts SHALL not trigger the heavy default workflow. Run-logger conformance SHALL move to `workflow_dispatch` until the re-enable trigger is ratified.
 
-Daedaline SHALL enforce runnable `ddl` examples with an automated check that requires the `pnpm -w exec ddl` prefix in operator-visible code blocks.
+Pancreator SHALL enforce runnable `pan` examples with an automated check that requires the `pnpm -w exec pan` prefix in operator-visible code blocks.
 
 ## Consequences
 

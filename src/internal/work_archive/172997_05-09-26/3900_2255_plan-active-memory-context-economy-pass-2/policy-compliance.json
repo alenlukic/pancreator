@@ -28,7 +28,7 @@
     ]
   },
   "policy_alignment": {
-    "agents_md_alignment": "AGENTS.md implements slimmer routing, preserves no-push and operator-sandbox rules, and retains mandatory documentation-impact and policy-compliance gates. Operator ratification of the protected AGENTS.md diff remains required before merge per the feature index intake record. Implement waves edited AGENTS.md and six Cursor rule projections (00-agents-md, daedaline-engineer, persona-designer, intake-analyst, tech-lead, tech-writer); supervisor.mdc was audited and kept as-is. Merge still requires explicit approval of the final AGENTS.md and mirrored .cursor/rules/*.mdc diffs.",
+    "agents_md_alignment": "AGENTS.md implements slimmer routing, preserves no-push and operator-sandbox rules, and retains mandatory documentation-impact and policy-compliance gates. Operator ratification of the protected AGENTS.md diff remains required before merge per the feature index intake record. Implement waves edited AGENTS.md and six Cursor rule projections (00-agents-md, pancreator-engineer, persona-designer, intake-analyst, tech-lead, tech-writer); supervisor.mdc was audited and kept as-is. Merge still requires explicit approval of the final AGENTS.md and mirrored .cursor/rules/*.mdc diffs.",
     "constitution_alignment": "Governance artifacts remain under the task work path; deferrals link to src/memory/backlog/index.yaml; no constitution edits were required.",
     "prd_alignment": "Pass 2 delivers memory-tier documentation, active-memory orientation, ADR-0006, context-budget reporting, indexing alignment, preservation invariants, and governance artifacts per the feature scope. PRD.md was not modified.",
     "required_updates": [

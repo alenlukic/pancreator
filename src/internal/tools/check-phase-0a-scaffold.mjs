@@ -2,10 +2,10 @@
 /**
  * @file Phase 0a scaffold check: `package.json` dependency boundaries
  * and required files. Source imports are covered by
- * @daedaline/no-horizontal-primitive-deps in ESLint.
+ * @pancreator/no-horizontal-primitive-deps in ESLint.
  *
- * Carveout: `@daedaline/cli` and `@daedaline/mcp-server` are workspace
- * composers (`ddl` / MCP); they MAY list any workspace `@daedaline/*`
+ * Carveout: `@pancreator/cli` and `@pancreator/mcp-server` are workspace
+ * composers (`pan` / MCP); they MAY list any workspace `@pancreator/*`
  * dependency (docs/BOOTSTRAP.md Phase 3 steps 8 and 9).
  */
 const WORKSPACE_COMPOSER_PRIMITIVE_IDS = new Set(["cli", "mcp-server"]);
@@ -15,19 +15,19 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
-const DAEDALINE_PREFIX = "@daedaline/";
+const PANCREATOR_PREFIX = "@pancreator/";
 const WORK_DAY_DIR_RE = /^\d+_\d{2}-\d{2}-\d{2}$/u;
 const ISO_DAY_DIR_RE = /^\d{4}-\d{2}-\d{2}$/u;
 const WORK_TASK_ID_RE = /^\d+_\d{4}_[a-z0-9][a-z0-9_-]*$/u;
 
 const PRIMITIVE_DIRS = readdirSync(
-  path.join(REPO_ROOT, "src", "internal", "packages", "@daedaline"),
+  path.join(REPO_ROOT, "src", "internal", "packages", "@pancreator"),
   { withFileTypes: true },
 )
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
-const META_ROOT = "src/internal/packages/daedaline";
+const META_ROOT = "src/internal/packages/pancreator";
 
 let failed = 0;
 function err(msg) {
@@ -40,10 +40,10 @@ function err(msg) {
  * @returns {string | null} First path segment of package id after the scope, or `null`
  */
 function scopePackageName(depKey) {
-  if (!depKey.startsWith(DAEDALINE_PREFIX)) {
+  if (!depKey.startsWith(PANCREATOR_PREFIX)) {
     return null;
   }
-  const rest = depKey.slice(DAEDALINE_PREFIX.length);
+  const rest = depKey.slice(PANCREATOR_PREFIX.length);
   if (!rest) {
     return null;
   }
@@ -76,7 +76,7 @@ function checkDepSection(
     if (kind === "meta") {
       if (!PRIMITIVE_DIRS.includes(name)) {
         err(
-          `Meta package in ${String(file)} lists unknown @daedaline package "${name}" in ${fieldName}.`,
+          `Meta package in ${String(file)} lists unknown @pancreator package "${name}" in ${fieldName}.`,
         );
       }
       continue;
@@ -88,7 +88,7 @@ function checkDepSection(
       continue;
     }
     err(
-      `Primitive @daedaline/${ownerName} in ${String(file)} MUST NOT list @daedaline/${name} in ${fieldName}; only @daedaline/core and the current package are allowed (horizontal-dependency policy).`,
+      `Primitive @pancreator/${ownerName} in ${String(file)} MUST NOT list @pancreator/${name} in ${fieldName}; only @pancreator/core and the current package are allowed (horizontal-dependency policy).`,
     );
   }
 }
@@ -98,25 +98,25 @@ if (!existsSync(workspacePath)) {
   err("pnpm-workspace.yaml is missing.");
 } else {
   const ws = readFileSync(workspacePath, "utf8");
-  const daedalineScopeCovered = ws.includes("src/internal/packages/@daedaline/*");
-  if (!daedalineScopeCovered) {
+  const pancreatorScopeCovered = ws.includes("src/internal/packages/@pancreator/*");
+  if (!pancreatorScopeCovered) {
     for (const name of PRIMITIVE_DIRS) {
       if (!ws.includes(name)) {
         err(
-          `Workspace file must include a glob for scoped primitives (e.g. src/internal/packages/@daedaline/*) or list @daedaline/${name} explicitly.`,
+          `Workspace file must include a glob for scoped primitives (e.g. src/internal/packages/@pancreator/*) or list @pancreator/${name} explicitly.`,
         );
         break;
       }
     }
   }
   const metaCovered = ws.includes("src/internal/packages/*");
-  if (!metaCovered && !ws.includes("src/internal/packages/daedaline")) {
+  if (!metaCovered && !ws.includes("src/internal/packages/pancreator")) {
     err(
-      "Workspace file must include `src/internal/packages/*` (so src/internal/packages/daedaline is a member) or add `src/internal/packages/daedaline` explicitly.",
+      "Workspace file must include `src/internal/packages/*` (so src/internal/packages/pancreator is a member) or add `src/internal/packages/pancreator` explicitly.",
     );
   }
-  if (!existsSync(path.join(REPO_ROOT, "src", "internal", "packages", "daedaline"))) {
-    err("Meta package path src/internal/packages/daedaline is missing on disk.");
+  if (!existsSync(path.join(REPO_ROOT, "src", "internal", "packages", "pancreator"))) {
+    err("Meta package path src/internal/packages/pancreator is missing on disk.");
   }
 }
 
@@ -126,12 +126,12 @@ for (const name of PRIMITIVE_DIRS) {
     "src",
     "internal",
     "packages",
-    "@daedaline",
+    "@pancreator",
     name,
     "package.json",
   );
   if (!existsSync(pkgPath)) {
-    err(`Missing package.json for @daedaline/${name}.`);
+    err(`Missing package.json for @pancreator/${name}.`);
     continue;
   }
   const data = JSON.parse(readFileSync(pkgPath, "utf8"));
@@ -159,7 +159,7 @@ if (existsSync(metaPath)) {
   ]) {
     const sec = data[f];
     if (sec && typeof sec === "object" && !Array.isArray(sec)) {
-      checkDepSection(/** @type {Record<string, string>} */ (sec), metaPath, f, "daedaline", "meta");
+      checkDepSection(/** @type {Record<string, string>} */ (sec), metaPath, f, "pancreator", "meta");
     }
   }
 } else {
@@ -172,7 +172,7 @@ for (const d of PRIMITIVE_DIRS) {
     "src",
     "internal",
     "packages",
-    "@daedaline",
+    "@pancreator",
     d,
     "src",
     "index.ts",
@@ -181,22 +181,22 @@ for (const d of PRIMITIVE_DIRS) {
     err(`Missing ${src}.`);
   }
 }
-const daedalineSrc = path.join(
+const pancreatorSrc = path.join(
   REPO_ROOT,
   "src",
   "internal",
   "packages",
-  "daedaline",
+  "pancreator",
   "src",
   "index.ts",
 );
-if (!existsSync(daedalineSrc)) {
-  err("Missing src/internal/packages/daedaline/src/index.ts.");
+if (!existsSync(pancreatorSrc)) {
+  err("Missing src/internal/packages/pancreator/src/index.ts.");
 }
 
 if (process.argv.includes("--list-packages")) {
   const all = new Set(
-    PRIMITIVE_DIRS.map((d) => `@daedaline/${d}`).concat("daedaline"),
+    PRIMITIVE_DIRS.map((d) => `@pancreator/${d}`).concat("pancreator"),
   );
   for (const id of Array.from(all).sort()) {
     console.log(id);

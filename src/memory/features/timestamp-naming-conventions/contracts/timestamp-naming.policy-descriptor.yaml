@@ -1,4 +1,4 @@
-id: daedaline.features.timestamp_naming.policy_descriptor
+id: pancreator.features.timestamp_naming.policy_descriptor
 kind: tests
 severity: block
 applies_to:
@@ -22,6 +22,6 @@ runtime:
   compliance_descriptor: "tests/compliance/timestamp-naming-conventions.yaml"
   schema_ref: "tests/compliance/schemas/latest.yaml"
 metadata:
-  daedaline.contract_id: daedaline.features.timestamp_naming.policy_descriptor
-  daedaline.applies_to: "file-path:tests/compliance/timestamp-naming-conventions.yaml"
-  daedaline-bootstrap-only: false
+  pancreator.contract_id: pancreator.features.timestamp_naming.policy_descriptor
+  pancreator.applies_to: "file-path:tests/compliance/timestamp-naming-conventions.yaml"
+  pancreator-bootstrap-only: false

@@ -12,13 +12,13 @@
       ".cursor/agents/persona-designer.md",
       ".cursor/agents/supervisor.md",
       ".cursor/agents/compliance-auditor.md",
-      ".cursor/agents/daedaline-engineer.md",
+      ".cursor/agents/pancreator-engineer.md",
       ".cursor/rules/contract-writer.mdc",
       ".cursor/rules/persona-designer.mdc",
       "src/memory/handbook/persona-spec.md",
       "src/memory/handbook/persona-colors.md",
       "src/personas/compliance-auditor.md",
-      "src/personas/daedaline-engineer.md"
+      "src/personas/pancreator-engineer.md"
     ],
     "deferred_items": []
   },

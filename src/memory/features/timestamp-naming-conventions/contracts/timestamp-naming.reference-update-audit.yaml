@@ -1,4 +1,4 @@
-id: daedaline.features.timestamp_naming.reference_update_audit
+id: pancreator.features.timestamp_naming.reference_update_audit
 kind: tests
 severity: block
 applies_to:
@@ -25,6 +25,6 @@ runtime:
     - "inventoryReferences"
     - "applyReferenceUpdatesFromManifest"
 metadata:
-  daedaline.contract_id: daedaline.features.timestamp_naming.reference_update_audit
-  daedaline.applies_to: "file-path:src/internal/tools/migrate-timestamp-naming.mjs"
-  daedaline-bootstrap-only: false
+  pancreator.contract_id: pancreator.features.timestamp_naming.reference_update_audit
+  pancreator.applies_to: "file-path:src/internal/tools/migrate-timestamp-naming.mjs"
+  pancreator-bootstrap-only: false

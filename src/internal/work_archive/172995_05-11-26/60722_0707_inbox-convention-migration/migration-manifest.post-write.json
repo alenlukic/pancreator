@@ -1,8 +1,8 @@
 {
-  "schema": "daedaline.timestamp-migration-manifest.v1",
+  "schema": "pancreator.timestamp-migration-manifest.v1",
   "mode": "dry-run",
   "generatedAt": "2026-05-25T04:12:15.836Z",
-  "repoRoot": "/Users/alen/Dev/daedaline",
+  "repoRoot": "/Users/alen/Dev/pancreator",
   "summary": {
     "plannedRenames": 0,
     "plannedWorkTaskDirs": 0,

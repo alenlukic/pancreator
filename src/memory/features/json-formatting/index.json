@@ -29,7 +29,7 @@
     "completed_at": "2026-05-24T00:00:00Z",
     "next_owner": "librarian",
     "next_stage": "complete",
-    "handoff_note": "Feature index links delivery report, ship artifacts, and migration evidence. After human accepts this index artifact, run ddl close-artifacts for archival closure per complete-stage prompt."
+    "handoff_note": "Feature index links delivery report, ship artifacts, and migration evidence. After human accepts this index artifact, run pan close-artifacts for archival closure per complete-stage prompt."
   },
   "index": {
     "indexer": "librarian",
@@ -38,7 +38,7 @@
     "content_hash_refresh_performed": true,
     "abbrev_len_at_index_time": 7,
     "metadata": {
-      "daedaline-bootstrap-only": true
+      "pancreator-bootstrap-only": true
     }
   },
   "review": {
@@ -92,7 +92,7 @@
     }
   },
   "migration_evidence": {
-    "captured_by": "daedaline-engineer (standard)",
+    "captured_by": "pancreator-engineer (standard)",
     "dry_run_before_write": {
       "abbrevLen": 7,
       "candidates": 144,
@@ -117,7 +117,7 @@
   "canonical_formatter": {
     "module_js": "src/internal/tools/canonical-json-format.mjs",
     "migration_entry": "src/internal/tools/migrate-json-formatting.mjs",
-    "cli_bridge": "src/internal/packages/@daedaline/cli/src/canonical-json-io.ts",
+    "cli_bridge": "src/internal/packages/@pancreator/cli/src/canonical-json-io.ts",
     "notes": "formatCanonicalJson, abbreviateHashes, resolveAbbrevLen; CLI uses canonical-json-io.ts with allowJs linkage.",
     "citation": {
       "kind": "lines",
@@ -144,7 +144,7 @@
     {
       "id": "json-formatting-markdown-corpus-scan",
       "backlog_id": "json-formatting-markdown-corpus-scan",
-      "owner": "daedaline-engineer",
+      "owner": "pancreator-engineer",
       "status": "open",
       "reason": "Repo-wide Markdown dual-anchor citation layout compliance pass remains deferred beyond delivery-report and tech-writer scan scope.",
       "citation": {
@@ -306,37 +306,37 @@
         }
       },
       "cli_canonical_json_io": {
-        "path": "src/internal/packages/@daedaline/cli/src/canonical-json-io.ts",
+        "path": "src/internal/packages/@pancreator/cli/src/canonical-json-io.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/cli/src/canonical-json-io.ts",
+          "path": "src/internal/packages/@pancreator/cli/src/canonical-json-io.ts",
           "range": [1, 12],
           "contentHash": "8ba8a23"
         }
       },
       "cli_feature_delivery_run": {
-        "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+        "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+          "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
           "range": [1, 1],
           "contentHash": "c8c9a90"
         }
       },
       "cli_run": {
-        "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+        "path": "src/internal/packages/@pancreator/cli/src/run.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+          "path": "src/internal/packages/@pancreator/cli/src/run.ts",
           "range": [1, 1],
           "contentHash": "ec0559b"
         }
       },
       "cli_run_tests": {
-        "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+        "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+          "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
           "range": [1, 1],
           "contentHash": "a216068"
         }
@@ -384,6 +384,6 @@
     }
   },
   "metadata": {
-    "daedaline-bootstrap-only": true
+    "pancreator-bootstrap-only": true
   }
 }

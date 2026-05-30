@@ -19,7 +19,7 @@ references:
     path: src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md
     note: Prior consolidated-batch intake pattern for multi-package delivery.
   - kind: path
-    path: daedaline.yaml
+    path: pancreator.yaml
     note: Bootstrap evidence tracks Phoenix verification as deferred; runner invocation remains manual post Phase-4 ratification.
 ---
 
@@ -36,7 +36,7 @@ and downstream feature-folder creation.
 | WP-C — Pipeline StateGraph compiler | `pipeline-langgraph-stategraph-compiler` | `64497_0605_pipeline-langgraph-stategraph-compiler.md` |
 | WP-D — Run-logger Phoenix/Langfuse conformance or deferral | `run-logger-phoenix-conformance` | `64495_0605_run-logger-phoenix-conformance-or-deferral.md` |
 | WP-E — Library-mode script example | `library-mode-script-example` | `64496_0605_library-mode-script-example.md` |
-| WP-F — Install paths (`ddl init` + `create-daedaline`) | `ddl-install-paths` | `64500_0605_ddl-init-and-create-daedaline-install-paths.md` |
+| WP-F — Install paths (`pan init` + `create-pancreator`) | `pan-install-paths` | `64500_0605_pan-init-and-create-pancreator-install-paths.md` |
 
 ## Problem
 
@@ -45,16 +45,16 @@ block the transition from hand-orchestrated persona invocation to a
 pipeline-driven harness loop and from bootstrap-only adoption to operator-ready
 install paths:
 
-1. **Checkpointer gap (WP-A).** `@daedaline/checkpointer-fs` is a
-   Daedaline-specific file store, not a conformant LangGraph
-   `BaseCheckpointSaver` v1. KPI A19 and `ddl pause | resume | rollback |
+1. **Checkpointer gap (WP-A).** `@pancreator/checkpointer-fs` is a
+   Pancreator-specific file store, not a conformant LangGraph
+   `BaseCheckpointSaver` v1. KPI A19 and `pan pause | resume | rollback |
    snapshot` cannot map to LangGraph time-travel without it.
 
-2. **Runner stub (WP-B).** `@daedaline/runner-cursor` returns `{dryRun: true}`
+2. **Runner stub (WP-B).** `@pancreator/runner-cursor` returns `{dryRun: true}`
    without calling the Cursor SDK. Operators still paste `next-prompt.md`
-   manually and call `ddl advance` — the substrate gap BR4 anticipated.
+   manually and call `pan advance` — the substrate gap BR4 anticipated.
 
-3. **Pipeline walker (WP-C).** `@daedaline/pipeline` executes YAML as a
+3. **Pipeline walker (WP-C).** `@pancreator/pipeline` executes YAML as a
    sequential callback walker, not a compiled LangGraph `StateGraph`.
    Intervention semantics, checkpointing, and LangGraph ecosystem conformance
    all decouple from the PRD-prescribed runtime.
@@ -69,9 +69,9 @@ install paths:
    exist, so US-8 library mode and no-horizontal-deps validation lack an
    external consumer proof.
 
-6. **Install paths unwired (WP-F).** US-9 promises `ddl init` and
-   `npx create-daedaline` in M1. `ddl init` returns `{"status":"stub"}` and
-   `create-daedaline` does not exist despite the adopter persona, adopter-scan
+6. **Install paths unwired (WP-F).** US-9 promises `pan init` and
+   `npx create-pancreator` in M1. `pan init` returns `{"status":"stub"}` and
+   `create-pancreator` does not exist despite the adopter persona, adopter-scan
    primitive, and pipeline YAML definitions being present.
 
 ## Goal
@@ -92,10 +92,10 @@ parallel delivery or deferral without that ratification.
 
 ### WP-A — `checkpointer-fs-langgraph-conformance`
 
-1. `@daedaline/checkpointer-fs` exports a class satisfying LangGraph
+1. `@pancreator/checkpointer-fs` exports a class satisfying LangGraph
    `BaseCheckpointSaver` v1 without adapter glue.
 2. LangGraph's checkpoint-saver test suite runs as a vitest harness in CI.
-3. Daedaline-specific fields (`worktree_commit`, `run_log_offset`) live in
+3. Pancreator-specific fields (`worktree_commit`, `run_log_offset`) live in
    `Checkpoint.metadata` per `src/memory/handbook/run-log-schema.md`.
 4. The intervention manager's pause/resume/abort calls use the saver's official
    methods, not a parallel persistence path.
@@ -110,7 +110,7 @@ parallel delivery or deferral without that ratification.
    `maxTurns`.
 3. Invocation respects `simple task mode` and never reads outside the declared
    touch-set.
-4. Feature flag `daedaline.yaml: runner.cursor.invocation: manual | sdk` selects
+4. Feature flag `pancreator.yaml: runner.cursor.invocation: manual | sdk` selects
    workflow; default remains `manual` until the conformance suite is green.
 5. Run-log fragment carries OpenInference + OTel GenAI attributes per the run-log
    schema handbook.
@@ -121,7 +121,7 @@ parallel delivery or deferral without that ratification.
    edges encoding `gate`, `loop`, and `circuit_breaker` directives.
 2. Stage entry points emit OpenInference spans named per persona role.
 3. Intervention nodes (`pause`, `reroute`, `abort`) compile as a single
-   side-channel node so `@daedaline/intervention` does not maintain parallel
+   side-channel node so `@pancreator/intervention` does not maintain parallel
    state.
 4. Compiler refuses unknown personas, unknown contract kinds, or
    `worktree: required` when `WorktreePool` is unavailable.
@@ -136,7 +136,7 @@ parallel delivery or deferral without that ratification.
 
 1. Docker-based smoke test under `tests/run-logger-conformance/` boots local
    Phoenix, replays a sample run log, and asserts expected span hierarchy.
-2. CI runs the smoke test on PRs touching `@daedaline/run-logger` (path-filtered).
+2. CI runs the smoke test on PRs touching `@pancreator/run-logger` (path-filtered).
 3. Second smoke test demonstrates Langfuse importer interchangeability.
 4. Package README cites both smoke tests as conformance authority.
 
@@ -144,7 +144,7 @@ parallel delivery or deferral without that ratification.
 
 1. `src/memory/adr/0007-run-logger-phoenix-conformance-deferral.md` records the
    deferral in Nygard format with backlog linkage.
-2. `daedaline.yaml` bootstrap evidence points at the ADR instead of a free-standing
+2. `pancreator.yaml` bootstrap evidence points at the ADR instead of a free-standing
    deferred note.
 3. Deferred milestone is one of `M2`, `M3`, or `M5` with cited rationale.
 4. KPI A20 is restated against the ratified milestone in `docs/PRD.summary.md`.
@@ -156,21 +156,21 @@ parallel delivery or deferral without that ratification.
 2. Script parses a caller-supplied persona Markdown path, validates 16-field
    frontmatter, and emits `.cursor/agents/<name>.md` mirror and
    `.cursor/rules/<name>.mdc` shim to a temp directory.
-3. Example uses only `@daedaline/persona` plus declared external peers.
+3. Example uses only `@pancreator/persona` plus declared external peers.
 4. CI builds and smoke-tests the example without touching the host repository.
 5. README declares stability tier and SOTA conformance statement.
 
-### WP-F — `ddl-install-paths`
+### WP-F — `pan-install-paths`
 
-1. `ddl init` runs `@daedaline/adopter-scan` in dry-run by default, surfaces
+1. `pan init` runs `@pancreator/adopter-scan` in dry-run by default, surfaces
    per-file diffs, and refuses conflicts unless `--force`.
 2. Scan report writes to `src/memory/adoption/scan-<UTC-day>.md` and opens an
    inbox ratification item listing detected languages, frameworks, and proposed
    threshold-policy seeds.
-3. `ddl init --dry-run` is default; `--apply` required for writes outside
+3. `pan init --dry-run` is default; `--apply` required for writes outside
    adoption memory.
-4. `npx create-daedaline <name>` creates a complete M1 scaffold (handbook seed
-   pointers, `daedaline.yaml`, AGENTS.md, sample inbox directive, runnable
+4. `npx create-pancreator <name>` creates a complete M1 scaffold (handbook seed
+   pointers, `pancreator.yaml`, AGENTS.md, sample inbox directive, runnable
    `feature-delivery` walkthrough) independent of this repository's bootstrap
    layout.
 5. Both paths are non-destructive; zero overwrites without explicit confirmation.
@@ -183,15 +183,15 @@ parallel delivery or deferral without that ratification.
 - One delivery report covers all six work packages and records phasing,
   deferral choice (WP-D), and migration manifests.
 - A compliance-auditor broad sweep validates zero stale references to removed
-  stub behavior (`dryRun`, `{"status":"stub"}` for `ddl init`) after the batch
+  stub behavior (`dryRun`, `{"status":"stub"}` for `pan init`) after the batch
   ships.
 
 ## Acceptance criteria
 
 ### WP-A — Checkpointer
 
-- `pnpm --filter @daedaline/checkpointer-fs test` passes LangGraph conformance
-  plus Daedaline metadata-extension tests.
+- `pnpm --filter @pancreator/checkpointer-fs test` passes LangGraph conformance
+  plus Pancreator metadata-extension tests.
 - Round-trip integration test resumes from saved `checkpoint_id` without
   re-encoding metadata.
 
@@ -207,7 +207,7 @@ parallel delivery or deferral without that ratification.
 
 ### WP-C — Pipeline compiler
 
-- `pnpm --filter @daedaline/pipeline test` covers compiler, intervention-node
+- `pnpm --filter @pancreator/pipeline test` covers compiler, intervention-node
   injection, and parse → compile → serialize → re-parse identity.
 - LangGraph graph from `feature-delivery.yaml` reaches `report` stage on stub
   harness via SDK runner.
@@ -215,7 +215,7 @@ parallel delivery or deferral without that ratification.
 ### WP-D — Run-logger conformance
 
 - Either smoke tests pass in CI (option A), or ADR is ratified by
-  LocalUserAuthorizer and `daedaline.yaml` updated (option B).
+  LocalUserAuthorizer and `pancreator.yaml` updated (option B).
 - `src/memory/active/current.md` no longer carries Phoenix verification as an
   undated risk row.
 - Option A vs B is recorded in the intake-analyst canonical spec.
@@ -224,16 +224,16 @@ parallel delivery or deferral without that ratification.
 
 - `node examples/library-script/index.mjs path/to/persona.md` from outside the
   monorepo exits zero with two emitted files in a temp directory.
-- Example never reads `src/memory/`, `src/inbox/`, or `daedaline.yaml`.
+- Example never reads `src/memory/`, `src/inbox/`, or `pancreator.yaml`.
 - README referenced from `docs/PRD.summary.md` as library-mode proof.
 
 ### WP-F — Install paths
 
-- `pnpm -w exec ddl init --dry-run` against standard example repos completes
+- `pnpm -w exec pan init --dry-run` against standard example repos completes
   without writes outside `src/memory/adoption/`.
-- `pnpm -w exec ddl init --apply` against empty directory installs M1 scaffold.
-- `npx create-daedaline demo` produces runnable greenfield walkthrough whose
-  `ddl inbox` and `ddl run feature-delivery` flow succeeds.
+- `pnpm -w exec pan init --apply` against empty directory installs M1 scaffold.
+- `npx create-pancreator demo` produces runnable greenfield walkthrough whose
+  `pan inbox` and `pan run feature-delivery` flow succeeds.
 
 ### Batch integration
 
@@ -259,10 +259,10 @@ parallel delivery or deferral without that ratification.
 
 | Work package | Primary owners |
 |---|---|
-| WP-A — checkpointer | `tech-lead` (conformance contract); `daedaline-engineer` (implementation + vitest); `reviewer` (intervention integration) |
-| WP-B — runner-cursor | `tech-lead` (feature-flag contract); `daedaline-engineer` (SDK wiring); `reviewer` (touch-set + disallowed-tool enforcement) |
-| WP-C — pipeline compiler | `tech-lead` (YAML-to-graph ADR); `daedaline-engineer` (compiler + migration); `reviewer` (LangGraph pin discipline) |
-| WP-D — run-logger | `tech-lead` (option A vs B); `daedaline-engineer` (smoke tests if A); `reviewer` (ratification + active-memory hygiene) |
+| WP-A — checkpointer | `tech-lead` (conformance contract); `pancreator-engineer` (implementation + vitest); `reviewer` (intervention integration) |
+| WP-B — runner-cursor | `tech-lead` (feature-flag contract); `pancreator-engineer` (SDK wiring); `reviewer` (touch-set + disallowed-tool enforcement) |
+| WP-C — pipeline compiler | `tech-lead` (YAML-to-graph ADR); `pancreator-engineer` (compiler + migration); `reviewer` (LangGraph pin discipline) |
+| WP-D — run-logger | `tech-lead` (option A vs B); `pancreator-engineer` (smoke tests if A); `reviewer` (ratification + active-memory hygiene) |
 | WP-E — library-script | `tech-lead` (primitive choice); `coder` (script + README); `reviewer` (no-horizontal-deps audit) |
-| WP-F — install paths | `tech-lead` (adoption-report contract); `coder` (CLI + create-daedaline); `reviewer` (non-destructive guarantees) |
+| WP-F — install paths | `tech-lead` (adoption-report contract); `coder` (CLI + create-pancreator); `reviewer` (non-destructive guarantees) |
 | Batch integration | `supervisor` (phasing + staged outcome); `intake-analyst` (canonical spec + WP-D choice); `compliance-auditor` (broad sweep) |

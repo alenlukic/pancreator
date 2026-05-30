@@ -25,8 +25,8 @@
 | `node src/internal/tools/context-budget-report.mjs` | 0 | pass |
 | `bash -n .cursor/hooks/enforce-policy-compliance.sh` | 0 | pass |
 | `node src/internal/tools/migrate-json-formatting.mjs --dry-run` | 0 | pass (`wouldRewrite: 0`) |
-| `DAEDALINE_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (run 1) | 0 | pass (`files rewritten=0`) |
-| `DAEDALINE_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (run 2) | 0 | pass (`files rewritten=0`) |
+| `PANCREATOR_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (run 1) | 0 | pass (`files rewritten=0`) |
+| `PANCREATOR_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (run 2) | 0 | pass (`files rewritten=0`) |
 
 ## Findings
 
@@ -44,21 +44,21 @@
 | Check | Evidence | Result |
 |---|---|---|
 | Dry-run reports candidate and `wouldRewrite` counts | `--dry-run` output: `candidates=144`, `wouldRewrite=0`, `excludeCounts={"tooling_regenerated":0,"vendored_or_dependency_tree":32}` | pass |
-| Guarded write mode executes safely | `DAEDALINE_MIGRATION_GO=1 ... --write` exited `0` and reported `files rewritten=0` | pass |
+| Guarded write mode executes safely | `PANCREATOR_MIGRATION_GO=1 ... --write` exited `0` and reported `files rewritten=0` | pass |
 | Post-write dry-run reports `wouldRewrite: 0` | second `--dry-run` exited `0` with `wouldRewrite=0` | pass |
 | Second write-mode run is idempotent | second guarded `--write` exited `0` with `files rewritten=0` | pass |
 | Migration-specific test coverage is green | `node --test tests/migrate-json-formatting.test.mjs` => `tests=16`, `pass=16`, `fail=0` | pass |
 | Idempotent dry-loop coverage exists in tests | `tests/migrate-json-formatting.test.mjs` includes temp-repo dry-run check asserting `summary.wouldRewrite === 0` | pass |
-| Out-of-scope guard remains intact for Slice B execution | Migration writes reported zero rewrites; `git diff --name-only -- .cursor/hooks .cursor/rules src/internal/packages/@daedaline/citation-verifier src/internal/tools/citation-verifier.mjs` returned no paths | pass |
+| Out-of-scope guard remains intact for Slice B execution | Migration writes reported zero rewrites; `git diff --name-only -- .cursor/hooks .cursor/rules src/internal/packages/@pancreator/citation-verifier src/internal/tools/citation-verifier.mjs` returned no paths | pass |
 
 ### Slice B validation command results
 
 | Command | Exit code | Key output |
 |---|---:|---|
 | `node src/internal/tools/migrate-json-formatting.mjs --dry-run` | 0 | `abbrevLen=7`, `candidates=144`, `wouldRewrite=0`, `excludeCounts={"tooling_regenerated":0,"vendored_or_dependency_tree":32}` |
-| `DAEDALINE_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (pass 1) | 0 | `wouldRewrite=0`; `[migrate-json-formatting] ... files rewritten=0` |
+| `PANCREATOR_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (pass 1) | 0 | `wouldRewrite=0`; `[migrate-json-formatting] ... files rewritten=0` |
 | `node src/internal/tools/migrate-json-formatting.mjs --dry-run` (post-write) | 0 | `abbrevLen=7`, `wouldRewrite=0` |
-| `DAEDALINE_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (pass 2) | 0 | `wouldRewrite=0`; `[migrate-json-formatting] ... files rewritten=0` |
+| `PANCREATOR_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (pass 2) | 0 | `wouldRewrite=0`; `[migrate-json-formatting] ... files rewritten=0` |
 | `node --test tests/migrate-json-formatting.test.mjs` | 0 | `tests=16`, `pass=16`, `fail=0` |
 
 ### Slice B findings

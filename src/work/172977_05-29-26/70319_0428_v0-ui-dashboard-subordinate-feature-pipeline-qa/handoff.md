@@ -14,7 +14,7 @@
 
 Inputs: src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/handoff.md, src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/touch-set.json
 Output: src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md
-Advance after implementation is accepted: pnpm -w exec ddl advance 70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa --artifact src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md
+Advance after implementation is accepted: pnpm -w exec pan advance 70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa --artifact src/work/172977_05-29-26/70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md
 
 ## In-scope paths
 

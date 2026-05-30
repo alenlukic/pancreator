@@ -12,7 +12,7 @@
     "deferred_items": []
   },
   "policy_alignment": {
-    "agents_md_alignment": "Ship-stage execution stayed at the human gate: no ddl advance, no commit, no push, and required validation plus policy artifact generation were completed locally.",
+    "agents_md_alignment": "Ship-stage execution stayed at the human gate: no pan advance, no commit, no push, and required validation plus policy artifact generation were completed locally.",
     "constitution_alignment": "Documentation and reference stewardship obligations were satisfied by recording validation outcomes and staging the required delivery-report surface for operator review.",
     "prd_alignment": "Phase-4 ship evidence remains tied to human approval and intervention observability, with run-log-linked pause/resume/abort proof and review_passes=true preserved in delivery artifacts.",
     "required_updates": [

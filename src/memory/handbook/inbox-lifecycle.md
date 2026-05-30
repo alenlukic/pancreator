@@ -144,7 +144,7 @@ timestamp-prefixed leaves under `/src/inbox/out/<day-bucket>/` with basename sha
 | Artifact | Front matter | Operator action |
 |---|---|---|
 | Retry-limit halt | `gate: retry_limit_halt`, `task_id`, `feature_id`, `failing_stage`, `retry_count` | Inspect halt summary; use `repair-state` or ratify closure before restarting |
-| Report approval gate | `gate: report_approval`, `decision: approve \| needs_changes`, `required_changes` | Edit decision; `pnpm -w exec ddl advance <task-id> --artifact <outbox-path>` |
+| Report approval gate | `gate: report_approval`, `decision: approve \| needs_changes`, `required_changes` | Edit decision; `pnpm -w exec pan advance <task-id> --artifact <outbox-path>` |
 
 These artifacts are system-produced responses; operators MUST NOT move them into
 `/src/inbox/in/`.
@@ -215,7 +215,7 @@ apply time. Pruning MUST NOT traverse or modify `/src/inbox/notes/`.
 
 ## 4 - Future automated mechanism
 
-The runtime SHOULD expose an explicit archival operation (`ddl inbox archive`
+The runtime SHOULD expose an explicit archival operation (`pan inbox archive`
 or equivalent) that:
 
 - validates `responded` preconditions,

@@ -11,11 +11,11 @@
       "label": "WP-1 — Stub-verb explicit deferral protocol"
     },
     {
-      "feature_id": "ddl-intake-scaffolder",
+      "feature_id": "pan-intake-scaffolder",
       "label": "WP-2 — Intake scaffolder"
     },
     {
-      "feature_id": "ddl-refresh-active-memory",
+      "feature_id": "pan-refresh-active-memory",
       "label": "WP-3 — Active-memory refresher"
     }
   ],
@@ -41,7 +41,7 @@
     "completed_at": "2026-05-26T00:00:00Z",
     "next_owner": "operator",
     "next_stage": "complete",
-    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run ddl advance to complete, then ddl close-artifacts for archival closure per complete-stage prompt."
+    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run pan advance to complete, then pan close-artifacts for archival closure per complete-stage prompt."
   },
   "index": {
     "indexer": "librarian",
@@ -50,7 +50,7 @@
     "content_hash_refresh_performed": true,
     "abbrev_len_at_index_time": 7,
     "metadata": {
-      "daedaline-bootstrap-only": false
+      "pancreator-bootstrap-only": false
     }
   },
   "review": {
@@ -71,7 +71,7 @@
       "policy_compliance_hook_syntax": "pass",
       "cli_vitest": "pass (22/22)",
       "mcp_server_vitest": "pass (9/9)",
-      "ddl_refresh_active_memory_live": "pass (exit 0)"
+      "pan_refresh_active_memory_live": "pass (exit 0)"
     },
     "citation": {
       "kind": "lines",
@@ -112,13 +112,13 @@
       "path": "AGENTS.md",
       "range": [210, 212],
       "contentHash": "9a5d8c0",
-      "note": "AGENTS.md items 6–8 document deferred verb envelopes, ddl intake new, and ddl refresh-active-memory."
+      "note": "AGENTS.md items 6–8 document deferred verb envelopes, pan intake new, and pan refresh-active-memory."
     },
     "cli_deferred_exit_code": 125,
     "active_memory_conflict_exit_code": 126,
     "citation": {
       "kind": "lines",
-      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/run.ts",
       "range": [25, 43],
       "contentHash": "39762b6"
     }
@@ -128,7 +128,7 @@
       "id": "cli-index-ts-touch-set",
       "owner": "operator",
       "status": "open",
-      "reason": "src/internal/packages/@daedaline/cli/src/index.ts export additions are coherent but not listed in touch-set.json; operator SHOULD ratify or record intentional governance drift.",
+      "reason": "src/internal/packages/@pancreator/cli/src/index.ts export additions are coherent but not listed in touch-set.json; operator SHOULD ratify or record intentional governance drift.",
       "citation": {
         "kind": "lines",
         "path": "src/internal/work_archive/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
@@ -138,7 +138,7 @@
     },
     {
       "id": "repo-structure-deferred-smoke",
-      "owner": "daedaline-engineer",
+      "owner": "pancreator-engineer",
       "status": "deferred",
       "reason": "tests/repo-structure.test.mjs smoke still exercises one deferred verb while package vitest covers the full matrix.",
       "citation": {
@@ -255,65 +255,65 @@
     },
     "implementation_surface": {
       "cli_run": {
-        "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+        "path": "src/internal/packages/@pancreator/cli/src/run.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+          "path": "src/internal/packages/@pancreator/cli/src/run.ts",
           "range": [1, 991],
           "contentHash": "39762b6"
         }
       },
       "cli_run_tests": {
-        "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+        "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+          "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
           "range": [1, 782],
           "contentHash": "6fa6f7a"
         }
       },
       "cli_index_exports": {
-        "path": "src/internal/packages/@daedaline/cli/src/index.ts",
+        "path": "src/internal/packages/@pancreator/cli/src/index.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/cli/src/index.ts",
+          "path": "src/internal/packages/@pancreator/cli/src/index.ts",
           "range": [1, 23],
           "contentHash": "57472d1"
         },
         "governance_note": "Modified in working tree but omitted from touch-set.json; see open_followups.cli-index-ts-touch-set."
       },
-      "mcp_ddl_execute": {
-        "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts",
+      "mcp_pan_execute": {
+        "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts",
+          "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts",
           "range": [1, 275],
           "contentHash": "79e193e"
         }
       },
-      "mcp_ddl_execute_tests": {
-        "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts",
+      "mcp_pan_execute_tests": {
+        "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts",
+          "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts",
           "range": [1, 115],
           "contentHash": "d19343f"
         }
       },
       "mcp_definitions": {
-        "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.ts",
+        "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.ts",
+          "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.ts",
           "range": [1, 163],
           "contentHash": "90bd48a"
         }
       },
       "mcp_definitions_tests": {
-        "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.test.ts",
+        "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.test.ts",
         "citation": {
           "kind": "lines",
-          "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.test.ts",
+          "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.test.ts",
           "range": [1, 42],
           "contentHash": "5db1916"
         }
@@ -371,6 +371,6 @@
     "clauses": []
   },
   "metadata": {
-    "daedaline-bootstrap-only": false
+    "pancreator-bootstrap-only": false
   }
 }

@@ -6,7 +6,7 @@
     "rationale": "This local diff changes operator-facing documentation and governance references, including OPERATION and handbook/persona projections, so documentation-impact tracking is required in the same governed commit scope.",
     "changed_surfaces": [
       "OPERATION.md",
-      "src/memory/handbook/daedaline-config.md",
+      "src/memory/handbook/pancreator-config.md",
       "src/memory/handbook/inbox-lifecycle.md",
       "src/personas/qa-tester.md",
       "src/personas/supervisor.md",
@@ -20,7 +20,7 @@
     ]
   },
   "policy_alignment": {
-    "agents_md_alignment": "Human-gated stage advancement is preserved; this artifact is produced at ship stage without git commit, push, or ddl advance, and the operator must ratify local diff before advancing.",
+    "agents_md_alignment": "Human-gated stage advancement is preserved; this artifact is produced at ship stage without git commit, push, or pan advance, and the operator must ratify local diff before advancing.",
     "constitution_alignment": "Documentation/reference stewardship is satisfied by recording changed surfaces and explicit deferred follow-up for known out-of-scope validation drift.",
     "prd_alignment": "Feature-delivery governance goals remain aligned: stage outputs are auditable, validation evidence is recorded, and human approval remains required before advancing beyond ship gate.",
     "required_updates": []

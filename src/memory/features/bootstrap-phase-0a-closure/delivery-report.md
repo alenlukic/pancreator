@@ -5,8 +5,8 @@
 
 ## Summary
 
-Phase 0a delivered the M1 primitive package skeleton under `src/internal/packages/@daedaline/`,
-the unscoped meta package at `src/internal/packages/daedaline`, workspace build/lint/typecheck
+Phase 0a delivered the M1 primitive package skeleton under `src/internal/packages/@pancreator/`,
+the unscoped meta package at `src/internal/packages/pancreator`, workspace build/lint/typecheck
 scripts, and the `phase-0a-verification.md` record capturing observed command exits.
 
 ## Verification evidence
@@ -20,8 +20,8 @@ Observed local run (exit 0): `pnpm install`, `pnpm run build`, `pnpm run lint`,
 
 ## Implementation surface
 
-- Package primitives: `src/internal/packages/@daedaline/*`
-- Meta re-export: `src/internal/packages/daedaline`
+- Package primitives: `src/internal/packages/@pancreator/*`
+- Meta re-export: `src/internal/packages/pancreator`
 - Scaffold checker: `src/internal/tools/check-phase-0a-scaffold.mjs`
 - Local validation gate: `OPERATION.md` § "Librarian pre-close validation"
 

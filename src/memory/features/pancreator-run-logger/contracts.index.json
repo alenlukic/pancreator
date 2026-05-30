@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "pancreator.run_logger.package_shape",
+      "path": "/src/memory/features/pancreator-run-logger/contracts/pancreator.run_logger.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "src/internal/packages/@pancreator/run-logger/**"
+      }
+    },
+    {
+      "id": "pancreator.run_logger.readme_ergonomics",
+      "path": "/src/memory/features/pancreator-run-logger/contracts/pancreator.run_logger.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "src/internal/packages/@pancreator/run-logger/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "38ade8a"
+      }
+    }
+  ]
+}

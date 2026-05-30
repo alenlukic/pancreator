@@ -22,7 +22,7 @@
     "next_owner": "tech-lead",
     "next_stage": "implement",
     "followup_task": "timestamp-naming-conventions-migration-write-followup",
-    "handoff_note": "When the migration-write follow-up starts, the tech-lead MUST plan an implement task that preserves the dry-run manifest and requires DAEDALINE_MIGRATION_GO=1 before any rename write occurs."
+    "handoff_note": "When the migration-write follow-up starts, the tech-lead MUST plan an implement task that preserves the dry-run manifest and requires PANCREATOR_MIGRATION_GO=1 before any rename write occurs."
   },
   "index": {
     "indexer": "librarian",
@@ -38,7 +38,7 @@
     "content_hash_refresh_performed": false,
     "renames_performed": true,
     "metadata": {
-      "daedaline-bootstrap-only": true
+      "pancreator-bootstrap-only": true
     },
     "references": [
       {
@@ -254,7 +254,7 @@
         "range": [1, 1],
         "contentHash": "0662fb4"
       },
-      "note": "When write-mode runs, the operator MUST set DAEDALINE_MIGRATION_GO=1. This follow-up completed with a post-rename reference-apply recovery after stock --write ordering failed; post-write dry-run residue remains for inbox idempotency."
+      "note": "When write-mode runs, the operator MUST set PANCREATOR_MIGRATION_GO=1. This follow-up completed with a post-rename reference-apply recovery after stock --write ordering failed; post-write dry-run residue remains for inbox idempotency."
     },
     {
       "id": "contenthash-mix",
@@ -376,7 +376,7 @@
     ]
   },
   "metadata": {
-    "daedaline-bootstrap-only": true
+    "pancreator-bootstrap-only": true
   },
   "ship": {
     "pr_draft": {
@@ -399,7 +399,7 @@
       "stage": "human_approval",
       "status": "cleared",
       "cleared_at_head": "d472d02",
-      "operator_actions_required": ["Approve the post-merge migration-write task before it runs with DAEDALINE_MIGRATION_GO=1."]
+      "operator_actions_required": ["Approve the post-merge migration-write task before it runs with PANCREATOR_MIGRATION_GO=1."]
     },
     "pipeline_state": "human_approval_cleared",
     "supervisor_invariants": {
@@ -410,7 +410,7 @@
       "migration_write_executed": true
     },
     "metadata": {
-      "daedaline-bootstrap-only": true
+      "pancreator-bootstrap-only": true
     }
   },
   "review": {

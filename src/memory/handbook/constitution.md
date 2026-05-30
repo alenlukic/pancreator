@@ -1,12 +1,12 @@
 ---
-title: Daedaline Constitution
+title: Pancreator Constitution
 slug: constitution
 stability: experimental
 bootstrap-only: false
 phase: 0b
 owners: [supervisor, librarian, tech-lead]
 purpose: |
-  Org-level charter and governance baseline for Daedaline. This document
+  Org-level charter and governance baseline for Pancreator. This document
   defines mission-level principles, authority boundaries, and change-control
   rules that apply across personas, skills, pipelines, and handbook contracts.
 references:
@@ -14,7 +14,7 @@ references:
     path: docs/PRD.md
     range: [83, 89]
     contentHash: 6a838ec
-    note: "PRD goals G1-G7 define Daedaline's intended operating outcomes."
+    note: "PRD goals G1-G7 define Pancreator's intended operating outcomes."
   - kind: lines
     path: docs/PRD.md
     range: [378, 380]
@@ -47,7 +47,7 @@ related:
 
 ## 1 - Purpose
 
-Daedaline exists to run software-delivery work through explicit roles,
+Pancreator exists to run software-delivery work through explicit roles,
 artifact-grounded process, and human-ratifiable governance. This constitution
 defines the org-level rules that coordinate those layers.
 
@@ -67,7 +67,7 @@ resolution change set MUST update any affected policy surfaces (`docs/PRD.md`,
 
 ## 3 - Foundational principles
 
-Daedaline SHALL operate under these principles:
+Pancreator SHALL operate under these principles:
 
 1. **Artifact-first operation.** Work is represented as durable artifacts, not
    ephemeral chat state.

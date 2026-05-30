@@ -1,5 +1,5 @@
 ---
-description: When a human invokes the persona-designer during bootstrap Phase 1 or when the Librarian proposes a new SME (M4+), the `persona-designer` SHALL author a conforming Daedaline subagent persona specification to the Anthropic Claude Agent SDK 16-field YAML frontmatter spec and emit matching Cursor `.mdc` shims.
+description: When a human invokes the persona-designer during bootstrap Phase 1 or when the Librarian proposes a new SME (M4+), the `persona-designer` SHALL author a conforming Pancreator subagent persona specification to the Anthropic Claude Agent SDK 16-field YAML frontmatter spec and emit matching Cursor `.mdc` shims.
 globs:
   - ".cursor/agents/**/*.md"
   - ".cursor/rules/adopter.mdc"
@@ -13,7 +13,7 @@ globs:
   - ".cursor/rules/supervisor.mdc"
   - ".cursor/rules/tech-lead.mdc"
   - ".cursor/rules/tech-writer.mdc"
-  - ".cursor/rules/daedaline-engineer.mdc"
+  - ".cursor/rules/pancreator-engineer.mdc"
   - "src/personas/**/*.md"
 alwaysApply: false
 ---

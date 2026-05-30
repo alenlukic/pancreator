@@ -29,7 +29,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 
 ## Architecture
 
-- **Standalone write safety:** `--write` no longer recomputes a fresh plan at apply time. Operators must supply `--manifest <path>` to persisted JSON with schema `daedaline.inbox-convention-migration-manifest.v1`; apply uses `renames`, `referenceUpdates`, `applyInboxRenamesFromManifest`, `applyReferenceUpdatesFromManifest`, and `writeInboxArtifactIndex`; `DAEDALINE_MIGRATION_GO=1` remains required for writes. Combined work-plus-inbox migrations stay on `migrate-timestamp-naming.mjs --write --manifest …` with the combined timestamp manifest. 
+- **Standalone write safety:** `--write` no longer recomputes a fresh plan at apply time. Operators must supply `--manifest <path>` to persisted JSON with schema `pancreator.inbox-convention-migration-manifest.v1`; apply uses `renames`, `referenceUpdates`, `applyInboxRenamesFromManifest`, `applyReferenceUpdatesFromManifest`, and `writeInboxArtifactIndex`; `PANCREATOR_MIGRATION_GO=1` remains required for writes. Combined work-plus-inbox migrations stay on `migrate-timestamp-naming.mjs --write --manifest …` with the combined timestamp manifest. 
 
 ```json
 {
@@ -95,7 +95,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 
 ## Interfaces
 
-- **Standalone inbox migration:** Persist the dry-run manifest, then apply with `--write --manifest <path>` and `DAEDALINE_MIGRATION_GO=1`. Operators using `migrate-timestamp-naming.mjs --rollback --manifest <same-approved-file>` still invert `sourceRel` and `targetRel` from the stored manifest; inbox-only runs should still produce a rollback-capable manifest when inbox steps apply. 
+- **Standalone inbox migration:** Persist the dry-run manifest, then apply with `--write --manifest <path>` and `PANCREATOR_MIGRATION_GO=1`. Operators using `migrate-timestamp-naming.mjs --rollback --manifest <same-approved-file>` still invert `sourceRel` and `targetRel` from the stored manifest; inbox-only runs should still produce a rollback-capable manifest when inbox steps apply. 
 
 ```json
 {
@@ -253,4 +253,4 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 
 Run exactly:
 
-`pnpm -w exec ddl advance 60722_0707_inbox-convention-migration --artifact src/memory/features/inbox-convention-migration/delivery-report.md`
+`pnpm -w exec pan advance 60722_0707_inbox-convention-migration --artifact src/memory/features/inbox-convention-migration/delivery-report.md`

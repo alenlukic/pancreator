@@ -7,5 +7,5 @@ The next intended pipeline stage is review.
 
 Evidence:
 - Canonical spec exists at src/memory/features/inbox-convention-migration/spec.md.
-- Implementation was performed out-of-band through Cursor before guarded ddl advance existed.
+- Implementation was performed out-of-band through Cursor before guarded pan advance existed.
 - The operator is explicitly repairing state.json so the next handoff is reviewer-scoped.

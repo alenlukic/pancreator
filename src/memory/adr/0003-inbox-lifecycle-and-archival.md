@@ -16,7 +16,7 @@ references:
     path: docs/PRD.md
     range: [1037, 1037]
     contentHash: 2ce8e5c
-    note: "PRD CLI surface includes `ddl inbox` management verbs."
+    note: "PRD CLI surface includes `pan inbox` management verbs."
   - kind: lines
     path: AGENTS.md
     range: [101, 103]
@@ -51,7 +51,7 @@ references:
 
 ## Context
 
-Daedaline uses file-backed inbox paths for human-to-org intake and org-to-human
+Pancreator uses file-backed inbox paths for human-to-org intake and org-to-human
 responses, but the repository does not yet ratify one lifecycle contract for
 when an incoming item is active, complete, and moved out of the active queue.
 Without one lifecycle, operators can process items but cannot apply a
@@ -65,7 +65,7 @@ steps when the runtime lands.
 
 ## Decision
 
-Daedaline SHALL adopt the inbound inbox lifecycle state model below for every
+Pancreator SHALL adopt the inbound inbox lifecycle state model below for every
 artifact that enters `/src/inbox/in/`:
 
 - `new`: the item exists in `/src/inbox/in/` and no operator has claimed active
@@ -77,13 +77,13 @@ artifact that enters `/src/inbox/in/`:
 - `archived`: the inbound item has been moved from `/src/inbox/in/` to
   `/src/inbox/archive/in/` after the response is produced.
 
-Daedaline SHALL use the following mechanism boundaries:
+Pancreator SHALL use the following mechanism boundaries:
 
 - Current mechanism (bootstrap and pre-runtime): operators MUST perform archive
   transitions manually by moving responded inbound files from `/src/inbox/in/` to
   `/src/inbox/archive/in/`.
 - Future mechanism (runtime/CLI): the runtime SHOULD provide an explicit
-  archival operation (`ddl inbox archive` or equivalent) that validates
+  archival operation (`pan inbox archive` or equivalent) that validates
   `responded` state and performs the archive move deterministically.
 
 While runtime archival automation is not implemented, operators SHALL treat

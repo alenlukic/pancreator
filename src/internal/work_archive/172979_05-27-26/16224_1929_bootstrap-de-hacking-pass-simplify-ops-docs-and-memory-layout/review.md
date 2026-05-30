@@ -38,7 +38,7 @@ Changed-surface validation remains green: `node --test tests/*.test.mjs` reports
    **How:** Run:
 
    ```bash
-   pnpm -w exec ddl advance 16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout --artifact src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md
+   pnpm -w exec pan advance 16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout --artifact src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md
    ```
 
 2. **What:** Delegate the regenerated report prompt to `tech-writer`.  

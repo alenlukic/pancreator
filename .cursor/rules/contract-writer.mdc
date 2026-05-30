@@ -1,6 +1,6 @@
 ---
 description: When a human requests a machine-checkable gate clause, the `contract-writer` SHALL author the clause to the PRD §4.5 wrapper schema and §4.6 5-layer style discipline and register it in the feature's `contracts.index.json`.
-globs: ["src/memory/features/**/contract*.{md,yaml,yml,rego}", "src/memory/features/**/contracts/**/*", "daedaline.yaml", "daedaline-defaults.yaml", "src/memory/handbook/contract-templates/**/*.md"]
+globs: ["src/memory/features/**/contract*.{md,yaml,yml,rego}", "src/memory/features/**/contracts/**/*", "pancreator.yaml", "pancreator-defaults.yaml", "src/memory/handbook/contract-templates/**/*.md"]
 alwaysApply: false
 ---
 

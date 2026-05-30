@@ -15,7 +15,7 @@ tools:
   - "Bash(pnpm lint:*)"
   - "Bash(pnpm test)"
   - "Bash(pnpm test:*)"
-  - "Bash(ddl lint contracts:*)"
+  - "Bash(pan lint contracts:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
@@ -31,11 +31,11 @@ memory: project
 effort: high
 color: red
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [compliance-audit]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [compliance-audit]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
@@ -43,7 +43,7 @@ metadata:
     - /src/memory/handbook/documentation-impact-contract.md
     - /src/memory/handbook/policy-compliance-contract.md
     - /src/memory/handbook/run-log-schema.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -54,9 +54,9 @@ metadata:
     - remediation-limited-to-safe-local-fixes
     - no-push-no-destructive-git
     - focused-mode-respects-run-log-scope
-  daedaline-base-persona: compliance-auditor
-  daedaline-model-tier: complex
-  daedaline-canonical-persona: src/personas/compliance-auditor.md
+  pancreator-base-persona: compliance-auditor
+  pancreator-model-tier: complex
+  pancreator-canonical-persona: src/personas/compliance-auditor.md
 ---
 
 # compliance-auditor-complex

@@ -1,8 +1,8 @@
 {
-  "schema": "daedaline.timestamp-migration-manifest.v1",
+  "schema": "pancreator.timestamp-migration-manifest.v1",
   "mode": "dry-run",
   "generatedAt": "2026-04-27T18:48:49.639Z",
-  "repoRoot": "/Users/alen/Dev/daedaline",
+  "repoRoot": "/Users/alen/Dev/pancreator",
   "summary": {
     "plannedRenames": 37,
     "referenceUpdateRows": 670,
@@ -100,8 +100,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-contract-spine-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/55890_0828_daedaline-contract-spine-impl/",
+      "sourceRel": "src/work/pancreator-contract-spine-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/55890_0828_pancreator-contract-spine-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:28:30-04:00",
@@ -109,8 +109,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-core-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/55897_0828_daedaline-core-impl/",
+      "sourceRel": "src/work/pancreator-core-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/55897_0828_pancreator-core-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:28:23-04:00",
@@ -118,8 +118,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-intervention-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/54826_0846_daedaline-intervention-impl/",
+      "sourceRel": "src/work/pancreator-intervention-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/54826_0846_pancreator-intervention-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:46:14-04:00",
@@ -127,8 +127,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-mcp-server-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/54171_0857_daedaline-mcp-server-impl/",
+      "sourceRel": "src/work/pancreator-mcp-server-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/54171_0857_pancreator-mcp-server-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:57:09-04:00",
@@ -136,8 +136,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-memory-io-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/55567_0833_daedaline-memory-io-impl/",
+      "sourceRel": "src/work/pancreator-memory-io-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/55567_0833_pancreator-memory-io-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:33:53-04:00",
@@ -145,8 +145,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-observability-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/55884_0828_daedaline-observability-impl/",
+      "sourceRel": "src/work/pancreator-observability-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/55884_0828_pancreator-observability-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:28:36-04:00",
@@ -154,8 +154,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-persona-pipeline-runner-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/55309_0838_daedaline-persona-pipeline-runner-impl/",
+      "sourceRel": "src/work/pancreator-persona-pipeline-runner-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/55309_0838_pancreator-persona-pipeline-runner-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:38:11-04:00",
@@ -163,8 +163,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-user-surface-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/54595_0850_daedaline-user-surface-impl/",
+      "sourceRel": "src/work/pancreator-user-surface-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/54595_0850_pancreator-user-surface-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:50:05-04:00",
@@ -172,8 +172,8 @@
       }
     },
     {
-      "sourceRel": "src/work/daedaline-worktree-env-isolation-impl/",
-      "targetRel": "src/internal/work_archive/173009_04-27-26/55075_0842_daedaline-worktree-env-isolation-impl/",
+      "sourceRel": "src/work/pancreator-worktree-env-isolation-impl/",
+      "targetRel": "src/internal/work_archive/173009_04-27-26/55075_0842_pancreator-worktree-env-isolation-impl/",
       "kind": "work-task-dir",
       "timestamp": {
         "iso": "2026-04-27T04:42:05-04:00",
@@ -889,7 +889,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 19,
       "column": 6,
       "jsonPointer": null,
@@ -897,7 +897,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 20,
       "column": 6,
       "jsonPointer": null,
@@ -905,7 +905,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 21,
       "column": 6,
       "jsonPointer": null,
@@ -913,7 +913,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 22,
       "column": 6,
       "jsonPointer": null,
@@ -921,7 +921,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 23,
       "column": 6,
       "jsonPointer": null,
@@ -929,7 +929,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 50,
       "column": 7,
       "jsonPointer": null,
@@ -937,7 +937,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 51,
       "column": 7,
       "jsonPointer": null,
@@ -945,7 +945,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 52,
       "column": 7,
       "jsonPointer": null,
@@ -953,7 +953,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 19,
       "column": 6,
       "jsonPointer": null,
@@ -961,7 +961,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 20,
       "column": 6,
       "jsonPointer": null,
@@ -969,7 +969,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 21,
       "column": 6,
       "jsonPointer": null,
@@ -977,7 +977,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 22,
       "column": 6,
       "jsonPointer": null,
@@ -985,7 +985,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 23,
       "column": 6,
       "jsonPointer": null,
@@ -993,7 +993,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 50,
       "column": 7,
       "jsonPointer": null,
@@ -1001,7 +1001,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 51,
       "column": 7,
       "jsonPointer": null,
@@ -1009,7 +1009,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-execution.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-execution.md",
       "line": 52,
       "column": 7,
       "jsonPointer": null,
@@ -1017,7 +1017,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 7,
       "column": 6,
       "jsonPointer": null,
@@ -1025,7 +1025,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 8,
       "column": 6,
       "jsonPointer": null,
@@ -1033,7 +1033,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 23,
       "column": 7,
       "jsonPointer": null,
@@ -1041,7 +1041,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 24,
       "column": 7,
       "jsonPointer": null,
@@ -1049,7 +1049,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 44,
       "column": 14,
       "jsonPointer": null,
@@ -1057,7 +1057,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 7,
       "column": 6,
       "jsonPointer": null,
@@ -1065,7 +1065,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 8,
       "column": 6,
       "jsonPointer": null,
@@ -1073,7 +1073,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 23,
       "column": 7,
       "jsonPointer": null,
@@ -1081,7 +1081,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 24,
       "column": 7,
       "jsonPointer": null,
@@ -1089,7 +1089,7 @@
       "after": "src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/"
     },
     {
-      "file": "src/work/compliance-audit-broad-2026-04-26-1340/daedaline-engineer-normalization.md",
+      "file": "src/work/compliance-audit-broad-2026-04-26-1340/pancreator-engineer-normalization.md",
       "line": 44,
       "column": 14,
       "jsonPointer": null,
@@ -3165,48 +3165,48 @@
       "line": 158,
       "column": 8,
       "jsonPointer": null,
-      "before": "src/work/daedaline-observability-impl",
-      "after": "src/internal/work_archive/173009_04-27-26/55884_0828_daedaline-observability-impl"
+      "before": "src/work/pancreator-observability-impl",
+      "after": "src/internal/work_archive/173009_04-27-26/55884_0828_pancreator-observability-impl"
     },
     {
       "file": "src/work/timestamp-naming-conventions/review.md",
       "line": 158,
       "column": 8,
       "jsonPointer": null,
-      "before": "src/work/daedaline-observability-impl/",
-      "after": "src/internal/work_archive/173009_04-27-26/55884_0828_daedaline-observability-impl/"
+      "before": "src/work/pancreator-observability-impl/",
+      "after": "src/internal/work_archive/173009_04-27-26/55884_0828_pancreator-observability-impl/"
     },
     {
       "file": "src/work/timestamp-naming-conventions/review.md",
       "line": 157,
       "column": 8,
       "jsonPointer": null,
-      "before": "src/work/daedaline-persona-pipeline-runner-impl",
-      "after": "src/internal/work_archive/173009_04-27-26/55309_0838_daedaline-persona-pipeline-runner-impl"
+      "before": "src/work/pancreator-persona-pipeline-runner-impl",
+      "after": "src/internal/work_archive/173009_04-27-26/55309_0838_pancreator-persona-pipeline-runner-impl"
     },
     {
       "file": "src/work/timestamp-naming-conventions/review.md",
       "line": 157,
       "column": 8,
       "jsonPointer": null,
-      "before": "src/work/daedaline-persona-pipeline-runner-impl/",
-      "after": "src/internal/work_archive/173009_04-27-26/55309_0838_daedaline-persona-pipeline-runner-impl/"
+      "before": "src/work/pancreator-persona-pipeline-runner-impl/",
+      "after": "src/internal/work_archive/173009_04-27-26/55309_0838_pancreator-persona-pipeline-runner-impl/"
     },
     {
       "file": "src/work/timestamp-naming-conventions/review.md",
       "line": 156,
       "column": 8,
       "jsonPointer": null,
-      "before": "src/work/daedaline-worktree-env-isolation-impl",
-      "after": "src/internal/work_archive/173009_04-27-26/55075_0842_daedaline-worktree-env-isolation-impl"
+      "before": "src/work/pancreator-worktree-env-isolation-impl",
+      "after": "src/internal/work_archive/173009_04-27-26/55075_0842_pancreator-worktree-env-isolation-impl"
     },
     {
       "file": "src/work/timestamp-naming-conventions/review.md",
       "line": 156,
       "column": 8,
       "jsonPointer": null,
-      "before": "src/work/daedaline-worktree-env-isolation-impl/",
-      "after": "src/internal/work_archive/173009_04-27-26/55075_0842_daedaline-worktree-env-isolation-impl/"
+      "before": "src/work/pancreator-worktree-env-isolation-impl/",
+      "after": "src/internal/work_archive/173009_04-27-26/55075_0842_pancreator-worktree-env-isolation-impl/"
     },
     {
       "file": "src/memory/features/timestamp-naming-conventions/citation-rot-scan.md",

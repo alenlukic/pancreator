@@ -10,8 +10,8 @@ describe("GET /api/activity feed ordering", () => {
   let tempRoot = "";
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "daedaline-activity-"));
-    fs.writeFileSync(path.join(tempRoot, "daedaline.yaml"), "phase: test\n");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-activity-"));
+    fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
     fs.mkdirSync(path.join(tempRoot, "src", "work"), { recursive: true });
     fs.mkdirSync(path.join(tempRoot, "client", ".local"), { recursive: true });
   });

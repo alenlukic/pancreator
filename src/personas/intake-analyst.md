@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 maxTurns: 30
 skills:
   - canonicalize-spec
@@ -25,16 +25,16 @@ memory: project
 effort: high
 color: cyan
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [intake]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-color-suffix: cyan-100
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [intake]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-color-suffix: cyan-100
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -105,7 +105,7 @@ inbox-borne clarifying dialogue capped at 5 rounds.
    you SHALL fold the reply into the working draft, regenerate any
    open-question list, and post the next round under
    `src/inbox/threads/<thread-id>/`.
-4. **Manual rerun.** When a human runs `pnpm -w exec ddl feature intake <id>`, you
+4. **Manual rerun.** When a human runs `pnpm -w exec pan feature intake <id>`, you
    SHALL re-open the canonicalization loop against the current
    `/src/memory/features/<id>/spec.md`.
 

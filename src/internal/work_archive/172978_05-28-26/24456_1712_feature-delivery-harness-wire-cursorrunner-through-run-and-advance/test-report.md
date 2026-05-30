@@ -7,13 +7,13 @@ qa_passes: `true`
 
 ## QA protocol
 
-SDK automation QA restarted after out-of-band `tech-lead` model typo fix (`gpt-5.5`). Operator intervened **only** at human gates via `ddl advance`; no manual persona impersonation or hand-written stage artifacts.
+SDK automation QA restarted after out-of-band `tech-lead` model typo fix (`gpt-5.5`). Operator intervened **only** at human gates via `pan advance`; no manual persona impersonation or hand-written stage artifacts.
 
 ## Harness automation evidence
 
 | Step | Result |
 |---|---|
-| `ddl run feature-delivery` (SDK intake) | pass — `state.json` + run log with Cursor `intake-analyst` record |
+| `pan run feature-delivery` (SDK intake) | pass — `state.json` + run log with Cursor `intake-analyst` record |
 | Human gate: intake→plan (`spec.md`) | pass — exit `0`; SDK `tech-lead` produced `plan.md`, `touch-set.json` |
 | Human gate: plan→implement (`touch-set.json`) | pass — exit `0`; SDK `coder` produced `client/` + `implementation-report.md` |
 | Human gate: implement→review (`implementation-report.md`) | pass — exit `0`; SDK `reviewer` produced `review.md` |
@@ -26,8 +26,8 @@ Subordinate `client/` v0 dashboard exists with API routes, tests, and UI per int
 
 ## Prior failures resolved
 
-- Ripgrep prereq (`configureRipgrepPath` / `CURSOR_RIPGREP_PATH`): fixed before this run; `ddl run` no longer aborts pre-`state.json`.
-- Model slug typo (`gpt-5.5-medium`): fixed out-of-band; plan-stage `ddl advance` succeeds.
+- Ripgrep prereq (`configureRipgrepPath` / `CURSOR_RIPGREP_PATH`): fixed before this run; `pan run` no longer aborts pre-`state.json`.
+- Model slug typo (`gpt-5.5-medium`): fixed out-of-band; plan-stage `pan advance` succeeds.
 
 ## Parent validation
 
@@ -44,7 +44,7 @@ Subordinate run remains at `implement` after automated `qa_fails` loopback (retr
 
 ## QA decision
 
-`qa_passes: true` — SDK-mode `ddl run` + `ddl advance` automation exercised end-to-end on a real subordinate feature through intake, plan, implement, review, test, with automatic `must_fix` / `review_passes` / `qa_fails` routing. Human operator stood in only at ratification gates.
+`qa_passes: true` — SDK-mode `pan run` + `pan advance` automation exercised end-to-end on a real subordinate feature through intake, plan, implement, review, test, with automatic `must_fix` / `review_passes` / `qa_fails` routing. Human operator stood in only at ratification gates.
 
 ## Evidence paths
 

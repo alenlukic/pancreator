@@ -2,7 +2,7 @@
 
 ## Architecture Summary
 
-This task run is a scaffold-only slice for the Phase 4 exit proof bundle. The implementation MUST create the two nested dogfood directives, stage the proof-bundle file structure under `src/memory/features/us-1-dogfood-phase-4-exit/`, update the feature index, record policy compliance, record validation outcomes, and emit `test-report.md` for reviewer coverage accounting. The implementation MUST NOT treat placeholders as empirical proof. The follow-on slice `us-1-dogfood-phase-4-exit-evidence` owns nested `ddl run` execution, Phoenix capture, pause/resume/abort evidence, ship staging, delivery reporting, human ratification, and conditional documentation updates. The full feature spec remains authoritative for Phase 4 exit; this plan narrows only the acceptance gate for task `20004_1826_us-1-dogfood-phase-4-exit`.
+This task run is a scaffold-only slice for the Phase 4 exit proof bundle. The implementation MUST create the two nested dogfood directives, stage the proof-bundle file structure under `src/memory/features/us-1-dogfood-phase-4-exit/`, update the feature index, record policy compliance, record validation outcomes, and emit `test-report.md` for reviewer coverage accounting. The implementation MUST NOT treat placeholders as empirical proof. The follow-on slice `us-1-dogfood-phase-4-exit-evidence` owns nested `pan run` execution, Phoenix capture, pause/resume/abort evidence, ship staging, delivery reporting, human ratification, and conditional documentation updates. The full feature spec remains authoritative for Phase 4 exit; this plan narrows only the acceptance gate for task `20004_1826_us-1-dogfood-phase-4-exit`.
 
 ## Plan-Stage Decisions
 
@@ -18,13 +18,13 @@ This task run is a scaffold-only slice for the Phase 4 exit proof bundle. The im
 1. Create `src/inbox/in/phase-4-dogfood-proof-bundle-index.md` with a bounded directive that asks the pipeline to add or update a proof-bundle evidence index under `src/memory/features/us-1-dogfood-phase-4-exit/`. The directive MUST state that it does not start Phase 5 work.
 2. Create `src/inbox/in/phase-4-intervention-probe.md` with a bounded directive for the follow-on pause/resume/abort probe. The directive MUST state that empirical CLI execution belongs to `us-1-dogfood-phase-4-exit-evidence`.
 3. Assemble the scaffold proof bundle under `src/memory/features/us-1-dogfood-phase-4-exit/` with `phase-4-proof-bundle.md`, `phoenix-trace-evidence.md`, `pause-resume-abort-evidence.json`, `phase-4-ratification-request.md`, `delivery-report.md`, and `index.json` updates. Placeholder files MUST state that evidence remains pending and MUST NOT mark Phase 4 exit complete.
-4. Record the documentation-impact decision for `AGENTS.md`, `docs/M1.index.md`, `daedaline.yaml`, and `src/memory/active/current.md` in `policy-compliance.json`. The scaffold slice MUST defer those updates until accepted evidence and human ratification exist.
+4. Record the documentation-impact decision for `AGENTS.md`, `docs/M1.index.md`, `pancreator.yaml`, and `src/memory/active/current.md` in `policy-compliance.json`. The scaffold slice MUST defer those updates until accepted evidence and human ratification exist.
 5. Run the handoff validation commands and record each exit code in `src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md`.
 6. Create `src/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/test-report.md` with prose-only coverage accounting. The report MUST state that this markdown-and-JSON scaffold slice has no changed executable lines, list the validation commands, and cite the implementation report command outcomes.
 
 ## Deferred Evidence Slice
 
-Follow-on slice `us-1-dogfood-phase-4-exit-evidence` SHALL run both nested directives through the required empirical workflow. It SHALL capture nested task identifiers, preserve run logs, import the proof-index run into Phoenix, attach a screenshot or export, populate pause/resume/abort evidence JSON, stage supervisor ship output, produce the tech-writer delivery report and inbox/out copy, request human ratification, and apply conditional updates to `AGENTS.md`, `docs/M1.index.md`, `daedaline.yaml`, and `src/memory/active/current.md` only after ratification.
+Follow-on slice `us-1-dogfood-phase-4-exit-evidence` SHALL run both nested directives through the required empirical workflow. It SHALL capture nested task identifiers, preserve run logs, import the proof-index run into Phoenix, attach a screenshot or export, populate pause/resume/abort evidence JSON, stage supervisor ship output, produce the tech-writer delivery report and inbox/out copy, request human ratification, and apply conditional updates to `AGENTS.md`, `docs/M1.index.md`, `pancreator.yaml`, and `src/memory/active/current.md` only after ratification.
 
 ## Required Citations
 

@@ -16,13 +16,13 @@
       "id": "wp-2-operation-md-extraction",
       "label": "WP-2 — Extract OPERATION.md and slim README.md",
       "status": "shipped",
-      "outcome": "OPERATION.md is canonical operator how-to; README, AGENTS.md, docs/M1.index.md, and daedaline-config handbook route there."
+      "outcome": "OPERATION.md is canonical operator how-to; README, AGENTS.md, docs/M1.index.md, and pancreator-config handbook route there."
     },
     {
       "id": "wp-3-operator-output-conformance",
       "label": "WP-3 — Operator-output conformance enforcement",
       "status": "shipped",
-      "outcome": "check-operator-output.mjs, operator-output-contract tests, persona bare-ddl fixes, and full operator-output-audit.md coverage matrices."
+      "outcome": "check-operator-output.mjs, operator-output-contract tests, persona bare-pan fixes, and full operator-output-audit.md coverage matrices."
     },
     {
       "id": "wp-4-backlog-debt-consolidation",
@@ -65,7 +65,7 @@
     "completed_at": "2026-05-28T01:00:00Z",
     "next_owner": "operator",
     "next_stage": "complete",
-    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run ddl advance to complete, then delegate the generated complete-stage prompt for close-artifacts archival closure."
+    "handoff_note": "Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run pan advance to complete, then delegate the generated complete-stage prompt for close-artifacts archival closure."
   },
   "index": {
     "indexer": "librarian",
@@ -74,7 +74,7 @@
     "content_hash_refresh_performed": true,
     "abbrev_len_at_index_time": 7,
     "metadata": {
-      "daedaline-bootstrap-only": true
+      "pancreator-bootstrap-only": true
     }
   },
   "review": {
@@ -158,7 +158,7 @@
       "id": "handbook-deferred-verb-prose",
       "owner": "backlog",
       "status": "deferred",
-      "reason": "Non-runnable handbook examples mentioning deferred ddl verbs left unchanged; existing backlog items cover automation gaps.",
+      "reason": "Non-runnable handbook examples mentioning deferred pan verbs left unchanged; existing backlog items cover automation gaps.",
       "citation": {
         "kind": "lines",
         "path": "src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
@@ -358,7 +358,7 @@
     "clauses": []
   },
   "metadata": {
-    "daedaline-bootstrap-only": true,
+    "pancreator-bootstrap-only": true,
     "librarian_populated": true,
     "placeholder": false
   },

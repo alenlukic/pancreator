@@ -63,7 +63,7 @@ items:
       - /src/inbox/in/
       - /src/inbox/archive/in/
     evidence: "ADR-0003 ratifies manual archival now and requires a future runtime/CLI archive mechanism."
-    notes: "Add `ddl inbox archive` (or equivalent) that validates responded state and performs deterministic move."
+    notes: "Add `pan inbox archive` (or equivalent) that validates responded state and performs deterministic move."
 
   - id: bootstrap-doc-impact-check-enforcement
     title: Add automated enforcement for documentation impact checks
@@ -271,8 +271,8 @@ items:
     priority: high
     opened_at: "2026-04-27T20:25:00Z"
     links:
-      - /src/internal/packages/@daedaline/contract-runner-rego/
-      - /src/internal/packages/@daedaline/contract-runner-llm-judge/
+      - /src/internal/packages/@pancreator/contract-runner-rego/
+      - /src/internal/packages/@pancreator/contract-runner-llm-judge/
       - /src/memory/handbook/contract-format.md
       - /src/memory/features/timestamp-naming-conventions/contracts/
     evidence: "Phase 3 and Phase 4 slice policy-compliance.json artifacts repeatedly record a 'spec-contract-runner-not-wired' deferral; Spec Contracts ship structurally but cannot execute end-to-end without a runner panel."
@@ -289,12 +289,12 @@ items:
     links:
       - /docs/BOOTSTRAP.md
       - /src/memory/handbook/run-log-schema.md
-      - /src/internal/packages/@daedaline/run-log/
+      - /src/internal/packages/@pancreator/run-log/
     evidence: "docs/BOOTSTRAP.md Phase 4 names a clean run-log trace in Phoenix or Langfuse as part of the Phase-4 dogfood exit criterion. Operator deferred external observability to M2 during Phase 3 exit ratification."
     notes: "Wire run.log.jsonl emission into Phoenix or Langfuse and re-run the timestamp-naming-conventions dogfood as the ratification trace. Track alongside M2 contract-corpus work."
 
   - id: bootstrap-pause-resume-dogfood-exercise
-    title: Empirically exercise ddl pause/resume/abort against a feature dogfood
+    title: Empirically exercise pan pause/resume/abort against a feature dogfood
     source: docs/BOOTSTRAP.md
     owner: coder
     milestone: phase-5
@@ -303,9 +303,9 @@ items:
     opened_at: "2026-04-27T20:25:00Z"
     links:
       - /docs/BOOTSTRAP.md
-      - /src/internal/packages/@daedaline/intervention/
-      - /src/internal/packages/@daedaline/cli/
-    evidence: "docs/BOOTSTRAP.md Phase 4 calls for manually exercising ddl pause mid-implement, ddl resume, and ddl abort on a second feature-delivery run. The Phase 4 dogfood used direct subagent delegation rather than runtime persona dispatch, so in-flight pause and resume against a real feature is not yet exercised empirically."
+      - /src/internal/packages/@pancreator/intervention/
+      - /src/internal/packages/@pancreator/cli/
+    evidence: "docs/BOOTSTRAP.md Phase 4 calls for manually exercising pan pause mid-implement, pan resume, and pan abort on a second feature-delivery run. The Phase 4 dogfood used direct subagent delegation rather than runtime persona dispatch, so in-flight pause and resume against a real feature is not yet exercised empirically."
     notes: "Land runtime persona dispatch first; rerun the dogfood with pause-resume-abort scripted; persist the trace as the ratification artifact."
 
   - id: timestamp-naming-post-2500-rollover-rule
@@ -425,7 +425,7 @@ items:
     links:
       - /src/memory/features/active-memory-context-economy-pass-2/spec.md
       - /.cursor/rules/persona-designer.mdc
-      - /.cursor/rules/daedaline-engineer.mdc
+      - /.cursor/rules/pancreator-engineer.mdc
       - /src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
       - /src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md
     evidence: "Implement pass 2 narrowed six mirrored Cursor rule files per rule-audit.md; supervisor.mdc stayed unchanged after audit. This backlog item remains the ratification umbrella when a rule owner must still approve a proposed glob or when mirror parity risk is not closed in review."
@@ -485,22 +485,22 @@ items:
     evidence: "The active-memory tier landed in pass-2 without naming an owner for post-ship rotation. Librarian's write scope explicitly excludes src/memory/active/** per src/personas/librarian.md lines 117 to 120, and the PRD \u00a77 feature-delivery post_run block does not contain an active-memory rotation action. The pass-2 ship cycle therefore required operator override to keep the tier from going stale immediately after the first Feature shipped."
     notes: "Pick one of: extend librarian write scope plus add a fourth post_run action rotate_active_memory; add a manual operator step to src/memory/handbook/inbox-lifecycle.md \u00a73; or assign tech-lead an explicit rotation obligation at the start of each plan stage. Inbox-lifecycle handbook update is the lowest-risk first move while runtime remains unwired."
 
-  - id: daedaline-config-schema-validation
+  - id: pancreator-config-schema-validation
     title: Validate project_root and bootstrap tracking in config loader
-    source: daedaline.yaml
+    source: pancreator.yaml
     owner: coder
     milestone: phase-4
     status: open
     priority: medium
     opened_at: "2026-05-10T13:15:00Z"
     links:
-      - /daedaline.yaml
-      - /src/memory/handbook/daedaline-config.md
-      - /src/internal/packages/@daedaline/policy/src/config-v1.ts
+      - /pancreator.yaml
+      - /src/memory/handbook/pancreator-config.md
+      - /src/internal/packages/@pancreator/policy/src/config-v1.ts
       - /src/personas/adopter.md
       - /src/skills/adopt-existing-repo/SKILL.md
     evidence: "The config now records project_root and live bootstrap tracking, and the policy upgrade helper preserves those fields. Runtime validation should still reject empty project roots, malformed phase states, and paths that resolve outside the operator-approved boundary."
-    notes: "Add schema-level validation when @daedaline/policy grows its Conftest/Rego-backed config loader. Adoption should set project_root during init/adopt after human ratification or in config-write mode."
+    notes: "Add schema-level validation when @pancreator/policy grows its Conftest/Rego-backed config loader. Adoption should set project_root during init/adopt after human ratification or in config-write mode."
 
   - id: json-formatting-shipped
     title: Canonical JSON formatting policy delivered
@@ -518,7 +518,7 @@ items:
       - /src/internal/tools/canonical-json-format.mjs
       - /src/internal/tools/migrate-json-formatting.mjs
       - /src/work/172983_05-23-26/67055_0522_json-formatting/review.md
-    evidence: "Feature shipped canonical JSON formatting across Round-02 R1 surfaces: repository .json, Markdown-embedded JSON, ddl terminal/CLI output, and agent-chat JSON sketches. Shared formatter module, CLI emitters, compliance descriptor, glossary alignment, and migration idempotency evidence (candidates=144, wouldRewrite=0, two write passes each files rewritten=0) all passed review verdict pass with 71/71 tests green."
+    evidence: "Feature shipped canonical JSON formatting across Round-02 R1 surfaces: repository .json, Markdown-embedded JSON, pan terminal/CLI output, and agent-chat JSON sketches. Shared formatter module, CLI emitters, compliance descriptor, glossary alignment, and migration idempotency evidence (candidates=144, wouldRewrite=0, two write passes each files rewritten=0) all passed review verdict pass with 71/71 tests green."
     notes: "Deferred companion work tracked as json-formatting-citation-verifier-prefix and json-formatting-markdown-corpus-scan. Work directory remains under src/work/ until complete-stage close-artifacts runs."
 
   - id: json-formatting-citation-verifier-prefix
@@ -541,7 +541,7 @@ items:
   - id: json-formatting-markdown-corpus-scan
     title: Repo-wide Markdown dual-anchor citation layout compliance pass
     source: src/memory/features/json-formatting/delivery-report.md
-    owner: daedaline-engineer
+    owner: pancreator-engineer
     milestone: phase-5
     status: open
     priority: medium
@@ -557,7 +557,7 @@ items:
     notes: "Extend markdown citation compliance scan (or add scan-markdown-json-citations.mjs) to cover configured globs and run reformat-markdown-citations.mjs (or equivalent) for violations, with allowlisted normative anti-pattern examples only. Surfaces still out of current automated scan scope include src/memory/handbook/**, src/inbox/threads/**, docs/**, other personas, and archived work markdown. SHOULD batch with bootstrap-content-hash-refresh and citation-range-realignment-pass to avoid triple corpus churn."
 
   - id: chat-with-persona-pipeline-runtime
-    title: Implement chat-with-persona pipeline runtime and ddl chat (US-2)
+    title: Implement chat-with-persona pipeline runtime and pan chat (US-2)
     source: docs/PRD.md
     owner: coder
     milestone: m2
@@ -569,7 +569,7 @@ items:
       - /src/pipelines/chat-with-persona.yaml
       - /src/memory/backlog/index.yaml
     evidence: "Operator scope trim 2026-05-27 removed chat-with-persona from the M1 path. Bootstrap retains src/pipelines/chat-with-persona.yaml as a loadable skeleton only."
-    notes: "Wire ddl chat, /src/inbox/threads/<thread-id>/ persistence, and /end --emit artifact promotion when US-2 lights up at M2. Persona Ensemble runtime may still land at M4 per PRD §13."
+    notes: "Wire pan chat, /src/inbox/threads/<thread-id>/ persistence, and /end --emit artifact promotion when US-2 lights up at M2. Persona Ensemble runtime may still land at M4 per PRD §13."
 
   - id: m1-substrate-runtime-batch
     title: M1 substrate runtime batch — superseded intake skeleton (relocated from features)
@@ -588,7 +588,7 @@ items:
   - id: bootstrap-ci-narrow-paths-re-enable
     title: Re-enable GitHub Actions CI when runtime stabilizes
     source: src/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/spec.md
-    owner: daedaline-engineer
+    owner: pancreator-engineer
     milestone: phase-5
     status: cancelled
     priority: low

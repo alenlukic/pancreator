@@ -4,7 +4,7 @@
 
 The json-formatting feature ships a canonical JSON formatting policy across all Round-02 R1
 surfaces: repository `.json` artifacts, Markdown-embedded JSON, terminal/CLI output from
-`ddl`, and agent-chat JSON sketches. A shared canonical formatter module
+`pan`, and agent-chat JSON sketches. A shared canonical formatter module
 (`src/internal/tools/canonical-json-format.mjs`) provides `formatCanonicalJson`,
 `resolveAbbrevLen`, `abbreviateHashes`, and `rewriteJsonText`; the bulk migration script and
 CLI emitters each delegate to this single source. Abbreviation length derives from
@@ -82,7 +82,7 @@ extension, test and fixture additions.
     "contentHash": "514098b"
   }
   ```
-- Slice B (`daedaline-engineer`) executes the one-shot `.json` bulk migration evidence loop.
+- Slice B (`pancreator-engineer`) executes the one-shot `.json` bulk migration evidence loop.
 Because Slice A left the in-scope `.json` corpus conformant, first and second guarded write
 passes each reported zero rewrites, confirming idempotency without side effects.
   ```json
@@ -124,7 +124,7 @@ glossary and writers normalize stored abbreviated `contentHash` per operator dir
 ## Interfaces
 
 - `resolveAbbrevLen(repoRoot)` in `canonical-json-format.mjs` derives abbreviation length from
-the `DDL_JSON_FORMAT_ABBREV_LEN` env override (decimal digits, 4–255) or from
+the `PAN_JSON_FORMAT_ABBREV_LEN` env override (decimal digits, 4–255) or from
 `git rev-parse --short HEAD` at runtime. This function is the single source for all
 abbreviation length decisions.
   ```json
@@ -168,13 +168,13 @@ second pass on already-canonical output returns `changed: false`.
     "contentHash": "5c12707"
   }
   ```
-- CLI `stringifyCliJson(repoRoot, value)` in `@daedaline/cli/src/canonical-json-io.ts` is the
+- CLI `stringifyCliJson(repoRoot, value)` in `@pancreator/cli/src/canonical-json-io.ts` is the
 thin bridge that calls `resolveAbbrevLen`, `abbreviateHashes`, and `formatCanonicalJson` to
-serialize all `ddl` terminal output and `state.json` writes.
+serialize all `pan` terminal output and `state.json` writes.
   ```json
   {
     "kind": "lines",
-    "path": "src/internal/packages/@daedaline/cli/src/canonical-json-io.ts",
+    "path": "src/internal/packages/@pancreator/cli/src/canonical-json-io.ts",
     "range": [7, 12],
     "contentHash": "0ea7b62"
   }
@@ -240,7 +240,7 @@ stays bounded while a follow-on feature remains queued.
     "contentHash": "61ffd6b"
   }
   ```
-- The `--write` path requires `DAEDALINE_MIGRATION_GO=1`, preventing accidental mutation in
+- The `--write` path requires `PANCREATOR_MIGRATION_GO=1`, preventing accidental mutation in
 sandboxed or CI runs at the cost of one explicit operator action per write execution.
   ```json
   {
@@ -267,10 +267,10 @@ for future runs.
 
 1. Import `rewriteJsonText` from `canonical-json-format.mjs` to canonicalize any JSON
   string; the function shortens full-length hex hashes and reformats in a single call.
-2. Call `stringifyCliJson(repoRoot, value)` from `@daedaline/cli` for all `ddl` terminal
+2. Call `stringifyCliJson(repoRoot, value)` from `@pancreator/cli` for all `pan` terminal
   and `state.json` outputs; it wires `resolveAbbrevLen` so the abbreviation length is always
    derived from the live repo at write time.
-3. Set `DDL_JSON_FORMAT_ABBREV_LEN=7` in test environments that operate without a `.git`
+3. Set `PAN_JSON_FORMAT_ABBREV_LEN=7` in test environments that operate without a `.git`
   directory; tests that fork temp repos MUST set this variable in `beforeEach`/`afterEach` to
    avoid `cannot derive abbreviation length` errors.
 4. Run `node src/internal/tools/migrate-json-formatting.mjs --dry-run` at any time to verify
@@ -304,9 +304,9 @@ independent write passes.
 | ----------------------------------------------------------------------------------------------- | --------- | ---------------------------------- |
 | `node --test tests/*.test.mjs`                                                                  | 0         | `tests=71`, `pass=71`, `fail=0`    |
 | `node src/internal/tools/migrate-json-formatting.mjs --dry-run`                                 | 0         | `candidates=144`, `wouldRewrite=0` |
-| `DAEDALINE_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (pass 1) | 0         | `files rewritten=0`                |
+| `PANCREATOR_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (pass 1) | 0         | `files rewritten=0`                |
 | `node src/internal/tools/migrate-json-formatting.mjs --dry-run` (post-write)                    | 0         | `wouldRewrite=0`                   |
-| `DAEDALINE_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (pass 2) | 0         | `files rewritten=0`                |
+| `PANCREATOR_MIGRATION_GO=1 node src/internal/tools/migrate-json-formatting.mjs --write` (pass 2) | 0         | `files rewritten=0`                |
 | `node src/internal/tools/check-phase-0a-scaffold.mjs`                                           | 0         | no drift reported                  |
 | `node src/internal/tools/context-budget-report.mjs`                                             | 0         | report emitted                     |
 | `bash -n .cursor/hooks/enforce-policy-compliance.sh`                                            | 0         | shell syntax valid                 |

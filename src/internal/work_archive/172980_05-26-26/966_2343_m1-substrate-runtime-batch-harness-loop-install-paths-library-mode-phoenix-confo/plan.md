@@ -1,6 +1,6 @@
 # Plan — m1-substrate-runtime-batch
 
-The implement stage SHALL deliver a three-phase batch where Phase 1 establishes LangGraph-adjacent runtime primitives (WP-A checkpointer conformance and WP-B SDK runner wiring), Phase 2 compiles pipeline YAML into an executable graph with intervention side-channel semantics (WP-C), and Phase 3 closes operator-facing and conformance surfaces (WP-D, WP-E, WP-F) in parallel without violating Phase 1/2 gating. The batch MUST preserve the existing feature-delivery ledger contracts (`state.json`, `handoff.md`, `touch-set.json`) and MUST keep human ratification boundaries intact before any `ddl advance` call.
+The implement stage SHALL deliver a three-phase batch where Phase 1 establishes LangGraph-adjacent runtime primitives (WP-A checkpointer conformance and WP-B SDK runner wiring), Phase 2 compiles pipeline YAML into an executable graph with intervention side-channel semantics (WP-C), and Phase 3 closes operator-facing and conformance surfaces (WP-D, WP-E, WP-F) in parallel without violating Phase 1/2 gating. The batch MUST preserve the existing feature-delivery ledger contracts (`state.json`, `handoff.md`, `touch-set.json`) and MUST keep human ratification boundaries intact before any `pan advance` call.
 
 ## Delivery phasing
 
@@ -18,7 +18,7 @@ The implement stage SHALL deliver a three-phase batch where Phase 1 establishes 
 
 ### WP-A — LangGraph BaseCheckpointSaver conformance
 
-1. Extend `@daedaline/checkpointer-fs` checkpoint primitives so metadata and persistence shapes can map to LangGraph saver semantics.
+1. Extend `@pancreator/checkpointer-fs` checkpoint primitives so metadata and persistence shapes can map to LangGraph saver semantics.
 2. Add/adjust tests to assert checkpoint write/read/list behavior, metadata preservation, and checkpoint resume alignment with intervention checkpoints.
 3. Wire intervention manager usage to saver-aligned methods so pause/resume/abort flows do not maintain a parallel persistence implementation.
 
@@ -46,7 +46,7 @@ The implement stage SHALL deliver a three-phase batch where Phase 1 establishes 
 3. Add `tests/run-logger-conformance/helpers/boot-phoenix.mjs` and `tests/run-logger-conformance/helpers/wait-for-http.mjs` so smoke tests start Phoenix when Docker is available, skip with explicit reason when Docker is absent, and always tear down on exit.
 4. Add root `package.json` script `test:run-logger-conformance` that runs the conformance suite via `node --test tests/run-logger-conformance/*.test.mjs`.
 5. Add root devDependencies required by the harness (minimum: HTTP client for health/assertions and OTLP export helpers). Pin versions in `pnpm-lock.yaml`.
-6. Update `src/internal/packages/@daedaline/run-logger/README.md` to cite `tests/run-logger-conformance/` as conformance authority for Phoenix import.
+6. Update `src/internal/packages/@pancreator/run-logger/README.md` to cite `tests/run-logger-conformance/` as conformance authority for Phoenix import.
 
 **M1 scope note (operator ratified):** WP-D SHALL prove Phoenix import only. Verifying additional observability backends (Langfuse, OTel Collector, Jaeger, or equivalent) is deferred to milestone `M2` and tracked under backlog item `bootstrap-external-observability-phoenix-langfuse`. Proving interchangeability before Phoenix itself works is out of scope for this batch.
 
@@ -57,7 +57,7 @@ The implement stage SHALL deliver a three-phase batch where Phase 1 establishes 
 
 #### WP-D.2 — CI wiring
 
-1. Add `.github/workflows/run-logger-conformance.yml` with path filters on `src/internal/packages/@daedaline/run-logger/**` and `tests/run-logger-conformance/**`.
+1. Add `.github/workflows/run-logger-conformance.yml` with path filters on `src/internal/packages/@pancreator/run-logger/**` and `tests/run-logger-conformance/**`.
 2. The workflow SHALL run on `ubuntu-latest`, start Docker, execute `pnpm test:run-logger-conformance`, and fail closed when Phoenix boot or the smoke test fails.
 3. Keep `phase-0a-scaffold.yml` unchanged unless implementor needs a shared Docker setup snippet; path-filtered conformance MUST remain in the dedicated workflow.
 
@@ -70,39 +70,39 @@ The implement stage SHALL deliver a three-phase batch where Phase 1 establishes 
 
 1. Add `examples/library-script/` with minimal package scaffold, single entry script, and README.
 2. Implement script behavior to parse and validate persona markdown and emit `.cursor/agents/<name>.md` + `.cursor/rules/<name>.mdc` in a temp output path.
-3. Add smoke tests that run outside the monorepo and prove no reads under `src/memory/`, `src/inbox/`, or `daedaline.yaml`.
+3. Add smoke tests that run outside the monorepo and prove no reads under `src/memory/`, `src/inbox/`, or `pancreator.yaml`.
 
-### WP-F — install paths (`ddl init`, `create-daedaline`)
+### WP-F — install paths (`pan init`, `create-pancreator`)
 
-1. Replace deferred `ddl init` behavior with dry-run default, apply mode, conflict checks, adoption scan report emission, and inbox ratification item creation.
-2. Add `create-daedaline` scaffolding flow and ensure generated projects run `ddl inbox` + `ddl run feature-delivery`.
+1. Replace deferred `pan init` behavior with dry-run default, apply mode, conflict checks, adoption scan report emission, and inbox ratification item creation.
+2. Add `create-pancreator` scaffolding flow and ensure generated projects run `pan inbox` + `pan run feature-delivery`.
 3. Add non-destructive behavior tests to guarantee no overwrite without explicit force/confirm semantics.
 
 ## Validation commands
 
 ### Phase 1 gate
 
-- `pnpm --filter @daedaline/checkpointer-fs test`
-- `pnpm --filter @daedaline/runner-cursor test`
-- `pnpm --filter @daedaline/intervention test`
+- `pnpm --filter @pancreator/checkpointer-fs test`
+- `pnpm --filter @pancreator/runner-cursor test`
+- `pnpm --filter @pancreator/intervention test`
 
 ### Phase 2 gate
 
-- `pnpm --filter @daedaline/pipeline test`
-- `pnpm --filter @daedaline/cli test -- --runInBand feature-delivery`
-- `pnpm -w exec ddl run feature-delivery src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md`
+- `pnpm --filter @pancreator/pipeline test`
+- `pnpm --filter @pancreator/cli test -- --runInBand feature-delivery`
+- `pnpm -w exec pan run feature-delivery src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md`
 
 ### Phase 3 gate
 
-- `pnpm --filter @daedaline/run-logger test`
+- `pnpm --filter @pancreator/run-logger test`
 - `pnpm test:run-logger-conformance`
-- `pnpm --filter @daedaline/persona test`
-- `pnpm --filter @daedaline/cli test -- --runInBand run.ts`
+- `pnpm --filter @pancreator/persona test`
+- `pnpm --filter @pancreator/cli test -- --runInBand run.ts`
 - `pnpm test`
 
 ### Batch integration and compliance gate
 
-- `pnpm -w exec ddl status 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo`
+- `pnpm -w exec pan status 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo`
 - `node src/internal/tools/run-compliance.mjs`
 
 ## Acceptance traceability
@@ -127,10 +127,10 @@ documentation_impact:
     - src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md
     - docs/PRD.summary.md
     - .github/workflows/run-logger-conformance.yml
-    - src/internal/packages/@daedaline/run-logger/README.md
+    - src/internal/packages/@pancreator/run-logger/README.md
     - tests/run-logger-conformance/README.md
     - package.json
-    - src/internal/packages/@daedaline/cli/src/run.ts
+    - src/internal/packages/@pancreator/cli/src/run.ts
   deferred-items:
     - id: bootstrap-external-observability-phoenix-langfuse
       milestone: M2
@@ -145,11 +145,11 @@ documentation_impact:
 - {kind: lines, path: "src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md", range: [131, 169], contentHash: "5009d5a"}
 - {kind: lines, path: "src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md", range: [133, 188], contentHash: "a935d1b"}
 - {kind: lines, path: "src/memory/handbook/documentation-impact-contract.md", range: [47, 109], contentHash: "07a0370"}
-- {kind: symbol, path: "src/internal/packages/@daedaline/checkpointer-fs/src/fs-checkpoint-store.ts", symbol: "FsCheckpointStore", contentHash: "e0b1e0c"}
-- {kind: symbol, path: "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts", symbol: "CursorRunner.invoke", contentHash: "0c74713"}
-- {kind: symbol, path: "src/internal/packages/@daedaline/pipeline/src/compile.ts", symbol: "compilePipeline", contentHash: "98644dc"}
-- {kind: symbol, path: "src/internal/packages/@daedaline/pipeline/src/execute.ts", symbol: "executePipeline", contentHash: "cca08db"}
-- {kind: symbol, path: "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts", symbol: "advanceFeatureDelivery", contentHash: "1131dfc"}
-- {kind: symbol, path: "src/internal/packages/@daedaline/cli/src/run.ts", symbol: "parseAndRun", contentHash: "896e6a8"}
+- {kind: symbol, path: "src/internal/packages/@pancreator/checkpointer-fs/src/fs-checkpoint-store.ts", symbol: "FsCheckpointStore", contentHash: "e0b1e0c"}
+- {kind: symbol, path: "src/internal/packages/@pancreator/runner-cursor/src/cursor-runner.ts", symbol: "CursorRunner.invoke", contentHash: "0c74713"}
+- {kind: symbol, path: "src/internal/packages/@pancreator/pipeline/src/compile.ts", symbol: "compilePipeline", contentHash: "98644dc"}
+- {kind: symbol, path: "src/internal/packages/@pancreator/pipeline/src/execute.ts", symbol: "executePipeline", contentHash: "cca08db"}
+- {kind: symbol, path: "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts", symbol: "advanceFeatureDelivery", contentHash: "1131dfc"}
+- {kind: symbol, path: "src/internal/packages/@pancreator/cli/src/run.ts", symbol: "parseAndRun", contentHash: "896e6a8"}
 - {kind: lines, path: "docs/M1.index.md", range: [38, 101], contentHash: "186e2ec"}
 - {kind: lines, path: "docs/PRD.summary.md", range: [13, 50], contentHash: "05cf26a"}

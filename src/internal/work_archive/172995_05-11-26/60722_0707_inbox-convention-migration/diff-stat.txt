@@ -8,27 +8,27 @@
  pnpm-lock.yaml                                     |   6 +
  src/inbox/in/inbox_convention_migration.md         |   2 +-
  .../11700_2045_round-01-clarify.md                 |  32 --
- src/internal/packages/@daedaline/cli/README.md     |  14 +-
- src/internal/packages/@daedaline/cli/bin/ddl.js   |  50 ++
- src/internal/packages/@daedaline/cli/package.json  |   3 +-
- .../@daedaline/cli/src/feature-delivery-run.ts     | 625 ++++++++++++++++++++-
- .../packages/@daedaline/cli/src/run.test.ts        |  77 +++
- src/internal/packages/@daedaline/cli/src/run.ts    |  43 ++
- src/internal/packages/@daedaline/cli/tsconfig.json |   2 +-
- .../packages/@daedaline/core/tsconfig.json         |   2 +-
- .../@daedaline/inbox/src/file-inbox.test.ts        |  19 +-
- .../packages/@daedaline/inbox/src/file-inbox.ts    |  84 ++-
- .../packages/@daedaline/inbox/tsconfig.json        |   2 +-
- .../packages/@daedaline/intervention/tsconfig.json |   2 +-
- .../packages/@daedaline/mcp-server/README.md       |   2 +-
- .../@daedaline/mcp-server/bin/ddl-mcp-server.js   |  50 ++
- .../packages/@daedaline/mcp-server/package.json    |   4 +-
- .../@daedaline/mcp-server/src/ddl-execute.test.ts |  16 +-
- .../@daedaline/mcp-server/src/ddl-execute.ts      |  36 +-
- .../packages/@daedaline/mcp-server/tsconfig.json   |   2 +-
- .../packages/@daedaline/memory/tsconfig.json       |   2 +-
- .../packages/@daedaline/pipeline/tsconfig.json     |   2 +-
- .../packages/@daedaline/run-logger/tsconfig.json   |   2 +-
+ src/internal/packages/@pancreator/cli/README.md     |  14 +-
+ src/internal/packages/@pancreator/cli/bin/pan.js   |  50 ++
+ src/internal/packages/@pancreator/cli/package.json  |   3 +-
+ .../@pancreator/cli/src/feature-delivery-run.ts     | 625 ++++++++++++++++++++-
+ .../packages/@pancreator/cli/src/run.test.ts        |  77 +++
+ src/internal/packages/@pancreator/cli/src/run.ts    |  43 ++
+ src/internal/packages/@pancreator/cli/tsconfig.json |   2 +-
+ .../packages/@pancreator/core/tsconfig.json         |   2 +-
+ .../@pancreator/inbox/src/file-inbox.test.ts        |  19 +-
+ .../packages/@pancreator/inbox/src/file-inbox.ts    |  84 ++-
+ .../packages/@pancreator/inbox/tsconfig.json        |   2 +-
+ .../packages/@pancreator/intervention/tsconfig.json |   2 +-
+ .../packages/@pancreator/mcp-server/README.md       |   2 +-
+ .../@pancreator/mcp-server/bin/pan-mcp-server.js   |  50 ++
+ .../packages/@pancreator/mcp-server/package.json    |   4 +-
+ .../@pancreator/mcp-server/src/pan-execute.test.ts |  16 +-
+ .../@pancreator/mcp-server/src/pan-execute.ts      |  36 +-
+ .../packages/@pancreator/mcp-server/tsconfig.json   |   2 +-
+ .../packages/@pancreator/memory/tsconfig.json       |   2 +-
+ .../packages/@pancreator/pipeline/tsconfig.json     |   2 +-
+ .../packages/@pancreator/run-logger/tsconfig.json   |   2 +-
  src/internal/tools/migrate-inbox-convention.mjs    | 517 +++++++++++++++++
  src/internal/tools/migrate-timestamp-naming.mjs    | 177 ++----
  src/memory/active/current.md                       |   9 +-

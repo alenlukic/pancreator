@@ -53,16 +53,16 @@ When this audit cites trigger-narrowing obligations, the obligations SHALL match
 
 | Field | Value |
 | --- | --- |
-| Prior globs | `AGENTS.md`, `BOOTSTRAP.md`, `README.md`, `PRD.summary.md`, `PRD.index.md`; `alwaysApply: true`; body referenced `@AGENTS.md` plus a cross-rule pointer to `daedaline-engineer.mdc` / `src/personas/daedaline-engineer.md`. |
+| Prior globs | `AGENTS.md`, `BOOTSTRAP.md`, `README.md`, `PRD.summary.md`, `PRD.index.md`; `alwaysApply: true`; body referenced `@AGENTS.md` plus a cross-rule pointer to `pancreator-engineer.mdc` / `src/personas/pancreator-engineer.md`. |
 | New globs | `AGENTS.md` only; `alwaysApply: true`; body is `@AGENTS.md` only. |
 | Status | narrowed |
 | Rationale | `PRD.summary.md`, `PRD.index.md`, `BOOTSTRAP.md`, and `README.md` are **product context** per `{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [413, 415], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`; the always-on rule SHALL not re-attach them on every turn. The body SHALL stay minimal per `{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [372, 373], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}` and SHALL NOT chain-load another **internal operating content** rule. |
 
-## 2. `daedaline-engineer.mdc`
+## 2. `pancreator-engineer.mdc`
 
 | Field | Value |
 | --- | --- |
-| Prior globs | `src/inbox/in/**/*.md`, `src/internal/packages/@daedaline/**`, `src/internal/packages/daedaline/**`, `tools/**/*.mjs`, `tests/**/*.ts`, `tests/**/*.mjs`, `daedaline.yaml`, `daedaline-defaults.yaml`, `src/memory/handbook/**/*.md`, `src/personas/**/*.md`, `src/skills/**/SKILL.md`, `.cursor/rules/*.mdc`. |
+| Prior globs | `src/inbox/in/**/*.md`, `src/internal/packages/@pancreator/**`, `src/internal/packages/pancreator/**`, `tools/**/*.mjs`, `tests/**/*.ts`, `tests/**/*.mjs`, `pancreator.yaml`, `pancreator-defaults.yaml`, `src/memory/handbook/**/*.md`, `src/personas/**/*.md`, `src/skills/**/SKILL.md`, `.cursor/rules/*.mdc`. |
 | New globs | Same package, tool, test, config, inbox, skill, and `.cursor/rules/*.mdc` roots; `src/memory/handbook/**/*.md` replaced with explicit `src/memory/handbook/*.md` contract-route files plus `src/memory/handbook/contract-templates/**/*.md`; `src/personas/**/*.md` removed. |
 | Status | narrowed |
 | Rationale | `src/personas/**` is **internal operating content** per `{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [261, 262], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}` and SHALL not activate this rule unless the task authors Personas. A wholesale `src/memory/handbook/**` sweep SHALL yield to route-scoped handbook files and templates per `{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [386, 387], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}` and the route discipline at `{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [302, 303], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`. `src/work/**` stays absent per `{kind: lines, path: src/memory/features/active-memory-context-economy-pass-2/spec.md, range: [388, 390], contentHash: e6c4fcd2ef59f5cc9dfb5d528876b7e1e25dae7ccc9da22805d6343737ed0d9d}`. |

@@ -7,13 +7,13 @@
     "feature_id": "us-1-dogfood-phase-4-exit-evidence",
     "purpose": "Empirical Phase 4 exit evidence capture after scaffold review passes.",
     "deferred_artifacts": [
-      "Run nested ddl run feature-delivery for src/inbox/in/phase-4-dogfood-proof-bundle-index.md through all stages.",
-      "Run nested ddl run feature-delivery for src/inbox/in/phase-4-intervention-probe.md through pause, resume, and abort.",
+      "Run nested pan run feature-delivery for src/inbox/in/phase-4-dogfood-proof-bundle-index.md through all stages.",
+      "Run nested pan run feature-delivery for src/inbox/in/phase-4-intervention-probe.md through pause, resume, and abort.",
       "Phoenix trace screenshot or export for the proof-index nested run.",
       "Populated pause-resume-abort-evidence.json with state diffs, timestamps, and run-log event ids.",
       "Supervisor ship-stage staging and tech-writer delivery report.",
       "Timestamped src/inbox/out/ delivery-report copy.",
-      "Human ratification request outcome and any ratified daedaline.yaml phase advance.",
+      "Human ratification request outcome and any ratified pancreator.yaml phase advance.",
       "Conditional updates to AGENTS.md, docs/M1.index.md, and src/memory/active/current.md."
     ]
   },
@@ -81,7 +81,7 @@
     "Do not import Phoenix traces or claim trace verification in this scaffold slice.",
     "Do not populate pause, resume, and abort evidence as empirical proof in this scaffold slice.",
     "Do not create src/inbox/out/ delivery-report copies in this scaffold slice.",
-    "Do not update daedaline.yaml, docs/M1.index.md, src/memory/active/current.md, or AGENTS.md in this scaffold slice.",
+    "Do not update pancreator.yaml, docs/M1.index.md, src/memory/active/current.md, or AGENTS.md in this scaffold slice.",
     "Do not push, open a remote pull request, or commit.",
     "Do not read, write, traverse, or cite src/inbox/notes/."
   ],

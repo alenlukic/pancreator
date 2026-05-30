@@ -46,7 +46,7 @@ automation design.
 
 ## Acceptance criteria
 
-- `pnpm -w exec ddl run feature-delivery <day-bucket>/<intake-file>.md` starts a valid run
+- `pnpm -w exec pan run feature-delivery <day-bucket>/<intake-file>.md` starts a valid run
   for this subordinate directive.
 - Stage artifacts and transitions are recorded without false-positive hygiene failures tied
   to known subordinate QA context or expected generated files.

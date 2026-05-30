@@ -1,7 +1,7 @@
 # Phase 4 Proof Bundle Index
 
 This index anchors empirical Phase 4 exit evidence under
-`src/memory/features/us-1-dogfood-phase-4-exit/`. After `ddl close-artifacts`
+`src/memory/features/us-1-dogfood-phase-4-exit/`. After `pan close-artifacts`
 relocates a nested run from `src/work/<day>/<task-id>/` into
 `src/internal/work_archive/<day>/<task-id>/`, the **librarian** (or other closing
 persona named on `next-prompt.md`) SHALL refresh the work-directory and
@@ -22,7 +22,7 @@ SHALL NOT hand-maintain path bookkeeping for closed nested runs.
 | Field | Value |
 | --- | --- |
 | Evidence doc | `src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md` |
-| Screenshot or export | Deferred — see evidence doc (`@daedaline/run-logger` Phoenix importer not shipped in this bootstrap slice). |
+| Screenshot or export | Deferred — see evidence doc (`@pancreator/run-logger` Phoenix importer not shipped in this bootstrap slice). |
 
 ## Intervention probe (pause, resume, abort)
 
@@ -47,12 +47,12 @@ SHALL NOT hand-maintain path bookkeeping for closed nested runs.
 The Phase 4 exit checklist is now ratified with one remaining engineering deferral:
 
 1. Satisfied: human ratification is recorded in `phase-4-ratification-request.md`.
-2. Open engineering backlog: external trace verification (Phoenix or Langfuse) is **not yet implemented** under `phoenix-trace-evidence.md` because the `@daedaline/run-logger` OTLP → observability-backend path is deferred in this bootstrap slice; remediation stays with **daedaline-engineer**.
+2. Open engineering backlog: external trace verification (Phoenix or Langfuse) is **not yet implemented** under `phoenix-trace-evidence.md` because the `@pancreator/run-logger` OTLP → observability-backend path is deferred in this bootstrap slice; remediation stays with **pancreator-engineer**.
 3. Satisfied: the supervisor-local staged PR outcome and matching `src/inbox/out/172987_05-19-26/77614_0226_us-1-dogfood-phase-4-exit-delivery-report.md` delivery copy exist for the US-1 dogfood slice.
 
 Intervention pause / resume / abort evidence is **captured** in
 `pause-resume-abort-evidence.json` with archive-local snapshot paths.
 
-Remediation owner for path realignment after `ddl close-artifacts`: **librarian**
-per nested run `next-prompt.md`. Remediation owner for Phoenix wiring: **daedaline-engineer**
+Remediation owner for path realignment after `pan close-artifacts`: **librarian**
+per nested run `next-prompt.md`. Remediation owner for Phoenix wiring: **pancreator-engineer**
 per PRD run-logger scope.

@@ -4,11 +4,11 @@
 
 External Phoenix (or Langfuse) import is **not** an operator-led bookkeeping step
 in this repository slice. Run logs are preserved as JSONL under the nested task
-work directory (and, after `ddl close-artifacts`, under
+work directory (and, after `pan close-artifacts`, under
 `src/internal/work_archive/<day>/<task-id>/`). Filling a live trace screenshot or
-export is **blocked on product implementation**: `@daedaline/run-logger` OTLP
+export is **blocked on product implementation**: `@pancreator/run-logger` OTLP
 exporters and a documented importer path per `docs/PRD.md` / README Phase 4 exit
-notes. **daedaline-engineer** owns that wiring; until it lands, Phase 4 exit
+notes. **pancreator-engineer** owns that wiring; until it lands, Phase 4 exit
 remains open on trace verification even when pause/resume/abort and nested
 pipelines are complete.
 

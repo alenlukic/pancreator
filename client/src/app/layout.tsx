@@ -3,7 +3,7 @@ import { palette } from "@/services/theme";
 import "./globals.css";
 
 export const metadata = {
-  title: "Daedaline Repository Dashboard",
+  title: "Pancreator Repository Dashboard",
   description: "Operator-local v0 dashboard for repository relationships and activity",
 };
 

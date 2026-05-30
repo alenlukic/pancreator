@@ -57,7 +57,7 @@ const DOMAINS: Domain[] = [
     path: "src/internal/packages",
     label: "Internal Packages",
     relatesTo: ["work", "memory"],
-    blurb: "Runtime substrate packages powering ddl and runners.",
+    blurb: "Runtime substrate packages powering pan and runners.",
   },
 ];
 
@@ -195,7 +195,7 @@ export function DashboardPage() {
     <div className="app-shell" data-testid="dashboard-root">
       <header className="app-header">
         <div>
-          <p className="eyebrow">Daedaline operator dashboard</p>
+          <p className="eyebrow">Pancreator operator dashboard</p>
           <h1>Repository explorer</h1>
         </div>
         <p className="header-summary">{relationshipSummary}</p>

@@ -57,12 +57,12 @@ references:
     contentHash: ef10f9f
     note: Root package.json carries no top-level test script; WP-A adds the missing "test" entry running turbo run test plus named node-test suites.
   - kind: lines
-    path: src/internal/packages/@daedaline/cli/src/run.ts
+    path: src/internal/packages/@pancreator/cli/src/run.ts
     range: [1, 50]
     contentHash: f78e151
     note: run.ts contains the stub() helper and deferred-verb exits that WP-A CI smoke tests must exercise.
   - kind: lines
-    path: src/internal/packages/@daedaline/cli/src/run.test.ts
+    path: src/internal/packages/@pancreator/cli/src/run.test.ts
     range: [1, 30]
     contentHash: efb65fa
     note: Package vitest suite exists but is not exercised by CI today; WP-A wires turbo run test so these specs run on every PR.
@@ -86,7 +86,7 @@ references:
 # Spec
 
 This Feature SHALL deliver four coordinated quality-ratchet improvements to the
-Daedaline bootstrap. Each improvement corresponds to a named work package (WP)
+Pancreator bootstrap. Each improvement corresponds to a named work package (WP)
 that retains its original `feature_id` for downstream tracking and feature-folder
 creation.
 
@@ -109,8 +109,8 @@ patches `contentHash` placeholders and stale hashes across Markdown fenced JSON,
 documented `TBD-on-commit` placeholders.
 
 **WP-D (`mcp-server-readonly-tool-wireup`)** SHALL wire the four highest-value
-read-only MCP tools — `ddl.feature.list`, `ddl.feature.show`, `ddl.status`,
-and `ddl.memory.query` — so they return typed results rather than
+read-only MCP tools — `pan.feature.list`, `pan.feature.show`, `pan.status`,
+and `pan.memory.query` — so they return typed results rather than
 `{"status":"stub"}` envelopes.
 
 Work packages MUST land in delivery order **A → B → C → D**: CI must run tests
@@ -126,7 +126,7 @@ test harness.
   `turbo run test` and the four named `node --test` suites (`repo-structure`,
   `migrate-json-formatting`, `migration`, `context-budget`) in a single
   invocation.
-- When `turbo run test` executes, each `@daedaline/*` package SHALL resolve a
+- When `turbo run test` executes, each `@pancreator/*` package SHALL resolve a
   `test` script entry that invokes its existing vitest config.
 - The CI workflow SHALL execute `pnpm test` as a named step after `lint`,
   `typecheck`, `attw`, and `publint` succeed.
@@ -182,26 +182,26 @@ test harness.
 
 ### WP-D — MCP read-only tool wire-up
 
-- When an MCP client calls `ddl.feature.list`, the handler SHALL return a typed
+- When an MCP client calls `pan.feature.list`, the handler SHALL return a typed
   array of feature summaries derived from `src/memory/features/*/index.json`
   entries, not a `{"status":"stub"}` envelope.
-- When an MCP client calls `ddl.feature.show` with a `feature_id` argument, the
+- When an MCP client calls `pan.feature.show` with a `feature_id` argument, the
   handler SHALL return the typed spec and index data for that feature, or a
   structured not-found error when the feature does not exist.
-- When an MCP client calls `ddl.status`, the handler SHALL return a typed
-  pipeline-status summary derived from active work state and `daedaline.yaml`.
-- When an MCP client calls `ddl.memory.query` with a `query` argument, the
+- When an MCP client calls `pan.status`, the handler SHALL return a typed
+  pipeline-status summary derived from active work state and `pancreator.yaml`.
+- When an MCP client calls `pan.memory.query` with a `query` argument, the
   handler SHALL return typed memory entries matching the query from the active
   and handbook memory tiers.
 - All four handlers SHALL return responses conforming to a shared typed envelope
   that propagates dual-anchor citation metadata where applicable.
 - A vitest suite SHALL exercise all four tools through the stdio MCP transport
   and SHALL assert that no handler returns `{"status":"stub"}`.
-- The `@daedaline/mcp-server` README SHALL document the wired read surface and
+- The `@pancreator/mcp-server` README SHALL document the wired read surface and
   SHALL identify the eight remaining write tools as deferred with their milestone
   tracking pointers.
 - Remaining write MCP tools SHALL remain stubbed using the structured deferral
-  protocol per `src/internal/packages/@daedaline/cli/src/run.ts` when that
+  protocol per `src/internal/packages/@pancreator/cli/src/run.ts` when that
   protocol ships; until then, they MAY retain the existing stub envelope.
 
 ### Cross-cutting
@@ -216,7 +216,7 @@ test harness.
   for the three new tools (`run-compliance.mjs`, `refresh-citations.mjs`, and
   the MCP vitest suite).
 - Coverage gating; threshold-policy work is deferred to M2.
-- A `ddl compliance run` CLI verb; the node script is sufficient until M2.
+- A `pan compliance run` CLI verb; the node script is sufficient until M2.
 - LLM-judge descriptor execution; that is deferred to M2 per PRD §4.5.
 - Resolving `gone` citations whose target files no longer exist in the working
   tree; `refresh-citations.mjs` SHALL skip absent paths with a logged warning.
@@ -231,10 +231,10 @@ The following persona assignments are RECOMMENDED for the plan stage:
 
 | Work package | Recommended owner(s) |
 |---|---|
-| WP-A — `pnpm test` script and package `test` entries | `daedaline-engineer` (aggregator, package scripts); `coder` (CI workflow); `reviewer` (runtime budget) |
-| WP-B — Compliance runner and CI gate | `daedaline-engineer` (runner, CI); `compliance-auditor` (adapter contract, finding m-02 closure); `reviewer` (exit-code audit) |
-| WP-C — Citation refresh tool | `daedaline-engineer` (tool, node-test suite); `librarian` (post-merge sweep); `compliance-auditor` (m-02 closure verification) |
-| WP-D — MCP read handlers | `tech-lead` (shared result envelope design); `daedaline-engineer` (handlers, vitest suite); `reviewer` (no-write audit) |
+| WP-A — `pnpm test` script and package `test` entries | `pancreator-engineer` (aggregator, package scripts); `coder` (CI workflow); `reviewer` (runtime budget) |
+| WP-B — Compliance runner and CI gate | `pancreator-engineer` (runner, CI); `compliance-auditor` (adapter contract, finding m-02 closure); `reviewer` (exit-code audit) |
+| WP-C — Citation refresh tool | `pancreator-engineer` (tool, node-test suite); `librarian` (post-merge sweep); `compliance-auditor` (m-02 closure verification) |
+| WP-D — MCP read handlers | `tech-lead` (shared result envelope design); `pancreator-engineer` (handlers, vitest suite); `reviewer` (no-write audit) |
 | Batch integration and sequencing | `supervisor` (A→B→C→D ordering); `tech-writer` (handbook and contract-format docs for refresh tool) |
 
 ## Open questions

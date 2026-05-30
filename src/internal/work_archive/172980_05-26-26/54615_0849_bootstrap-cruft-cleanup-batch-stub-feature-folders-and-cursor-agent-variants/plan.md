@@ -2,7 +2,7 @@
 
 ## Architecture summary
 
-This plan executes the batch as a non-destructive normalization pass: Work package A classifies all 20 `src/memory/features/daedaline-*/` folders as `author` and completes each folder to the reference shape (`spec.md`, `delivery-report.md`, `index.json`) while preserving existing `plan.md`, `tasks.md`, and `contracts/` assets; Work package B removes per-persona `-standard` and `-complex` Cursor projection files and moves tier-selection guidance into canonical metadata/docs so operators can choose tier without filename suffix coupling.
+This plan executes the batch as a non-destructive normalization pass: Work package A classifies all 20 `src/memory/features/pancreator-*/` folders as `author` and completes each folder to the reference shape (`spec.md`, `delivery-report.md`, `index.json`) while preserving existing `plan.md`, `tasks.md`, and `contracts/` assets; Work package B removes per-persona `-standard` and `-complex` Cursor projection files and moves tier-selection guidance into canonical metadata/docs so operators can choose tier without filename suffix coupling.
 
 ## Task plan
 
@@ -18,26 +18,26 @@ This plan executes the batch as a non-destructive normalization pass: Work packa
 
 | Folder | Bucket | Rationale |
 |---|---|---|
-| `src/memory/features/daedaline-adopter-scan/` | `author` | Folder already carries `spec.md`, `plan.md`, `tasks.md`, and `contracts/`; complete missing index/report surfaces only. |
-| `src/memory/features/daedaline-checkpointer-fs/` | `author` | Same normalization path; preserve existing contract corpus and add missing index/report. |
-| `src/memory/features/daedaline-cli/` | `author` | Existing Phase-2 package contract scope should remain; add reference-shape artifacts. |
-| `src/memory/features/daedaline-contract/` | `author` | Existing contract coverage should remain; align folder metadata/report shape. |
-| `src/memory/features/daedaline-contract-runner-llm-judge/` | `author` | Keep package-local contracts; complete index/report surfaces. |
-| `src/memory/features/daedaline-contract-runner-rego/` | `author` | Keep package-local contracts; complete index/report surfaces. |
-| `src/memory/features/daedaline-contract-style/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-core/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-env-isolation/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-inbox/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-intervention/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-mcp-server/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-memory/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-notifier/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-persona/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-pipeline/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-policy/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-run-logger/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-runner-cursor/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
-| `src/memory/features/daedaline-worktree/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-adopter-scan/` | `author` | Folder already carries `spec.md`, `plan.md`, `tasks.md`, and `contracts/`; complete missing index/report surfaces only. |
+| `src/memory/features/pancreator-checkpointer-fs/` | `author` | Same normalization path; preserve existing contract corpus and add missing index/report. |
+| `src/memory/features/pancreator-cli/` | `author` | Existing Phase-2 package contract scope should remain; add reference-shape artifacts. |
+| `src/memory/features/pancreator-contract/` | `author` | Existing contract coverage should remain; align folder metadata/report shape. |
+| `src/memory/features/pancreator-contract-runner-llm-judge/` | `author` | Keep package-local contracts; complete index/report surfaces. |
+| `src/memory/features/pancreator-contract-runner-rego/` | `author` | Keep package-local contracts; complete index/report surfaces. |
+| `src/memory/features/pancreator-contract-style/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-core/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-env-isolation/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-inbox/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-intervention/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-mcp-server/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-memory/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-notifier/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-persona/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-pipeline/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-policy/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-run-logger/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-runner-cursor/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
+| `src/memory/features/pancreator-worktree/` | `author` | Existing authored folder; normalize to reference shape without deletion. |
 
 ## Work package B implementation notes
 

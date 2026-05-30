@@ -12,7 +12,7 @@ Citations: `{kind: lines, path: "tests/run-compliance.test.mjs", range: [18, 88]
 
 ### consider
 
-- Touch-set traceability is complete for the declared implement scope, but `touch-set.json` still includes three paths with no current diff (`src/internal/packages/@daedaline/mcp-server/src/create-mcp-server.ts`, `src/internal/tools/canonical-json-format.mjs`, and `src/memory/features/ci-best-practices-batch/index.json`). Keeping only materially changed files in future batches would reduce reviewer noise while preserving auditability. Citation: `{kind: lines, path: "src/work/172980_05-26-26/24959_1704_ci-best-practices-batch/touch-set.json", range: [27, 38], contentHash: "6b2384d"}`.
+- Touch-set traceability is complete for the declared implement scope, but `touch-set.json` still includes three paths with no current diff (`src/internal/packages/@pancreator/mcp-server/src/create-mcp-server.ts`, `src/internal/tools/canonical-json-format.mjs`, and `src/memory/features/ci-best-practices-batch/index.json`). Keeping only materially changed files in future batches would reduce reviewer noise while preserving auditability. Citation: `{kind: lines, path: "src/work/172980_05-26-26/24959_1704_ci-best-practices-batch/touch-set.json", range: [27, 38], contentHash: "6b2384d"}`.
 
 ### nit
 

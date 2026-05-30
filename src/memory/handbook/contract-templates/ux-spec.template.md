@@ -43,8 +43,8 @@ clause lives alongside `ux-spec.md` in the feature folder.
 | `description` | yes | EARS, atomic, quantified (contrast ratio, motion ms, etc.). |
 | `references` | yes | Cite the WCAG criterion or design-system token. |
 | `runtime` | yes | Per-kind payload. |
-| `metadata.daedaline.wcag-criteria` | yes-if-a11y | Array of WCAG IDs (e.g., `["1.4.3", "2.4.7"]`). |
-| `metadata.daedaline.motion-budget-ms` | optional | Maximum animation duration. |
+| `metadata.pancreator.wcag-criteria` | yes-if-a11y | Array of WCAG IDs (e.g., `["1.4.3", "2.4.7"]`). |
+| `metadata.pancreator.motion-budget-ms` | optional | Maximum animation duration. |
 
 ## M1 scaffold (`kind: llm-judge` fallback)
 
@@ -86,9 +86,9 @@ runtime:
     seed: 42
     cost_ceiling_usd: 0.50
 metadata:
-  daedaline.contract_id: <id>
-  daedaline.applies_to: artifact-symbol:/src/memory/features/<id>/ux-spec.md#<symbol>
-  daedaline.wcag-criteria: ["<WCAG ID>"]            # REQUIRED if a11y
+  pancreator.contract_id: <id>
+  pancreator.applies_to: artifact-symbol:/src/memory/features/<id>/ux-spec.md#<symbol>
+  pancreator.wcag-criteria: ["<WCAG ID>"]            # REQUIRED if a11y
 ```
 
 ## M2 scaffold (`kind: axe`)
@@ -118,9 +118,9 @@ runtime:
   url: http://localhost:<port>/checkout/summary
   rules: [color-contrast]
 metadata:
-  daedaline.contract_id: <feature>.ux.color-contrast
-  daedaline.applies_to: artifact-symbol:/src/memory/features/<id>/ux-spec.md#Color-and-Contrast
-  daedaline.wcag-criteria: ["1.4.3"]
+  pancreator.contract_id: <feature>.ux.color-contrast
+  pancreator.applies_to: artifact-symbol:/src/memory/features/<id>/ux-spec.md#Color-and-Contrast
+  pancreator.wcag-criteria: ["1.4.3"]
 ```
 
 ## M2 scaffold (`kind: playwright`)
@@ -148,9 +148,9 @@ spec: /src/memory/features/<id>/contracts/focus-trap.spec.ts
 runtime:
   test_describe: <feature>.ux.focus-trap
 metadata:
-  daedaline.contract_id: <feature>.ux.focus-trap
-  daedaline.applies_to: artifact-symbol:/src/memory/features/<id>/ux-spec.md#Modal-Focus-Behavior
-  daedaline.wcag-criteria: ["2.4.3", "2.4.7"]
+  pancreator.contract_id: <feature>.ux.focus-trap
+  pancreator.applies_to: artifact-symbol:/src/memory/features/<id>/ux-spec.md#Modal-Focus-Behavior
+  pancreator.wcag-criteria: ["2.4.3", "2.4.7"]
 ```
 
 ## Failure-handling

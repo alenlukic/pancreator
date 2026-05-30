@@ -2,8 +2,8 @@
 
 ## What changed in this pass
 
-- **Touch-set contract:** Added explicit `update` entries for the three `@daedaline/cli` source paths used for run-log intervention traceability (aligns ratified scope with existing CLI changes).
-- **Plan-stage evidence:** Re-ran `ddl pause` → `ddl resume` → `ddl abort` with the ledger at **live `plan`** (`repair-state` positioning), then restored **implement** re-entry via `repair-state` and must_fix-aligned `state.json` edits; regenerated task snapshots, intervention journal, and `run.log.jsonl` intervention lines **10–12** with `daedaline.stage_id` **`plan`**.
+- **Touch-set contract:** Added explicit `update` entries for the three `@pancreator/cli` source paths used for run-log intervention traceability (aligns ratified scope with existing CLI changes).
+- **Plan-stage evidence:** Re-ran `pan pause` → `pan resume` → `pan abort` with the ledger at **live `plan`** (`repair-state` positioning), then restored **implement** re-entry via `repair-state` and must_fix-aligned `state.json` edits; regenerated task snapshots, intervention journal, and `run.log.jsonl` intervention lines **10–12** with `pancreator.stage_id` **`plan`**.
 - **Structured evidence:** Rewrote `src/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json` with new timestamps and `trace_id:span_id` citations.
 - **Reports:** Updated `implementation-report.md`; added this `test-report.md`.
 

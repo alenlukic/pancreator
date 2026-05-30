@@ -28,7 +28,7 @@ The scope of this document covers Goal 1 above + Goal 3 as it pertains to Goal 1
 - As an operator, I should be able to easily understand the nature and content of artifacts via consistent and high-signal naming symbols.
 
 ### Out Of Scope
-- As an operator, I should be able to focus on the parts of Daedaline which actually require my attention, and avoid content that's purely for agents.
+- As an operator, I should be able to focus on the parts of Pancreator which actually require my attention, and avoid content that's purely for agents.
 
 ## Naming Conventions
 

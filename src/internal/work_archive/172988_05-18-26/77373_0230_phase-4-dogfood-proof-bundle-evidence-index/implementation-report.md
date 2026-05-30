@@ -2,7 +2,7 @@
 
 ## Scope
 
-Implement stage **re-entry after `must_fix`**: satisfy `review.md` findings without running `ddl advance`.
+Implement stage **re-entry after `must_fix`**: satisfy `review.md` findings without running `pan advance`.
 
 ## What was implemented (initial pass + re-entry)
 
@@ -14,7 +14,7 @@ Implement stage **re-entry after `must_fix`**: satisfy `review.md` findings with
 
 ## Validation (required)
 
-Commands run from repository root `/Users/alen/Dev/daedaline`.
+Commands run from repository root `/Users/alen/Dev/pancreator`.
 
 | Command | Result |
 |---------|--------|

@@ -38,7 +38,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
   "range": [250, 343],
   "contentHash": "7c5e4d7"
 }
@@ -58,7 +58,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/pipeline/src/execute.ts",
+  "path": "src/internal/packages/@pancreator/pipeline/src/execute.ts",
   "range": [69, 95],
   "contentHash": "d86f5e2"
 }
@@ -78,7 +78,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
   "range": [412, 547],
   "contentHash": "87b4929"
 }
@@ -91,7 +91,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/run.ts",
   "range": [251, 423],
   "contentHash": "7c5e4d7"
 }
@@ -100,7 +100,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
   "range": [250, 562],
   "contentHash": "7c5e4d7"
 }
@@ -111,7 +111,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/repo-env.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/repo-env.ts",
   "range": [1, 46],
   "contentHash": "87b4929"
 }
@@ -120,7 +120,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
   "range": [131, 145],
   "contentHash": "87b4929"
 }
@@ -131,7 +131,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/runner-cursor/src/cursor-sdk-prereqs.ts",
+  "path": "src/internal/packages/@pancreator/runner-cursor/src/cursor-sdk-prereqs.ts",
   "range": [53, 110],
   "contentHash": "87b4929"
 }
@@ -140,7 +140,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/runner-cursor/src/sdk-transport.ts",
+  "path": "src/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts",
   "range": [40, 87],
   "contentHash": "87b4929"
 }
@@ -151,7 +151,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/pipeline/src/execute.ts",
+  "path": "src/internal/packages/@pancreator/pipeline/src/execute.ts",
   "range": [5, 95],
   "contentHash": "d86f5e2"
 }
@@ -160,7 +160,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/pipeline/src/pipeline.test.ts",
+  "path": "src/internal/packages/@pancreator/pipeline/src/pipeline.test.ts",
   "range": [10, 50],
   "contentHash": "d86f5e2"
 }
@@ -202,7 +202,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/runner-cursor/src/cursor-sdk-prereqs.ts",
+  "path": "src/internal/packages/@pancreator/runner-cursor/src/cursor-sdk-prereqs.ts",
   "range": [53, 110],
   "contentHash": "87b4929"
 }
@@ -230,12 +230,12 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 
 ## Usage Guidelines
 
-- To start an SDK-backed run, set `runner.cursor.invocation: sdk`, run `ddl run feature-delivery`, and expect one runner invocation plus `state.json` and `run.log.jsonl` output.
+- To start an SDK-backed run, set `runner.cursor.invocation: sdk`, run `pan run feature-delivery`, and expect one runner invocation plus `state.json` and `run.log.jsonl` output.
 
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
   "range": [1319, 1365],
   "contentHash": "7c5e4d7"
 }
@@ -255,7 +255,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
   "range": [1367, 1399],
   "contentHash": "7c5e4d7"
 }
@@ -275,7 +275,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/pipeline/src/pipeline.test.ts",
+  "path": "src/internal/packages/@pancreator/pipeline/src/pipeline.test.ts",
   "range": [10, 50],
   "contentHash": "d86f5e2"
 }
@@ -295,7 +295,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+  "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
   "range": [410, 482],
   "contentHash": "7c5e4d7"
 }

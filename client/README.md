@@ -1,4 +1,4 @@
-# Daedaline v0 Dashboard (`client/`)
+# Pancreator v0 Dashboard (`client/`)
 
 Operator-local Next.js dashboard for exploring repository relationships, reading and editing authorized files, and viewing reverse-chronological activity.
 

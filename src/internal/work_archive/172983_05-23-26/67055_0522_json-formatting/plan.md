@@ -41,7 +41,7 @@ references:
     note: Source directive requires pretty JSON for output files, terminal/CLI, and agent chat, plus migration.
 ---
 
-This re-entry plan SHALL replace the superseded narrowed-scope plan set and SHALL implement one canonical JSON writer policy across all ratified surfaces: repository `.json` artifacts, markdown-embedded JSON objects, terminal/CLI JSON output, and agent-chat JSON output. Implementation SHALL remain split into ordered slices so policy and checks land before one-shot rewrite evidence: slice A (`coder`) updates format utilities, output call sites, compliance descriptors, and tests; slice B (`daedaline-engineer`) executes the `.json` bulk migration and captures proof. This plan SHALL NOT reopen deferred verifier logic.
+This re-entry plan SHALL replace the superseded narrowed-scope plan set and SHALL implement one canonical JSON writer policy across all ratified surfaces: repository `.json` artifacts, markdown-embedded JSON objects, terminal/CLI JSON output, and agent-chat JSON output. Implementation SHALL remain split into ordered slices so policy and checks land before one-shot rewrite evidence: slice A (`coder`) updates format utilities, output call sites, compliance descriptors, and tests; slice B (`pancreator-engineer`) executes the `.json` bulk migration and captures proof. This plan SHALL NOT reopen deferred verifier logic.
 
 ## Implementation Tasks
 
@@ -70,13 +70,13 @@ This re-entry plan SHALL replace the superseded narrowed-scope plan set and SHAL
 Implementation SHALL proceed in this order:
 
 - Slice A (`coder`): land formatter/output/compliance/test/glossary updates.
-- Slice B (`daedaline-engineer`): run bulk `.json` migration and capture evidence.
+- Slice B (`pancreator-engineer`): run bulk `.json` migration and capture evidence.
 
 This order SHALL reduce churn and false negatives by ensuring enforcement logic and assertions exist before repository-wide rewrite evidence is collected.
 
 ## Handoff Notes
 
 - Primary executor persona: `coder`.
-- Bulk migration executor persona: `daedaline-engineer`.
+- Bulk migration executor persona: `pancreator-engineer`.
 - Companion deferred feature id: `json-formatting-citation-verifier-prefix`.
 - Human ratification gate SHALL occur before any state transition.

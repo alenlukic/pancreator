@@ -1,5 +1,5 @@
 {
-  "schema": "daedaline.inbox-artifact-index.v1",
+  "schema": "pancreator.inbox-artifact-index.v1",
   "generatedAt": "2026-05-25T04:25:46.935Z",
   "threads": [
     "src/inbox/threads/172983_05-23-26/json-formatting/67080_0522_round-02-operator-scope-correction.md",

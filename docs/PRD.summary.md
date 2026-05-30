@@ -4,11 +4,11 @@ This file is a **compact orientation** for agents and operators. It MUST NOT
 replace `docs/PRD.md` for line-anchored citations, contract authoring, or detailed
 MVP scope. Read full `docs/PRD.md` when the task requires those surfaces.
 
-## What Daedaline is
+## What Pancreator is
 
-Daedaline is a **simulated product-organization** for agentic software
+Pancreator is a **simulated product-organization** for agentic software
 delivery: personas, pipelines, durable `/src/memory/`, a file inbox, and a future
-control plane (`pnpm -w exec ddl` for feature-delivery, init, and inbox flows).
+control plane (`pnpm -w exec pan` for feature-delivery, init, and inbox flows).
 
 ## MVP focus (from PRD)
 
@@ -25,13 +25,13 @@ control plane (`pnpm -w exec ddl` for feature-delivery, init, and inbox flows).
 
 ## Bootstrap state in this repo
 
-`daedaline.yaml` tracks this repo at Bootstrap Phase 5 with status
+`pancreator.yaml` tracks this repo at Bootstrap Phase 5 with status
 `phase-5-in-progress`. Phases -1 through 4 are complete: the repo
 has scaffold, handbook seeds, personas, skills, M1 contract feature folders,
 Phase 3 substrate packages, the five static MVP pipeline definition files,
-and a ratified US-1 dogfood exit. The `ddl` CLI surface
+and a ratified US-1 dogfood exit. The `pan` CLI surface
 invokes `feature-delivery` into a state-machine, handoff, and bounded
-next-prompt scaffold; `ddl advance` records validated stage artifacts.
+next-prompt scaffold; `pan advance` records validated stage artifacts.
 Full automatic Cursor/model/LangGraph execution is not yet complete.
 
 M1 US-8 proof is package-boundary enforcement (no horizontal primitive deps, sub-path
@@ -45,7 +45,7 @@ runtime and example apps are backlog-deferred past M1; see `src/memory/backlog/i
 - Full normative spec: `docs/PRD.md` only for exact requirements or citations
 - Phase plan: `docs/BOOTSTRAP.md` only when `docs/M1.index.md` is insufficient
 - Context and indexing policy: `src/memory/handbook/context-economy.md`
-- Live config and project root: `src/memory/handbook/daedaline-config.md`
+- Live config and project root: `src/memory/handbook/pancreator-config.md`
 
 ## Token-economy rule
 

@@ -44,11 +44,11 @@ The clause SHOULD live alongside `threat-model.md` in the feature folder.
 | `description` | yes | EARS, atomic, mitigation-named. |
 | `references` | yes | OWASP-ASVS reference plus the threat-model section. |
 | `runtime` | yes | Per-kind payload. |
-| `metadata.daedaline.stride` | yes | One of `spoofing`, `tampering`, `repudiation`, `information-disclosure`, `denial-of-service`, `elevation-of-privilege`. |
-| `metadata.daedaline.asvs` | yes | OWASP-ASVS section ID. |
-| `metadata.daedaline.likelihood` | yes | 1–5. |
-| `metadata.daedaline.impact` | yes | 1–5. |
-| `metadata.daedaline.cwe` | optional | Comma-separated CWE IDs. |
+| `metadata.pancreator.stride` | yes | One of `spoofing`, `tampering`, `repudiation`, `information-disclosure`, `denial-of-service`, `elevation-of-privilege`. |
+| `metadata.pancreator.asvs` | yes | OWASP-ASVS section ID. |
+| `metadata.pancreator.likelihood` | yes | 1–5. |
+| `metadata.pancreator.impact` | yes | 1–5. |
+| `metadata.pancreator.cwe` | optional | Comma-separated CWE IDs. |
 
 ## M1 scaffold (`kind: rego` — structural mitigation)
 
@@ -72,16 +72,16 @@ references:
     note: "STRIDE-Spoofing mitigation #2."
 spec: /src/memory/features/<id>/contracts/session-token-rotation.rego
 runtime:
-  package: daedaline.security.session
-  query: data.daedaline.security.session.deny
+  package: pancreator.security.session
+  query: data.pancreator.security.session.deny
 metadata:
-  daedaline.contract_id: <feature>.security.spoofing.session-token-rotation
-  daedaline.applies_to: file-path:config/auth/session.yaml
-  daedaline.stride: spoofing
-  daedaline.asvs: V3.3.1
-  daedaline.likelihood: 3
-  daedaline.impact: 4
-  daedaline.cwe: "CWE-613, CWE-384"
+  pancreator.contract_id: <feature>.security.spoofing.session-token-rotation
+  pancreator.applies_to: file-path:config/auth/session.yaml
+  pancreator.stride: spoofing
+  pancreator.asvs: V3.3.1
+  pancreator.likelihood: 3
+  pancreator.impact: 4
+  pancreator.cwe: "CWE-613, CWE-384"
 ```
 
 ## M1 scaffold (`kind: llm-judge` — qualitative mitigation)
@@ -132,12 +132,12 @@ runtime:
     seed: 42
     cost_ceiling_usd: 0.50
 metadata:
-  daedaline.contract_id: <feature>.security.repudiation.audit-log-coverage
-  daedaline.applies_to: artifact-symbol:/src/memory/features/<id>/threat-model.md#STRIDE-Repudiation
-  daedaline.stride: repudiation
-  daedaline.asvs: V8.3.1
-  daedaline.likelihood: 3
-  daedaline.impact: 4
+  pancreator.contract_id: <feature>.security.repudiation.audit-log-coverage
+  pancreator.applies_to: artifact-symbol:/src/memory/features/<id>/threat-model.md#STRIDE-Repudiation
+  pancreator.stride: repudiation
+  pancreator.asvs: V8.3.1
+  pancreator.likelihood: 3
+  pancreator.impact: 4
 ```
 
 ## M3 scaffold (`kind: semgrep` — code-level pattern)
@@ -162,15 +162,15 @@ references:
     note: "STRIDE-Tampering mitigation #5."
 spec: /src/memory/features/<id>/contracts/no-eval-on-user-input.semgrep.yaml
 runtime:
-  rules: ["daedaline.security.no-eval-on-user-input"]
+  rules: ["pancreator.security.no-eval-on-user-input"]
 metadata:
-  daedaline.contract_id: <feature>.security.tampering.no-eval-on-user-input
-  daedaline.applies_to: file-path:src/**/*.ts
-  daedaline.stride: tampering
-  daedaline.asvs: V5.2.4
-  daedaline.likelihood: 4
-  daedaline.impact: 5
-  daedaline.cwe: "CWE-95"
+  pancreator.contract_id: <feature>.security.tampering.no-eval-on-user-input
+  pancreator.applies_to: file-path:src/**/*.ts
+  pancreator.stride: tampering
+  pancreator.asvs: V5.2.4
+  pancreator.likelihood: 4
+  pancreator.impact: 5
+  pancreator.cwe: "CWE-95"
 ```
 
 ## Failure-handling

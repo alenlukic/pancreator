@@ -11,6 +11,6 @@ Do not read broad archives, full PRD/bootstrap docs, src/inbox/notes/**, or unre
 
 Input: src/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md
 Output: src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md
-Advance after human ratification: pnpm -w exec ddl advance 69601_0439_v0-ui-dashboard-subordinate-feature-pipeline-qa --artifact src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md
+Advance after human ratification: pnpm -w exec pan advance 69601_0439_v0-ui-dashboard-subordinate-feature-pipeline-qa --artifact src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md
 
 After the stage artifact is accepted by the human operator, run exactly one matching state command from the handoff instructions. Do not continue to the next persona in the same agent loop.

@@ -5,7 +5,7 @@
 - `audit_interaction.mode`: `non_interactive` (default applied).
 - Audited path set:
   - `/src/personas/compliance-auditor.md`
-  - `/src/personas/daedaline-engineer.md`
+  - `/src/personas/pancreator-engineer.md`
   - `/AGENTS.md`
   - `/src/memory/adr/0002-system-architecture-map.md`
   - `/src/internal/work_archive/173010_04-26-26/26154_1644_compliance-audit-2026-04-26/compliance-audit.md`
@@ -15,7 +15,7 @@
 
 # 2. Checks executed
 
-- `CHK-01`: `git log --oneline -- src/personas/compliance-auditor.md src/personas/daedaline-engineer.md`.
+- `CHK-01`: `git log --oneline -- src/personas/compliance-auditor.md src/personas/pancreator-engineer.md`.
 - `CHK-02`: `git show --name-status 56ae93d` and `git show --name-status 1d42d25`.
 - `CHK-03`: `git log -1 -- AGENTS.md` and `git log -1 -- src/memory/adr/0002-system-architecture-map.md`.
 - `CHK-04`: repository content scan for persona mentions in canonical map/index docs.
@@ -30,19 +30,19 @@
 
 ## major
 
-- Canonical documentation drift existed before remediation: persona artifacts for `compliance-auditor` and `daedaline-engineer` were present, but canonical map/index surfaces did not explicitly reflect those personas despite AGENTS requiring per-task documentation-impact handling.
+- Canonical documentation drift existed before remediation: persona artifacts for `compliance-auditor` and `pancreator-engineer` were present, but canonical map/index surfaces did not explicitly reflect those personas despite AGENTS requiring per-task documentation-impact handling.
   Anchors:
   - `{kind: lines, path: "/AGENTS.md", range: [95, 99], contentHash: "03fd8a4"}`
   - `{kind: lines, path: "/AGENTS.md", range: [55, 58], contentHash: "03fd8a4"}`
   - `{kind: lines, path: "/src/personas/compliance-auditor.md", range: [1, 4], contentHash: "771ea248"}`
-  - `{kind: lines, path: "/src/personas/daedaline-engineer.md", range: [1, 4], contentHash: "03666cf5"}`
+  - `{kind: lines, path: "/src/personas/pancreator-engineer.md", range: [1, 4], contentHash: "03666cf5"}`
 
 ## minor
 
-- Documentation-impact recording was inconsistent across adjacent persona additions: prior compliance-auditor work artifacts recorded a documentation-impact decision, while equivalent evidence was not found for the subsequent daedaline-engineer persona addition in `/src/work/` outputs.
+- Documentation-impact recording was inconsistent across adjacent persona additions: prior compliance-auditor work artifacts recorded a documentation-impact decision, while equivalent evidence was not found for the subsequent pancreator-engineer persona addition in `/src/work/` outputs.
   Anchors:
   - `{kind: lines, path: "/src/internal/work_archive/173010_04-26-26/26154_1644_compliance-audit-2026-04-26/compliance-audit.md", range: [66, 78], contentHash: "a0a7c0f4"}`
-  - `{kind: lines, path: "/src/personas/daedaline-engineer.md", range: [51, 53], contentHash: "03666cf5"}`
+  - `{kind: lines, path: "/src/personas/pancreator-engineer.md", range: [51, 53], contentHash: "03666cf5"}`
 
 ## note
 
@@ -53,7 +53,7 @@
 
 # 4. Auto-remediations applied
 
-- Updated `/AGENTS.md` to explicitly call out `compliance-auditor` and `daedaline-engineer` in roster/live-status text and clarified `/src/work/<task-id>/` map wording for persona execution artifacts.
+- Updated `/AGENTS.md` to explicitly call out `compliance-auditor` and `pancreator-engineer` in roster/live-status text and clarified `/src/work/<task-id>/` map wording for persona execution artifacts.
   Changed path list: `/AGENTS.md`.
   Risk note: low risk, documentation-only clarification.
 - Updated `/src/memory/adr/0002-system-architecture-map.md` to represent both personas in the CURRENT architecture map and narrative while preserving CURRENT/FUTURE boundaries.

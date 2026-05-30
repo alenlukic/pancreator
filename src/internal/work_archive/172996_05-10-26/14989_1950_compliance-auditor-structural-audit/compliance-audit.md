@@ -41,7 +41,7 @@ Exact audited path set:
 ### major
 
 - The policy-compliance hook still admitted the legacy two-level `src/work/<task>/policy-compliance.json` shape after the repository had standardized on `src/work/<day>/<task>/policy-compliance.json`. Evidence: `.cursor/hooks/enforce-policy-compliance.sh` previously carried both legacy and canonical regex branches; `src/memory/backlog/index.yaml` already tracked `policy-compliance-hook-legacy-shape-removal` as deferred follow-up.
-- Live normative surfaces still used stale two-level work placeholders. Evidence: `tests/compliance/high-remediation-blocking.yaml`, `src/skills/write-adr/SKILL.md`, `src/skills/modern-code-review/SKILL.md`, `src/skills/blameless-postmortem/SKILL.md`, `src/internal/packages/@daedaline/run-logger/README.md`, `docs/PRD.md`, and `src/memory/handbook/glossary.md` contained direct `src/work/<id>/`, `src/work/<task-id>/`, or `src/work/*/run.log.jsonl` references.
+- Live normative surfaces still used stale two-level work placeholders. Evidence: `tests/compliance/high-remediation-blocking.yaml`, `src/skills/write-adr/SKILL.md`, `src/skills/modern-code-review/SKILL.md`, `src/skills/blameless-postmortem/SKILL.md`, `src/internal/packages/@pancreator/run-logger/README.md`, `docs/PRD.md`, and `src/memory/handbook/glossary.md` contained direct `src/work/<id>/`, `src/work/<task-id>/`, or `src/work/*/run.log.jsonl` references.
 
 ### minor
 

@@ -35,7 +35,7 @@ test("classifyExclusiveTier separates handbook, active work, archival, durable J
   assert.equal(classifyExclusiveTier("src/memory/features/foo/index.json"), "generated_machine");
   assert.equal(classifyExclusiveTier("src/work/README.md"), "active_work");
   assert.equal(classifyExclusiveTier("src/internal/work_archive/172997_05-09-26/example/plan.md"), "archival_memory");
-  assert.equal(classifyExclusiveTier("src/internal/packages/@daedaline/core/src/index.ts"), "source_code");
+  assert.equal(classifyExclusiveTier("src/internal/packages/@pancreator/core/src/index.ts"), "source_code");
   assert.equal(
     classifyExclusiveTier("tests/compliance/schemas/latest.yaml"),
     "source_code",
@@ -108,9 +108,9 @@ test("Cursor persona projections expose standard and complex tiers", () => {
     assert.match(alias, /^model:\s*\S+/m, `${base} alias should declare a model`);
     assert.match(standard, /^model:\s*\S+/m, `${base}-standard should declare a model`);
     assert.doesNotMatch(complex, /^model: auto$/m, `${base}-complex should preserve a fixed model`);
-    assert.match(alias, new RegExp(`daedaline-base-persona: ${base}`));
-    assert.match(standard, /daedaline-model-tier: standard/);
-    assert.match(complex, /daedaline-model-tier: complex/);
+    assert.match(alias, new RegExp(`pancreator-base-persona: ${base}`));
+    assert.match(standard, /pancreator-model-tier: standard/);
+    assert.match(complex, /pancreator-model-tier: complex/);
   }
 });
 
@@ -118,7 +118,7 @@ test("Cursor general-purpose agent is a standalone fallback, not a persona tier 
   const dir = path.join(ROOT, ".cursor", "agents");
   const fallback = fs.readFileSync(path.join(dir, "general-purpose.md"), "utf8");
   assert.match(fallback, /^name: general-purpose$/m);
-  assert.match(fallback, /daedaline-model-tier: standalone/);
+  assert.match(fallback, /pancreator-model-tier: standalone/);
   assert.match(fallback, /route discovery/i);
   assert.equal(fs.existsSync(path.join(dir, "general-purpose-standard.md")), false);
   assert.equal(fs.existsSync(path.join(dir, "general-purpose-complex.md")), false);

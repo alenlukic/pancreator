@@ -2,7 +2,7 @@
 
 ## Verdict
 
-`pass` (`review_passes: true`). The current working tree keeps Work package A in scope (20 `daedaline-*` spec/frontmatter + stub pairing + global index coverage-gap cleanup) while Work package B suffix-file deletion is not present in diff, and all required validation commands exit `0`.
+`pass` (`review_passes: true`). The current working tree keeps Work package A in scope (20 `pancreator-*` spec/frontmatter + stub pairing + global index coverage-gap cleanup) while Work package B suffix-file deletion is not present in diff, and all required validation commands exit `0`.
 
 ## Findings
 
@@ -20,13 +20,13 @@
 
 ## Scope adherence vs spec and source directive
 
-- Work package A acceptance intent is met in representative sample checks: YAML frontmatter was prepended to `spec.md`, stub `delivery-report.md` and `index.json` exist, and the global feature index now points each `daedaline-*` row at per-feature `index.json` with `coverage_gaps: []`.
+- Work package A acceptance intent is met in representative sample checks: YAML frontmatter was prepended to `spec.md`, stub `delivery-report.md` and `index.json` exist, and the global feature index now points each `pancreator-*` row at per-feature `index.json` with `coverage_gaps: []`.
 - Work package B corrected-state intent is met in current tree: suffix tier mirrors exist (`12` `-standard.md`, `12` `-complex.md`) and there is no active diff on AGENTS/handbook/emit/tests/tier mirrors.
 
 Representative dual-anchor citations:
 
-- `{ "kind": "lines", "path": "src/memory/features/daedaline-cli/spec.md", "range": [1, 23], "contentHash": "26b1233" }`
-- `{ "kind": "lines", "path": "src/memory/features/daedaline-cli/index.json", "range": [1, 79], "contentHash": "b9b306e" }`
+- `{ "kind": "lines", "path": "src/memory/features/pancreator-cli/spec.md", "range": [1, 23], "contentHash": "26b1233" }`
+- `{ "kind": "lines", "path": "src/memory/features/pancreator-cli/index.json", "range": [1, 79], "contentHash": "b9b306e" }`
 - `{ "kind": "lines", "path": "src/memory/features/index.json", "range": [1, 287], "contentHash": "e39c9f5" }`
 - `{ "kind": "lines", "path": "src/memory/handbook/subagent-model-tiers.md", "range": [1, 109], "contentHash": "94471db" }`
 
@@ -39,14 +39,14 @@ Representative dual-anchor citations:
 
 ## Work package A quality check
 
-- Stub shape quality: representative folder `src/memory/features/daedaline-cli/` contains the required trio (`spec.md` + `delivery-report.md` + `index.json`) with consistent identifiers (`feature_id: daedaline-cli`, package `@daedaline/cli`).
-- Global index pairing: `src/memory/features/index.json` entries for all `daedaline-*` folders now resolve to per-feature `index.json` paths and no longer carry `per_feature_index_missing`.
+- Stub shape quality: representative folder `src/memory/features/pancreator-cli/` contains the required trio (`spec.md` + `delivery-report.md` + `index.json`) with consistent identifiers (`feature_id: pancreator-cli`, package `@pancreator/cli`).
+- Global index pairing: `src/memory/features/index.json` entries for all `pancreator-*` folders now resolve to per-feature `index.json` paths and no longer carry `per_feature_index_missing`.
 - Regression scan: no active diff detected under `src/memory/features/**/contracts/` or `contracts.index.json`.
 
 ## Work package B correction verification
 
 - Mirror preservation: `.cursor/agents/` currently contains both suffix tiers (`*-standard.md`, `*-complex.md`) for all 12 personas.
-- Reverted-surface stability: no active diffs are present for `AGENTS.md`, `src/memory/handbook/*` pages listed in touch-set documentation impact, `src/internal/packages/@daedaline/persona/src/emit.ts`, `src/internal/tools/context-budget-report.mjs`, or `tests/context-budget-report.test.mjs`.
+- Reverted-surface stability: no active diffs are present for `AGENTS.md`, `src/memory/handbook/*` pages listed in touch-set documentation impact, `src/internal/packages/@pancreator/persona/src/emit.ts`, `src/internal/tools/context-budget-report.mjs`, or `tests/context-budget-report.test.mjs`.
 - Canonical invocation remains suffix-aware in corrected state (`/persona-standard` or `/persona` alias; `/persona-complex` for escalation).
 
 ## Spec Contract results

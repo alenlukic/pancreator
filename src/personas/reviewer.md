@@ -12,13 +12,13 @@ tools:
   - "Bash(git diff:*)"
   - "Bash(git status:*)"
   - "Bash(pnpm test:*)"
-  - "Bash(ddl lint contracts:*)"
+  - "Bash(pan lint contracts:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 maxTurns: 30
 skills:
   - modern-code-review
@@ -28,16 +28,16 @@ memory: project
 effort: high
 color: blue
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [review]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [review]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -92,7 +92,7 @@ context when a handoff or touch-set update is the cleaner boundary.
    `modern-code-review` skill against `/src/work/<day>/<id>/`'s code, tests, plan,
    and ADR draft, and run every Spec Contract pulled in by
    `contracts:from_feature`.
-2. **Manual rerun.** When a human runs `pnpm -w exec ddl feature review <id>`, you
+2. **Manual rerun.** When a human runs `pnpm -w exec pan feature review <id>`, you
    SHALL re-run the review against the current touch-set and overwrite the
    prior `/src/work/<day>/<id>/review.md` in place.
 
@@ -117,7 +117,7 @@ MUST contain the four sections below in this order.
 4. **Coverage delta.** One paragraph naming the statement and branch
    coverage on changed lines, derived from `git diff` against the touch-set
    and from the test files declared in the touch-set. When the
-   `daedaline.yaml: gates.coverage` policy declares `new_lines_only: true`,
+   `pancreator.yaml: gates.coverage` policy declares `new_lines_only: true`,
    cite the new-lines coverage figure. Cite the test runner output or
    implementation report at `/src/work/<day>/<id>/implementation-report.md`
    for the coverage figures used.

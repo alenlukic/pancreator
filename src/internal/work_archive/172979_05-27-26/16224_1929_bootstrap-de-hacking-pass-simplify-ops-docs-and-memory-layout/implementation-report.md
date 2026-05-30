@@ -20,12 +20,12 @@
 
 - Created `OPERATION.md` with required sections (inbox, feature-delivery loop, CLI verbs, active memory, commit/policy-compliance, troubleshooting, librarian pre-close validation).
 - Slimmed `README.md` to 52 lines with routes to `OPERATION.md`.
-- Added `OPERATION.md` routes in `AGENTS.md`, `docs/M1.index.md`, and `src/memory/handbook/daedaline-config.md`.
+- Added `OPERATION.md` routes in `AGENTS.md`, `docs/M1.index.md`, and `src/memory/handbook/pancreator-config.md`.
 
 ### WP-3 — Operator-output conformance
 
 - Created `operator-output-audit.md` with **full coverage matrices**: all 12 personas, 37 Cursor agents, 12 rule shims, 3 handbook pages with runnable examples (plus 16 handbook pages scanned by automation), and `AGENTS.md` / `README.md` / `OPERATION.md`.
-- Fixed bare `ddl` prose invocations in coder, intake-analyst, reviewer, supervisor, tech-lead, tech-writer, librarian personas.
+- Fixed bare `pan` prose invocations in coder, intake-analyst, reviewer, supervisor, tech-lead, tech-writer, librarian personas.
 - Added `src/internal/tools/check-operator-output.mjs` and `tests/operator-output-contract.test.mjs`.
 - Updated `src/memory/handbook/operator-output-contract.md` with automated check reference.
 
@@ -76,7 +76,7 @@ Re-run after must_fix remediation:
 |---|---|
 | `docs/PRD.summary.md` | README/OPERATION split does not change summary routing; `docs/PRD.index.md` updated instead |
 | `src/memory/features/index.json` global index | No `m1-substrate-runtime-batch` row was present to remove |
-| Handbook deferred-verb prose (`ddl inbox archive`, etc.) | Not runnable blocks; existing backlog items cover automation |
+| Handbook deferred-verb prose (`pan inbox archive`, etc.) | Not runnable blocks; existing backlog items cover automation |
 
 ## Documentation impact
 
@@ -101,7 +101,7 @@ documentation_impact:
     - src/memory/handbook/backlog-format.md
     - src/memory/handbook/memory-tiers.md
     - src/memory/handbook/operator-output-contract.md
-    - src/memory/handbook/daedaline-config.md
+    - src/memory/handbook/pancreator-config.md
     - src/memory/backlog/index.yaml
     - src/memory/active/current.md
   deferred-items: []
@@ -116,7 +116,7 @@ documentation_impact:
    **How:** Run:
 
    ```bash
-   pnpm -w exec ddl advance 16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout --artifact src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md
+   pnpm -w exec pan advance 16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout --artifact src/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md
    ```
 
    Then delegate the regenerated `next-prompt.md` to `reviewer`.

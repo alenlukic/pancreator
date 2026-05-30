@@ -11,8 +11,8 @@
   - `/src/memory/handbook/documentation-impact-contract.md`
   - `/src/memory/handbook/run-log-schema.md`
   - `/src/memory/features/**/contracts/*.yaml` (pattern scan for unresolved citation hashes)
-  - `/src/memory/features/daedaline-core/contracts/daedaline.core.package_shape.yaml` (line-level evidence read)
-  - `/src/memory/features/daedaline-cli/contracts/daedaline.cli.package_shape.yaml` (line-level evidence read)
+  - `/src/memory/features/pancreator-core/contracts/pancreator.core.package_shape.yaml` (line-level evidence read)
+  - `/src/memory/features/pancreator-cli/contracts/pancreator.cli.package_shape.yaml` (line-level evidence read)
 
 # 2. Checks executed
 
@@ -32,8 +32,8 @@
   Owner route: `contract-writer` (corpus backfill of anchored hashes).
   Anchors:
   - `{kind: lines, path: "/src/memory/handbook/contract-style.md", range: [149, 157], contentHash: "e3a0718364e6034e0d4de4f29c6123a1d5d52ad90713fffe169b67b81a0ff2fe"}`
-  - `{kind: lines, path: "/src/memory/features/daedaline-core/contracts/daedaline.core.package_shape.yaml", range: [10, 20], contentHash: "9ff1eaf25a45b6bbd0fc14d2d4b70a9d50b88d6b1a0bc44871724a4cc0be4db2"}`
-  - `{kind: lines, path: "/src/memory/features/daedaline-cli/contracts/daedaline.cli.package_shape.yaml", range: [10, 20], contentHash: "34c7cb984ead947d9004b5bf30be6ccfcf514191538b049cb6ebd7d5a769368a"}`
+  - `{kind: lines, path: "/src/memory/features/pancreator-core/contracts/pancreator.core.package_shape.yaml", range: [10, 20], contentHash: "9ff1eaf25a45b6bbd0fc14d2d4b70a9d50b88d6b1a0bc44871724a4cc0be4db2"}`
+  - `{kind: lines, path: "/src/memory/features/pancreator-cli/contracts/pancreator.cli.package_shape.yaml", range: [10, 20], contentHash: "34c7cb984ead947d9004b5bf30be6ccfcf514191538b049cb6ebd7d5a769368a"}`
 
 ## major
 

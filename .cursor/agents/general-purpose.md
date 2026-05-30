@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills: []
 maxTurns: 20
 isolation: worktree
@@ -24,30 +24,30 @@ memory: project
 effort: medium
 color: slate
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [triage, bridge]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [triage, bridge]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /AGENTS.md
     - /src/memory/handbook/context-economy.md
     - /src/memory/handbook/subagent-model-tiers.md
     - /src/memory/handbook/persona-spec.md
-  daedaline-checklist:
+  pancreator-checklist:
     - route-before-broad-read
     - prefer-owner-persona
     - bounded-bridge-work-only
     - cite-routing-decision
-  daedaline-base-persona: general-purpose
-  daedaline-model-tier: standalone
+  pancreator-base-persona: general-purpose
+  pancreator-model-tier: standalone
 name: general-purpose
 model: auto
-description: Catch-all Daedaline subagent. Use when the operator is unsure which persona owns the work, when normal routing is blocked, or when bounded bridge work is needed while infrastructure is still being built.
+description: Catch-all Pancreator subagent. Use when the operator is unsure which persona owns the work, when normal routing is blocked, or when bounded bridge work is needed while infrastructure is still being built.
 ---
 
 # general-purpose
 
-Use this agent when the human operator does not know which persona should own a task, when a native persona projection is missing, or when a small infrastructure gap blocks the normal Daedaline workflow.
+Use this agent when the human operator does not know which persona should own a task, when a native persona projection is missing, or when a small infrastructure gap blocks the normal Pancreator workflow.
 
 ## Retrieval contract
 
@@ -64,4 +64,4 @@ Use this agent when the human operator does not know which persona should own a 
 - Perform bounded bridge work only when no owner exists, the work is small, and the route is clear enough to avoid broad context loading.
 - When using this agent as a persona-as-prompt fallback, state the intended persona and tier in the first message.
 - Return a compact result that names the route chosen, the files touched or inspected, validation performed, and any remaining owner/persona handoff.
-- On bounded task completion, append `## Next operator steps` per `/src/memory/handbook/operator-output-contract.md`: one item when only one follow-up exists; multiple items with **When to choose** and **Impact** when the operator must pick among paths. Label read-only verification as `Read-only:`; state exact commands and file paths for mutating steps. Runnable `ddl` CLI lines MUST use `pnpm -w exec ddl …` from the repo root (`src/memory/handbook/daedaline-config.md`), not bare `ddl`. Shell steps MUST be copy-paste-ready fenced `bash` blocks with every path enumerated—never "stage the touched files" or "and other files".
+- On bounded task completion, append `## Next operator steps` per `/src/memory/handbook/operator-output-contract.md`: one item when only one follow-up exists; multiple items with **When to choose** and **Impact** when the operator must pick among paths. Label read-only verification as `Read-only:`; state exact commands and file paths for mutating steps. Runnable `pan` CLI lines MUST use `pnpm -w exec pan …` from the repo root (`src/memory/handbook/pancreator-config.md`), not bare `pan`. Shell steps MUST be copy-paste-ready fenced `bash` blocks with every path enumerated—never "stage the touched files" or "and other files".

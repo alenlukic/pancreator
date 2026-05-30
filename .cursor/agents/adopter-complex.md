@@ -17,7 +17,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills:
   - adopt-existing-repo
 maxTurns: 30
@@ -26,15 +26,15 @@ memory: project
 effort: medium
 color: orange
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [adopt]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [adopt]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -42,12 +42,12 @@ metadata:
     - dual-anchor-citations-into-PRD
     - layer-1-lint-clean
     - scan-report-cites-every-detected-fact
-    - writes-only-to-daedaline-prefixed-paths
+    - writes-only-to-pancreator-prefixed-paths
     - proposed-SMEs-and-thresholds-routed-via-inbox
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: adopter
-  daedaline-model-tier: complex
-  daedaline-canonical-persona: src/personas/adopter.md
+  pancreator-base-persona: adopter
+  pancreator-model-tier: complex
+  pancreator-canonical-persona: src/personas/adopter.md
 ---
 
 # adopter-complex

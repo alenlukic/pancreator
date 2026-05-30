@@ -53,7 +53,7 @@
       "reason": "Expected operator-visible delivery report copy."
     },
     {
-      "path": ".ddl/scheduler/interventions/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa.jsonl",
+      "path": ".pan/scheduler/interventions/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa.jsonl",
       "access": "create-update-if-runtime-emits",
       "reason": "Expected subordinate intervention ledger when runtime emits intervention evidence."
     }

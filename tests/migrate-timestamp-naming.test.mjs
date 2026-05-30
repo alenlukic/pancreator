@@ -203,7 +203,7 @@ test("inventoryReferences: finds a known path string in repo", () => {
 
 
 test("defaultManifestPath prefers archived inbox convention run when indexed", () => {
-  const repoRoot = mkdtempSync(path.join(tmpdir(), "ddl-manifest-default-"));
+  const repoRoot = mkdtempSync(path.join(tmpdir(), "pan-manifest-default-"));
   try {
     const taskId = "60722_0707_inbox-convention-migration";
     const archiveRun = path.join(
@@ -233,7 +233,7 @@ test("defaultManifestPath prefers archived inbox convention run when indexed", (
 });
 
 test("writeManifest creates missing parent directories", () => {
-  const repoRoot = mkdtempSync(path.join(tmpdir(), "ddl-manifest-write-"));
+  const repoRoot = mkdtempSync(path.join(tmpdir(), "pan-manifest-write-"));
   try {
     const out = path.join(repoRoot, "src", "internal", "work_archive", "day", "task", "manifest.json");
     writeManifest({ schema: "test" }, out);

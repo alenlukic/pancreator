@@ -6,7 +6,7 @@
 - `.cursor/rules/coder.mdc`
 - `.github/workflows/phase-0a-scaffold.yml`
 - `docs/PRD.md`
-- `src/internal/packages/@daedaline/run-logger/README.md`
+- `src/internal/packages/@pancreator/run-logger/README.md`
 - `src/memory/backlog/index.yaml`
 - `src/memory/features/active-memory-context-economy-pass-2/spec.md`
 - `src/memory/features/cursor-token-economy/spec.md`

@@ -18,7 +18,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills:
   - write-adr
 maxTurns: 30
@@ -27,15 +27,15 @@ memory: project
 effort: medium
 color: teal
 metadata:
-  daedaline-risk-tier: low
-  daedaline-pipeline-stages: [index_artifacts, archive_completed_work, update_feature_index, update_backlog, knowledge-curation]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: low
+  pancreator-pipeline-stages: [index_artifacts, archive_completed_work, update_feature_index, update_backlog, knowledge-curation]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -47,9 +47,9 @@ metadata:
     - stale-citation-report-emitted-each-cron-run
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: librarian
-  daedaline-model-tier: complex
-  daedaline-canonical-persona: src/personas/librarian.md
+  pancreator-base-persona: librarian
+  pancreator-model-tier: complex
+  pancreator-canonical-persona: src/personas/librarian.md
 ---
 
 # librarian-complex

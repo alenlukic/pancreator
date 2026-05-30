@@ -62,13 +62,13 @@
   "archived_work_artifacts": [],
   "advance_gate": {
     "human_ratification_required": true,
-    "advance_command": "pnpm -w exec ddl advance 71096_0415_phase-4-intervention-probe-pause-resume-abort --artifact src/memory/features/phase-4-intervention-probe-pause-resume-abort/index.json",
+    "advance_command": "pnpm -w exec pan advance 71096_0415_phase-4-intervention-probe-pause-resume-abort --artifact src/memory/features/phase-4-intervention-probe-pause-resume-abort/index.json",
     "status": "deferred-until-ratified"
   },
   "artifact_index": {
     "implementation_surface": {
       "intervention_package": {
-        "path": "src/internal/packages/@daedaline/intervention/"
+        "path": "src/internal/packages/@pancreator/intervention/"
       }
     }
   }

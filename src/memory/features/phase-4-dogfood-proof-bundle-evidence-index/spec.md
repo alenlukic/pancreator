@@ -17,7 +17,7 @@ intake_closure:
     explicit non-goals, and a named proof-bundle target. No material
     ambiguity blocks canonicalization. The nested task id
     `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` was produced
-    by `ddl run feature-delivery phase-4-dogfood-proof-bundle-index.md`
+    by `pan run feature-delivery phase-4-dogfood-proof-bundle-index.md`
     during intake and is recorded directly in this spec's acceptance
     criteria and citations.
 references:
@@ -113,7 +113,7 @@ SHALL follow `phase-4-ratification-request.md` and the parent US-1 spec.
 - When the run log exists at the path above, external Phoenix import and trace
   capture SHALL satisfy the source directive at
   `{kind: lines, path: src/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [50, 50], contentHash: ccf9748}`
-  only after the `@daedaline/run-logger` importer path exists; until then this
+  only after the `@pancreator/run-logger` importer path exists; until then this
   criterion is **deferred** and SHALL NOT be satisfied by simulated telemetry per
   non-goals.
 

@@ -13,7 +13,7 @@
       "path": ".cursor/rules",
       "plannedFiles": [
         ".cursor/rules/00-agents-md.mdc",
-        ".cursor/rules/daedaline-engineer.mdc",
+        ".cursor/rules/pancreator-engineer.mdc",
         ".cursor/rules/persona-designer.mdc",
         ".cursor/rules/intake-analyst.mdc",
         ".cursor/rules/supervisor.mdc",
@@ -113,7 +113,7 @@
       "risk_tier": "high"
     },
     {
-      "path": ".cursor/rules/daedaline-engineer.mdc",
+      "path": ".cursor/rules/pancreator-engineer.mdc",
       "operation": "mutate",
       "risk_tier": "high"
     },

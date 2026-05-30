@@ -29,16 +29,16 @@ test("refresh-tbd-contenthash dry-run is idempotent after write pass", () => {
   assert.equal(report.remainingFullLength, 0);
 });
 
-test("resolveAbbrevLen honors DDL_JSON_FORMAT_ABBREV_LEN", () => {
-  const prev = process.env.DDL_JSON_FORMAT_ABBREV_LEN;
-  process.env.DDL_JSON_FORMAT_ABBREV_LEN = "12";
+test("resolveAbbrevLen honors PAN_JSON_FORMAT_ABBREV_LEN", () => {
+  const prev = process.env.PAN_JSON_FORMAT_ABBREV_LEN;
+  process.env.PAN_JSON_FORMAT_ABBREV_LEN = "12";
   try {
     assert.equal(resolveAbbrevLen(ROOT), 12);
   } finally {
     if (prev === undefined) {
-      delete process.env.DDL_JSON_FORMAT_ABBREV_LEN;
+      delete process.env.PAN_JSON_FORMAT_ABBREV_LEN;
     } else {
-      process.env.DDL_JSON_FORMAT_ABBREV_LEN = prev;
+      process.env.PAN_JSON_FORMAT_ABBREV_LEN = prev;
     }
   }
 });

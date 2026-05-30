@@ -30,6 +30,6 @@ assertion:
   pass_criteria: >
     Automated checks under tests/ exercising migrate-json-formatting and canonical-json-format
     rules report zero actionable formatting violations after an operator-approved bulk migration
-    (`--write` with `DAEDALINE_MIGRATION_GO=1`) for tracked `.json` files; supplementary fixture
+    (`--write` with `PANCREATOR_MIGRATION_GO=1`) for tracked `.json` files; supplementary fixture
     checks SHALL flag Markdown/terminal/agent-chat regressions enumerated in migrate-json-formatting
     tests; descriptors validate against tests/compliance/schemas/latest.yaml.

@@ -3,38 +3,38 @@
   "featureId": "m1-substrate-runtime-batch",
   "stage": "implement",
   "paths": [
-    "src/internal/packages/@daedaline/checkpointer-fs/src/envelope.ts",
-    "src/internal/packages/@daedaline/checkpointer-fs/src/fs-checkpoint-store.ts",
-    "src/internal/packages/@daedaline/checkpointer-fs/src/index.ts",
-    "src/internal/packages/@daedaline/checkpointer-fs/src/fs-checkpoint-store.test.ts",
-    "src/internal/packages/@daedaline/checkpointer-fs/src/envelope.test.ts",
-    "src/internal/packages/@daedaline/intervention/src/manager.ts",
-    "src/internal/packages/@daedaline/intervention/src/store.ts",
-    "src/internal/packages/@daedaline/intervention/src/manager.test.ts",
-    "src/internal/packages/@daedaline/runner-cursor/src/types.ts",
-    "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts",
-    "src/internal/packages/@daedaline/runner-cursor/src/index.ts",
-    "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.test.ts",
-    "src/internal/packages/@daedaline/pipeline/src/types.ts",
-    "src/internal/packages/@daedaline/pipeline/src/compile.ts",
-    "src/internal/packages/@daedaline/pipeline/src/execute.ts",
-    "src/internal/packages/@daedaline/pipeline/src/load-yaml.ts",
-    "src/internal/packages/@daedaline/pipeline/src/pipeline.test.ts",
-    "src/internal/packages/@daedaline/run-logger/src/append.ts",
-    "src/internal/packages/@daedaline/run-logger/src/record.ts",
-    "src/internal/packages/@daedaline/run-logger/src/index.ts",
-    "src/internal/packages/@daedaline/run-logger/src/append.test.ts",
-    "src/internal/packages/@daedaline/persona/src/emit.ts",
-    "src/internal/packages/@daedaline/persona/src/validate.ts",
-    "src/internal/packages/@daedaline/cli/src/run.ts",
-    "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
-    "src/internal/packages/@daedaline/cli/src/run.test.ts",
+    "src/internal/packages/@pancreator/checkpointer-fs/src/envelope.ts",
+    "src/internal/packages/@pancreator/checkpointer-fs/src/fs-checkpoint-store.ts",
+    "src/internal/packages/@pancreator/checkpointer-fs/src/index.ts",
+    "src/internal/packages/@pancreator/checkpointer-fs/src/fs-checkpoint-store.test.ts",
+    "src/internal/packages/@pancreator/checkpointer-fs/src/envelope.test.ts",
+    "src/internal/packages/@pancreator/intervention/src/manager.ts",
+    "src/internal/packages/@pancreator/intervention/src/store.ts",
+    "src/internal/packages/@pancreator/intervention/src/manager.test.ts",
+    "src/internal/packages/@pancreator/runner-cursor/src/types.ts",
+    "src/internal/packages/@pancreator/runner-cursor/src/cursor-runner.ts",
+    "src/internal/packages/@pancreator/runner-cursor/src/index.ts",
+    "src/internal/packages/@pancreator/runner-cursor/src/cursor-runner.test.ts",
+    "src/internal/packages/@pancreator/pipeline/src/types.ts",
+    "src/internal/packages/@pancreator/pipeline/src/compile.ts",
+    "src/internal/packages/@pancreator/pipeline/src/execute.ts",
+    "src/internal/packages/@pancreator/pipeline/src/load-yaml.ts",
+    "src/internal/packages/@pancreator/pipeline/src/pipeline.test.ts",
+    "src/internal/packages/@pancreator/run-logger/src/append.ts",
+    "src/internal/packages/@pancreator/run-logger/src/record.ts",
+    "src/internal/packages/@pancreator/run-logger/src/index.ts",
+    "src/internal/packages/@pancreator/run-logger/src/append.test.ts",
+    "src/internal/packages/@pancreator/persona/src/emit.ts",
+    "src/internal/packages/@pancreator/persona/src/validate.ts",
+    "src/internal/packages/@pancreator/cli/src/run.ts",
+    "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
+    "src/internal/packages/@pancreator/cli/src/run.test.ts",
     "package.json",
     "pnpm-lock.yaml",
     ".github/workflows/run-logger-conformance.yml",
     "docs/PRD.summary.md",
     "src/memory/active/current.md",
-    "src/internal/packages/@daedaline/run-logger/README.md",
+    "src/internal/packages/@pancreator/run-logger/README.md",
     "examples/library-script/package.json",
     "examples/library-script/index.mjs",
     "examples/library-script/README.md",
@@ -48,98 +48,98 @@
   ],
   "symbols": [
     {
-      "path": "src/internal/packages/@daedaline/checkpointer-fs/src/fs-checkpoint-store.ts",
+      "path": "src/internal/packages/@pancreator/checkpointer-fs/src/fs-checkpoint-store.ts",
       "symbol": "FsCheckpointStore.put"
     },
     {
-      "path": "src/internal/packages/@daedaline/checkpointer-fs/src/envelope.ts",
+      "path": "src/internal/packages/@pancreator/checkpointer-fs/src/envelope.ts",
       "symbol": "CheckpointEnvelopeV1"
     },
     {
-      "path": "src/internal/packages/@daedaline/intervention/src/manager.ts",
+      "path": "src/internal/packages/@pancreator/intervention/src/manager.ts",
       "symbol": "InterventionManager.resume"
     },
     {
-      "path": "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts",
+      "path": "src/internal/packages/@pancreator/runner-cursor/src/cursor-runner.ts",
       "symbol": "CursorRunner.invoke"
     },
     {
-      "path": "src/internal/packages/@daedaline/runner-cursor/src/types.ts",
+      "path": "src/internal/packages/@pancreator/runner-cursor/src/types.ts",
       "symbol": "RunnerInvocationEnvelope"
     },
     {
-      "path": "src/internal/packages/@daedaline/pipeline/src/compile.ts",
+      "path": "src/internal/packages/@pancreator/pipeline/src/compile.ts",
       "symbol": "compilePipeline"
     },
     {
-      "path": "src/internal/packages/@daedaline/pipeline/src/execute.ts",
+      "path": "src/internal/packages/@pancreator/pipeline/src/execute.ts",
       "symbol": "executePipeline"
     },
     {
-      "path": "src/internal/packages/@daedaline/pipeline/src/load-yaml.ts",
+      "path": "src/internal/packages/@pancreator/pipeline/src/load-yaml.ts",
       "symbol": "loadPipelineYaml"
     },
     {
-      "path": "src/internal/packages/@daedaline/run-logger/src/append.ts",
+      "path": "src/internal/packages/@pancreator/run-logger/src/append.ts",
       "symbol": "appendRunLogRecord"
     },
     {
-      "path": "src/internal/packages/@daedaline/run-logger/src/record.ts",
+      "path": "src/internal/packages/@pancreator/run-logger/src/record.ts",
       "symbol": "RunLogRecord"
     },
     {
-      "path": "src/internal/packages/@daedaline/persona/src/validate.ts",
+      "path": "src/internal/packages/@pancreator/persona/src/validate.ts",
       "symbol": "assertPersonaSpec"
     },
     {
-      "path": "src/internal/packages/@daedaline/persona/src/emit.ts",
+      "path": "src/internal/packages/@pancreator/persona/src/emit.ts",
       "symbol": "emitCursorAgentsMirror"
     },
     {
-      "path": "src/internal/packages/@daedaline/persona/src/emit.ts",
+      "path": "src/internal/packages/@pancreator/persona/src/emit.ts",
       "symbol": "emitMdcShim"
     },
     {
-      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/run.ts",
       "symbol": "parseAndRun"
     },
     {
-      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
       "symbol": "startFeatureDelivery"
     },
     {
-      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
       "symbol": "advanceFeatureDelivery"
     }
   ],
   "tests": [
-    "src/internal/packages/@daedaline/checkpointer-fs/src/fs-checkpoint-store.test.ts",
-    "src/internal/packages/@daedaline/intervention/src/manager.test.ts",
-    "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.test.ts",
-    "src/internal/packages/@daedaline/pipeline/src/pipeline.test.ts",
-    "src/internal/packages/@daedaline/run-logger/src/append.test.ts",
-    "src/internal/packages/@daedaline/cli/src/run.test.ts",
+    "src/internal/packages/@pancreator/checkpointer-fs/src/fs-checkpoint-store.test.ts",
+    "src/internal/packages/@pancreator/intervention/src/manager.test.ts",
+    "src/internal/packages/@pancreator/runner-cursor/src/cursor-runner.test.ts",
+    "src/internal/packages/@pancreator/pipeline/src/pipeline.test.ts",
+    "src/internal/packages/@pancreator/run-logger/src/append.test.ts",
+    "src/internal/packages/@pancreator/cli/src/run.test.ts",
     "tests/run-logger-conformance/phoenix-smoke.test.mjs"
   ],
   "validationCommands": {
     "phase1": [
-      "pnpm --filter @daedaline/checkpointer-fs test",
-      "pnpm --filter @daedaline/runner-cursor test",
-      "pnpm --filter @daedaline/intervention test"
+      "pnpm --filter @pancreator/checkpointer-fs test",
+      "pnpm --filter @pancreator/runner-cursor test",
+      "pnpm --filter @pancreator/intervention test"
     ],
     "phase2": [
-      "pnpm --filter @daedaline/pipeline test",
-      "pnpm --filter @daedaline/cli test -- --runInBand feature-delivery",
-      "pnpm -w exec ddl run feature-delivery src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md"
+      "pnpm --filter @pancreator/pipeline test",
+      "pnpm --filter @pancreator/cli test -- --runInBand feature-delivery",
+      "pnpm -w exec pan run feature-delivery src/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md"
     ],
     "phase3": [
-      "pnpm --filter @daedaline/run-logger test",
+      "pnpm --filter @pancreator/run-logger test",
       "pnpm test:run-logger-conformance",
-      "pnpm --filter @daedaline/persona test",
-      "pnpm --filter @daedaline/cli test -- --runInBand run.ts"
+      "pnpm --filter @pancreator/persona test",
+      "pnpm --filter @pancreator/cli test -- --runInBand run.ts"
     ],
     "batchIntegration": [
-      "pnpm -w exec ddl status 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+      "pnpm -w exec pan status 966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
       "node src/internal/tools/run-compliance.mjs"
     ]
   },
@@ -158,25 +158,25 @@
     },
     {
       "kind": "lines",
-      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/run.ts",
       "range": [194, 241],
       "contentHash": "896e6a8"
     },
     {
       "kind": "lines",
-      "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
       "range": [994, 1016],
       "contentHash": "1131dfc"
     },
     {
       "kind": "lines",
-      "path": "src/internal/packages/@daedaline/pipeline/src/compile.ts",
+      "path": "src/internal/packages/@pancreator/pipeline/src/compile.ts",
       "range": [1, 22],
       "contentHash": "98644dc"
     },
     {
       "kind": "lines",
-      "path": "src/internal/packages/@daedaline/runner-cursor/src/types.ts",
+      "path": "src/internal/packages/@pancreator/runner-cursor/src/types.ts",
       "range": [28, 59],
       "contentHash": "3f56583"
     }

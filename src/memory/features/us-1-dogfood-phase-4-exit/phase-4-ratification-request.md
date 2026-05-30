@@ -11,7 +11,7 @@ deferred per that file’s **Residual gaps** section).
 Human reviewer SHALL attach or cite paths for:
 
 1. Nested proof-bundle-index task ledger and preserved `run.log.jsonl` (canonical
-   paths after `ddl close-artifacts` live under
+   paths after `pan close-artifacts` live under
    `src/internal/work_archive/<day>/<nested-task-id>/`; the **librarian** SHALL
    have refreshed `phase-4-proof-bundle.md` — not the human operator).
 2. `phoenix-trace-evidence.md` — when the run-logger → Phoenix path exists, expect
@@ -21,7 +21,7 @@ Human reviewer SHALL attach or cite paths for:
    intake ratification inbox item
    `src/inbox/archive/in/172988_05-18-26/71040_0416_intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`.
    That inbox item only approves the canonical **spec** after intake and supplies
-   the `ddl advance … --artifact …/spec.md` gate to move task `71096_0415_…` to
+   the `pan advance … --artifact …/spec.md` gate to move task `71096_0415_…` to
    **plan**. Intervention evidence is produced during the nested
    `feature-delivery` run for `phase-4-intervention-probe.md` (CLI pause / resume /
    abort plus implement-stage population of `pause-resume-abort-evidence.json`).
@@ -30,7 +30,7 @@ Human reviewer SHALL attach or cite paths for:
    the parent US-1 run has progressed through **ship** / **index**, a matching
    `src/inbox/out/<timestamp>-us-1-dogfood-phase-4-exit-delivery-report.md`. The
    handoff card lists the outbox path as in-scope for the whole run, but
-   **`ddl advance` never requires that file for the report stage** — only
+   **`pan advance` never requires that file for the report stage** — only
    `delivery-report.md` under `src/memory/features/…/` is the report artifact
    (see `next-prompt.md` for task `20004_1826_us-1-dogfood-phase-4-exit`). Outbox
    copy is a **supervisor / librarian** convention tied to the PRD notifier-to-outbox
@@ -41,7 +41,7 @@ Human reviewer SHALL attach or cite paths for:
 **You do not** run
 `src/inbox/archive/in/172988_05-18-26/71040_0416_intake-phase-4-intervention-probe-pause-resume-abort-ratification.md`
 to satisfy item 3. That inbox item only ever meant: read the spec, then run the
-`pnpm -w exec ddl advance … --artifact …/spec.md` command printed there so the
+`pnpm -w exec pan advance … --artifact …/spec.md` command printed there so the
 nested task leaves **intake** and enters **plan**. It does **not** create
 `pause-resume-abort-evidence.json`.
 
@@ -54,14 +54,14 @@ nested task leaves **intake** and enters **plan**. It does **not** create
    table below (one sentence in the Notes cell is enough).
 3. If the file is missing or empty, **do not** try to fix it by hand. **Block**
    ratification in the Decision record and route the nested intervention run back
-   through the pipeline (agents + `ddl` stages) until that JSON is populated.
+   through the pipeline (agents + `pan` stages) until that JSON is populated.
 
 There is **no** separate “human run this command to generate evidence” step for
 item 3 beyond reading the file and recording pass/fail in the decision table.
 
 ## What you do for item 5 (delivery report + outbox) — human operator
 
-**No agent missed a `ddl` instruction.** The report-stage contract is only:
+**No agent missed a `pan` instruction.** The report-stage contract is only:
 author `src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md` and
 advance with `--artifact` pointing at that path. Nothing in the CLI enforces
 writing `src/inbox/out/…-us-1-dogfood-phase-4-exit-delivery-report.md` at report
@@ -71,7 +71,7 @@ advance.
 
 1. **Until the parent run finishes report:** you do nothing for the outbox line
    — the file should not exist yet. Finish the pipeline: delegate **tech-writer**
-   on `next-prompt.md`, ratify `delivery-report.md`, run the printed `ddl advance`
+   on `next-prompt.md`, ratify `delivery-report.md`, run the printed `pan advance`
    to move into **ship**.
 2. **For the outbox copy:** expect **supervisor** (ship) and/or **librarian**
    (index) to add `src/inbox/out/<timestamp>-us-1-dogfood-phase-4-exit-delivery-report.md`
@@ -90,5 +90,5 @@ advance.
 | --- | --- |
 | Ratified Phase 4 exit | 1. src/internal/work_archive/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl ; 2. Item 2 deferred per bootstrap; no Phoenix importer; engineering backlog remains - src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md ; 3. Item 3 pass — pause, resume, abort captured - src/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json ; 4. src/internal/work_archive/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/policy-compliance.json ; 5. src/inbox/out/172987_05-19-26/77614_0226_us-1-dogfood-phase-4-exit-delivery-report.md + src/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md |
 
-Post-ratification updates to `daedaline.yaml`, `AGENTS.md`, `docs/M1.index.md`, and
+Post-ratification updates to `pancreator.yaml`, `AGENTS.md`, `docs/M1.index.md`, and
 `src/memory/active/current.md` remain gated until humans approve per parent feature spec.

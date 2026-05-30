@@ -8,8 +8,8 @@ describe("GET /api/list", () => {
   let tempRoot = "";
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "daedaline-list-api-"));
-    fs.writeFileSync(path.join(tempRoot, "daedaline.yaml"), "phase: test\n");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-list-api-"));
+    fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
     fs.mkdirSync(path.join(tempRoot, "src", "memory"), { recursive: true });
     fs.writeFileSync(path.join(tempRoot, "src", "memory", "sample.md"), "x");
   });

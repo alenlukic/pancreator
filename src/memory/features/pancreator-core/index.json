@@ -1,0 +1,75 @@
+{
+  "feature_id": "pancreator-core",
+  "title": "Engineering Spec - @pancreator/core",
+  "status": "indexed",
+  "current_stage": "contracts-authored",
+  "pipeline_state": "stub_engineering_spec_indexed",
+  "last_commit": "d472d02",
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": null,
+    "note": "Bootstrap Phase-2 package engineering spec; `index.json` stub added by cruft cleanup slice 54615_0849."
+  },
+  "handoff": {
+    "decision": "stub-index",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "coder",
+    "completed_at": "2026-05-26T09:34:14Z",
+    "next_owner": "pancreator-engineer",
+    "next_stage": "implement",
+    "handoff_note": "Per-folder index pairs `spec.md` with this stub `delivery-report.md`. Promote to full feature-delivery memory when package scope closes."
+  },
+  "index": {
+    "indexer": "coder",
+    "completed_at": "2026-05-26T09:34:14Z",
+    "artifacts_indexed": 2,
+    "metadata": {
+      "pancreator-bootstrap-only": true
+    }
+  },
+  "delivery_report": {
+    "path": "src/memory/features/pancreator-core/delivery-report.md",
+    "citation": {
+      "kind": "lines",
+      "path": "src/memory/features/pancreator-core/delivery-report.md",
+      "range": [1, 35],
+      "contentHash": "cf27241"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "src/memory/features/pancreator-core/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/memory/features/pancreator-core/spec.md",
+          "range": [1, 23],
+          "contentHash": "6a3878e"
+        }
+      },
+      "delivery_report": {
+        "path": "src/memory/features/pancreator-core/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "src/memory/features/pancreator-core/delivery-report.md",
+          "range": [1, 35],
+          "contentHash": "cf27241"
+        }
+      },
+      "per_feature_index": {
+        "path": "src/memory/features/pancreator-core/index.json"
+      }
+    },
+    "implementation_surface": {
+      "primary_package": {
+        "path": "src/internal/packages/@pancreator/core/"
+      }
+    }
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": true
+  }
+}

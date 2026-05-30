@@ -15,7 +15,7 @@ _none_
 ### consider
 
 - Activity aggregation in `client/src/services/activity.ts` remains uncached and recursively scans multiple domains per request; acceptable for v0 but likely to become noticeable as repo size grows.
-- `ddl lint contracts` is currently CLI-deferred in this repository state (returns `status: deferred`), so contract lint is not a blocking signal for this task.
+- `pan lint contracts` is currently CLI-deferred in this repository state (returns `status: deferred`), so contract lint is not a blocking signal for this task.
 
 ### nit
 
@@ -26,7 +26,7 @@ _none_
 | command | exit code | result |
 |---|---:|---|
 | `pnpm --filter client test` | 0 | pass (6 files, 16 tests) |
-| `pnpm -w exec ddl lint contracts src/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa` | 125 | deferred by CLI milestone (`ddl lint` not yet active) |
+| `pnpm -w exec pan lint contracts src/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa` | 125 | deferred by CLI milestone (`pan lint` not yet active) |
 
 ## Scope and hygiene note
 
@@ -37,6 +37,6 @@ This task is marked subordinate QA context with `worktreeHygieneGate: disabled` 
 Advance to the test stage:
 
 ```bash
-pnpm -w exec ddl advance 68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa \
+pnpm -w exec pan advance 68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa \
   --artifact src/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md
 ```

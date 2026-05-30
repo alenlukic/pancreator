@@ -4,13 +4,13 @@
 
 The subordinate Feature SHALL produce QA evidence for the parent feature-delivery harness by executing one realistic dashboard directive through the feature-delivery pipeline. The dashboard must expose repository relationships, file inspection, file editing, and reverse-chronological activity without changing pipeline runtime code. Citation: `{kind: lines, path: src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md, range: [91, 99], contentHash: 199faf3}`.
 
-Daedaline already treats the repository substrate as the current operator-facing system boundary. ADR-0002 separates current repository assets from future runtime automation, so this dashboard SHALL read current files directly and SHALL NOT imply production runtime readiness. Citation: `{kind: lines, path: src/memory/adr/0002-system-architecture-map.md, range: [132, 151], contentHash: e037427}`.
+Pancreator already treats the repository substrate as the current operator-facing system boundary. ADR-0002 separates current repository assets from future runtime automation, so this dashboard SHALL read current files directly and SHALL NOT imply production runtime readiness. Citation: `{kind: lines, path: src/memory/adr/0002-system-architecture-map.md, range: [132, 151], contentHash: e037427}`.
 
 ADR-0005 defines reverse-chronological temporal artifact naming across `src/work/` and `src/inbox/`. The dashboard activity feed SHALL preserve that operator expectation when it renders repository events. Citation: `{kind: lines, path: src/memory/adr/0005-timestamp-naming-conventions.md, range: [35, 60], contentHash: 0573437}`.
 
 ## Decision
 
-Daedaline SHALL implement the v0 dashboard as a new top-level `client/` pnpm workspace package that uses Next.js App Router, TypeScript, React >= 18, and one maintained React component-library dependency.
+Pancreator SHALL implement the v0 dashboard as a new top-level `client/` pnpm workspace package that uses Next.js App Router, TypeScript, React >= 18, and one maintained React component-library dependency.
 
 When the dashboard serves repository content, server-side code SHALL resolve every requested path against the repository root before file I/O. The file API SHALL reject traversal, symlink escapes, and `src/inbox/notes/**` with HTTP 403.
 

@@ -1,4 +1,4 @@
-id: daedaline.features.timestamp_naming.migration_precedence
+id: pancreator.features.timestamp_naming.migration_precedence
 kind: tests
 severity: block
 applies_to:
@@ -22,6 +22,6 @@ runtime:
   entry: "src/internal/tools/migrate-timestamp-naming.mjs"
   exported_symbol: "chooseTimestamp"
 metadata:
-  daedaline.contract_id: daedaline.features.timestamp_naming.migration_precedence
-  daedaline.applies_to: "file-path:src/internal/tools/migrate-timestamp-naming.mjs"
-  daedaline-bootstrap-only: false
+  pancreator.contract_id: pancreator.features.timestamp_naming.migration_precedence
+  pancreator.applies_to: "file-path:src/internal/tools/migrate-timestamp-naming.mjs"
+  pancreator-bootstrap-only: false

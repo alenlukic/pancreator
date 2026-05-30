@@ -11,9 +11,9 @@ index 774b059..776190b 100644
  tools:
    - Read
 @@ -51,6 +48,9 @@ metadata:
-   daedaline-base-persona: reviewer
-   daedaline-model-tier: standard
-   daedaline-canonical-persona: src/personas/reviewer.md
+   pancreator-base-persona: reviewer
+   pancreator-model-tier: standard
+   pancreator-canonical-persona: src/personas/reviewer.md
 +name: reviewer-standard
 +model: gpt-5.3-codex
 +description: Standard economical `reviewer` subagent. Use for bounded, routine, or simple-task-mode work that should let Cursor auto-select an economical model.
@@ -56,19 +56,19 @@ index c672ebf..a1a4698 100644
  5. **Cost discipline.** Subagents isolate parent context; they do not guarantee
     lower total tokens. Avoid fan-out when multiple subagents would reload the
 -   same PRD, handbook, or archival context.
-+   same PRD, handbook, or archival context. When `ddl run` or `ddl advance`
++   same PRD, handbook, or archival context. When `pan run` or `pan advance`
 +   emits `nextPromptFile`, use that prompt as the delegated stage scope.
  
  When no persona owns the work (for example bootstrap-only handbook authoring or
  configuration scaffolding), perform it directly and cite this section in your
 @@ -214,8 +219,10 @@ implementations, and static MVP pipeline definitions. Phase 4 remains open
  until the US-1 dogfood exit gaps are ratified, including external run-log
- observability and an empirical pause/resume/abort exercise. `ddl run
+ observability and an empirical pause/resume/abort exercise. `pan run
  feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine,
 -handoff card, and run log, but it does not yet automate Cursor/model transport
 -or LangGraph execution.
 +handoff card, bounded next-prompt, and run log. Operators still invoke Cursor
-+personas manually, then use `ddl advance` with the accepted stage artifact;
++personas manually, then use `pan advance` with the accepted stage artifact;
 +`repair-state` is reserved for explicit ledger recovery after out-of-band work.
 +It does not yet automate Cursor/model transport or LangGraph execution.
  
@@ -81,14 +81,14 @@ index 54c4d75..d0fb123 100644
 @@ -15,9 +15,10 @@ the current workflow.
    Phoenix/Langfuse verification, and the pause/resume/abort path needs an
    empirical mid-run exercise.
- - **Runtime caveat:** `ddl run feature-delivery <inbox-entry>` now creates a
+ - **Runtime caveat:** `pan run feature-delivery <inbox-entry>` now creates a
 -  Phase-4 state machine, handoff card, and run log under `src/work/<day>/<task-id>/`.
 -  It does **not** call Cursor, a model, or LangGraph automatically. Operators
 -  still invoke the named personas/subagents at each stage boundary.
 +  Phase-4 state machine, handoff card, run log, and bounded `next-prompt.md`
 +  under `src/work/<day>/<task-id>/`. It does **not** call Cursor, a model, or
 +  LangGraph automatically. Operators still invoke the named personas/subagents
-+  at each stage boundary, then run `ddl advance` with the accepted stage artifact.
++  at each stage boundary, then run `pan advance` with the accepted stage artifact.
  
  ## 2) System overview
  
@@ -96,18 +96,18 @@ index 54c4d75..d0fb123 100644
  2. Start the run:
  
     ```bash
--   pnpm exec ddl run feature-delivery <name>.md
-+   pnpm -w exec ddl run feature-delivery <name>.md
+-   pnpm exec pan run feature-delivery <name>.md
++   pnpm -w exec pan run feature-delivery <name>.md
     # equivalent alias:
--   pnpm exec ddl feature new <name>.md
-+   pnpm -w exec ddl feature new <name>.md
+-   pnpm exec pan feature new <name>.md
++   pnpm -w exec pan feature new <name>.md
     ```
  
     Optional flags:
  
     ```bash
--   pnpm exec ddl run feature-delivery <name>.md --feature <feature-id> --task <task-id>
-+   pnpm -w exec ddl run feature-delivery <name>.md --feature <feature-id> --task <task-id>
+-   pnpm exec pan run feature-delivery <name>.md --feature <feature-id> --task <task-id>
++   pnpm -w exec pan run feature-delivery <name>.md --feature <feature-id> --task <task-id>
     ```
  
  3. Read the emitted JSON. The important fields are `taskId`, `stateFile`,
@@ -125,25 +125,25 @@ index 54c4d75..d0fb123 100644
 +   stage-specific artifact, for example:
  
     ```bash
--   pnpm exec ddl status <task-id>
--   pnpm exec ddl pause <task-id>
--   pnpm exec ddl resume <task-id>
--   pnpm exec ddl abort <task-id> --reason "superseded or unsafe"
-+   pnpm -w exec ddl advance <task-id> --artifact src/memory/features/<feature-id>/spec.md
-+   pnpm -w exec ddl advance <task-id> --artifact src/work/<day>/<task-id>/touch-set.json
-+   pnpm -w exec ddl advance <task-id> --artifact src/work/<day>/<task-id>/implementation-report.md
-+   pnpm -w exec ddl advance <task-id> --artifact src/work/<day>/<task-id>/review.md
-+   pnpm -w exec ddl advance <task-id> --event must_fix --artifact src/work/<day>/<task-id>/review.md
+-   pnpm exec pan status <task-id>
+-   pnpm exec pan pause <task-id>
+-   pnpm exec pan resume <task-id>
+-   pnpm exec pan abort <task-id> --reason "superseded or unsafe"
++   pnpm -w exec pan advance <task-id> --artifact src/memory/features/<feature-id>/spec.md
++   pnpm -w exec pan advance <task-id> --artifact src/work/<day>/<task-id>/touch-set.json
++   pnpm -w exec pan advance <task-id> --artifact src/work/<day>/<task-id>/implementation-report.md
++   pnpm -w exec pan advance <task-id> --artifact src/work/<day>/<task-id>/review.md
++   pnpm -w exec pan advance <task-id> --event must_fix --artifact src/work/<day>/<task-id>/review.md
 +   ```
 +
-+   `ddl advance` validates the current stage and expected artifact; reusing the
++   `pan advance` validates the current stage and expected artifact; reusing the
 +   same artifact for later stages is rejected.
 +6. If work already moved out-of-band and the ledger is behind, do not repeatedly
 +   call `advance`. Create or point to a repo-local evidence artifact and use an
 +   explicit repair:
 +
 +   ```bash
-+   pnpm -w exec ddl repair-state <task-id> --stage review \
++   pnpm -w exec pan repair-state <task-id> --stage review \
 +     --artifact src/work/<day>/<task-id>/review.md \
 +     --reason "manual Cursor run already reached review before state advancement existed"
 +   ```
@@ -151,10 +151,10 @@ index 54c4d75..d0fb123 100644
 +7. Inspect state at any point:
 +
 +   ```bash
-+   pnpm -w exec ddl status <task-id>
-+   pnpm -w exec ddl pause <task-id>
-+   pnpm -w exec ddl resume <task-id>
-+   pnpm -w exec ddl abort <task-id> --reason "superseded or unsafe"
++   pnpm -w exec pan status <task-id>
++   pnpm -w exec pan pause <task-id>
++   pnpm -w exec pan resume <task-id>
++   pnpm -w exec pan abort <task-id> --reason "superseded or unsafe"
     ```
  
  ## 4) Post-invocation state machine
@@ -171,7 +171,7 @@ index 54c4d75..d0fb123 100644
 @@ -91,6 +114,8 @@ Main transitions: `invoke → intake`; `human_approval → plan`; `human_approva
  `implementation_complete → review`; `must_fix → implement`; `review_passes → report`;
  `report_ready → ship`; `human_ratifies_local_diff → index`; `artifacts_indexed → complete`.
- Interventions are journaled separately under `.ddl/scheduler/interventions/<task-id>.jsonl`.
+ Interventions are journaled separately under `.pan/scheduler/interventions/<task-id>.jsonl`.
 +`repair-state` is reserved for ledger recovery after explicit out-of-band work;
 +its reason and evidence artifact are appended to `run.log.jsonl`.
  
@@ -184,14 +184,14 @@ index 1a5bfd7..6f9f1e4 100644
 @@ -25,10 +25,11 @@ repository it operates on.
  Phase 4 is the right tracking phase because Phase 3 substrate package
  implementations and the five MVP pipeline definition files exist, while the
- Phase 4 dogfood exit gaps remain open. `ddl run feature-delivery <inbox-entry>`
+ Phase 4 dogfood exit gaps remain open. `pan run feature-delivery <inbox-entry>`
 -now creates the active-work `state.json`, `handoff.md`, and `run.log.jsonl`
 -scaffold for manual persona delegation. Do not infer M1 completion from the
 -phase number; use `docs/BOOTSTRAP.md` Phase 4 and Phase 5 exit criteria for
 -ratification.
 +now creates the active-work `state.json`, `handoff.md`, `next-prompt.md`, and
 +`run.log.jsonl` scaffold for manual persona delegation. Stage progress is
-+recorded only through `ddl advance` or explicit `ddl repair-state`; do not
++recorded only through `pan advance` or explicit `pan repair-state`; do not
 +infer M1 completion from the phase number; use `docs/BOOTSTRAP.md` Phase 4 and
 +Phase 5 exit criteria for ratification.
  
@@ -201,14 +201,14 @@ diff --git a/docs/PRD.summary.md b/docs/PRD.summary.md
 index 773b0cd..dd492c8 100644
 --- a/docs/PRD.summary.md
 +++ b/docs/PRD.summary.md
-@@ -30,8 +30,9 @@ control plane (`ddl` CLI is not wired in this repository yet).
+@@ -30,8 +30,9 @@ control plane (`pan` CLI is not wired in this repository yet).
  has scaffold, handbook seeds, personas, skills, M1 contract feature folders,
  Phase 3 substrate packages, and the five static MVP pipeline definition files.
- Phase 4 remains open until the dogfood exit gaps are ratified. The `ddl` CLI
+ Phase 4 remains open until the dogfood exit gaps are ratified. The `pan` CLI
 -surface can now invoke `feature-delivery` into a state-machine/handoff scaffold,
 -but full automatic Cursor/model/LangGraph execution is not yet complete.
 +surface can now invoke `feature-delivery` into a state-machine, handoff, and
-+bounded next-prompt scaffold; `ddl advance` records validated stage artifacts.
++bounded next-prompt scaffold; `pan advance` records validated stage artifacts.
 +Full automatic Cursor/model/LangGraph execution is not yet complete.
  
  ## Where to go next
@@ -230,8 +230,8 @@ index c5a97aa..ef10f9f 100644
      "@arethetypeswrong/cli": "catalog:",
      "@changesets/cli": "catalog:",
      "@eslint/js": "catalog:",
-+    "@daedaline/cli": "workspace:*",
-+    "@daedaline/mcp-server": "workspace:*",
++    "@pancreator/cli": "workspace:*",
++    "@pancreator/mcp-server": "workspace:*",
      "eslint": "catalog:",
      "publint": "catalog:",
      "turbo": "catalog:",
@@ -243,12 +243,12 @@ index 549fd95..bcc098a 100644
        '@eslint/js':
          specifier: 'catalog:'
          version: 9.39.4
-+      '@daedaline/cli':
++      '@pancreator/cli':
 +        specifier: workspace:*
-+        version: link:src/internal/packages/@daedaline/cli
-+      '@daedaline/mcp-server':
++        version: link:src/internal/packages/@pancreator/cli
++      '@pancreator/mcp-server':
 +        specifier: workspace:*
-+        version: link:src/internal/packages/@daedaline/mcp-server
++        version: link:src/internal/packages/@pancreator/mcp-server
        eslint:
          specifier: 'catalog:'
          version: 9.39.4
@@ -304,36 +304,36 @@ index c826291..6f28a7d 100644
  
  ## How to reply
  
-diff --git a/src/internal/packages/@daedaline/cli/README.md b/src/internal/packages/@daedaline/cli/README.md
+diff --git a/src/internal/packages/@pancreator/cli/README.md b/src/internal/packages/@pancreator/cli/README.md
 index c48ce36..8a87be1 100644
---- a/src/internal/packages/@daedaline/cli/README.md
-+++ b/src/internal/packages/@daedaline/cli/README.md
-@@ -12,13 +12,13 @@ pnpm --filter @daedaline/cli run test
+--- a/src/internal/packages/@pancreator/cli/README.md
++++ b/src/internal/packages/@pancreator/cli/README.md
+@@ -12,13 +12,13 @@ pnpm --filter @pancreator/cli run test
  ```
  
  ```bash
--pnpm exec ddl inbox
--pnpm exec ddl run feature-delivery my-feature.md
--pnpm exec ddl feature new my-feature.md
--pnpm exec ddl status <task-id>
--pnpm exec ddl pause <task-id>
--pnpm exec ddl resume <task-id>
--pnpm exec ddl abort <task-id> --reason "superseded"
-+pnpm -w exec ddl inbox
-+pnpm -w exec ddl run feature-delivery my-feature.md
-+pnpm -w exec ddl feature new my-feature.md
-+pnpm -w exec ddl status <task-id>
-+pnpm -w exec ddl pause <task-id>
-+pnpm -w exec ddl resume <task-id>
-+pnpm -w exec ddl abort <task-id> --reason "superseded"
+-pnpm exec pan inbox
+-pnpm exec pan run feature-delivery my-feature.md
+-pnpm exec pan feature new my-feature.md
+-pnpm exec pan status <task-id>
+-pnpm exec pan pause <task-id>
+-pnpm exec pan resume <task-id>
+-pnpm exec pan abort <task-id> --reason "superseded"
++pnpm -w exec pan inbox
++pnpm -w exec pan run feature-delivery my-feature.md
++pnpm -w exec pan feature new my-feature.md
++pnpm -w exec pan status <task-id>
++pnpm -w exec pan pause <task-id>
++pnpm -w exec pan resume <task-id>
++pnpm -w exec pan abort <task-id> --reason "superseded"
  ```
  
  ## Feature-delivery invocation
-diff --git a/src/internal/packages/@daedaline/cli/bin/ddl.js b/src/internal/packages/@daedaline/cli/bin/ddl.js
+diff --git a/src/internal/packages/@pancreator/cli/bin/pan.js b/src/internal/packages/@pancreator/cli/bin/pan.js
 new file mode 100755
 index 0000000..9078d21
 --- /dev/null
-+++ b/src/internal/packages/@daedaline/cli/bin/ddl.js
++++ b/src/internal/packages/@pancreator/cli/bin/pan.js
 @@ -0,0 +1,50 @@
 +#!/usr/bin/env node
 +import fs from "node:fs";
@@ -346,11 +346,11 @@ index 0000000..9078d21
 +const repoRoot = findRepoRoot(packageRoot);
 +const distEntry = path.join(packageRoot, "dist", "cli.js");
 +const dependencyEntries = [
-+  path.join(packageRoot, "node_modules", "@daedaline", "core", "dist", "index.js"),
-+  path.join(packageRoot, "node_modules", "@daedaline", "inbox", "dist", "index.js"),
-+  path.join(packageRoot, "node_modules", "@daedaline", "intervention", "dist", "index.js"),
-+  path.join(packageRoot, "node_modules", "@daedaline", "pipeline", "dist", "index.js"),
-+  path.join(packageRoot, "node_modules", "@daedaline", "run-logger", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "core", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "inbox", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "intervention", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "pipeline", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "run-logger", "dist", "index.js"),
 +];
 +const missingDependencyEntries = dependencyEntries.filter((entry) => !fs.existsSync(entry));
 +const needsBuild = !fs.existsSync(distEntry) || missingDependencyEntries.length > 0;
@@ -370,7 +370,7 @@ index 0000000..9078d21
 +}
 +
 +if (needsBuild) {
-+  const result = spawnSync("pnpm", ["--dir", repoRoot, "--filter", "@daedaline/cli...", "run", "build"], {
++  const result = spawnSync("pnpm", ["--dir", repoRoot, "--filter", "@pancreator/cli...", "run", "build"], {
 +    cwd: repoRoot,
 +    stdio: "inherit",
 +  });
@@ -385,16 +385,16 @@ index 0000000..9078d21
 +}
 +
 +await import(pathToFileURL(distEntry).href);
-diff --git a/src/internal/packages/@daedaline/cli/package.json b/src/internal/packages/@daedaline/cli/package.json
+diff --git a/src/internal/packages/@pancreator/cli/package.json b/src/internal/packages/@pancreator/cli/package.json
 index 0de8146..4fdde74 100644
---- a/src/internal/packages/@daedaline/cli/package.json
-+++ b/src/internal/packages/@daedaline/cli/package.json
+--- a/src/internal/packages/@pancreator/cli/package.json
++++ b/src/internal/packages/@pancreator/cli/package.json
 @@ -6,7 +6,7 @@
    "main": "./dist/index.js",
    "types": "./dist/index.d.ts",
    "bin": {
--    "ddl": "./dist/cli.js"
-+    "ddl": "./bin/ddl.js"
+-    "pan": "./dist/cli.js"
++    "pan": "./bin/pan.js"
    },
    "exports": {
      ".": {
@@ -406,14 +406,14 @@ index 0de8146..4fdde74 100644
      "dist"
    ],
    "scripts": {
-diff --git a/src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts b/src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts
+diff --git a/src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts b/src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts
 index 7d02ad3..b3a6d2f 100644
---- a/src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts
-+++ b/src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts
+--- a/src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts
++++ b/src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts
 @@ -8,14 +8,34 @@ import {
    rfc3339UtcMs,
    type RunLogRecord,
- } from "@daedaline/run-logger";
+ } from "@pancreator/run-logger";
 -import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 +import { existsSync } from "node:fs";
 +import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
@@ -870,19 +870,19 @@ index 7d02ad3..b3a6d2f 100644
 +function stageContractMarkdown(state: FeatureDeliveryState, stage: string): string {
 +  switch (stage) {
 +    case "intake":
-+      return `Input: ${state.source.inboxPath}\nOutput: src/memory/features/${state.featureId}/spec.md\nAdvance after human ratification: pnpm -w exec ddl advance ${state.taskId} --artifact src/memory/features/${state.featureId}/spec.md`;
++      return `Input: ${state.source.inboxPath}\nOutput: src/memory/features/${state.featureId}/spec.md\nAdvance after human ratification: pnpm -w exec pan advance ${state.taskId} --artifact src/memory/features/${state.featureId}/spec.md`;
 +    case "plan":
-+      return `Input: src/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after human ratification: pnpm -w exec ddl advance ${state.taskId} --artifact ${state.artifacts.runDir}/touch-set.json`;
++      return `Input: src/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after human ratification: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/touch-set.json`;
 +    case "implement":
-+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: pnpm -w exec ddl advance ${state.taskId} --artifact ${state.artifacts.runDir}/implementation-report.md`;
++      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/implementation-report.md`;
 +    case "review":
-+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: pnpm -w exec ddl advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md\nReturn to implement on must-fix: pnpm -w exec ddl advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
++      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md\nReturn to implement on must-fix: pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
 +    case "report":
-+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md\nOutput: src/memory/features/${state.featureId}/delivery-report.md\nAdvance after report is accepted: pnpm -w exec ddl advance ${state.taskId} --artifact src/memory/features/${state.featureId}/delivery-report.md`;
++      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md\nOutput: src/memory/features/${state.featureId}/delivery-report.md\nAdvance after report is accepted: pnpm -w exec pan advance ${state.taskId} --artifact src/memory/features/${state.featureId}/delivery-report.md`;
 +    case "ship":
-+      return `Inputs: local diff, validation output, src/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: pnpm -w exec ddl advance ${state.taskId} --artifact ${state.artifacts.runDir}/policy-compliance.json`;
++      return `Inputs: local diff, validation output, src/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/policy-compliance.json`;
 +    case "index":
-+      return `Inputs: delivery report and accepted ship artifacts\nOutput: src/memory/features/${state.featureId}/index.json\nAdvance after artifacts are indexed: pnpm -w exec ddl advance ${state.taskId} --artifact src/memory/features/${state.featureId}/index.json`;
++      return `Inputs: delivery report and accepted ship artifacts\nOutput: src/memory/features/${state.featureId}/index.json\nAdvance after artifacts are indexed: pnpm -w exec pan advance ${state.taskId} --artifact src/memory/features/${state.featureId}/index.json`;
 +    case "complete":
 +      return "No next agent stage. Confirm archival/index state and close the task manually.";
 +    default:
@@ -905,7 +905,7 @@ index 7d02ad3..b3a6d2f 100644
 +  event: string,
 +  artifact: string,
 +): RunLogRecord {
-+  return makeStateRecord(state, now, "daedaline.pipeline.advance", fromStage, toStage, event, artifact);
++  return makeStateRecord(state, now, "pancreator.pipeline.advance", fromStage, toStage, event, artifact);
 +}
 +
 +function makeRepairRecord(
@@ -919,7 +919,7 @@ index 7d02ad3..b3a6d2f 100644
 +  const record = makeStateRecord(
 +    state,
 +    now,
-+    "daedaline.pipeline.repair_state",
++    "pancreator.pipeline.repair_state",
 +    fromStage,
 +    toStage,
 +    "manual_repair",
@@ -929,7 +929,7 @@ index 7d02ad3..b3a6d2f 100644
 +    ...record,
 +    attributes: {
 +      ...record.attributes,
-+      "daedaline.repair.reason": reason,
++      "pancreator.repair.reason": reason,
 +    },
 +  };
 +}
@@ -955,15 +955,15 @@ index 7d02ad3..b3a6d2f 100644
 +      "gen_ai.operation.name": name,
 +      "gen_ai.provider.name": "local-cli",
 +      "gen_ai.request.model": "none",
-+      "daedaline.feature_id": state.featureId,
-+      "daedaline.state_file": state.artifacts.stateFile,
-+      "daedaline.from_stage": fromStage,
-+      "daedaline.to_stage": toStage,
-+      "daedaline.transition_event": event,
-+      "daedaline.artifact": artifact,
++      "pancreator.feature_id": state.featureId,
++      "pancreator.state_file": state.artifacts.stateFile,
++      "pancreator.from_stage": fromStage,
++      "pancreator.to_stage": toStage,
++      "pancreator.transition_event": event,
++      "pancreator.artifact": artifact,
 +    },
-+    resource: { "service.name": "daedaline", "service.version": "0.0.0" },
-+    daedaline: {
++    resource: { "service.name": "pancreator", "service.version": "0.0.0" },
++    pancreator: {
 +      task_id: asTaskId(state.taskId),
 +      pipeline: state.pipelineId,
 +      stage_id: fromStage,
@@ -1010,7 +1010,7 @@ index 7d02ad3..b3a6d2f 100644
 +  await writeFile(path.join(repoRoot, state.artifacts.handoffFile), renderHandoff(state, pipeline), "utf8");
 +  await writeFile(
 +    path.join(repoRoot, requireNextPromptFile(state)),
-+    `# Generated by ddl ${mode}\n\n${renderNextPrompt(state, pipeline)}`,
++    `# Generated by pan ${mode}\n\n${renderNextPrompt(state, pipeline)}`,
 +    "utf8",
 +  );
 +}
@@ -1207,16 +1207,16 @@ index 7d02ad3..b3a6d2f 100644
  async function safeReaddir(dir: string): Promise<string[]> {
    try {
      return await readdir(dir);
-diff --git a/src/internal/packages/@daedaline/cli/src/run.test.ts b/src/internal/packages/@daedaline/cli/src/run.test.ts
+diff --git a/src/internal/packages/@pancreator/cli/src/run.test.ts b/src/internal/packages/@pancreator/cli/src/run.test.ts
 index 14fafa5..4ae3f57 100644
---- a/src/internal/packages/@daedaline/cli/src/run.test.ts
-+++ b/src/internal/packages/@daedaline/cli/src/run.test.ts
+--- a/src/internal/packages/@pancreator/cli/src/run.test.ts
++++ b/src/internal/packages/@pancreator/cli/src/run.test.ts
 @@ -91,6 +91,83 @@ describe("parseAndRun", () => {
      );
    });
  
 +  it("advances one stage only with the expected stage artifact", async () => {
-+    const root = await mkdtemp(path.join(os.tmpdir(), "ddl-advance-"));
++    const root = await mkdtemp(path.join(os.tmpdir(), "pan-advance-"));
 +    await seedFeatureDeliveryRepo(root);
 +    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
 +    const out: string[] = [];
@@ -1252,7 +1252,7 @@ index 14fafa5..4ae3f57 100644
 +  });
 +
 +  it("repairs a stale state ledger with explicit evidence and reason", async () => {
-+    const root = await mkdtemp(path.join(os.tmpdir(), "ddl-repair-"));
++    const root = await mkdtemp(path.join(os.tmpdir(), "pan-repair-"));
 +    await seedFeatureDeliveryRepo(root);
 +    await writeFile(path.join(root, "src", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
 +    const out: string[] = [];
@@ -1293,15 +1293,15 @@ index 14fafa5..4ae3f57 100644
 +  });
 +
    it("exposes intervention state through status", async () => {
-     const root = await mkdtemp(path.join(os.tmpdir(), "ddl-status-"));
+     const root = await mkdtemp(path.join(os.tmpdir(), "pan-status-"));
      await seedFeatureDeliveryRepo(root);
-diff --git a/src/internal/packages/@daedaline/cli/src/run.ts b/src/internal/packages/@daedaline/cli/src/run.ts
+diff --git a/src/internal/packages/@pancreator/cli/src/run.ts b/src/internal/packages/@pancreator/cli/src/run.ts
 index 02393f5..480ceab 100644
---- a/src/internal/packages/@daedaline/cli/src/run.ts
-+++ b/src/internal/packages/@daedaline/cli/src/run.ts
+--- a/src/internal/packages/@pancreator/cli/src/run.ts
++++ b/src/internal/packages/@pancreator/cli/src/run.ts
 @@ -7,7 +7,9 @@ import {
    type CheckpointId,
- } from "@daedaline/intervention";
+ } from "@pancreator/intervention";
  import {
 +  advanceFeatureDelivery,
    readFeatureDeliveryStatusWithInterventions,
@@ -1357,30 +1357,30 @@ index 02393f5..480ceab 100644
    program
      .command("approve")
      .description("Approve a gated action")
-diff --git a/src/internal/packages/@daedaline/cli/tsconfig.json b/src/internal/packages/@daedaline/cli/tsconfig.json
+diff --git a/src/internal/packages/@pancreator/cli/tsconfig.json b/src/internal/packages/@pancreator/cli/tsconfig.json
 index fa0ec53..0925802 100644
---- a/src/internal/packages/@daedaline/cli/tsconfig.json
-+++ b/src/internal/packages/@daedaline/cli/tsconfig.json
+--- a/src/internal/packages/@pancreator/cli/tsconfig.json
++++ b/src/internal/packages/@pancreator/cli/tsconfig.json
 @@ -1,4 +1,4 @@
  {
 -  "extends": "../../../../tsconfig.base.json",
 +  "extends": "../../../../../tsconfig.base.json",
    "include": ["src"]
  }
-diff --git a/src/internal/packages/@daedaline/core/tsconfig.json b/src/internal/packages/@daedaline/core/tsconfig.json
+diff --git a/src/internal/packages/@pancreator/core/tsconfig.json b/src/internal/packages/@pancreator/core/tsconfig.json
 index fa0ec53..0925802 100644
---- a/src/internal/packages/@daedaline/core/tsconfig.json
-+++ b/src/internal/packages/@daedaline/core/tsconfig.json
+--- a/src/internal/packages/@pancreator/core/tsconfig.json
++++ b/src/internal/packages/@pancreator/core/tsconfig.json
 @@ -1,4 +1,4 @@
  {
 -  "extends": "../../../../tsconfig.base.json",
 +  "extends": "../../../../../tsconfig.base.json",
    "include": ["src"]
  }
-diff --git a/src/internal/packages/@daedaline/inbox/src/file-inbox.test.ts b/src/internal/packages/@daedaline/inbox/src/file-inbox.test.ts
+diff --git a/src/internal/packages/@pancreator/inbox/src/file-inbox.test.ts b/src/internal/packages/@pancreator/inbox/src/file-inbox.test.ts
 index 99d9fd6..2d52566 100644
---- a/src/internal/packages/@daedaline/inbox/src/file-inbox.test.ts
-+++ b/src/internal/packages/@daedaline/inbox/src/file-inbox.test.ts
+--- a/src/internal/packages/@pancreator/inbox/src/file-inbox.test.ts
++++ b/src/internal/packages/@pancreator/inbox/src/file-inbox.test.ts
 @@ -1,4 +1,4 @@
 -import { mkdtemp, readFile, rm } from "node:fs/promises";
 +import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -1411,10 +1411,10 @@ index 99d9fd6..2d52566 100644
 +    await expect(inbox.writeOutFile("../escape.md", "x")).rejects.toThrow(/dot segments|queue root/u);
    });
  });
-diff --git a/src/internal/packages/@daedaline/inbox/src/file-inbox.ts b/src/internal/packages/@daedaline/inbox/src/file-inbox.ts
+diff --git a/src/internal/packages/@pancreator/inbox/src/file-inbox.ts b/src/internal/packages/@pancreator/inbox/src/file-inbox.ts
 index 2791c3e..b0971d6 100644
---- a/src/internal/packages/@daedaline/inbox/src/file-inbox.ts
-+++ b/src/internal/packages/@daedaline/inbox/src/file-inbox.ts
+--- a/src/internal/packages/@pancreator/inbox/src/file-inbox.ts
++++ b/src/internal/packages/@pancreator/inbox/src/file-inbox.ts
 @@ -30,48 +30,92 @@ export class FileInbox implements Inbox {
    }
  
@@ -1528,44 +1528,44 @@ index 2791c3e..b0971d6 100644
 +  await walk("", absDir);
 +  return out.sort();
 +}
-diff --git a/src/internal/packages/@daedaline/inbox/tsconfig.json b/src/internal/packages/@daedaline/inbox/tsconfig.json
+diff --git a/src/internal/packages/@pancreator/inbox/tsconfig.json b/src/internal/packages/@pancreator/inbox/tsconfig.json
 index fa0ec53..0925802 100644
---- a/src/internal/packages/@daedaline/inbox/tsconfig.json
-+++ b/src/internal/packages/@daedaline/inbox/tsconfig.json
+--- a/src/internal/packages/@pancreator/inbox/tsconfig.json
++++ b/src/internal/packages/@pancreator/inbox/tsconfig.json
 @@ -1,4 +1,4 @@
  {
 -  "extends": "../../../../tsconfig.base.json",
 +  "extends": "../../../../../tsconfig.base.json",
    "include": ["src"]
  }
-diff --git a/src/internal/packages/@daedaline/intervention/tsconfig.json b/src/internal/packages/@daedaline/intervention/tsconfig.json
+diff --git a/src/internal/packages/@pancreator/intervention/tsconfig.json b/src/internal/packages/@pancreator/intervention/tsconfig.json
 index fa0ec53..0925802 100644
---- a/src/internal/packages/@daedaline/intervention/tsconfig.json
-+++ b/src/internal/packages/@daedaline/intervention/tsconfig.json
+--- a/src/internal/packages/@pancreator/intervention/tsconfig.json
++++ b/src/internal/packages/@pancreator/intervention/tsconfig.json
 @@ -1,4 +1,4 @@
  {
 -  "extends": "../../../../tsconfig.base.json",
 +  "extends": "../../../../../tsconfig.base.json",
    "include": ["src"]
  }
-diff --git a/src/internal/packages/@daedaline/mcp-server/README.md b/src/internal/packages/@daedaline/mcp-server/README.md
+diff --git a/src/internal/packages/@pancreator/mcp-server/README.md b/src/internal/packages/@pancreator/mcp-server/README.md
 index a638eb3..cef4660 100644
---- a/src/internal/packages/@daedaline/mcp-server/README.md
-+++ b/src/internal/packages/@daedaline/mcp-server/README.md
-@@ -14,7 +14,7 @@ This package exposes the bootstrap `ddl` workspace surface as an MCP server ove
- 2. Run the binary (installs resolve `ddl-mcp-server` from `node_modules/.bin` when the package is a dependency):
+--- a/src/internal/packages/@pancreator/mcp-server/README.md
++++ b/src/internal/packages/@pancreator/mcp-server/README.md
+@@ -14,7 +14,7 @@ This package exposes the bootstrap `pan` workspace surface as an MCP server ove
+ 2. Run the binary (installs resolve `pan-mcp-server` from `node_modules/.bin` when the package is a dependency):
  
     ```bash
--   pnpm exec ddl-mcp-server
-+   pnpm -w exec ddl-mcp-server
+-   pnpm exec pan-mcp-server
++   pnpm -w exec pan-mcp-server
     ```
  
  3. List tools (from an MCP client that speaks stdio JSON-RPC; example names only):
-diff --git a/src/internal/packages/@daedaline/mcp-server/bin/ddl-mcp-server.js b/src/internal/packages/@daedaline/mcp-server/bin/ddl-mcp-server.js
+diff --git a/src/internal/packages/@pancreator/mcp-server/bin/pan-mcp-server.js b/src/internal/packages/@pancreator/mcp-server/bin/pan-mcp-server.js
 new file mode 100755
 index 0000000..f7fb459
 --- /dev/null
-+++ b/src/internal/packages/@daedaline/mcp-server/bin/ddl-mcp-server.js
++++ b/src/internal/packages/@pancreator/mcp-server/bin/pan-mcp-server.js
 @@ -0,0 +1,50 @@
 +#!/usr/bin/env node
 +import fs from "node:fs";
@@ -1578,11 +1578,11 @@ index 0000000..f7fb459
 +const repoRoot = findRepoRoot(packageRoot);
 +const distEntry = path.join(packageRoot, "dist", "server.js");
 +const dependencyEntries = [
-+  path.join(packageRoot, "node_modules", "@daedaline", "core", "dist", "index.js"),
-+  path.join(packageRoot, "node_modules", "@daedaline", "inbox", "dist", "index.js"),
-+  path.join(packageRoot, "node_modules", "@daedaline", "intervention", "dist", "index.js"),
-+  path.join(packageRoot, "node_modules", "@daedaline", "memory", "dist", "index.js"),
-+  path.join(packageRoot, "node_modules", "@daedaline", "run-logger", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "core", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "inbox", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "intervention", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "memory", "dist", "index.js"),
++  path.join(packageRoot, "node_modules", "@pancreator", "run-logger", "dist", "index.js"),
 +];
 +const missingDependencyEntries = dependencyEntries.filter((entry) => !fs.existsSync(entry));
 +const needsBuild = !fs.existsSync(distEntry) || missingDependencyEntries.length > 0;
@@ -1602,7 +1602,7 @@ index 0000000..f7fb459
 +}
 +
 +if (needsBuild) {
-+  const result = spawnSync("pnpm", ["--dir", repoRoot, "--filter", "@daedaline/mcp-server...", "run", "build"], {
++  const result = spawnSync("pnpm", ["--dir", repoRoot, "--filter", "@pancreator/mcp-server...", "run", "build"], {
 +    cwd: repoRoot,
 +    stdio: "inherit",
 +  });
@@ -1617,16 +1617,16 @@ index 0000000..f7fb459
 +}
 +
 +await import(pathToFileURL(distEntry).href);
-diff --git a/src/internal/packages/@daedaline/mcp-server/package.json b/src/internal/packages/@daedaline/mcp-server/package.json
+diff --git a/src/internal/packages/@pancreator/mcp-server/package.json b/src/internal/packages/@pancreator/mcp-server/package.json
 index be952d0..489de4d 100644
---- a/src/internal/packages/@daedaline/mcp-server/package.json
-+++ b/src/internal/packages/@daedaline/mcp-server/package.json
+--- a/src/internal/packages/@pancreator/mcp-server/package.json
++++ b/src/internal/packages/@pancreator/mcp-server/package.json
 @@ -6,7 +6,7 @@
    "main": "./dist/index.js",
    "types": "./dist/index.d.ts",
    "bin": {
--    "ddl-mcp-server": "./dist/server.js"
-+    "ddl-mcp-server": "./bin/ddl-mcp-server.js"
+-    "pan-mcp-server": "./dist/server.js"
++    "pan-mcp-server": "./bin/pan-mcp-server.js"
    },
    "exports": {
      ".": {
@@ -1639,31 +1639,31 @@ index be952d0..489de4d 100644
    "scripts": {
      "build": "tsup src/index.ts src/server.ts --format esm --dts --clean",
      "typecheck": "tsc -p tsconfig.json",
-diff --git a/src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts b/src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts
+diff --git a/src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts b/src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts
 index dd9555b..7b52fd7 100644
---- a/src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts
-+++ b/src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts
+--- a/src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts
++++ b/src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts
 @@ -15,7 +15,7 @@ async function mktemp(prefix: string): Promise<string> {
- describe("ddl.inbox", () => {
+ describe("pan.inbox", () => {
    it("lists src/inbox/in entries for a temp repo", async () => {
-     const root = await mktemp("ddl-mcp-inbox-");
+     const root = await mktemp("pan-mcp-inbox-");
 -    const inboxIn = path.join(root, "inbox", "in");
 +    const inboxIn = path.join(root, "src", "inbox", "in");
      await fs.mkdir(inboxIn, { recursive: true });
      await fs.writeFile(path.join(inboxIn, "hello.md"), "x", "utf8");
  
-@@ -26,6 +26,20 @@ describe("ddl.inbox", () => {
+@@ -26,6 +26,20 @@ describe("pan.inbox", () => {
        entries: ["hello.md"],
      });
    });
 +
 +  it("lists nested inbox/in paths", async () => {
-+    const root = await mktemp("ddl-mcp-inbox-nested-");
++    const root = await mktemp("pan-mcp-inbox-nested-");
 +    const deep = path.join(root, "src", "inbox", "in", "172995_01-01-26", "50909_task");
 +    await fs.mkdir(deep, { recursive: true });
 +    await fs.writeFile(path.join(deep, "a.md"), "x", "utf8");
 +
-+    const out = await callDdlToolMcp("ddl.inbox", {}, { repoRoot: root });
++    const out = await callDdlToolMcp("pan.inbox", {}, { repoRoot: root });
 +    expect(out).toEqual({
 +      command: "inbox",
 +      status: "ok",
@@ -1672,11 +1672,11 @@ index dd9555b..7b52fd7 100644
 +  });
  });
  
- describe("ddl.pause", () => {
-diff --git a/src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts b/src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts
+ describe("pan.pause", () => {
+diff --git a/src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts b/src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts
 index bd88954..d4f7921 100644
---- a/src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts
-+++ b/src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts
+--- a/src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts
++++ b/src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts
 @@ -127,6 +127,36 @@ async function listDirNames(dir: string): Promise<string[]> {
    }
  }
@@ -1714,7 +1714,7 @@ index bd88954..d4f7921 100644
  /**
   * `memory://` lists `/src/memory/<area>/` directory names. `inbox://` lists Inbox queue file names.
   * `work-run-log://<taskId>` returns `src/work/<taskId>/run.log.jsonl` as text when present.
-@@ -155,9 +185,9 @@ export async function readDaedalineResource(
+@@ -155,9 +185,9 @@ export async function readPancreatorResource(
    if (uri === "inbox://") {
      const inbox = new FileInbox(root);
      const [inFiles, outFiles, threadFiles] = await Promise.all([
@@ -1727,40 +1727,40 @@ index bd88954..d4f7921 100644
      ]);
      return {
        mimeType: "application/json",
-diff --git a/src/internal/packages/@daedaline/mcp-server/tsconfig.json b/src/internal/packages/@daedaline/mcp-server/tsconfig.json
+diff --git a/src/internal/packages/@pancreator/mcp-server/tsconfig.json b/src/internal/packages/@pancreator/mcp-server/tsconfig.json
 index fa0ec53..0925802 100644
---- a/src/internal/packages/@daedaline/mcp-server/tsconfig.json
-+++ b/src/internal/packages/@daedaline/mcp-server/tsconfig.json
+--- a/src/internal/packages/@pancreator/mcp-server/tsconfig.json
++++ b/src/internal/packages/@pancreator/mcp-server/tsconfig.json
 @@ -1,4 +1,4 @@
  {
 -  "extends": "../../../../tsconfig.base.json",
 +  "extends": "../../../../../tsconfig.base.json",
    "include": ["src"]
  }
-diff --git a/src/internal/packages/@daedaline/memory/tsconfig.json b/src/internal/packages/@daedaline/memory/tsconfig.json
+diff --git a/src/internal/packages/@pancreator/memory/tsconfig.json b/src/internal/packages/@pancreator/memory/tsconfig.json
 index fa0ec53..0925802 100644
---- a/src/internal/packages/@daedaline/memory/tsconfig.json
-+++ b/src/internal/packages/@daedaline/memory/tsconfig.json
+--- a/src/internal/packages/@pancreator/memory/tsconfig.json
++++ b/src/internal/packages/@pancreator/memory/tsconfig.json
 @@ -1,4 +1,4 @@
  {
 -  "extends": "../../../../tsconfig.base.json",
 +  "extends": "../../../../../tsconfig.base.json",
    "include": ["src"]
  }
-diff --git a/src/internal/packages/@daedaline/pipeline/tsconfig.json b/src/internal/packages/@daedaline/pipeline/tsconfig.json
+diff --git a/src/internal/packages/@pancreator/pipeline/tsconfig.json b/src/internal/packages/@pancreator/pipeline/tsconfig.json
 index fa0ec53..0925802 100644
---- a/src/internal/packages/@daedaline/pipeline/tsconfig.json
-+++ b/src/internal/packages/@daedaline/pipeline/tsconfig.json
+--- a/src/internal/packages/@pancreator/pipeline/tsconfig.json
++++ b/src/internal/packages/@pancreator/pipeline/tsconfig.json
 @@ -1,4 +1,4 @@
  {
 -  "extends": "../../../../tsconfig.base.json",
 +  "extends": "../../../../../tsconfig.base.json",
    "include": ["src"]
  }
-diff --git a/src/internal/packages/@daedaline/run-logger/tsconfig.json b/src/internal/packages/@daedaline/run-logger/tsconfig.json
+diff --git a/src/internal/packages/@pancreator/run-logger/tsconfig.json b/src/internal/packages/@pancreator/run-logger/tsconfig.json
 index fa0ec53..0925802 100644
---- a/src/internal/packages/@daedaline/run-logger/tsconfig.json
-+++ b/src/internal/packages/@daedaline/run-logger/tsconfig.json
+--- a/src/internal/packages/@pancreator/run-logger/tsconfig.json
++++ b/src/internal/packages/@pancreator/run-logger/tsconfig.json
 @@ -1,4 +1,4 @@
  {
 -  "extends": "../../../../tsconfig.base.json",
@@ -2214,7 +2214,7 @@ index 0000000..db6ef7f
 +    .map((r) => r.targetRel)
 +    .sort();
 +  const payload = {
-+    schema: "daedaline.inbox-artifact-index.v1",
++    schema: "pancreator.inbox-artifact-index.v1",
 +    generatedAt: new Date().toISOString(),
 +    threads: threadTargets,
 +  };
@@ -2250,7 +2250,7 @@ index 0000000..db6ef7f
 +  const args = parseArgs(process.argv);
 +  const plan = planInboxConventionMigration(args.root);
 +  const manifest = {
-+    schema: "daedaline.inbox-convention-migration-manifest.v1",
++    schema: "pancreator.inbox-convention-migration-manifest.v1",
 +    mode: args.write ? "write" : "dry-run",
 +    generatedAt: new Date().toISOString(),
 +    repoRoot: args.root,
@@ -2273,9 +2273,9 @@ index 0000000..db6ef7f
 +    );
 +    return;
 +  }
-+  if (process.env.DAEDALINE_MIGRATION_GO !== "1") {
++  if (process.env.PANCREATOR_MIGRATION_GO !== "1") {
 +    console.error(
-+      "[migrate-inbox-convention] refuse --write without DAEDALINE_MIGRATION_GO=1",
++      "[migrate-inbox-convention] refuse --write without PANCREATOR_MIGRATION_GO=1",
 +    );
 +    process.exitCode = 1;
 +    return;
@@ -2283,7 +2283,7 @@ index 0000000..db6ef7f
 +  applyInboxRenamesFromManifest(plan.renames, args.root);
 +  writeInboxArtifactIndex(args.root, plan.renames);
 +  console.log(
-+    `[migrate-inbox-convention] write applied (DAEDALINE_MIGRATION_GO=1)`,
++    `[migrate-inbox-convention] write applied (PANCREATOR_MIGRATION_GO=1)`,
 +  );
 +}
 +
@@ -2556,7 +2556,7 @@ index 6aa9e35..840ca21 100644
 +    inboxMod.applyInboxRenamesFromManifest(renames, repoRoot);
 +    inboxMod.writeInboxArtifactIndex(repoRoot, renames);
      console.log(
-       `[migrate-timestamp-naming] write applied from ${mp} (DAEDALINE_MIGRATION_GO=1)`,
+       `[migrate-timestamp-naming] write applied from ${mp} (PANCREATOR_MIGRATION_GO=1)`,
      );
      return;
    }
@@ -2666,7 +2666,7 @@ index 0000000..73e923c
 +    contentHash: 5a02d2d3ab70b22dfd3116820600a043f15d8066541725306bdff5117937ca72
 +    note: Ratified timestamp selection precedence used by migration planning.
 +  - kind: lines
-+    path: src/internal/packages/@daedaline/inbox/src/file-inbox.ts
++    path: src/internal/packages/@pancreator/inbox/src/file-inbox.ts
 +    range: [44, 49]
 +    contentHash: 9338ed58b26303394d1579301f05eb5d7e676ee5ab6bac3b970fd4dee7b9e12b
 +    note: Inbox runtime currently rejects nested relative paths; compatibility work SHALL precede nesting enforcement.
@@ -2958,12 +2958,12 @@ index 3697972..0000000
 -  `{kind: lines, path: src/inbox/threads/inbox-directory-hierarchy-migration/11700_2045_round-01-clarify.md, range: [49, 53], contentHash: TBD-on-commit}`.
 -- When the Feature ships migration logic, the migration tool MUST
 -  default to `--dry-run` and MUST require an explicit
--  `DAEDALINE_MIGRATION_GO=1` environment guard for write mode, mirroring
+-  `PANCREATOR_MIGRATION_GO=1` environment guard for write mode, mirroring
 -  the prior tool's idiom.
 -- When the Feature ships migration logic, the tool MUST mark
--  migration-only affordances with `metadata.daedaline-bootstrap-only:
+-  migration-only affordances with `metadata.pancreator-bootstrap-only:
 -  true` and the persistent policy with
--  `metadata.daedaline-bootstrap-only: false`.
+-  `metadata.pancreator-bootstrap-only: false`.
 -
 -### Compliance and contracts
 -
@@ -3089,7 +3089,7 @@ index 3697972..0000000
 -  `index.json`.
 -- The directive at
 -  `src/inbox/in/inbox_convention_migration.md` cites
--  `src/personas/daedaline-engineer.md` for downstream implementation
+-  `src/personas/pancreator-engineer.md` for downstream implementation
 -  context; this spec awaits the `human_approval` gate before the
 -  `feature-delivery` pipeline advances to `plan` owned by `tech-lead`.
 -  Spec Contracts under
@@ -3228,8 +3228,8 @@ index 1a33ea7..1059d8d 100644
  
  ## Bootstrap status
  
--The pipelines are registered through `loadPipelineYaml`. `ddl run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, and run log for the first stage. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@daedaline/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, stages are advanced manually by delegating the emitted handoff to the named persona subagents per `AGENTS.md` §4.
-+The pipelines are registered through `loadPipelineYaml`. `ddl run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, generated `next-prompt.md`, and run log for the first stage. `ddl advance <task-id> --artifact <path>` records accepted stage artifacts, mutates `state.json`, appends the run log, and regenerates the next handoff/prompt. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@daedaline/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, operators still invoke the named Cursor persona subagents manually, but they should delegate only the generated `next-prompt.md` rather than broad prior chat context.
+-The pipelines are registered through `loadPipelineYaml`. `pan run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, and run log for the first stage. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@pancreator/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, stages are advanced manually by delegating the emitted handoff to the named persona subagents per `AGENTS.md` §4.
++The pipelines are registered through `loadPipelineYaml`. `pan run feature-delivery <inbox-entry>` now creates a Phase-4 active-work state machine, handoff card, generated `next-prompt.md`, and run log for the first stage. `pan advance <task-id> --artifact <path>` records accepted stage artifacts, mutates `state.json`, appends the run log, and regenerates the next handoff/prompt. LangGraph `StateGraph` compilation remains stubbed in `src/internal/packages/@pancreator/pipeline/src/compile.ts` and lands during the Phase 5 self-hosted milestone. Until then, operators still invoke the named Cursor persona subagents manually, but they should delegate only the generated `next-prompt.md` rather than broad prior chat context.
  
  ## Authoring rules
  
@@ -3319,7 +3319,7 @@ index 0000000..b3071f5
 --- /dev/null
 +++ b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/run.log.jsonl
 @@ -0,0 +1 @@
-+{"ts":"2026-05-11T07:07:57.154Z","trace_id":"d2bae2c405c43b93f1046ff1c580f869","span_id":"6d6c96a245a4280c","name":"daedaline.pipeline.invoke","kind":"event","status":{"code":"OK"},"attributes":{"openinference.span.kind":"CHAIN","gen_ai.operation.name":"pipeline.invoke","gen_ai.provider.name":"local-cli","gen_ai.request.model":"none","daedaline.feature_id":"inbox-convention-migration","daedaline.state_file":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json"},"resource":{"service.name":"daedaline","service.version":"0.0.0"},"daedaline":{"task_id":"60722_0707_inbox-convention-migration","pipeline":"feature-delivery","stage_id":"invoke","outcome":"success","checkpoint_seq":0,"token_usage_unavailable":true}}
++{"ts":"2026-05-11T07:07:57.154Z","trace_id":"d2bae2c405c43b93f1046ff1c580f869","span_id":"6d6c96a245a4280c","name":"pancreator.pipeline.invoke","kind":"event","status":{"code":"OK"},"attributes":{"openinference.span.kind":"CHAIN","gen_ai.operation.name":"pipeline.invoke","gen_ai.provider.name":"local-cli","gen_ai.request.model":"none","pancreator.feature_id":"inbox-convention-migration","pancreator.state_file":"src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json"},"resource":{"service.name":"pancreator","service.version":"0.0.0"},"pancreator":{"task_id":"60722_0707_inbox-convention-migration","pipeline":"feature-delivery","stage_id":"invoke","outcome":"success","checkpoint_seq":0,"token_usage_unavailable":true}}
 diff --git a/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json b/src/work/172995_05-11-26/60722_0707_inbox-convention-migration/state.json
 new file mode 100644
 index 0000000..b877bec
@@ -3367,7 +3367,7 @@ index 0000000..b877bec
 +      "label": "Implement against the declared touch-set from the handoff card",
 +      "status": "pending",
 +      "humanGate": "operator_intervention_available",
-+      "humanAttention": "Use ddl pause/resume/abort if implementation drifts, loops, or exceeds scope."
++      "humanAttention": "Use pan pause/resume/abort if implementation drifts, loops, or exceeds scope."
 +    },
 +    {
 +      "id": "review",
@@ -3423,19 +3423,19 @@ index 0000000..b877bec
 +      "from": "implement",
 +      "on": "pause",
 +      "to": "paused",
-+      "humanAttention": "Use ddl pause <task-id> to stop at the next safe boundary."
++      "humanAttention": "Use pan pause <task-id> to stop at the next safe boundary."
 +    },
 +    {
 +      "from": "paused",
 +      "on": "resume",
 +      "to": "implement",
-+      "humanAttention": "Use ddl resume <task-id> after resolving the blocker."
++      "humanAttention": "Use pan resume <task-id> after resolving the blocker."
 +    },
 +    {
 +      "from": "implement",
 +      "on": "abort",
 +      "to": "aborted",
-+      "humanAttention": "Use ddl abort <task-id> --reason <text> for failed or superseded runs."
++      "humanAttention": "Use pan abort <task-id> --reason <text> for failed or superseded runs."
 +    },
 +    {
 +      "from": "implement",

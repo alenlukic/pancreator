@@ -40,7 +40,7 @@
       "label": "Implement against the declared touch-set from the handoff card",
       "status": "ready",
       "humanGate": "operator_intervention_available",
-      "humanAttention": "Use ddl pause/resume/abort if implementation drifts, loops, or exceeds scope."
+      "humanAttention": "Use pan pause/resume/abort if implementation drifts, loops, or exceeds scope."
     },
     {
       "id": "review",
@@ -104,19 +104,19 @@
       "from": "implement",
       "on": "pause",
       "to": "paused",
-      "humanAttention": "Use ddl pause <task-id> to stop at the next safe boundary."
+      "humanAttention": "Use pan pause <task-id> to stop at the next safe boundary."
     },
     {
       "from": "paused",
       "on": "resume",
       "to": "implement",
-      "humanAttention": "Use ddl resume <task-id> after resolving the blocker."
+      "humanAttention": "Use pan resume <task-id> after resolving the blocker."
     },
     {
       "from": "implement",
       "on": "abort",
       "to": "aborted",
-      "humanAttention": "Use ddl abort <task-id> --reason <text> for failed or superseded runs."
+      "humanAttention": "Use pan abort <task-id> --reason <text> for failed or superseded runs."
     },
     {
       "from": "implement",

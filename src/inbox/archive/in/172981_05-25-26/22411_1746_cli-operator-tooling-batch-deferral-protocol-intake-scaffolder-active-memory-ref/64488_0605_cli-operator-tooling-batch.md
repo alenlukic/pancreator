@@ -7,10 +7,10 @@ status: open
 created_at: 2026-05-25T06:05:12Z
 references:
   - kind: path
-    path: src/internal/packages/@daedaline/cli/src/run.ts
-    note: ddl init, ddl approve, ddl memory, ddl contracts, ddl lint and the non-feature-delivery branch of ddl run return {"status":"stub"}; ddl inbox is read-only with no ddl intake new.
+    path: src/internal/packages/@pancreator/cli/src/run.ts
+    note: pan init, pan approve, pan memory, pan contracts, pan lint and the non-feature-delivery branch of pan run return {"status":"stub"}; pan inbox is read-only with no pan intake new.
   - kind: path
-    path: src/internal/packages/@daedaline/mcp-server/
+    path: src/internal/packages/@pancreator/mcp-server/
     note: Eight MCP tools mirror the same stubbed behavior; consistent protocol benefits both surfaces.
   - kind: path
     path: docs/PRD.md
@@ -47,14 +47,14 @@ tracking and downstream feature-folder creation.
 | Work package | Original `feature_id` |
 |---|---|
 | Stub-verb deferral protocol | `cli-stub-verb-deferral-protocol` |
-| Intake scaffolder | `ddl-intake-scaffolder` |
-| Active-memory refresher | `ddl-refresh-active-memory` |
+| Intake scaffolder | `pan-intake-scaffolder` |
+| Active-memory refresher | `pan-refresh-active-memory` |
 
 ## Problem
 
 Three deterministic operator workflows remain manual or opaque:
 
-1. **Stub verbs masquerade as success.** The `ddl` CLI and eight MCP tools
+1. **Stub verbs masquerade as success.** The `pan` CLI and eight MCP tools
    expose verbs documented as MVP scope but implemented as
    `{"status":"stub"}` JSON with a zero exit code. Operators and CI cannot
    tell which verbs work, which milestone owns the gap, or what manual
@@ -74,8 +74,8 @@ Three deterministic operator workflows remain manual or opaque:
 Ship three CLI affordances that remove recurring operator friction:
 
 1. A structured deferral protocol replacing bare stub envelopes.
-2. `ddl intake new <slug>` for templated inbox directive creation.
-3. `ddl refresh-active-memory` for deterministic active-memory rotation.
+2. `pan intake new <slug>` for templated inbox directive creation.
+3. `pan refresh-active-memory` for deterministic active-memory rotation.
 
 ## Required outcomes
 
@@ -85,7 +85,7 @@ Ship three CLI affordances that remove recurring operator friction:
    ```json
    {
      "status": "deferred",
-     "verb": "ddl <name>",
+     "verb": "pan <name>",
      "milestone": "M1 | M2 | M3",
      "tracking_intake": "src/inbox/in/<day>/<file>.md",
      "manual_workaround": "<short paragraph>"
@@ -96,14 +96,14 @@ Ship three CLI affordances that remove recurring operator friction:
    keyed by tool name rather than verb.
 3. Each stub points at the intake item that tracks its implementation
    (where one exists in this batch or elsewhere) or the relevant PRD section.
-4. Help output (`ddl --help`, `ddl <verb> --help`) marks deferred verbs
+4. Help output (`pan --help`, `pan <verb> --help`) marks deferred verbs
    with a `[deferred: <milestone>]` tag.
 5. Unit tests assert the envelope shape, the non-zero exit code, and the
    stable error code.
 
-### WP-2 — Intake scaffolder (`ddl-intake-scaffolder`)
+### WP-2 — Intake scaffolder (`pan-intake-scaffolder`)
 
-1. `ddl intake new <slug> [--title "..."] [--owner intake-analyst]
+1. `pan intake new <slug> [--title "..."] [--owner intake-analyst]
    [--feature-id <id>] [--from-template <name>]` writes a new file at
    `src/inbox/in/<today-day-bucket>/<sid>_<hhmm>_<slug>.md`.
 2. The command computes the day-bucket, SID, and HHMM from the local
@@ -119,9 +119,9 @@ Ship three CLI affordances that remove recurring operator friction:
    `src/memory/handbook/contract-templates/` for ratification requests,
    compliance-trigger directives, etc.
 
-### WP-3 — Active-memory refresher (`ddl-refresh-active-memory`)
+### WP-3 — Active-memory refresher (`pan-refresh-active-memory`)
 
-1. `ddl refresh-active-memory [--dry-run]` rewrites the Active Feature
+1. `pan refresh-active-memory [--dry-run]` rewrites the Active Feature
    row, the Most-recent shipped Features table, and the Operator-notes
    timestamp in `src/memory/active/current.md`.
 2. Active Feature is computed from `src/inbox/in/` (newest unprocessed
@@ -151,7 +151,7 @@ Ship three CLI affordances that remove recurring operator friction:
 
 ### WP-2 — Intake scaffolder
 
-- `ddl intake new my-thing --title "My thing"` produces a file whose
+- `pan intake new my-thing --title "My thing"` produces a file whose
   path, frontmatter, and body all conform to
   `src/memory/handbook/inbox-lifecycle.md`.
 - A vitest suite covers SID/HHMM computation across day boundaries and
@@ -174,13 +174,13 @@ Ship three CLI affordances that remove recurring operator friction:
 ## Out of scope
 
 - Implementing the deferred verbs themselves (each is a separate intake,
-  for example `64500_0605_ddl-init-and-create-daedaline-install-paths.md`
-  for `ddl init`).
+  for example `64500_0605_pan-init-and-create-pancreator-install-paths.md`
+  for `pan init`).
 - Localizing or templating the manual-workaround text beyond plain English.
 - Editing existing inbox items (semantic immutability per
   `src/memory/handbook/inbox-lifecycle.md` §3b).
 - Inbox archival (handled by the manual procedure or a separate
-  `ddl inbox archive` verb).
+  `pan inbox archive` verb).
 - MCP elicitation transport for intake or active-memory refresh (M2 scope).
 - Cron / scheduler invocation for active-memory refresh (deferred to M4+
   per P-02).
@@ -193,7 +193,7 @@ Ship three CLI affordances that remove recurring operator friction:
   intake template contract under `src/memory/handbook/contract-templates/`.
 - `coder` for CLI / MCP wiring, SID/HHMM computation, and the intake verb.
 - `librarian` for the active-memory rotation contract.
-- `daedaline-engineer` for the refresher implementation and vitest harness.
+- `pancreator-engineer` for the refresher implementation and vitest harness.
 - `reviewer` for help-output, exit-code, day-boundary, and overwrite-refusal
   audits.
 - `compliance-auditor` for adopting the refresher into the broad-sweep

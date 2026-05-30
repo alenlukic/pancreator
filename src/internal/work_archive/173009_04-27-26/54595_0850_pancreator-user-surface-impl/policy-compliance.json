@@ -1,0 +1,45 @@
+{
+  "task_id": "pancreator-user-surface-impl",
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Phase 3 step 8 implements the user surface: scanRepository and AdoptionScanReport (@pancreator/adopter-scan); legacy policy loader with Q23 deprecation, upgradePolicyConfig, and PolicyConfigV1 (@pancreator/policy); pan CLI binary with commander-based parseAndRun, src/inbox/list, and pause/resume/abort wired to InterventionManager + FsInterventionStore (@pancreator/cli). Whitelists @pancreator/cli as a workspace composer in the no-horizontal-primitive-deps ESLint rule and the check:phase0a scaffold checker, with a documenting note in BOOTSTRAP.md Phase 0a.",
+    "changed_surfaces": [
+      "src/internal/packages/@pancreator/adopter-scan/**",
+      "src/internal/packages/@pancreator/policy/**",
+      "src/internal/packages/@pancreator/cli/**",
+      "tools/eslint-rules/no-horizontal-primitive-deps.mjs",
+      "src/internal/tools/check-phase-0a-scaffold.mjs",
+      "BOOTSTRAP.md",
+      "src/memory/features/pancreator-adopter-scan/tasks.md",
+      "src/memory/features/pancreator-policy/tasks.md",
+      "src/memory/features/pancreator-cli/tasks.md",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml"
+    ],
+    "deferred_items": [
+      {
+        "id": "pancreator-cli-stub-verbs",
+        "rationale": "pan init/run/feature/status/approve/src/memory/contracts/lint remain JSON stubs until Phase 4 pipeline wiring lands."
+      },
+      {
+        "id": "pancreator-policy-pan-upgrade-apply",
+        "rationale": "pan upgrade --apply (write-back) is deferred; the policy package returns the upgraded struct only and the CLI does not yet host the verb."
+      },
+      {
+        "id": "pancreator-adopter-scan-deep-analysis",
+        "rationale": "Adopter scan is presence-based; deep analysis and Q15 --exhaustive flow are deferred."
+      },
+      {
+        "id": "pancreator-user-surface.readme_ergonomics-llm-judge-run",
+        "rationale": "LLM-judge README contracts use TBD-on-commit content hashes and require the runner panel; deferred to the contract runner pass."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Slice stages diffs locally, preserves the human gate at the phase boundary, and updates the lint/scaffold rules to keep the no-horizontal-primitive-deps invariant explicit while admitting the cli composer.",
+    "constitution_alignment": "Slice keeps user-surface artifacts traceable; the composer carveout is documented in BOOTSTRAP.md Phase 0a so future agents discover the rule shape.",
+    "prd_alignment": "Slice satisfies PRD §11 user-surface responsibilities; CLI exposes the MVP verbs declared in BOOTSTRAP step 8; pause/resume/abort match the US-10 MVP three-lever subset.",
+    "required_updates": []
+  }
+}

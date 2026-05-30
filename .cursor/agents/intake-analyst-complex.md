@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills:
   - canonicalize-spec
 maxTurns: 30
@@ -25,16 +25,16 @@ memory: project
 effort: high
 color: cyan
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [intake]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-color-suffix: cyan-100
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [intake]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-color-suffix: cyan-100
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -45,9 +45,9 @@ metadata:
     - canonical-spec-passes-Spec-Kit-shape
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: intake-analyst
-  daedaline-model-tier: complex
-  daedaline-canonical-persona: src/personas/intake-analyst.md
+  pancreator-base-persona: intake-analyst
+  pancreator-model-tier: complex
+  pancreator-canonical-persona: src/personas/intake-analyst.md
 ---
 
 # intake-analyst-complex

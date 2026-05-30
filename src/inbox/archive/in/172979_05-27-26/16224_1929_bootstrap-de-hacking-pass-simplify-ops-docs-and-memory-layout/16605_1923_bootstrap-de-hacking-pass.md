@@ -87,7 +87,7 @@ tracks by:
 
 - Audit persona projections and handbook contracts for **Next operator steps**
   conformance per `src/memory/handbook/operator-output-contract.md`.
-- Enforce: fully formed `pnpm -w exec ddl …` command blocks (no bare `ddl`),
+- Enforce: fully formed `pnpm -w exec pan …` command blocks (no bare `pan`),
   one copy-paste block per mutating action, no prose file-shopping lists.
 - Add or tighten validation (lint, compliance descriptor, or maintainer script)
   where gaps are found; document deferrals in backlog with owner.
@@ -106,7 +106,7 @@ tracks by:
 ### R4 — OPERATION.md extraction
 
 - Create repository-root **`OPERATION.md`** as the canonical operator how-to
-  (searchable sections: inbox, feature delivery loop, `ddl` verbs, memory
+  (searchable sections: inbox, feature delivery loop, `pan` verbs, memory
   refresh, commit/policy-compliance, troubleshooting).
 - **`README.md`** SHALL remain a short entry point (status, map, pointers)—not
   the full procedural manual.
@@ -128,7 +128,7 @@ tracks by:
   - Slim workflows, `workflow_dispatch`-only, path-narrowing, or temporary disable
     with documented rationale—**prefer velocity** until feature-delivery automation
     and dashboard exist.
-- Define **librarian pre-close validation**: before `ddl close-artifacts`, librarian
+- Define **librarian pre-close validation**: before `pan close-artifacts`, librarian
   (or delegated coder under librarian prompt) SHALL run agreed local checks
   (e.g. `pnpm test`, targeted package tests, typecheck) and fix straightforward
   failures (type errors, stale status fields, formatting) within task scope.
@@ -153,7 +153,7 @@ tracks by:
   backlog-linked with owner.
 - CI change rationale documented (README or OPERATION.md + backlog if CI disabled).
 - Librarian close-out procedure documents pre-close test/fix expectations.
-- `pnpm -w exec ddl` workspace tests and compliance descriptors applicable to
+- `pnpm -w exec pan` workspace tests and compliance descriptors applicable to
   touched paths pass (or deferrals recorded per deferral protocol).
 - Delivery report cites this inbox item and records doc-impact disposition.
 
@@ -173,9 +173,9 @@ tracks by:
 |----|--------|----------------|
 | WP-1 | Audit + move feature skeletons → backlog | librarian + tech-lead |
 | WP-2 | OPERATION.md extraction + README slim | tech-writer |
-| WP-3 | Operator-output conformance + lint hooks | daedaline-engineer + contract-writer |
+| WP-3 | Operator-output conformance + lint hooks | pancreator-engineer + contract-writer |
 | WP-4 | Backlog/debt consolidation + AGENTS map | tech-lead |
-| WP-5 | CI slimming + librarian pre-close test contract | daedaline-engineer + librarian |
+| WP-5 | CI slimming + librarian pre-close test contract | pancreator-engineer + librarian |
 | WP-6 | Duplication/philosophy sweep (handbook, CLI, agents) | supervisor + persona-designer (review only) |
 
 ## Suggested owners
@@ -185,7 +185,7 @@ tracks by:
 | Intake, spec, touch-set | `intake-analyst` → `tech-lead` |
 | Memory tier moves, close-artifacts | `librarian` |
 | Operator docs | `tech-writer` |
-| CI / CLI / validation scripts | `daedaline-engineer` |
+| CI / CLI / validation scripts | `pancreator-engineer` |
 | Contracts / compliance descriptors | `contract-writer` |
 | Review | `reviewer` |
 

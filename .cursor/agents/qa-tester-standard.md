@@ -20,15 +20,15 @@ tools:
   - "Bash(node src/internal/tools/check-phase-0a-scaffold.mjs:*)"
   - "Bash(node src/internal/tools/context-budget-report.mjs:*)"
   - "Bash(node src/internal/tools/check-operator-output.mjs:*)"
-  - "Bash(pnpm -w exec ddl status:*)"
-  - "Bash(pnpm -w exec ddl refresh-prompt:*)"
+  - "Bash(pnpm -w exec pan status:*)"
+  - "Bash(pnpm -w exec pan refresh-prompt:*)"
   - "Bash(pnpm --filter client:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
   - cursor-ide-browser
 maxTurns: 40
 isolation: worktree
@@ -36,15 +36,15 @@ memory: project
 effort: medium
 color: orange
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [test]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [test]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -56,9 +56,9 @@ metadata:
     - manual-verification-documented
     - re-entry-target-is-implement
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: qa-tester
-  daedaline-model-tier: standard
-  daedaline-canonical-persona: src/personas/qa-tester.md
+  pancreator-base-persona: qa-tester
+  pancreator-model-tier: standard
+  pancreator-canonical-persona: src/personas/qa-tester.md
 ---
 
 # qa-tester-standard

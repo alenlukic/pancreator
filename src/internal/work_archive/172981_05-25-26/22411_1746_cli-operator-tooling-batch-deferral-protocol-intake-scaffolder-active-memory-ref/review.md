@@ -10,7 +10,7 @@
 
 `review_passes: true`
 
-The prior blocking defects are resolved: `ddl refresh-active-memory` now treats managed operator-notes timestamp drift as non-conflicting and includes a direct apply-path test, per-verb `tracking_intake` now routes `ddl init` / `ddl.init` to the dedicated intake, and `AGENTS.md` restores `### 6.1 — Compliance-run trigger guidance`. Required validation commands all passed.
+The prior blocking defects are resolved: `pan refresh-active-memory` now treats managed operator-notes timestamp drift as non-conflicting and includes a direct apply-path test, per-verb `tracking_intake` now routes `pan init` / `pan.init` to the dedicated intake, and `AGENTS.md` restores `### 6.1 — Compliance-run trigger guidance`. Required validation commands all passed.
 
 ## Findings
 
@@ -20,11 +20,11 @@ The prior blocking defects are resolved: `ddl refresh-active-memory` now treats 
 
 ### consider
 
-- `src/internal/packages/@daedaline/cli/src/index.ts` is modified in the working tree but is not listed in `touch-set.json`. The export additions (`DDL_DEFERRED_EXIT_CODE`, `DDL_ACTIVE_MEMORY_CONFLICT_EXIT_CODE`) are coherent with the implementation and tests, but the operator SHOULD either ratify this path into touch-set governance or confirm it is intentional carry-over.
+- `src/internal/packages/@pancreator/cli/src/index.ts` is modified in the working tree but is not listed in `touch-set.json`. The export additions (`PAN_DEFERRED_EXIT_CODE`, `PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE`) are coherent with the implementation and tests, but the operator SHOULD either ratify this path into touch-set governance or confirm it is intentional carry-over.
 
 ### nit
 
-- `tests/repo-structure.test.mjs` runtime smoke still executes one deferred verb (`ddl lint`) while package-level vitest covers the full deferred matrix. This is not gate-blocking because behavioral coverage exists, but broadening the smoke loop to all deferred verbs would align more literally with WP-1 wording.
+- `tests/repo-structure.test.mjs` runtime smoke still executes one deferred verb (`pan lint`) while package-level vitest covers the full deferred matrix. This is not gate-blocking because behavioral coverage exists, but broadening the smoke loop to all deferred verbs would align more literally with WP-1 wording.
 - `src/personas/compliance-auditor.md` still contains ``**`stdout`,**`` punctuation styling; cosmetic only.
 
 ## Spec Contract results
@@ -37,7 +37,7 @@ No `contracts/` wrappers are present under `src/memory/features/cli-operator-too
 
 ## Coverage delta
 
-Changed-surface tests now explicitly cover the prior gaps: CLI deferred envelope routing matrix (`run.test.ts`), MCP deferral tracking parity (`ddl-execute.test.ts`), and non-dry-run operator-notes managed timestamp apply behavior (`run.test.ts`). Repository-level Node tests passed (`78/78`) with no failures. No line-coverage artifact file is generated in this stage workspace.
+Changed-surface tests now explicitly cover the prior gaps: CLI deferred envelope routing matrix (`run.test.ts`), MCP deferral tracking parity (`pan-execute.test.ts`), and non-dry-run operator-notes managed timestamp apply behavior (`run.test.ts`). Repository-level Node tests passed (`78/78`) with no failures. No line-coverage artifact file is generated in this stage workspace.
 
 ## Validation results
 
@@ -51,30 +51,30 @@ Changed-surface tests now explicitly cover the prior gaps: CLI deferred envelope
 ## References
 
 - kind: lines
-  path: src/internal/packages/@daedaline/cli/src/run.ts
+  path: src/internal/packages/@pancreator/cli/src/run.ts
   range: [25, 43]
   contentHash: TBD-on-commit
   note: Deferred exit code and per-verb default tracking routing.
 - kind: lines
-  path: src/internal/packages/@daedaline/cli/src/run.ts
+  path: src/internal/packages/@pancreator/cli/src/run.ts
   range: [454, 555]
   contentHash: TBD-on-commit
   note: Operator-notes conflict canonicalization and refresh apply behavior.
 - kind: lines
-  path: src/internal/packages/@daedaline/cli/src/run.test.ts
+  path: src/internal/packages/@pancreator/cli/src/run.test.ts
   range: [570, 781]
   contentHash: TBD-on-commit
   note: Deferred envelope routing matrix and refresh apply-path test.
 - kind: lines
-  path: src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts
+  path: src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts
   range: [43, 53]
   contentHash: TBD-on-commit
   note: MCP per-tool tracking intake parity routing.
 - kind: lines
-  path: src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts
+  path: src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts
   range: [76, 104]
   contentHash: TBD-on-commit
-  note: MCP deferral envelope assertions for `ddl.init` and `ddl.lint`.
+  note: MCP deferral envelope assertions for `pan.init` and `pan.lint`.
 - kind: lines
   path: AGENTS.md
   range: [198, 212]

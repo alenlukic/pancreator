@@ -43,10 +43,10 @@ error budget.
 | `description` | yes | EARS, atomic, SLI-named, window-quantified. |
 | `references` | yes | Cite the SLO doc and the measurement basis. |
 | `runtime` | yes | Per-kind payload. |
-| `metadata.daedaline.sli` | yes | The signal name. |
-| `metadata.daedaline.slo` | yes | The numeric target with units. |
-| `metadata.daedaline.window` | yes | The measurement window (e.g., `5-minute rolling`). |
-| `metadata.daedaline.error-budget` | yes | The permitted SLI miss-rate per window. |
+| `metadata.pancreator.sli` | yes | The signal name. |
+| `metadata.pancreator.slo` | yes | The numeric target with units. |
+| `metadata.pancreator.window` | yes | The measurement window (e.g., `5-minute rolling`). |
+| `metadata.pancreator.error-budget` | yes | The permitted SLI miss-rate per window. |
 
 ## M1 scaffold (`kind: rego` over telemetry JSON)
 
@@ -72,15 +72,15 @@ references:
     note: "Checkout p95-latency SLO."
 spec: /src/memory/features/<id>/contracts/checkout-p95-latency.rego
 runtime:
-  package: daedaline.perf.checkout
-  query: data.daedaline.perf.checkout.deny
+  package: pancreator.perf.checkout
+  query: data.pancreator.perf.checkout.deny
 metadata:
-  daedaline.contract_id: <feature>.perf.checkout-p95-latency
-  daedaline.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms
-  daedaline.sli: checkout.latency.p95_ms
-  daedaline.slo: "300 ms"
-  daedaline.window: "5-minute rolling"
-  daedaline.error-budget: "1.0 percent per window"
+  pancreator.contract_id: <feature>.perf.checkout-p95-latency
+  pancreator.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms
+  pancreator.sli: checkout.latency.p95_ms
+  pancreator.slo: "300 ms"
+  pancreator.window: "5-minute rolling"
+  pancreator.error-budget: "1.0 percent per window"
 ```
 
 Sidecar `checkout-p95-latency.rego`:
@@ -97,13 +97,13 @@ Sidecar `checkout-p95-latency.rego`:
 # references:
 #   - "/src/memory/features/<id>/perf-spec.md"
 # custom:
-#   daedaline.contract_id: <feature>.perf.checkout-p95-latency
-#   daedaline.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms
-#   daedaline.sli: checkout.latency.p95_ms
-#   daedaline.slo: "300 ms"
-#   daedaline.window: "5-minute rolling"
-#   daedaline.error-budget: "1.0 percent per window"
-package daedaline.perf.checkout
+#   pancreator.contract_id: <feature>.perf.checkout-p95-latency
+#   pancreator.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms
+#   pancreator.sli: checkout.latency.p95_ms
+#   pancreator.slo: "300 ms"
+#   pancreator.window: "5-minute rolling"
+#   pancreator.error-budget: "1.0 percent per window"
+package pancreator.perf.checkout
 
 import rego.v1
 

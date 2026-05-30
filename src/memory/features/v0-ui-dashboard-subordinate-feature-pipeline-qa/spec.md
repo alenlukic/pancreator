@@ -21,7 +21,7 @@ expected_generated_artifacts:
   - src/work/172977_05-29-26/<task-id>/review.md
   - src/work/172977_05-29-26/<task-id>/test-report.md
   - src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md
-  - .ddl/scheduler/interventions/<task-id>.jsonl
+  - .pan/scheduler/interventions/<task-id>.jsonl
   - client/**
 references:
   - kind: lines
@@ -80,7 +80,7 @@ references:
     contentHash: d22b04e
     note: "qa-tester verification contract and severity-based re-entry routing consumed by the test stage of this subordinate run."
   - kind: lines
-    path: daedaline.yaml
+    path: pancreator.yaml
     range: [1, 40]
     contentHash: 9101a26
     note: "Live policy file — Phase 5, risk_tier medium, manual runner.cursor.invocation default that frames the subordinate run's automation mode."
@@ -92,7 +92,7 @@ This subordinate Feature SHALL exercise the parent harness `feature-delivery-har
 
 ## Background
 
-The parent harness wires `CursorRunner` through `pnpm -w exec ddl run feature-delivery` and `pnpm -w exec ddl advance` and adds an automatic loopback regime, retry budget, and report-stage human gate. Acceptance for the parent requires QA evidence that the wired runtime can drive a realistic subordinate directive through `intake → plan → implement → review → test → report → ship → index → complete` without false-positive worktree-hygiene failures on expected generated paths. This subordinate Feature supplies that evidence by executing one bounded directive end-to-end against the harness under manual `runner.cursor.invocation` mode, since the parent harness is still in progress and SDK mode SHALL NOT be assumed.
+The parent harness wires `CursorRunner` through `pnpm -w exec pan run feature-delivery` and `pnpm -w exec pan advance` and adds an automatic loopback regime, retry budget, and report-stage human gate. Acceptance for the parent requires QA evidence that the wired runtime can drive a realistic subordinate directive through `intake → plan → implement → review → test → report → ship → index → complete` without false-positive worktree-hygiene failures on expected generated paths. This subordinate Feature supplies that evidence by executing one bounded directive end-to-end against the harness under manual `runner.cursor.invocation` mode, since the parent harness is still in progress and SDK mode SHALL NOT be assumed.
 
 ## Scope orientation
 
@@ -112,10 +112,10 @@ The acceptance criteria split into six work packages. Plan-stage delegation MAY 
 
 ### WP-1 — Subordinate run lifecycle
 
-- When the operator invokes `pnpm -w exec ddl run feature-delivery 172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md` from the repository root, the CLI SHALL emit a JSON envelope carrying `taskId`, `featureId: v0-ui-dashboard-subordinate-feature-pipeline-qa`, `runDir`, `handoffFile`, `nextPromptFile`, and `currentStage: intake`.
+- When the operator invokes `pnpm -w exec pan run feature-delivery 172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md` from the repository root, the CLI SHALL emit a JSON envelope carrying `taskId`, `featureId: v0-ui-dashboard-subordinate-feature-pipeline-qa`, `runDir`, `handoffFile`, `nextPromptFile`, and `currentStage: intake`.
 - When the run starts, the runtime SHALL create `src/work/<day-bucket>/<task-id>/state.json`, `handoff.md`, `next-prompt.md`, and `run.log.jsonl` whose paths follow the seconds-remaining-prefix shape `{SID-prefix}_{HHMM}_{semantic-suffix}` per `src/memory/features/timestamp-naming-conventions/spec.md` lines 71–76.
-- When each non-terminal stage completes, the operator SHALL run the matching `pnpm -w exec ddl advance <task-id> --artifact <stage-artifact>` command per `OPERATION.md` lines 69–80; the operating agent SHALL stand in for the human ratification step and SHALL document each ratification decision in the corresponding stage artifact.
-- When the run reaches `complete`, the runtime SHALL emit a librarian `next-prompt.md` and the operator SHALL run exactly one `pnpm -w exec ddl close-artifacts <task-id>` invocation per `OPERATION.md` lines 72–73.
+- When each non-terminal stage completes, the operator SHALL run the matching `pnpm -w exec pan advance <task-id> --artifact <stage-artifact>` command per `OPERATION.md` lines 69–80; the operating agent SHALL stand in for the human ratification step and SHALL document each ratification decision in the corresponding stage artifact.
+- When the run reaches `complete`, the runtime SHALL emit a librarian `next-prompt.md` and the operator SHALL run exactly one `pnpm -w exec pan close-artifacts <task-id>` invocation per `OPERATION.md` lines 72–73.
 
 ### WP-2 — Subordinate QA context marker
 
@@ -164,7 +164,7 @@ The acceptance criteria split into six work packages. Plan-stage delegation MAY 
 - Authentication, authorization, multi-tenant isolation, and secret management for the `client/` app; the app SHALL run as an operator-local tool only per the directive lines 22–24.
 - Any change to the parent harness implementation, the `feature-delivery` pipeline YAML, persona specs, or runtime automation rules; this subordinate run consumes the harness behavior unchanged per the directive lines 57–61.
 - Manual gate bypass, auto-push, auto-commit, or any operator-gate skip that would invalidate the harness evidence per the directive lines 60–61.
-- SDK-mode automatic loopback evaluation; the subordinate run SHALL execute under the manual `runner.cursor.invocation` default declared in `daedaline.yaml` lines 1–40 until the parent harness ships SDK mode.
+- SDK-mode automatic loopback evaluation; the subordinate run SHALL execute under the manual `runner.cursor.invocation` default declared in `pancreator.yaml` lines 1–40 until the parent harness ships SDK mode.
 - Edits to any file under `src/inbox/notes/` per AGENTS.md operator-sandbox rule and per `src/memory/handbook/inbox-lifecycle.md` lines 79–101.
 
 ## Open questions
@@ -222,7 +222,7 @@ The following persona assignments are RECOMMENDED for the plan stage. The tech-l
    **How:** From the repository root run:
 
    ```bash
-   pnpm -w exec ddl advance 68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa \
+   pnpm -w exec pan advance 68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa \
      --artifact src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md
    ```
 

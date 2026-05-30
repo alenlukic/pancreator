@@ -6,7 +6,7 @@
     "rationale": "The implementation changes operator-facing documentation and governance/reference surfaces for CI, compliance tooling, and MCP read handlers, so documentation-impact obligations apply and were handled in-task.",
     "changed_surfaces": [
       "src/memory/features/ci-best-practices-batch/delivery-report.md",
-      "src/internal/packages/@daedaline/mcp-server/README.md",
+      "src/internal/packages/@pancreator/mcp-server/README.md",
       "src/personas/compliance-auditor.md",
       ".cursor/agents/compliance-auditor.md",
       ".cursor/agents/compliance-auditor-standard.md",

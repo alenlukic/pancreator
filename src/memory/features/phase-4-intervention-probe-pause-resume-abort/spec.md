@@ -17,19 +17,19 @@ intake_closure:
     required-execution steps, four acceptance criteria, and three explicit
     non-goals. No material ambiguity blocks canonicalization. The nested task id
     `71096_0415_phase-4-intervention-probe-pause-resume-abort` was produced by
-    `ddl run feature-delivery phase-4-intervention-probe.md` during intake and
+    `pan run feature-delivery phase-4-intervention-probe.md` during intake and
     is recorded directly in this spec's acceptance criteria and citations.
 references:
   - kind: lines
     path: src/inbox/archive/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md
     range: [19, 23]
     contentHash: 970e45f
-    note: "Source directive problem statement: Phase 4 exit requires a second real feature-delivery invocation that exercises ddl pause, ddl resume, and ddl abort against live ledger state."
+    note: "Source directive problem statement: Phase 4 exit requires a second real feature-delivery invocation that exercises pan pause, pan resume, and pan abort against live ledger state."
   - kind: lines
     path: src/inbox/archive/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md
     range: [25, 29]
     contentHash: 970e45f
-    note: "Source directive goal statement: start ddl run feature-delivery on this inbox item, advance to live plan, then pause, resume, and abort before implementation; record outcomes in pause-resume-abort-evidence.json."
+    note: "Source directive goal statement: start pan run feature-delivery on this inbox item, advance to live plan, then pause, resume, and abort before implementation; record outcomes in pause-resume-abort-evidence.json."
   - kind: lines
     path: src/inbox/archive/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md
     range: [31, 37]
@@ -78,21 +78,21 @@ with task id, timestamps, stage identifiers, reasons, state diffs, and
 
 ## Acceptance criteria
 
-- When the operator invokes `ddl pause 71096_0415_phase-4-intervention-probe-pause-resume-abort`
+- When the operator invokes `pan pause 71096_0415_phase-4-intervention-probe-pause-resume-abort`
   at a live plan stage, the Pipeline ledger state MUST transition to `paused` and
   the evidence record MUST list the task identifier, the originating stage, the
   timestamp of the pause, and the state diff captured before and after the pause,
   per the source directive at
   `{kind: lines, path: src/inbox/archive/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md, range: [47, 47], contentHash: 970e45f}`.
 
-- When the operator invokes `ddl resume 71096_0415_phase-4-intervention-probe-pause-resume-abort`
+- When the operator invokes `pan resume 71096_0415_phase-4-intervention-probe-pause-resume-abort`
   on the paused run, the Pipeline ledger state MUST transition back to the prior
   plan stage and the evidence record MUST list the task identifier, the resumed
   stage, the timestamp of the resume, and the state diff captured before and
   after the resume, per the source directive at
   `{kind: lines, path: src/inbox/archive/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md, range: [48, 48], contentHash: 970e45f}`.
 
-- When the operator invokes `ddl abort 71096_0415_phase-4-intervention-probe-pause-resume-abort --reason <text>`
+- When the operator invokes `pan abort 71096_0415_phase-4-intervention-probe-pause-resume-abort --reason <text>`
   after resume and before any implement stage begins, the Pipeline ledger state
   MUST transition to `aborted` and the evidence record MUST list the task
   identifier, the aborted stage, the abort reason text, the timestamp of the

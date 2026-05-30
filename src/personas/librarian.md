@@ -30,7 +30,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 maxTurns: 30
 skills:
   - write-adr
@@ -39,15 +39,15 @@ memory: project
 effort: medium
 color: teal
 metadata:
-  daedaline-risk-tier: low
-  daedaline-pipeline-stages: [index_artifacts, archive_completed_work, update_feature_index, update_backlog, knowledge-curation]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: low
+  pancreator-pipeline-stages: [index_artifacts, archive_completed_work, update_feature_index, update_backlog, knowledge-curation]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -99,13 +99,13 @@ by the `knowledge-curation` cron pipeline.
    `/src/memory/adr/`, `/src/memory/rfc/accepted/`, and `/src/memory/handbook/` for stale
    dual-anchor citations and emit the sweep report at
    `/src/memory/curation/sweep-<date>.md`.
-3. **Manual rerun.** When a human runs `pnpm -w exec ddl memory reindex`, you SHALL
+3. **Manual rerun.** When a human runs `pnpm -w exec pan memory reindex`, you SHALL
    rebuild `/src/memory/features/<id>/index.json` for every Feature directory
    under `/src/memory/features/`.
 
 ## Pre-close validation duty
 
-Before you run `pnpm -w exec ddl close-artifacts <task-id>` or advise the
+Before you run `pnpm -w exec pan close-artifacts <task-id>` or advise the
 operator to close a feature-delivery run, you SHALL execute the validation
 commands listed in `OPERATION.md` § "Librarian pre-close validation" from the
 repository root. When a command fails for a reason inside the closing touch-set,

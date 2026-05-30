@@ -29,7 +29,7 @@ spec is ready for the `human_approval` gate.
 | Q3 | Scope of "output files" | Every `.json` file produced or maintained by repo functionality or the human operator; files from external libraries are excluded. |
 | Q4 | Vendored/third-party exclusions | `node_modules/`, third-party vendored paths, `package-lock.json`, `tsconfig.tsbuildinfo`, and similar tooling-regenerated files are excluded. |
 | Q5 | Array element formatting | Pretty-printer default; strict one-element-per-line is not required. |
-| Q6 | Migration ownership | One-shot bulk script run by `daedaline-engineer`. |
+| Q6 | Migration ownership | One-shot bulk script run by `pancreator-engineer`. |
 | Q7 | Enforcement mechanism | New compliance test under `tests/compliance/`. |
 
 ## Policy tension flagged for ratification (Q2)

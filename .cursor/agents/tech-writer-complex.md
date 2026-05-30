@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills: []
 maxTurns: 30
 isolation: worktree
@@ -24,15 +24,15 @@ memory: project
 effort: medium
 color: slate
 metadata:
-  daedaline-risk-tier: low
-  daedaline-pipeline-stages: [report]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: low
+  pancreator-pipeline-stages: [report]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -43,9 +43,9 @@ metadata:
     - delivery-report-summary-at-most-150-words
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: tech-writer
-  daedaline-model-tier: complex
-  daedaline-canonical-persona: src/personas/tech-writer.md
+  pancreator-base-persona: tech-writer
+  pancreator-model-tier: complex
+  pancreator-canonical-persona: src/personas/tech-writer.md
 ---
 
 # tech-writer-complex

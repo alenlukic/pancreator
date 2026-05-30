@@ -14,9 +14,9 @@ Current CLI and MCP stubs emit `{status:"stub"}` responses that do not encode mi
 1. Deferred contract unification  
    The implementation SHALL replace ad-hoc stub responses with one structured deferred envelope format for both CLI and MCP stubs, with stable non-zero signaling for deferred outcomes.
 2. CLI-first intake creation  
-   The implementation SHALL add `ddl intake new <slug>` and compute day-bucket/SID/HHMM values from UTC-derived logic aligned with existing timestamp naming conventions.
+   The implementation SHALL add `pan intake new <slug>` and compute day-bucket/SID/HHMM values from UTC-derived logic aligned with existing timestamp naming conventions.
 3. Deterministic active-memory refresh  
-   The implementation SHALL add `ddl refresh-active-memory [--dry-run]` and rewrite only the three labeled sections, refusing silent overwrite when computed and current section bodies diverge.
+   The implementation SHALL add `pan refresh-active-memory [--dry-run]` and rewrite only the three labeled sections, refusing silent overwrite when computed and current section bodies diverge.
 4. Documentation co-shipping  
    The implementation SHALL include required cross-cutting updates in `AGENTS.md` and `src/personas/compliance-auditor.md` inside the same change set.
 

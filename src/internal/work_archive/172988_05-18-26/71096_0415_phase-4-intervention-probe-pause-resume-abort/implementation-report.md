@@ -9,9 +9,9 @@
 
 The nested spec and parent US-1 acceptance group require **matching `run.log.jsonl` event identifiers** (`trace_id:span_id`) for each intervention. The approved touch-set now explicitly includes updates to:
 
-- `src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts` — `appendFeatureDeliveryInterventionRunLog`, `makeInterventionRecord`
-- `src/internal/packages/@daedaline/cli/src/run.ts` — invokes append on `pause` / `resume` / `abort`
-- `src/internal/packages/@daedaline/cli/src/run.test.ts` — regression coverage for pause run-log emission
+- `src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts` — `appendFeatureDeliveryInterventionRunLog`, `makeInterventionRecord`
+- `src/internal/packages/@pancreator/cli/src/run.ts` — invokes append on `pause` / `resume` / `abort`
+- `src/internal/packages/@pancreator/cli/src/run.test.ts` — regression coverage for pause run-log emission
 
 Invalid or unknown task ids skip run-log emission without failing the command.
 
@@ -20,21 +20,21 @@ Invalid or unknown task ids skip run-log emission without failing the command.
 **Procedure (auditable):**
 
 1. Truncated the task intervention journal so the reducer starts from `running`.
-2. `ddl repair-state <task> --stage plan --artifact …/touch-set.json` — ledger reflects **live `plan`** (`plan` stage `ready`, `currentStage` `plan`). Appends **run-log line 9** (`daedaline.pipeline.repair_state`).
-3. Strict sequence **`ddl pause` → `ddl resume` → `ddl abort --reason "…"`** while still at plan, capturing `state.snapshot.*` and `ddl-status.*` before/after each lever. Run-log **`daedaline.stage_id` is `plan`** for intervention rows **lines 10–12** (pause, resume, abort).
-4. `ddl repair-state <task> --stage implement --artifact …/implementation-report.md` — restores **implement** re-entry; appends **line 13** (`repair_state`).
+2. `pan repair-state <task> --stage plan --artifact …/touch-set.json` — ledger reflects **live `plan`** (`plan` stage `ready`, `currentStage` `plan`). Appends **run-log line 9** (`pancreator.pipeline.repair_state`).
+3. Strict sequence **`pan pause` → `pan resume` → `pan abort --reason "…"`** while still at plan, capturing `state.snapshot.*` and `pan-status.*` before/after each lever. Run-log **`pancreator.stage_id` is `plan`** for intervention rows **lines 10–12** (pause, resume, abort).
+4. `pan repair-state <task> --stage implement --artifact …/implementation-report.md` — restores **implement** re-entry; appends **line 13** (`repair_state`).
 
-`state.json` **body bytes** did not change across pause/resume/abort; **`ddl status`** reports **`interventionState`** (`running` → `paused` → `resumed` → `aborted`) and frozen snapshots preserve the plan-stage ledger slice.
+`state.json` **body bytes** did not change across pause/resume/abort; **`pan status`** reports **`interventionState`** (`running` → `paused` → `resumed` → `aborted`) and frozen snapshots preserve the plan-stage ledger slice.
 
-After evidence capture, `state.json` was hand-aligned to **must_fix** semantics (**`review` blocked**, **`implement` ready**, **`ready_for_stage_delegation`**) without `ddl advance`, then **`ddl refresh-prompt`** regenerated `handoff.md` / `next-prompt.md`.
+After evidence capture, `state.json` was hand-aligned to **must_fix** semantics (**`review` blocked**, **`implement` ready**, **`ready_for_stage_delegation`**) without `pan advance`, then **`pan refresh-prompt`** regenerated `handoff.md` / `next-prompt.md`.
 
 ## Acceptance criteria mapping (`spec.md` § Acceptance criteria)
 
 | # | Acceptance criterion | Evidence fields / artifacts | Run log event id(s) (`trace_id:span_id`) |
 |---|----------------------|-----------------------------|------------------------------------------|
-| 1 | `ddl pause` at live **plan** ⇒ intervention **`paused`**; evidence lists task id, originating **plan** stage, pause timestamp, state diff before/after | `pause-resume-abort-evidence.json` → `pause.*`; `ddl-status.before.pause.json` / `ddl-status.after.pause.json`; `state.snapshot.before.pause.json` / `state.snapshot.after.pause.json`; journal line 1 | `04f1d6f7ac6711333e4c08dcd7e0918f:acdca970ecb775f1` (`daedaline.pipeline.intervention.pause`, **line 10**) |
-| 2 | `ddl resume` ⇒ prior **plan** context; evidence lists task id, resumed **plan** stage, resume timestamp, state diff before/after | `pause-resume-abort-evidence.json` → `resume.*`; `ddl-status.before.resume.json` / `ddl-status.after.resume.json`; `state.snapshot.before.resume.json` / `state.snapshot.after.resume.json`; journal line 2 | `003304becd55dfbffc47342c8f72339b:56f006a472b5913c` (`daedaline.pipeline.intervention.resume`, **line 11**) |
-| 3 | `ddl abort --reason <text>` after resume, **before implement** begins ⇒ **`aborted`**; evidence lists task id, aborted **plan** stage, reason, timestamp, state diff before/after | `pause-resume-abort-evidence.json` → `abort.*`; `ddl-status.before.abort.json` / `ddl-status.after.abort.json`; `state.snapshot.before.abort.json` / `state.snapshot.after.abort.json`; journal line 3 | `6af6b98b8735545533d66a0a16a01583:7cc4773968ec697e` (`daedaline.pipeline.intervention.abort`, **line 12**) |
+| 1 | `pan pause` at live **plan** ⇒ intervention **`paused`**; evidence lists task id, originating **plan** stage, pause timestamp, state diff before/after | `pause-resume-abort-evidence.json` → `pause.*`; `pan-status.before.pause.json` / `pan-status.after.pause.json`; `state.snapshot.before.pause.json` / `state.snapshot.after.pause.json`; journal line 1 | `04f1d6f7ac6711333e4c08dcd7e0918f:acdca970ecb775f1` (`pancreator.pipeline.intervention.pause`, **line 10**) |
+| 2 | `pan resume` ⇒ prior **plan** context; evidence lists task id, resumed **plan** stage, resume timestamp, state diff before/after | `pause-resume-abort-evidence.json` → `resume.*`; `pan-status.before.resume.json` / `pan-status.after.resume.json`; `state.snapshot.before.resume.json` / `state.snapshot.after.resume.json`; journal line 2 | `003304becd55dfbffc47342c8f72339b:56f006a472b5913c` (`pancreator.pipeline.intervention.resume`, **line 11**) |
+| 3 | `pan abort --reason <text>` after resume, **before implement** begins ⇒ **`aborted`**; evidence lists task id, aborted **plan** stage, reason, timestamp, state diff before/after | `pause-resume-abort-evidence.json` → `abort.*`; `pan-status.before.abort.json` / `pan-status.after.abort.json`; `state.snapshot.before.abort.json` / `state.snapshot.after.abort.json`; journal line 3 | `6af6b98b8735545533d66a0a16a01583:7cc4773968ec697e` (`pancreator.pipeline.intervention.abort`, **line 12**) |
 | 4 | Evidence file path referenced from `phase-4-proof-bundle.md` | `phase-4-proof-bundle.md` intervention table lists `pause-resume-abort-evidence.json`. | — |
 | 5 | Each intervention record cites matching run-log event ids (parent US-1 group) | `pause.run_log_event_ids`, `resume.run_log_event_ids`, `abort.run_log_event_ids` | Same three ids as rows 1–3 |
 
@@ -43,7 +43,7 @@ After evidence capture, `state.json` was hand-aligned to **must_fix** semantics 
 | Step | Directive requirement | This run |
 |------|----------------------|----------|
 | 1 | Run through intake into plan | Completed earlier in task history (advance history intake → plan). |
-| 2 | At **live plan**, capture snapshots before/after each CLI intervention | **Yes**: repair-state to plan, then pause → resume → abort with `state.snapshot.*` and `ddl-status.*`. |
+| 2 | At **live plan**, capture snapshots before/after each CLI intervention | **Yes**: repair-state to plan, then pause → resume → abort with `state.snapshot.*` and `pan-status.*`. |
 | 3 | Populate `pause-resume-abort-evidence.json` with task id, timestamps, **plan** stage ids, reasons, state diffs, run-log event ids | See finalized JSON; `ledger_positioning_note` documents repair-state + must_fix alignment. |
 
 ## Validation

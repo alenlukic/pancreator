@@ -3,14 +3,14 @@ name: write-adr
 description: Authors one immutable Architecture Decision Record in the Nygard format. Picks the next sequence number, fills the four-section template (context, decision, status, consequences), wires `supersedes:` and dual-anchor citations, runs Layer 1 lint, then files under `/src/memory/adr/<seq>-<slug>.md` for human ratification.
 license: Apache-2.0
 metadata:
-  daedaline-stability: experimental
-  daedaline-bootstrap-only: false
-  daedaline-pipeline-stages: [plan, review, knowledge-curation]
-  daedaline-risk-tier: medium
-  daedaline-required-handbook:
+  pancreator-stability: experimental
+  pancreator-bootstrap-only: false
+  pancreator-pipeline-stages: [plan, review, knowledge-curation]
+  pancreator-risk-tier: medium
+  pancreator-required-handbook:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
-  daedaline-emits:
+  pancreator-emits:
     - /src/memory/adr/<seq>-<slug>.md
     - /src/work/<day>/<id>/adr-draft.md
 references:

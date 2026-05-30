@@ -8,7 +8,7 @@ source_inbox_item: src/inbox/in/172981_05-25-26/71700_0612_bootstrap-cruft-clean
 intake_round: 1
 work_packages:
   - id: resolve-package-stub-feature-folders
-    label: "Resolve stub @daedaline/* feature folders"
+    label: "Resolve stub @pancreator/* feature folders"
   - id: consolidate-cursor-agent-variants
     label: "Consolidate Cursor agent variants"
 references:
@@ -18,10 +18,10 @@ references:
     contentHash: ec6a02d
     note: "Source directive: consolidated batch intake for stub feature folder resolution and Cursor agent variant consolidation."
   - kind: lines
-    path: src/memory/features/daedaline-cli/spec.md
+    path: src/memory/features/pancreator-cli/spec.md
     range: [1, 23]
     contentHash: 26b1233
-    note: "Representative package engineering spec after frontmatter addition; sibling daedaline-* folders follow the same layered contract pattern."
+    note: "Representative package engineering spec after frontmatter addition; sibling pancreator-* folders follow the same layered contract pattern."
   - kind: lines
     path: src/memory/handbook/subagent-model-tiers.md
     range: [1, 109]
@@ -36,12 +36,12 @@ references:
 
 # Spec
 
-This Feature removes two classes of premature surface area from the Daedaline
+This Feature removes two classes of premature surface area from the Pancreator
 repository in one coordinated cleanup pass. Each work package retains its
 original `feature_id` for downstream tracking.
 
 **Work package A (`resolve-package-stub-feature-folders`)** brings the current
-inventory of **20** `src/memory/features/daedaline-*/` folders to Phase-2
+inventory of **20** `src/memory/features/pancreator-*/` folders to Phase-2
 reference shape alongside `src/memory/features/json-formatting/`: layered
 specification plus `delivery-report.md`, `index.json`, and lockstep updates to
 `src/memory/features/index.json`. Some folders already carried `plan.md`,
@@ -61,7 +61,7 @@ metadata and imposed three-way edits per persona change.
 ### Work package A — stub feature folder resolution
 
 - When `tech-lead` authors the disposition table, the table SHALL classify
-  each of the 20 `src/memory/features/daedaline-*/` stub folders into exactly
+  each of the 20 `src/memory/features/pancreator-*/` stub folders into exactly
   one of three buckets: `author`, `consolidate`, or `delete`.
 
 - When the disposition table classifies a folder as `author`, `tech-lead`
@@ -83,7 +83,7 @@ metadata and imposed three-way edits per persona change.
 - When all dispositions are complete, `src/memory/features/index.json` SHALL
   reflect the updated feature set in lockstep with the disposition changes.
 
-- When the cleanup ships, every `src/memory/features/daedaline-*/` folder covered
+- When the cleanup ships, every `src/memory/features/pancreator-*/` folder covered
   by the disposition table SHALL carry paired `delivery-report.md` and `index.json`
   entries that satisfy the librarian pairing contract.
 
@@ -96,7 +96,7 @@ metadata and imposed three-way edits per persona change.
 
 - When `persona-designer` records the standard-vs-complex tier distinction,
   the distinction SHALL be expressed in the persona YAML metadata field
-  `metadata.daedaline-subagent-tiers` and SHALL be resolved at invocation time
+  `metadata.pancreator-subagent-tiers` and SHALL be resolved at invocation time
   per `src/memory/handbook/subagent-model-tiers.md`; the distinction SHALL NOT
   be encoded as a filename suffix.
 
@@ -138,7 +138,7 @@ metadata and imposed three-way edits per persona change.
 - Changing the semantics of `src/memory/handbook/subagent-model-tiers.md` or
   the persona spec format.
 - Removing `general-purpose.md` from `.cursor/agents/`.
-- Renaming `@daedaline/*` packages whose implementation surface is otherwise
+- Renaming `@pancreator/*` packages whose implementation surface is otherwise
   stable.
 - Automatically executing the compliance sweep; `compliance-auditor` SHALL run
   the sweep as a post-delivery validation step triggered by the operator.
@@ -146,14 +146,14 @@ metadata and imposed three-way edits per persona change.
 ## Deferrals
 
 - **Disposition table authoring.** The per-folder classification (`author` /
-  `consolidate` / `delete`) for each of the 20 `daedaline-*` stub folders is
+  `consolidate` / `delete`) for each of the 20 `pancreator-*` stub folders is
   deferred to the `tech-lead` plan stage. Intake does not pre-classify; each
   disposition requires reading `docs/BOOTSTRAP.md` Phase-2 dependency order
   and the per-package `README` contract surface. Backlog linkage:
   `resolve-package-stub-feature-folders` (work package A).
 
 - **Invocation grammar schema.** The exact YAML schema for
-  `metadata.daedaline-subagent-tiers` and the companion Cursor invocation
+  `metadata.pancreator-subagent-tiers` and the companion Cursor invocation
   pattern are deferred to `persona-designer` in the plan and implement stages.
   Backlog linkage: `consolidate-cursor-agent-variants` (work package B).
 

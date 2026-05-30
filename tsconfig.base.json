@@ -12,31 +12,31 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
-      "@daedaline/adopter-scan": ["src/internal/packages/@daedaline/adopter-scan/src/index.ts"],
-      "@daedaline/checkpointer-fs": ["src/internal/packages/@daedaline/checkpointer-fs/src/index.ts"],
-      "@daedaline/cli": ["src/internal/packages/@daedaline/cli/src/index.ts"],
-      "@daedaline/contract": ["src/internal/packages/@daedaline/contract/src/index.ts"],
-      "@daedaline/contract-runner-llm-judge": ["src/internal/packages/@daedaline/contract-runner-llm-judge/src/index.ts"],
-      "@daedaline/contract-runner-rego": ["src/internal/packages/@daedaline/contract-runner-rego/src/index.ts"],
-      "@daedaline/contract-style": ["src/internal/packages/@daedaline/contract-style/src/index.ts"],
-      "@daedaline/core": ["src/internal/packages/@daedaline/core/src/index.ts"],
-      "@daedaline/env-isolation": ["src/internal/packages/@daedaline/env-isolation/src/index.ts"],
-      "@daedaline/inbox": ["src/internal/packages/@daedaline/inbox/src/index.ts"],
-      "@daedaline/intervention": ["src/internal/packages/@daedaline/intervention/src/index.ts"],
-      "@daedaline/mcp-server": ["src/internal/packages/@daedaline/mcp-server/src/index.ts"],
-      "@daedaline/memory": ["src/internal/packages/@daedaline/memory/src/index.ts"],
-      "@daedaline/notifier": ["src/internal/packages/@daedaline/notifier/src/index.ts"],
-      "@daedaline/persona": ["src/internal/packages/@daedaline/persona/src/index.ts"],
-      "@daedaline/pipeline": ["src/internal/packages/@daedaline/pipeline/src/index.ts"],
-      "@daedaline/policy": ["src/internal/packages/@daedaline/policy/src/index.ts"],
-      "@daedaline/run-logger": ["src/internal/packages/@daedaline/run-logger/src/index.ts"],
-      "@daedaline/runner-cursor": ["src/internal/packages/@daedaline/runner-cursor/src/index.ts"],
-      "@daedaline/worktree": ["src/internal/packages/@daedaline/worktree/src/index.ts"]
+      "@pancreator/adopter-scan": ["src/internal/packages/@pancreator/adopter-scan/src/index.ts"],
+      "@pancreator/checkpointer-fs": ["src/internal/packages/@pancreator/checkpointer-fs/src/index.ts"],
+      "@pancreator/cli": ["src/internal/packages/@pancreator/cli/src/index.ts"],
+      "@pancreator/contract": ["src/internal/packages/@pancreator/contract/src/index.ts"],
+      "@pancreator/contract-runner-llm-judge": ["src/internal/packages/@pancreator/contract-runner-llm-judge/src/index.ts"],
+      "@pancreator/contract-runner-rego": ["src/internal/packages/@pancreator/contract-runner-rego/src/index.ts"],
+      "@pancreator/contract-style": ["src/internal/packages/@pancreator/contract-style/src/index.ts"],
+      "@pancreator/core": ["src/internal/packages/@pancreator/core/src/index.ts"],
+      "@pancreator/env-isolation": ["src/internal/packages/@pancreator/env-isolation/src/index.ts"],
+      "@pancreator/inbox": ["src/internal/packages/@pancreator/inbox/src/index.ts"],
+      "@pancreator/intervention": ["src/internal/packages/@pancreator/intervention/src/index.ts"],
+      "@pancreator/mcp-server": ["src/internal/packages/@pancreator/mcp-server/src/index.ts"],
+      "@pancreator/memory": ["src/internal/packages/@pancreator/memory/src/index.ts"],
+      "@pancreator/notifier": ["src/internal/packages/@pancreator/notifier/src/index.ts"],
+      "@pancreator/persona": ["src/internal/packages/@pancreator/persona/src/index.ts"],
+      "@pancreator/pipeline": ["src/internal/packages/@pancreator/pipeline/src/index.ts"],
+      "@pancreator/policy": ["src/internal/packages/@pancreator/policy/src/index.ts"],
+      "@pancreator/run-logger": ["src/internal/packages/@pancreator/run-logger/src/index.ts"],
+      "@pancreator/runner-cursor": ["src/internal/packages/@pancreator/runner-cursor/src/index.ts"],
+      "@pancreator/worktree": ["src/internal/packages/@pancreator/worktree/src/index.ts"]
     }
   },
   "include": [
-    "src/internal/packages/daedaline/src/**/*.ts",
-    "src/internal/packages/@daedaline/*/src/**/*.ts"
+    "src/internal/packages/pancreator/src/**/*.ts",
+    "src/internal/packages/@pancreator/*/src/**/*.ts"
   ],
   "exclude": ["node_modules", "**/dist", "**/node_modules"]
 }

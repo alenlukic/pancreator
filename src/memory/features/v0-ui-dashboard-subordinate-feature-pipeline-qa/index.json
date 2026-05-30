@@ -68,7 +68,7 @@
     "completed_at": "2026-05-29T22:00:00Z",
     "next_owner": "operator",
     "next_stage": "complete",
-    "handoff_note": "Feature index links delivery report, accepted ship artifacts, client/ implementation surface, and pipeline evidence. After human accepts this index artifact, run ddl advance to complete, then delegate the generated complete-stage prompt for close-artifacts archival closure."
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, client/ implementation surface, and pipeline evidence. After human accepts this index artifact, run pan advance to complete, then delegate the generated complete-stage prompt for close-artifacts archival closure."
   },
   "index": {
     "indexer": "librarian",
@@ -77,7 +77,7 @@
     "content_hash_refresh_performed": true,
     "abbrev_len_at_index_time": 7,
     "metadata": {
-      "daedaline-bootstrap-only": true
+      "pancreator-bootstrap-only": true
     }
   },
   "review": {
@@ -400,7 +400,7 @@
     "clauses": []
   },
   "metadata": {
-    "daedaline-bootstrap-only": true,
+    "pancreator-bootstrap-only": true,
     "librarian_populated": true,
     "placeholder": false
   },

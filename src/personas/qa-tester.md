@@ -24,15 +24,15 @@ tools:
   - "Bash(node src/internal/tools/check-phase-0a-scaffold.mjs:*)"
   - "Bash(node src/internal/tools/context-budget-report.mjs:*)"
   - "Bash(node src/internal/tools/check-operator-output.mjs:*)"
-  - "Bash(pnpm -w exec ddl status:*)"
-  - "Bash(pnpm -w exec ddl refresh-prompt:*)"
+  - "Bash(pnpm -w exec pan status:*)"
+  - "Bash(pnpm -w exec pan refresh-prompt:*)"
   - "Bash(pnpm --filter client:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
   - cursor-ide-browser
 maxTurns: 40
 skills: []
@@ -41,15 +41,15 @@ memory: project
 effort: high
 color: orange
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [test]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [test]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -94,7 +94,7 @@ the `qa_passes` gate.
    listed in the Automated verification section, perform manual verification
    proportional to the touch-set, apply straightforward in-scope fixes, and emit
    `/src/work/<day>/<id>/test-report.md`.
-2. **Manual rerun.** When a human runs `pnpm -w exec ddl feature test <id>`,
+2. **Manual rerun.** When a human runs `pnpm -w exec pan feature test <id>`,
    you SHALL re-run all checks against the current touch-set and overwrite the
    prior `/src/work/<day>/<id>/test-report.md` in place.
 
@@ -152,8 +152,8 @@ You SHALL exercise changes hands-on in proportion to the touch-set. Appropriate
 exercises include:
 
 - Reading and validating documentation changes for accuracy and completeness.
-- Running `pnpm -w exec ddl status <task-id>` and `pnpm -w exec ddl refresh-prompt <task-id>` to confirm CLI wiring.
-- Executing a toy `pnpm -w exec ddl run feature-delivery` exercise when the touch-set modifies the feature-delivery pipeline or CLI.
+- Running `pnpm -w exec pan status <task-id>` and `pnpm -w exec pan refresh-prompt <task-id>` to confirm CLI wiring.
+- Executing a toy `pnpm -w exec pan run feature-delivery` exercise when the touch-set modifies the feature-delivery pipeline or CLI.
 - Inspecting emitted artifacts (handoff.md, next-prompt.md, state.json) for structural correctness.
 - Verifying persona YAML frontmatter fields and Cursor projection round-trips when the touch-set adds or modifies personas.
 

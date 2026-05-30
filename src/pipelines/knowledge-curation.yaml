@@ -1,7 +1,7 @@
 id: knowledge-curation
 version: "1"
 metadata:
-  daedaline-bootstrap-only: false
+  pancreator-bootstrap-only: false
   description: >-
     PRD §11 MVP pipeline. Librarian-driven anti-rot loop: scan handbook seeds,
     refresh stale citations, and flag drift. Cron cadence wires in M4 per

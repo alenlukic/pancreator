@@ -4,7 +4,7 @@ slug: context-cost-audit
 stability: experimental
 bootstrap-only: false
 phase: bootstrap
-owners: [daedaline-engineer, supervisor]
+owners: [pancreator-engineer, supervisor]
 purpose: |
   Current audit of likely Cursor token cost sinks and the practical controls
   this repository applies.

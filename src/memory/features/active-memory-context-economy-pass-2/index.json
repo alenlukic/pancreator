@@ -65,7 +65,7 @@
         "description": "Cursor rule audit artifact and six narrowed rule projections (supervisor kept as audited).",
         "paths": [
           "src/internal/work_archive/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
-          ".cursor/rules/daedaline-engineer.mdc",
+          ".cursor/rules/pancreator-engineer.mdc",
           ".cursor/rules/persona-designer.mdc",
           ".cursor/rules/intake-analyst.mdc",
           ".cursor/rules/tech-lead.mdc",
@@ -229,7 +229,7 @@
   "librarian_populated": true,
   "librarian_populated_authority": "operator_override (runtime feature-delivery post_run hook not wired; operator manually executed librarian's index_artifacts and update_backlog actions per src/personas/librarian.md §\"What you MUST produce\" items 1–2)",
   "metadata": {
-    "daedaline-bootstrap-only": false,
+    "pancreator-bootstrap-only": false,
     "scaffold_only": true,
     "scaffold_note": "Intake-analyst writes the spec and per-feature index scaffold. Librarian populates the full index at the post_run stage per persona obligation."
   }

@@ -23,16 +23,16 @@ export const MAX_INLINE_ARRAY_CHARS = 96;
  * @returns {number}
  */
 export function resolveAbbrevLen(repoRoot = process.cwd()) {
-  const o = process.env.DDL_JSON_FORMAT_ABBREV_LEN;
+  const o = process.env.PAN_JSON_FORMAT_ABBREV_LEN;
   if (o !== undefined && o !== "") {
     if (!/^[0-9]+$/.test(o)) {
       throw new Error(
-        "DDL_JSON_FORMAT_ABBREV_LEN must contain decimal digits only when set.",
+        "PAN_JSON_FORMAT_ABBREV_LEN must contain decimal digits only when set.",
       );
     }
     const n = Number(o);
     if (n < 4 || n > 255) {
-      throw new Error("DDL_JSON_FORMAT_ABBREV_LEN must be between 4 and 255.");
+      throw new Error("PAN_JSON_FORMAT_ABBREV_LEN must be between 4 and 255.");
     }
     return n;
   }
@@ -49,7 +49,7 @@ export function resolveAbbrevLen(repoRoot = process.cwd()) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(
-      `canonical-json-format: cannot derive abbreviation length (${msg}); export DDL_JSON_FORMAT_ABBREV_LEN for sandboxed repos.`,
+      `canonical-json-format: cannot derive abbreviation length (${msg}); export PAN_JSON_FORMAT_ABBREV_LEN for sandboxed repos.`,
     );
   }
 }

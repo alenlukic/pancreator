@@ -3,19 +3,19 @@ name: author-contract
 description: Authors a single contract clause to the PRD §4.5 wrapper schema and the §4.6 5-layer style discipline. Picks a `kind`, picks a template, resolves the `applies_to` anchor, fills the slots, runs the lint loop, then registers ownership routing.
 license: Apache-2.0
 metadata:
-  daedaline-stability: experimental
-  daedaline-bootstrap-only: false
-  daedaline-pipeline-stages: [bootstrap-phase-2, intake, plan, review]
-  daedaline-risk-tier: medium
-  daedaline-required-handbook:
+  pancreator-stability: experimental
+  pancreator-bootstrap-only: false
+  pancreator-pipeline-stages: [bootstrap-phase-2, intake, plan, review]
+  pancreator-risk-tier: medium
+  pancreator-required-handbook:
     - /src/memory/handbook/contract-format.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-templates/
     - /src/memory/handbook/glossary.md
-  daedaline-allowed-kinds-mvp: [rego, llm-judge]
-  daedaline-allowed-kinds-m2: [rego, llm-judge, playwright, schemathesis, axe]
-  daedaline-allowed-kinds-m3plus: [rego, llm-judge, playwright, schemathesis, axe, semgrep, hypothesis, fast-check, ts-predicate, py-predicate]
-  daedaline-emits:
+  pancreator-allowed-kinds-mvp: [rego, llm-judge]
+  pancreator-allowed-kinds-m2: [rego, llm-judge, playwright, schemathesis, axe]
+  pancreator-allowed-kinds-m3plus: [rego, llm-judge, playwright, schemathesis, axe, semgrep, hypothesis, fast-check, ts-predicate, py-predicate]
+  pancreator-emits:
     - clause-inline-or-sidecar
     - /src/memory/features/<id>/contracts.index.json entry
 references:
@@ -51,7 +51,7 @@ own work product needs a contract gate.
 - `/src/memory/handbook/contract-templates/` SHALL contain at minimum the 6 MVP
   scaffolds: `ux-spec.template.md`, `api-spec.template.md`, `security.template.md`,
   `performance.template.md`, `behavior-preservation.template.md`, `llm-judge.template.md`.
-- The artifact under gate (e.g., `spec.md`, `ux-spec.md`, `daedaline.yaml`) SHALL
+- The artifact under gate (e.g., `spec.md`, `ux-spec.md`, `pancreator.yaml`) SHALL
   have a stable path and a current content hash.
 - The contract's `owner` persona SHALL exist in `src/personas/`.
 
@@ -94,11 +94,11 @@ an RFC under `/src/memory/rfc/draft/` proposing a template revision per Layer 5.
 Compute a dual-anchor citation per PRD §8: prefer
 `{kind: 'symbol', path, symbol, contentHash}` resolved via tree-sitter; fall back to
 `{kind: 'lines', path, range, contentHash}` only for non-AST content. From M1 step
-3.8 onward, `ddl contracts anchor --suggest <file>:<line>` automates the
+3.8 onward, `pan contracts anchor --suggest <file>:<line>` automates the
 AST-symbol lookup.
 
 The five `applies_to.kind` discriminators per §4.5 are `artifact-symbol`,
-`pipeline-telemetry`, `file-path`, `run-log-event`, and `daedaline-config`. Pick
+`pipeline-telemetry`, `file-path`, `run-log-event`, and `pancreator-config`. Pick
 exactly one; lint blocks on missing or ambiguous discriminators.
 
 ### Step 4 — Fill the slots
@@ -110,14 +110,14 @@ marked REQUIRED:
   with explanation), a numeric scoring rubric anchored at 1.0/0.5/0.0, and a
   `references:` block. Without good and bad examples, judge variance explodes.
 - `kind: rego` clauses MUST include an OPA `# METADATA` block with `title`,
-  `description`, `severity`, `references`, plus `daedaline.contract_id` and
-  `daedaline.applies_to` extensions. `deny` rules MUST return strings; imports
+  `description`, `severity`, `references`, plus `pancreator.contract_id` and
+  `pancreator.applies_to` extensions. `deny` rules MUST return strings; imports
   MUST be explicit.
 - `kind: playwright` clauses MUST carry a Gherkin docstring at the top of the spec;
   `test.describe` block name MUST match the contract `id` exactly; failure messages
   MUST quote the EARS assertion verbatim so contract-failure routing is grep-able.
 - `kind: schemathesis` clauses MUST cover at least one passing and one failing
-  example per assertion; the `x-daedaline.contract_id` OpenAPI extension MUST link
+  example per assertion; the `x-pancreator.contract_id` OpenAPI extension MUST link
   back to the clause.
 - `kind: semgrep` rules MUST populate `metadata.likelihood` and `metadata.impact`,
   cite the EARS assertion in `message:`, and ship at least one negative-case
@@ -131,18 +131,18 @@ When the clause has `severity: block` and `kind: llm-judge`, you MUST set
 `quorum: <N>-of-<M>` with `M >= 3` and `N >= 2`, plus `cost_ceiling_usd <= 1.00`
 and a pinned `seed:` per PRD §4.5 quorum policy and §13 R28.
 
-### Step 5 — Run `ddl lint contracts --explain`
+### Step 5 — Run `pan lint contracts --explain`
 
-From Phase 3 step 2 onward, run `ddl lint contracts --explain` against the new
+From Phase 3 step 2 onward, run `pan lint contracts --explain` against the new
 clause. The `--explain` flag shows, for every violation: the violated rule, a
 suggested EARS-formatted rewrite, and the relevant template-section reference.
 
 When the clause has `severity: block`, all Layer 1 violations MUST resolve to zero
 before submission; warn-level and info-level violations MAY remain when
-documented in `daedaline.lint-debt`. Apply at most 3 self-correction rounds; on the
+documented in `pancreator.lint-debt`. Apply at most 3 self-correction rounds; on the
 4th unresolved violation, escalate via inbox per R29.
 
-Until Phase 3 step 2 lands `ddl lint contracts`, gate by hand against the Layer 1
+Until Phase 3 step 2 lands `pan lint contracts`, gate by hand against the Layer 1
 checklist in `/src/memory/handbook/contract-style.md`.
 
 ### Step 6 — Submit and register the owner routing
@@ -163,7 +163,7 @@ When all gates are green, you MUST:
    inbox item rather than create an orphan contract.
 5. Stage the changes; do not commit. Open an inbox item to the human (Phases 0–4)
    or to `reviewer` (Phase 5+) summarizing the new clause, its `kind`, its
-   `severity`, and any `daedaline.lint-debt` warnings the clause carries.
+   `severity`, and any `pancreator.lint-debt` warnings the clause carries.
 
 ## Stop conditions
 

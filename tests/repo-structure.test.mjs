@@ -5,7 +5,7 @@ import { test } from "node:test";
 
 import yaml from "yaml";
 
-import { validateBootstrapTracking } from "../src/internal/packages/@daedaline/policy/dist/index.js";
+import { validateBootstrapTracking } from "../src/internal/packages/@pancreator/policy/dist/index.js";
 import {
   isExcludedRelPath,
   rewriteJsonText,
@@ -95,8 +95,8 @@ test("operator-facing root keeps implementation under internal while tests and d
 });
 
 
-test("daedaline.yaml tracks live bootstrap state and embedded project root", async () => {
-  const config = read("daedaline.yaml");
+test("pancreator.yaml tracks live bootstrap state and embedded project root", async () => {
+  const config = read("pancreator.yaml");
   assert.match(config, /^project_root:\s+"\."$/m);
 
   const doc = yaml.parse(config);
@@ -112,17 +112,17 @@ test("daedaline.yaml tracks live bootstrap state and embedded project root", asy
     validation.violations.join("\n"),
   );
 
-  const defaults = read("daedaline-defaults.yaml");
+  const defaults = read("pancreator-defaults.yaml");
   assert.doesNotMatch(defaults, /^bootstrap:\s*$/m);
   assert.match(defaults, /introduced during Bootstrap Phase 2/);
 });
 
 test("configuration docs route project_root through adopter and handbook", () => {
-  assert.ok(exists("src/memory/handbook/daedaline-config.md"));
-  assert.match(read("src/memory/handbook/daedaline-config.md"), /project_root/);
+  assert.ok(exists("src/memory/handbook/pancreator-config.md"));
+  assert.match(read("src/memory/handbook/pancreator-config.md"), /project_root/);
   assert.match(read("src/personas/adopter.md"), /project_root/);
   assert.match(read("src/skills/adopt-existing-repo/SKILL.md"), /project_root/);
-  assert.match(read("src/memory/handbook/index.md"), /daedaline-config\.md/);
+  assert.match(read("src/memory/handbook/index.md"), /pancreator-config\.md/);
 });
 
 test("archived work day-directory prefixes match days from UTC day to Jan 1 2500", () => {
@@ -208,7 +208,7 @@ test("planning/execution handoff contract is represented across active memory, p
 test("workspace and scripts use conventional test and docs paths", () => {
   const workspace = read("pnpm-workspace.yaml");
   assert.match(workspace, /src\/internal\/packages\/\*/);
-  assert.match(workspace, /src\/internal\/packages\/@daedaline\/\*/);
+  assert.match(workspace, /src\/internal\/packages\/@pancreator\/\*/);
 
   const pkg = JSON.parse(read("package.json"));
   assert.match(pkg.scripts["check:phase0a"], /^node src\/internal\/tools\//);
@@ -285,13 +285,13 @@ test("Cursor implementation rules avoid broad src-wide activation", () => {
   assert.match(coderRule, /tests\/\*\*\/\.mjs|tests\/\*\*\/\*\.mjs/);
 });
 
-test("ddl deferral emits JSON envelopes without stub payloads", async () => {
-  const cliRun = read("src/internal/packages/@daedaline/cli/src/run.ts");
-  const ddlExecute = read("src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts");
+test("pan deferral emits JSON envelopes without stub payloads", async () => {
+  const cliRun = read("src/internal/packages/@pancreator/cli/src/run.ts");
+  const panExecute = read("src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts");
   assert.doesNotMatch(cliRun, /status:\s*"stub"/u);
-  assert.doesNotMatch(ddlExecute, /status:\s*"stub"/u);
+  assert.doesNotMatch(panExecute, /status:\s*"stub"/u);
 
-  const { parseAndRun, DDL_DEFERRED_EXIT_CODE } = await import("@daedaline/cli");
+  const { parseAndRun, PAN_DEFERRED_EXIT_CODE } = await import("@pancreator/cli");
   const batchTracking =
     "src/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md";
   const matrix = [
@@ -308,7 +308,7 @@ test("ddl deferral emits JSON envelopes without stub payloads", async () => {
       repoRoot: ROOT,
       writeOut: (chunk) => chunks.push(chunk),
     });
-    assert.equal(code, DDL_DEFERRED_EXIT_CODE);
+    assert.equal(code, PAN_DEFERRED_EXIT_CODE);
     const emitted = chunks.join("");
     assert.ok(!emitted.includes('"stub"'));
     assert.match(emitted, /"status":\s*"deferred"/);

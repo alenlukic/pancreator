@@ -46,7 +46,7 @@ human operator; JSON embedded in Markdown and other non-`.json` artifacts
 prose, inbox threads, and work-stage markdown); JSON printed to terminal/CLI by
 agents or scripts; and JSON printed to the agent chat window by agents.
 The following are excluded from all surfaces: `node_modules/`, third-party
-vendored paths, and tooling-regenerated files. `daedaline-engineer` SHALL
+vendored paths, and tooling-regenerated files. `pancreator-engineer` SHALL
 execute a one-shot bulk migration script to bring all existing in-scope `.json`
 files into conformance. The Feature serves every persona and agent that writes
 or reads structured JSON anywhere in the repository or its output channels.
@@ -68,7 +68,7 @@ or reads structured JSON anywhere in the repository or its output channels.
   in-scope `.json` file, the field value SHALL use an abbreviated form whose
   character count equals the character count produced by `git rev-parse --short
   HEAD` at write time.
-- When `daedaline-engineer` executes the bulk migration script, the script
+- When `pancreator-engineer` executes the bulk migration script, the script
   SHALL reformat every in-scope `.json` file to satisfy all formatting and
   hash-abbreviation criteria above in a single run.
 - When the compliance suite executes tests under `tests/compliance/`, the

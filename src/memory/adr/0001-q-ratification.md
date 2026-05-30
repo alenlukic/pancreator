@@ -51,14 +51,14 @@ as unique identifiers until a later renumbering pass is ratified.
 
 ## Decision
 
-Daedaline SHALL apply the following ratified outcomes for Q1-Q22.
+Pancreator SHALL apply the following ratified outcomes for Q1-Q22.
 
 | Question | Ratified outcome | State |
 | --- | --- | --- |
 | Q1 | TS/Node | ratified |
 | Q2 | Multi-user single-repo in M3; multi-repo remains M9 | ratified |
 | Q3 | Stage locally with human gate; no auto-push | ratified |
-| Q4 | Keep `daedaline` name | ratified |
+| Q4 | Keep `pancreator` name | ratified |
 | Q5 | Apache-2.0 | ratified |
 | Q6 | LLM-judged checks in M2; deterministic checks in M3 | ratified |
 | Q7 | Keep M1 simple; pilot conflict-planner before broad M2 rollout | ratified |

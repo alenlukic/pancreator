@@ -1,5 +1,5 @@
 {
-  "name": "daedaline",
+  "name": "pancreator",
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "type": "module",
@@ -22,8 +22,8 @@
     "@arethetypeswrong/cli": "catalog:",
     "@changesets/cli": "catalog:",
     "@eslint/js": "catalog:",
-    "@daedaline/cli": "workspace:*",
-    "@daedaline/mcp-server": "workspace:*",
+    "@pancreator/cli": "workspace:*",
+    "@pancreator/mcp-server": "workspace:*",
     "eslint": "catalog:",
     "publint": "catalog:",
     "turbo": "catalog:",

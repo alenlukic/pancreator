@@ -62,7 +62,7 @@ references:
 
 ## Spec Contract results
 
-`src/memory/features/cursor-token-economy/contracts/` does not exist; `contracts:from_feature` therefore pulls in zero clauses for this Feature. The empty bundle is valid per the directive in this review request and `src/personas/reviewer.md`. The `ddl lint contracts:*` CLI is not wired in this repository, so no runner executed; the gate MUST NOT fail solely on missing CLI.
+`src/memory/features/cursor-token-economy/contracts/` does not exist; `contracts:from_feature` therefore pulls in zero clauses for this Feature. The empty bundle is valid per the directive in this review request and `src/personas/reviewer.md`. The `pan lint contracts:*` CLI is not wired in this repository, so no runner executed; the gate MUST NOT fail solely on missing CLI.
 
 | clause.id | kind | severity | result | runner output path |
 |-----------|------|----------|--------|--------------------|
@@ -72,4 +72,4 @@ Citation: `{kind: lines, path: src/memory/features/cursor-token-economy/spec.md,
 
 ## Coverage delta
 
-Istanbul and Vitest did not run on changed lines because this slice ships documentation, indexing policy, rule shims, and one Node script rather than TypeScript public symbols. The implement stage recorded green exits for `pnpm lint`, `pnpm typecheck`, `pnpm run check:phase0a`, and `pnpm run context:budget:test`. The only automated assertion on the new executable surface is the spawn-based smoke test in `src/internal/tools/context-budget-report.test.mjs` lines 1 through 18, which covers the CLI exit path and the rough-estimate disclaimer string. The reviewer accepts the absence of statement and branch numbers because no public TypeScript symbol changed and no coverage threshold from `daedaline.yaml` applies. Citation: `{kind: lines, path: src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/test-report.md, range: [1, 26], contentHash: TBD-on-commit}`.
+Istanbul and Vitest did not run on changed lines because this slice ships documentation, indexing policy, rule shims, and one Node script rather than TypeScript public symbols. The implement stage recorded green exits for `pnpm lint`, `pnpm typecheck`, `pnpm run check:phase0a`, and `pnpm run context:budget:test`. The only automated assertion on the new executable surface is the spawn-based smoke test in `src/internal/tools/context-budget-report.test.mjs` lines 1 through 18, which covers the CLI exit path and the rough-estimate disclaimer string. The reviewer accepts the absence of statement and branch numbers because no public TypeScript symbol changed and no coverage threshold from `pancreator.yaml` applies. Citation: `{kind: lines, path: src/internal/work_archive/172997_05-09-26/50909_1000_cursor-token-economy/test-report.md, range: [1, 26], contentHash: TBD-on-commit}`.

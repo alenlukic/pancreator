@@ -30,7 +30,7 @@ Current Phase 4 gaps are:
 - no real US-1 dogfood run has been completed end-to-end from `src/inbox/in/`
   through the persona stages and stage-boundary checkpoints;
 - external run-log observability has not been verified;
-- `ddl pause`, `ddl resume`, and `ddl abort` have not been exercised
+- `pan pause`, `pan resume`, and `pan abort` have not been exercised
   empirically;
 - the proof bundle for Phase 4 exit is incomplete; and
 - human ratification of the Phase 4 exit has not been obtained.
@@ -78,8 +78,8 @@ the dogfood run.
 
 ### 3. Exercise pause, resume, and abort empirically
 
-Run a controlled second dogfood exercise that uses `ddl pause`, `ddl resume`,
-and `ddl abort` in a realistic stage context. The exercise SHALL demonstrate
+Run a controlled second dogfood exercise that uses `pan pause`, `pan resume`,
+and `pan abort` in a realistic stage context. The exercise SHALL demonstrate
 that the commands work against live state and SHALL leave an auditable trail
 showing when each intervention occurred and what state changed.
 
@@ -107,8 +107,8 @@ work begins.
 2. Every expected persona stage has produced its stage artifact or checkpoint
    evidence.
 3. The end-to-end run log has been verified in an external observability tool.
-4. A second controlled run has exercised `ddl pause`, `ddl resume`, and
-   `ddl abort` successfully.
+4. A second controlled run has exercised `pan pause`, `pan resume`, and
+   `pan abort` successfully.
 5. The repository has a staged PR outcome for the dogfood slice.
 6. A delivery report for the dogfood run exists under `src/inbox/out/`.
 7. The proof bundle contains a clean external run trace plus intervention
@@ -127,6 +127,6 @@ After the proof bundle is staged, the operator SHALL:
 2. inspect the delivery report under `src/inbox/out/`;
 3. inspect the external run trace and confirm it is clean and attributable to
    the dogfood run;
-4. inspect the intervention evidence for `ddl pause`, `ddl resume`, and
-   `ddl abort`; and
+4. inspect the intervention evidence for `pan pause`, `pan resume`, and
+   `pan abort`; and
 5. ratify the Phase 4 exit or record the remaining blocker list.

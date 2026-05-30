@@ -16,7 +16,7 @@ references:
     path: src/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md
     range: [69, 95]
     contentHash: 6eeaa2f
-    note: "Directive problem statement and goal — closes WP-B acceptance gap that ddl run/advance never use the runner as the stage executor."
+    note: "Directive problem statement and goal — closes WP-B acceptance gap that pan run/advance never use the runner as the stage executor."
   - kind: lines
     path: src/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md
     range: [97, 124]
@@ -33,7 +33,7 @@ references:
     contentHash: 6eeaa2f
     note: "Directive acceptance criteria — log records, manual mode no-SDK, real persona fields, sdk auto-advance, retry-limit halt, report human gate, reinvocation, and QA evidence."
   - kind: lines
-    path: src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts
+    path: src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts
     range: [286, 313]
     contentHash: 7c5e4d7
     note: "Current wiring — startFeatureDelivery invokes CursorRunner once for intake using stubPersonaForStage, discards compilePipeline output (void compiled), and never calls executePipeline."
@@ -83,12 +83,12 @@ references:
     contentHash: 6336a5f
     note: "PRD §7 feature-delivery intake-stage YAML declaring loop.max_rounds: 5 and gate: human_approval; this intake holds the human_approval gate before plan."
   - kind: lines
-    path: daedaline.yaml
+    path: pancreator.yaml
     range: [1, 40]
     contentHash: 0d68373
     note: "Live policy file — Phase 5 status, risk_tier medium, and the absence of a runner.cursor.invocation block, demonstrating manual default behavior today."
   - kind: lines
-    path: daedaline-defaults.yaml
+    path: pancreator-defaults.yaml
     range: [30, 53]
     contentHash: 665ad46
     note: "Risk-tier medium defaults that govern coverage, bundle, and gate severities applied by the runtime when auto-advance is enabled."
@@ -96,11 +96,11 @@ references:
 
 # Spec
 
-This Feature SHALL close the harness-loop gap so the `feature-delivery` runtime executes stage work through `CursorRunner` whenever the operator opts in via `daedaline.yaml`, while preserving operator-led delegation as the default. The Feature replaces the current single-shot intake smoke (`feature-delivery-run.ts` lines 286–313) with a uniform stage-invocation contract on both `pnpm -w exec ddl run feature-delivery` and `pnpm -w exec ddl advance`, wires the compiled `StateGraph` from `compilePipeline` into stage execution, resolves real persona markdown from `src/personas/<name>.md` (no `stubPersonaForStage`), loads repo-root `.env` for SDK credentials, and adds a bounded automatic loopback regime with a cumulative 3-attempt retry budget and a mandatory human gate after `report`. The Feature closes the residual BR4 stub behavior that survived the M1 substrate batch and satisfies the WP-B acceptance clause that one stage SHALL run end-to-end through `CursorRunner.invoke` without manual paste.
+This Feature SHALL close the harness-loop gap so the `feature-delivery` runtime executes stage work through `CursorRunner` whenever the operator opts in via `pancreator.yaml`, while preserving operator-led delegation as the default. The Feature replaces the current single-shot intake smoke (`feature-delivery-run.ts` lines 286–313) with a uniform stage-invocation contract on both `pnpm -w exec pan run feature-delivery` and `pnpm -w exec pan advance`, wires the compiled `StateGraph` from `compilePipeline` into stage execution, resolves real persona markdown from `src/personas/<name>.md` (no `stubPersonaForStage`), loads repo-root `.env` for SDK credentials, and adds a bounded automatic loopback regime with a cumulative 3-attempt retry budget and a mandatory human gate after `report`. The Feature closes the residual BR4 stub behavior that survived the M1 substrate batch and satisfies the WP-B acceptance clause that one stage SHALL run end-to-end through `CursorRunner.invoke` without manual paste.
 
 ## Background
 
-The M1 substrate batch landed `@daedaline/runner-cursor` with a live `@cursor/sdk` transport and a `compilePipeline` LangGraph compiler, but the CLI does not use either as the stage executor. Today `startFeatureDelivery` calls `CursorRunner.invoke` exactly once for the `intake` stage using `stubPersonaForStage`, discards the compiled graph with `void compiled`, and leaves `advanceFeatureDelivery` entirely manual. The CLI does not load repo-root `.env`, and `daedaline.yaml` carries no `runner.cursor.invocation` block, so `readCursorInvocationMode` resolves to `manual` even when the operator has `CURSOR_API_KEY` configured locally. As a result, the operator must paste each `next-prompt.md` into a Cursor subagent for every stage, and the WP-B end-to-end SDK smoke clause cannot pass through the operator-facing CLI path.
+The M1 substrate batch landed `@pancreator/runner-cursor` with a live `@cursor/sdk` transport and a `compilePipeline` LangGraph compiler, but the CLI does not use either as the stage executor. Today `startFeatureDelivery` calls `CursorRunner.invoke` exactly once for the `intake` stage using `stubPersonaForStage`, discards the compiled graph with `void compiled`, and leaves `advanceFeatureDelivery` entirely manual. The CLI does not load repo-root `.env`, and `pancreator.yaml` carries no `runner.cursor.invocation` block, so `readCursorInvocationMode` resolves to `manual` even when the operator has `CURSOR_API_KEY` configured locally. As a result, the operator must paste each `next-prompt.md` into a Cursor subagent for every stage, and the WP-B end-to-end SDK smoke clause cannot pass through the operator-facing CLI path.
 
 ## Scope and non-scope orientation
 
@@ -109,7 +109,7 @@ The directive defines net-new automation rules. This spec preserves every existi
 | Concern | Authoritative source | Spec posture |
 |---|---|---|
 | Stage inventory and persona ownership | `src/pipelines/feature-delivery.yaml` lines 25–67 | Reference only; no edits in this Feature. |
-| Manual `ddl run` / `ddl advance` semantics | `OPERATION.md` lines 26–94 | Reference only; manual remains the default. |
+| Manual `pan run` / `pan advance` semantics | `OPERATION.md` lines 26–94 | Reference only; manual remains the default. |
 | Implement-stage obligations after loopback | `src/personas/coder.md` lines 81–167 | Reference only; consumed when automation routes to `implement`. |
 | Review-stage gate semantics | `src/personas/reviewer.md` lines 90–145 | Reference only; consumed when automation routes back from `review`. |
 | Test-stage routing and severity | `src/personas/qa-tester.md` lines 89–180 | Reference only; consumed when automation routes back from `test`. |
@@ -122,14 +122,14 @@ The acceptance criteria below split into six work packages. Plan-stage delegatio
 
 ### WP-1 — Runner on advance (SDK path)
 
-- When `runner.cursor.invocation` is `sdk` and the operator runs `pnpm -w exec ddl advance <task-id> --artifact <stage-artifact>` after a stage completes, `advanceFeatureDelivery` SHALL invoke `CursorRunner.invoke` for the entering stage and SHALL pass the regenerated `next-prompt.md` path, the expected artifact path, the resolved persona record, and a ledger context carrying `taskId`, `pipelineId`, `stageId`, and `featureId`.
+- When `runner.cursor.invocation` is `sdk` and the operator runs `pnpm -w exec pan advance <task-id> --artifact <stage-artifact>` after a stage completes, `advanceFeatureDelivery` SHALL invoke `CursorRunner.invoke` for the entering stage and SHALL pass the regenerated `next-prompt.md` path, the expected artifact path, the resolved persona record, and a ledger context carrying `taskId`, `pipelineId`, `stageId`, and `featureId`.
 - When `advanceFeatureDelivery` invokes `CursorRunner.invoke`, it SHALL resolve the persona by reading `src/personas/<name>.md` and SHALL NOT use `stubPersonaForStage`.
 - When `runner.cursor.invocation` is `manual`, `advanceFeatureDelivery` SHALL skip the SDK transport and SHALL preserve today's handoff-and-paste flow.
-- When the runner returns a typed result, the run SHALL append one record to `src/work/<day>/<task-id>/run.log.jsonl` containing the OpenInference and OTel GenAI attributes already specified in `@daedaline/runner-cursor`.
+- When the runner returns a typed result, the run SHALL append one record to `src/work/<day>/<task-id>/run.log.jsonl` containing the OpenInference and OTel GenAI attributes already specified in `@pancreator/runner-cursor`.
 
 ### WP-2 — Runner on run (configurable, no stub-only path)
 
-- When `pnpm -w exec ddl run feature-delivery <inbox-entry>` runs with `runner.cursor.invocation: sdk`, `startFeatureDelivery` SHALL invoke `CursorRunner.invoke` using the same contract that WP-1 defines, with no `stubPersonaForStage` call on any code path.
+- When `pnpm -w exec pan run feature-delivery <inbox-entry>` runs with `runner.cursor.invocation: sdk`, `startFeatureDelivery` SHALL invoke `CursorRunner.invoke` using the same contract that WP-1 defines, with no `stubPersonaForStage` call on any code path.
 - When `runner.cursor.invocation` is `manual`, `startFeatureDelivery` SHALL NOT call `@cursor/sdk` and SHALL emit the existing JSON envelope unchanged.
 - When the SDK transport returns successfully, the runtime SHALL replace the current `void compiled` discard pattern with a bound reference consumed by WP-3 stage execution.
 
@@ -137,21 +137,21 @@ The acceptance criteria below split into six work packages. Plan-stage delegatio
 
 - When the runtime executes at least one SDK-backed stage transition, it SHALL drive that transition through the compiled `StateGraph` returned by `compilePipeline` rather than the imperative stage map.
 - When the compiled graph executes a stage node, the OpenInference span name SHALL carry the stage persona's role name as already specified in the M1 substrate batch spec lines 85–91.
-- When the compiled graph encounters an intervention side-channel event (`pause`, `reroute`, `abort`), it SHALL route through the single side-channel node already defined in `@daedaline/pipeline` and SHALL NOT maintain a parallel state machine.
+- When the compiled graph encounters an intervention side-channel event (`pause`, `reroute`, `abort`), it SHALL route through the single side-channel node already defined in `@pancreator/pipeline` and SHALL NOT maintain a parallel state machine.
 - When the compiler refuses compilation (unknown persona, unknown contract kind, missing worktree pool), `startFeatureDelivery` and `advanceFeatureDelivery` SHALL exit non-zero with the compiler's error message and SHALL NOT mutate `state.json`.
 
 ### WP-4 — Environment ergonomics
 
-- When `pnpm -w exec ddl <subcommand>` runs from the repository root and a repo-root `.env` file exists, the CLI SHALL load that file before constructing `CursorRunner` and SHALL NOT log secret values to stdout, stderr, or `run.log.jsonl`.
+- When `pnpm -w exec pan <subcommand>` runs from the repository root and a repo-root `.env` file exists, the CLI SHALL load that file before constructing `CursorRunner` and SHALL NOT log secret values to stdout, stderr, or `run.log.jsonl`.
 - When `.env` is absent, the CLI SHALL fall back to the existing process environment without error.
 - When the CLI loads `.env`, it SHALL NOT commit, write, or echo `.env` content into any file under `src/work/`, `src/memory/`, or `src/inbox/`.
 
 ### WP-5 — Configuration surface
 
-- When `daedaline.yaml` carries `runner.cursor.invocation: manual`, the CLI SHALL behave per WP-1 and WP-2 manual-mode clauses.
-- When `daedaline.yaml` carries `runner.cursor.invocation: sdk`, the CLI SHALL behave per WP-1 and WP-2 SDK-mode clauses.
-- When `daedaline.yaml` omits the `runner.cursor.invocation` key, the CLI SHALL resolve invocation to `manual` per the existing `readCursorInvocationMode` contract.
-- When the implementation lands, `daedaline-defaults.yaml`, `daedaline.yaml`, or the handbook entry at `src/memory/handbook/daedaline-config.md` SHALL document at least one example block showing both `manual` and `sdk` values; the implementor SHALL select the documentation surface in the plan stage.
+- When `pancreator.yaml` carries `runner.cursor.invocation: manual`, the CLI SHALL behave per WP-1 and WP-2 manual-mode clauses.
+- When `pancreator.yaml` carries `runner.cursor.invocation: sdk`, the CLI SHALL behave per WP-1 and WP-2 SDK-mode clauses.
+- When `pancreator.yaml` omits the `runner.cursor.invocation` key, the CLI SHALL resolve invocation to `manual` per the existing `readCursorInvocationMode` contract.
+- When the implementation lands, `pancreator-defaults.yaml`, `pancreator.yaml`, or the handbook entry at `src/memory/handbook/pancreator-config.md` SHALL document at least one example block showing both `manual` and `sdk` values; the implementor SHALL select the documentation surface in the plan stage.
 
 ### WP-6 — Automated harness state machine
 
@@ -172,10 +172,10 @@ The clauses in this work package define net-new behavior that activates when, an
 
 ### WP-7 — Tests and regression coverage
 
-- When `pnpm --filter @daedaline/cli test` runs, the suite SHALL include vitest cases asserting that `advanceFeatureDelivery` calls `CursorRunner.invoke` exactly once per advance under `sdk` mode against a mocked transport.
-- When `pnpm --filter @daedaline/cli test` runs under `manual` mode, the suite SHALL assert that no SDK transport call occurs for the full inbox path (`run` → multiple `advance` calls → `complete`).
+- When `pnpm --filter @pancreator/cli test` runs, the suite SHALL include vitest cases asserting that `advanceFeatureDelivery` calls `CursorRunner.invoke` exactly once per advance under `sdk` mode against a mocked transport.
+- When `pnpm --filter @pancreator/cli test` runs under `manual` mode, the suite SHALL assert that no SDK transport call occurs for the full inbox path (`run` → multiple `advance` calls → `complete`).
 - When the persona resolver receives an unknown persona name, the resolver SHALL throw a typed error and the corresponding test case SHALL assert that the runtime exits non-zero without mutating `state.json`.
-- When `pnpm --filter @daedaline/runner-cursor test` runs, the existing M1 WP-B touch-set tests SHALL remain green.
+- When `pnpm --filter @pancreator/runner-cursor test` runs, the existing M1 WP-B touch-set tests SHALL remain green.
 - When `node --test tests/*.test.mjs` runs, the repository-level test suite SHALL remain green.
 - When `node src/internal/tools/check-phase-0a-scaffold.mjs` runs, the scaffold-conformance suite SHALL remain green.
 - When `node src/internal/tools/context-budget-report.mjs` runs, the context-budget report SHALL remain green.
@@ -188,15 +188,15 @@ documentation_impact:
   rationale: >-
     The Feature introduces new automated harness behavior, configures runner.cursor.invocation
     semantics, adds .env loading, and defines a retry budget plus report-stage human gate.
-    Operator-facing handbook pages, OPERATION.md, and the daedaline-config handbook entry
+    Operator-facing handbook pages, OPERATION.md, and the pancreator-config handbook entry
     require updates so operators can opt into sdk mode and recognise the auto-advance and
     halt artifacts.
   changed-surfaces:
     - OPERATION.md
-    - src/memory/handbook/daedaline-config.md
+    - src/memory/handbook/pancreator-config.md
     - src/memory/handbook/inbox-lifecycle.md
-    - daedaline.yaml
-    - daedaline-defaults.yaml
+    - pancreator.yaml
+    - pancreator-defaults.yaml
     - src/memory/active/current.md
   deferred-items: []
 ```
@@ -221,9 +221,9 @@ The following persona assignments are RECOMMENDED for the plan stage. The tech-l
 | Concern | Recommended owner |
 |---|---|
 | Plan, ADR draft, and touch-set | `tech-lead` |
-| CLI wiring, runner integration, persona resolver, `.env` loader | `daedaline-engineer` (primary) and `coder` (support) |
-| Compiled-graph stage execution slice | `daedaline-engineer` |
-| Vitest coverage and regression discipline | `daedaline-engineer` |
+| CLI wiring, runner integration, persona resolver, `.env` loader | `pancreator-engineer` (primary) and `coder` (support) |
+| Compiled-graph stage execution slice | `pancreator-engineer` |
+| Vitest coverage and regression discipline | `pancreator-engineer` |
 | Touch-set, disallowed-tool, and contracts review | `reviewer` |
 | Manual QA, severity routing, and logic-change quality-gate validation | `qa-tester` |
 | Delivery report and operator-facing documentation | `tech-writer` |
@@ -249,7 +249,7 @@ _(none — directive is sufficiently specified for plan-stage delegation; docume
    **How:** From the repository root run:
 
    ```bash
-   pnpm -w exec ddl advance 24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance \
+   pnpm -w exec pan advance 24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance \
      --artifact src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md
    ```
 

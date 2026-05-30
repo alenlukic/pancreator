@@ -10,8 +10,8 @@ describe("/api/file", () => {
   let tempRoot = "";
 
   beforeEach(() => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "daedaline-file-api-"));
-    fs.writeFileSync(path.join(tempRoot, "daedaline.yaml"), "phase: test\n");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-file-api-"));
+    fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
     fs.mkdirSync(path.join(tempRoot, "src", "memory"), { recursive: true });
     fs.writeFileSync(path.join(tempRoot, "src", "memory", "sample.md"), "initial");
     fs.mkdirSync(path.join(tempRoot, "client", ".local"), { recursive: true });

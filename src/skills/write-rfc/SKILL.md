@@ -3,14 +3,14 @@ name: write-rfc
 description: Authors one Request for Comments in the Rust-RFC-process shape. Picks a slug, fills the seven-section template (motivation, guide-level, reference-level, drawbacks, alternatives, prior art, unresolved questions), wires dual-anchor citations, runs Layer 1 lint, then files the draft under `/src/memory/rfc/draft/<slug>.md` for ensemble debate or human ratification.
 license: Apache-2.0
 metadata:
-  daedaline-stability: experimental
-  daedaline-bootstrap-only: false
-  daedaline-pipeline-stages: [plan, rfc-debate, proactive-research-scan, debt-grooming]
-  daedaline-risk-tier: medium
-  daedaline-required-handbook:
+  pancreator-stability: experimental
+  pancreator-bootstrap-only: false
+  pancreator-pipeline-stages: [plan, rfc-debate, proactive-research-scan, debt-grooming]
+  pancreator-risk-tier: medium
+  pancreator-required-handbook:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
-  daedaline-emits:
+  pancreator-emits:
     - /src/memory/rfc/draft/<slug>.md
 references:
   - kind: lines
@@ -161,7 +161,7 @@ contract block per `/src/memory/handbook/contract-format.md` declaring the
 gate the modified pipeline carries on acceptance. The block routes through
 `contract-writer` and the `author-contract` skill on the same staging.
 
-When the RFC proposes a change to `daedaline.yaml` thresholds, the
+When the RFC proposes a change to `pancreator.yaml` thresholds, the
 ratification rubric MUST cite the current measured baseline and the
 proposed new value side-by-side per PRD §3.5 US-9 line 220.
 
@@ -223,6 +223,6 @@ When all gates are green, you MUST:
 - Per-RFC draft default `max_tokens: 24000`. Bodies above 3000 words MUST
   trip a hard halt; split or sidecar the surplus.
 - Scout-emitted RFCs MUST stay under the per-scout weekly cost ceiling
-  declared in `daedaline.yaml: scouts.<name>.weekly_dollar_ceiling`. On
+  declared in `pancreator.yaml: scouts.<name>.weekly_dollar_ceiling`. On
   ceiling-breach, the scout MUST halt and post an inbox item per PRD §13
   R8.

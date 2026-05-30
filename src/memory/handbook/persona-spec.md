@@ -6,7 +6,7 @@ bootstrap-only: false
 phase: 0b
 owners: [persona-designer, librarian]
 purpose: |
-  The Anthropic Claude Agent SDK 16-field YAML reference, the Daedaline
+  The Anthropic Claude Agent SDK 16-field YAML reference, the Pancreator
   metadata extension map, and the Cursor projection contract
   (`.cursor/agents/<name>.md` compact projection plus standard/complex variants
   and `.cursor/rules/<name>.mdc` rule-layer projection where required). The canonical reference for `persona-designer` and the
@@ -41,7 +41,7 @@ external:
 
 A persona spec is one Markdown file under `src/personas/<name>.md`. Frontmatter is
 YAML conforming to the Anthropic Claude Agent SDK 16-field per-agent format
-plus a Daedaline `metadata` extension map. Body prose is RFC-2119-disciplined
+plus a Pancreator `metadata` extension map. Body prose is RFC-2119-disciplined
 second-person.
 
 The target integration contract is a compact Cursor projection under
@@ -56,7 +56,7 @@ remains canonical.
 src/personas/<name>.md
 ├── YAML frontmatter
 │   ├── 16 Anthropic-spec fields
-│   └── metadata: { Daedaline extensions }
+│   └── metadata: { Pancreator extensions }
 └── Markdown body (second-person prose; sections enumerated below)
 ```
 
@@ -66,13 +66,13 @@ delimiters. The body MUST follow the closing fence.
 ## 2 — The 16 Anthropic frontmatter fields
 
 The fields are defined by the Anthropic Claude Agent SDK subagent format. The
-table records each field's domain and Daedaline default.
+table records each field's domain and Pancreator default.
 
-| # | Field | Type | Daedaline default | Notes |
+| # | Field | Type | Pancreator default | Notes |
 |---|---|---|---|---|
 | 1 | `name` | string | required | Lowercase-kebab-case, unique across `src/personas/`. |
 | 2 | `description` | string | required | EARS one-liner; at most 50 words; shown to other agents at routing time. |
-| 3 | `model` | enum | `inherit` | Pin only when `daedaline-risk-tier: high`. |
+| 3 | `model` | enum | `inherit` | Pin only when `pancreator-risk-tier: high`. |
 | 4 | `permissionMode` | enum | `default` | `read-only` for review-only personas. |
 | 5 | `tools` | string[] | required | Minimal allowlist; most-restrictive Bash scope. |
 | 6 | `disallowedTools` | string[] | required | MUST include `Bash(rm:*)`, `Bash(git push:*)`, `Bash(git commit:*)` for every persona except `supervisor`. |
@@ -90,32 +90,32 @@ table records each field's domain and Daedaline default.
 `model`, `permissionMode`, `isolation`, `memory`, and `effort` carry closed
 enums. Values outside the enum cause the parser to reject the file.
 
-## 3 — The Daedaline `metadata` extension map
+## 3 — The Pancreator `metadata` extension map
 
 The `metadata` map is the open-extension surface. Required keys for every
 persona:
 
 ```yaml
 metadata:
-  daedaline-risk-tier: medium                  # low | medium | high | any
-  daedaline-pipeline-stages: [intake]          # array of stage IDs the persona is invoked in
-  daedaline-bootstrap-only: false              # true if the persona retires after bootstrap
-  daedaline-stability: experimental            # experimental | stable | deprecated
-  daedaline-handbook-anchors:                  # files the persona reads at invocation
+  pancreator-risk-tier: medium                  # low | medium | high | any
+  pancreator-pipeline-stages: [intake]          # array of stage IDs the persona is invoked in
+  pancreator-bootstrap-only: false              # true if the persona retires after bootstrap
+  pancreator-stability: experimental            # experimental | stable | deprecated
+  pancreator-handbook-anchors:                  # files the persona reads at invocation
     - /src/memory/handbook/glossary.md
-  daedaline-checklist:                         # named conformance checks the reviewer runs
+  pancreator-checklist:                         # named conformance checks the reviewer runs
     - sixteen-field-yaml-complete
     - description-uses-EARS
 ```
 
 Optional keys:
 
-- `daedaline-allowed-kinds-mvp` / `-m2` / `-m3plus` — milestone allowlists for
+- `pancreator-allowed-kinds-mvp` / `-m2` / `-m3plus` — milestone allowlists for
   contract-authoring personas. Encodes the M1 → M3 ratchet machine-readably.
-- `daedaline-cost-ceiling-usd` — per-invocation cost cap. Defaults to `1.00`.
-- `daedaline-base-persona` — the persona this one specializes (e.g.,
-  `frontend-eng` declares `daedaline-base-persona: coder`).
-- `daedaline-self-protection` — `true` blocks the persona and any other agent
+- `pancreator-cost-ceiling-usd` — per-invocation cost cap. Defaults to `1.00`.
+- `pancreator-base-persona` — the persona this one specializes (e.g.,
+  `frontend-eng` declares `pancreator-base-persona: coder`).
+- `pancreator-self-protection` — `true` blocks the persona and any other agent
   from modifying the file without explicit human ratification.
 
 The full open list lives under §7 below. Layer 1 lint warns on unknown keys
@@ -132,8 +132,8 @@ The body MUST contain three sections:
    section per `/src/memory/handbook/operator-output-contract.md` (single-option
    or multi-option layout, explicit **What** / **How**, read-only labeling,
    and **When to choose** / **Impact** when multiple options exist). Runnable
-   `ddl` commands in **How** MUST use `pnpm -w exec ddl …` per
-   `/src/memory/handbook/daedaline-config.md`. Shell **How** clauses MUST use
+   `pan` commands in **How** MUST use `pnpm -w exec pan …` per
+   `/src/memory/handbook/pancreator-config.md`. Shell **How** clauses MUST use
    fully formed copy-paste command blocks per
    `/src/memory/handbook/operator-output-contract.md` §3.4.
 3. **What you MUST NOT do.** Negative obligations and self-protection clauses.
@@ -208,7 +208,7 @@ Projection rules:
 - The body MUST be a single `@src/personas/<name>.md` import line. Cursor expands
   the import at activation time.
 
-The emitter target (`@daedaline/persona`) SHOULD remain round-trip-stable:
+The emitter target (`@pancreator/persona`) SHOULD remain round-trip-stable:
 parse-then-emit SHOULD produce a byte-identical `.mdc` file once tooling is
 wired. Until then, this projection remains hand-checked.
 
@@ -233,25 +233,25 @@ preserve operator legibility.
 
 When the palette runs out, append a row here; do not improvise.
 
-## 7 — Recognized `metadata.daedaline-*` keys
+## 7 — Recognized `metadata.pancreator-*` keys
 
-The keys below are recognized by `@daedaline/persona`'s parser (Phase 3 step 5
+The keys below are recognized by `@pancreator/persona`'s parser (Phase 3 step 5
 onward). Keys not in this list raise a Layer 1 warning; M3 promotes the
 warning to an error.
 
-- `daedaline-risk-tier` — required.
-- `daedaline-pipeline-stages` — required.
-- `daedaline-bootstrap-only` — required.
-- `daedaline-stability` — required.
-- `daedaline-handbook-anchors` — required when the persona reads the handbook.
-- `daedaline-checklist` — required. Every persona checklist SHOULD include
+- `pancreator-risk-tier` — required.
+- `pancreator-pipeline-stages` — required.
+- `pancreator-bootstrap-only` — required.
+- `pancreator-stability` — required.
+- `pancreator-handbook-anchors` — required when the persona reads the handbook.
+- `pancreator-checklist` — required. Every persona checklist SHOULD include
   `next-operator-steps-on-completion` unless a ratified exception is recorded.
-- `daedaline-allowed-kinds-mvp` / `-m2` / `-m3plus` — milestone allowlists.
-- `daedaline-cost-ceiling-usd` — per-invocation cost cap.
-- `daedaline-base-persona` — specialization parent.
-- `daedaline-self-protection` — boolean. `true` requires human ratification to
+- `pancreator-allowed-kinds-mvp` / `-m2` / `-m3plus` — milestone allowlists.
+- `pancreator-cost-ceiling-usd` — per-invocation cost cap.
+- `pancreator-base-persona` — specialization parent.
+- `pancreator-self-protection` — boolean. `true` requires human ratification to
   modify.
-- `daedaline-deprecated-by` — string. Names the superseding persona.
+- `pancreator-deprecated-by` — string. Names the superseding persona.
 
 ## 8 — Worked example
 
@@ -261,7 +261,7 @@ field. Use it as a copy-paste starting point.
 ```yaml
 ---
 name: example-persona
-description: When the human runs `ddl persona example`, the example-persona SHALL emit a stub artifact under `/src/work/<day>/<id>/example.md` and stage it for review.
+description: When the human runs `pan persona example`, the example-persona SHALL emit a stub artifact under `/src/work/<day>/<id>/example.md` and stage it for review.
 model: inherit
 permissionMode: default
 tools:
@@ -283,13 +283,13 @@ memory: project
 effort: medium
 color: slate
 metadata:
-  daedaline-risk-tier: low
-  daedaline-pipeline-stages: [example]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: low
+  pancreator-pipeline-stages: [example]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
 references:
@@ -306,7 +306,7 @@ You author a stub artifact whenever the human invokes the example pipeline.
 
 ## When you are invoked
 
-1. **Manual.** When a human runs `ddl persona example`, you produce one stub
+1. **Manual.** When a human runs `pan persona example`, you produce one stub
    artifact under `/src/work/<day>/<id>/example.md`.
 
 ## What you MUST produce, every invocation

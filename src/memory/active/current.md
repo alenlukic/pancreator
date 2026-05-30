@@ -47,26 +47,26 @@ read per `src/memory/handbook/context-economy.md`.
 | `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` | [indexed] (`2026-05-27T17:35:30.000Z`) | `src/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix…` |
 | `ci-best-practices-batch` | [indexed] (`2026-05-26T18:23:19.000Z`) | `src/memory/features/ci-best-practices-batch/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md` |
 | `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`2026-05-26T12:00:00.000Z`) | `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md` | `—` | `src/inbox/archive/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-vari…` |
-| `daedaline-adopter-scan` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-adopter-scan/delivery-report.md` | `—` | `—` |
-| `daedaline-checkpointer-fs` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-checkpointer-fs/delivery-report.md` | `—` | `—` |
-| `daedaline-cli` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-cli/delivery-report.md` | `—` | `—` |
-| `daedaline-contract` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-contract/delivery-report.md` | `—` | `—` |
-| `daedaline-contract-runner-llm-judge` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-contract-runner-llm-judge/delivery-report.md` | `—` | `—` |
-| `daedaline-contract-runner-rego` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-contract-runner-rego/delivery-report.md` | `—` | `—` |
-| `daedaline-contract-style` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-contract-style/delivery-report.md` | `—` | `—` |
-| `daedaline-core` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-core/delivery-report.md` | `—` | `—` |
-| `daedaline-env-isolation` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-env-isolation/delivery-report.md` | `—` | `—` |
-| `daedaline-inbox` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-inbox/delivery-report.md` | `—` | `—` |
-| `daedaline-intervention` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-intervention/delivery-report.md` | `—` | `—` |
-| `daedaline-mcp-server` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-mcp-server/delivery-report.md` | `—` | `—` |
-| `daedaline-memory` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-memory/delivery-report.md` | `—` | `—` |
-| `daedaline-notifier` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-notifier/delivery-report.md` | `—` | `—` |
-| `daedaline-persona` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-persona/delivery-report.md` | `—` | `—` |
-| `daedaline-pipeline` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-pipeline/delivery-report.md` | `—` | `—` |
-| `daedaline-policy` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-policy/delivery-report.md` | `—` | `—` |
-| `daedaline-run-logger` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-run-logger/delivery-report.md` | `—` | `—` |
-| `daedaline-runner-cursor` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-runner-cursor/delivery-report.md` | `—` | `—` |
-| `daedaline-worktree` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/daedaline-worktree/delivery-report.md` | `—` | `—` |
+| `pancreator-adopter-scan` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-adopter-scan/delivery-report.md` | `—` | `—` |
+| `pancreator-checkpointer-fs` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-checkpointer-fs/delivery-report.md` | `—` | `—` |
+| `pancreator-cli` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-cli/delivery-report.md` | `—` | `—` |
+| `pancreator-contract` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-contract/delivery-report.md` | `—` | `—` |
+| `pancreator-contract-runner-llm-judge` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-contract-runner-llm-judge/delivery-report.md` | `—` | `—` |
+| `pancreator-contract-runner-rego` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-contract-runner-rego/delivery-report.md` | `—` | `—` |
+| `pancreator-contract-style` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-contract-style/delivery-report.md` | `—` | `—` |
+| `pancreator-core` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-core/delivery-report.md` | `—` | `—` |
+| `pancreator-env-isolation` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-env-isolation/delivery-report.md` | `—` | `—` |
+| `pancreator-inbox` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-inbox/delivery-report.md` | `—` | `—` |
+| `pancreator-intervention` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-intervention/delivery-report.md` | `—` | `—` |
+| `pancreator-mcp-server` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-mcp-server/delivery-report.md` | `—` | `—` |
+| `pancreator-memory` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-memory/delivery-report.md` | `—` | `—` |
+| `pancreator-notifier` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-notifier/delivery-report.md` | `—` | `—` |
+| `pancreator-persona` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-persona/delivery-report.md` | `—` | `—` |
+| `pancreator-pipeline` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-pipeline/delivery-report.md` | `—` | `—` |
+| `pancreator-policy` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-policy/delivery-report.md` | `—` | `—` |
+| `pancreator-run-logger` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-run-logger/delivery-report.md` | `—` | `—` |
+| `pancreator-runner-cursor` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-runner-cursor/delivery-report.md` | `—` | `—` |
+| `pancreator-worktree` | [indexed] (`2026-05-26T09:34:14.000Z`) | `src/memory/features/pancreator-worktree/delivery-report.md` | `—` | `—` |
 | `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`2026-05-26T00:00:00.000Z`) | `src/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md` | `—` | `src/inbox/archive/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-me…` |
 | `json-formatting` | [indexed] (`2026-05-24T00:00:00.000Z`) | `src/memory/features/json-formatting/delivery-report.md` | `—` | `—` |
 | `compliance-tests` | [indexed] (`—`) | `src/memory/features/compliance-tests/delivery-report.md` | `—` | `src/inbox/archive/in/172991_05-15-26/68576_0457_compliance-tests.md` |
@@ -79,11 +79,11 @@ read per `src/memory/handbook/context-economy.md`.
 
 ## Operator notes
 
-<!-- ddl:active-memory:operator-notes:auto -->
+<!-- pan:active-memory:operator-notes:auto -->
 
 - Active-memory refreshed (UTC): `2026-05-29T21:06:02.736Z`
 
-<!-- /ddl:active-memory:operator-notes:auto -->
+<!-- /pan:active-memory:operator-notes:auto -->
 
 
 
@@ -100,4 +100,4 @@ read per `src/memory/handbook/context-economy.md`.
 - During Phase 4 dogfood, planning stages SHOULD emit a compact handoff card and
   delegate execution to the next persona instead of continuing implementation in
   the same parent context.
-- Run `pnpm -w exec ddl refresh-active-memory [--dry-run]` before committing when shipped-feature rows or the managed refresh stamp drift from `status: indexed` artifacts outside `pnpm -w exec ddl close-artifacts`; set Active Feature manually when work starts — `pnpm -w exec ddl close-artifacts` clears it to `(none)` when the archived inbox source matched.
+- Run `pnpm -w exec pan refresh-active-memory [--dry-run]` before committing when shipped-feature rows or the managed refresh stamp drift from `status: indexed` artifacts outside `pnpm -w exec pan close-artifacts`; set Active Feature manually when work starts — `pnpm -w exec pan close-artifacts` clears it to `(none)` when the archived inbox source matched.

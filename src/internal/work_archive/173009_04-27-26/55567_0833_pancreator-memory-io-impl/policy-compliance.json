@@ -1,0 +1,42 @@
+{
+  "task_id": "pancreator-memory-io-impl",
+  "governing_sources_checked": ["AGENTS.md", "src/memory/handbook/constitution.md", "PRD.md"],
+  "documentation_impact": {
+    "applies": true,
+    "rationale": "Phase 3 step 4 implements the memory + I/O surface: @pancreator/memory (FileMemoryStore, MemoryRouter, dual-anchor citation methods), @pancreator/inbox (FileInbox), and @pancreator/notifier (Console + Inbox notifiers). Adjusts the meta package re-exports so the workspace typechecks under the renamed observability symbols, and closes the three feature task lists.",
+    "changed_surfaces": [
+      "src/internal/packages/@pancreator/memory/**",
+      "src/internal/packages/@pancreator/inbox/**",
+      "src/internal/packages/@pancreator/notifier/**",
+      "src/internal/packages/pancreator/src/index.ts",
+      "src/memory/features/pancreator-src/memory/tasks.md",
+      "src/memory/features/pancreator-src/inbox/tasks.md",
+      "src/memory/features/pancreator-notifier/tasks.md",
+      "pnpm-lock.yaml"
+    ],
+    "deferred_items": [
+      {
+        "id": "pancreator-memory-citation-moved-detection",
+        "rationale": "CitationVerification 'moved' state requires hash-based relocation search; deferred to a later slice with the contract-runner integration."
+      },
+      {
+        "id": "pancreator-memory-vector-mem0-letta",
+        "rationale": "Vector memory and Mem0/Letta-style features are explicitly out of MVP scope; tracked in the feature task list."
+      },
+      {
+        "id": "pancreator-notifier-slack-and-mcp-elicitation",
+        "rationale": "Slack and MCP elicitation transports are deferred per PRD MVP scope and tracked in the feature task list."
+      },
+      {
+        "id": "pancreator-memory-io.readme_ergonomics-llm-judge-run",
+        "rationale": "LLM-judge README contracts use TBD-on-commit content hashes and require the runner panel; deferred to the contract runner pass."
+      }
+    ]
+  },
+  "policy_alignment": {
+    "agents_md_alignment": "Slice stages diffs locally, preserves the human gate at the phase boundary, and respects the no-horizontal-primitive-deps rule (only @pancreator/core dependencies).",
+    "constitution_alignment": "Slice keeps governance and citation artifacts traceable while limiting scope to the declared package boundary.",
+    "prd_alignment": "Slice satisfies PRD §11 src/memory/src/inbox/notifier responsibilities and aligns with §4 dual-anchor citation expectations and §8 retrieval expectations.",
+    "required_updates": []
+  }
+}

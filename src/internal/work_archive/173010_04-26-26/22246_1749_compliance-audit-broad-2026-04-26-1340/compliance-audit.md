@@ -39,7 +39,7 @@ audit_interaction:
   - Evidence anchors:
     - `{kind: lines, path: "AGENTS.md", range: [89, 104], contentHash: "3dd1213204e134b7c6e6091e1a421403cd37be95823196c4ab1353be5cda3e14"}`
     - `{kind: lines, path: "src/personas/compliance-auditor.md", range: [73, 76], contentHash: "5d1d1b136b57b1a50d84ceebb9811cdf95d8776113f2dacf908ca7271a9ccc55"}`
-    - `{kind: lines, path: "src/memory/features/daedaline-core/contracts/daedaline.core.package_shape.yaml", range: [14, 19], contentHash: "9ff1eaf25a45b6bbd0fc14d2d4b70a9d50b88d6b1a0bc44871724a4cc0be4db2"}`
+    - `{kind: lines, path: "src/memory/features/pancreator-core/contracts/pancreator.core.package_shape.yaml", range: [14, 19], contentHash: "9ff1eaf25a45b6bbd0fc14d2d4b70a9d50b88d6b1a0bc44871724a4cc0be4db2"}`
   - Unresolved owner route: `contract-writer` (policy corpus normalization) with `librarian` support (index/reference sweep).
 
 ### minor
@@ -97,7 +97,7 @@ documentation_impact:
   - `evidence_anchors`:
     - `{kind: lines, path: "AGENTS.md", range: [89, 91], contentHash: "3dd1213204e134b7c6e6091e1a421403cd37be95823196c4ab1353be5cda3e14"}`
     - `{kind: lines, path: "src/personas/compliance-auditor.md", range: [73, 76], contentHash: "5d1d1b136b57b1a50d84ceebb9811cdf95d8776113f2dacf908ca7271a9ccc55"}`
-    - `{kind: lines, path: "src/memory/features/daedaline-core/contracts/daedaline.core.package_shape.yaml", range: [14, 19], contentHash: "9ff1eaf25a45b6bbd0fc14d2d4b70a9d50b88d6b1a0bc44871724a4cc0be4db2"}`
+    - `{kind: lines, path: "src/memory/features/pancreator-core/contracts/pancreator.core.package_shape.yaml", range: [14, 19], contentHash: "9ff1eaf25a45b6bbd0fc14d2d4b70a9d50b88d6b1a0bc44871724a4cc0be4db2"}`
   - `proposed_change`: Run a controlled repository-wide content-hash normalization pass for `references[]` and contract wrappers, then lint for zero remaining placeholders.
   - `expected_impact`: Reduce citation-lint risk and policy review ambiguity by eliminating placeholder anchors from canonical surfaces.
   - `risk_note`: A broad metadata rewrite can produce large diffs and may require staged rollout by domain.
@@ -106,7 +106,7 @@ documentation_impact:
   - `contract_clause`:
 
 ```yaml
-id: daedaline.governance.normalize-dual-anchor-contenthash-corpus
+id: pancreator.governance.normalize-dual-anchor-contenthash-corpus
 kind: rego
 severity: block
 applies_to:
@@ -133,11 +133,11 @@ references:
     note: "Governed-commit policy artifact gate expectations."
 spec: /src/internal/work_archive/173010_04-26-26/22246_1749_compliance-audit-broad-2026-04-26-1340/normalize-dual-anchor-contenthash-corpus.rego
 runtime:
-  package: daedaline.governance.dual_anchor_contenthash
-  query: data.daedaline.governance.dual_anchor_contenthash.deny
+  package: pancreator.governance.dual_anchor_contenthash
+  query: data.pancreator.governance.dual_anchor_contenthash.deny
 metadata:
-  daedaline.contract_id: daedaline.governance.normalize-dual-anchor-contenthash-corpus
-  daedaline.applies_to: file-path:{AGENTS.md,src/memory/handbook/**/*.md,src/personas/**/*.md,.cursor/agents/**/*.md,src/memory/features/**/contracts/**/*.{yaml,yml,md}}
+  pancreator.contract_id: pancreator.governance.normalize-dual-anchor-contenthash-corpus
+  pancreator.applies_to: file-path:{AGENTS.md,src/memory/handbook/**/*.md,src/personas/**/*.md,.cursor/agents/**/*.md,src/memory/features/**/contracts/**/*.{yaml,yml,md}}
 ```
 
 ## 7) Gate recommendation
@@ -154,8 +154,8 @@ Predicate summary: localized governance fixes succeeded, but unresolved major ci
 
 ## 9) Contract execution result (2026-04-26)
 
-- `contract_id`: `daedaline.governance.normalize-dual-anchor-contenthash-corpus`
-- `execution_owner`: `daedaline-engineer`
+- `contract_id`: `pancreator.governance.normalize-dual-anchor-contenthash-corpus`
+- `execution_owner`: `pancreator-engineer`
 - `status`: `partial-fail` (blocked by protected persona constraints)
 - `execution_summary`:
   - Executed a repository-scope normalization pass across the clause `applies_to` set and replaced `references[].contentHash: TBD-on-commit` with concrete lowercase SHA-256 digests where deterministic line anchors were available.
@@ -169,4 +169,4 @@ Predicate summary: localized governance fixes succeeded, but unresolved major ci
   - Primary: `contract-writer` (self-protected persona content update ratification).
   - Secondary: `persona-designer` (authorized update pathway for protected persona references).
 - `rerun_trigger`:
-  - After ratified updates to the 5 protected placeholders are staged, rerun this clause (`daedaline.governance.normalize-dual-anchor-contenthash-corpus`) and verify zero `references[].contentHash: TBD-on-commit` in clause scope.
+  - After ratified updates to the 5 protected placeholders are staged, rerun this clause (`pancreator.governance.normalize-dual-anchor-contenthash-corpus`) and verify zero `references[].contentHash: TBD-on-commit` in clause scope.

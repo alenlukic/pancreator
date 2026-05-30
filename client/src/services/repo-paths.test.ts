@@ -15,22 +15,22 @@ describe("resolveRepoPath", () => {
   });
 
   it("rejects notes sandbox paths", () => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "daedaline-paths-"));
-    fs.writeFileSync(path.join(tempRoot, "daedaline.yaml"), "phase: test\n");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-paths-"));
+    fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
     expect(() => resolveRepoPath("src/inbox/notes/secret.md", tempRoot)).toThrow(
       "Operator sandbox denied",
     );
   });
 
   it("rejects path traversal segments", () => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "daedaline-paths-"));
-    fs.writeFileSync(path.join(tempRoot, "daedaline.yaml"), "phase: test\n");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-paths-"));
+    fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
     expect(() => resolveRepoPath("../outside.md", tempRoot)).toThrow("Path traversal denied");
   });
 
   it("rejects empty paths", () => {
-    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "daedaline-paths-"));
-    fs.writeFileSync(path.join(tempRoot, "daedaline.yaml"), "phase: test\n");
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-paths-"));
+    fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
     expect(() => resolveRepoPath("", tempRoot)).toThrow("Path is required");
   });
 });

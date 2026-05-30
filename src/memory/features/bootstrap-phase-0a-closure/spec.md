@@ -61,7 +61,7 @@ phases can rely on a stable workspace baseline.
   `@arethetypeswrong/cli`, `publint`, and declaration-build support into
   repeatable root-level commands.
 - WHEN dependency boundaries are checked, the workspace MUST provide the
-  `@daedaline/no-horizontal-primitive-deps` lint rule and MUST expose a
+  `@pancreator/no-horizontal-primitive-deps` lint rule and MUST expose a
   conformance check that fails horizontal primitive dependencies.
 - WHEN Phase 0a closure is reviewed, the slice MUST leave an explicit
   verification checklist or equivalent operator-facing record that proves the
@@ -76,8 +76,8 @@ phases can rely on a stable workspace baseline.
   export stubs.
 - Delivering Phase 0b handbook seed work, Phase 0c meta-persona work, or Phase
   3 substrate behavior.
-- Shipping M2+ or M3-only packages such as `@daedaline/a2a`,
-  `@daedaline/runner-claude`, or sandbox adapters as part of this slice.
+- Shipping M2+ or M3-only packages such as `@pancreator/a2a`,
+  `@pancreator/runner-claude`, or sandbox adapters as part of this slice.
 
 ## Open questions
 

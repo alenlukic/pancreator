@@ -36,7 +36,7 @@
       "id": "wp-5-configuration",
       "label": "WP-5 — Configuration surface",
       "status": "shipped",
-      "outcome": "runner.cursor.invocation documented in daedaline.yaml and daedaline-config handbook; manual remains default when omitted."
+      "outcome": "runner.cursor.invocation documented in pancreator.yaml and pancreator-config handbook; manual remains default when omitted."
     },
     {
       "id": "wp-6-automated-harness",
@@ -73,7 +73,7 @@
     "completed_at": "2026-05-29T12:00:00Z",
     "next_owner": "operator",
     "next_stage": "complete",
-    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and implementation surface. After human accepts this index artifact, run ddl advance to complete, then delegate the generated complete-stage prompt for close-artifacts archival closure."
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and implementation surface. After human accepts this index artifact, run pan advance to complete, then delegate the generated complete-stage prompt for close-artifacts archival closure."
   },
   "index": {
     "indexer": "librarian",
@@ -82,7 +82,7 @@
     "content_hash_refresh_performed": true,
     "abbrev_len_at_index_time": 7,
     "metadata": {
-      "daedaline-bootstrap-only": true
+      "pancreator-bootstrap-only": true
     }
   },
   "review": {
@@ -159,7 +159,7 @@
       "id": "live-sdk-invocation-policy",
       "owner": "operator",
       "status": "consider",
-      "reason": "daedaline.yaml currently sets runner.cursor.invocation: sdk; confirm intentional live repo policy before governed commit.",
+      "reason": "pancreator.yaml currently sets runner.cursor.invocation: sdk; confirm intentional live repo policy before governed commit.",
       "citation": {
         "kind": "lines",
         "path": "src/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
@@ -287,35 +287,35 @@
     },
     "implementation_surface": {
       "cli_feature_delivery": {
-        "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts"
+        "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts"
       },
       "cli_runner_orchestration": {
-        "path": "src/internal/packages/@daedaline/cli/src/feature-delivery-runner.ts"
+        "path": "src/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts"
       },
       "cli_persona_resolver": {
-        "path": "src/internal/packages/@daedaline/cli/src/persona-resolve.ts"
+        "path": "src/internal/packages/@pancreator/cli/src/persona-resolve.ts"
       },
       "cli_repo_env": {
-        "path": "src/internal/packages/@daedaline/cli/src/repo-env.ts"
+        "path": "src/internal/packages/@pancreator/cli/src/repo-env.ts"
       },
       "pipeline_stage_slice": {
-        "path": "src/internal/packages/@daedaline/pipeline/src/execute.ts"
+        "path": "src/internal/packages/@pancreator/pipeline/src/execute.ts"
       },
       "runner_cursor_prereqs": {
-        "path": "src/internal/packages/@daedaline/runner-cursor/src/cursor-sdk-prereqs.ts"
+        "path": "src/internal/packages/@pancreator/runner-cursor/src/cursor-sdk-prereqs.ts"
       },
       "runner_cursor_sdk_transport": {
-        "path": "src/internal/packages/@daedaline/runner-cursor/src/sdk-transport.ts"
+        "path": "src/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts"
       },
       "operator_howto": {
         "path": "OPERATION.md"
       },
       "live_policy": {
-        "path": "daedaline.yaml",
+        "path": "pancreator.yaml",
         "note": "runner.cursor.invocation block added; verify operator intent before governed commit."
       },
-      "handbook_daedaline_config": {
-        "path": "src/memory/handbook/daedaline-config.md"
+      "handbook_pancreator_config": {
+        "path": "src/memory/handbook/pancreator-config.md"
       },
       "handbook_inbox_lifecycle": {
         "path": "src/memory/handbook/inbox-lifecycle.md"
@@ -341,7 +341,7 @@
     "clauses": []
   },
   "metadata": {
-    "daedaline-bootstrap-only": true,
+    "pancreator-bootstrap-only": true,
     "librarian_populated": true,
     "placeholder": false
   },

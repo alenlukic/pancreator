@@ -53,7 +53,7 @@ audited_path_set:
 | `policy-compliance-artifact-check` | Check for `policy-compliance.json` presence for structural changes | RECORDED — auto-remediation changes are maintenance-only, no structural gate applies |
 | `active-memory-staleness` | Compare `src/memory/active/current.md` claim against live `src/inbox/in/` | RESOLVED — stale ratification inbox item archived; active-memory now matches queue state |
 | `json-formatting-spec-conformance` | Review `src/memory/features/json-formatting/spec.md` citation and Q2 policy tension | CLOSED — operator confirmed glossary alignment and feature closure |
-| `ddl-lint-contracts` | `ddl lint contracts` — not available in bootstrap phase | DEFERRED — CLI not wired |
+| `pan-lint-contracts` | `pan lint contracts` — not available in bootstrap phase | DEFERRED — CLI not wired |
 
 **Note:** `pnpm test` script does not exist in `package.json`. Available named test scripts (`migration:test`, `context:budget:test`, `repo:structure:test`) were each run individually. All pass.
 
@@ -194,7 +194,7 @@ audited_path_set:
 
 **n-01 — No `pnpm test` script; test suites are named individually**
 - **Description:** `package.json` does not define a `test` script. The compliance-auditor persona references `pnpm test` in its tool allowlist. All named test scripts (`migration:test`, `context:budget:test`, `repo:structure:test`) were run and pass. This is an operational gap — a single `test` entrypoint would reduce operator friction.
-- **Owner:** `daedaline-engineer` MAY add a `test` script aggregating all named test targets.
+- **Owner:** `pancreator-engineer` MAY add a `test` script aggregating all named test targets.
 - **Evidence:**
   ```json
   {
@@ -295,7 +295,7 @@ documentation_impact:
 - `proposed_change`: Add `"test": "node --test tests/repo-structure.test.mjs tests/migrate-json-formatting.test.mjs tests/migrate-inbox-convention.test.mjs tests/migrate-timestamp-naming.test.mjs tests/context-budget-report.test.mjs"` to `package.json` `scripts`.
 - `expected_impact`: Reduces operator invocation friction; aligns with `pnpm test` persona tool grant; enables CI adoption.
 - `risk_note`: Aggregated test runtime increases; if one suite is slow it blocks the full command.
-- `owner_recommendation`: `daedaline-engineer`
+- `owner_recommendation`: `pancreator-engineer`
 
 ### P-02 — Active-memory rotation automation
 
@@ -321,7 +321,7 @@ documentation_impact:
   ```
 - `proposed_change`: Define an automated `knowledge-curation` cron pipeline step that refreshes `current.md` whenever `src/inbox/in/` contents change. Add a `supervisor` invariant check that blocks pipeline start when `current.md` Active Feature section does not match live inbox.
 - `expected_impact`: Eliminates stale active-memory state; reduces M-01 / m-03 class findings in future audits.
-- `risk_note`: Requires `ddl run` scheduler wiring (M4+ per AGENTS §8); not available in current bootstrap phase.
+- `risk_note`: Requires `pan run` scheduler wiring (M4+ per AGENTS §8); not available in current bootstrap phase.
 - `owner_recommendation`: `tech-lead` (plan stage for `knowledge-curation` pipeline scheduling)
 
 **Both proposals are `deferred` in `non_interactive` mode. No backlog items are created unless the human explicitly requests tracking.**
@@ -346,5 +346,5 @@ gate_conditions_for_pass:
 | ID | Description | Owner | Rerun trigger |
 |---|---|---|---|
 | `bulk-contenthash-refresh` | Resolve 501 `TBD-on-commit` placeholders across ADRs, feature specs, handbook files per citation-rot-scan | `librarian` | Next `knowledge-curation` pass or explicit `operator-on-demand` compliance run |
-| `add-unified-pnpm-test` | Add `pnpm test` script (P-01, `deferred`) | `daedaline-engineer` | Operator requests `pnpm test` compatibility; explicit backlog pickup |
+| `add-unified-pnpm-test` | Add `pnpm test` script (P-01, `deferred`) | `pancreator-engineer` | Operator requests `pnpm test` compatibility; explicit backlog pickup |
 | `active-memory-automation` | Automate `current.md` rotation via scheduler (P-02, `deferred`) | `tech-lead` | M4+ scheduler wiring (not available in bootstrap) |

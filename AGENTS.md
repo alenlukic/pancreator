@@ -1,11 +1,11 @@
-# AGENTS.md — Daedaline operating card
+# AGENTS.md — Pancreator operating card
 
 > Cross-tool entry contract (Linux Foundation Agentic AI Foundation).
 > This file is the sole repository root operating card for agent harnesses.
 
 ## 1 — Repo identity
 
-Daedaline is a simulated product-org agentic Delivery Pipeline (personas,
+Pancreator is a simulated product-org agentic Delivery Pipeline (personas,
 skills, pipelines, contracts). The repo is in **bootstrap**; see `docs/BOOTSTRAP.md`.
 Product requirements live in `docs/PRD.md`, but routine work SHOULD route through
 `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md` first. Agents SHOULD read
@@ -29,9 +29,9 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | M1/bootstrap routing before full PRD/BOOTSTRAP reads | `docs/M1.index.md` |
 | Subagent standard/complex model tiers | `src/memory/handbook/subagent-model-tiers.md` |
 | Current context cost audit | `src/memory/handbook/context-cost-audit.md` |
-| `daedaline.yaml` phase and `project_root` config | `src/memory/handbook/daedaline-config.md` |
+| `pancreator.yaml` phase and `project_root` config | `src/memory/handbook/pancreator-config.md` |
 | Operator how-to (feature delivery, CLI, validation) | `OPERATION.md` |
-| `ddl` CLI invocation (`pnpm -w exec ddl`) | `src/memory/handbook/daedaline-config.md` §“CLI invocation in this workspace” |
+| `pan` CLI invocation (`pnpm -w exec pan`) | `src/memory/handbook/pancreator-config.md` §“CLI invocation in this workspace” |
 | Model and context escalation | `src/memory/handbook/context-economy.md` |
 | Active-memory orientation | `src/memory/active/current.md` |
 | Active-memory layout | `src/memory/active/README.md` |
@@ -63,7 +63,7 @@ language → `src/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 Bootstrap seeds: `src/personas/persona-designer.md`, `src/personas/contract-writer.md`.
 Phase-1 MVP roster, compact Cursor projections, rule shims, and MVP skills are present.
 `qa-tester` (`src/personas/qa-tester.md`) is a Phase-5 experimental bootstrap addition
-to the MVP roster (`daedaline-stability: experimental`); it owns the `test` stage in
+to the MVP roster (`pancreator-stability: experimental`); it owns the `test` stage in
 `feature-delivery` and was introduced after Phase 1; it is not a meta-persona and is
 not self-protected by the clause below.
 Both meta-personas are self-protected: no agent and no persona SHALL modify role
@@ -75,7 +75,7 @@ documentation-impact obligations are satisfied.
 
 ## 4 — Pipeline-step delegation rule
 
-When work maps to a persona’s `metadata.daedaline-pipeline-stages`, you SHALL
+When work maps to a persona’s `metadata.pancreator-pipeline-stages`, you SHALL
 delegate to that persona rather than perform it directly unless `simple task
 mode` forbids delegation.
 
@@ -112,7 +112,7 @@ mode` forbids delegation.
    back to the owning persona instead of extending the executor loop.
 6. **Cost discipline.** Subagents isolate parent context; they do not guarantee
    lower total tokens. Avoid fan-out when multiple subagents would reload the
-   same PRD, handbook, or archival context. When `ddl run` or `ddl advance`
+   same PRD, handbook, or archival context. When `pan run` or `pan advance`
    emits `nextPromptFile`, use that prompt as the delegated stage scope.
 
 When no persona owns the work (for example bootstrap-only handbook authoring or
@@ -143,7 +143,7 @@ this section in your response.
   SHALL create an empty .gitkeep file within the directory. This applies to
   canonical paths such as `/src/inbox/in/`, which Git may omit when empty. It
   does not apply to generated or placeholder-scoped paths such as
-  `/src/work/<day>/<task-id>/`, archive entries, `.ddl/` sandboxes, or other
+  `/src/work/<day>/<task-id>/`, archive entries, `.pan/` sandboxes, or other
   run-specific directories.
 - **Operator sandbox is off-limits.** `/src/inbox/notes/` is human-operator-only.
   No agent SHALL read, traverse, ingest, cite, or modify any file under
@@ -177,11 +177,11 @@ this section in your response.
   "stage X and the other touched files" are disallowed. Agents SHALL perform
   automatable work in-task rather than punt it to the operator when policy
   allows.
-- **`ddl` CLI invocation prefix.** This workspace does not install `ddl` on
+- **`pan` CLI invocation prefix.** This workspace does not install `pan` on
   the shell `PATH`. Every runnable command an agent emits for an operator MUST
-  use `pnpm -w exec ddl <subcommand> …` from the repository root, not bare
-  `ddl …`. Prose MAY name the logical verb; copy-paste **How** clauses MUST
-  use the prefix per `src/memory/handbook/daedaline-config.md`.
+  use `pnpm -w exec pan <subcommand> …` from the repository root, not bare
+  `pan …`. Prose MAY name the logical verb; copy-paste **How** clauses MUST
+  use the prefix per `src/memory/handbook/pancreator-config.md`.
 - **Policy-compliance artifact gate is mandatory for governed commits.** Tasks
   that stage structural changes outside active run work SHALL stage
   `/src/work/<day>/<task-id>/policy-compliance.json` per
@@ -192,7 +192,7 @@ this section in your response.
   contract.
 - **Bootstrap-only affordances are tagged.** Anything pulled forward (manual
   phase boundaries before the runner exists, hand-checked lints) carries
-  `metadata.daedaline-bootstrap-only: true | false` so it can be retired or
+  `metadata.pancreator-bootstrap-only: true | false` so it can be retired or
   formalized later.
 - **Commit trailer.** Every bootstrap commit MUST carry
   `Bootstrap-Phase: <N>` so the bootstrap is replayable end-to-end.
@@ -209,7 +209,7 @@ this section in your response.
 3. Check `/src/inbox/out/` for staged delivery reports.
 4. Do NOT read `/src/inbox/notes/`; it remains human-only per
    `src/memory/handbook/inbox-lifecycle.md` section 1a.
-5. When a directive maps to `metadata.daedaline-pipeline-stages`, follow
+5. When a directive maps to `metadata.pancreator-pipeline-stages`, follow
    section 4.
 
 ### 6.1 — Compliance-run trigger guidance
@@ -224,9 +224,9 @@ this section in your response.
 - Scheduled cadence stays backlog-tracked until runtime scheduler wiring lands;
   agents SHALL NOT assume automatic cadence execution in the first slice.
 
-6. Operators SHALL interpret `ddl` JSON envelopes carrying `"status":"deferred"` as the canonical deferral protocol: each deferred verb exits **`125`** and documents `milestone`, `tracking_intake`, and `manual_workaround` in **`src/internal/packages/@daedaline/cli/src/run.ts`**.
-7. Operators SHALL author new **`src/inbox/in/<utc-day>/<sid_hhmm_slug>.md`** directives with **`pnpm -w exec ddl intake new <slug>`**, keeping UTC bucket naming aligned with **`src/memory/handbook/inbox-lifecycle.md`** and **`src/memory/features/timestamp-naming-conventions/spec.md`**.
-8. Operators SHALL set **`src/memory/active/current.md`** Active Feature bullets explicitly when work becomes active; the refresher SHALL NOT infer active work from the inbox queue. **`pnpm -w exec ddl close-artifacts`** SHALL refresh shipped-feature rows and the managed operator-notes stamp and SHALL clear Active Feature to **`(none)`** when it matched the archived inbox source. Operators SHALL run **`pnpm -w exec ddl refresh-active-memory [--dry-run]`** before other governed commits when those derived slices drift outside artifact closure (`src/memory/features/*/index.json` remain the indexed source of truth).
+6. Operators SHALL interpret `pan` JSON envelopes carrying `"status":"deferred"` as the canonical deferral protocol: each deferred verb exits **`125`** and documents `milestone`, `tracking_intake`, and `manual_workaround` in **`src/internal/packages/@pancreator/cli/src/run.ts`**.
+7. Operators SHALL author new **`src/inbox/in/<utc-day>/<sid_hhmm_slug>.md`** directives with **`pnpm -w exec pan intake new <slug>`**, keeping UTC bucket naming aligned with **`src/memory/handbook/inbox-lifecycle.md`** and **`src/memory/features/timestamp-naming-conventions/spec.md`**.
+8. Operators SHALL set **`src/memory/active/current.md`** Active Feature bullets explicitly when work becomes active; the refresher SHALL NOT infer active work from the inbox queue. **`pnpm -w exec pan close-artifacts`** SHALL refresh shipped-feature rows and the managed operator-notes stamp and SHALL clear Active Feature to **`(none)`** when it matched the archived inbox source. Operators SHALL run **`pnpm -w exec pan refresh-active-memory [--dry-run]`** before other governed commits when those derived slices drift outside artifact closure (`src/memory/features/*/index.json` remain the indexed source of truth).
 
 ## 7 — Workspace map
 
@@ -258,19 +258,19 @@ this section in your response.
 /tests/                  repository-level tests and compliance fixtures
 /src/internal/tools/                  validation and maintenance scripts
 /src/internal/work_archive/           completed run artifacts; explicit-read only
-/.ddl/{worktrees,sandboxes,scheduler}/  control-plane state
+/.pan/{worktrees,sandboxes,scheduler}/  control-plane state
 /docs/                         high-level product and bootstrap documents
 /docs/README.md                  docs directory guide
 /docs/PRD.md                     product spec
 /docs/M1.index.md                 compact M1/bootstrap route map
 /docs/BOOTSTRAP.md                phase-by-phase bootstrap plan
-/daedaline.yaml                  live policy, bootstrap tracking, and project_root
-/daedaline-defaults.yaml         risk-tier defaults introduced during Phase 2
+/pancreator.yaml                  live policy, bootstrap tracking, and project_root
+/pancreator-defaults.yaml         risk-tier defaults introduced during Phase 2
 ```
 
 ## 8 — Bootstrap status (live)
 
-`daedaline.yaml` tracks the repo at Bootstrap Phase 5 with status
+`pancreator.yaml` tracks the repo at Bootstrap Phase 5 with status
 `phase-5-in-progress`. Phases -1 through 4 are complete for
 tracking purposes: the repo contains the scaffold, handbook seeds, persona
 roster, Cursor projections, M1 contract feature folders, substrate package
@@ -281,17 +281,17 @@ and the nested runs `77373_0230_phase-4-dogfood-proof-bundle-evidence-index`
 and `71096_0415_phase-4-intervention-probe-pause-resume-abort` are closed.
 Phoenix trace verification remains deferred per
 `src/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md` as
-an `@daedaline/run-logger` and `daedaline-engineer` backlog item. `pnpm -w exec
-ddl run feature-delivery <inbox-entry>` (`<day-bucket>/<file>.md` relative to
+an `@pancreator/run-logger` and `pancreator-engineer` backlog item. `pnpm -w exec
+pan run feature-delivery <inbox-entry>` (`<day-bucket>/<file>.md` relative to
 `src/inbox/in/`, not the `src/inbox/in/` prefix) creates a Phase-5 active-work
 state machine, handoff card, bounded next-prompt, and run log. Operators still
-invoke Cursor personas manually, then use `pnpm -w exec ddl advance` with the
+invoke Cursor personas manually, then use `pnpm -w exec pan advance` with the
 accepted stage artifact; `repair-state` is reserved for explicit ledger recovery
 after out-of-band work. When a run reaches `complete`, `next-prompt.md` is a
 bounded librarian handoff for agent-executed artifact closure. The librarian
-runs `pnpm -w exec ddl close-artifacts <task-id>` to archive the active work
+runs `pnpm -w exec pan close-artifacts <task-id>` to archive the active work
 directory and source inbox item after human validation/indexing are complete.
-`pnpm -w exec ddl refresh-prompt <task-id>` regenerates prompt files from the
+`pnpm -w exec pan refresh-prompt <task-id>` regenerates prompt files from the
 current ledger without changing state. It does not yet automate Cursor/model
 transport or LangGraph execution.
 

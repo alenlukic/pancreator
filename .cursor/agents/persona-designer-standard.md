@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills:
   - author-persona
 maxTurns: 30
@@ -25,15 +25,15 @@ memory: project
 effort: medium
 color: violet
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [bootstrap-phase-1, sme-spawn]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [bootstrap-phase-1, sme-spawn]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - skills-resolve-to-existing-files
@@ -42,9 +42,9 @@ metadata:
     - dual-anchor-citations-into-PRD
     - layer-1-lint-clean
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: persona-designer
-  daedaline-model-tier: standard
-  daedaline-canonical-persona: src/personas/persona-designer.md
+  pancreator-base-persona: persona-designer
+  pancreator-model-tier: standard
+  pancreator-canonical-persona: src/personas/persona-designer.md
 ---
 
 # persona-designer-standard

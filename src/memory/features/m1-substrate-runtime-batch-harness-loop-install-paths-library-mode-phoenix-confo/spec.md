@@ -21,7 +21,7 @@ wp_d_scope: phoenix-only-m1
 wp_d_deferred_m2: additional-backend-verification
   - feature_id: library-mode-script-example
     label: WP-E — Library-mode script example
-  - feature_id: ddl-install-paths
+  - feature_id: pan-install-paths
     label: WP-F — Install paths
 references:
   - kind: lines
@@ -77,16 +77,16 @@ The intake-analyst ratifies Option A as the delivery default for this intake. Op
 
 ### WP-A — Checkpointer conformance
 
-- When `pnpm --filter @daedaline/checkpointer-fs test` runs, the test suite SHALL pass the LangGraph `BaseCheckpointSaver` v1 conformance assertions and all Daedaline metadata-extension tests.
+- When `pnpm --filter @pancreator/checkpointer-fs test` runs, the test suite SHALL pass the LangGraph `BaseCheckpointSaver` v1 conformance assertions and all Pancreator metadata-extension tests.
 - When the pipeline saves and restores a checkpoint, the round-trip integration test SHALL resume from the saved `checkpoint_id` without re-encoding metadata.
-- When `@daedaline/intervention` calls pause, resume, or abort on a running pipeline, the intervention manager SHALL use the `BaseCheckpointSaver` official methods and SHALL NOT maintain a parallel persistence path.
-- When `Checkpoint` carries Daedaline-specific fields (`worktree_commit`, `run_log_offset`), those fields SHALL reside in `Checkpoint.metadata` per `src/memory/handbook/run-log-schema.md`.
+- When `@pancreator/intervention` calls pause, resume, or abort on a running pipeline, the intervention manager SHALL use the `BaseCheckpointSaver` official methods and SHALL NOT maintain a parallel persistence path.
+- When `Checkpoint` carries Pancreator-specific fields (`worktree_commit`, `run_log_offset`), those fields SHALL reside in `Checkpoint.metadata` per `src/memory/handbook/run-log-schema.md`.
 
 ### WP-B — Cursor SDK runner invocation
 
 - When `CursorRunner.invoke` receives a stage prompt path, a persona spec, and a task ledger, the runner SHALL return a typed result carrying an artifact path and a structured run-log fragment with OpenInference and OTel GenAI attributes per the run-log schema.
-- When `daedaline.yaml: runner.cursor.invocation` is set to `sdk`, the runner SHALL call the Cursor SDK and SHALL respect persona `model`, `tools`, `disallowedTools`, and `maxTurns` fields.
-- When `daedaline.yaml: runner.cursor.invocation` is set to `manual` (default), the runner SHALL preserve existing behavior and SHALL NOT call the Cursor SDK.
+- When `pancreator.yaml: runner.cursor.invocation` is set to `sdk`, the runner SHALL call the Cursor SDK and SHALL respect persona `model`, `tools`, `disallowedTools`, and `maxTurns` fields.
+- When `pancreator.yaml: runner.cursor.invocation` is set to `manual` (default), the runner SHALL preserve existing behavior and SHALL NOT call the Cursor SDK.
 - When an end-to-end smoke test runs one `feature-delivery` stage via the SDK runner, `CursorRunner.invoke` SHALL complete that stage without a manual paste step.
 - When `simple task mode` is active, the runner SHALL NOT read any path outside the declared touch-set.
 
@@ -94,40 +94,40 @@ The intake-analyst ratifies Option A as the delivery default for this intake. Op
 
 - When `compilePipeline(yaml)` is called with a valid pipeline YAML, the function SHALL return a LangGraph `StateGraph` with one node per pipeline stage and edges encoding `gate`, `loop`, and `circuit_breaker` directives.
 - When a stage node emits a telemetry span, the OpenInference span name SHALL carry the stage persona's role name.
-- When intervention levers (`pause`, `reroute`, `abort`) are compiled, they SHALL compile as a single side-channel node so `@daedaline/intervention` does not maintain parallel state.
+- When intervention levers (`pause`, `reroute`, `abort`) are compiled, they SHALL compile as a single side-channel node so `@pancreator/intervention` does not maintain parallel state.
 - When the compiler encounters an unknown persona, an unknown contract kind, or `worktree: required` with `WorktreePool` unavailable, the compiler SHALL refuse compilation and SHALL exit with a descriptive error message.
-- When `pnpm --filter @daedaline/pipeline test` runs, the test suite SHALL pass compiler tests, intervention-node injection tests, and parse → compile → serialize → re-parse identity tests.
+- When `pnpm --filter @pancreator/pipeline test` runs, the test suite SHALL pass compiler tests, intervention-node injection tests, and parse → compile → serialize → re-parse identity tests.
 - When the five MVP pipeline YAML files are compiled, each SHALL pass structural tests: entry-to-exit reachability, zero orphan nodes, and `circuit_breaker` honored.
 - When the change set ships, all existing `executePipeline` callers SHALL be migrated to the compiled graph in the same change set.
 
 ### WP-D — Run-logger Phoenix conformance (Option A)
 
 - When the Docker-based smoke test runs under `tests/run-logger-conformance/`, it SHALL boot a local Phoenix instance, replay a sample run log, and assert the expected span hierarchy without error.
-- When a pull request touches `@daedaline/run-logger`, CI SHALL run the Phoenix smoke test using a path-filtered trigger.
+- When a pull request touches `@pancreator/run-logger`, CI SHALL run the Phoenix smoke test using a path-filtered trigger.
 - When Option A smoke tests pass in CI, `src/memory/active/current.md` SHALL no longer carry Phoenix OTLP import as an undated risk row.
 - When Option A is blocked and Option B is ratified by the tech-lead, `src/memory/adr/0007-run-logger-phoenix-conformance-deferral.md` SHALL record the deferral in Nygard format with backlog linkage and milestone `M2`.
 
 ### WP-E — Library-mode script example
 
 - When `node examples/library-script/index.mjs path/to/persona.md` is run from outside the monorepo, the script SHALL exit zero and SHALL emit exactly 2 files (a `.cursor/agents/<name>.md` mirror and a `.cursor/rules/<name>.mdc` shim) into a temp directory.
-- When the script runs, it SHALL NOT read any path under `src/memory/`, `src/inbox/`, or `daedaline.yaml`.
-- When the script resolves its imports, it SHALL import only `@daedaline/persona` and declared external peers.
+- When the script runs, it SHALL NOT read any path under `src/memory/`, `src/inbox/`, or `pancreator.yaml`.
+- When the script resolves its imports, it SHALL import only `@pancreator/persona` and declared external peers.
 - When CI builds the library-mode example, the build and smoke test SHALL complete without touching the host repository.
 - When `examples/library-script/` is referenced in `docs/PRD.summary.md`, it SHALL serve as the authoritative library-mode proof for PRD US-8.
 
 ### WP-F — Install paths
 
-- When an operator runs `pnpm -w exec ddl init --dry-run` against a standard example repository, the command SHALL complete without writes outside `src/memory/adoption/` and SHALL surface per-file diffs on stdout.
-- When an operator runs `pnpm -w exec ddl init --apply` against an empty directory, the command SHALL install the M1 scaffold.
-- When `ddl init` detects a conflicting file, the command SHALL refuse the write and SHALL exit non-zero unless `--force` is supplied.
-- When `ddl init` runs, the scan report SHALL write to `src/memory/adoption/scan-<UTC-day>.md` and SHALL open an inbox ratification item listing detected languages, frameworks, and proposed threshold-policy seeds.
-- When `npx create-daedaline <name>` is run, the command SHALL create a complete M1 scaffold (handbook seed pointers, `daedaline.yaml`, `AGENTS.md`, a sample inbox directive, and a runnable `feature-delivery` walkthrough) independent of this repository's bootstrap layout.
-- When `npx create-daedaline demo` completes, `pnpm -w exec ddl inbox` and `pnpm -w exec ddl run feature-delivery` SHALL succeed on the generated scaffold.
+- When an operator runs `pnpm -w exec pan init --dry-run` against a standard example repository, the command SHALL complete without writes outside `src/memory/adoption/` and SHALL surface per-file diffs on stdout.
+- When an operator runs `pnpm -w exec pan init --apply` against an empty directory, the command SHALL install the M1 scaffold.
+- When `pan init` detects a conflicting file, the command SHALL refuse the write and SHALL exit non-zero unless `--force` is supplied.
+- When `pan init` runs, the scan report SHALL write to `src/memory/adoption/scan-<UTC-day>.md` and SHALL open an inbox ratification item listing detected languages, frameworks, and proposed threshold-policy seeds.
+- When `npx create-pancreator <name>` is run, the command SHALL create a complete M1 scaffold (handbook seed pointers, `pancreator.yaml`, `AGENTS.md`, a sample inbox directive, and a runnable `feature-delivery` walkthrough) independent of this repository's bootstrap layout.
+- When `npx create-pancreator demo` completes, `pnpm -w exec pan inbox` and `pnpm -w exec pan run feature-delivery` SHALL succeed on the generated scaffold.
 
 ### Batch integration
 
 - When all six work packages are delivered, a harness loop run of `feature-delivery` (WP-A + WP-B + WP-C) SHALL complete one stage end-to-end with checkpoint resume.
-- When delivery is complete, a `compliance-auditor` broad sweep SHALL report zero `block` findings tied to stub runner behavior (`dryRun: true`), stub `ddl init` behavior (`{"status":"stub"}`), or missing library-mode proof.
+- When delivery is complete, a `compliance-auditor` broad sweep SHALL report zero `block` findings tied to stub runner behavior (`dryRun: true`), stub `pan init` behavior (`{"status":"stub"}`), or missing library-mode proof.
 
 ## Downstream owners
 
@@ -136,22 +136,22 @@ The following persona assignments are RECOMMENDED for the plan stage:
 | Work package | Recommended owner(s) |
 |---|---|
 | WP-A — conformance contract | `tech-lead` |
-| WP-A — implementation + vitest | `daedaline-engineer` |
+| WP-A — implementation + vitest | `pancreator-engineer` |
 | WP-A — intervention integration review | `reviewer` |
 | WP-B — feature-flag contract | `tech-lead` |
-| WP-B — SDK wiring | `daedaline-engineer` |
+| WP-B — SDK wiring | `pancreator-engineer` |
 | WP-B — touch-set and disallowed-tool review | `reviewer` |
 | WP-C — YAML-to-graph ADR | `tech-lead` |
-| WP-C — compiler + migration | `daedaline-engineer` |
+| WP-C — compiler + migration | `pancreator-engineer` |
 | WP-C — LangGraph pin discipline review | `reviewer` |
 | WP-D — option A vs B arbitration | `tech-lead` |
-| WP-D — smoke tests (if option A) | `daedaline-engineer` |
+| WP-D — smoke tests (if option A) | `pancreator-engineer` |
 | WP-D — ratification + active-memory hygiene | `reviewer` |
 | WP-E — primitive choice | `tech-lead` |
 | WP-E — script + README | `coder` |
 | WP-E — no-horizontal-deps audit | `reviewer` |
 | WP-F — adoption-report contract | `tech-lead` |
-| WP-F — CLI + create-daedaline | `coder` |
+| WP-F — CLI + create-pancreator | `coder` |
 | WP-F — non-destructive guarantees review | `reviewer` |
 | Batch integration | `supervisor` (phasing + staged outcome); `compliance-auditor` (broad sweep) |
 

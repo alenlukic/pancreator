@@ -1,8 +1,8 @@
 {
-  "schema": "daedaline.inbox-convention-migration-manifest.v1",
+  "schema": "pancreator.inbox-convention-migration-manifest.v1",
   "mode": "dry-run",
   "generatedAt": "2026-05-25T04:12:15.861Z",
-  "repoRoot": "/Users/alen/Dev/daedaline",
+  "repoRoot": "/Users/alen/Dev/pancreator",
   "summary": {
     "legacyArtifacts": 0,
     "plannedFileRenames": 0,

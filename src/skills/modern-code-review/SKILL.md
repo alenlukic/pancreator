@@ -3,15 +3,15 @@ name: modern-code-review
 description: Runs Modern Code Review per Bacchelli/Bird and Google `eng-practices` against one Feature touch-set. Loads the Engineering Spec, plan, and ADR draft; classifies every finding under `must fix`, `consider`, or `nit`; runs every Spec Contract pulled in by `contracts:from_feature`; emits one `/src/work/<day>/<id>/review.md` for the `review_passes` gate.
 license: Apache-2.0
 metadata:
-  daedaline-stability: experimental
-  daedaline-bootstrap-only: false
-  daedaline-pipeline-stages: [review]
-  daedaline-risk-tier: medium
-  daedaline-required-handbook:
+  pancreator-stability: experimental
+  pancreator-bootstrap-only: false
+  pancreator-pipeline-stages: [review]
+  pancreator-risk-tier: medium
+  pancreator-required-handbook:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  daedaline-emits:
+  pancreator-emits:
     - /src/work/<day>/<id>/review.md
 references:
   - kind: lines
@@ -127,7 +127,7 @@ figures the coder captured, the reviewer MAY cite those figures and MUST record
 the source path. (`/src/work/<day>/<id>/test-report.md` is emitted by the
 downstream `test` stage and is NOT available at review time.)
 
-When the threshold policy in `daedaline.yaml: gates.coverage` declares
+When the threshold policy in `pancreator.yaml: gates.coverage` declares
 `new_lines_only: true`, the reviewer MUST cite the new-lines coverage
 figure rather than the global coverage figure.
 

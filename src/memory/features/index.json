@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "daedaline-bootstrap-only": true,
+    "pancreator-bootstrap-only": true,
     "generated_by": "librarian",
     "completed_at": "2026-04-27T18:10:00Z",
     "note": "This global feature index is bootstrap-only until runtime feature indexing ships."
@@ -43,241 +43,241 @@
       }
     },
     {
-      "feature_id": "daedaline-adopter-scan",
-      "title": "Engineering Spec - @daedaline/adopter-scan",
+      "feature_id": "pancreator-adopter-scan",
+      "title": "Engineering Spec - @pancreator/adopter-scan",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-adopter-scan/index.json",
+        "path": "src/memory/features/pancreator-adopter-scan/index.json",
         "range": [1, 79],
         "contentHash": "fbd303f"
       }
     },
     {
-      "feature_id": "daedaline-checkpointer-fs",
-      "title": "Engineering Spec - @daedaline/checkpointer-fs",
+      "feature_id": "pancreator-checkpointer-fs",
+      "title": "Engineering Spec - @pancreator/checkpointer-fs",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-checkpointer-fs/index.json",
+        "path": "src/memory/features/pancreator-checkpointer-fs/index.json",
         "range": [1, 79],
         "contentHash": "d8d2a2c"
       }
     },
     {
-      "feature_id": "daedaline-cli",
-      "title": "Engineering Spec - @daedaline/cli",
+      "feature_id": "pancreator-cli",
+      "title": "Engineering Spec - @pancreator/cli",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-cli/index.json",
+        "path": "src/memory/features/pancreator-cli/index.json",
         "range": [1, 79],
         "contentHash": "b9b306e"
       }
     },
     {
-      "feature_id": "daedaline-contract",
-      "title": "Engineering Spec - @daedaline/contract",
+      "feature_id": "pancreator-contract",
+      "title": "Engineering Spec - @pancreator/contract",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-contract/index.json",
+        "path": "src/memory/features/pancreator-contract/index.json",
         "range": [1, 79],
         "contentHash": "bd986a6"
       }
     },
     {
-      "feature_id": "daedaline-contract-runner-llm-judge",
-      "title": "Engineering Spec - @daedaline/contract-runner-llm-judge",
+      "feature_id": "pancreator-contract-runner-llm-judge",
+      "title": "Engineering Spec - @pancreator/contract-runner-llm-judge",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-contract-runner-llm-judge/index.json",
+        "path": "src/memory/features/pancreator-contract-runner-llm-judge/index.json",
         "range": [1, 79],
         "contentHash": "63aea19"
       }
     },
     {
-      "feature_id": "daedaline-contract-runner-rego",
-      "title": "Engineering Spec - @daedaline/contract-runner-rego",
+      "feature_id": "pancreator-contract-runner-rego",
+      "title": "Engineering Spec - @pancreator/contract-runner-rego",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-contract-runner-rego/index.json",
+        "path": "src/memory/features/pancreator-contract-runner-rego/index.json",
         "range": [1, 79],
         "contentHash": "7b43492"
       }
     },
     {
-      "feature_id": "daedaline-contract-style",
-      "title": "Engineering Spec - @daedaline/contract-style",
+      "feature_id": "pancreator-contract-style",
+      "title": "Engineering Spec - @pancreator/contract-style",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-contract-style/index.json",
+        "path": "src/memory/features/pancreator-contract-style/index.json",
         "range": [1, 79],
         "contentHash": "8a058c1"
       }
     },
     {
-      "feature_id": "daedaline-core",
-      "title": "Engineering Spec - @daedaline/core",
+      "feature_id": "pancreator-core",
+      "title": "Engineering Spec - @pancreator/core",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-core/index.json",
+        "path": "src/memory/features/pancreator-core/index.json",
         "range": [1, 79],
         "contentHash": "9ff62a3"
       }
     },
     {
-      "feature_id": "daedaline-env-isolation",
-      "title": "Engineering Spec - @daedaline/env-isolation",
+      "feature_id": "pancreator-env-isolation",
+      "title": "Engineering Spec - @pancreator/env-isolation",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-env-isolation/index.json",
+        "path": "src/memory/features/pancreator-env-isolation/index.json",
         "range": [1, 79],
         "contentHash": "3ae38f3"
       }
     },
     {
-      "feature_id": "daedaline-inbox",
-      "title": "Engineering Spec - @daedaline/inbox",
+      "feature_id": "pancreator-inbox",
+      "title": "Engineering Spec - @pancreator/inbox",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-inbox/index.json",
+        "path": "src/memory/features/pancreator-inbox/index.json",
         "range": [1, 79],
         "contentHash": "d1f283d"
       }
     },
     {
-      "feature_id": "daedaline-intervention",
-      "title": "Engineering Spec - @daedaline/intervention",
+      "feature_id": "pancreator-intervention",
+      "title": "Engineering Spec - @pancreator/intervention",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-intervention/index.json",
+        "path": "src/memory/features/pancreator-intervention/index.json",
         "range": [1, 79],
         "contentHash": "006496e"
       }
     },
     {
-      "feature_id": "daedaline-mcp-server",
-      "title": "Engineering Spec - @daedaline/mcp-server",
+      "feature_id": "pancreator-mcp-server",
+      "title": "Engineering Spec - @pancreator/mcp-server",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-mcp-server/index.json",
+        "path": "src/memory/features/pancreator-mcp-server/index.json",
         "range": [1, 79],
         "contentHash": "b4e93fc"
       }
     },
     {
-      "feature_id": "daedaline-memory",
-      "title": "Engineering Spec - @daedaline/memory",
+      "feature_id": "pancreator-memory",
+      "title": "Engineering Spec - @pancreator/memory",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-memory/index.json",
+        "path": "src/memory/features/pancreator-memory/index.json",
         "range": [1, 79],
         "contentHash": "1ed61a3"
       }
     },
     {
-      "feature_id": "daedaline-notifier",
-      "title": "Engineering Spec - @daedaline/notifier",
+      "feature_id": "pancreator-notifier",
+      "title": "Engineering Spec - @pancreator/notifier",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-notifier/index.json",
+        "path": "src/memory/features/pancreator-notifier/index.json",
         "range": [1, 79],
         "contentHash": "44c684f"
       }
     },
     {
-      "feature_id": "daedaline-persona",
-      "title": "Engineering Spec - @daedaline/persona",
+      "feature_id": "pancreator-persona",
+      "title": "Engineering Spec - @pancreator/persona",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-persona/index.json",
+        "path": "src/memory/features/pancreator-persona/index.json",
         "range": [1, 79],
         "contentHash": "9710e8a"
       }
     },
     {
-      "feature_id": "daedaline-pipeline",
-      "title": "Engineering Spec - @daedaline/pipeline",
+      "feature_id": "pancreator-pipeline",
+      "title": "Engineering Spec - @pancreator/pipeline",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-pipeline/index.json",
+        "path": "src/memory/features/pancreator-pipeline/index.json",
         "range": [1, 79],
         "contentHash": "0c229e7"
       }
     },
     {
-      "feature_id": "daedaline-policy",
-      "title": "Engineering Spec - @daedaline/policy",
+      "feature_id": "pancreator-policy",
+      "title": "Engineering Spec - @pancreator/policy",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-policy/index.json",
+        "path": "src/memory/features/pancreator-policy/index.json",
         "range": [1, 79],
         "contentHash": "b265b72"
       }
     },
     {
-      "feature_id": "daedaline-run-logger",
-      "title": "Engineering Spec - @daedaline/run-logger",
+      "feature_id": "pancreator-run-logger",
+      "title": "Engineering Spec - @pancreator/run-logger",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-run-logger/index.json",
+        "path": "src/memory/features/pancreator-run-logger/index.json",
         "range": [1, 79],
         "contentHash": "e613b01"
       }
     },
     {
-      "feature_id": "daedaline-runner-cursor",
-      "title": "Engineering Spec - @daedaline/runner-cursor",
+      "feature_id": "pancreator-runner-cursor",
+      "title": "Engineering Spec - @pancreator/runner-cursor",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-runner-cursor/index.json",
+        "path": "src/memory/features/pancreator-runner-cursor/index.json",
         "range": [1, 79],
         "contentHash": "e3e7713"
       }
     },
     {
-      "feature_id": "daedaline-worktree",
-      "title": "Engineering Spec - @daedaline/worktree",
+      "feature_id": "pancreator-worktree",
+      "title": "Engineering Spec - @pancreator/worktree",
       "current_stage": "contracts-authored",
       "last_commit": "d472d02",
       "path": {
         "kind": "lines",
-        "path": "src/memory/features/daedaline-worktree/index.json",
+        "path": "src/memory/features/pancreator-worktree/index.json",
         "range": [1, 79],
         "contentHash": "f8a1d07"
       }

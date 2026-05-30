@@ -40,7 +40,7 @@ references:
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [112, 149]
     contentHash: 5efe3cc
-    note: Directive §2 specifies the Cursor rule audit and the daedaline-engineer glob narrowing example.
+    note: Directive §2 specifies the Cursor rule audit and the pancreator-engineer glob narrowing example.
   - kind: lines
     path: src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md
     range: [151, 177]
@@ -161,7 +161,7 @@ reachable for explicit human and agent reads.
 - When the Feature audits Cursor rule files, the Feature MUST evaluate
   the five rule files the directive enumerates at lines 117 to 122 of
   `src/inbox/archive/in/172997_05-09-26/86400_0000_token-economy.md` for over-broad `globs` activation.
-- When the Feature narrows the `.cursor/rules/daedaline-engineer.mdc`
+- When the Feature narrows the `.cursor/rules/pancreator-engineer.mdc`
   glob surface, the Feature MUST exclude `src/work/**/*` from the default
   activation set unless the rule specifically targets run logs, plans,
   reviews, or delivery reports.

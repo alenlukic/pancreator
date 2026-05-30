@@ -26,7 +26,7 @@ src/work/172995_05-11-26/60722_0707_inbox-convention-migration/staged.diff
 Important context:
 - The previous review failed because node --test tests/*.test.mjs failed on an unstaged .cursor/agents/reviewer-standard.md issue.
 - That workspace/staging issue has now been manually resolved.
-- Re-review the full branch diff against origin/ddl-fdp plus current worktree/staged changes.
+- Re-review the full branch diff against origin/pan-fdp plus current worktree/staged changes.
 - Do not fail solely because old plan.md, touch-set.json, adr-draft.md, or earlier process artifacts are missing.
 - Do fail if test-report.md still shows validation failures.
 - Do fail if the original must-fix implementation issues remain unresolved.

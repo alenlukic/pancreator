@@ -347,7 +347,7 @@ The validation delta covers the new client endpoint suite, the dashboard interac
    **How:** From the repository root run:
 
    ```bash
-   pnpm -w exec ddl advance 68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa \
+   pnpm -w exec pan advance 68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa \
      --artifact src/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md
    ```
 

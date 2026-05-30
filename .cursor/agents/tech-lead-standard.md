@@ -16,7 +16,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills:
   - write-adr
   - write-rfc
@@ -26,17 +26,17 @@ memory: project
 effort: medium
 color: cyan
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [plan]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-color-suffix: cyan-200
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [plan]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-color-suffix: cyan-200
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -47,9 +47,9 @@ metadata:
     - touch-set-resolves-against-repo-symbols
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: tech-lead
-  daedaline-model-tier: standard
-  daedaline-canonical-persona: src/personas/tech-lead.md
+  pancreator-base-persona: tech-lead
+  pancreator-model-tier: standard
+  pancreator-canonical-persona: src/personas/tech-lead.md
 ---
 
 # tech-lead-standard

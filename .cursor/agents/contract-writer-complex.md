@@ -9,8 +9,8 @@ tools:
   - Glob
   - Write
   - Edit
-  - "Bash(ddl lint contracts:*)"
-  - "Bash(ddl contracts:*)"
+  - "Bash(pan lint contracts:*)"
+  - "Bash(pan contracts:*)"
   - "Bash(git diff:*)"
   - "Bash(git status:*)"
 disallowedTools:
@@ -18,7 +18,7 @@ disallowedTools:
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills:
   - author-contract
 maxTurns: 120
@@ -27,19 +27,19 @@ memory: project
 effort: high
 color: amber
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [bootstrap-phase-2, intake, plan, review]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [bootstrap-phase-2, intake, plan, review]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/contract-format.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-templates/
     - /src/memory/handbook/glossary.md
-  daedaline-allowed-kinds-mvp: [rego, llm-judge]
-  daedaline-allowed-kinds-m2: [rego, llm-judge, playwright, schemathesis, axe]
-  daedaline-allowed-kinds-m3plus: [rego, llm-judge, playwright, schemathesis, axe, semgrep, hypothesis, fast-check, ts-predicate, py-predicate]
-  daedaline-checklist:
+  pancreator-allowed-kinds-mvp: [rego, llm-judge]
+  pancreator-allowed-kinds-m2: [rego, llm-judge, playwright, schemathesis, axe]
+  pancreator-allowed-kinds-m3plus: [rego, llm-judge, playwright, schemathesis, axe, semgrep, hypothesis, fast-check, ts-predicate, py-predicate]
+  pancreator-checklist:
     - kind-in-allowed-set-for-current-milestone
     - applies-to-anchor-resolves
     - owner-persona-exists
@@ -48,9 +48,9 @@ metadata:
     - rego-clauses-have-OPA-METADATA-block
     - dual-anchor-citations-on-every-external-standard
     - template-slots-filled-not-improvised
-  daedaline-base-persona: contract-writer
-  daedaline-model-tier: complex
-  daedaline-canonical-persona: src/personas/contract-writer.md
+  pancreator-base-persona: contract-writer
+  pancreator-model-tier: complex
+  pancreator-canonical-persona: src/personas/contract-writer.md
 ---
 
 # contract-writer-complex

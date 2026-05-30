@@ -193,8 +193,8 @@ ok 37 - operator-facing root keeps implementation under internal while tests and
   ---
   duration_ms: 0.654417
   ...
-# Subtest: daedaline.yaml tracks live bootstrap state and embedded project root
-ok 38 - daedaline.yaml tracks live bootstrap state and embedded project root
+# Subtest: pancreator.yaml tracks live bootstrap state and embedded project root
+ok 38 - pancreator.yaml tracks live bootstrap state and embedded project root
   ---
   duration_ms: 0.355125
   ...
@@ -263,7 +263,7 @@ ok 48 - Cursor implementation rules avoid broad src-wide activation
 ## context-budget-report
 Context budget report (approximate chars; estimated tokens ~ ceil(chars/4), labeled rough, not tokenizer output)
 
-Root: /Users/alen/Dev/daedaline
+Root: /Users/alen/Dev/pancreator
 
 Tier group                           files     chars          est_tokens~(rough)
 ------------------------------------ --------- -------------- ----------------------

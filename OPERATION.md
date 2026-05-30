@@ -1,4 +1,4 @@
-# Daedaline operator how-to
+# Pancreator operator how-to
 
 Canonical operator procedure for bootstrap Phase 5. For the cross-tool agent
 contract read `AGENTS.md`. For product and bootstrap routing read
@@ -10,7 +10,7 @@ contract read `AGENTS.md`. For product and bootstrap routing read
    Scaffold with:
 
    ```bash
-   pnpm -w exec ddl intake new <slug>
+   pnpm -w exec pan intake new <slug>
    ```
 
 2. Do **not** use `src/inbox/notes/` for agent work; it is human-only scratch space.
@@ -31,8 +31,8 @@ stage is active but does **not** execute stage work: the human operator delegate
 each generated `next-prompt.md`, checks the resulting repo-local artifact, and
 advances the ledger after acceptance.
 
-When `runner.cursor.invocation: sdk` is set in `daedaline.yaml`, `ddl run` and
-`ddl advance` invoke `CursorRunner` for the entering stage (mocked in unit tests;
+When `runner.cursor.invocation: sdk` is set in `pancreator.yaml`, `pan run` and
+`pan advance` invoke `CursorRunner` for the entering stage (mocked in unit tests;
 live SDK calls remain operator-scheduled). The CLI loads repo-root `.env` before
 SDK construction. Automatic `review` / `test` loopbacks, a cumulative retry
 budget of 3, retry-limit halt outbox artifacts, and the report approval gate apply
@@ -44,21 +44,21 @@ Use this loop exactly:
 2. Start the run (path relative to `src/inbox/in/` only):
 
    ```bash
-   pnpm -w exec ddl run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
+   pnpm -w exec pan run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
    # equivalent alias:
-   pnpm -w exec ddl feature new <day-bucket>/<SID>_<HHMM>_<slug>.md
+   pnpm -w exec pan feature new <day-bucket>/<SID>_<HHMM>_<slug>.md
    ```
 
    Example:
 
    ```bash
-   pnpm -w exec ddl run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
+   pnpm -w exec pan run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
    ```
 
    Optional flags:
 
    ```bash
-   pnpm -w exec ddl run feature-delivery <day-bucket>/<file>.md --feature <feature-id> --task <task-id>
+   pnpm -w exec pan run feature-delivery <day-bucket>/<file>.md --feature <feature-id> --task <task-id>
    ```
 
 3. Read the emitted JSON (`taskId`, `featureId`, `runDir`, `handoffFile`,
@@ -66,11 +66,11 @@ Use this loop exactly:
 4. Delegate `nextPromptFile` to the persona named by `currentStage`.
 5. Human-check the stage artifact. If it is wrong or incomplete, do **not** run
    `advance`; send the task back to the same persona with corrections.
-6. When the artifact is accepted, run the matching `pnpm -w exec ddl advance`
-   command from the table in § "ddl CLI verbs".
+6. When the artifact is accepted, run the matching `pnpm -w exec pan advance`
+   command from the table in § "pan CLI verbs".
 7. Repeat until `currentStage` becomes `complete`.
 8. At `complete`, delegate the librarian `next-prompt.md` and run
-   `pnpm -w exec ddl close-artifacts <task-id>` once after final validation.
+   `pnpm -w exec pan close-artifacts <task-id>` once after final validation.
 
 `advance` runs after every accepted non-terminal stage: `intake`, `plan`,
 `implement`, `review`, `test`, `report`, `ship`, and `index`. Review has two
@@ -97,12 +97,12 @@ with `currentStage: intake`.
 | `index` | `librarian` | `artifacts_indexed` | Accept feature index |
 | `complete` | `librarian` | `artifacts_closed` via close-artifacts | Validate closure |
 
-Interventions journal under `.ddl/scheduler/interventions/<task-id>.jsonl`.
-Use `pnpm -w exec ddl repair-state` only after explicit out-of-band work.
+Interventions journal under `.pan/scheduler/interventions/<task-id>.jsonl`.
+Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
 
 ### SDK mode (`runner.cursor.invocation: sdk`)
 
-1. Add to `daedaline.yaml`:
+1. Add to `pancreator.yaml`:
 
    ```yaml
    runner:
@@ -125,7 +125,7 @@ Use `pnpm -w exec ddl repair-state` only after explicit out-of-band work.
    Resume with:
 
    ```bash
-   pnpm -w exec ddl advance <task-id> --artifact src/inbox/out/<day-bucket>/<approval-file>.md
+   pnpm -w exec pan advance <task-id> --artifact src/inbox/out/<day-bucket>/<approval-file>.md
    ```
 
 ### Manual bootstrap workflow
@@ -139,33 +139,33 @@ For non-runtime tasks:
    then delegate to the owning persona.
 5. Stage local diffs; obtain human ratification at phase boundaries.
 
-## ddl CLI verbs
+## pan CLI verbs
 
-Every runnable operator command uses `pnpm -w exec ddl …` from the repository root.
+Every runnable operator command uses `pnpm -w exec pan …` from the repository root.
 
 | Current stage | Delegate to | Required artifact | After acceptance |
 |---|---|---|---|
-| `intake` | `intake-analyst` | `src/memory/features/<feature-id>/spec.md` | `pnpm -w exec ddl advance <task-id> --artifact src/memory/features/<feature-id>/spec.md` |
-| `plan` | `tech-lead` | `<runDir>/plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/touch-set.json` |
-| `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/implementation-report.md` |
-| `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/review.md` |
-| `review` (must-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec ddl advance <task-id> --event must_fix --artifact <runDir>/review.md` |
-| `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/test-report.md` |
-| `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec ddl advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
-| `report` | `tech-writer` | `src/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec ddl advance <task-id> --artifact src/memory/features/<feature-id>/delivery-report.md` |
-| `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec ddl advance <task-id> --artifact <runDir>/policy-compliance.json` |
-| `index` | `librarian` | `src/memory/features/<feature-id>/index.json` | `pnpm -w exec ddl advance <task-id> --artifact src/memory/features/<feature-id>/index.json` |
-| `complete` | `librarian` | policy-compliance + index | `pnpm -w exec ddl close-artifacts <task-id>` |
+| `intake` | `intake-analyst` | `src/memory/features/<feature-id>/spec.md` | `pnpm -w exec pan advance <task-id> --artifact src/memory/features/<feature-id>/spec.md` |
+| `plan` | `tech-lead` | `<runDir>/plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/touch-set.json` |
+| `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/implementation-report.md` |
+| `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/review.md` |
+| `review` (must-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --event must_fix --artifact <runDir>/review.md` |
+| `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/test-report.md` |
+| `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
+| `report` | `tech-writer` | `src/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact src/memory/features/<feature-id>/delivery-report.md` |
+| `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/policy-compliance.json` |
+| `index` | `librarian` | `src/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact src/memory/features/<feature-id>/index.json` |
+| `complete` | `librarian` | policy-compliance + index | `pnpm -w exec pan close-artifacts <task-id>` |
 
 Inspection and recovery:
 
 ```bash
-pnpm -w exec ddl status <task-id>
-pnpm -w exec ddl refresh-prompt <task-id>
-pnpm -w exec ddl pause <task-id>
-pnpm -w exec ddl resume <task-id>
-pnpm -w exec ddl abort <task-id> --reason "superseded or unsafe"
-pnpm -w exec ddl repair-state <task-id> --stage review \
+pnpm -w exec pan status <task-id>
+pnpm -w exec pan refresh-prompt <task-id>
+pnpm -w exec pan pause <task-id>
+pnpm -w exec pan resume <task-id>
+pnpm -w exec pan abort <task-id> --reason "superseded or unsafe"
+pnpm -w exec pan repair-state <task-id> --stage review \
   --artifact src/work/<day>/<task-id>/review.md \
   --reason "out-of-band work reached review before advance"
 ```
@@ -175,9 +175,9 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 ## Active memory refresh
 
 - Set **Active Feature** in `src/memory/active/current.md` explicitly when work starts.
-- Run `pnpm -w exec ddl refresh-active-memory [--dry-run]` before governed commits when
+- Run `pnpm -w exec pan refresh-active-memory [--dry-run]` before governed commits when
   shipped-feature rows or the managed operator-notes stamp drift from indexed artifacts.
-- `pnpm -w exec ddl close-artifacts <task-id>` refreshes shipped rows and clears Active
+- `pnpm -w exec pan close-artifacts <task-id>` refreshes shipped rows and clears Active
   Feature to `(none)` when it matched the archived inbox source.
 - `src/memory/features/*/index.json` remain the indexed source of truth for features.
 
@@ -191,7 +191,7 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 
 ### Librarian pre-close validation
 
-Before `pnpm -w exec ddl close-artifacts <task-id>`, the librarian (or operator
+Before `pnpm -w exec pan close-artifacts <task-id>`, the librarian (or operator
 acting as closer) SHALL run these checks from the repository root and SHALL fix
 bounded failures in the same session when policy allows:
 
@@ -223,11 +223,11 @@ quality gates during bootstrap.
 | Symptom | Likely cause | Action |
 |---|---|---|
 | `advance` rejects missing artifact | Stage work incomplete | Finish artifact; do not edit `state.json` manually |
-| Ledger behind out-of-band work | Skipped `advance` | `pnpm -w exec ddl repair-state` with evidence artifact |
-| Wrong persona in prompt | Stale `next-prompt.md` | `pnpm -w exec ddl refresh-prompt <task-id>` |
-| Bare `ddl` command fails | CLI not on PATH | Use `pnpm -w exec ddl …` per `src/memory/handbook/daedaline-config.md` |
-| Active memory drift | Skipped refresh | `pnpm -w exec ddl refresh-active-memory --dry-run` then apply |
-| Operator-output lint fails | Bare `ddl` in runnable block | Run `node src/internal/tools/check-operator-output.mjs` and fix cited paths |
+| Ledger behind out-of-band work | Skipped `advance` | `pnpm -w exec pan repair-state` with evidence artifact |
+| Wrong persona in prompt | Stale `next-prompt.md` | `pnpm -w exec pan refresh-prompt <task-id>` |
+| Bare `pan` command fails | CLI not on PATH | Use `pnpm -w exec pan …` per `src/memory/handbook/pancreator-config.md` |
+| Active memory drift | Skipped refresh | `pnpm -w exec pan refresh-active-memory --dry-run` then apply |
+| Operator-output lint fails | Bare `pan` in runnable block | Run `node src/internal/tools/check-operator-output.mjs` and fix cited paths |
 
 For deferred CLI verbs, read the JSON envelope (`milestone`, `tracking_intake`,
 `manual_workaround`) and follow the documented manual workaround.

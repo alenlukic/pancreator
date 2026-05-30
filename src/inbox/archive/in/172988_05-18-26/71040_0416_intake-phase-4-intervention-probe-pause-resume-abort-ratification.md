@@ -6,7 +6,7 @@ stage: intake
 action_required: human_ratification
 created_at: 2026-05-18T04:16:00Z
 spec_path: src/memory/features/phase-4-intervention-probe-pause-resume-abort/spec.md
-advance_command: pnpm -w exec ddl advance 71096_0415_phase-4-intervention-probe-pause-resume-abort --artifact src/memory/features/phase-4-intervention-probe-pause-resume-abort/spec.md
+advance_command: pnpm -w exec pan advance 71096_0415_phase-4-intervention-probe-pause-resume-abort --artifact src/memory/features/phase-4-intervention-probe-pause-resume-abort/spec.md
 ---
 
 # Intake Ratification Request
@@ -25,13 +25,13 @@ The `intake-analyst` has canonicalized the source directive at
 
 ## Acceptance criteria captured in spec.md
 
-1. When the operator invokes `ddl pause` at a live plan stage, the Pipeline
+1. When the operator invokes `pan pause` at a live plan stage, the Pipeline
    ledger state MUST transition to `paused` with task id, stage, timestamp, and
    state diff recorded in evidence.
-2. When the operator invokes `ddl resume`, the Pipeline ledger state MUST
+2. When the operator invokes `pan resume`, the Pipeline ledger state MUST
    transition back to the prior plan stage with task id, resumed stage,
    timestamp, and state diff recorded in evidence.
-3. When the operator invokes `ddl abort --reason <text>` after resume and
+3. When the operator invokes `pan abort --reason <text>` after resume and
    before implement begins, the Pipeline ledger state MUST transition to
    `aborted` with task id, stage, reason text, timestamp, and state diff
    recorded in evidence.
@@ -56,7 +56,7 @@ Review the spec at the path above, then run the advance command to proceed to
 the plan stage:
 
 ```
-pnpm -w exec ddl advance 71096_0415_phase-4-intervention-probe-pause-resume-abort --artifact src/memory/features/phase-4-intervention-probe-pause-resume-abort/spec.md
+pnpm -w exec pan advance 71096_0415_phase-4-intervention-probe-pause-resume-abort --artifact src/memory/features/phase-4-intervention-probe-pause-resume-abort/spec.md
 ```
 
 This intake ratification **does not** produce `pause-resume-abort-evidence.json`.

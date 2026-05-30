@@ -39,7 +39,7 @@ The intake-analyst opted out of the clarifying-question loop. The source
 directive enumerates three required-execution steps, four acceptance criteria,
 and three explicit non-goals. No material scope, acceptance, constraint, or
 prior-art ambiguity was found. The nested task id was determined during intake
-by executing `ddl run feature-delivery phase-4-dogfood-proof-bundle-index.md`;
+by executing `pan run feature-delivery phase-4-dogfood-proof-bundle-index.md`;
 that id is now recorded in the canonical spec.
 
 ## Acceptance criteria (summary)
@@ -65,7 +65,7 @@ that id is now recorded in the canonical spec.
 To advance this Feature from intake to plan, run:
 
 ```
-pnpm -w exec ddl advance 77373_0230_phase-4-dogfood-proof-bundle-evidence-index --artifact src/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md
+pnpm -w exec pan advance 77373_0230_phase-4-dogfood-proof-bundle-evidence-index --artifact src/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md
 ```
 
 Then delegate `src/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/next-prompt.md`

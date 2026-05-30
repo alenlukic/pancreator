@@ -10,7 +10,7 @@ purpose: |
   `/src/work/<day>/<id>/run.log.jsonl`. This file defines the OpenInference + OpenTelemetry
   GenAI-aligned record shape, identity and correlation fields, outcome
   conventions, integrity constraints, and validation checklist that
-  `@daedaline/run-logger` SHALL implement in a later phase.
+  `@pancreator/run-logger` SHALL implement in a later phase.
 references:
   - kind: lines
     path: docs/BOOTSTRAP.md
@@ -48,7 +48,7 @@ related:
 
 ## 1 - Purpose and scope
 
-This file defines the canonical run-log contract for Daedaline pipelines.
+This file defines the canonical run-log contract for Pancreator pipelines.
 
 During the current bootstrap state, the runtime is not wired in this repo.
 Therefore, this document is a design-time contract that future runtime
@@ -93,7 +93,7 @@ top-level fields below:
 - `status` (object, REQUIRED): outcome object as defined in Section 5.
 - `attributes` (object, REQUIRED): key/value map for semantic-convention fields.
 - `resource` (object, REQUIRED): emitter metadata (`service.name`, version, etc.).
-- `daedaline` (object, REQUIRED): identity/correlation extension fields.
+- `pancreator` (object, REQUIRED): identity/correlation extension fields.
 
 Records SHOULD remain flat enough for grep and jq workflows. Nested objects
 MAY appear in `attributes` for message payload fidelity where semconv expects
@@ -116,7 +116,7 @@ the operation type:
 - `gen_ai.request.model` (REQUIRED for GenAI operations).
 - `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens`
   (REQUIRED when token accounting is available; otherwise set explicit null and
-  emit `daedaline.token_usage_unavailable: true`).
+  emit `pancreator.token_usage_unavailable: true`).
 
 Future runtime adapters MAY emit additional semconv fields. They MUST NOT
 rename or repurpose the required fields above.
@@ -127,21 +127,21 @@ Each record SHALL include:
 
 - `status.code` (REQUIRED): one of `OK`, `ERROR`, `CANCELLED`.
 - `status.message` (REQUIRED when code is not `OK`): concise failure detail.
-- `outcome` (REQUIRED in `daedaline` object): one of
+- `outcome` (REQUIRED in `pancreator` object): one of
   `success`, `failure`, `aborted`, `quarantined`, `rolled_back`, `skipped`.
 
 Convention rules:
 
-1. If `status.code = OK`, then `daedaline.outcome` SHALL be `success` or
+1. If `status.code = OK`, then `pancreator.outcome` SHALL be `success` or
    `skipped`.
-2. If `status.code = ERROR`, then `daedaline.outcome` SHALL be `failure` unless
+2. If `status.code = ERROR`, then `pancreator.outcome` SHALL be `failure` unless
    an intervention changes terminal state (`aborted`, `quarantined`).
 3. Intervention records SHALL set `openinference.span.kind = AGENT` and include
-   `daedaline.intervention.lever`.
+   `pancreator.intervention.lever`.
 
 ## 6 - Identity and correlation fields
 
-The `daedaline` object SHALL include:
+The `pancreator` object SHALL include:
 
 - `task_id` (REQUIRED): pipeline task identifier.
 - `pipeline` (REQUIRED): pipeline identifier.
@@ -168,7 +168,7 @@ Run-log writers SHALL satisfy all constraints below:
 1. **Append-only.** Writers MUST append records; they MUST NOT mutate or delete
    prior lines in normal operation.
 2. **Monotonic ordering.** `ts` values SHOULD be non-decreasing per file.
-   If clock skew occurs, writers SHALL emit `daedaline.clock_skew: true` and
+   If clock skew occurs, writers SHALL emit `pancreator.clock_skew: true` and
    preserve append order.
 3. **Durability boundary.** A record SHALL be flushed before the corresponding
    checkpoint that references its offset is committed.
@@ -184,7 +184,7 @@ Run-log writers SHALL satisfy all constraints below:
 ## 8 - Compact JSONL example
 
 ```json
-{"ts":"2026-04-25T20:30:12.481Z","trace_id":"7c2d0c53df6c4e479fe77e4d821f6a1a","span_id":"1af2d13ed8f74ff9","parent_span_id":"5ba31fbeab9a4f09","name":"tool.call.fs.read","kind":"span","status":{"code":"OK"},"attributes":{"openinference.span.kind":"TOOL","tool.name":"ReadFile","tool.parameters":"{\"path\":\"/src/memory/handbook/run-log-schema.md\"}","tool.result":"ok","gen_ai.operation.name":"tool_call","gen_ai.provider.name":"cursor","gen_ai.request.model":"gpt-5.3-codex","gen_ai.usage.input_tokens":null,"gen_ai.usage.output_tokens":null,"daedaline.token_usage_unavailable":true},"resource":{"service.name":"daedaline","service.version":"0.0.0-bootstrap"},"daedaline":{"task_id":"task-123","pipeline":"bootstrap-phase0","stage_id":"authoring","persona":"tech-writer","tool_call.id":"call-42","tool_call.parent_turn_id":"turn-9","outcome":"success"}}
+{"ts":"2026-04-25T20:30:12.481Z","trace_id":"7c2d0c53df6c4e479fe77e4d821f6a1a","span_id":"1af2d13ed8f74ff9","parent_span_id":"5ba31fbeab9a4f09","name":"tool.call.fs.read","kind":"span","status":{"code":"OK"},"attributes":{"openinference.span.kind":"TOOL","tool.name":"ReadFile","tool.parameters":"{\"path\":\"/src/memory/handbook/run-log-schema.md\"}","tool.result":"ok","gen_ai.operation.name":"tool_call","gen_ai.provider.name":"cursor","gen_ai.request.model":"gpt-5.3-codex","gen_ai.usage.input_tokens":null,"gen_ai.usage.output_tokens":null,"pancreator.token_usage_unavailable":true},"resource":{"service.name":"pancreator","service.version":"0.0.0-bootstrap"},"pancreator":{"task_id":"task-123","pipeline":"bootstrap-phase0","stage_id":"authoring","persona":"tech-writer","tool_call.id":"call-42","tool_call.parent_turn_id":"turn-9","outcome":"success"}}
 ```
 
 ## 9 - Validation checklist
@@ -205,7 +205,7 @@ Before a run-log producer is accepted, the implementer SHALL verify:
 Enforcement ratchet for this contract:
 
 1. **Phase 0-1 (current).** Manual authoring and review against this checklist.
-2. **Phase 2-3.** `@daedaline/run-logger` conformance tests SHALL validate field
+2. **Phase 2-3.** `@pancreator/run-logger` conformance tests SHALL validate field
    presence, semconv keys, and checkpoint offset linkage.
 3. **Phase 3+.** CI SHOULD fail on schema violations for changed run-logger
    code paths and SHOULD emit machine-readable failure reports for triage.
@@ -217,4 +217,4 @@ team SHALL file a backlog item with deferral rationale and migration plan.
 
 This file is a Phase 0b handbook seed and is currently `experimental`.
 Promotion to `stable` SHALL follow successful conformance runs of
-`@daedaline/run-logger` against this contract and repeated dogfood validation.
+`@pancreator/run-logger` against this contract and repeated dogfood validation.

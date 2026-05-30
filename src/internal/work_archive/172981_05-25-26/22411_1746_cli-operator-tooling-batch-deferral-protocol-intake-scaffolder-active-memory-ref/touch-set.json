@@ -3,37 +3,37 @@
   "featureId": "cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
   "paths": [
     {
-      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/run.ts",
       "category": "cli-routing",
       "intent": "modify"
     },
     {
-      "path": "src/internal/packages/@daedaline/cli/src/index.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/index.ts",
       "category": "cli-exports",
       "intent": "modify"
     },
     {
-      "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
       "category": "cli-unit-tests",
       "intent": "modify"
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts",
       "category": "mcp-tool-execution",
       "intent": "modify"
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts",
       "category": "mcp-unit-tests",
       "intent": "modify"
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.ts",
       "category": "mcp-tool-definitions",
       "intent": "modify"
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.test.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.test.ts",
       "category": "mcp-definition-tests",
       "intent": "modify"
     },
@@ -60,49 +60,49 @@
   ],
   "symbols": [
     {
-      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/run.ts",
       "symbol": "parseAndRun",
       "action": "update"
     },
     {
-      "path": "src/internal/packages/@daedaline/cli/src/run.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/run.ts",
       "symbol": "stub",
       "action": "replace"
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts",
       "symbol": "stubPayload",
       "action": "replace"
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.ts",
       "symbol": "executeDdlTool",
       "action": "update"
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.ts",
       "symbol": "DdlToolName",
       "action": "update"
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.ts",
       "symbol": "listToolDefinitions",
       "action": "update"
     }
   ],
   "tests": [
     {
-      "path": "src/internal/packages/@daedaline/cli/src/run.test.ts",
+      "path": "src/internal/packages/@pancreator/cli/src/run.test.ts",
       "scope": "wp1-wp3-unit",
       "required": true
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/ddl-execute.test.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts",
       "scope": "wp1-mcp-parity",
       "required": true
     },
     {
-      "path": "src/internal/packages/@daedaline/mcp-server/src/definitions.test.ts",
+      "path": "src/internal/packages/@pancreator/mcp-server/src/definitions.test.ts",
       "scope": "tool-surface-contract",
       "required": true
     },

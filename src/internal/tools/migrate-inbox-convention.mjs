@@ -1079,7 +1079,7 @@ export function writeInboxArtifactIndex(repoRoot, renames, artifactIndexRel = "s
     .map((r) => r.targetRel)
     .sort();
   const payload = {
-    schema: "daedaline.inbox-artifact-index.v1",
+    schema: "pancreator.inbox-artifact-index.v1",
     generatedAt: new Date().toISOString(),
     threads: threadTargets,
   };
@@ -1097,7 +1097,7 @@ function isPersistedInboxMigrationManifest(m) {
     typeof m === "object" &&
     m !== null &&
     /** @type {{ schema?: string }} */ (m).schema ===
-      "daedaline.inbox-convention-migration-manifest.v1"
+      "pancreator.inbox-convention-migration-manifest.v1"
   );
 }
 
@@ -1143,7 +1143,7 @@ function main() {
   }
   const plan = planInboxConventionMigration(args.root);
   const manifest = {
-    schema: "daedaline.inbox-convention-migration-manifest.v1",
+    schema: "pancreator.inbox-convention-migration-manifest.v1",
     mode: args.write ? "write" : "dry-run",
     generatedAt: new Date().toISOString(),
     repoRoot: args.root,
@@ -1189,15 +1189,15 @@ function main() {
   }
   if (!isPersistedInboxMigrationManifest(persisted)) {
     console.error(
-      `[migrate-inbox-convention] manifest schema must be daedaline.inbox-convention-migration-manifest.v1 (got ${String(/** @type {{ schema?: unknown }} */ (persisted).schema)})`,
+      `[migrate-inbox-convention] manifest schema must be pancreator.inbox-convention-migration-manifest.v1 (got ${String(/** @type {{ schema?: unknown }} */ (persisted).schema)})`,
     );
     process.exitCode = 1;
     return;
   }
 
-  if (process.env.DAEDALINE_MIGRATION_GO !== "1") {
+  if (process.env.PANCREATOR_MIGRATION_GO !== "1") {
     console.error(
-      "[migrate-inbox-convention] refuse --write without DAEDALINE_MIGRATION_GO=1",
+      "[migrate-inbox-convention] refuse --write without PANCREATOR_MIGRATION_GO=1",
     );
     process.exitCode = 1;
     return;
@@ -1215,7 +1215,7 @@ function main() {
   applyInboxRenamesFromManifest(renames, args.root);
   writeInboxArtifactIndex(args.root, renames);
   console.log(
-    `[migrate-inbox-convention] write applied from ${mp} (DAEDALINE_MIGRATION_GO=1)`,
+    `[migrate-inbox-convention] write applied from ${mp} (PANCREATOR_MIGRATION_GO=1)`,
   );
 }
 

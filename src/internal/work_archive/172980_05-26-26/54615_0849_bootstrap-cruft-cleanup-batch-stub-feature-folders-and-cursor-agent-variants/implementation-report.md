@@ -3,36 +3,36 @@
 - **Task id:** `54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants`
 - **Feature id:** `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants`
 
-## Work package A — daedaline-* feature folders
+## Work package A — pancreator-* feature folders
 
-For each of **20** folders under `src/memory/features/daedaline-*/` the change set:
+For each of **20** folders under `src/memory/features/pancreator-*/` the change set:
 
 | Folder | `spec.md` | `delivery-report.md` | `index.json` |
 | --- | --- | --- | --- |
-| `daedaline-adopter-scan` | Prepended YAML (`title`, `feature_id`, `lifecycle_stage`) | Created stub report | Created stub index aligned to Phase-2-ish shape |
-| `daedaline-checkpointer-fs` | same pattern | same | same |
-| `daedaline-cli` | same pattern | same | same |
-| `daedaline-contract` | same pattern | same | same |
-| `daedaline-contract-runner-llm-judge` | same pattern | same | same |
-| `daedaline-contract-runner-rego` | same pattern | same | same |
-| `daedaline-contract-style` | same pattern | same | same |
-| `daedaline-core` | same pattern | same | same |
-| `daedaline-env-isolation` | same pattern | same | same |
-| `daedaline-inbox` | same pattern | same | same |
-| `daedaline-intervention` | same pattern | same | same |
-| `daedaline-mcp-server` | same pattern | same | same |
-| `daedaline-memory` | same pattern | same | same |
-| `daedaline-notifier` | same pattern | same | same |
-| `daedaline-persona` | same pattern | same | same |
-| `daedaline-pipeline` | same pattern | same | same |
-| `daedaline-policy` | same pattern | same | same |
-| `daedaline-run-logger` | same pattern | same | same |
-| `daedaline-runner-cursor` | same pattern | same | same |
-| `daedaline-worktree` | same pattern | same | same |
+| `pancreator-adopter-scan` | Prepended YAML (`title`, `feature_id`, `lifecycle_stage`) | Created stub report | Created stub index aligned to Phase-2-ish shape |
+| `pancreator-checkpointer-fs` | same pattern | same | same |
+| `pancreator-cli` | same pattern | same | same |
+| `pancreator-contract` | same pattern | same | same |
+| `pancreator-contract-runner-llm-judge` | same pattern | same | same |
+| `pancreator-contract-runner-rego` | same pattern | same | same |
+| `pancreator-contract-style` | same pattern | same | same |
+| `pancreator-core` | same pattern | same | same |
+| `pancreator-env-isolation` | same pattern | same | same |
+| `pancreator-inbox` | same pattern | same | same |
+| `pancreator-intervention` | same pattern | same | same |
+| `pancreator-mcp-server` | same pattern | same | same |
+| `pancreator-memory` | same pattern | same | same |
+| `pancreator-notifier` | same pattern | same | same |
+| `pancreator-persona` | same pattern | same | same |
+| `pancreator-pipeline` | same pattern | same | same |
+| `pancreator-policy` | same pattern | same | same |
+| `pancreator-run-logger` | same pattern | same | same |
+| `pancreator-runner-cursor` | same pattern | same | same |
+| `pancreator-worktree` | same pattern | same | same |
 
 - **Existing** `plan.md`, `tasks.md`, `contracts/`, `contracts.index.json`: left untouched.
 - **`artifact_index.feature_folder.per_feature_index`**: `path` only (no nested `citation`) to avoid a self-referential `contentHash` loop when paired with canonical JSON rewriting; richer dual-anchor parity with `src/memory/features/json-formatting/index.json` remains a librarian follow-up if required.
-- **`src/memory/features/index.json`**: each daedaline row now points at paired `index.json`, drops `per_feature_index_missing`, and `coverage_gaps` is cleared (empty).
+- **`src/memory/features/index.json`**: each pancreator row now points at paired `index.json`, drops `per_feature_index_missing`, and `coverage_gaps` is cleared (empty).
 
 **Dual-anchor cites (fingerprints):**
 
@@ -69,8 +69,8 @@ For each of **20** folders under `src/memory/features/daedaline-*/` the change s
 | `.cursor/agents/tech-lead-complex.md` |
 | `.cursor/agents/tech-writer-standard.md` |
 | `.cursor/agents/tech-writer-complex.md` |
-| `.cursor/agents/daedaline-engineer-standard.md` |
-| `.cursor/agents/daedaline-engineer-complex.md` |
+| `.cursor/agents/pancreator-engineer-standard.md` |
+| `.cursor/agents/pancreator-engineer-complex.md` |
 
 **Retained projections:** `.cursor/agents/<persona>.md` ×12 plus `general-purpose.md`. Twelve persona mirrors received updated `description` and **Tier guidance** prose (no `-standard`/`-complex` filenames).
 
@@ -80,7 +80,7 @@ For each of **20** folders under `src/memory/features/daedaline-*/` the change s
 
 - `src/internal/tools/context-budget-report.mjs` — persona mirror stats replace alias/standard/complex filename counters; cites: `{ "kind": "lines", "path": "src/internal/tools/context-budget-report.mjs", "range": [1, 424], "contentHash": "4439e83" }`
 - `tests/context-budget-report.test.mjs` — asserts roster completeness and absence of suffix files; cites: `{ "kind": "lines", "path": "tests/context-budget-report.test.mjs", "range": [1, 140], "contentHash": "c0966ed" }`
-- `src/internal/packages/@daedaline/persona/src/emit.ts` — JSDoc states single-file Cursor mirror policy; cites: `{ "kind": "lines", "path": "src/internal/packages/@daedaline/persona/src/emit.ts", "range": [1, 46], "contentHash": "35b1382" }`
+- `src/internal/packages/@pancreator/persona/src/emit.ts` — JSDoc states single-file Cursor mirror policy; cites: `{ "kind": "lines", "path": "src/internal/packages/@pancreator/persona/src/emit.ts", "range": [1, 46], "contentHash": "35b1382" }`
 
 ## Documentation updates
 
@@ -105,11 +105,11 @@ For each of **20** folders under `src/memory/features/daedaline-*/` the change s
 
 ## Adjacent authoring
 
-- `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/spec.md` — references refreshed for `subagent-model-tiers` and representative `daedaline-cli/spec.md`; work-package prose aligned with preserved contract surfaces.
+- `src/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/spec.md` — references refreshed for `subagent-model-tiers` and representative `pancreator-cli/spec.md`; work-package prose aligned with preserved contract surfaces.
 
 ## JSON corpus maintenance
 
-Ran `migrate-json-formatting --write` with `DAEDALINE_MIGRATION_GO=1` so new `*.json` match repository canonical JSON policy (fixes `repository JSON files use two-space formatting` gate).
+Ran `migrate-json-formatting --write` with `PANCREATOR_MIGRATION_GO=1` so new `*.json` match repository canonical JSON policy (fixes `repository JSON files use two-space formatting` gate).
 
 ## Validation commands
 
@@ -149,4 +149,4 @@ entries per tier).
 | Standard (default) | `/persona-standard` or `/persona` (alias) |
 | Complex (escalation) | `/persona-complex` |
 
-Work package A (20 `daedaline-*` folder normalization) is unchanged.
+Work package A (20 `pancreator-*` folder normalization) is unchanged.

@@ -12,13 +12,13 @@ tools:
   - "Bash(git diff:*)"
   - "Bash(git status:*)"
   - "Bash(pnpm test:*)"
-  - "Bash(ddl lint contracts:*)"
+  - "Bash(pan lint contracts:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
 mcpServers:
-  - daedaline-memory
+  - pancreator-memory
 skills:
   - modern-code-review
   - write-adr
@@ -28,16 +28,16 @@ memory: project
 effort: high
 color: blue
 metadata:
-  daedaline-risk-tier: medium
-  daedaline-pipeline-stages: [review]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: medium
+  pancreator-pipeline-stages: [review]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
     - /src/memory/handbook/contract-format.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -48,9 +48,9 @@ metadata:
     - every-spec-contract-runs-before-gate
     - every-claim-carries-dual-anchor-citation
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: reviewer
-  daedaline-model-tier: complex
-  daedaline-canonical-persona: src/personas/reviewer.md
+  pancreator-base-persona: reviewer
+  pancreator-model-tier: complex
+  pancreator-canonical-persona: src/personas/reviewer.md
 ---
 
 # reviewer-complex

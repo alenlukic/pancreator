@@ -8,15 +8,15 @@
 
 | Name | Path | Note |
 |------|------|------|
-| 19 M1-scoped packages | `src/internal/packages/@daedaline/*` | **Keep** existing directory names. Each now has `package.json`, `README.md`, `src/index.ts`, and `tsconfig.json` (extends root `tsconfig.base.json` for `tsup` declaration emit). |
-| Unscoped meta package | `src/internal/packages/daedaline` | **Add**; lists every primitive as `workspace:*` and re-exports one stub per package from `src/index.ts`. |
+| 19 M1-scoped packages | `src/internal/packages/@pancreator/*` | **Keep** existing directory names. Each now has `package.json`, `README.md`, `src/index.ts`, and `tsconfig.json` (extends root `tsconfig.base.json` for `tsup` declaration emit). |
+| Unscoped meta package | `src/internal/packages/pancreator` | **Add**; lists every primitive as `workspace:*` and re-exports one stub per package from `src/index.ts`. |
 | Not in this slice | M2+ names in PRD (e.g. `a2a`, `runner-claude`, sandbox adapters) | **Defer**; not in live `packages/`. |
 
 ## Decisions and deferrals
 
 - **ATTW.** ESM-only packages: each package `attw` script uses `--profile esm-only` so the check matches the ESM + `type: "module"` layout; strict CJS interop is **deferred** until dual-publish is required.
-- **Horizontal deps.** Source: ESLint rule `@daedaline/no-horizontal-primitive-deps`. Manifests: `src/internal/tools/check-phase-0a-scaffold.mjs` (keys under `dependencies` / `devDependencies` / `peerDependencies` / `optionalDependencies` that are `@daedaline/*`). Meta package `daedaline` may list all primitives; scoped primitives may list only `@daedaline/core` and self.
-- **Per-package `tsconfig.json`.** Not listed in the original touch-set file list, but **required** so `tsup` DTS picks up the root `compilerOptions.paths` for `@daedaline/*` resolution during build.
+- **Horizontal deps.** Source: ESLint rule `@pancreator/no-horizontal-primitive-deps`. Manifests: `src/internal/tools/check-phase-0a-scaffold.mjs` (keys under `dependencies` / `devDependencies` / `peerDependencies` / `optionalDependencies` that are `@pancreator/*`). Meta package `pancreator` may list all primitives; scoped primitives may list only `@pancreator/core` and self.
+- **Per-package `tsconfig.json`.** Not listed in the original touch-set file list, but **required** so `tsup` DTS picks up the root `compilerOptions.paths` for `@pancreator/*` resolution during build.
 
 ## Observed commands (all exit 0 on this run)
 

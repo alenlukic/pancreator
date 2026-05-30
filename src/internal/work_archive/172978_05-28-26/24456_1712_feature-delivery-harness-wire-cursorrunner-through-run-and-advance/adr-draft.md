@@ -16,7 +16,7 @@ ADR-0003 and ADR-0005 define inbox lifecycle and timestamp naming. The retry-lim
 
 When `runner.cursor.invocation` is omitted or equals `manual`, the CLI SHALL preserve the existing feature-delivery handoff-and-paste flow.
 
-When `runner.cursor.invocation` equals `sdk`, `ddl run feature-delivery` and `ddl advance` SHALL invoke the entering stage through one shared Cursor runner contract.
+When `runner.cursor.invocation` equals `sdk`, `pan run feature-delivery` and `pan advance` SHALL invoke the entering stage through one shared Cursor runner contract.
 
 The CLI SHALL resolve persona specs from `src/personas/<name>.md`; no live path SHALL use synthetic persona data.
 
@@ -33,7 +33,7 @@ The runtime SHALL pause at the report approval gate and retry-limit halt through
 - Positive: Manual mode remains stable for operators who do not opt into SDK execution.
 - Positive: SDK mode exercises the same persona, prompt, artifact, and ledger contract on both run and advance.
 - Positive: The implementation closes the WP-B residual runner gap without replacing the human report and ship gates.
-- Negative: The feature-delivery ledger gains automation state and outbox decision parsing, increasing test surface in `@daedaline/cli`.
+- Negative: The feature-delivery ledger gains automation state and outbox decision parsing, increasing test surface in `@pancreator/cli`.
 - Negative: The pipeline package may need a stage-slice helper to keep graph execution bounded to one stage.
 - Neutral: Live SDK calls remain outside default CI; unit tests use mocked transport.
 
@@ -49,6 +49,6 @@ The runtime SHALL pause at the report approval gate and retry-limit halt through
 - `{kind: lines, path: "src/memory/adr/0002-system-architecture-map.md", range: [102, 135], contentHash: "3574b43"}`
 - `{kind: lines, path: "src/memory/adr/0003-inbox-lifecycle-and-archival.md", range: [52, 109], contentHash: "9187a27"}`
 - `{kind: lines, path: "src/memory/adr/0005-timestamp-naming-conventions.md", range: [35, 60], contentHash: "8b59da5"}`
-- `{kind: symbol, path: "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts", symbol: "startFeatureDelivery", contentHash: "7c5e4d7"}`
-- `{kind: symbol, path: "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts", symbol: "CursorRunner.invoke", contentHash: "87b4929"}`
-- `{kind: symbol, path: "src/internal/packages/@daedaline/pipeline/src/execute.ts", symbol: "executePipeline", contentHash: "d86f5e2"}`
+- `{kind: symbol, path: "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts", symbol: "startFeatureDelivery", contentHash: "7c5e4d7"}`
+- `{kind: symbol, path: "src/internal/packages/@pancreator/runner-cursor/src/cursor-runner.ts", symbol: "CursorRunner.invoke", contentHash: "87b4929"}`
+- `{kind: symbol, path: "src/internal/packages/@pancreator/pipeline/src/execute.ts", symbol: "executePipeline", contentHash: "d86f5e2"}`

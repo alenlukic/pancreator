@@ -17,7 +17,7 @@ tools:
   - "Bash(git checkout:*)"
   - "Bash(gh pr create:*)"
   - "Bash(gh pr view:*)"
-  - "Bash(ddl:*)"
+  - "Bash(pan:*)"
 disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
@@ -25,8 +25,8 @@ disallowedTools:
   - "Bash(git commit --no-verify:*)"
   - "Bash(git add:*)"
 mcpServers:
-  - daedaline-memory
-  - daedaline-intervention
+  - pancreator-memory
+  - pancreator-intervention
 skills:
   - blameless-postmortem
 maxTurns: 60
@@ -35,15 +35,15 @@ memory: project
 effort: medium
 color: purple
 metadata:
-  daedaline-risk-tier: high
-  daedaline-pipeline-stages: [ship, intervention-dispatch, pipeline-supervisor]
-  daedaline-bootstrap-only: false
-  daedaline-stability: experimental
-  daedaline-handbook-anchors:
+  pancreator-risk-tier: high
+  pancreator-pipeline-stages: [ship, intervention-dispatch, pipeline-supervisor]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-handbook-anchors:
     - /src/memory/handbook/glossary.md
     - /src/memory/handbook/persona-spec.md
     - /src/memory/handbook/contract-style.md
-  daedaline-checklist:
+  pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
     - tools-allowlist-minimal
@@ -54,9 +54,9 @@ metadata:
     - checkpoint-emitted-at-every-stage-boundary
     - intervention-action-logged-with-operator-identity
     - human-ratified-at-phase-boundary
-  daedaline-base-persona: supervisor
-  daedaline-model-tier: standard-alias
-  daedaline-canonical-persona: src/personas/supervisor.md
+  pancreator-base-persona: supervisor
+  pancreator-model-tier: standard-alias
+  pancreator-canonical-persona: src/personas/supervisor.md
 ---
 
 # supervisor

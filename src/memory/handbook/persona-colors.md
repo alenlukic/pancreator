@@ -55,11 +55,11 @@ allocation. Pick the next unused color when authoring a new persona; reserve
 
 When the palette runs out, append a row above this section. Do not improvise
 a color outside the documented palette; the runtime UI surfaces SHALL render
-unknown colors as `slate` and emit a Layer 1 warning during `ddl persona
+unknown colors as `slate` and emit a Layer 1 warning during `pan persona
 validate`.
 
 When two personas need the same color (e.g., a long-lived SME family),
-namespace the color in the persona file via `metadata.daedaline-color-suffix`
+namespace the color in the persona file via `metadata.pancreator-color-suffix`
 (e.g., `cyan-100`, `cyan-200`). The base color then matches at the runtime
 filter level.
 

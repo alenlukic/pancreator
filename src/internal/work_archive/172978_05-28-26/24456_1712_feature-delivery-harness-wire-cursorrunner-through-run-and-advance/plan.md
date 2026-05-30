@@ -1,6 +1,6 @@
 # Plan — feature-delivery harness CursorRunner wiring
 
-The implement stage SHALL replace the one-off intake smoke with an opt-in `CursorRunner` execution path shared by `ddl run feature-delivery` and `ddl advance`, while manual mode remains the default operator flow. The runtime MUST resolve real persona markdown, load repo-root `.env` before SDK construction, execute SDK-backed stage slices through the compiled pipeline graph, append runner observability records, and enforce SDK-only automatic loopback rules with a cumulative retry budget of 3. The plan satisfies WP-1 through WP-7 from the Engineering Spec. Citations: `{kind: lines, path: "src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md", range: [123, 181], contentHash: "a96eccf"}` and `{kind: symbol, path: "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts", symbol: "startFeatureDelivery", contentHash: "7c5e4d7"}`.
+The implement stage SHALL replace the one-off intake smoke with an opt-in `CursorRunner` execution path shared by `pan run feature-delivery` and `pan advance`, while manual mode remains the default operator flow. The runtime MUST resolve real persona markdown, load repo-root `.env` before SDK construction, execute SDK-backed stage slices through the compiled pipeline graph, append runner observability records, and enforce SDK-only automatic loopback rules with a cumulative retry budget of 3. The plan satisfies WP-1 through WP-7 from the Engineering Spec. Citations: `{kind: lines, path: "src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md", range: [123, 181], contentHash: "a96eccf"}` and `{kind: symbol, path: "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts", symbol: "startFeatureDelivery", contentHash: "7c5e4d7"}`.
 
 ## Implementation Phases
 
@@ -16,7 +16,7 @@ The implement stage SHALL replace the one-off intake smoke with an opt-in `Curso
 
 3. **Persist runner observability and SDK outcomes.**
    - The implementor SHALL convert each returned runner envelope into exactly one `RunLogRecord` appended to `run.log.jsonl`.
-   - The record SHALL include OpenInference and OTel GenAI attributes from `RunnerRunLogFragment`, plus Daedaline task, stage, persona, and outcome fields.
+   - The record SHALL include OpenInference and OTel GenAI attributes from `RunnerRunLogFragment`, plus Pancreator task, stage, persona, and outcome fields.
    - SDK transport errors SHALL stop the transition before state mutation and SHALL produce a non-zero CLI result.
 
 4. **Implement SDK-only automatic transitions.**
@@ -26,14 +26,14 @@ The implement stage SHALL replace the one-off intake smoke with an opt-in `Curso
    - When SDK automation reaches `report` and `delivery-report.md` exists, the runtime SHALL write one timestamp-prefixed report approval artifact and pause for human decision. An `approve` decision advances to `ship`; a `needs_changes` decision routes to the named `plan` or `implement` stage with run-log continuity.
 
 5. **Update configuration and operator surfaces.**
-   - The implementor SHALL document `runner.cursor.invocation: manual|sdk` in `daedaline.yaml` comments and `src/memory/handbook/daedaline-config.md`.
+   - The implementor SHALL document `runner.cursor.invocation: manual|sdk` in `pancreator.yaml` comments and `src/memory/handbook/pancreator-config.md`.
    - The implementor SHALL update `OPERATION.md` for opt-in SDK mode, `.env` handling, automatic `review` and `test` loopbacks, retry-limit halt artifacts, and the report approval gate.
    - The implementor SHALL update `src/memory/handbook/inbox-lifecycle.md` only for the new system-produced outbox artifact shapes.
 
 6. **Add regression coverage.**
-   - `@daedaline/cli` tests SHALL cover SDK `run`, SDK `advance`, manual no-SDK full path, persona resolver failure without `state.json` mutation, `.env` loading without secret output, retry-limit halt, report gate pause/resume, and explicit reinvocation context.
-   - `@daedaline/pipeline` tests SHALL cover the stage-slice execution helper if it lands in the pipeline package.
-   - `@daedaline/runner-cursor` tests SHALL remain green and SHALL cover any changed run-log fragment span name or attributes.
+   - `@pancreator/cli` tests SHALL cover SDK `run`, SDK `advance`, manual no-SDK full path, persona resolver failure without `state.json` mutation, `.env` loading without secret output, retry-limit halt, report gate pause/resume, and explicit reinvocation context.
+   - `@pancreator/pipeline` tests SHALL cover the stage-slice execution helper if it lands in the pipeline package.
+   - `@pancreator/runner-cursor` tests SHALL remain green and SHALL cover any changed run-log fragment span name or attributes.
 
 ## Risks
 
@@ -47,9 +47,9 @@ The implement stage SHALL replace the one-off intake smoke with an opt-in `Curso
 Run these gates before implementation is reported complete:
 
 ```bash
-pnpm --filter @daedaline/cli test
-pnpm --filter @daedaline/pipeline test
-pnpm --filter @daedaline/runner-cursor test
+pnpm --filter @pancreator/cli test
+pnpm --filter @pancreator/pipeline test
+pnpm --filter @pancreator/runner-cursor test
 node --test tests/*.test.mjs
 node src/internal/tools/check-phase-0a-scaffold.mjs
 node src/internal/tools/context-budget-report.mjs
@@ -64,9 +64,9 @@ documentation_impact:
   rationale: "This feature changes feature-delivery runtime behavior, runner configuration, .env loading, auto-loopback semantics, retry-limit halt output, and report approval flow."
   changed-surfaces:
     - OPERATION.md
-    - src/memory/handbook/daedaline-config.md
+    - src/memory/handbook/pancreator-config.md
     - src/memory/handbook/inbox-lifecycle.md
-    - daedaline.yaml
+    - pancreator.yaml
   deferred-items: []
 ```
 
@@ -77,7 +77,7 @@ documentation_impact:
 - `{kind: lines, path: "src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md", range: [183, 204], contentHash: "a96eccf"}`
 - `{kind: lines, path: "src/pipelines/feature-delivery.yaml", range: [25, 67], contentHash: "a247fa7"}`
 - `{kind: lines, path: "OPERATION.md", range: [26, 94], contentHash: "97a5bee"}`
-- `{kind: symbol, path: "src/internal/packages/@daedaline/cli/src/feature-delivery-run.ts", symbol: "advanceFeatureDelivery", contentHash: "7c5e4d7"}`
-- `{kind: symbol, path: "src/internal/packages/@daedaline/pipeline/src/compile.ts", symbol: "compilePipeline", contentHash: "f657d73"}`
-- `{kind: symbol, path: "src/internal/packages/@daedaline/pipeline/src/execute.ts", symbol: "executePipeline", contentHash: "d86f5e2"}`
-- `{kind: symbol, path: "src/internal/packages/@daedaline/runner-cursor/src/cursor-runner.ts", symbol: "CursorRunner.invoke", contentHash: "87b4929"}`
+- `{kind: symbol, path: "src/internal/packages/@pancreator/cli/src/feature-delivery-run.ts", symbol: "advanceFeatureDelivery", contentHash: "7c5e4d7"}`
+- `{kind: symbol, path: "src/internal/packages/@pancreator/pipeline/src/compile.ts", symbol: "compilePipeline", contentHash: "f657d73"}`
+- `{kind: symbol, path: "src/internal/packages/@pancreator/pipeline/src/execute.ts", symbol: "executePipeline", contentHash: "d86f5e2"}`
+- `{kind: symbol, path: "src/internal/packages/@pancreator/runner-cursor/src/cursor-runner.ts", symbol: "CursorRunner.invoke", contentHash: "87b4929"}`
