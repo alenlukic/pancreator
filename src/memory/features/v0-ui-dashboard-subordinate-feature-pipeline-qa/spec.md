@@ -211,8 +211,8 @@ The following persona assignments are RECOMMENDED for the plan stage. The tech-l
 
 - Parent Feature: `src/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md` (this run produces its WP-7 QA evidence).
 - Source directive: `src/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md`.
-- Active task: `68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa` under `src/work/172977_05-29-26/`.
-- Prior sibling tasks that produced partial or placeholder evidence without ratified implementation: `70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa`, `69601_0439_v0-ui-dashboard-subordinate-feature-pipeline-qa`, `69218_0446_v0-ui-dashboard-subordinate-feature-pipeline-qa` under `src/work/172977_05-29-26/`; the active task is the latest re-run and supersedes them.
+- Completed task: `68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa` archived at `src/internal/work_archive/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/`.
+- Prior sibling tasks (`70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa`, `69601_0439_v0-ui-dashboard-subordinate-feature-pipeline-qa`, `69218_0446_v0-ui-dashboard-subordinate-feature-pipeline-qa`) were superseded and removed from active work during librarian cleanup.
 
 ## Next operator steps
 
