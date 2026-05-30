@@ -35,7 +35,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- `(none)`
+- `lib/inbox/in/172976_05-30-26/60751_0707_bootstrap-phase-5-m1-exit.md`
 
 ## Most recent shipped Features
 

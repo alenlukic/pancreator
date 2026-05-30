@@ -99,7 +99,18 @@ describe("feature-delivery-runner automation", () => {
     await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
     await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
 
-    const transport: CursorSdkTransport = async () => ({ status: "ok", resultText: "ok" });
+    const transport: CursorSdkTransport = async (params) => {
+      const cwd = params.cwd ?? root;
+      const required =
+        params.requiredArtifactPaths ??
+        (params.artifactPath !== undefined ? [params.artifactPath] : []);
+      for (const rel of required) {
+        const abs = path.join(cwd, rel);
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(abs, "mock-artifact\n", "utf8");
+      }
+      return { status: "ok", resultText: "ok" };
+    };
 
     await invokeFeatureDeliveryEnteringStage({
       repoRoot: root,

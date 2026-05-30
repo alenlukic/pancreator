@@ -20,6 +20,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { readCursorInvocationMode } from "./pan-init.js";
+import {
+  primaryArtifactForEnteringStage,
+  requiredArtifactsAfterStageWork,
+  validateStageCompletionArtifacts,
+} from "./feature-delivery-stage-artifacts.js";
 import { listKnownPersonaIds, PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 import { configureCursorSdkTransportPrereqs, loadRepoEnv } from "./repo-env.js";
 
@@ -37,7 +42,12 @@ export interface FeatureDeliveryAutomationState {
   runnerInvocation: "manual" | "sdk";
   cumulativeRetryCount: number;
   reportApprovalPending?: boolean;
+  stageRemediationCount?: number;
+  lastRemediationStage?: string;
 }
+
+export const STAGE_REMEDIATION_PERSONA = "pancreator-engineer" as const;
+export const MAX_STAGE_REMEDIATION_ATTEMPTS = 2;
 
 /** Minimal ledger slice shared by runner orchestration without importing feature-delivery-run. */
 export interface FeatureDeliveryRunnerLedger {
@@ -52,6 +62,7 @@ export interface FeatureDeliveryRunnerLedger {
     stateFile: string;
     runLogFile: string;
     nextPromptFile?: string;
+    handoffFile?: string;
   };
   advanceHistory?: ReadonlyArray<{ kind: string }>;
   automation?: FeatureDeliveryAutomationState;
@@ -149,27 +160,10 @@ export function expectedArtifactForEnteringStage(
   state: FeatureDeliveryRunnerLedger,
   stageId: string,
 ): string {
-  switch (stageId) {
-    case "intake":
-      return path.posix.join("lib", "memory", "features", state.featureId, "spec.md");
-    case "plan":
-      return path.posix.join(state.artifacts.runDir, "touch-set.json");
-    case "implement":
-      return path.posix.join(state.artifacts.runDir, "implementation-report.md");
-    case "review":
-      return path.posix.join(state.artifacts.runDir, "review.md");
-    case "test":
-      return path.posix.join(state.artifacts.runDir, "test-report.md");
-    case "report":
-      return path.posix.join("lib", "memory", "features", state.featureId, "delivery-report.md");
-    case "ship":
-      return path.posix.join(state.artifacts.runDir, "policy-compliance.json");
-    case "index":
-      return path.posix.join("lib", "memory", "features", state.featureId, "index.json");
-    default:
-      return path.posix.join(state.artifacts.runDir, `${stageId}-artifact.md`);
-  }
+  return primaryArtifactForEnteringStage(state, stageId);
 }
+
+export { validateStageCompletionArtifacts, requiredArtifactsAfterStageWork };
 
 export async function invokeFeatureDeliveryEnteringStage(input: {
   repoRoot: string;
@@ -191,6 +185,11 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const knownPersonas = await listKnownPersonaIds(repoRoot);
   const stagePromptPath =
     input.state.artifacts.nextPromptFile ?? path.posix.join(input.state.artifacts.runDir, "next-prompt.md");
+  const stagePromptAbs = path.join(repoRoot, stagePromptPath);
+  const stagePromptContent = existsSync(stagePromptAbs)
+    ? await readFile(stagePromptAbs, "utf8")
+    : "";
+  const requiredArtifactPaths = requiredArtifactsAfterStageWork(input.state, input.stageId);
   const artifactPath = expectedArtifactForEnteringStage(input.state, input.stageId);
   const runner = createCursorRunner(repoRoot, "sdk", input.testHooks);
 
@@ -210,18 +209,23 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
         persona,
         message: `Execute feature-delivery stage ${sliceStage.id} for task ${input.state.taskId}.`,
         stagePromptPath,
+        stagePromptContent,
         artifactPath,
+        requiredArtifactPaths,
         ledger: {
           taskId: input.state.taskId,
           pipelineId: input.state.pipelineId,
           stageId: sliceStage.id,
           featureId: input.state.featureId,
         },
-        runLogFragment: buildStageRunLogFragment(persona, sliceStage.id, stagePromptPath, artifactPath),
+        runLogFragment: buildStageRunLogFragment(
+          persona,
+          sliceStage.id,
+          stagePromptPath,
+          artifactPath,
+          requiredArtifactPaths,
+        ),
       });
-      if (envelope.sdkResult?.status === "error") {
-        throw new RunnerTransportError(envelope.sdkResult.errorMessage ?? "Cursor SDK transport failed.");
-      }
       return ctx;
     },
     knownPersonas.size > 0 ? { knownPersonas } : {},
@@ -229,6 +233,44 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
 
   if (envelope === undefined) {
     throw new Error(`Pipeline stage slice for ${input.stageId} did not invoke CursorRunner.`);
+  }
+
+  let validation = validateStageCompletionArtifacts(repoRoot, input.state, input.stageId);
+  if (!validation.ok || envelope.sdkResult?.status === "error") {
+    validation = await remediateStageArtifacts({
+      repoRoot,
+      state: input.state,
+      stageId: input.stageId,
+      stagePersona: stage.persona,
+      stagePromptPath,
+      stagePromptContent,
+      requiredArtifactPaths,
+      primaryArtifactPath: artifactPath,
+      missing: validation.missing,
+      runner,
+      now,
+    });
+    if (validation.ok) {
+      envelope = {
+        ...envelope,
+        sdkResult: {
+          status: "ok",
+          artifactPath,
+          resultText: envelope.sdkResult?.resultText ?? "remediated",
+        },
+      };
+    }
+  }
+
+  if (!validation.ok) {
+    const message =
+      envelope.sdkResult?.errorMessage ??
+      `Stage ${input.stageId} incomplete after ${MAX_STAGE_REMEDIATION_ATTEMPTS} remediation attempt(s): ${validation.missing.join(", ")}`;
+    throw new RunnerTransportError(message);
+  }
+
+  if (envelope.sdkResult?.status === "error") {
+    throw new RunnerTransportError(envelope.sdkResult.errorMessage ?? "Cursor SDK transport failed.");
   }
 
   await appendRunLogRecord(
@@ -244,6 +286,7 @@ function buildStageRunLogFragment(
   stageId: string,
   stagePromptPath: string,
   artifactPath: string,
+  requiredArtifactPaths: readonly string[],
 ): NonNullable<RunnerInvocationEnvelope["runLogFragment"]> {
   return {
     trace_id: newTraceId(),
@@ -258,8 +301,139 @@ function buildStageRunLogFragment(
       "pancreator.stage_id": stageId,
       "pancreator.stage_prompt_path": stagePromptPath,
       "pancreator.artifact_path": artifactPath,
+      "pancreator.required_artifact_paths": [...requiredArtifactPaths],
     },
   };
+}
+
+async function remediateStageArtifacts(input: {
+  repoRoot: string;
+  state: FeatureDeliveryRunnerLedger;
+  stageId: string;
+  stagePersona: string;
+  stagePromptPath: string;
+  stagePromptContent: string;
+  requiredArtifactPaths: readonly string[];
+  primaryArtifactPath: string;
+  missing: string[];
+  runner: CursorRunner;
+  now: Date;
+}): Promise<ReturnType<typeof validateStageCompletionArtifacts>> {
+  let missing = input.missing;
+  if (missing.length === 0) {
+    missing = validateStageCompletionArtifacts(input.repoRoot, input.state, input.stageId).missing;
+  }
+  if (missing.length === 0) {
+    return { ok: true, missing: [], present: requiredArtifactsAfterStageWork(input.state, input.stageId) as string[] };
+  }
+
+  const engineer = await resolvePersona(input.repoRoot, STAGE_REMEDIATION_PERSONA);
+  const automation = ensureAutomationState(input.state, input.state.automation?.runnerInvocation ?? "sdk");
+
+  for (let attempt = 1; attempt <= MAX_STAGE_REMEDIATION_ATTEMPTS; attempt += 1) {
+    automation.stageRemediationCount = (automation.stageRemediationCount ?? 0) + 1;
+    automation.lastRemediationStage = input.stageId;
+    input.state.status = "ready_for_stage_delegation";
+    input.state.nextHumanAction =
+      `${STAGE_REMEDIATION_PERSONA} remediating missing ${input.stageId} artifacts (attempt ${attempt}/${MAX_STAGE_REMEDIATION_ATTEMPTS}).`;
+
+    const remediationPromptRel = path.posix.join(
+      input.state.artifacts.runDir,
+      `stage-remediation-${input.stageId}-${attempt}.md`,
+    );
+    const remediationBody = renderStageRemediationPrompt({
+      taskId: input.state.taskId,
+      featureId: input.state.featureId,
+      stageId: input.stageId,
+      stagePersona: input.stagePersona,
+      missing,
+      stagePromptPath: input.stagePromptPath,
+      requiredArtifactPaths: input.requiredArtifactPaths,
+    });
+    const remediationAbs = path.join(input.repoRoot, remediationPromptRel);
+    await mkdir(path.dirname(remediationAbs), { recursive: true });
+    await writeFile(remediationAbs, remediationBody, "utf8");
+
+    const envelope = await input.runner.invoke({
+      persona: engineer,
+      message: `Remediate incomplete feature-delivery stage artifacts for task ${input.state.taskId}.`,
+      stagePromptPath: remediationPromptRel,
+      stagePromptContent: remediationBody,
+      artifactPath: input.primaryArtifactPath,
+      requiredArtifactPaths: input.requiredArtifactPaths,
+      ledger: {
+        taskId: input.state.taskId,
+        pipelineId: input.state.pipelineId,
+        stageId: input.stageId,
+        featureId: input.state.featureId,
+      },
+      runLogFragment: {
+        trace_id: newTraceId(),
+        span_id: newSpanId(),
+        name: STAGE_REMEDIATION_PERSONA,
+        attributes: {
+          "openinference.span.kind": "AGENT",
+          "gen_ai.request.model": engineer.model,
+          "gen_ai.operation.name": `pancreator.pipeline.stage.${input.stageId}.remediation`,
+          "gen_ai.provider.name": "cursor",
+          "pancreator.persona": STAGE_REMEDIATION_PERSONA,
+          "pancreator.stage_id": input.stageId,
+          "pancreator.remediation_attempt": attempt,
+          "pancreator.missing_artifacts": [...missing],
+        },
+      },
+    });
+
+    await appendRunLogRecord(
+      path.join(input.repoRoot, input.state.artifacts.runLogFile),
+      runLogRecordFromRunnerEnvelope(envelope, input.state, input.now),
+    );
+
+    const validation = validateStageCompletionArtifacts(input.repoRoot, input.state, input.stageId);
+    if (validation.ok) {
+      input.state.nextHumanAction =
+        `${STAGE_REMEDIATION_PERSONA} restored ${input.stageId} artifacts; pipeline may advance when artifacts are ratified.`;
+      return validation;
+    }
+    missing = validation.missing;
+  }
+
+  return validateStageCompletionArtifacts(input.repoRoot, input.state, input.stageId);
+}
+
+function renderStageRemediationPrompt(input: {
+  taskId: string;
+  featureId: string;
+  stageId: string;
+  stagePersona: string;
+  missing: string[];
+  stagePromptPath: string;
+  requiredArtifactPaths: readonly string[];
+}): string {
+  return [
+    `# Stage artifact remediation — ${input.stageId}`,
+    "",
+    `Task: ${input.taskId}`,
+    `Feature: ${input.featureId}`,
+    `Owning stage persona: ${input.stagePersona}`,
+    "",
+    "## Missing artifacts",
+    "",
+    ...input.missing.map((artifact) => `- ${artifact}`),
+    "",
+    "## Required stage outputs (all must exist)",
+    "",
+    ...input.requiredArtifactPaths.map((artifact) => `- ${artifact}`),
+    "",
+    "## Instructions",
+    "",
+    "1. Read the stage prompt at:",
+    `   ${input.stagePromptPath}`,
+    "2. Create or repair ONLY the missing artifacts listed above.",
+    "3. Do not advance the pipeline, commit, or push.",
+    "4. Preserve existing valid artifacts; do not delete completed work.",
+    "",
+  ].join("\n");
 }
 
 export function parseReviewPassesVerdict(reviewMarkdown: string): boolean | null {

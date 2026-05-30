@@ -52,8 +52,12 @@ export interface RunnerInvokeInput {
   stagePromptPath?: string;
   /** Ledger coordinates for observability. */
   ledger?: RunnerLedgerContext;
-  /** Expected stage output artifact path. */
+  /** Expected stage output artifact path (primary). */
   artifactPath?: string;
+  /** All repo-relative outputs that MUST exist after SDK stage work. */
+  requiredArtifactPaths?: readonly string[];
+  /** Inline stage prompt body (preferred over path-only in SDK mode). */
+  stagePromptContent?: string;
   /** Pre-built run-log fragment (caller may omit for runner-generated span). */
   runLogFragment?: RunnerRunLogFragment;
 }

@@ -31,6 +31,7 @@ import {
   type FeatureDeliveryAutomationState,
   type FeatureDeliveryTestHooks,
 } from "./feature-delivery-runner.js";
+import { assertAdvanceArtifacts } from "./feature-delivery-stage-artifacts.js";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
 
@@ -1958,8 +1959,9 @@ function assertStageArtifact(
   artifact: string,
   event: string,
 ): void {
-  const expected = expectedArtifactsForStage(state, stage, event);
-  if (!expected.acceptedArtifacts.includes(artifact)) {
+  try {
+    assertAdvanceArtifacts(repoRoot, state, stage, artifact, event);
+  } catch (error) {
     const reviewArtifact = path.posix.join(state.artifacts.runDir, "review.md");
     const lastAdvance = lastAdvanceEntry(state);
     const afterMustFix =
@@ -1967,73 +1969,16 @@ function assertStageArtifact(
       artifact === reviewArtifact &&
       lastAdvance?.event === "must_fix" &&
       lastAdvance.from === "review";
-    const hint = afterMustFix
-      ? ` After must_fix re-entry, advance with review.md when it records review_passes: true to chain implement→review→test, or advance with ${expected.acceptedArtifacts.join(", ")} first.`
-      : "";
-    throw new Error(
-      `Artifact ${artifact} is not valid for ${stage} on ${event}; expected one of: ${expected.acceptedArtifacts.join(", ")}.${hint}`,
-    );
-  }
-  for (const required of expected.requiredArtifacts) {
-    if (!existsSync(path.join(repoRoot, required))) {
-      throw new Error(`Cannot advance ${stage}; required artifact is missing: ${required}.`);
+    if (
+      afterMustFix &&
+      error instanceof Error &&
+      error.message.includes("is not valid for implement")
+    ) {
+      throw new Error(
+        `${error.message} After must_fix re-entry, advance with review.md when it records review_passes: true to chain implement→review→test, or advance with ${path.posix.join(state.artifacts.runDir, "implementation-report.md")} first.`,
+      );
     }
-  }
-}
-
-function expectedArtifactsForStage(
-  state: FeatureDeliveryState,
-  stage: string,
-  event: string,
-): { acceptedArtifacts: string[]; requiredArtifacts: string[] } {
-  const run = state.artifacts.runDir;
-  switch (stage) {
-    case "intake": {
-      const spec = path.posix.join("lib", "memory", "features", state.featureId, "spec.md");
-      return { acceptedArtifacts: [spec], requiredArtifacts: [spec] };
-    }
-    case "plan": {
-      const required = [
-        path.posix.join(run, "plan.md"),
-        path.posix.join(run, "touch-set.json"),
-        state.artifacts.handoffFile,
-      ];
-      return { acceptedArtifacts: required, requiredArtifacts: required };
-    }
-    case "implement": {
-      const implementationReport = path.posix.join(run, "implementation-report.md");
-      return { acceptedArtifacts: [implementationReport], requiredArtifacts: [implementationReport] };
-    }
-    case "review": {
-      const review = path.posix.join(run, "review.md");
-      if (event !== "review_passes" && event !== "must_fix") {
-        throw new Error(`Review stage only supports review_passes or must_fix, got ${event}.`);
-      }
-      return { acceptedArtifacts: [review], requiredArtifacts: [review] };
-    }
-    case "test": {
-      const testReport = path.posix.join(run, "test-report.md");
-      if (event !== "qa_passes" && event !== "qa_fails" && event !== "qa_fails_plan_invalidating") {
-        throw new Error(
-          `Test stage only supports qa_passes, qa_fails, or qa_fails_plan_invalidating, got ${event}.`,
-        );
-      }
-      return { acceptedArtifacts: [testReport], requiredArtifacts: [testReport] };
-    }
-    case "report": {
-      const report = path.posix.join("lib", "memory", "features", state.featureId, "delivery-report.md");
-      return { acceptedArtifacts: [report], requiredArtifacts: [report] };
-    }
-    case "ship": {
-      const policy = path.posix.join(run, "policy-compliance.json");
-      return { acceptedArtifacts: [policy], requiredArtifacts: [policy] };
-    }
-    case "index": {
-      const index = path.posix.join("lib", "memory", "features", state.featureId, "index.json");
-      return { acceptedArtifacts: [index], requiredArtifacts: [index] };
-    }
-    default:
-      throw new Error(`No artifact contract for stage ${stage}.`);
+    throw error;
   }
 }
 
