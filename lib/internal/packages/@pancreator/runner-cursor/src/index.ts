@@ -26,7 +26,12 @@ export type {
   RunnerRunLogFragment,
 } from "./types.js";
 export { RUNNER_INVOCATION_SCHEMA_VERSION } from "./types.js";
-export type { CursorSdkTransport } from "./sdk-transport.js";
+export type { CursorSdkTransport, CursorSdkInvokeParams, CursorSdkInvokeResult } from "./sdk-transport.js";
+export {
+  buildSdkPrompt,
+  createDefaultCursorSdkTransport,
+  findMissingArtifactPaths,
+} from "./sdk-transport.js";
 export {
   ensureCursorSdkRipgrepConfigured,
   resolveCursorRipgrepBinaryPath,

@@ -60,7 +60,9 @@ export class CursorRunner implements Runner {
         message,
         persona,
         stagePromptPath: input.stagePromptPath,
+        stagePromptContent: input.stagePromptContent,
         artifactPath: input.artifactPath,
+        requiredArtifactPaths: input.requiredArtifactPaths,
         cwd: this.options.cwd,
         apiKey: this.options.apiKey,
       });

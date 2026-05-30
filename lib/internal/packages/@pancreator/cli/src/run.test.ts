@@ -22,6 +22,7 @@ const FEATURE_DELIVERY_PERSONAS = [
   "tech-writer",
   "supervisor",
   "librarian",
+  "pancreator-engineer",
 ] as const;
 
 async function seedCanonicalPersonas(root: string): Promise<void> {
@@ -48,8 +49,20 @@ runner:
 }
 
 function mockSdkTransport(onInvoke?: () => void): CursorSdkTransport {
-  return async () => {
+  return async (params) => {
     onInvoke?.();
+    const cwd = params.cwd ?? process.cwd();
+    const required =
+      params.requiredArtifactPaths ??
+      (params.artifactPath !== undefined ? [params.artifactPath] : []);
+    for (const rel of required) {
+      const abs = path.join(cwd, rel);
+      if (existsSync(abs)) {
+        continue;
+      }
+      await mkdir(path.dirname(abs), { recursive: true });
+      await writeFile(abs, "mock-artifact\n", "utf8");
+    }
     return { status: "ok", resultText: "mocked-sdk" };
   };
 }
