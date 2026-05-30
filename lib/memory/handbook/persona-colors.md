@@ -41,6 +41,7 @@ allocation. Pick the next unused color when authoring a new persona; reserve
 | `purple` | `pm`, `groomer`, `supervisor` | guideline |
 | `teal` | `librarian`-class | guideline |
 | `orange` | scout-class | guideline |
+| `indigo` | `pr-writer` and communication/synthesis-class personas | used |
 | `red` | `ombudsperson`, watchdog | reserved |
 
 > **Accessibility backlog item.** This palette has not yet been validated against
