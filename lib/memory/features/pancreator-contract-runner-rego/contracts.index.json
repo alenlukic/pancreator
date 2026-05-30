@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "pancreator.contract_runner_rego.package_shape",
+      "path": "/lib/memory/features/pancreator-contract-runner-rego/contracts/pancreator.contract_runner_rego.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "lib/internal/packages/@pancreator/contract-runner-rego/**"
+      }
+    },
+    {
+      "id": "pancreator.contract_runner_rego.readme_ergonomics",
+      "path": "/lib/memory/features/pancreator-contract-runner-rego/contracts/pancreator.contract_runner_rego.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "lib/internal/packages/@pancreator/contract-runner-rego/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "8e6c4d2"
+      }
+    }
+  ]
+}

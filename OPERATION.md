@@ -6,22 +6,22 @@ contract read `AGENTS.md`. For product and bootstrap routing read
 
 ## Inbox lifecycle
 
-1. Author new directives under `src/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
+1. Author new directives under `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
    Scaffold with:
 
    ```bash
    pnpm -w exec pan intake new <slug>
    ```
 
-2. Do **not** use `src/inbox/notes/` for agent work; it is human-only scratch space.
-   Promote drafts from notes into `src/inbox/in/` before any agent acts on them.
+2. Do **not** use `lib/inbox/notes/` for agent work; it is human-only scratch space.
+   Promote drafts from notes into `lib/inbox/in/` before any agent acts on them.
 
-3. Place delivery reports and status responses in `src/inbox/out/` when the task
+3. Place delivery reports and status responses in `lib/inbox/out/` when the task
    requires human review outside the feature-delivery ledger.
 
-4. Archive and thread semantics follow `src/memory/handbook/inbox-lifecycle.md`.
+4. Archive and thread semantics follow `lib/memory/handbook/inbox-lifecycle.md`.
    Runtime archive automation remains backlog-deferred; move responded items manually
-   to `src/inbox/archive/in/` when policy requires archival.
+   to `archive/inbox/in/` when policy requires archival.
 
 ## Feature delivery loop
 
@@ -40,8 +40,8 @@ only in SDK mode; manual mode preserves today's handoff-and-paste loop unchanged
 
 Use this loop exactly:
 
-1. Put the request in `src/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
-2. Start the run (path relative to `src/inbox/in/` only):
+1. Put the request in `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
+2. Start the run (path relative to `lib/inbox/in/` only):
 
    ```bash
    pnpm -w exec pan run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
@@ -81,7 +81,7 @@ after the final `complete` state.
 
 ### Post-invocation state machine
 
-Invocation creates `src/work/<day>/<task-id>/state.json`, `handoff.md`,
+Invocation creates `work/<day>/<task-id>/state.json`, `handoff.md`,
 `next-prompt.md`, and `run.log.jsonl`. Initial state is `ready_for_intake_delegation`
 with `currentStage: intake`.
 
@@ -118,24 +118,24 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
    separate operator `advance` for that branch.
 5. When cumulative `must_fix` and `qa_fails` retries exceed 3, the run halts with
    `status: halted` and one timestamp-prefixed file under
-   `src/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
+   `lib/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
 6. When `delivery-report.md` exists at the `report` stage, the runtime writes one
-   timestamp-prefixed approval artifact under `src/inbox/out/<day-bucket>/` with
+   timestamp-prefixed approval artifact under `lib/inbox/out/<day-bucket>/` with
    front matter `gate: report_approval` and `decision: approve | needs_changes`.
    Resume with:
 
    ```bash
-   pnpm -w exec pan advance <task-id> --artifact src/inbox/out/<day-bucket>/<approval-file>.md
+   pnpm -w exec pan advance <task-id> --artifact lib/inbox/out/<day-bucket>/<approval-file>.md
    ```
 
 ### Manual bootstrap workflow
 
 For non-runtime tasks:
 
-1. Read `AGENTS.md` and `src/memory/active/current.md` unless simple task mode applies.
+1. Read `AGENTS.md` and `lib/memory/active/current.md` unless simple task mode applies.
 2. Route through `docs/M1.index.md` before full `docs/BOOTSTRAP.md` or `docs/PRD.md`.
-3. Treat `src/inbox/in/` as the canonical queue.
-4. Separate planning from execution: emit `src/work/<day>/<task-id>/handoff.md`,
+3. Treat `lib/inbox/in/` as the canonical queue.
+4. Separate planning from execution: emit `work/<day>/<task-id>/handoff.md`,
    then delegate to the owning persona.
 5. Stage local diffs; obtain human ratification at phase boundaries.
 
@@ -145,16 +145,16 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 
 | Current stage | Delegate to | Required artifact | After acceptance |
 |---|---|---|---|
-| `intake` | `intake-analyst` | `src/memory/features/<feature-id>/spec.md` | `pnpm -w exec pan advance <task-id> --artifact src/memory/features/<feature-id>/spec.md` |
+| `intake` | `intake-analyst` | `lib/memory/features/<feature-id>/spec.md` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/spec.md` |
 | `plan` | `tech-lead` | `<runDir>/plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/touch-set.json` |
 | `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/implementation-report.md` |
 | `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/review.md` |
 | `review` (must-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --event must_fix --artifact <runDir>/review.md` |
 | `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/test-report.md` |
 | `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
-| `report` | `tech-writer` | `src/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact src/memory/features/<feature-id>/delivery-report.md` |
+| `report` | `tech-writer` | `lib/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/delivery-report.md` |
 | `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/policy-compliance.json` |
-| `index` | `librarian` | `src/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact src/memory/features/<feature-id>/index.json` |
+| `index` | `librarian` | `lib/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/index.json` |
 | `complete` | `librarian` | policy-compliance + index | `pnpm -w exec pan close-artifacts <task-id>` |
 
 Inspection and recovery:
@@ -166,7 +166,7 @@ pnpm -w exec pan pause <task-id>
 pnpm -w exec pan resume <task-id>
 pnpm -w exec pan abort <task-id> --reason "superseded or unsafe"
 pnpm -w exec pan repair-state <task-id> --stage review \
-  --artifact src/work/<day>/<task-id>/review.md \
+  --artifact work/<day>/<task-id>/review.md \
   --reason "out-of-band work reached review before advance"
 ```
 
@@ -174,18 +174,18 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 
 ## Active memory refresh
 
-- Set **Active Feature** in `src/memory/active/current.md` explicitly when work starts.
+- Set **Active Feature** in `lib/memory/active/current.md` explicitly when work starts.
 - Run `pnpm -w exec pan refresh-active-memory [--dry-run]` before governed commits when
   shipped-feature rows or the managed operator-notes stamp drift from indexed artifacts.
 - `pnpm -w exec pan close-artifacts <task-id>` refreshes shipped rows and clears Active
   Feature to `(none)` when it matched the archived inbox source.
-- `src/memory/features/*/index.json` remain the indexed source of truth for features.
+- `lib/memory/features/*/index.json` remain the indexed source of truth for features.
 
 ## Commit and policy-compliance
 
 - Stage diffs locally only during bootstrap; agents do not push or commit without the operator.
-- Governed structural commits require `src/work/<day>/<task-id>/policy-compliance.json`
-  per `src/memory/handbook/policy-compliance-contract.md`.
+- Governed structural commits require `work/<day>/<task-id>/policy-compliance.json`
+  per `lib/memory/handbook/policy-compliance-contract.md`.
 - Bootstrap commits carry trailer `Bootstrap-Phase: <N>`.
 - Pre-commit hooks enforce policy compliance; do not use `--no-verify` unless the operator directs it.
 
@@ -204,11 +204,11 @@ pnpm run attw
 pnpm run publint
 pnpm test
 node --test tests/*.test.mjs
-node src/internal/tools/run-compliance.mjs
-node src/internal/tools/check-phase-0a-scaffold.mjs
-node src/internal/tools/context-budget-report.mjs
+node lib/internal/tools/run-compliance.mjs
+node lib/internal/tools/check-phase-0a-scaffold.mjs
+node lib/internal/tools/context-budget-report.mjs
 bash -n .cursor/hooks/enforce-policy-compliance.sh
-node src/internal/tools/check-operator-output.mjs
+node lib/internal/tools/check-operator-output.mjs
 ```
 
 When a check fails for reasons outside the closing task touch-set, the closer SHALL
@@ -225,9 +225,9 @@ quality gates during bootstrap.
 | `advance` rejects missing artifact | Stage work incomplete | Finish artifact; do not edit `state.json` manually |
 | Ledger behind out-of-band work | Skipped `advance` | `pnpm -w exec pan repair-state` with evidence artifact |
 | Wrong persona in prompt | Stale `next-prompt.md` | `pnpm -w exec pan refresh-prompt <task-id>` |
-| Bare `pan` command fails | CLI not on PATH | Use `pnpm -w exec pan …` per `src/memory/handbook/pancreator-config.md` |
+| Bare `pan` command fails | CLI not on PATH | Use `pnpm -w exec pan …` per `lib/memory/handbook/pancreator-config.md` |
 | Active memory drift | Skipped refresh | `pnpm -w exec pan refresh-active-memory --dry-run` then apply |
-| Operator-output lint fails | Bare `pan` in runnable block | Run `node src/internal/tools/check-operator-output.mjs` and fix cited paths |
+| Operator-output lint fails | Bare `pan` in runnable block | Run `node lib/internal/tools/check-operator-output.mjs` and fix cited paths |
 
 For deferred CLI verbs, read the JSON envelope (`milestone`, `tracking_intake`,
 `manual_workaround`) and follow the documented manual workaround.

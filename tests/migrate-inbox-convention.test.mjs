@@ -21,7 +21,7 @@ import {
   listEmptyInboxDirectories,
   pruneEmptyInboxDirectories,
   planInboxConventionMigration,
-} from "../src/internal/tools/migrate-inbox-convention.mjs";
+} from "../lib/internal/tools/migrate-inbox-convention.mjs";
 
 test("stemHasTimestampPrefix: detects SID_HHMM_ prefix", () => {
   assert.equal(stemHasTimestampPrefix("81300_0125_foo"), true);
@@ -37,7 +37,7 @@ test("parseIsoTimestampFromStem: reads embedded Zulu instant", () => {
 
 test("chooseInboxNamingInstant: prefers filename ISO over git", () => {
   const chosen = chooseInboxNamingInstant(
-    { path: "src/inbox/in/2026-05-23T03-22-00Z-demo.md", text: "" },
+    { path: "lib/inbox/in/2026-05-23T03-22-00Z-demo.md", text: "" },
     "2026-05-25T04:06:01.000Z",
     { mtimeMs: 0 },
   );
@@ -85,14 +85,14 @@ test("buildInboxLeafSemantic: strips timestamp and ISO segments for basename suf
 test("isCanonicalInboxPath: rejects per-artifact task subdirectory under threads", () => {
   assert.equal(
     isCanonicalInboxPath(
-      "src/inbox/threads/172981_05-25-26/71639_0406_json-formatting_round-01/71639_0406_round-01.md",
+      "lib/inbox/threads/172981_05-25-26/71639_0406_json-formatting_round-01/71639_0406_round-01.md",
       "threads",
     ),
     false,
   );
   assert.equal(
     isCanonicalInboxPath(
-      "src/inbox/threads/173009_04-27-26/timestamp-naming-conventions/51237_0946_round-01-clarify.md",
+      "lib/inbox/threads/173009_04-27-26/timestamp-naming-conventions/51237_0946_round-01-clarify.md",
       "threads",
     ),
     true,
@@ -102,7 +102,7 @@ test("isCanonicalInboxPath: rejects per-artifact task subdirectory under threads
 test("planInboxConventionMigration: A1 flat leaf under day bucket for inbox/in", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-"));
   try {
-    const inboxIn = path.join(tmp, "src", "inbox", "in");
+    const inboxIn = path.join(tmp, "lib", "inbox", "in");
     fs.mkdirSync(inboxIn, { recursive: true });
     fs.writeFileSync(
       path.join(inboxIn, "demo.md"),
@@ -110,7 +110,7 @@ test("planInboxConventionMigration: A1 flat leaf under day bucket for inbox/in",
       "utf8",
     );
     const plan = planInboxConventionMigration(tmp, {
-      operatorIsoByRel: { "src/inbox/in/demo.md": "2024-06-15T14:30:00.000Z" },
+      operatorIsoByRel: { "lib/inbox/in/demo.md": "2024-06-15T14:30:00.000Z" },
     });
     const fileStep = plan.renames.find(
       (r) => r.kind === "inbox-nested-file" && r.sourceRel.endsWith("demo.md"),
@@ -118,7 +118,7 @@ test("planInboxConventionMigration: A1 flat leaf under day bucket for inbox/in",
     assert.ok(fileStep);
     assert.match(
       fileStep.targetRel,
-      /^src\/inbox\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_1430_demo\.md$/,
+      /^lib\/inbox\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_1430_demo\.md$/,
     );
     assert.equal(fileStep.targetRel.split("/").length, 5);
   } finally {
@@ -129,11 +129,11 @@ test("planInboxConventionMigration: A1 flat leaf under day bucket for inbox/in",
 test("planInboxConventionMigration: A2 thread file under day and feature without task subdir", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-t-"));
   try {
-    const tdir = path.join(tmp, "src", "inbox", "threads", "my-feat");
+    const tdir = path.join(tmp, "lib", "inbox", "threads", "my-feat");
     fs.mkdirSync(tdir, { recursive: true });
     fs.writeFileSync(path.join(tdir, "round.md"), "body", "utf8");
     const plan = planInboxConventionMigration(tmp, {
-      operatorIsoByRel: { "src/inbox/threads/my-feat/round.md": "2024-07-01T08:05:00.000Z" },
+      operatorIsoByRel: { "lib/inbox/threads/my-feat/round.md": "2024-07-01T08:05:00.000Z" },
     });
     const step = plan.renames.find(
       (r) => r.kind === "inbox-nested-file" && r.sourceRel.includes("round.md"),
@@ -142,7 +142,7 @@ test("planInboxConventionMigration: A2 thread file under day and feature without
     assert.equal(step.targetRel.includes("/threads/my-feat/round.md"), false);
     assert.match(
       step.targetRel,
-      /^src\/inbox\/threads\/\d{6}_\d{2}-\d{2}-\d{2}\/my-feat\/\d+_\d{4}_round\.md$/,
+      /^lib\/inbox\/threads\/\d{6}_\d{2}-\d{2}-\d{2}\/my-feat\/\d+_\d{4}_round\.md$/,
     );
     assert.equal(step.targetRel.split("/").length, 6);
     assert.ok(plan.renames.some((r) => r.kind === "inbox-remove-empty-dir"));
@@ -156,7 +156,7 @@ test("planInboxConventionMigration: reshapes wrongly nested thread task subdirec
   try {
     const wrong = path.join(
       tmp,
-      "src",
+      "lib",
       "inbox",
       "threads",
       "173009_04-27-26",
@@ -175,7 +175,7 @@ test("planInboxConventionMigration: reshapes wrongly nested thread task subdirec
     assert.ok(step);
     assert.equal(
       step.targetRel,
-      "src/inbox/threads/173009_04-27-26/timestamp-naming-conventions/51237_0946_round-01-clarify.md",
+      "lib/inbox/threads/173009_04-27-26/timestamp-naming-conventions/51237_0946_round-01-clarify.md",
     );
     assert.equal(step.timestamp.source, "frontmatter");
   } finally {
@@ -188,7 +188,7 @@ test("planInboxConventionMigration: uses filename ISO for intake ratification pa
   try {
     const wrong = path.join(
       tmp,
-      "src",
+      "lib",
       "inbox",
       "in",
       "172981_05-25-26",
@@ -215,12 +215,12 @@ test("planInboxConventionMigration: uses filename ISO for intake ratification pa
 test("planInboxConventionMigration: idempotent basename keeps SID_HHMM_ leaf", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-idem-"));
   try {
-    const inboxIn = path.join(tmp, "src", "inbox", "in");
+    const inboxIn = path.join(tmp, "lib", "inbox", "in");
     fs.mkdirSync(inboxIn, { recursive: true });
     fs.writeFileSync(path.join(inboxIn, "86400_1200_already.md"), "x", "utf8");
     const plan = planInboxConventionMigration(tmp, {
       operatorIsoByRel: {
-        "src/inbox/in/86400_1200_already.md": "2024-06-15T12:00:30.000Z",
+        "lib/inbox/in/86400_1200_already.md": "2024-06-15T12:00:30.000Z",
       },
     });
     const step = plan.renames.find(
@@ -241,14 +241,14 @@ test("isMigratedThreadTaskSegment: matches work-style task directory token", () 
 test("listInboxArtifactRows: includes wrongly nested task subtrees", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-skip-"));
   try {
-    const dayDir = path.join(tmp, "src", "inbox", "threads", "172995_05-11-26");
+    const dayDir = path.join(tmp, "lib", "inbox", "threads", "172995_05-11-26");
     const taskDir = path.join(dayDir, "86500_0830_task_sem");
     fs.mkdirSync(taskDir, { recursive: true });
     fs.writeFileSync(path.join(taskDir, "reshape-me.md"), "y", "utf8");
 
     const rows = listInboxArtifactRows(tmp);
     const rels = rows.filter((r) => r.queue === "threads").map((r) => r.rel);
-    assert.ok(rels.includes("src/inbox/threads/172995_05-11-26/86500_0830_task_sem/reshape-me.md"));
+    assert.ok(rels.includes("lib/inbox/threads/172995_05-11-26/86500_0830_task_sem/reshape-me.md"));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -257,12 +257,12 @@ test("listInboxArtifactRows: includes wrongly nested task subtrees", () => {
 test("planInboxConventionMigration: archive flat leaf has no task subdirectory", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-dedupe-"));
   try {
-    const archiveIn = path.join(tmp, "src", "inbox", "archive", "in");
+    const archiveIn = path.join(tmp, "archive", "inbox", "in");
     fs.mkdirSync(archiveIn, { recursive: true });
     fs.writeFileSync(path.join(archiveIn, "68576_0457_compliance-tests.md"), "body", "utf8");
     const plan = planInboxConventionMigration(tmp, {
       operatorIsoByRel: {
-        "src/inbox/archive/in/68576_0457_compliance-tests.md": "2024-04-27T00:57:04.000Z",
+        "archive/inbox/in/68576_0457_compliance-tests.md": "2024-04-27T00:57:04.000Z",
       },
     });
     const step = plan.renames.find(
@@ -271,9 +271,9 @@ test("planInboxConventionMigration: archive flat leaf has no task subdirectory",
     assert.ok(step);
     assert.match(
       step.targetRel,
-      /^src\/inbox\/archive\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_\d{4}_compliance-tests\.md$/,
+      /^archive\/inbox\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_\d{4}_compliance-tests\.md$/,
     );
-    assert.equal(step.targetRel.split("/").length, 6);
+    assert.equal(step.targetRel.split("/").length, 5);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -282,21 +282,21 @@ test("planInboxConventionMigration: archive flat leaf has no task subdirectory",
 test("pruneEmptyInboxDirectories: removes nested empty day and task folders", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-prune-"));
   try {
-    const orphanDay = path.join(tmp, "src", "inbox", "in", "172981_05-25-26");
+    const orphanDay = path.join(tmp, "lib", "inbox", "in", "172981_05-25-26");
     const orphanTask = path.join(orphanDay, "71639_0406_demo_task");
     fs.mkdirSync(orphanTask, { recursive: true });
-    const keep = path.join(tmp, "src", "inbox", "in", "172983_05-23-26");
+    const keep = path.join(tmp, "lib", "inbox", "in", "172983_05-23-26");
     fs.mkdirSync(keep, { recursive: true });
     fs.writeFileSync(path.join(keep, "67055_0522_demo.md"), "x", "utf8");
 
     const listed = listEmptyInboxDirectories(tmp);
-    assert.ok(listed.includes("src/inbox/in/172981_05-25-26/71639_0406_demo_task"));
-    assert.ok(!listed.includes("src/inbox/in/172983_05-23-26"));
+    assert.ok(listed.includes("lib/inbox/in/172981_05-25-26/71639_0406_demo_task"));
+    assert.ok(!listed.includes("lib/inbox/in/172983_05-23-26"));
 
     const dry = pruneEmptyInboxDirectories(tmp, { dryRun: true });
     assert.equal(dry.removed.length, 2);
-    assert.ok(dry.removed.includes("src/inbox/in/172981_05-25-26/71639_0406_demo_task"));
-    assert.ok(dry.removed.includes("src/inbox/in/172981_05-25-26"));
+    assert.ok(dry.removed.includes("lib/inbox/in/172981_05-25-26/71639_0406_demo_task"));
+    assert.ok(dry.removed.includes("lib/inbox/in/172981_05-25-26"));
     assert.ok(existsSync(orphanTask));
 
     const applied = pruneEmptyInboxDirectories(tmp);
@@ -314,7 +314,7 @@ test("listLegacyInboxArtifactRows: real repo returns sorted rows", () => {
   const rows = listLegacyInboxArtifactRows(repoRoot);
   assert.ok(Array.isArray(rows));
   for (const r of rows) {
-    assert.ok(r.rel.startsWith("src/inbox/"));
+    assert.ok(r.rel.startsWith("lib/inbox/") || r.rel.startsWith("archive/inbox/"));
     assert.ok(!r.rel.includes("/notes/"));
   }
 });

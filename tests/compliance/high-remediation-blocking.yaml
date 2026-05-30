@@ -7,8 +7,8 @@ trigger_modes:
 scope:
   surface: "review-and-approval-gates"
   artifacts:
-    - "src/work/<day>/<id>/review.md"
-    - "src/inbox/out/"
+    - "work/<day>/<id>/review.md"
+    - "lib/inbox/out/"
 assertion:
   statement: "High findings block review_passes and human_approval."
   pass_criteria: "Run output records zero open high findings after remediation rerun."

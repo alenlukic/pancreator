@@ -1,7 +1,7 @@
 ---
-description: When the `feature-delivery` pipeline finishes its `report` stage, or when the `knowledge-curation` cron pipeline fires, the `librarian` SHALL index every emitted Artifact, refresh the Feature index at `/src/memory/features/<id>/index.json`, and flag stale citations across the Memory tier.
-globs: ["src/memory/features/**/index.json", "src/memory/backlog/index.yaml", "src/memory/curation/sweep-*.md"]
+description: When the `feature-delivery` pipeline finishes its `report` stage, or when the `knowledge-curation` cron pipeline fires, the `librarian` SHALL index every emitted Artifact, refresh the Feature index at `/lib/memory/features/<id>/index.json`, and flag stale citations across the Memory tier.
+globs: ["lib/memory/features/**/index.json", "lib/memory/backlog/index.yaml", "lib/memory/curation/sweep-*.md"]
 alwaysApply: false
 ---
 
-@src/personas/librarian.md
+@lib/personas/librarian.md

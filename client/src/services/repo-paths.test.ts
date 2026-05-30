@@ -17,7 +17,7 @@ describe("resolveRepoPath", () => {
   it("rejects notes sandbox paths", () => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-paths-"));
     fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
-    expect(() => resolveRepoPath("src/inbox/notes/secret.md", tempRoot)).toThrow(
+    expect(() => resolveRepoPath("lib/inbox/notes/secret.md", tempRoot)).toThrow(
       "Operator sandbox denied",
     );
   });

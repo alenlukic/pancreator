@@ -1,7 +1,7 @@
 ---
 description: When any pipeline starts, the `supervisor` SHALL orchestrate stage transitions, enforce every declared gate, dispatch Intervention actions on the run log, and at the `ship` stage stage one pull request for the `human_approval` gate without ever pushing automatically.
-globs: ["src/pipelines/**/*.yaml", "src/work/**/run.log.jsonl", "src/work/**/run-summary.md", "src/memory/checkpoints/**/*.json", "src/memory/postmortems/**/*.md"]
+globs: ["lib/pipelines/**/*.yaml", "work/**/run.log.jsonl", "work/**/run-summary.md", "lib/memory/checkpoints/**/*.json", "lib/memory/postmortems/**/*.md"]
 alwaysApply: false
 ---
 
-@src/personas/supervisor.md
+@lib/personas/supervisor.md

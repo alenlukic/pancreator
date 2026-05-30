@@ -1,7 +1,7 @@
 ---
-description: When a human runs `npx pancreator init` in an existing repository, the `adopter` SHALL scan languages, frameworks, test infrastructure, continuous-integration configuration, dependency manifests, and conventions, then emit `/src/memory/adoption/scan-<date>.md` plus paired inbox items for human ratification.
-globs: ["src/memory/adoption/scan-*.md", "src/inbox/in/*-adopter-*.md", "pancreator.yaml"]
+description: When a human runs `npx pancreator init` in an existing repository, the `adopter` SHALL scan languages, frameworks, test infrastructure, continuous-integration configuration, dependency manifests, and conventions, then emit `/lib/memory/adoption/scan-<date>.md` plus paired inbox items for human ratification.
+globs: ["lib/memory/adoption/scan-*.md", "lib/inbox/in/*-adopter-*.md", "pancreator.yaml"]
 alwaysApply: false
 ---
 
-@src/personas/adopter.md
+@lib/personas/adopter.md

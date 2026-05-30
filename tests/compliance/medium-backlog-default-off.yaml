@@ -7,7 +7,7 @@ trigger_modes:
 scope:
   surface: "backlog-and-escalation-policy"
   artifacts:
-    - "src/memory/backlog/index.yaml"
+    - "lib/memory/backlog/index.yaml"
     - "pancreator.yaml"
 assertion:
   statement: "Medium findings create backlog items with operator escalation off by default."

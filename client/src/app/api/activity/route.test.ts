@@ -12,7 +12,7 @@ describe("GET /api/activity feed ordering", () => {
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-activity-"));
     fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
-    fs.mkdirSync(path.join(tempRoot, "src", "work"), { recursive: true });
+    fs.mkdirSync(path.join(tempRoot, "work"), { recursive: true });
     fs.mkdirSync(path.join(tempRoot, "client", ".local"), { recursive: true });
   });
 
@@ -34,7 +34,7 @@ describe("GET /api/activity feed ordering", () => {
   });
 
   it("skips broken symlinks under scanned domains", async () => {
-    const packagesDir = path.join(tempRoot, "src", "internal", "packages", "demo-pkg");
+    const packagesDir = path.join(tempRoot, "lib", "internal", "packages", "demo-pkg");
     fs.mkdirSync(packagesDir, { recursive: true });
     const brokenLink = path.join(packagesDir, "broken-link");
     fs.symlinkSync(path.join(tempRoot, "does-not-exist"), brokenLink);
@@ -45,8 +45,8 @@ describe("GET /api/activity feed ordering", () => {
   });
 
   it("returns reverse-chronological events", async () => {
-    const older = path.join(tempRoot, "src", "work", "older.md");
-    const newer = path.join(tempRoot, "src", "work", "newer.md");
+    const older = path.join(tempRoot, "work", "older.md");
+    const newer = path.join(tempRoot, "work", "newer.md");
     fs.writeFileSync(older, "older");
     fs.writeFileSync(newer, "newer");
 
@@ -55,7 +55,7 @@ describe("GET /api/activity feed ordering", () => {
     fs.utimesSync(older, olderTime, olderTime);
     fs.utimesSync(newer, newerTime, newerTime);
 
-    await writeRepoFile("src/work/write-target.md", "hello", tempRoot);
+    await writeRepoFile("work/write-target.md", "hello", tempRoot);
 
     const events = await getActivityFeed(tempRoot);
     expect(events.length).toBeGreaterThan(1);

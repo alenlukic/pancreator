@@ -1,7 +1,7 @@
 ---
-description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests) and manual verification against the touch-set, and emit `/src/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
-globs: ["src/work/**/test-report.md"]
+description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests) and manual verification against the touch-set, and emit `/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
+globs: ["work/**/test-report.md"]
 alwaysApply: false
 ---
 
-@src/personas/qa-tester.md
+@lib/personas/qa-tester.md

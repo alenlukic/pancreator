@@ -7,7 +7,7 @@ import { test } from "node:test";
 
 import {
   CANONICAL_JSON_INDENT_SPACES,
-} from "../src/internal/tools/canonical-json-format.mjs";
+} from "../lib/internal/tools/canonical-json-format.mjs";
 import {
   abbreviateHashes,
   collectRepoJson,
@@ -15,7 +15,7 @@ import {
   isExcludedRelPath,
   resolveAbbrevLen,
   rewriteJsonText,
-} from "../src/internal/tools/migrate-json-formatting.mjs";
+} from "../lib/internal/tools/migrate-json-formatting.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -32,14 +32,14 @@ function readRepoText(rel) {
 }
 
 function collectMarkdownCitationScanTargets() {
-  const featureRoot = path.join(ROOT, "src/memory/features");
+  const featureRoot = path.join(ROOT, "lib/memory/features");
   const featureReports = fs
     .readdirSync(featureRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => path.posix.join("src/memory/features", entry.name, "delivery-report.md"))
+    .map((entry) => path.posix.join("lib/memory/features", entry.name, "delivery-report.md"))
     .filter((rel) => fs.existsSync(path.join(ROOT, rel)))
     .sort();
-  return [...featureReports, "src/personas/tech-writer.md"];
+  return [...featureReports, "lib/personas/tech-writer.md"];
 }
 
 function toGlobalRegex(pattern) {
@@ -188,13 +188,13 @@ test("abbreviateHashes ignores non-hash hex literals under abbreviation length g
 
 test("markdown citation compliance scan flags compact and JS-literal dual-anchor forms", () => {
   const allowlist = new Set([
-    "src/memory/features/json-formatting/spec.md",
+    "lib/memory/features/json-formatting/spec.md",
     "tests/fixtures/json-formatting/forbidden-inline-citation-snippet.raw",
   ]);
   const targets = [
     ...new Set([
       ...collectMarkdownCitationScanTargets(),
-      "src/memory/features/json-formatting/spec.md",
+      "lib/memory/features/json-formatting/spec.md",
       "tests/fixtures/json-formatting/forbidden-inline-citation-snippet.raw",
     ]),
   ];
@@ -222,7 +222,7 @@ test("markdown citation compliance scan flags compact and JS-literal dual-anchor
   );
 });
 
-const migrateScript = path.join(ROOT, "src/internal/tools/migrate-json-formatting.mjs");
+const migrateScript = path.join(ROOT, "lib/internal/tools/migrate-json-formatting.mjs");
 
 test("canonical-json-format exposes two-space canonical indent metadata", () => {
   assert.equal(CANONICAL_JSON_INDENT_SPACES, 2);

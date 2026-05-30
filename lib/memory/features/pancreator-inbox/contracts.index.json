@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "pancreator.inbox.package_shape",
+      "path": "/lib/memory/features/pancreator-lib/inbox/contracts/pancreator.inbox.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "lib/internal/packages/@pancreator/inbox/**"
+      }
+    },
+    {
+      "id": "pancreator.inbox.readme_ergonomics",
+      "path": "/lib/memory/features/pancreator-lib/inbox/contracts/pancreator.inbox.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "lib/internal/packages/@pancreator/inbox/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "ab1eaa3"
+      }
+    }
+  ]
+}

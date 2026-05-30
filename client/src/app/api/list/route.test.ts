@@ -10,8 +10,8 @@ describe("GET /api/list", () => {
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-list-api-"));
     fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
-    fs.mkdirSync(path.join(tempRoot, "src", "memory"), { recursive: true });
-    fs.writeFileSync(path.join(tempRoot, "src", "memory", "sample.md"), "x");
+    fs.mkdirSync(path.join(tempRoot, "lib", "memory"), { recursive: true });
+    fs.writeFileSync(path.join(tempRoot, "lib", "memory", "sample.md"), "x");
   });
 
   afterEach(() => {
@@ -28,7 +28,7 @@ describe("GET /api/list", () => {
     process.chdir(tempRoot);
     try {
       const response = await GET(
-        new Request("http://localhost/api/list?path=src/memory"),
+        new Request("http://localhost/api/list?path=lib/memory"),
       );
       const payload = (await response.json()) as {
         entries: Array<{ path: string; name: string; kind: string }>;
@@ -37,7 +37,7 @@ describe("GET /api/list", () => {
       expect(payload.entries).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            path: "src/memory/sample.md",
+            path: "lib/memory/sample.md",
             name: "sample.md",
             kind: "file",
           }),

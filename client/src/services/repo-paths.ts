@@ -11,7 +11,7 @@ export class PathAccessError extends Error {
   }
 }
 
-const NOTES_PREFIX = "src/inbox/notes";
+const NOTES_PREFIX = "lib/inbox/notes";
 
 export function findRepoRoot(startDir: string = process.cwd()): string {
   const candidates = [startDir];

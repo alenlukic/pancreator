@@ -32,6 +32,6 @@ pnpm --filter client build
 ## v0 limitations
 
 - No authentication or multi-tenant isolation; intended for a trusted local operator only.
-- File access denies `src/inbox/notes/**`, path traversal, and symlink escapes.
+- File access denies `lib/inbox/notes/**`, path traversal, and symlink escapes.
 - Activity feed combines recent domain file updates with structured write-log entries.
 - UI polish and deployment packaging are intentionally out of scope for this subordinate QA exercise.

@@ -19,7 +19,7 @@ import {
   inventoryReferences,
   defaultManifestPath,
   writeManifest,
-} from "../src/internal/tools/migrate-timestamp-naming.mjs";
+} from "../lib/internal/tools/migrate-timestamp-naming.mjs";
 
 test("daysToFds: FDS calendar day yields 0", () => {
   const d = new Date(Date.UTC(2500, 0, 1, 15, 0, 0));
@@ -158,13 +158,13 @@ test("chooseTimestamp: operator override replaces mtime (last precedence rung)",
 test("migrateTargetForWorkPath: snapshot shape for flat work task", () => {
   const repoRoot = "/repo";
   const chosenDate = new Date(Date.UTC(2024, 5, 15, 14, 30, 0));
-  const abs = path.join(repoRoot, "src", "work", "compliance-tests");
+  const abs = path.join(repoRoot, "work", "compliance-tests");
   const out = migrateTargetForWorkPath(abs, { repoRoot, chosenDate });
   assert.match(
     out.targetRel,
-    /^src\/work\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_1430_compliance-tests\/$/,
+    /^work\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_1430_compliance-tests\/$/,
   );
-  assert.equal(out.sourceRel, "src/work/compliance-tests/");
+  assert.equal(out.sourceRel, "work/compliance-tests/");
 });
 
 test("migrateTargetForInboxPath: snapshot for thread round file", () => {
@@ -172,7 +172,7 @@ test("migrateTargetForInboxPath: snapshot for thread round file", () => {
   const chosenDate = new Date(Date.UTC(2024, 5, 15, 14, 30, 0));
   const abs = path.join(
     repoRoot,
-    "src",
+    "lib",
     "inbox",
     "threads",
     "timestamp-naming-conventions",
@@ -185,16 +185,16 @@ test("migrateTargetForInboxPath: snapshot for thread round file", () => {
   });
   assert.match(
     out.targetRel,
-    /^src\/inbox\/threads\/timestamp-naming-conventions\/\d+_1430_round-01-clarify\.md$/,
+    /^lib\/inbox\/threads\/timestamp-naming-conventions\/\d+_1430_round-01-clarify\.md$/,
   );
 });
 
 test("inventoryReferences: finds a known path string in repo", () => {
   const repoRoot = path.resolve(__dirname, "..");
-  const hits = inventoryReferences("src/internal/work_archive/173009_04-27-26/68576_0457_compliance-tests", repoRoot, [
-    "src/memory",
-    "src/work",
-    "src/inbox",
+  const hits = inventoryReferences("archive/work/173009_04-27-26/68576_0457_compliance-tests", repoRoot, [
+    "lib/memory",
+    "lib/work",
+    "lib/inbox",
   ]);
   assert.ok(hits.length > 0);
   const files = new Set(hits.map((h) => h.file));
@@ -208,14 +208,13 @@ test("defaultManifestPath prefers archived inbox convention run when indexed", (
     const taskId = "60722_0707_inbox-convention-migration";
     const archiveRun = path.join(
       repoRoot,
-      "src",
-      "internal",
-      "work_archive",
+      "archive",
+      "work",
       "172995_05-11-26",
       taskId,
     );
     mkdirSync(archiveRun, { recursive: true });
-    const featureDir = path.join(repoRoot, "src", "memory", "features", "inbox-convention-migration");
+    const featureDir = path.join(repoRoot, "lib", "memory", "features", "inbox-convention-migration");
     mkdirSync(featureDir, { recursive: true });
     writeFileSync(
       path.join(featureDir, "index.json"),
@@ -235,7 +234,7 @@ test("defaultManifestPath prefers archived inbox convention run when indexed", (
 test("writeManifest creates missing parent directories", () => {
   const repoRoot = mkdtempSync(path.join(tmpdir(), "pan-manifest-write-"));
   try {
-    const out = path.join(repoRoot, "src", "internal", "work_archive", "day", "task", "manifest.json");
+    const out = path.join(repoRoot, "archive", "work", "day", "task", "manifest.json");
     writeManifest({ schema: "test" }, out);
     assert.equal(existsSync(out), true);
     assert.deepEqual(JSON.parse(readFileSync(out, "utf8")), { schema: "test" });
