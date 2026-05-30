@@ -53,9 +53,10 @@ Three sub-phases; do them in order. None of them require an LLM.
 - Top-level dirs: `AGENTS.md` (sole root agent operating card per PRD §4 glossary),
   `.cursor/rules/`, `lib/personas/`, `lib/personas/skills/`,
   `lib/pipelines/`, `lib/ensembles/`, `lib/memory/{handbook,adr,rfc,prd,features,smes,backlog,debt,checkpoints,adoption,runbooks,postmortems,research}/`,
-  `lib/inbox/{in,out,threads,notes}/` (where `lib/inbox/notes/` is a human-only
-  operator sandbox excluded from agent traversal per
-  `/lib/memory/handbook/inbox-lifecycle.md` §1a), `work/`,
+  `lib/inbox/{in,out,threads,notes}/` (local transient comms; gitignored per
+  `.gitignore`; `lib/inbox/notes/` is a human-only operator sandbox excluded
+  from agent traversal per `/lib/memory/handbook/inbox-lifecycle.md` §1a),
+  `work/`,
   `.pan/{worktrees,sandboxes,scheduler}/`.
 - `pancreator.yaml` + `pancreator-defaults.yaml` placeholders (one working default
   contract bundle per risk tier lands in Phase 2).

@@ -1,6 +1,6 @@
 # @pancreator/inbox
 
-File-backed access to `/lib/inbox/in/`, `/lib/inbox/out/`, and `/lib/inbox/threads/` for the Pancreator human queue.
+File-backed access to `/lib/inbox/in/`, `/lib/inbox/out/`, and `/lib/inbox/threads/` for the Pancreator human queue. The inbox tree is gitignored local storage; operators materialize queue directories on first use.
 
 ## Quickstart
 

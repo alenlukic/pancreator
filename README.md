@@ -34,7 +34,7 @@ real projects, not a frontend or design-skill showcase.
 | Personas | `lib/personas/` | Agent roles and constraints |
 | Skills | `lib/personas/skills/` | Reusable procedures |
 | Handbook | `lib/memory/handbook/` | Canon: glossary, contracts, context economy |
-| Inbox | `lib/inbox/in`, `out`, `threads` | Operator control plane (`notes/` is human-only) |
+| Inbox | `lib/inbox/in`, `out`, `threads` | Local transient comms (gitignored; `notes/` is human-only) |
 | Memory | `lib/memory/` | ADRs, backlog, features, active pointers |
 | Implementation | `lib/internal/` | Packages, tools, work archive |
 

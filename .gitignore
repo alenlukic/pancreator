@@ -49,13 +49,13 @@ out/
 # Local-only; repo policy lives in .cursorindexingignore (tracked).
 .cursorignore
 
-# --- Pancreator control plane ---
+# --- Local control plane ---
 
 .pan/
 
-# --- Pancreator operator sandbox ---
+# --- Local inbox ---
 
-lib/inbox/notes/
+lib/inbox/
 
 # --- Ephemeral runtime workspaces ---
 

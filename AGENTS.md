@@ -134,11 +134,15 @@ this section in your response.
   agent-facing documentation names a durable repository directory and that
   directory is absent from the working tree, agents SHALL create the directory
   before reading, writing, listing, or failing on that path. In addition, agent
-  SHALL create an empty .gitkeep file within the directory. This applies to
-  canonical paths such as `/lib/inbox/in/`, which Git may omit when empty. It
-  does not apply to generated or placeholder-scoped paths such as
-  `/work/<day>/<task-id>/`, archive entries, `.pan/` sandboxes, or other
-  run-specific directories.
+  SHALL create an empty .gitkeep file within the directory when Git tracks that
+  path. This does not apply to generated, local-only, or placeholder-scoped
+  paths such as `/lib/inbox/` (gitignored transient comms; see
+  `lib/memory/handbook/inbox-lifecycle.md`), `/work/<day>/<task-id>/`,
+  archive entries, `.pan/` sandboxes, or other run-specific directories.
+- **Inbox is local-only.** `/lib/inbox/` holds transient operator ↔ org comms
+  and is listed in `.gitignore`. Agents and tools SHALL materialize
+  `/lib/inbox/{in,out,threads,notes}/` on demand; durable archival copies
+  belong under `/archive/inbox/`.
 - **Operator sandbox is off-limits.** `/lib/inbox/notes/` is human-operator-only.
   No agent SHALL read, traverse, ingest, cite, or modify any file under
   `/lib/inbox/notes/`. Only `/lib/inbox/in/` is the canonical incoming queue; operators
@@ -244,8 +248,9 @@ this section in your response.
 /lib/memory/runbooks/                per-alert runbooks (M4+)
 /lib/memory/postmortems/             blameless RCAs
 /lib/memory/research/                founding research lineage
-/lib/inbox/{in,out,threads}/         human ↔ org message queue
-/lib/inbox/notes/                    human-only operator sandbox (agents MUST NOT read or write)
+/lib/inbox/{in,out,threads}/         local transient comms (gitignored)
+/lib/inbox/notes/                    human-only operator sandbox (gitignored; agents MUST NOT read or write)
+/archive/inbox/in/                   durable archived inbound directives
 /work/<day>/<task-id>/           active pipeline workspace; completed runs move to /archive/work/
 /lib/internal/                        implementation corpus hidden from routine operator surface
 /lib/internal/packages/               TypeScript workspace packages
