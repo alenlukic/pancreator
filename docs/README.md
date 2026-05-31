@@ -6,6 +6,6 @@ This directory holds high-level product and bootstrap documents that operators m
 - `PRD.summary.md` — compact product orientation.
 - `PRD.index.md` — section-level PRD routing map.
 - `PRD.md` — full product requirements; explicit-read by default for detailed requirements and line-anchored citations.
-- `BOOTSTRAP.md` — full phase plan, sequencing, and exit criteria; explicit-read by default when compact routing is insufficient.
+- `BOOTSTRAP.md` — historical record of the completed bootstrap (phases −1 through 5, M1 ratified 2026-05-31). Retained as the canonical, replayable phase sequence behind the `Bootstrap-Phase` commit trailer and `pan re-adopt` lineage; explicit-read by default when compact routing is insufficient. Live state lives in `../pancreator.yaml`.
 
 - `../pancreator.yaml` — live bootstrap tracking and `project_root`; route through `../lib/memory/handbook/pancreator-config.md` before editing.

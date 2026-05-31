@@ -43,7 +43,7 @@ runtime and example apps are backlog-deferred past M1; see `lib/memory/backlog/i
 - M1/bootstrap routing: `docs/M1.index.md`
 - Section map and deep topics: `docs/PRD.index.md`
 - Full normative spec: `docs/PRD.md` only for exact requirements or citations
-- Phase plan: `docs/BOOTSTRAP.md` only when `docs/M1.index.md` is insufficient
+- Phase plan (closed historical record): `docs/BOOTSTRAP.md` only when `docs/M1.index.md` is insufficient
 - Context and indexing policy: `lib/memory/handbook/context-economy.md`
 - Live config and project root: `lib/memory/handbook/pancreator-config.md`
 
