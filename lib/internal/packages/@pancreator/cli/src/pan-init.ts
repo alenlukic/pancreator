@@ -1,15 +1,89 @@
-import { existsSync } from "node:fs";
+import { projectRootAbs } from "@pancreator/core";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const SCAFFOLD_FILES: Record<string, string> = {
-  "pancreator.yaml": `project_root: "."
+export interface EmbeddedInstallManifest {
+  allow: string[];
+  harness_root_allow: string[];
+  deny_prefixes: string[];
+}
+
+const MANIFEST_REL = "lib/memory/handbook/embedded-install-manifest.yaml";
+
+export function embeddedManifestPath(harnessRoot: string): string {
+  return path.join(path.resolve(harnessRoot), MANIFEST_REL);
+}
+
+function parseEmbeddedInstallManifest(raw: string): EmbeddedInstallManifest {
+  const doc: EmbeddedInstallManifest = { allow: [], harness_root_allow: [], deny_prefixes: [] };
+  let section: keyof EmbeddedInstallManifest | null = null;
+  for (const line of raw.split(/\r?\n/u)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    if (trimmed === "allow:") {
+      section = "allow";
+      continue;
+    }
+    if (trimmed === "harness_root_allow:") {
+      section = "harness_root_allow";
+      continue;
+    }
+    if (trimmed === "deny_prefixes:") {
+      section = "deny_prefixes";
+      continue;
+    }
+    const match = /^-\s+(.+)$/u.exec(trimmed);
+    if (match && section) {
+      doc[section].push(match[1]!);
+    }
+  }
+  return doc;
+}
+
+export function loadEmbeddedInstallManifest(harnessRoot: string): EmbeddedInstallManifest {
+  const raw = readFileSync(embeddedManifestPath(harnessRoot), "utf8");
+  return parseEmbeddedInstallManifest(raw);
+}
+
+/** Resolves manifest from the running package when harness copy is absent (tests). */
+export function loadEmbeddedInstallManifestFromRepo(harnessRoot: string): EmbeddedInstallManifest {
+  try {
+    return loadEmbeddedInstallManifest(harnessRoot);
+  } catch {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const fallback = path.resolve(here, "..", "..", "..", "..", "..", "..", MANIFEST_REL);
+    const raw = readFileSync(fallback, "utf8");
+    return parseEmbeddedInstallManifest(raw);
+  }
+}
+
+export function pathMatchesDenyPrefix(relPosix: string, denyPrefixes: string[]): string | null {
+  const norm = relPosix.replace(/\\/gu, "/").replace(/^\/+/u, "");
+  for (const prefix of denyPrefixes) {
+    const p = prefix.replace(/\\/gu, "/");
+    if (norm === p || norm.startsWith(p) || norm.includes(p)) {
+      return prefix;
+    }
+  }
+  return null;
+}
+
+const GREENFIELD_PANCREATOR_YAML = `project_root: "."
 bootstrap:
   phase: "5"
   status: phase-5-in-progress
   completed_phases: ["-1", "0", "1", "2", "3", "4"]
 risk_tier: medium
-`,
+`;
+
+const EMBEDDED_PANCREATOR_YAML = `project_root: ".pancreator"
+risk_tier: medium
+`;
+
+const GREENFIELD_SCAFFOLD: Record<string, string> = {
+  "pancreator.yaml": GREENFIELD_PANCREATOR_YAML,
   "AGENTS.md": "# AGENTS.md\n\nOperator card for this Pancreator workspace.\n",
   "lib/memory/active/current.md": "# Active memory\n\n## Active Feature\n\n- `(none)`\n",
   "lib/pipelines/feature-delivery.yaml": `id: feature-delivery
@@ -32,25 +106,52 @@ stages:
 `,
 };
 
+function embeddedScaffoldEntries(manifest: EmbeddedInstallManifest): Record<string, string> {
+  const entries: Record<string, string> = {};
+  for (const rel of manifest.allow) {
+    const norm = rel.replace(/\/$/u, "");
+    if (norm.endsWith("/") || rel.endsWith("/")) {
+      entries[`${norm}/.gitkeep`] = "";
+    } else {
+      entries[norm] = "";
+    }
+  }
+  entries["lib/memory/active/current.md"] =
+    "# Active memory\n\n## Active Feature\n\n- `(none)`\n";
+  entries["lib/pipelines/feature-delivery.yaml"] = GREENFIELD_SCAFFOLD["lib/pipelines/feature-delivery.yaml"]!;
+  return entries;
+}
+
+export type InitMode = "greenfield" | "embedded";
+
+export function detectInitMode(harnessRoot: string): InitMode {
+  return existsSync(path.join(path.resolve(harnessRoot), "AGENTS.md")) ? "embedded" : "greenfield";
+}
+
 export interface PanInitInput {
   repoRoot: string;
   dryRun?: boolean;
   apply?: boolean;
   force?: boolean;
   clock?: () => Date;
+  mode?: InitMode;
 }
 
 export interface PanInitFileDiff {
   path: string;
+  scope: "harness_root" | "project_root";
   action: "create" | "skip" | "conflict";
 }
 
 export interface PanInitResult {
   command: "init";
-  status: "ok";
+  status: "ok" | "partial";
+  mode: InitMode;
   dryRun: boolean;
   applied: boolean;
   diffs: PanInitFileDiff[];
+  harnessRootConflicts?: PanInitFileDiff[];
+  projectRootConflicts?: PanInitFileDiff[];
   adoptionReport?: string;
   inboxRatificationItem?: string;
 }
@@ -64,60 +165,139 @@ function utcDayStamp(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-async function ensureInboxLayout(repoRoot: string): Promise<void> {
+function initProjectRootAbs(harnessRoot: string, mode: InitMode): string {
+  if (mode === "embedded") {
+    return projectRootAbs(harnessRoot, ".pancreator");
+  }
+  return path.resolve(harnessRoot);
+}
+
+function resolveScaffoldAbs(
+  harnessRoot: string,
+  mode: InitMode,
+  rel: string,
+  scope: "harness_root" | "project_root",
+): string {
+  if (scope === "harness_root") {
+    return path.join(path.resolve(harnessRoot), rel);
+  }
+  return path.join(initProjectRootAbs(harnessRoot, mode), rel);
+}
+
+function buildScaffoldPlan(
+  harnessRoot: string,
+  mode: InitMode,
+  manifest: EmbeddedInstallManifest,
+): Array<{ rel: string; scope: "harness_root" | "project_root"; content: string }> {
+  if (mode === "greenfield") {
+    return Object.entries(GREENFIELD_SCAFFOLD).map(([rel, content]) => ({
+      rel,
+      scope: "harness_root" as const,
+      content,
+    }));
+  }
+
+  const plan: Array<{ rel: string; scope: "harness_root" | "project_root"; content: string }> = [
+    { rel: "pancreator.yaml", scope: "harness_root", content: EMBEDDED_PANCREATOR_YAML },
+  ];
+  for (const rel of manifest.harness_root_allow) {
+    if (rel === "pancreator.yaml") continue;
+    const harnessRel = rel.endsWith("/") ? `${rel}.gitkeep` : rel;
+    plan.push({ rel: harnessRel, scope: "harness_root", content: "" });
+  }
+  for (const [rel, content] of Object.entries(embeddedScaffoldEntries(manifest))) {
+    const deny = pathMatchesDenyPrefix(rel, manifest.deny_prefixes);
+    if (deny) {
+      throw new Error(`embedded scaffold plan includes deny-listed path ${rel} (matches ${deny})`);
+    }
+    plan.push({ rel, scope: "project_root", content });
+  }
+  return plan;
+}
+
+async function ensureInboxLayout(harnessRoot: string, mode: InitMode): Promise<void> {
+  const projectRoot = initProjectRootAbs(harnessRoot, mode);
   await Promise.all(
     INBOX_QUEUE_DIRS.map((queue) =>
-      mkdir(path.join(repoRoot, "lib", "inbox", queue), { recursive: true }),
+      mkdir(path.join(projectRoot, "lib", "inbox", queue), { recursive: true }),
     ),
   );
 }
 
 export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
-  const repoRoot = path.resolve(input.repoRoot);
+  const harnessRoot = path.resolve(input.repoRoot);
   const dryRun = input.dryRun ?? !input.apply;
   const force = input.force ?? false;
+  const mode = input.mode ?? detectInitMode(harnessRoot);
+  const manifest =
+    mode === "embedded"
+      ? loadEmbeddedInstallManifestFromRepo(harnessRoot)
+      : { allow: [], harness_root_allow: [], deny_prefixes: [] };
+  const plan = buildScaffoldPlan(harnessRoot, mode, manifest);
   const diffs: PanInitFileDiff[] = [];
 
-  for (const [rel, content] of Object.entries(SCAFFOLD_FILES)) {
-    const abs = path.join(repoRoot, rel);
+  for (const entry of plan) {
+    const abs = resolveScaffoldAbs(harnessRoot, mode, entry.rel, entry.scope);
+    const deny =
+      entry.scope === "project_root"
+        ? pathMatchesDenyPrefix(entry.rel, manifest.deny_prefixes)
+        : null;
+    if (deny) {
+      const err = new Error(`pan init refused: deny-listed path ${entry.rel} (matches ${deny})`) as Error & {
+        exitCode?: number;
+      };
+      err.exitCode = 1;
+      throw err;
+    }
+
     if (existsSync(abs)) {
       if (force) {
-        diffs.push({ path: rel, action: "create" });
+        diffs.push({ path: entry.rel, scope: entry.scope, action: "create" });
         if (!dryRun) {
           await mkdir(path.dirname(abs), { recursive: true });
-          await writeFile(abs, content, "utf8");
+          await writeFile(abs, entry.content, "utf8");
         }
       } else {
-        diffs.push({ path: rel, action: "conflict" });
+        diffs.push({ path: entry.rel, scope: entry.scope, action: "conflict" });
       }
       continue;
     }
-    diffs.push({ path: rel, action: "create" });
+    diffs.push({ path: entry.rel, scope: entry.scope, action: "create" });
     if (!dryRun) {
       await mkdir(path.dirname(abs), { recursive: true });
-      await writeFile(abs, content, "utf8");
+      await writeFile(abs, entry.content, "utf8");
     }
   }
 
-  const conflicts = diffs.filter((d) => d.action === "conflict");
-  if (conflicts.length > 0 && !force) {
+  const harnessRootConflicts = diffs.filter((d) => d.scope === "harness_root" && d.action === "conflict");
+  const projectRootConflicts = diffs.filter((d) => d.scope === "project_root" && d.action === "conflict");
+  const allConflicts = diffs.filter((d) => d.action === "conflict");
+
+  const onlyHarnessYamlConflict =
+    mode === "embedded" &&
+    harnessRootConflicts.length === 1 &&
+    harnessRootConflicts[0]?.path === "pancreator.yaml" &&
+    projectRootConflicts.length === 0;
+
+  if (allConflicts.length > 0 && !force && !onlyHarnessYamlConflict) {
     const err = new Error(
-      `pan init refused: ${conflicts.length} conflicting file(s). Re-run with --force to overwrite.`,
+      `pan init refused: ${allConflicts.length} conflicting file(s). Re-run with --force to overwrite.`,
     ) as Error & { exitCode?: number };
     err.exitCode = 1;
     throw err;
   }
 
-  let adoptionReport: string | undefined;
-  let inboxRatificationItem: string | undefined;
+  let applied = false;
   if (!dryRun) {
-    await ensureInboxLayout(repoRoot);
+    applied = true;
+    await ensureInboxLayout(harnessRoot, mode);
 
     const now = input.clock?.() ?? new Date();
     const day = utcDayStamp(now);
-    const adoptionDir = path.join(repoRoot, "lib", "memory", "adoption");
+    const projectRoot = initProjectRootAbs(harnessRoot, mode);
+    const adoptionDir = path.join(projectRoot, "lib", "memory", "adoption");
     await mkdir(adoptionDir, { recursive: true });
-    adoptionReport = path.posix.join("lib", "memory", "adoption", `scan-${day}.md`);
+    const adoptionReport = path.posix.join("lib", "memory", "adoption", `scan-${day}.md`);
     const reportBody = [
       "# Adoption scan",
       "",
@@ -127,29 +307,43 @@ export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
       "- proposed_threshold_policy: defaults.medium",
       "",
     ].join("\n");
-    await writeFile(path.join(repoRoot, adoptionReport), reportBody, "utf8");
+    await writeFile(path.join(projectRoot, adoptionReport), reportBody, "utf8");
 
-    const inboxDir = path.join(repoRoot, "lib", "inbox", "in", day.replace(/-/g, "").slice(2));
+    const inboxDir = path.join(projectRoot, "lib", "inbox", "in", day.replace(/-/g, "").slice(2));
     await mkdir(inboxDir, { recursive: true });
     const sid = String(86400 - (now.getUTCHours() * 3600 + now.getUTCMinutes() * 60 + now.getUTCSeconds()));
     const hhmm = `${String(now.getUTCHours()).padStart(2, "0")}${String(now.getUTCMinutes()).padStart(2, "0")}`;
     const ratName = `${sid}_${hhmm}_init-ratification.md`;
-    inboxRatificationItem = path.posix.join("lib", "inbox", "in", path.basename(inboxDir), ratName);
+    const inboxRatificationItem = path.posix.join("lib", "inbox", "in", path.basename(inboxDir), ratName);
     await writeFile(
-      path.join(repoRoot, inboxRatificationItem),
+      path.join(projectRoot, inboxRatificationItem),
       `# Init ratification\n\nReview adoption scan at ${adoptionReport}.\n`,
       "utf8",
     );
+
+    return {
+      command: "init",
+      status: onlyHarnessYamlConflict ? "partial" : "ok",
+      mode,
+      dryRun,
+      applied,
+      diffs,
+      harnessRootConflicts,
+      projectRootConflicts,
+      adoptionReport,
+      inboxRatificationItem,
+    };
   }
 
   return {
     command: "init",
-    status: "ok",
+    status: harnessRootConflicts.length > 0 || projectRootConflicts.length > 0 ? "partial" : "ok",
+    mode,
     dryRun,
-    applied: !dryRun,
+    applied: false,
     diffs,
-    ...(adoptionReport !== undefined ? { adoptionReport } : {}),
-    ...(inboxRatificationItem !== undefined ? { inboxRatificationItem } : {}),
+    ...(harnessRootConflicts.length > 0 ? { harnessRootConflicts } : {}),
+    ...(projectRootConflicts.length > 0 ? { projectRootConflicts } : {}),
   };
 }
 
@@ -180,6 +374,7 @@ export async function runCreatePancreator(input: CreatePancreatorInput): Promise
   const init = await runPanInit({
     repoRoot: targetDir,
     apply: true,
+    mode: "greenfield",
     clock: input.clock,
   });
   const sampleInbox = path.join(targetDir, "lib", "inbox", "in", "sample-directive.md");
@@ -209,4 +404,27 @@ export async function readCursorInvocationMode(repoRoot: string): Promise<"manua
   if (match?.[1] === "sdk") return "sdk";
   if (/runner\.cursor\.invocation:\s*sdk/u.test(raw)) return "sdk";
   return "manual";
+}
+
+/** Reads `runner.cursor.stage_remediation`; defaults to true when invocation is sdk. */
+export async function readStageRemediationEnabled(
+  repoRoot: string,
+  options?: { ledgerInvocation?: "manual" | "sdk" },
+): Promise<boolean> {
+  const cfgPath = path.join(repoRoot, "pancreator.yaml");
+  let invocation = await readCursorInvocationMode(repoRoot);
+  if (invocation === "manual" && !existsSync(cfgPath) && options?.ledgerInvocation === "sdk") {
+    invocation = "sdk";
+  }
+  if (invocation !== "sdk") {
+    return false;
+  }
+  if (!existsSync(cfgPath)) {
+    return true;
+  }
+  const raw = await readFile(cfgPath, "utf8");
+  if (/stage_remediation:\s*false/u.test(raw)) {
+    return false;
+  }
+  return true;
 }

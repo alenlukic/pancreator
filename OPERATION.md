@@ -46,7 +46,8 @@ only in SDK mode; manual mode preserves today's handoff-and-paste loop unchanged
 Use this loop exactly:
 
 1. Put the request in `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
-2. Start the run (path relative to `lib/inbox/in/` only):
+2. Start the run (path relative to `<project_root>/lib/inbox/in/` only; for embedded
+   installs with `project_root: ".pancreator"`, that is `.pancreator/lib/inbox/in/`):
 
    ```bash
    pnpm -w exec pan run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md

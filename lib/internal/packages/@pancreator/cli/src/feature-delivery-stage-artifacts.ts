@@ -1,3 +1,4 @@
+import { resolveRepoPath } from "@pancreator/core";
 import path from "node:path";
 import { existsSync } from "node:fs";
 
@@ -164,7 +165,7 @@ export function validateStageCompletionArtifacts(
   const missing: string[] = [];
   const present: string[] = [];
   for (const rel of required) {
-    if (existsSync(path.join(repoRoot, rel))) {
+    if (existsSync(resolveRepoPath(repoRoot, rel))) {
       present.push(rel);
     } else {
       missing.push(rel);
@@ -187,7 +188,7 @@ export function assertAdvanceArtifacts(
     );
   }
   for (const required of contract.acceptedAdvanceArtifacts) {
-    if (!existsSync(path.join(repoRoot, required))) {
+    if (!existsSync(resolveRepoPath(repoRoot, required))) {
       throw new Error(`Cannot advance ${stage}; required artifact is missing: ${required}.`);
     }
   }

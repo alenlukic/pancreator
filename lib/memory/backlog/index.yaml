@@ -664,3 +664,21 @@ items:
       - /lib/pipelines/knowledge-curation.yaml
     evidence: "Feature shipped WP1 greenfield evidence kit, deterministic evaluator, WP2 knowledge-curation cron-seed guidance, and WP3 KPI baseline evidence; review and qa gates passed per delivery-report.md; WP5 state-transition docs intentionally deferred per plan decision D4."
     notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure. Deferred follow-ons tracked in index.json open_followups and policy-compliance.json deferred_items."
+
+  - id: embedded-harness-install-project-root-pancreator-and-fresh-install-manifest-shipped
+    title: Embedded harness install — project_root .pancreator and fresh-install manifest delivered
+    source: lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md
+    owner: librarian
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-05-30T20:20:56Z"
+    delivered_at: "2026-05-30T21:05:00Z"
+    links:
+      - /lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md
+      - /lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/spec.md
+      - /lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
+      - /lib/internal/packages/@pancreator/core/src/project-root.ts
+      - /lib/memory/handbook/embedded-install-manifest.yaml
+    evidence: "Feature shipped shared project-root resolver, CLI path prefixing, embedded pan init scaffold, allow/deny manifest, US-9 kit updates, and regression tests; review and qa gates passed per delivery-report.md."
+    notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure. Ten stale spec citations flagged for bootstrap-content-hash-refresh follow-up."

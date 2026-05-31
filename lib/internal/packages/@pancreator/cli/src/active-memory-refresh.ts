@@ -1,3 +1,4 @@
+import { resolveProjectPath, resolveRepoPath } from "@pancreator/core";
 import { existsSync } from "node:fs";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import * as path from "node:path";
@@ -41,7 +42,7 @@ function normalizeInboxRel(rel: string): string {
 
 export function validateActiveFeatureInboxPointers(repoRoot: string, sectionInner: string): string | null {
   for (const rel of extractActiveFeatureInboxPointers(sectionInner)) {
-    if (!existsSync(path.join(repoRoot, rel))) {
+    if (!existsSync(resolveRepoPath(repoRoot, rel))) {
       return (
         `Active Feature pointer ${JSON.stringify(rel)} is missing under lib/inbox/in/; ` +
         "set or clear the pointer manually in lib/memory/active/current.md " +
@@ -255,7 +256,7 @@ async function resolveInboxInPathToArchive(
   taskId?: string,
 ): Promise<string | null> {
   const basename = path.posix.basename(inboxInRel);
-  const archiveInRoot = path.join(repoRoot, "archive", "inbox", "in");
+  const archiveInRoot = resolveProjectPath(repoRoot, "archive", "inbox", "in");
   if (!existsSync(archiveInRoot)) {
     return null;
   }
@@ -265,7 +266,7 @@ async function resolveInboxInPathToArchive(
     for (const day of dayDirs) {
       if (!day.isDirectory()) continue;
       const candidateRel = path.posix.join("archive", "inbox", "in", day.name, taskId, basename);
-      if (existsSync(path.join(repoRoot, candidateRel))) {
+      if (existsSync(resolveRepoPath(repoRoot, candidateRel))) {
         return candidateRel;
       }
     }
@@ -284,7 +285,7 @@ async function resolveInboxInPathToArchive(
         continue;
       }
       const candidateRel = path.posix.join("archive", "inbox", "in", day.name, entry.name, basename);
-      if (existsSync(path.join(repoRoot, candidateRel))) {
+      if (existsSync(resolveRepoPath(repoRoot, candidateRel))) {
         return candidateRel;
       }
     }
@@ -314,12 +315,12 @@ export async function resolveArchivedInboxPointer(
         : undefined;
 
   for (const rel of candidates) {
-    if (rel.startsWith("archive/inbox/") && existsSync(path.join(repoRoot, rel))) {
+    if (rel.startsWith("archive/inbox/") && existsSync(resolveRepoPath(repoRoot, rel))) {
       return rel;
     }
   }
   for (const rel of candidates) {
-    if (existsSync(path.join(repoRoot, rel))) {
+    if (existsSync(resolveRepoPath(repoRoot, rel))) {
       return rel;
     }
   }
@@ -345,7 +346,7 @@ export async function patchFeatureIndexArchivedInbox(
   archivedInboxRel: string,
   priorInboxSourceRel: string,
 ): Promise<void> {
-  const indexAbs = path.join(repoRoot, "lib", "memory", "features", featureId, "index.json");
+  const indexAbs = resolveProjectPath(repoRoot, "lib", "memory", "features", featureId, "index.json");
   if (!existsSync(indexAbs)) {
     return;
   }
@@ -394,7 +395,7 @@ export async function patchFeatureIndexArchivedInbox(
 }
 
 async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {
-  const featuresRoot = path.join(repoRoot, "lib", "memory", "features");
+  const featuresRoot = resolveProjectPath(repoRoot, "lib", "memory", "features");
   let dirs: string[] = [];
   try {
     dirs = (await readdir(featuresRoot, { withFileTypes: true }))
@@ -575,7 +576,7 @@ export async function applyActiveMemoryRefreshOnArtifactClosure(
   input: { archivedInboxSourceRel: string; clock?: () => Date },
 ): Promise<ActiveMemoryArtifactClosureRefreshResult> {
   const repoRootAbs = path.resolve(repoRoot);
-  const currentAbs = path.join(repoRootAbs, CURRENT_MD_REL);
+  const currentAbs = resolveRepoPath(repoRootAbs, CURRENT_MD_REL);
   if (!existsSync(currentAbs)) {
     throw new Error(`Missing active memory file ${CURRENT_MD_REL}`);
   }
@@ -605,7 +606,7 @@ export async function rewriteActiveMemoryFile(opts: {
   readonly clock: () => Date;
 }): Promise<number> {
   const repoRootAbs = path.resolve(opts.repoRoot);
-  const currentAbs = path.join(repoRootAbs, CURRENT_MD_REL);
+  const currentAbs = resolveRepoPath(repoRootAbs, CURRENT_MD_REL);
   if (!existsSync(currentAbs)) {
     throw new Error(`Missing active memory file ${CURRENT_MD_REL}`);
   }

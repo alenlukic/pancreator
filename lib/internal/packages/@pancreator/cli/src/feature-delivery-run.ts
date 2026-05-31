@@ -1,4 +1,4 @@
-import { asTaskId, type TaskId } from "@pancreator/core";
+import { asTaskId, resolveProjectPath, resolveRepoPath, type TaskId } from "@pancreator/core";
 import type { InterventionState } from "@pancreator/intervention";
 import { loadPipelineYaml, type PipelineDefinition, type PipelineStage } from "@pancreator/pipeline";
 import {
@@ -255,9 +255,9 @@ export async function startFeatureDelivery(
   const repoRoot = path.resolve(input.repoRoot);
   const now = input.clock?.() ?? new Date();
   const inboxRel = assertInboxInRelativePath(input.inboxEntry, "inbox entry");
-  const inboxPath = path.join(repoRoot, "lib", "inbox", "in", ...inboxRel.split("/"));
+  const inboxPath = resolveProjectPath(repoRoot, "lib", "inbox", "in", ...inboxRel.split("/"));
   const directive = await readFile(inboxPath, "utf8");
-  const pipelinePath = path.join(repoRoot, "lib", "pipelines", "feature-delivery.yaml");
+  const pipelinePath = resolveProjectPath(repoRoot, "lib", "pipelines", "feature-delivery.yaml");
   const pipeline = loadPipelineYaml(pipelinePath);
   if (pipeline.id !== "feature-delivery") {
     throw new Error(`Expected feature-delivery pipeline at ${pipelinePath}; found ${pipeline.id}.`);
@@ -271,7 +271,7 @@ export async function startFeatureDelivery(
   const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
 
   const runDirRel = path.posix.join("work", dayDir, taskId);
-  const runDir = path.join(repoRoot, "work", dayDir, taskId);
+  const runDir = resolveProjectPath(repoRoot, "work", dayDir, taskId);
   const stateFileRel = path.posix.join(runDirRel, "state.json");
   const handoffFileRel = path.posix.join(runDirRel, "handoff.md");
   const runLogFileRel = path.posix.join(runDirRel, "run.log.jsonl");
@@ -363,7 +363,7 @@ export async function appendFeatureDeliveryInterventionRunLog(input: {
       return false;
     }
     const state = await readFeatureDeliveryState(stateFile.abs);
-    const runLogAbs = path.join(repoRoot, state.artifacts.runLogFile);
+    const runLogAbs = resolveRepoPath(repoRoot, state.artifacts.runLogFile);
     await appendRunLogRecord(
       runLogAbs,
       makeInterventionRecord(state, now, input.command, input.abortReason),
@@ -483,7 +483,7 @@ export async function advanceFeatureDelivery(
     if (haltSummary !== null) {
       await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
       await appendRunLogRecord(
-        path.join(repoRoot, state.artifacts.runLogFile),
+        resolveRepoPath(repoRoot, state.artifacts.runLogFile),
         makeAdvanceRecord(state, now, applied.fromStage, applied.toStage, applied.event, applied.artifact),
       );
       const haltError = new Error(`Feature-delivery retry limit halt: ${haltSummary}`) as Error & {
@@ -494,12 +494,12 @@ export async function advanceFeatureDelivery(
     }
 
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
-    if (state.currentStage !== TERMINAL_STAGE) {
+    if (applied.toStage !== TERMINAL_STAGE) {
       await invokeFeatureDeliveryEnteringStage({
         repoRoot,
         state,
         pipeline,
-        stageId: state.currentStage,
+        stageId: applied.toStage,
         compiled,
         now,
         testHooks: input.testHooks,
@@ -537,7 +537,7 @@ export async function advanceFeatureDelivery(
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
   await appendRunLogRecord(
-    path.join(repoRoot, state.artifacts.runLogFile),
+    resolveRepoPath(repoRoot, state.artifacts.runLogFile),
     makeAdvanceRecord(
       state,
       now,
@@ -600,9 +600,24 @@ export async function repairFeatureDeliveryState(
     },
   ];
 
+  const invocation = await readCursorInvocationMode(repoRoot);
+  ensureAutomationState(state, invocation);
+  if (invocation === "sdk") {
+    state.status = "ready_for_stage_delegation";
+    const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot,
+      state,
+      pipeline,
+      stageId: targetStage,
+      compiled,
+      now,
+    });
+  }
+
   await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
   await appendRunLogRecord(
-    path.join(repoRoot, state.artifacts.runLogFile),
+    resolveRepoPath(repoRoot, state.artifacts.runLogFile),
     makeRepairRecord(state, now, previousStage, targetStage, artifact.rel, reason),
   );
 
@@ -666,27 +681,27 @@ export async function closeFeatureDeliveryArtifacts(
   }
 
   const closure = finalClosurePaths(state);
-  const activeRunDirAbs = path.join(repoRoot, ...closure.runDirRel.split("/"));
-  const archiveRunDirAbs = path.join(repoRoot, ...closure.workArchiveRel.split("/"));
-  const inboxSourceAbs = path.join(repoRoot, ...closure.inboxSourceRel.split("/"));
-  const inboxArchiveAbs = path.join(repoRoot, ...closure.inboxArchiveRel.split("/"));
+  const activeRunDirAbs = resolveRepoPath(repoRoot, closure.runDirRel);
+  const archiveRunDirAbs = resolveRepoPath(repoRoot, closure.workArchiveRel);
+  const inboxSourceAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
+  const inboxArchiveAbs = resolveRepoPath(repoRoot, closure.inboxArchiveRel);
   const policyRel = path.posix.join(closure.runDirRel, "policy-compliance.json");
   const indexRel = path.posix.join("lib", "memory", "features", state.featureId, "index.json");
   const activeMemoryRel = path.posix.join("lib", "memory", "active", "current.md");
 
   await assertExistingDirectory(activeRunDirAbs, closure.runDirRel);
-  await assertExistingFile(path.join(repoRoot, ...policyRel.split("/")), policyRel);
-  await assertExistingFile(path.join(repoRoot, ...indexRel.split("/")), indexRel);
+  await assertExistingFile(resolveRepoPath(repoRoot, policyRel), policyRel);
+  await assertExistingFile(resolveRepoPath(repoRoot, indexRel), indexRel);
   await assertExistingFile(inboxSourceAbs, closure.inboxSourceRel);
   await assertPathMissing(archiveRunDirAbs, closure.workArchiveRel);
   await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
 
-  const stateSnapshot = await readFile(path.join(repoRoot, state.artifacts.stateFile), "utf8");
-  const handoffSnapshot = await readFile(path.join(repoRoot, state.artifacts.handoffFile), "utf8");
-  const nextPromptSnapshot = await readFile(path.join(repoRoot, requireNextPromptFile(state)), "utf8");
-  const runLogSnapshot = await readFile(path.join(repoRoot, state.artifacts.runLogFile), "utf8");
-  const indexSnapshot = await readFile(path.join(repoRoot, indexRel), "utf8");
-  const activeMemoryAbs = path.join(repoRoot, activeMemoryRel);
+  const stateSnapshot = await readFile(resolveRepoPath(repoRoot, state.artifacts.stateFile), "utf8");
+  const handoffSnapshot = await readFile(resolveRepoPath(repoRoot, state.artifacts.handoffFile), "utf8");
+  const nextPromptSnapshot = await readFile(resolveRepoPath(repoRoot, requireNextPromptFile(state)), "utf8");
+  const runLogSnapshot = await readFile(resolveRepoPath(repoRoot, state.artifacts.runLogFile), "utf8");
+  const indexSnapshot = await readFile(resolveRepoPath(repoRoot, indexRel), "utf8");
+  const activeMemoryAbs = resolveRepoPath(repoRoot, activeMemoryRel);
   const activeMemorySnapshot = existsSync(activeMemoryAbs)
     ? await readFile(activeMemoryAbs, "utf8")
     : null;
@@ -729,22 +744,22 @@ export async function closeFeatureDeliveryArtifacts(
     ];
 
     await writeFile(
-      path.join(repoRoot, ...state.artifacts.stateFile.split("/")),
+      resolveRepoPath(repoRoot, state.artifacts.stateFile),
       stringifyCliJson(repoRoot, state),
       "utf8",
     );
     await writeFile(
-      path.join(repoRoot, ...state.artifacts.handoffFile.split("/")),
+      resolveRepoPath(repoRoot, state.artifacts.handoffFile),
       renderHandoff(state, pipeline),
       "utf8",
     );
     await writeFile(
-      path.join(repoRoot, ...requireNextPromptFile(state).split("/")),
+      resolveRepoPath(repoRoot, requireNextPromptFile(state)),
       `# Generated by pan close-artifacts\n\n${renderNextPrompt(state, pipeline)}`,
       "utf8",
     );
     await appendRunLogRecord(
-      path.join(repoRoot, ...state.artifacts.runLogFile.split("/")),
+      resolveRepoPath(repoRoot, state.artifacts.runLogFile),
       makeCloseRecord(state, now, previousRunDir, closure.workArchiveRel, closure.inboxSourceRel, closure.inboxArchiveRel),
     );
 
@@ -778,10 +793,10 @@ export async function closeFeatureDeliveryArtifacts(
     };
   } catch (error) {
     const rollbackFailures: string[] = [];
-    const activeRunStateAbs = path.join(repoRoot, ...closure.runDirRel.split("/"));
-    const archiveRunStateAbs = path.join(repoRoot, ...closure.workArchiveRel.split("/"));
-    const activeInboxStateAbs = path.join(repoRoot, ...closure.inboxSourceRel.split("/"));
-    const archiveInboxStateAbs = path.join(repoRoot, ...closure.inboxArchiveRel.split("/"));
+    const activeRunStateAbs = resolveRepoPath(repoRoot, closure.runDirRel);
+    const archiveRunStateAbs = resolveRepoPath(repoRoot, closure.workArchiveRel);
+    const activeInboxStateAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
+    const archiveInboxStateAbs = resolveRepoPath(repoRoot, closure.inboxArchiveRel);
 
     if (runArchived && existsSync(archiveRunStateAbs) && !existsSync(activeRunStateAbs)) {
       try {
@@ -812,7 +827,7 @@ export async function closeFeatureDeliveryArtifacts(
     }
 
     try {
-      await writeFile(path.join(repoRoot, ...indexRel.split("/")), indexSnapshot, "utf8");
+      await writeFile(resolveRepoPath(repoRoot, indexRel), indexSnapshot, "utf8");
     } catch (rollbackError) {
       rollbackFailures.push(`restore feature index (${formatError(rollbackError)})`);
     }
@@ -890,8 +905,8 @@ async function suggestTaskIdFromSlug(repoRoot: string, rawTaskId: string): Promi
     return null;
   }
   const roots = [
-    path.join(repoRoot, "work"),
-    path.join(repoRoot, "archive", "work"),
+    resolveProjectPath(repoRoot, "work"),
+    resolveProjectPath(repoRoot, "archive", "work"),
   ];
   const suffix = `_${slug}`;
   const matches: Array<{ taskId: string; mtimeMs: number }> = [];
@@ -1522,8 +1537,8 @@ function makeStateRecord(
 
 async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: string; rel: string }> {
   const roots = [
-    { abs: path.join(repoRoot, "work"), rel: path.posix.join("work") },
-    { abs: path.join(repoRoot, "archive", "work"), rel: path.posix.join("archive", "work") },
+    { abs: resolveProjectPath(repoRoot, "work"), rel: path.posix.join("work") },
+    { abs: resolveProjectPath(repoRoot, "archive", "work"), rel: path.posix.join("archive", "work") },
   ];
 
   for (const root of roots) {
@@ -1560,7 +1575,7 @@ async function readFeatureDeliveryState(stateFile: string): Promise<FeatureDeliv
 }
 
 function loadFeatureDeliveryPipeline(repoRoot: string): PipelineDefinition {
-  const pipeline = loadPipelineYaml(path.join(repoRoot, "lib", "pipelines", "feature-delivery.yaml"));
+  const pipeline = loadPipelineYaml(resolveProjectPath(repoRoot, "lib", "pipelines", "feature-delivery.yaml"));
   if (pipeline.id !== "feature-delivery") {
     throw new Error(`Expected feature-delivery pipeline; found ${pipeline.id}.`);
   }
@@ -1573,10 +1588,10 @@ async function persistStateAndPrompts(
   pipeline: PipelineDefinition,
   mode: "advance" | "repair" | "refresh-prompt",
 ): Promise<void> {
-  await writeFile(path.join(repoRoot, state.artifacts.stateFile), stringifyCliJson(repoRoot, state), "utf8");
-  await writeFile(path.join(repoRoot, state.artifacts.handoffFile), renderHandoff(state, pipeline), "utf8");
+  await writeFile(resolveRepoPath(repoRoot, state.artifacts.stateFile), stringifyCliJson(repoRoot, state), "utf8");
+  await writeFile(resolveRepoPath(repoRoot, state.artifacts.handoffFile), renderHandoff(state, pipeline), "utf8");
   await writeFile(
-    path.join(repoRoot, requireNextPromptFile(state)),
+    resolveRepoPath(repoRoot, requireNextPromptFile(state)),
     `# Generated by pan ${mode}\n\n${renderNextPrompt(state, pipeline)}`,
     "utf8",
   );
@@ -1664,7 +1679,7 @@ async function tryResolveReviewReentryAdvance(
     return null;
   }
 
-  const reviewContent = await readFile(path.join(repoRoot, reviewArtifact), "utf8");
+  const reviewContent = await readFile(resolveRepoPath(repoRoot, reviewArtifact), "utf8");
   const verdict = parseReviewPassesVerdict(reviewContent);
   if (verdict !== true) {
     throw new Error(
@@ -1676,7 +1691,7 @@ async function tryResolveReviewReentryAdvance(
   }
 
   const implementationReport = path.posix.join(state.artifacts.runDir, "implementation-report.md");
-  if (!existsSync(path.join(repoRoot, implementationReport))) {
+  if (!existsSync(resolveRepoPath(repoRoot, implementationReport))) {
     throw new Error(
       `Cannot advance ${state.taskId} with ${reviewArtifact} from implement after must_fix: ` +
         `required artifact is missing: ${implementationReport}.`,
@@ -1860,7 +1875,7 @@ async function advanceReviewReentryFromImplement(input: {
     now,
   );
   await appendRunLogRecord(
-    path.join(repoRoot, state.artifacts.runLogFile),
+    resolveRepoPath(repoRoot, state.artifacts.runLogFile),
     makeAdvanceRecord(
       state,
       now,
@@ -1887,7 +1902,7 @@ async function advanceReviewReentryFromImplement(input: {
     now,
   );
   await appendRunLogRecord(
-    path.join(repoRoot, state.artifacts.runLogFile),
+    resolveRepoPath(repoRoot, state.artifacts.runLogFile),
     makeAdvanceRecord(
       state,
       now,
@@ -2090,7 +2105,7 @@ async function assertRepoRelativeExistingFile(
   if (rel === "" || rel.includes("\0") || rel.split("/").some((part) => part === ".." || part === ".")) {
     throw new Error(`${label} MUST be a safe repo-relative path.`);
   }
-  const abs = path.join(repoRoot, ...rel.split("/"));
+  const abs = resolveRepoPath(repoRoot, rel);
   const relativeBack = path.relative(repoRoot, abs);
   if (relativeBack.startsWith("..") || path.isAbsolute(relativeBack)) {
     throw new Error(`${label} MUST stay inside the repository.`);

@@ -1,3 +1,4 @@
+import { resolveProjectPath } from "@pancreator/core";
 import { parsePersonaMarkdown } from "@pancreator/persona";
 import type { PersonaSpec } from "@pancreator/persona";
 import type { RunnerPersonaInput } from "@pancreator/runner-cursor";
@@ -13,7 +14,7 @@ export class PersonaResolveError extends Error {
 }
 
 export async function listKnownPersonaIds(repoRoot: string): Promise<Set<string>> {
-  const dir = path.join(repoRoot, "lib", "personas");
+  const dir = resolveProjectPath(repoRoot, "lib", "personas");
   try {
     const entries = await readdir(dir);
     return new Set(
@@ -30,7 +31,7 @@ export async function listKnownPersonaIds(repoRoot: string): Promise<Set<string>
 
 export async function resolvePersona(repoRoot: string, personaId: string): Promise<RunnerPersonaInput> {
   const rel = path.posix.join("lib", "personas", `${personaId}.md`);
-  const abs = path.join(repoRoot, rel);
+  const abs = resolveProjectPath(repoRoot, ...rel.split("/"));
   let raw: string;
   try {
     raw = await readFile(abs, "utf8");

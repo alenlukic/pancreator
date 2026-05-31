@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
-import { asTaskId } from "@pancreator/core";
+import { asTaskId, resolveProjectPath } from "@pancreator/core";
 import { Command } from "commander";
 import { FileInbox } from "@pancreator/inbox";
 import {
@@ -171,8 +171,8 @@ function buildDefaultIntakeMarkdown(opts: {
 }
 
 function isArchivedDayBucketCollision(repoRoot: string, dayBucket: string): boolean {
-  const active = path.join(repoRoot, "lib", "inbox", "in", dayBucket);
-  const archived = path.join(repoRoot, "archive", "inbox", "in", dayBucket);
+  const active = resolveProjectPath(repoRoot, "lib", "inbox", "in", dayBucket);
+  const archived = resolveProjectPath(repoRoot, "archive", "inbox", "in", dayBucket);
   return existsSync(active) && existsSync(archived);
 }
 
@@ -212,17 +212,17 @@ export async function parseAndRun(
     .action(async (cmdOpts: { dryRun?: boolean; apply?: boolean; force?: boolean }) => {
       const dryRun = cmdOpts.apply ? false : Boolean(cmdOpts.dryRun ?? true);
       try {
-        emit(
-          writeOut,
+        const initResult = await runPanInit({
           repoRoot,
-          await runPanInit({
-            repoRoot,
-            dryRun,
-            apply: Boolean(cmdOpts.apply),
-            force: Boolean(cmdOpts.force),
-            clock: options?.clock,
-          }),
-        );
+          dryRun,
+          apply: Boolean(cmdOpts.apply),
+          force: Boolean(cmdOpts.force),
+          clock: options?.clock,
+        });
+        emit(writeOut, repoRoot, initResult);
+        if (initResult.status === "partial") {
+          exit.code = 1;
+        }
       } catch (e) {
         const err = e as Error & { exitCode?: number };
         writeErr(`${err.message}\n`);

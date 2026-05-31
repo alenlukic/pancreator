@@ -7,8 +7,11 @@ import {
   evaluateChecklistRules,
   evaluateGreenfieldEvidence,
   evaluateGreenfieldEvidenceFile,
+  loadEmbeddedEvidenceExample,
   loadEvidenceFile,
+  matchDenyListedPath,
   parseArgs,
+  validateDenyListedEvidencePaths,
   validateEvidenceStructure,
 } from "../lib/internal/tools/evaluate-greenfield-evidence.mjs";
 
@@ -24,6 +27,7 @@ const PASSING_ARTIFACT = {
     target_repo: { path: "/tmp/sample-repo" },
     pipeline_id: "init-greenfield",
     captured_at_iso: "2026-05-30T12:00:00.000Z",
+    project_root: ".",
   },
   provenance: {
     cli_commands: ["pnpm -w exec pan create-pancreator sample"],
@@ -111,4 +115,29 @@ test("evaluateGreenfieldEvidenceFile includes input path", () => {
   const result = evaluateGreenfieldEvidenceFile(FIXTURE_PATH);
   assert.equal(result.inputPath, FIXTURE_PATH);
   assert.equal(result.verdict, VERDICTS.PASS);
+});
+
+test("validateEvidenceStructure requires metadata.project_root", () => {
+  const artifact = JSON.parse(JSON.stringify(PASSING_ARTIFACT));
+  delete artifact.metadata.project_root;
+  const errors = validateEvidenceStructure(artifact);
+  assert.ok(errors.some((e) => e.includes("project_root")));
+});
+
+test("validateDenyListedEvidencePaths rejects archive paths", () => {
+  const artifact = JSON.parse(JSON.stringify(PASSING_ARTIFACT));
+  artifact.provenance.cli_commands = ["rsync archive/inbox/in/"];
+  const errors = validateDenyListedEvidencePaths(artifact);
+  assert.ok(errors.length > 0);
+});
+
+test("matchDenyListedPath flags lib/internal", () => {
+  assert.equal(matchDenyListedPath("lib/internal/foo"), "lib/internal/");
+});
+
+test("embedded fixture example passes evaluator", () => {
+  const artifact = loadEmbeddedEvidenceExample(FIXTURE_PATH);
+  const result = evaluateGreenfieldEvidence(artifact);
+  assert.equal(result.verdict, VERDICTS.PASS);
+  assert.equal(artifact.metadata.project_root, ".pancreator");
 });

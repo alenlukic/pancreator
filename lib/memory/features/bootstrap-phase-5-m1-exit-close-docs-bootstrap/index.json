@@ -34,6 +34,21 @@
       "kind": "kpi-baseline-evidence",
       "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/kpi-baseline-evidence.json",
       "content_hash": "bee6bb7"
+    },
+    {
+      "kind": "xeremia-greenfield-evidence",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json",
+      "content_hash": "231abd1",
+      "source_host": "/Users/alen/Dev/xeremia-sandbox/.pancreator/lib/memory/adoption/greenfield-us9-evidence.json",
+      "captured_at_iso": "2026-05-31T02:05:32.000Z",
+      "task_id": "79330_0157_xeremia-us9-inaugural"
+    },
+    {
+      "kind": "xeremia-greenfield-evidence-evaluator",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence-evaluator.json",
+      "content_hash": "912ca8c",
+      "verdict": "pass",
+      "evaluated_at_iso": "2026-05-31T02:20:00.000Z"
     }
   ],
   "accepted_ship_artifacts": [
@@ -174,10 +189,15 @@
   "open_followups": [
     {
       "id": "WP5-state-transition",
-      "owner": "tech-lead",
-      "status": "deferred",
-      "reason": "pancreator.yaml, docs/M1.index.md, and AGENTS.md bootstrap-status updates remain blocked until follow-on US-9 evidence passes per plan decision D4.",
-      "source": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
+      "owner": "tech-writer",
+      "status": "open",
+      "reason": "Follow-on US-9 evidence from xeremia-sandbox passed in-repo evaluator (verdict pass, exit 0). WP5.1-WP5.5 state-transition doc updates may proceed per spec WP5.",
+      "source": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence-evaluator.json",
+      "evidence_artifacts": [
+        "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json",
+        "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence-evaluator.json"
+      ],
+      "unblocked_at_iso": "2026-05-31T02:20:00.000Z"
     },
     {
       "id": "WP4-handbook-promotions",
@@ -196,10 +216,20 @@
   ],
   "operator_setup": {
     "wp1_greenfield_us9": {
-      "candidate_monorepo_slot": "<operator fills absolute path to external monorepo>",
+      "candidate_monorepo_slot": "/Users/alen/Dev/xeremia-sandbox",
+      "live_evidence_artifact": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json",
+      "live_evidence_evaluator": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence-evaluator.json",
+      "live_evidence_verdict": "pass",
       "evaluator_command": "node lib/internal/tools/evaluate-greenfield-evidence.mjs --input <artifact.json>",
       "fixture_command": "node lib/internal/tools/evaluate-greenfield-evidence.mjs --input lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json",
-      "required_env": ["CANDIDATE_REPO"]
+      "required_env": ["CANDIDATE_REPO"],
+      "embedded_adopt_steps": [
+        "cd /Users/alen/Dev/xeremia-sandbox",
+        "pnpm -w exec pan init --apply",
+        "Confirm scaffold under .pancreator/lib/ only (no archive/, lib/memory/backlog/, or lib/internal/)",
+        "pnpm -w exec pan run feature-delivery <day-bucket>/<inbox-entry>.md",
+        "node lib/internal/tools/evaluate-greenfield-evidence.mjs --input lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json"
+      ]
     },
     "wp2_knowledge_curation_cron_seed": {
       "cadence": "daily (active bootstrap) / weekly (quiet)",

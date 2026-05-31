@@ -26,6 +26,9 @@ threshold_policy: defaults.medium  # from pancreator-defaults.yaml
 runner:
   cursor:
     invocation: sdk
+    # When true (default under sdk), incomplete stage artifacts trigger
+    # pancreator-engineer remediation before the stage is treated as complete.
+    stage_remediation: true
 contract_bundle:
   kind: rego
   telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]

@@ -1,4 +1,4 @@
-import { asTaskId } from "@pancreator/core";
+import { asTaskId, resolveRepoPath } from "@pancreator/core";
 import {
   compilePipeline,
   executeStageSlice,
@@ -19,7 +19,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { readCursorInvocationMode } from "./pan-init.js";
+import { readCursorInvocationMode, readStageRemediationEnabled } from "./pan-init.js";
 import {
   primaryArtifactForEnteringStage,
   requiredArtifactsAfterStageWork,
@@ -185,7 +185,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const knownPersonas = await listKnownPersonaIds(repoRoot);
   const stagePromptPath =
     input.state.artifacts.nextPromptFile ?? path.posix.join(input.state.artifacts.runDir, "next-prompt.md");
-  const stagePromptAbs = path.join(repoRoot, stagePromptPath);
+  const stagePromptAbs = resolveRepoPath(repoRoot, stagePromptPath);
   const stagePromptContent = existsSync(stagePromptAbs)
     ? await readFile(stagePromptAbs, "utf8")
     : "";
@@ -236,7 +236,10 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   }
 
   let validation = validateStageCompletionArtifacts(repoRoot, input.state, input.stageId);
-  if (!validation.ok || envelope.sdkResult?.status === "error") {
+  const remediationEnabled = await readStageRemediationEnabled(repoRoot, {
+    ledgerInvocation: input.state.automation?.runnerInvocation,
+  });
+  if ((!validation.ok || envelope.sdkResult?.status === "error") && remediationEnabled) {
     validation = await remediateStageArtifacts({
       repoRoot,
       state: input.state,
@@ -274,7 +277,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   }
 
   await appendRunLogRecord(
-    path.join(repoRoot, input.state.artifacts.runLogFile),
+    resolveRepoPath(repoRoot, input.state.artifacts.runLogFile),
     runLogRecordFromRunnerEnvelope(envelope, input.state, now),
   );
 
@@ -649,7 +652,7 @@ export async function resolveTestStageAdvanceEvent(
   if (state.currentStage !== "test" || event !== "qa_fails") {
     return event;
   }
-  const testAbs = path.join(repoRoot, artifactRel);
+  const testAbs = resolveRepoPath(repoRoot, artifactRel);
   if (!existsSync(testAbs)) {
     return event;
   }

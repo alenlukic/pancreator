@@ -1,0 +1,39 @@
+# Embedded harness install manifest — allow/deny lists for pan init and adopter dry-run.
+# Project-relative paths are rooted at <project_root> unless noted as harness_root.
+
+allow:
+  - lib/personas/
+  - lib/personas/skills/
+  - lib/pipelines/
+  - lib/memory/handbook/
+  - lib/memory/active/
+  - lib/memory/adoption/
+  - lib/memory/features/
+  - lib/memory/checkpoints/
+  - lib/inbox/in/
+  - lib/inbox/out/
+  - lib/inbox/threads/
+  - lib/inbox/notes/
+  - work/
+  - .pan/worktrees/
+  - .pan/sandboxes/
+  - .pan/scheduler/
+
+harness_root_allow:
+  - pancreator.yaml
+  - .cursor/agents/
+
+deny_prefixes:
+  - archive/
+  - lib/memory/backlog/
+  - lib/memory/adr/
+  - lib/memory/rfc/
+  - lib/memory/postmortems/
+  - lib/memory/research/
+  - lib/memory/runbooks/
+  - lib/memory/smes/
+  - lib/internal/
+  - tests/
+  - docs/PRD.md
+  - docs/BOOTSTRAP.md
+  - docs/M1.index.md

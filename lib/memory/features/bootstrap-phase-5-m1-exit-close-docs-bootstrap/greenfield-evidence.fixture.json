@@ -9,7 +9,41 @@
       "git_remote": "git@github.com:example/candidate-monorepo.git"
     },
     "pipeline_id": "init-greenfield",
-    "captured_at_iso": "2026-05-30T16:30:00.000Z"
+    "captured_at_iso": "2026-05-30T16:30:00.000Z",
+    "project_root": "."
+  },
+  "embedded_example": {
+    "schema_version": "1",
+    "artifact_kind": "greenfield-us9-evidence",
+    "metadata": {
+      "feature_id": "bootstrap-phase-5-m1-exit-close-docs-bootstrap",
+      "task_id": "27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap",
+      "target_repo": {
+        "path": "/Users/alen/Dev/xeremia-sandbox"
+      },
+      "pipeline_id": "init-greenfield",
+      "captured_at_iso": "2026-05-30T16:30:00.000Z",
+      "project_root": ".pancreator"
+    },
+    "provenance": {
+      "cli_commands": [
+        "pnpm -w exec pan init --apply",
+        "pnpm -w exec pan run feature-delivery <day>/<inbox-entry>.md"
+      ],
+      "pipeline_stages_completed": ["scaffold", "spec", "plan"]
+    },
+    "checklist": {
+      "agents_md_present": true,
+      "handbook_seeds_present": true,
+      "persona_roster_present": true,
+      "feature_spec_authored": true,
+      "plan_touch_set_authored": true,
+      "no_overwritten_existing_files": true
+    },
+    "verdict_preconditions": {
+      "minimum_stages_completed": 3,
+      "required_checklist_pass_count": 6
+    }
   },
   "provenance": {
     "cli_commands": [
