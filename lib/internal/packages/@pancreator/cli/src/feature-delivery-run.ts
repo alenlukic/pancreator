@@ -1714,7 +1714,7 @@ async function tryAdvanceFromReportApproval(input: {
   if (!input.artifactRel.startsWith("lib/inbox/out/")) {
     return null;
   }
-  const content = await readFile(path.join(input.repoRoot, input.artifactRel), "utf8");
+  const content = await readFile(resolveRepoPath(input.repoRoot, input.artifactRel), "utf8");
   const decision = parseReportApprovalArtifact(content);
   if (decision === null) {
     return null;
@@ -1815,7 +1815,7 @@ async function finishAdvanceAfterTransition(input: {
   }
   await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
   await appendRunLogRecord(
-    path.join(input.repoRoot, input.state.artifacts.runLogFile),
+    resolveRepoPath(input.repoRoot, input.state.artifacts.runLogFile),
     makeAdvanceRecord(
       input.state,
       input.now,

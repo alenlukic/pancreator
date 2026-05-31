@@ -33,6 +33,16 @@ describe("validateBootstrapTracking", () => {
     expect(result.violations).toEqual([]);
   });
 
+  it("accepts m1-ratified closure at phase 5", () => {
+    const result = validateBootstrapTracking({
+      phase: "5",
+      status: "m1-ratified",
+      completedPhases: ["-1", "0", "1", "2", "3", "4", "5"],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.violations).toEqual([]);
+  });
+
   it("rejects the historical ratified-without-advance defect", () => {
     const result = validateBootstrapTracking({
       phase: "4",

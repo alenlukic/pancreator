@@ -1,0 +1,50 @@
+{
+  "schema_version": "1",
+  "artifact_kind": "xeremia-ac8-smoke-evidence",
+  "metadata": {
+    "feature_id": "embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs",
+    "task_id": "69385_0443_us9-ac8-smoke",
+    "target_repo": {
+      "path": "/Users/alen/Dev/xeremia-sandbox"
+    },
+    "captured_at_iso": "2026-05-31T04:50:00.000Z",
+    "project_root": ".pancreator"
+  },
+  "verdict": "pass",
+  "acceptance_criteria": {
+    "AC2_cursor_agent_discovery": {
+      "pass": true,
+      "note": "/intake-analyst discoverable after pan init --apply only; no rsync or sync-cursor-agents.mjs"
+    },
+    "AC3_intake_new_project_root": {
+      "pass": true,
+      "note": "pan intake new wrote under .pancreator/lib/inbox/in/"
+    },
+    "AC8_sdk_feature_delivery_restart": {
+      "pass": true,
+      "note": "SDK run feature-delivery completed intake (~4.3 min, exit 0); spec at .pancreator/lib/memory/features/us9-ac8-smoke/spec.md"
+    }
+  },
+  "workarounds_used": {
+    "rsync_persona_handbook": false,
+    "sync_cursor_agents_bridge": false,
+    "hand_authored_inbox_path": false,
+    "manual_persona_paste": false
+  },
+  "provenance": {
+    "cli_commands": [
+      "rm -rf .pancreator .cursor/agents lib/inbox pancreator.yaml",
+      "$PAN_BIN init --apply",
+      "$PAN_BIN intake new us9-ac8-smoke",
+      "$PAN_BIN run feature-delivery <day-bucket>/69385_0443_us9-ac8-smoke.md"
+    ],
+    "sdk_invocation_seconds": 258,
+    "stages_completed": ["scaffold", "intake"],
+    "stages_optional": ["plan"],
+    "plan_implement_note": "Stub smoke inbox intentionally stopped at plan; AC8 gate is SDK restart without workarounds, not full pipeline delivery."
+  },
+  "related_evidence": {
+    "us9_greenfield": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json",
+    "embedded_install_feature": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json"
+  }
+}

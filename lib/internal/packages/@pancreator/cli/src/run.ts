@@ -20,6 +20,7 @@ import {
   startFeatureDelivery,
 } from "./feature-delivery-run.js";
 import { createInterventionCheckpointPort } from "./intervention-checkpoint.js";
+import { runCursorSync } from "./cursor-sync.js";
 import { runCreatePancreator, runPanInit } from "./pan-init.js";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
@@ -202,6 +203,23 @@ export async function parseAndRun(
   program.exitOverride((err: unknown) => {
     throw err;
   });
+
+  program
+    .command("cursor-sync")
+    .description("Emit .cursor/agents projections from lib/personas under project_root")
+    .option("--dry-run", "Print JSON envelope without writing files", false)
+    .argument("[harnessRoot]", "Harness root directory (defaults to cwd)")
+    .action(async (harnessRootArg: string | undefined, cmdOpts: { dryRun?: boolean }) => {
+      const harnessRoot = harnessRootArg !== undefined ? path.resolve(harnessRootArg) : repoRoot;
+      const dryRun = Boolean(cmdOpts.dryRun);
+      try {
+        emit(writeOut, repoRoot, runCursorSync(harnessRoot, { dryRun }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        writeErr(`${message}\n`);
+        exit.code = 1;
+      }
+    });
 
   program
     .command("init")
@@ -505,7 +523,7 @@ export async function parseAndRun(
         const sid = secondsToMidnightUtc(now);
         const hhmm = utcHhmm(now);
         const targetRel = path.posix.join("lib/inbox/in", dayBucket, `${sid}_${hhmm}_${slugArg}.md`);
-        const targetAbs = path.join(repoRoot, targetRel);
+        const targetAbs = resolveProjectPath(repoRoot, ...targetRel.split("/"));
         if (existsSync(targetAbs)) {
           throw new Error(`Refusing to overwrite existing inbox directive at ${targetRel}.`);
         }
@@ -520,7 +538,7 @@ export async function parseAndRun(
             "lib/memory/handbook/contract-templates",
             `${cmdOpts.fromTemplate}.template.md`,
           );
-          const templateAbs = path.join(repoRoot, ...templateRel.split("/"));
+          const templateAbs = resolveProjectPath(repoRoot, ...templateRel.split("/"));
           if (!existsSync(templateAbs)) {
             throw new Error(
               `Missing contract template "${cmdOpts.fromTemplate}" (expected ${templateRel}); pick a handbook template.`,

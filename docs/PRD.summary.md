@@ -26,13 +26,13 @@ control plane (`pnpm -w exec pan` for feature-delivery, init, and inbox flows).
 ## Bootstrap state in this repo
 
 `pancreator.yaml` tracks this repo at Bootstrap Phase 5 with status
-`phase-5-in-progress`. Phases -1 through 4 are complete: the repo
-has scaffold, handbook seeds, personas, skills, M1 contract feature folders,
-Phase 3 substrate packages, the five static MVP pipeline definition files,
-and a ratified US-1 dogfood exit. The `pan` CLI surface
-invokes `feature-delivery` into a state-machine, handoff, and bounded
-next-prompt scaffold; `pan advance` records validated stage artifacts.
-Full automatic Cursor/model/LangGraph execution is not yet complete.
+`m1-ratified`. Phases -1 through 5 are complete for tracking: scaffold,
+substrate, US-1 dogfood, US-9 xeremia PoC, and embedded-install fixes are
+shipped. M1 bootstrap was ratified 2026-05-31 (GO recorded in
+`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md`);
+M2 planning opens via inbox. Phoenix trace verification remains deferred. The
+`pan` CLI invokes `feature-delivery` with optional SDK mode
+(`runner.cursor.invocation: sdk`). Full LangGraph automatic execution remains M2+.
 
 M1 US-8 proof is package-boundary enforcement (no horizontal primitive deps, sub-path
 exports, CI conformance) rather than standalone `examples/` apps. `chat-with-persona`

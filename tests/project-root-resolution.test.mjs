@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdtemp, writeFile, mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
@@ -42,4 +44,35 @@ test("resolveRepoPath keeps harness-root pancreator.yaml", async () => {
   await writeFile(path.join(harness, "pancreator.yaml"), "project_root: .\n", "utf8");
   assert.equal(resolveRepoPath(harness, "pancreator.yaml"), path.join(harness, "pancreator.yaml"));
   assert.equal(resolveRepoPath(harness, "work/day/task/state.json"), path.join(harness, "work", "day", "task", "state.json"));
+});
+
+test("pan intake new writes under project_root for embedded harness", async () => {
+  const harness = await mkdtemp(path.join(os.tmpdir(), "intake-embedded-"));
+  await writeFile(
+    path.join(harness, "pancreator.yaml"),
+    'project_root: ".pancreator"\nrisk_tier: medium\n',
+    "utf8",
+  );
+  await mkdir(path.join(harness, ".pancreator/lib/inbox/in"), { recursive: true });
+
+  const panBin = path.join(
+    REPO_ROOT,
+    "lib/internal/packages/@pancreator/cli/bin/pan.js",
+  );
+  const result = spawnSync(process.execPath, [panBin, "intake", "new", "embedded-slug"], {
+    cwd: harness,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FORCE_COLOR: "0",
+      PAN_JSON_FORMAT_ABBREV_LEN: process.env.PAN_JSON_FORMAT_ABBREV_LEN ?? "7",
+    },
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const payload = JSON.parse(result.stdout.trim());
+  assert.match(payload.path, /_embedded-slug\.md$/);
+  assert.ok(
+    existsSync(path.join(harness, ".pancreator", payload.path)),
+    `expected file at .pancreator/${payload.path}`,
+  );
 });

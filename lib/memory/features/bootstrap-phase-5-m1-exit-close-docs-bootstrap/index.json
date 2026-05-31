@@ -2,8 +2,14 @@
   "feature_id": "bootstrap-phase-5-m1-exit-close-docs-bootstrap",
   "task_id": "27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap",
   "stage": "index",
-  "indexed_at": "2026-05-30T16:53:12Z",
-  "status": "pending-human-ratification",
+  "indexed_at": "2026-05-31T12:00:00Z",
+  "status": "indexed",
+  "m1_closure": {
+    "state": "m1-ratified",
+    "ratified_at_iso": "2026-05-31T00:00:00.000Z",
+    "ratification_packet": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md",
+    "xeremia_poc_complete_at_iso": "2026-05-31T04:50:00.000Z"
+  },
   "source_inbox_item": {
     "path": "archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-m1-exit.md",
     "content_hash": "34f39bc",
@@ -49,6 +55,19 @@
       "content_hash": "912ca8c",
       "verdict": "pass",
       "evaluated_at_iso": "2026-05-31T02:20:00.000Z"
+    },
+    {
+      "kind": "xeremia-ac8-smoke-evidence",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-ac8-smoke-evidence.json",
+      "content_hash": "4e1bc02",
+      "verdict": "pass",
+      "task_id": "69385_0443_us9-ac8-smoke",
+      "captured_at_iso": "2026-05-31T04:50:00.000Z"
+    },
+    {
+      "kind": "m1-closure-ratification-request",
+      "path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md",
+      "content_hash": "7413afa"
     }
   ],
   "accepted_ship_artifacts": [
@@ -127,7 +146,7 @@
     {
       "kind": "repository-readme",
       "path": "README.md",
-      "content_hash": "09ce7fc"
+      "content_hash": "ebd1e00"
     }
   ],
   "stale_citations_flagged": {
@@ -190,12 +209,15 @@
     {
       "id": "WP5-state-transition",
       "owner": "tech-writer",
-      "status": "open",
-      "reason": "Follow-on US-9 evidence from xeremia-sandbox passed in-repo evaluator (verdict pass, exit 0). WP5.1-WP5.5 state-transition doc updates may proceed per spec WP5.",
-      "source": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence-evaluator.json",
+      "status": "closed",
+      "closed_at_iso": "2026-05-31T04:55:00.000Z",
+      "reason": "WP5.1-WP5.5 delivered: pancreator.yaml, AGENTS.md, docs/M1.index.md, README.md, and pancreator-config.md updated; xeremia AC8 smoke evidence recorded.",
+      "source": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-ac8-smoke-evidence.json",
       "evidence_artifacts": [
         "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json",
-        "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence-evaluator.json"
+        "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence-evaluator.json",
+        "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-ac8-smoke-evidence.json",
+        "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md"
       ],
       "unblocked_at_iso": "2026-05-31T02:20:00.000Z"
     },
@@ -220,6 +242,10 @@
       "live_evidence_artifact": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json",
       "live_evidence_evaluator": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence-evaluator.json",
       "live_evidence_verdict": "pass",
+      "ac8_smoke_evidence": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-ac8-smoke-evidence.json",
+      "ac8_smoke_verdict": "pass",
+      "ac8_smoke_task_id": "69385_0443_us9-ac8-smoke",
+      "poc_status": "complete",
       "evaluator_command": "node lib/internal/tools/evaluate-greenfield-evidence.mjs --input <artifact.json>",
       "fixture_command": "node lib/internal/tools/evaluate-greenfield-evidence.mjs --input lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json",
       "required_env": ["CANDIDATE_REPO"],
@@ -243,8 +269,10 @@
   },
   "advance_gate": {
     "human_ratification_required": true,
-    "advance_command": "pnpm -w exec pan advance 27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap --artifact lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json",
-    "status": "deferred-until-ratified"
+    "ratification_packet": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md",
+    "status": "ratified-go",
+    "decision": "GO",
+    "decision_at_iso": "2026-05-31T00:00:00.000Z"
   },
   "artifact_index": {
     "implementation_surface": {

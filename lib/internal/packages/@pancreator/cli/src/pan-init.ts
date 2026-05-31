@@ -1,8 +1,9 @@
 import { projectRootAbs } from "@pancreator/core";
-import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { runCursorSync } from "./cursor-sync.js";
 
 export interface EmbeddedInstallManifest {
   allow: string[];
@@ -79,6 +80,9 @@ risk_tier: medium
 `;
 
 const EMBEDDED_PANCREATOR_YAML = `project_root: ".pancreator"
+runner:
+  cursor:
+    invocation: sdk
 risk_tier: medium
 `;
 
@@ -143,6 +147,16 @@ export interface PanInitFileDiff {
   action: "create" | "skip" | "conflict";
 }
 
+export interface PanInitSeedSummary {
+  count: number;
+  source: "package";
+}
+
+export interface PanInitCursorSyncSummary {
+  count: number;
+  written: Array<{ path: string; action: string }>;
+}
+
 export interface PanInitResult {
   command: "init";
   status: "ok" | "partial";
@@ -154,6 +168,9 @@ export interface PanInitResult {
   projectRootConflicts?: PanInitFileDiff[];
   adoptionReport?: string;
   inboxRatificationItem?: string;
+  personaSeed?: PanInitSeedSummary;
+  handbookSeed?: PanInitSeedSummary;
+  cursorSync?: PanInitCursorSyncSummary | "skipped-no-personas";
 }
 
 const INBOX_QUEUE_DIRS = ["in", "out", "threads", "notes"] as const;
@@ -224,6 +241,118 @@ async function ensureInboxLayout(harnessRoot: string, mode: InitMode): Promise<v
   );
 }
 
+function resolvePackageHarnessRoot(): string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return path.resolve(here, "..", "..", "..", "..", "..", "..");
+}
+
+function directoryNeedsSeeding(dir: string): boolean {
+  if (!existsSync(dir)) {
+    return true;
+  }
+  return readdirSync(dir).filter((name) => name.endsWith(".md")).length === 0;
+}
+
+async function walkPackageSeedFiles(
+  sourceDir: string,
+  sourceRoot: string,
+  denyPrefixes: string[],
+): Promise<string[]> {
+  const files: string[] = [];
+  const entries = await readdir(sourceDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const abs = path.join(sourceDir, entry.name);
+    const rel = path.relative(sourceRoot, abs).replace(/\\/gu, "/");
+    if (pathMatchesDenyPrefix(rel, denyPrefixes) !== null) {
+      continue;
+    }
+    if (entry.isDirectory()) {
+      files.push(...(await walkPackageSeedFiles(abs, sourceRoot, denyPrefixes)));
+      continue;
+    }
+    if (entry.isFile()) {
+      files.push(abs);
+    }
+  }
+  return files;
+}
+
+async function copyPackageSeedTree(
+  sourceRel: string,
+  targetDir: string,
+  denyPrefixes: string[],
+): Promise<number> {
+  const harness = resolvePackageHarnessRoot();
+  const sourceDir = path.join(harness, sourceRel);
+  if (!existsSync(sourceDir)) {
+    return 0;
+  }
+  const files = await walkPackageSeedFiles(sourceDir, sourceDir, denyPrefixes);
+  let count = 0;
+  for (const sourceAbs of files) {
+    const rel = path.relative(sourceDir, sourceAbs);
+    const targetAbs = path.join(targetDir, rel);
+    await mkdir(path.dirname(targetAbs), { recursive: true });
+    await copyFile(sourceAbs, targetAbs);
+    count += 1;
+  }
+  return count;
+}
+
+function countPersonaSpecs(personasDir: string): number {
+  if (!existsSync(personasDir)) {
+    return 0;
+  }
+  return readdirSync(personasDir).filter((name) => name.endsWith(".md")).length;
+}
+
+async function seedEmbeddedContent(
+  harnessRoot: string,
+  manifest: EmbeddedInstallManifest,
+): Promise<{ personaSeed?: PanInitSeedSummary; handbookSeed?: PanInitSeedSummary }> {
+  const projectRoot = initProjectRootAbs(harnessRoot, "embedded");
+  const personasDir = path.join(projectRoot, "lib", "personas");
+  const handbookDir = path.join(projectRoot, "lib", "memory", "handbook");
+  const result: { personaSeed?: PanInitSeedSummary; handbookSeed?: PanInitSeedSummary } = {};
+
+  if (directoryNeedsSeeding(personasDir)) {
+    const count = await copyPackageSeedTree("lib/personas", personasDir, manifest.deny_prefixes);
+    if (count > 0) {
+      result.personaSeed = { count, source: "package" };
+    }
+  }
+
+  if (directoryNeedsSeeding(handbookDir)) {
+    const count = await copyPackageSeedTree(
+      "lib/memory/handbook",
+      handbookDir,
+      manifest.deny_prefixes,
+    );
+    if (count > 0) {
+      result.handbookSeed = { count, source: "package" };
+    }
+  }
+
+  return result;
+}
+
+function runEmbeddedCursorSync(
+  harnessRoot: string,
+  manifest: EmbeddedInstallManifest,
+  dryRun: boolean,
+): PanInitResult["cursorSync"] {
+  if (!manifest.harness_root_allow.includes(".cursor/agents/")) {
+    return "skipped-no-personas";
+  }
+  const projectRoot = initProjectRootAbs(harnessRoot, "embedded");
+  const personasDir = path.join(projectRoot, "lib", "personas");
+  if (countPersonaSpecs(personasDir) === 0) {
+    return "skipped-no-personas";
+  }
+  const sync = runCursorSync(harnessRoot, { dryRun });
+  return { count: sync.count, written: sync.written };
+}
+
 export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
   const harnessRoot = path.resolve(input.repoRoot);
   const dryRun = input.dryRun ?? !input.apply;
@@ -287,10 +416,25 @@ export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
     throw err;
   }
 
+  let personaSeed: PanInitSeedSummary | undefined;
+  let handbookSeed: PanInitSeedSummary | undefined;
+  let cursorSync: PanInitResult["cursorSync"];
+
+  if (mode === "embedded" && dryRun) {
+    cursorSync = runEmbeddedCursorSync(harnessRoot, manifest, true);
+  }
+
   let applied = false;
   if (!dryRun) {
     applied = true;
     await ensureInboxLayout(harnessRoot, mode);
+
+    if (mode === "embedded") {
+      const seeded = await seedEmbeddedContent(harnessRoot, manifest);
+      personaSeed = seeded.personaSeed;
+      handbookSeed = seeded.handbookSeed;
+      cursorSync = runEmbeddedCursorSync(harnessRoot, manifest, false);
+    }
 
     const now = input.clock?.() ?? new Date();
     const day = utcDayStamp(now);
@@ -332,6 +476,9 @@ export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
       projectRootConflicts,
       adoptionReport,
       inboxRatificationItem,
+      ...(personaSeed !== undefined ? { personaSeed } : {}),
+      ...(handbookSeed !== undefined ? { handbookSeed } : {}),
+      ...(cursorSync !== undefined ? { cursorSync } : {}),
     };
   }
 
@@ -344,6 +491,9 @@ export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
     diffs,
     ...(harnessRootConflicts.length > 0 ? { harnessRootConflicts } : {}),
     ...(projectRootConflicts.length > 0 ? { projectRootConflicts } : {}),
+    ...(personaSeed !== undefined ? { personaSeed } : {}),
+    ...(handbookSeed !== undefined ? { handbookSeed } : {}),
+    ...(cursorSync !== undefined ? { cursorSync } : {}),
   };
 }
 

@@ -60,7 +60,11 @@ During adoption, the adopter SHOULD:
 
 Live bootstrap state belongs in `pancreator.yaml` under the `bootstrap` block.
 
-For this repository, the current live state is Phase 5 in progress with phases `-1`, `0`, `1`, `2`, `3`, and `4` completed.
+For this repository, the current live state is Phase 5 / M1 ratified
+(`m1-ratified`, human GO recorded 2026-05-31) with phases `-1` through `5`
+completed. M1 closure evidence and the ratification record live under
+`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/`. M2
+planning opens via inbox. Phoenix trace verification remains deferred.
 
 `docs/BOOTSTRAP.md` remains the phase-contract and milestone reference. `docs/M1.index.md` is the compact route for M1/bootstrap context before loading the full bootstrap or PRD documents.
 

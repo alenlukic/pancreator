@@ -145,6 +145,38 @@ For non-runtime tasks:
    then delegate to the owning persona.
 5. Stage local diffs; obtain human ratification at phase boundaries.
 
+## Embedded install checklist
+
+For adopting Pancreator into an existing repository with `project_root: ".pancreator"`:
+
+1. Run embedded init from the harness root:
+
+   ```bash
+   pnpm -w exec pan init --apply
+   ```
+
+2. Verify `.cursor/agents/` is populated (for example `.cursor/agents/intake-analyst.md` exists at the harness root).
+3. Open the harness root in Cursor.
+4. Run feature delivery in SDK mode (embedded `pancreator.yaml` defaults to `runner.cursor.invocation: sdk`):
+
+   ```bash
+   pnpm -w exec pan run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
+   ```
+
+### Manual agent sync
+
+When persona specs change or cursor agents were not emitted during init, regenerate projections manually:
+
+```bash
+pnpm -w exec pan cursor-sync [--dry-run] [harnessRoot]
+```
+
+Example dry-run from the harness root:
+
+```bash
+pnpm -w exec pan cursor-sync --dry-run
+```
+
 ## pan CLI verbs
 
 Every runnable operator command uses `pnpm -w exec pan …` from the repository root.

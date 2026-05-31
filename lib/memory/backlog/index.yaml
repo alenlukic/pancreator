@@ -682,3 +682,21 @@ items:
       - /lib/memory/handbook/embedded-install-manifest.yaml
     evidence: "Feature shipped shared project-root resolver, CLI path prefixing, embedded pan init scaffold, allow/deny manifest, US-9 kit updates, and regression tests; review and qa gates passed per delivery-report.md."
     notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure. Ten stale spec citations flagged for bootstrap-content-hash-refresh follow-up."
+
+  - id: embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-shipped
+    title: Embedded install — cursor agent sync, init content seeding, and inbox path bugs delivered
+    source: lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md
+    owner: librarian
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-05-31T03:47:56Z"
+    delivered_at: "2026-05-31T04:30:00Z"
+    links:
+      - /lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md
+      - /lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md
+      - /lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
+      - /lib/internal/packages/@pancreator/cli/src/cursor-sync.ts
+      - /lib/internal/packages/@pancreator/cli/src/pan-init.ts
+    evidence: "Feature shipped pan cursor-sync CLI verb, embedded init persona/handbook seeding with post-init sync, project_root inbox path fixes, embedded SDK default, and operator docs; review and qa gates passed per delivery-report.md and test-report.md."
+    notes: "Feature index emitted at index stage; archival closure complete. AC2 and AC8 xeremia manual smokes passed 2026-05-31 per xeremia-ac8-smoke-evidence.json and bootstrap-phase-5-m1-exit-close-docs-bootstrap index."

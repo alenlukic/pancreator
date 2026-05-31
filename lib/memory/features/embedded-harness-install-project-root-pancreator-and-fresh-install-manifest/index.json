@@ -59,10 +59,7 @@
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172976_05-30-26/13329_2017_embedded-harness-project-root-install.md",
-      "range": [
-        1,
-        309
-      ],
+      "range": [1, 309],
       "contentHash": "89e9615"
     },
     "human_approval_gate": "ratified",
@@ -101,10 +98,7 @@
     "citation": {
       "kind": "lines",
       "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
-      "range": [
-        1,
-        22
-      ],
+      "range": [1, 22],
       "contentHash": "0ee914e"
     }
   },
@@ -124,10 +118,7 @@
     "citation": {
       "kind": "lines",
       "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
-      "range": [
-        1,
-        35
-      ],
+      "range": [1, 35],
       "contentHash": "5f95c5f"
     }
   },
@@ -137,10 +128,7 @@
     "citation": {
       "kind": "lines",
       "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md",
-      "range": [
-        1,
-        43
-      ],
+      "range": [1, 43],
       "contentHash": "079b23c"
     },
     "archived_inbox_source": "archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md"
@@ -157,10 +145,7 @@
     "citation": {
       "kind": "lines",
       "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
-      "range": [
-        1,
-        29
-      ],
+      "range": [1, 29],
       "contentHash": "5899b6e"
     }
   },
@@ -254,6 +239,13 @@
   },
   "open_followups": [
     {
+      "id": "embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs",
+      "owner": "feature-delivery",
+      "status": "in_progress",
+      "reason": "Follow-on feature closing embedded init gaps: cursor-sync CLI verb, persona/handbook seeding, intake project_root pathing, and SDK default in embedded pancreator.yaml.",
+      "feature_path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md"
+    },
+    {
       "id": "spec-citation-refresh",
       "owner": "librarian",
       "status": "deferred",
@@ -273,10 +265,7 @@
       "citation": {
         "kind": "lines",
         "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md",
-        "range": [
-          27,
-          33
-        ],
+        "range": [27, 33],
         "contentHash": "079b23c"
       }
     }
@@ -288,10 +277,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/spec.md",
-          "range": [
-            1,
-            333
-          ],
+          "range": [1, 333],
           "contentHash": "8fe082e"
         }
       },
@@ -300,10 +286,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md",
-          "range": [
-            1,
-            43
-          ],
+          "range": [1, 43],
           "contentHash": "079b23c"
         }
       },
@@ -320,10 +303,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/plan.md",
-          "range": [
-            1,
-            67
-          ],
+          "range": [1, 67],
           "contentHash": "b94c1ea"
         }
       },
@@ -332,10 +312,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/adr-draft.md",
-          "range": [
-            1,
-            51
-          ],
+          "range": [1, 51],
           "contentHash": "f780674"
         }
       },
@@ -344,10 +321,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/touch-set.json",
-          "range": [
-            1,
-            65
-          ],
+          "range": [1, 65],
           "contentHash": "2a5c032"
         }
       },
@@ -356,10 +330,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/implementation-report.md",
-          "range": [
-            1,
-            76
-          ],
+          "range": [1, 76],
           "contentHash": "777dc2a"
         }
       },
@@ -368,10 +339,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
-          "range": [
-            1,
-            22
-          ],
+          "range": [1, 22],
           "contentHash": "0ee914e"
         }
       },
@@ -380,10 +348,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
-          "range": [
-            1,
-            35
-          ],
+          "range": [1, 35],
           "contentHash": "5f95c5f"
         }
       },
@@ -392,10 +357,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
-          "range": [
-            1,
-            29
-          ],
+          "range": [1, 29],
           "contentHash": "5899b6e"
         }
       },
@@ -404,10 +366,7 @@
         "citation": {
           "kind": "lines",
           "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/handoff.md",
-          "range": [
-            1,
-            49
-          ],
+          "range": [1, 49],
           "contentHash": "fdf19d2"
         }
       },
@@ -422,10 +381,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/core/src/project-root.ts",
-          "range": [
-            1,
-            46
-          ],
+          "range": [1, 46],
           "contentHash": "64b7ceb"
         }
       },
@@ -434,10 +390,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/pan-init.ts",
-          "range": [
-            1,
-            431
-          ],
+          "range": [1, 431],
           "contentHash": "3dba204"
         }
       },
@@ -446,10 +399,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/memory/handbook/embedded-install-manifest.yaml",
-          "range": [
-            1,
-            40
-          ],
+          "range": [1, 40],
           "contentHash": "a376066"
         }
       },
@@ -458,10 +408,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/internal/tools/evaluate-greenfield-evidence.mjs",
-          "range": [
-            1,
-            382
-          ],
+          "range": [1, 382],
           "contentHash": "7edec15"
         }
       },
@@ -470,10 +417,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/memory/handbook/pancreator-config.md",
-          "range": [
-            1,
-            185
-          ],
+          "range": [1, 185],
           "contentHash": "ad15306"
         }
       },
@@ -482,10 +426,7 @@
         "citation": {
           "kind": "lines",
           "path": "OPERATION.md",
-          "range": [
-            1,
-            240
-          ],
+          "range": [1, 240],
           "contentHash": "e5293f7"
         }
       },
@@ -494,10 +435,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/personas/adopter.md",
-          "range": [
-            1,
-            186
-          ],
+          "range": [1, 186],
           "contentHash": "7cf7d4c"
         }
       },
@@ -506,10 +444,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/personas/skills/adopt-existing-repo/SKILL.md",
-          "range": [
-            1,
-            228
-          ],
+          "range": [1, 228],
           "contentHash": "190b09a"
         }
       },
@@ -518,10 +453,7 @@
         "citation": {
           "kind": "lines",
           "path": "tests/project-root-resolution.test.mjs",
-          "range": [
-            1,
-            46
-          ],
+          "range": [1, 46],
           "contentHash": "dcafb92"
         }
       },
@@ -530,10 +462,7 @@
         "citation": {
           "kind": "lines",
           "path": "tests/pan-init.test.mjs",
-          "range": [
-            1,
-            55
-          ],
+          "range": [1, 55],
           "contentHash": "da4c063"
         }
       },
@@ -542,10 +471,7 @@
         "citation": {
           "kind": "lines",
           "path": "tests/evaluate-greenfield-evidence.test.mjs",
-          "range": [
-            1,
-            144
-          ],
+          "range": [1, 144],
           "contentHash": "3779cf7"
         }
       }
@@ -556,10 +482,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172976_05-30-26/13329_2017_embedded-harness-project-root-install.md",
-          "range": [
-            1,
-            309
-          ],
+          "range": [1, 309],
           "contentHash": "89e9615"
         }
       },
@@ -568,10 +491,7 @@
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/out/172976_05-30-26/11654_2045_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest-report-approval.md",
-          "range": [
-            1,
-            19
-          ],
+          "range": [1, 19],
           "contentHash": "4283b3a"
         }
       },

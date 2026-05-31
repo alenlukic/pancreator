@@ -6,6 +6,12 @@ export interface BootstrapTrackingValidation {
 }
 
 const STATUS_RE = /^phase-(-?\d+)-(in-progress|ratified)$/u;
+const M1_RATIFIED_STATUS = "m1-ratified";
+
+/** Completed phase labels when M1 bootstrap is ratified at phase 5. */
+export function expectedM1RatifiedCompletedPhases(): string[] {
+  return [...expectedCompletedPhases(5), "5"];
+}
 
 /** Parses bootstrap phase labels such as `"5"` or `"-1"`. */
 export function parsePhaseNumber(phase: string): number | null {
@@ -41,8 +47,10 @@ export function nextBootstrapAfterRatification(ratifiedPhase: number): Pick<
 /**
  * Validates internal consistency of live bootstrap tracking fields.
  * Fail-closed rules:
- * - `status` MUST be `phase-<N>-in-progress` where `<N>` equals `phase`.
- * - `completed_phases` MUST list every phase from `-1` through `<N - 1>`.
+ * - `status` MUST be `phase-<N>-in-progress` where `<N>` equals `phase`, or
+ *   `m1-ratified` when phase `5` and M1 human GO is recorded.
+ * - `completed_phases` MUST list every phase from `-1` through `<N - 1>` for
+ *   in-progress tracking, or through `"5"` when `status` is `m1-ratified`.
  * - `phase-<N>-ratified` MUST NOT persist; ratification is an atomic advance.
  */
 export function validateBootstrapTracking(
@@ -70,10 +78,30 @@ export function validateBootstrapTracking(
   }
 
   const statusMatch = status ? STATUS_RE.exec(status) : null;
-  if (status && !statusMatch) {
+  const m1Ratified = status === M1_RATIFIED_STATUS;
+
+  if (status && !statusMatch && !m1Ratified) {
     violations.push(
-      `bootstrap.status "${status}" must match phase-<N>-in-progress`,
+      `bootstrap.status "${status}" must match phase-<N>-in-progress or ${M1_RATIFIED_STATUS}`,
     );
+  }
+
+  if (m1Ratified) {
+    if (phase !== "5") {
+      violations.push(
+        `bootstrap.status "${M1_RATIFIED_STATUS}" requires bootstrap.phase "5" (got "${phase ?? ""}")`,
+      );
+    }
+    const expectedM1 = expectedM1RatifiedCompletedPhases();
+    if (
+      completedPhases &&
+      (completedPhases.length !== expectedM1.length ||
+        completedPhases.some((p, i) => p !== expectedM1[i]))
+    ) {
+      violations.push(
+        `bootstrap.completed_phases must be ${JSON.stringify(expectedM1)} when status is ${M1_RATIFIED_STATUS} (got ${JSON.stringify(completedPhases)})`,
+      );
+    }
   }
 
   if (completedPhases?.length) {
@@ -88,7 +116,7 @@ export function validateBootstrapTracking(
     }
   }
 
-  if (currentPhase !== null && statusMatch) {
+  if (currentPhase !== null && statusMatch && !m1Ratified) {
     const statusPhase = Number(statusMatch[1]);
     const statusKind = statusMatch[2];
 
