@@ -241,9 +241,16 @@
     {
       "id": "embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs",
       "owner": "feature-delivery",
-      "status": "in_progress",
-      "reason": "Follow-on feature closing embedded init gaps: cursor-sync CLI verb, persona/handbook seeding, intake project_root pathing, and SDK default in embedded pancreator.yaml.",
-      "feature_path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md"
+      "status": "closed",
+      "reason": "Follow-on feature shipped: cursor-sync CLI verb, persona/handbook seeding, intake project_root pathing, and SDK default in embedded pancreator.yaml.",
+      "resolved_at_iso": "2026-05-31T04:30:00.000Z",
+      "feature_path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md",
+        "range": [1, 37],
+        "contentHash": "c9d798e"
+      }
     },
     {
       "id": "spec-citation-refresh",
