@@ -9,20 +9,24 @@ real projects, not a frontend or design-skill showcase.
 
 [Status](#current-status) · [Operator guide](OPERATION.md) · [AGENTS](AGENTS.md) · [Bootstrap](docs/BOOTSTRAP.md) · [PRD](docs/PRD.summary.md)
 
-> Bootstrap note: Pancreator is in Bootstrap Phase 5 (`phase-5-in-progress`).
-> Phases -1 through 4 are complete for tracking, and operators still invoke
-> personas manually after `pnpm -w exec pan run feature-delivery`.
+> Bootstrap note: Pancreator completed Bootstrap Phase 5 / M1 bootstrap
+> (`m1-ratified`, GO recorded 2026-05-31). M2 planning opens via inbox.
+> SDK feature-delivery is available when `runner.cursor.invocation: sdk` is set.
 
 ## Current status
 
-- **Phase tracking:** `pancreator.yaml` records Bootstrap Phase 5 (`phase-5-in-progress`).
-  Phases -1 through 4 are complete for tracking purposes.
-- **Current focus:** Phase 5 M1 hardening per `docs/BOOTSTRAP.md` — US-9 evidence
-  kit (`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/`),
-  knowledge-curation cron seed, and KPI baseline evidence.
-- **Runtime caveat:** `pnpm -w exec pan run feature-delivery <inbox-entry>` creates
-  the Phase-5 state machine and bounded prompts. Operators still invoke personas
-  manually and advance with `pnpm -w exec pan advance`. See
+- **Phase tracking:** `pancreator.yaml` records Bootstrap Phase 5 / M1 ratified
+  (`m1-ratified`, GO 2026-05-31). Phases -1 through 5 are complete for tracking
+  purposes. M2 planning opens via inbox.
+- **xeremia PoC:** US-9 greenfield evidence and AC8 SDK smoke passed on
+  `/Users/alen/Dev/xeremia-sandbox` without operator workarounds (2026-05-31).
+  Evidence: `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json`
+  and `xeremia-ac8-smoke-evidence.json`.
+- **M1 ratification:** Human GO recorded 2026-05-31 in
+  `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md`.
+  Phoenix trace verification remains deferred.
+- **Runtime:** `pnpm -w exec pan run feature-delivery <inbox-entry>` with SDK mode
+  invokes entering personas on run/advance. Manual mode remains available. See
   [OPERATION.md § Feature delivery loop](OPERATION.md#feature-delivery-loop).
 
 ## System overview

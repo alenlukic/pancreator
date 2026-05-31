@@ -270,29 +270,28 @@ this section in your response.
 ## 8 — Bootstrap status (live)
 
 `pancreator.yaml` tracks the repo at Bootstrap Phase 5 with status
-`phase-5-in-progress`. Phases -1 through 4 are complete for
-tracking purposes: the repo contains the scaffold, handbook seeds, persona
-roster, Cursor projections, M1 contract feature folders, substrate package
-implementations, static MVP pipeline definitions, and a ratified US-1 dogfood
-exit. The US-1 dogfood proof bundle was ratified on 2026-05-19: the proof
-bundle is accepted, pause/resume/abort evidence is captured,
-and the nested runs `77373_0230_phase-4-dogfood-proof-bundle-evidence-index`
-and `71096_0415_phase-4-intervention-probe-pause-resume-abort` are closed.
-Phoenix trace verification remains deferred per
-`lib/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md` as
-an `@pancreator/run-logger` and `pancreator-engineer` backlog item. `pnpm -w exec
-pan run feature-delivery <inbox-entry>` (`<day-bucket>/<file>.md` relative to
-`lib/inbox/in/`, not the `lib/inbox/in/` prefix) creates a Phase-5 active-work
-state machine, handoff card, bounded next-prompt, and run log. Operators still
-invoke Cursor personas manually, then use `pnpm -w exec pan advance` with the
-accepted stage artifact; `repair-state` is reserved for explicit ledger recovery
-after out-of-band work. When a run reaches `complete`, `next-prompt.md` is a
-bounded librarian handoff for agent-executed artifact closure. The librarian
-runs `pnpm -w exec pan close-artifacts <task-id>` to archive the active work
-directory and source inbox item after human validation/indexing are complete.
-`pnpm -w exec pan refresh-prompt <task-id>` regenerates prompt files from the
-current ledger without changing state. It does not yet automate Cursor/model
-transport or LangGraph execution.
+`m1-ratified`. Phases -1 through 5 are complete for tracking purposes:
+scaffold, handbook seeds, persona roster, M1 substrate, static MVP pipelines,
+ratified US-1 dogfood exit, US-9 xeremia-sandbox PoC, and embedded-install
+operator-loop fixes. Human GO recorded 2026-05-31 in
+`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md`.
+M2 planning opens via inbox.
+
+The US-1 dogfood proof bundle was ratified on 2026-05-19. M1 bootstrap closure
+was ratified on 2026-05-31. xeremia-sandbox US-9 greenfield evidence passed
+in-repo evaluation on 2026-05-31; AC8 SDK smoke (task `69385_0443_us9-ac8-smoke`)
+confirmed feature-delivery restart without rsync, bridge script, or
+hand-authored inbox paths. Phoenix trace verification remains deferred per
+`lib/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md`.
+
+When `runner.cursor.invocation: sdk` is set, `pnpm -w exec pan run` and
+`pnpm -w exec pan advance` invoke CursorRunner for the entering stage. Manual
+delegation remains available when SDK mode is omitted. `pnpm -w exec pan run
+feature-delivery <inbox-entry>` creates the active-work state machine,
+handoff card, bounded next-prompt, and run log. When a run reaches `complete`,
+the librarian runs `pnpm -w exec pan close-artifacts <task-id>` after human
+validation. `pnpm -w exec pan refresh-prompt <task-id>` regenerates prompt
+files without changing state.
 
 ## 9 — Stability
 

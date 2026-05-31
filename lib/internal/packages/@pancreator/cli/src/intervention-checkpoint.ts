@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
-import path from "node:path";
 
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { copyCheckpoint, emptyCheckpoint } from "@langchain/langgraph-checkpoint";
-import type { TaskId } from "@pancreator/core";
+import { resolveProjectPath, type TaskId } from "@pancreator/core";
 import {
   FsLangGraphCheckpointSaver,
   type PancreatorCheckpointMetadata,
@@ -11,7 +10,9 @@ import {
 import type { CheckpointId, InterventionCheckpointPort } from "@pancreator/intervention";
 
 export function createInterventionCheckpointPort(repoRoot: string): InterventionCheckpointPort {
-  const saver = new FsLangGraphCheckpointSaver(path.join(repoRoot, "lib", "memory", "checkpoints"));
+  const saver = new FsLangGraphCheckpointSaver(
+    resolveProjectPath(repoRoot, "lib", "memory", "checkpoints"),
+  );
   return {
     async persistLever(
       taskId: TaskId,

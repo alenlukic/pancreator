@@ -1,0 +1,489 @@
+{
+  "feature_id": "embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs",
+  "title": "Embedded install — cursor agent sync, init content seeding, and inbox path bugs",
+  "task_id": "72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "parent_batch_feature": "embedded-harness-install-project-root-pancreator-and-fresh-install-manifest",
+  "backlog_linkage": "bootstrap-content-hash-refresh",
+  "work_packages": [
+    {
+      "id": "WP1",
+      "label": "WP1 — CLI pan cursor-sync",
+      "status": "shipped",
+      "outcome": "Promoted cursor-agent projection logic into @pancreator/cli with first-class pan cursor-sync verb and bridge shim."
+    },
+    {
+      "id": "WP2",
+      "label": "WP2 — Init post-step cursor sync",
+      "status": "shipped",
+      "outcome": "Embedded pan init --apply invokes cursor-sync after scaffold when manifest allows .cursor/agents/ and personas exist."
+    },
+    {
+      "id": "WP3",
+      "label": "WP3 — Persona and handbook seeding",
+      "status": "shipped",
+      "outcome": "Copy-from-package seeding fills empty lib/personas/ and lib/memory/handbook/ under project_root on embedded init."
+    },
+    {
+      "id": "WP4",
+      "label": "WP4 — Project-root inbox pathing",
+      "status": "shipped",
+      "outcome": "pan intake new and feature-delivery inbox resolution write under resolveProjectPath project_root base."
+    },
+    {
+      "id": "WP5",
+      "label": "WP5 — Embedded SDK default and operator docs",
+      "status": "shipped",
+      "outcome": "EMBEDDED_PANCREATOR_YAML includes runner.cursor.invocation sdk; OPERATION.md documents embedded checklist and manual cursor-sync."
+    },
+    {
+      "id": "WP6",
+      "label": "WP6 — Regression tests",
+      "status": "shipped",
+      "outcome": "cursor-sync, pan-init, and project-root-resolution tests pass per test-report.md focused run (14/14)."
+    }
+  ],
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172976_05-30-26/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
+      "range": [1, 170],
+      "contentHash": "efb776f"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Spec ratified at plan advance per state.json advanceHistory intake→plan event."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-05-31T04:30:00Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, ship artifacts, and implementation surface. After human accepts this index artifact, run pan advance to complete, then delegate the generated complete-stage prompt for close-artifacts archival closure."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-05-31T04:30:00Z",
+    "artifacts_indexed": 22,
+    "content_hash_refresh_performed": false,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": true
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 1,
+    "nit_count": 0,
+    "spec_contracts_executed": 0,
+    "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
+    "citation": {
+      "kind": "lines",
+      "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
+      "range": [1, 34],
+      "contentHash": "b98a196"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "artifact": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+    "sdk_automation_qa": false,
+    "verification_gates": {
+      "node_test_suite_focused": "pass (14/14)",
+      "pnpm_lint": "pass",
+      "pnpm_typecheck": "pass",
+      "pnpm_build": "pass",
+      "pnpm_lint_deps": "pass",
+      "check_phase0a": "pass",
+      "run_compliance": "pass",
+      "context_budget_report": "pass",
+      "check_operator_output": "pass",
+      "pnpm_attw": "pass",
+      "pnpm_publint": "pass",
+      "pan_cursor_sync_dry_run": "pass",
+      "policy_compliance_hook_syntax": "pass"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+      "range": [1, 59],
+      "contentHash": "730823d"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md",
+    "staged_to_inbox_out": "lib/inbox/out/172975_05-31-26/71230_0412_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-report-approval.md",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md",
+      "range": [1, 37],
+      "contentHash": "c9d798e"
+    },
+    "archived_inbox_source": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "policy_compliance_artifact": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
+      "range": [1, 25],
+      "contentHash": "7411d0e"
+    }
+  },
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-touch-set",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+        "cited_path": "lib/internal/packages/@pancreator/cli/src/pan-init.ts",
+        "recorded_content_hash": null,
+        "live_content_hash": "3741365",
+        "verifier_status": "changed",
+        "note": "Intake baseline line-range citations; pan-init.ts expanded for seeding, SDK default, and post-init cursor-sync."
+      },
+      {
+        "citing_path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+        "cited_path": "lib/internal/packages/@pancreator/cli/src/run.ts",
+        "recorded_content_hash": null,
+        "live_content_hash": "64e31c0",
+        "verifier_status": "changed",
+        "note": "Intake baseline citation; run.ts now wires pan cursor-sync and project-root intake new pathing."
+      },
+      {
+        "citing_path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+        "cited_path": "lib/internal/tools/sync-cursor-agents.mjs",
+        "recorded_content_hash": null,
+        "live_content_hash": "164ca3f",
+        "verifier_status": "changed",
+        "note": "Bridge script converted to subprocess delegate over promoted CLI runtime."
+      },
+      {
+        "citing_path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+        "cited_path": "OPERATION.md",
+        "recorded_content_hash": null,
+        "live_content_hash": "a5c43c2",
+        "verifier_status": "changed",
+        "note": "OPERATION.md updated with embedded install checklist and manual pan cursor-sync procedure per R5."
+      },
+      {
+        "citing_path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+        "cited_path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json",
+        "recorded_content_hash": null,
+        "live_content_hash": "cdaf9c1",
+        "verifier_status": "changed",
+        "note": "Parent batch index gained follow-on linkage during plan stage; intake spec text predates that edit."
+      }
+    ],
+    "repo_wide_followup": "bootstrap-content-hash-refresh",
+    "followup_backlog_path": "lib/memory/backlog/index.yaml"
+  },
+  "open_followups": [
+    {
+      "id": "xeremia-ac2-smoke",
+      "owner": "operator",
+      "status": "closed",
+      "closed_at": "2026-05-31T04:50:00Z",
+      "closure_note": "xeremia-sandbox init-only smoke 2026-05-31: .cursor/agents/intake-analyst.md emitted without rsync or bridge script.",
+      "reason": "AC2 manual smoke: /intake-analyst discoverable in Cursor on xeremia-sandbox after reset without manual rsync or bridge script.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+        "range": [227, 231],
+        "contentHash": "d6e7771"
+      }
+    },
+    {
+      "id": "xeremia-ac8-sdk-restart",
+      "owner": "operator",
+      "status": "closed",
+      "closed_at": "2026-05-31T04:50:00Z",
+      "closure_note": "xeremia-sandbox task 69385_0443_us9-ac8-smoke: SDK run feature-delivery from CLI inbox completed intake without workarounds.",
+      "reason": "AC8 manual verification: xeremia-sandbox US-9 feature-delivery restarts cleanly in SDK mode after reset.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+        "range": [235, 236],
+        "contentHash": "d6e7771"
+      }
+    },
+    {
+      "id": "archived-json-formatting-offender",
+      "owner": "librarian",
+      "status": "deferred",
+      "reason": "Broad node --test suite fails on archived policy-compliance.json formatting outside this touch-set; routes through json-formatting maintenance path.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+        "range": [31, 31],
+        "contentHash": "730823d"
+      }
+    },
+    {
+      "id": "spec-citation-refresh",
+      "owner": "librarian",
+      "status": "deferred",
+      "reason": "Spec frontmatter references omit contentHash anchors; refresh routes through bootstrap-content-hash-refresh backlog item rather than in-place spec mutation at index time.",
+      "source": "stale_citations_flagged.changed_citations"
+    }
+  ],
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md",
+          "range": [1, 269],
+          "contentHash": "d6e7771"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md",
+          "range": [1, 37],
+          "contentHash": "c9d798e"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/"
+      },
+      "plan": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/plan.md",
+          "range": [1, 80],
+          "contentHash": "2ab1140"
+        }
+      },
+      "adr_draft": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/adr-draft.md",
+          "range": [1, 65],
+          "contentHash": "1b840a5"
+        }
+      },
+      "touch_set": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/touch-set.json",
+          "range": [1, 73],
+          "contentHash": "b96bb79"
+        }
+      },
+      "implementation_report": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/implementation-report.md",
+          "range": [1, 90],
+          "contentHash": "2953890"
+        }
+      },
+      "review_report": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
+          "range": [1, 34],
+          "contentHash": "b98a196"
+        }
+      },
+      "test_report": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+          "range": [1, 59],
+          "contentHash": "730823d"
+        }
+      },
+      "policy_compliance": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
+          "range": [1, 25],
+          "contentHash": "7411d0e"
+        }
+      },
+      "handoff": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/handoff.md",
+          "range": [1, 49],
+          "contentHash": "70f5cf7"
+        }
+      },
+      "run_log": {
+        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      }
+    },
+    "implementation_surface": {
+      "cli_cursor_sync": {
+        "path": "lib/internal/packages/@pancreator/cli/src/cursor-sync.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/internal/packages/@pancreator/cli/src/cursor-sync.ts",
+          "range": [1, 320],
+          "contentHash": "7e6a083"
+        }
+      },
+      "cli_pan_init": {
+        "path": "lib/internal/packages/@pancreator/cli/src/pan-init.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/internal/packages/@pancreator/cli/src/pan-init.ts",
+          "range": [1, 581],
+          "contentHash": "3741365"
+        }
+      },
+      "cli_run": {
+        "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
+          "range": [1, 686],
+          "contentHash": "64e31c0"
+        }
+      },
+      "cli_feature_delivery_run": {
+        "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
+          "range": [1, 2199],
+          "contentHash": "cf9314c"
+        }
+      },
+      "sync_cursor_agents_bridge": {
+        "path": "lib/internal/tools/sync-cursor-agents.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/internal/tools/sync-cursor-agents.mjs",
+          "range": [1, 56],
+          "contentHash": "164ca3f"
+        }
+      },
+      "tests_cursor_sync": {
+        "path": "tests/cursor-sync.test.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "tests/cursor-sync.test.mjs",
+          "range": [1, 131],
+          "contentHash": "2d776a0"
+        }
+      },
+      "tests_pan_init": {
+        "path": "tests/pan-init.test.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "tests/pan-init.test.mjs",
+          "range": [1, 84],
+          "contentHash": "086ead6"
+        }
+      },
+      "tests_project_root": {
+        "path": "tests/project-root-resolution.test.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "tests/project-root-resolution.test.mjs",
+          "range": [1, 79],
+          "contentHash": "f656fab"
+        }
+      },
+      "operator_howto": {
+        "path": "OPERATION.md",
+        "citation": {
+          "kind": "lines",
+          "path": "OPERATION.md",
+          "range": [1, 272],
+          "contentHash": "a5c43c2"
+        }
+      },
+      "parent_batch_index_linkage": {
+        "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json",
+          "range": [1, 530],
+          "contentHash": "cdaf9c1"
+        }
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172976_05-30-26/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
+          "range": [1, 170],
+          "contentHash": "efb776f"
+        }
+      },
+      "report_approval_outbox": {
+        "path": "lib/inbox/out/172975_05-31-26/71230_0412_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-report-approval.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/out/172975_05-31-26/71230_0412_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-report-approval.md",
+          "range": [1, 19],
+          "contentHash": "1544ede"
+        }
+      },
+      "parent_batch_index": {
+        "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json",
+        "note": "Follow-on closure for embedded init gaps R1-R5 referenced from parent batch open_followups."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": []
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": true,
+    "librarian_populated": true,
+    "placeholder": false
+  },
+  "source_inbox_item": {
+    "path": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
+    "prior_path": "lib/inbox/in/172976_05-30-26/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md"
+  },
+  "advance_gate": {
+    "human_ratification_required": true,
+    "advance_command": "pnpm -w exec pan advance 72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs --artifact lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json",
+    "status": "deferred-until-ratified"
+  },
+  "archived_inbox_source": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md"
+}

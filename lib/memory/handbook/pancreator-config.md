@@ -20,6 +20,31 @@ project_root: "."
 
 The `.` value means the harness root and target project root are the same directory.
 
+## Harness root vs project root
+
+The **harness root** is the directory that contains harness-owned `pancreator.yaml`
+and (when required) repo-root `.cursor/agents/` projections. The **project root**
+is where operational trees (`lib/inbox/`, `lib/memory/`, `work/`, `archive/`,
+`.pan/`) live. When `project_root` is `.pancreator`, those trees resolve under
+`<harnessRoot>/.pancreator/` while `pancreator.yaml` stays at the harness root.
+
+Self-hosting (daedaline):
+
+```bash
+pnpm -w exec pan run feature-delivery 172976_05-30-26/13329_2017_embedded-harness-project-root-install.md
+```
+
+Embedded adopt (host repo with existing `AGENTS.md`; scaffold under `.pancreator/`):
+
+```bash
+cd /path/to/host-repo
+pnpm -w exec pan init --apply
+pnpm -w exec pan run feature-delivery <day-bucket>/<inbox-entry>.md
+```
+
+The inbox entry argument is always relative to `<project_root>/lib/inbox/in/`, not
+the harness root.
+
 ## Adoption responsibility
 
 The adopter persona owns proposing `project_root` during existing-repository adoption.
@@ -35,7 +60,11 @@ During adoption, the adopter SHOULD:
 
 Live bootstrap state belongs in `pancreator.yaml` under the `bootstrap` block.
 
-For this repository, the current live state is Phase 5 in progress with phases `-1`, `0`, `1`, `2`, `3`, and `4` completed.
+For this repository, the current live state is Phase 5 / M1 ratified
+(`m1-ratified`, human GO recorded 2026-05-31) with phases `-1` through `5`
+completed. M1 closure evidence and the ratification record live under
+`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/`. M2
+planning opens via inbox. Phoenix trace verification remains deferred.
 
 `docs/BOOTSTRAP.md` remains the phase-contract and milestone reference. `docs/M1.index.md` is the compact route for M1/bootstrap context before loading the full bootstrap or PRD documents.
 

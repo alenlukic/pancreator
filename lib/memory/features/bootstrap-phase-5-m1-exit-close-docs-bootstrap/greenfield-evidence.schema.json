@@ -25,8 +25,12 @@
     "metadata": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["feature_id", "task_id", "target_repo", "pipeline_id", "captured_at_iso"],
+      "required": ["feature_id", "task_id", "target_repo", "pipeline_id", "captured_at_iso", "project_root"],
       "properties": {
+        "project_root": {
+          "type": "string",
+          "enum": [".", ".pancreator"]
+        },
         "feature_id": {
           "type": "string",
           "minLength": 1

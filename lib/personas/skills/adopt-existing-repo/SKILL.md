@@ -64,11 +64,13 @@ Execute these steps in order, once per `pancreator init` invocation.
 ### Step 1 — Run the conflict dry-run
 
 Walk every Pancreator-prefixed write target the scan would emit and verify
-no existing file occupies the path. The Pancreator-prefixed write surface
-declared at PRD §3.5 lines 215 through 222 is `/lib/memory/`, `/lib/personas/`,
-`/lib/personas/skills/`, `/lib/pipelines/`, `/lib/inbox/`, `/.pan/`, and `pancreator.yaml`.
-The proposed `pancreator.yaml` block MUST include `project_root`; use `.` when
-the harness is embedded at the repository root being adopted.
+no existing file occupies the path. The write surface is under
+`<project_root>/` for operational trees (`lib/memory/`, `lib/personas/`,
+`lib/personas/skills/`, `lib/pipelines/`, `lib/inbox/`, `work/`, `.pan/`) plus
+harness-root `pancreator.yaml`. Default embedded adopt sets
+`project_root: ".pancreator"`. Reject any planned write matching
+`lib/memory/handbook/embedded-install-manifest.yaml` `deny_prefixes` (for example
+`archive/`, `lib/memory/backlog/`, `lib/internal/`, `tests/`).
 
 When any target path conflicts with an existing file, the skill MUST exit
 non-zero and post one inbox item at

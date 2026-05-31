@@ -5,16 +5,20 @@ project_root: "."
 
 bootstrap:
   phase: "5"
-  status: phase-5-in-progress
-  completed_phases: ["-1", "0", "1", "2", "3", "4"]
+  status: m1-ratified
+  completed_phases: ["-1", "0", "1", "2", "3", "4", "5"]
   placeholder: false
   enforced_today: false
-  current_focus: "Phase 5 M1 hardening: init-greenfield and adopt pipelines on real targets, knowledge-curation seed, KPI baseline, and deferred Phoenix trace verification via @pancreator/run-logger."
-  note: "Bootstrap Phase 4 ratified 2026-05-19 after the US-1 dogfood proof bundle close-out. Nested runs 77373_0230_phase-4-dogfood-proof-bundle-evidence-index and 71096_0415_phase-4-intervention-probe-pause-resume-abort are closed. Phase 5 (Rest of M1) is in progress per docs/BOOTSTRAP.md; Phoenix trace verification remains a deferred engineering item for @pancreator/run-logger and the pancreator-engineer backlog."
+  current_focus: "M1 bootstrap ratified 2026-05-31 (human GO recorded). xeremia-sandbox US-9 PoC and embedded-install AC8 SDK smoke passed without operator workarounds. M2 planning opens via inbox."
+  note: "Bootstrap Phase 4 ratified 2026-05-19. M1 ratified 2026-05-31 per m1-closure-ratification-request.md (GO). US-9 greenfield evidence evaluator pass on xeremia-sandbox, embedded harness + cursor-sync/init seeding shipped, SDK feature-delivery validated on external target. Phoenix trace verification remains deferred per us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md."
   evidence:
-    - docs/BOOTSTRAP.md Phase 5 defines the current M1 completion gate.
-    - lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-ratification-request.md records the 2026-05-19 human ratification decision for the US-1 Phase 4 dogfood exit.
-    - lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md records the closed nested-run evidence bundle and the remaining Phoenix engineering deferral.
+    - docs/BOOTSTRAP.md Phase 5 exit criterion satisfied; M1 ratified 2026-05-31.
+    - lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md is the M1 closure ratification packet.
+    - lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json and xeremia-greenfield-evidence-evaluator.json record US-9 adopt pass on xeremia-sandbox.
+    - lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-ac8-smoke-evidence.json records AC8 SDK restart without rsync, bridge script, or hand-authored inbox paths.
+    - lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json records embedded install manifest and project_root wiring.
+    - lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json records cursor-sync, init seeding, and inbox path fixes.
+    - lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md records Phase 4 dogfood exit evidence.
     - lib/internal/packages/@pancreator/** contains the Phase 3 substrate package implementations.
     - lib/pipelines/*.yaml contains the five MVP pipeline definitions.
 
@@ -26,6 +30,9 @@ threshold_policy: defaults.medium  # from pancreator-defaults.yaml
 runner:
   cursor:
     invocation: sdk
+    # When true (default under sdk), incomplete stage artifacts trigger
+    # pancreator-engineer remediation before the stage is treated as complete.
+    stage_remediation: true
 contract_bundle:
   kind: rego
   telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]

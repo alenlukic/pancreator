@@ -41,6 +41,9 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `bootstrap-phase-5-m1-exit-close-docs-bootstrap` | [indexed] (`2026-05-31T12:00:00.000Z`) | `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md` | `—` | `archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-…` |
+| `embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs` | [indexed] (`2026-05-31T04:30:00.000Z`) | `lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md` | `lib/inbox/out/172975_05-31-26/71230_0412_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-rep…` | `archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/…` |
+| `embedded-harness-install-project-root-pancreator-and-fresh-install-manifest` | [indexed] (`2026-05-30T21:05:00.000Z`) | `lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md` | `lib/inbox/out/172976_05-30-26/11654_2045_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest-rep…` | `archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/…` |
 | `repository-layout-restructure-and-archive-migration` | [indexed] (`2026-05-30T07:00:00.000Z`) | `lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md` | `lib/inbox/out/172976_05-30-26/62732_0634_repository-layout-restructure-and-archive-migration-report-approval.md` | `archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-r…` |
 | `v0-ui-dashboard-subordinate-feature-pipeline-qa` | [indexed] (`2026-05-29T22:00:00.000Z`) | `lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md` | `—` | `archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-s…` |
 | `feature-delivery-harness-wire-cursorrunner-through-run-and-advance` | [indexed] (`2026-05-29T12:00:00.000Z`) | `lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/delivery-report.md` | `—` | `archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_035…` |
@@ -75,16 +78,24 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Risks and blockers
 
-- Pass-2 extends pass-1 deferred scope; both close as a single operator session.
-- Additional observability backend verification (Langfuse) deferred to M2 under backlog item `bootstrap-external-observability-phoenix-langfuse`; Phoenix Option A smoke tests pass as of `2026-05-27`.
+- **M1 ratified:** Bootstrap Phase 5 / M1 closure ratified 2026-05-31 (human GO
+  recorded in
+  `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md`).
+  M2 planning opens via inbox.
+- xeremia-sandbox US-9 PoC and AC8 SDK smoke passed 2026-05-31 (no operator workarounds).
+- Phoenix/Langfuse external trace verification deferred to M2 (`bootstrap-external-observability-phoenix-langfuse` backlog item).
 
 ## Operator notes
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-30T18:44:33.919Z`
+- Active-memory refreshed (UTC): `2026-05-31T08:56:19.619Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
+
+
+
 
 
 

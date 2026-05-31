@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
-import { asTaskId } from "@pancreator/core";
+import { asTaskId, resolveProjectPath } from "@pancreator/core";
 import { Command } from "commander";
 import { FileInbox } from "@pancreator/inbox";
 import {
@@ -20,6 +20,7 @@ import {
   startFeatureDelivery,
 } from "./feature-delivery-run.js";
 import { createInterventionCheckpointPort } from "./intervention-checkpoint.js";
+import { runCursorSync } from "./cursor-sync.js";
 import { runCreatePancreator, runPanInit } from "./pan-init.js";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
@@ -171,8 +172,8 @@ function buildDefaultIntakeMarkdown(opts: {
 }
 
 function isArchivedDayBucketCollision(repoRoot: string, dayBucket: string): boolean {
-  const active = path.join(repoRoot, "lib", "inbox", "in", dayBucket);
-  const archived = path.join(repoRoot, "archive", "inbox", "in", dayBucket);
+  const active = resolveProjectPath(repoRoot, "lib", "inbox", "in", dayBucket);
+  const archived = resolveProjectPath(repoRoot, "archive", "inbox", "in", dayBucket);
   return existsSync(active) && existsSync(archived);
 }
 
@@ -204,6 +205,23 @@ export async function parseAndRun(
   });
 
   program
+    .command("cursor-sync")
+    .description("Emit .cursor/agents projections from lib/personas under project_root")
+    .option("--dry-run", "Print JSON envelope without writing files", false)
+    .argument("[harnessRoot]", "Harness root directory (defaults to cwd)")
+    .action(async (harnessRootArg: string | undefined, cmdOpts: { dryRun?: boolean }) => {
+      const harnessRoot = harnessRootArg !== undefined ? path.resolve(harnessRootArg) : repoRoot;
+      const dryRun = Boolean(cmdOpts.dryRun);
+      try {
+        emit(writeOut, repoRoot, runCursorSync(harnessRoot, { dryRun }));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        writeErr(`${message}\n`);
+        exit.code = 1;
+      }
+    });
+
+  program
     .command("init")
     .description("Initialize a Pancreator workspace in the current repository (dry-run by default)")
     .option("--dry-run", "Print planned scaffold writes without applying", true)
@@ -212,17 +230,17 @@ export async function parseAndRun(
     .action(async (cmdOpts: { dryRun?: boolean; apply?: boolean; force?: boolean }) => {
       const dryRun = cmdOpts.apply ? false : Boolean(cmdOpts.dryRun ?? true);
       try {
-        emit(
-          writeOut,
+        const initResult = await runPanInit({
           repoRoot,
-          await runPanInit({
-            repoRoot,
-            dryRun,
-            apply: Boolean(cmdOpts.apply),
-            force: Boolean(cmdOpts.force),
-            clock: options?.clock,
-          }),
-        );
+          dryRun,
+          apply: Boolean(cmdOpts.apply),
+          force: Boolean(cmdOpts.force),
+          clock: options?.clock,
+        });
+        emit(writeOut, repoRoot, initResult);
+        if (initResult.status === "partial") {
+          exit.code = 1;
+        }
       } catch (e) {
         const err = e as Error & { exitCode?: number };
         writeErr(`${err.message}\n`);
@@ -505,7 +523,7 @@ export async function parseAndRun(
         const sid = secondsToMidnightUtc(now);
         const hhmm = utcHhmm(now);
         const targetRel = path.posix.join("lib/inbox/in", dayBucket, `${sid}_${hhmm}_${slugArg}.md`);
-        const targetAbs = path.join(repoRoot, targetRel);
+        const targetAbs = resolveProjectPath(repoRoot, ...targetRel.split("/"));
         if (existsSync(targetAbs)) {
           throw new Error(`Refusing to overwrite existing inbox directive at ${targetRel}.`);
         }
@@ -520,7 +538,7 @@ export async function parseAndRun(
             "lib/memory/handbook/contract-templates",
             `${cmdOpts.fromTemplate}.template.md`,
           );
-          const templateAbs = path.join(repoRoot, ...templateRel.split("/"));
+          const templateAbs = resolveProjectPath(repoRoot, ...templateRel.split("/"));
           if (!existsSync(templateAbs)) {
             throw new Error(
               `Missing contract template "${cmdOpts.fromTemplate}" (expected ${templateRel}); pick a handbook template.`,

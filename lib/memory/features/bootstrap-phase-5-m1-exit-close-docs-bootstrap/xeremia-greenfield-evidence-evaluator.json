@@ -1,0 +1,20 @@
+{
+  "input": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json",
+  "verdict": "pass",
+  "structure_errors": [],
+  "checklist": {
+    "passed": [
+      "agents_md_present",
+      "handbook_seeds_present",
+      "persona_roster_present",
+      "feature_spec_authored",
+      "plan_touch_set_authored",
+      "no_overwritten_existing_files",
+      "stage:scaffold",
+      "stage:spec",
+      "stage:plan"
+    ],
+    "failed": [],
+    "gaps": []
+  }
+}

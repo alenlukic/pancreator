@@ -250,6 +250,13 @@ Outputs: a single staged PR with delivery report = the empirical proof Pancreato
 
 ## Phase 5 — Rest of M1 (self-hosted)  *(delivery pipeline)*
 
+**Tracking (2026-05-31):** M1 bootstrap ratified (human GO recorded). Evidence:
+xeremia-sandbox US-9 greenfield pass, AC8 SDK smoke, embedded-install fixes.
+Ratification record:
+`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md`
+(GO, 2026-05-31). Live status: `pancreator.yaml` → `m1-ratified`. M2 planning
+opens via inbox. Phoenix trace verification remains deferred.
+
 The Delivery Pipeline now implements its own remaining M1 deliverables. From this
 point forward Pancreator is dogfooding itself; humans only act at the gates Q3 / risk
 tiers / `pancreator.yaml` declare.
