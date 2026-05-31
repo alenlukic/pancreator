@@ -118,15 +118,27 @@ this section in your response.
 
 - **Delegation policy.** When a user prompt begins with an agent invocation token
   such as `/general-purpose`, the parent agent SHALL invoke the specified agent
-  with the remainder of the prompt as the delegated task. If the prompt contains
-  no instructions specifically intended for the parent agent, the parent agent
-  SHALL wait for the delegated agent to finish, then report the delegated result
-  to the user. For long-running delegated tasks, the parent agent SHALL perform
-  a heartbeat status check every 2 minutes. If the delegated agent crashes, the
+  with the remainder of the prompt as the delegated task. The parent agent SHALL
+  forward that remainder verbatim and SHALL NOT paraphrase, summarize, translate,
+  reorder, or rewrite it. The parent agent SHALL NOT inject interpretation,
+  inferred intent, assumptions, background context, prior-chat history, file
+  contents, or directory listings into the delegated prompt unless the operator
+  prompt or a generated `work/<day>/<task-id>/next-prompt.md` names that exact
+  artifact. When the parent agent adds an operationally required reference such as
+  a generated prompt path, the parent agent SHALL label it as parent-supplied and
+  SHALL keep it to the minimal pointer the subagent needs to start. If the prompt
+  contains no instructions specifically intended for the parent agent, the parent
+  agent SHALL perform no repository reads, edits, or other actions beyond invoking
+  the subagent, SHALL wait for the delegated agent to finish, and SHALL then
+  report the delegated result to the user without editorializing the subagent
+  output. For long-running delegated tasks, the parent agent SHALL perform a
+  heartbeat status check every 2 minutes. If the delegated agent crashes, the
   parent agent SHALL retry invocation up to three times before reporting failure
-  and the last observed error. If the prompt also contains parent-agent
-  instructions, the parent agent SHALL determine whether those instructions
-  should run before, during, or after delegation, then execute them accordingly.
+  and the last observed error. If the prompt also contains instructions
+  specifically intended for the parent agent, the parent agent SHALL execute only
+  those instructions, SHALL sequence them before, during, or after delegation as
+  the instructions require, and SHALL NOT expand them into adjacent unrequested
+  work.
 - **Stage diffs locally; never push.** No agent SHALL run `git push` or
   `git commit --no-verify`. Persona `disallowedTools` enforces this; AGENTS.md
   restates it for out-of-band tooling.

@@ -186,10 +186,14 @@ executor persona, upstream artifact paths, in-scope paths, explicit non-goals,
 validation commands, known pre-existing failures, and unresolved blockers.
 
 When a parent agent invokes an executor, the parent SHOULD pass the generated
-`next-prompt.md` path or its contents as the initial payload. The parent SHOULD
-NOT paste full PRD sections, handbook pages, archival artifacts, feature specs,
-prior chat transcripts, broad directory listings, or planner scratch notes into
-the executor prompt unless the generated prompt names the exact file.
+`next-prompt.md` path or its contents as the initial payload. The parent SHALL
+pass the operator-supplied task text or generated prompt verbatim and SHALL NOT
+paraphrase, summarize, or inject inferred intent, assumptions, or interpretation
+into the executor prompt. The parent SHALL NOT paste full PRD sections, handbook
+pages, archival artifacts, feature specs, prior chat transcripts, broad directory
+listings, or planner scratch notes into the executor prompt unless the generated
+prompt names the exact file. This handoff fidelity requirement mirrors the
+`AGENTS.md` §5 delegation policy.
 
 When execution finds ambiguity that changes scope, touch-set, acceptance
 criteria, or validation strategy, the executor SHALL stop and delegate back to
