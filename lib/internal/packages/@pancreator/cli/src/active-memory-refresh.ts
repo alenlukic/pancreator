@@ -6,6 +6,9 @@ import * as path from "node:path";
 /** Exit code when computed active-memory slices disagree with observed content. */
 export const PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE = 126;
 
+/** Maximum data rows in the current.md shipped-Features ledger (full history stays in index.json). */
+export const SHIPPED_LEDGER_ROW_CAP = 10;
+
 const OPS_NOTES_AUTO_START = "<!-- pan:active-memory:operator-notes:auto -->";
 const OPS_NOTES_AUTO_END = "<!-- /pan:active-memory:operator-notes:auto -->";
 
@@ -394,7 +397,7 @@ export async function patchFeatureIndexArchivedInbox(
   await writeFile(indexAbs, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 }
 
-async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {
+export async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {
   const featuresRoot = resolveProjectPath(repoRoot, "lib", "memory", "features");
   let dirs: string[] = [];
   try {
@@ -451,13 +454,14 @@ async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {
     if (b.completedAtMs !== a.completedAtMs) return b.completedAtMs - a.completedAtMs;
     return a.featureId.localeCompare(b.featureId);
   });
+  const cappedRows = indexedRows.slice(0, SHIPPED_LEDGER_ROW_CAP);
 
   let table =
     "| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n";
-  if (indexedRows.length === 0) {
+  if (cappedRows.length === 0) {
     table += "| `—` | `—` | `—` | `—` | `—` |\n";
   } else {
-    for (const r of indexedRows) {
+    for (const r of cappedRows) {
       table += `${r.row}\n`;
     }
   }
@@ -567,7 +571,7 @@ async function assembleRefreshedCurrentMd(
   }
   assembled = replaceSectionInner(assembled, "Most recent shipped Features", slices.shippedFeaturesBody);
   assembled = replaceSectionInner(assembled, "Operator notes", rebuiltNotesSection);
-  return assembled;
+  return `${assembled.trimEnd()}\n`;
 }
 
 /** Refreshes shipped rows and operator-note stamp; clears Active Feature when it matched the archived inbox source. */

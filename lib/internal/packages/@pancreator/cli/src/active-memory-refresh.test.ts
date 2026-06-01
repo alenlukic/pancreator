@@ -4,9 +4,11 @@ import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  deriveShippedMarkdownTable,
   patchFeatureIndexArchivedInbox,
   readExplicitArchivedInboxPointer,
   resolveArchivedInboxPointer,
+  SHIPPED_LEDGER_ROW_CAP,
 } from "./active-memory-refresh.js";
 
 describe("resolveArchivedInboxPointer", () => {
@@ -78,5 +80,45 @@ describe("resolveArchivedInboxPointer", () => {
     expect(parsed["archived_inbox_source"]).toBe(archived);
     expect((parsed["source_inbox_item"] as Record<string, unknown>)["path"]).toBe(archived);
     expect((parsed["intake"] as Record<string, unknown>)["source_inbox_item"]).toBe(archived);
+  });
+});
+
+describe("deriveShippedMarkdownTable", () => {
+  it("renders at most SHIPPED_LEDGER_ROW_CAP data rows when more indexed features exist", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-shipped-ledger-cap-"));
+    const featuresRoot = path.join(root, "lib", "memory", "features");
+    await mkdir(featuresRoot, { recursive: true });
+
+    for (let i = 0; i < 12; i += 1) {
+      const featureId = `cap-test-feature-${String(i).padStart(2, "0")}`;
+      const indexAbs = path.join(featuresRoot, featureId, "index.json");
+      await mkdir(path.dirname(indexAbs), { recursive: true });
+      const shippedAt = new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString();
+      await writeFile(
+        indexAbs,
+        JSON.stringify(
+          {
+            feature_id: featureId,
+            status: "indexed",
+            indexed_at: shippedAt,
+            delivery_report: {
+              path: `lib/memory/features/${featureId}/delivery-report.md`,
+            },
+          },
+          null,
+          2,
+        ),
+        "utf8",
+      );
+    }
+
+    const tableBody = await deriveShippedMarkdownTable(root);
+    const dataRows = tableBody
+      .split("\n")
+      .filter((line) => line.startsWith("| `cap-test-feature-"));
+
+    expect(SHIPPED_LEDGER_ROW_CAP).toBe(10);
+    expect(dataRows.length).toBeLessThanOrEqual(SHIPPED_LEDGER_ROW_CAP);
+    expect(dataRows.length).toBe(10);
   });
 });

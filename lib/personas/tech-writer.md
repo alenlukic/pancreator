@@ -81,7 +81,9 @@ that the `notifier` post-run step stages to `lib/inbox/out/` for the human inbox
 
 You MUST emit exactly one Markdown file at
 `/lib/memory/features/<id>/delivery-report.md`. The file MUST contain the six
-sections below in this order.
+sections below in this order. Use
+`lib/memory/handbook/contract-templates/delivery-report.template.md` for section
+layout and fenced JSON citation examples.
 
 1. **Summary.** One paragraph at most 150 words capturing the shipped change.
 2. **Architecture.** A bulleted list of the major design decisions. Each bullet

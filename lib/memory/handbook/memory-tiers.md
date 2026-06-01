@@ -70,9 +70,11 @@ When a run is active, blocked, or awaiting human ratification, the run SHALL
 stay under `work/<day>/<task-id>/` and SHALL remain explicit-read only by
 default.
 
-When a run completes, the `librarian` SHALL move the run to
-`archive/work/<day>/<task-id>/` during maintenance, update references,
-and leave only a small pointer in `lib/memory/active/runs.md` when useful.
+When a run reaches `complete` and `pnpm -w exec pan close-artifacts <task-id>`
+succeeds, the run SHALL reside under `archive/work/<day>/<task-id>/`. The CLI
+performs the move; agents MUST NOT manually `mv` active runs during the index
+stage. Update references after closure and leave only a small pointer in
+`lib/memory/active/runs.md` when useful.
 
 ## Durable memory
 

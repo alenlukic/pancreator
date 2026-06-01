@@ -197,7 +197,7 @@ export function listResourceDefinitions(): readonly ResourceDefinitionEntry[] {
     {
       name: "pancreator-work-run-log",
       uriTemplate: "work-run-log://{taskId}",
-      description: "Text contents of `work/<taskId>/run.log.jsonl` when the file exists.",
+      description: "Text contents of `work/<day>/<taskId>/run.log.jsonl` when the file exists.",
       mimeType: "application/x-ndjson",
     },
   ];

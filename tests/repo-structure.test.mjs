@@ -226,10 +226,12 @@ test("Cursor indexing excludes active and archived work by default", () => {
   assert.match(ignore, /^archive\/work\/\*\*$/m);
 });
 
-test("librarian owns completed work archival maintenance", () => {
+test("librarian owns close-artifacts archival contract", () => {
   const librarian = read("lib/personas/librarian.md");
-  assert.match(librarian, /archive\/work\//);
-  assert.match(librarian, /archive_completed_work/);
+  assert.match(librarian, /close-artifacts/);
+  assert.match(librarian, /work-remains-active-until-close-artifacts/);
+  assert.match(librarian, /MUST NOT manually move run artifacts from `\/work\/` to `\/archive\/work\/`/);
+  assert.doesNotMatch(librarian, /archive_completed_work/);
 });
 
 test("live normative surfaces use three-level work placeholders", () => {
