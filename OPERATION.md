@@ -266,6 +266,8 @@ quality gates during bootstrap.
 | Bare `pan` command fails | CLI not on PATH | Use `pnpm -w exec pan …` per `lib/memory/handbook/pancreator-config.md` |
 | Active memory drift | Skipped refresh | `pnpm -w exec pan refresh-active-memory --dry-run` then apply |
 | Operator-output lint fails | Bare `pan` in runnable block | Run `node lib/internal/tools/check-operator-output.mjs` and fix cited paths |
+| `close-artifacts` fails: active run directory missing or archive already exists | Librarian archived `work/` during index instead of waiting for `close-artifacts` | Do not manually `mv` work directories; run `pnpm -w exec pan close-artifacts <task-id>` only at `complete`. When work is already under `archive/work/`, closure finalizes state idempotently. |
+| `advance` rejects delivery-report citation lint | JS-literal or compact inline citations in `delivery-report.md` | Run `node lib/internal/tools/reformat-markdown-citations.mjs` and follow `lib/memory/handbook/contract-templates/delivery-report.template.md` |
 
 For deferred CLI verbs, read the JSON envelope (`milestone`, `tracking_intake`,
 `manual_workaround`) and follow the documented manual workaround.

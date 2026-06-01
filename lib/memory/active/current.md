@@ -41,40 +41,16 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `surface-opt-p4-tighten-cursor-agents-retrieval-contracts` | [indexed] (`2026-06-01T06:20:00.000Z`) | `lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/delivery-report.md` | `lib/inbox/out/172974_06-01-26/64308_0608_surface-opt-p4-tighten-cursor-agents-retrieval-contracts-report-approval.md` | `archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-…` |
+| `surface-opt-p3-cap-current-md-shipped-features-ledger` | [indexed] (`2026-06-01T05:42:00.000Z`) | `lib/memory/features/surface-opt-p3-cap-current-md-shipped-features-ledger/delivery-report.md` | `lib/inbox/out/172974_06-01-26/65992_0540_surface-opt-p3-cap-current-md-shipped-features-ledger-report-approval.md` | `archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt…` |
+| `surface-opt-p2-fix-mcp-work-run-log-path` | [indexed] (`2026-06-01T05:15:00.000Z`) | `lib/memory/features/surface-opt-p2-fix-mcp-work-run-log-path/delivery-report.md` | `lib/inbox/out/172974_06-01-26/68098_0505_surface-opt-p2-fix-mcp-work-run-log-path-report-approval.md` | `archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-l…` |
+| `surface-opt-p1-fix-mcp-memory-path` | [indexed] (`2026-06-01T04:35:00.000Z`) | `lib/memory/features/surface-opt-p1-fix-mcp-memory-path/delivery-report.md` | `lib/inbox/out/172974_06-01-26/70365_0427_surface-opt-p1-fix-mcp-memory-path-report-approval.md` | `archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path…` |
 | `bootstrap-phase-5-m1-exit-close-docs-bootstrap` | [indexed] (`2026-05-31T12:00:00.000Z`) | `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md` | `—` | `archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-…` |
 | `embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs` | [indexed] (`2026-05-31T04:30:00.000Z`) | `lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md` | `lib/inbox/out/172975_05-31-26/71230_0412_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-rep…` | `archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/…` |
 | `embedded-harness-install-project-root-pancreator-and-fresh-install-manifest` | [indexed] (`2026-05-30T21:05:00.000Z`) | `lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md` | `lib/inbox/out/172976_05-30-26/11654_2045_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest-rep…` | `archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/…` |
 | `repository-layout-restructure-and-archive-migration` | [indexed] (`2026-05-30T07:00:00.000Z`) | `lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md` | `lib/inbox/out/172976_05-30-26/62732_0634_repository-layout-restructure-and-archive-migration-report-approval.md` | `archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-r…` |
 | `v0-ui-dashboard-subordinate-feature-pipeline-qa` | [indexed] (`2026-05-29T22:00:00.000Z`) | `lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md` | `—` | `archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-s…` |
 | `feature-delivery-harness-wire-cursorrunner-through-run-and-advance` | [indexed] (`2026-05-29T12:00:00.000Z`) | `lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/delivery-report.md` | `—` | `archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_035…` |
-| `bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout` | [indexed] (`2026-05-28T01:00:00.000Z`) | `lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md` | `—` | `archive/inbox/in/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/16605_1923_boo…` |
-| `m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo` | [indexed] (`2026-05-27T17:35:30.000Z`) | `lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/delivery-report.md` | `—` | `archive/inbox/in/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-con…` |
-| `ci-best-practices-batch` | [indexed] (`2026-05-26T18:23:19.000Z`) | `lib/memory/features/ci-best-practices-batch/delivery-report.md` | `—` | `archive/inbox/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md` |
-| `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`2026-05-26T12:00:00.000Z`) | `lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md` | `—` | `archive/inbox/in/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants…` |
-| `pancreator-adopter-scan` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-adopter-scan/delivery-report.md` | `—` | `—` |
-| `pancreator-checkpointer-fs` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-checkpointer-fs/delivery-report.md` | `—` | `—` |
-| `pancreator-cli` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-cli/delivery-report.md` | `—` | `—` |
-| `pancreator-contract` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-contract/delivery-report.md` | `—` | `—` |
-| `pancreator-contract-runner-llm-judge` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-contract-runner-llm-judge/delivery-report.md` | `—` | `—` |
-| `pancreator-contract-runner-rego` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-contract-runner-rego/delivery-report.md` | `—` | `—` |
-| `pancreator-contract-style` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-contract-style/delivery-report.md` | `—` | `—` |
-| `pancreator-core` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-core/delivery-report.md` | `—` | `—` |
-| `pancreator-env-isolation` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-env-isolation/delivery-report.md` | `—` | `—` |
-| `pancreator-inbox` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-inbox/delivery-report.md` | `—` | `—` |
-| `pancreator-intervention` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-intervention/delivery-report.md` | `—` | `—` |
-| `pancreator-mcp-server` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-mcp-server/delivery-report.md` | `—` | `—` |
-| `pancreator-memory` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-memory/delivery-report.md` | `—` | `—` |
-| `pancreator-notifier` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-notifier/delivery-report.md` | `—` | `—` |
-| `pancreator-persona` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-persona/delivery-report.md` | `—` | `—` |
-| `pancreator-pipeline` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-pipeline/delivery-report.md` | `—` | `—` |
-| `pancreator-policy` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-policy/delivery-report.md` | `—` | `—` |
-| `pancreator-run-logger` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-run-logger/delivery-report.md` | `—` | `—` |
-| `pancreator-runner-cursor` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-runner-cursor/delivery-report.md` | `—` | `—` |
-| `pancreator-worktree` | [indexed] (`2026-05-26T09:34:14.000Z`) | `lib/memory/features/pancreator-worktree/delivery-report.md` | `—` | `—` |
-| `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`2026-05-26T00:00:00.000Z`) | `lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md` | `—` | `archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory…` |
-| `json-formatting` | [indexed] (`2026-05-24T00:00:00.000Z`) | `lib/memory/features/json-formatting/delivery-report.md` | `—` | `—` |
-| `compliance-tests` | [indexed] (`—`) | `lib/memory/features/compliance-tests/delivery-report.md` | `—` | `archive/inbox/in/172991_05-15-26/68576_0457_compliance-tests.md` |
-| `inbox-convention-migration` | [indexed] (`—`) | `lib/memory/features/inbox-convention-migration/delivery-report.md` | `—` | `—` |
 
 ## Risks and blockers
 
@@ -89,24 +65,9 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-05-31T08:56:19.619Z`
+- Active-memory refreshed (UTC): `2026-06-01T06:55:16.929Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -102,9 +102,13 @@ test("Cursor persona projections use one canonical file per persona", () => {
     assert.equal(fs.existsSync(path.join(dir, `${base}-standard.md`)), false, `${base}-standard should be retired`);
     assert.equal(fs.existsSync(path.join(dir, `${base}-complex.md`)), false, `${base}-complex should be retired`);
     const canonical = fs.readFileSync(path.join(dir, `${base}.md`), "utf8");
+    const frontmatter = canonical.match(/^---\r?\n([\s\S]*?)\r?\n---/u)?.[1] ?? "";
     assert.match(canonical, /^model:\s*\S+/m, `${base} should declare a model`);
-    assert.match(canonical, new RegExp(`pancreator-base-persona: ${base}`));
-    assert.match(canonical, /pancreator-model-tier: canonical/);
+    assert.match(frontmatter, new RegExp(`^name: ${base}$`, "m"));
+    assert.doesNotMatch(frontmatter, /^tools:/m, `${base} should defer tools to lib/personas source`);
+    assert.doesNotMatch(frontmatter, /^metadata:/m, `${base} should defer metadata to lib/personas source`);
+    assert.match(canonical, new RegExp(`lib/personas/${base}\\.md`));
+    assert.ok(fs.existsSync(path.join(ROOT, "lib/personas", `${base}.md`)), `${base} persona source must exist`);
   }
 });
 

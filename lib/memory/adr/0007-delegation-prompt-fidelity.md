@@ -11,22 +11,22 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [119, 141]
-    contentHash: TBD-on-commit
+    contentHash: a525073
     note: AGENTS §5 delegation policy clause amended by this decision.
   - kind: lines
     path: lib/memory/handbook/context-economy.md
     range: [188, 197]
-    contentHash: TBD-on-commit
+    contentHash: 24f986b
     note: Planning/execution handoff discipline carries the mirrored prompt-fidelity norm.
   - kind: lines
     path: lib/memory/handbook/agents-md-authoring.md
     range: [103, 117]
-    contentHash: TBD-on-commit
+    contentHash: 266df6b
     note: AGENTS change-control workflow requires inbox authorization and ADR for policy-significant edits.
   - kind: lines
     path: lib/inbox/in/172975_05-31-26/30025_1539_delegation-prompt-fidelity-no-editorializing.md
     range: [11, 31]
-    contentHash: TBD-on-commit
+    contentHash: a82d909
     note: Authorizing inbox directive framing the contract gap and required outcomes.
 ---
 
@@ -56,7 +56,7 @@ under-specified at the contract layer.
 When a parent agent invokes a named subagent, the parent agent SHALL forward the
 delegated remainder verbatim and SHALL NOT paraphrase, summarize, translate,
 reorder, or rewrite it. Citation:
-`{kind: lines, path: AGENTS.md, range: [121, 123], contentHash: TBD-on-commit}`.
+`{kind: lines, path: AGENTS.md, range: [121, 123], contentHash: a525073}`.
 
 When a parent agent constructs a delegated prompt, the parent agent SHALL NOT
 inject interpretation, inferred intent, assumptions, background context,
@@ -65,24 +65,24 @@ prompt or a generated `work/<day>/<task-id>/next-prompt.md` names that exact
 artifact. When the parent agent adds an operationally required reference, the
 parent agent SHALL label it parent-supplied and SHALL keep it to the minimal
 pointer the subagent needs to start. Citation:
-`{kind: lines, path: AGENTS.md, range: [123, 129], contentHash: TBD-on-commit}`.
+`{kind: lines, path: AGENTS.md, range: [123, 129], contentHash: a525073}`.
 
 When a delegation prompt carries no instructions specifically intended for the
 parent agent, the parent agent SHALL perform no repository reads, edits, or other
 actions beyond invoking the subagent, SHALL wait for completion, and SHALL report
 the delegated result without editorializing the subagent output. Citation:
-`{kind: lines, path: AGENTS.md, range: [129, 134], contentHash: TBD-on-commit}`.
+`{kind: lines, path: AGENTS.md, range: [129, 134], contentHash: a525073}`.
 
 When a delegation prompt also carries instructions specifically intended for the
 parent agent, the parent agent SHALL execute only those instructions, SHALL
 sequence them relative to delegation as the instructions require, and SHALL NOT
 expand them into adjacent unrequested work. Citation:
-`{kind: lines, path: AGENTS.md, range: [137, 141], contentHash: TBD-on-commit}`.
+`{kind: lines, path: AGENTS.md, range: [137, 141], contentHash: a525073}`.
 
 When a parent agent invokes an executor on the planning/execution path, the
 parent agent SHALL apply the same verbatim-fidelity and no-injection norm and
 SHALL treat `AGENTS.md` §5 as the governing source. Citation:
-`{kind: lines, path: lib/memory/handbook/context-economy.md, range: [188, 197], contentHash: TBD-on-commit}`.
+`{kind: lines, path: lib/memory/handbook/context-economy.md, range: [188, 197], contentHash: a525073}`.
 
 ## Consequences
 
@@ -100,5 +100,5 @@ SHALL treat `AGENTS.md` §5 as the governing source. Citation:
 
 This ADR is `proposed` on 2026-05-31 (UTC) pending `LocalUserAuthorizer`
 ratification, per the AGENTS change-control workflow at
-`{kind: lines, path: lib/memory/handbook/agents-md-authoring.md, range: [103, 117], contentHash: TBD-on-commit}`.
+`{kind: lines, path: lib/memory/handbook/agents-md-authoring.md, range: [103, 117], contentHash: 266df6b}`.
 On ratification the author SHALL set `status: accepted`.

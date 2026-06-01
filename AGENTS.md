@@ -163,9 +163,10 @@ this section in your response.
 - **Human is the in-loop reviewer at every phase boundary.** The bootstrap
   authorizer is `LocalUserAuthorizer` (PRD section 10). The human ratifies each
   phase exit before the next phase starts.
-- **Dual-anchor citations everywhere.** Every cross-reference is
-  `{kind: 'symbol' | 'lines', path, contentHash}`. URLs without an anchored
-  citation fail Layer 1 lint at `severity: block`.
+- **Dual-anchor citations everywhere.** Every cross-reference uses canonical pretty JSON
+  (`"kind"`, `"path"`, `"contentHash"`) per `lib/memory/handbook/glossary.md` §4 and
+  `lib/personas/tech-writer.md` §Conformance gates. JS-literal `{kind: lines, ...}` form is forbidden.
+  URLs without an anchored citation fail Layer 1 lint at `severity: block`.
 - **Layer 1 lint is non-negotiable.** Body prose uses RFC 2119 keywords, EARS
   templates, atomic clauses, active voice, present tense, quantified numerics,
   glossary-resolved nouns, and no weasel words. See

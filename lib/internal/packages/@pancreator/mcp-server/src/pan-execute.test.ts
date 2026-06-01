@@ -7,6 +7,7 @@ import { interventionJournalPath } from "@pancreator/intervention";
 import { describe, expect, it } from "vitest";
 
 import { callDdlToolMcp, readPancreatorResourceMcp } from "./create-mcp-server.js";
+import { listResourceDefinitions } from "./definitions.js";
 import { DdlDeferredToolError, executeDdlTool } from "./pan-execute.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..", "..", "..", "..", "..");
@@ -58,12 +59,37 @@ describe("pan.pause", () => {
 });
 
 describe("readPancreatorResource work-run-log", () => {
-  it("returns run log file contents from work/<taskId>/run.log.jsonl", async () => {
+  it("listResourceDefinitions references work/<day>/<taskId>/run.log.jsonl", () => {
+    const entry = listResourceDefinitions().find((r) => r.name === "pancreator-work-run-log");
+    expect(entry?.description).toBe(
+      "Text contents of `work/<day>/<taskId>/run.log.jsonl` when the file exists.",
+    );
+  });
+
+  it("returns run log file contents from work/<day>/<taskId>/run.log.jsonl", async () => {
     const root = await mktemp("pan-mcp-runlog-");
+    const day = "172974_06-01-26";
     const task = "t-99";
-    const p = path.join(root, "work", task, "run.log.jsonl");
+    const p = path.join(root, "work", day, task, "run.log.jsonl");
     await fs.mkdir(path.dirname(p), { recursive: true });
     const body = `{"line":1}\n`;
+    await fs.writeFile(p, body, "utf8");
+
+    const { mimeType, text } = await readPancreatorResourceMcp(
+      `work-run-log://${task}`,
+      { repoRoot: root },
+    );
+    expect(mimeType).toBe("application/x-ndjson");
+    expect(text).toBe(body);
+  });
+
+  it("resolves work/<day>/<taskId>/run.log.jsonl through day-aware search", async () => {
+    const root = await mktemp("pan-mcp-runlog-day-");
+    const day = "172974_06-01-26";
+    const task = "69714_0438_surface-opt-p2-fix-mcp-work-run-log-path";
+    const p = path.join(root, "work", day, task, "run.log.jsonl");
+    await fs.mkdir(path.dirname(p), { recursive: true });
+    const body = `{"event":"stage_start","stage":"implement"}\n`;
     await fs.writeFile(p, body, "utf8");
 
     const { mimeType, text } = await readPancreatorResourceMcp(

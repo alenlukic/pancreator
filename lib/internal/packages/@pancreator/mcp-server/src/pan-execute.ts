@@ -13,6 +13,7 @@ import { isRunLogRecord } from "@pancreator/run-logger";
 
 import { type DdlToolName } from "./definitions.js";
 import {
+  findWorkFile,
   listFeatureSummaries,
   queryMemory,
   readWorkspaceStatus,
@@ -247,7 +248,7 @@ async function listInboxNestedFiles(absRoot: string): Promise<string[]> {
 
 /**
  * `memory://` lists `/lib/memory/<area>/` directory names. `inbox://` lists Inbox queue file names.
- * `work-run-log://<taskId>` returns `work/<taskId>/run.log.jsonl` as text when present.
+ * `work-run-log://<taskId>` returns `work/<day>/<taskId>/run.log.jsonl` as text when present.
  */
 export async function readPancreatorResource(
   uri: string,
@@ -290,8 +291,13 @@ export async function readPancreatorResource(
   const runLogMatch = /^work-run-log:\/\/([^/]+)\/?$/.exec(uri);
   if (runLogMatch) {
     const taskId: TaskId = asTaskId(runLogMatch[1] as string);
-    const p = path.join(root, "work", taskId, "run.log.jsonl");
-    const text = await readFile(p, "utf8");
+    const resolved = await findWorkFile(root, taskId, "run.log.jsonl");
+    if (resolved === null) {
+      throw new Error(
+        `Run log not found for task ${taskId} under work/<day>/${taskId}/run.log.jsonl or archive/work/<day>/${taskId}/run.log.jsonl`,
+      );
+    }
+    const text = await readFile(resolved.abs, "utf8");
     const first = text
       .split("\n")
       .map((l) => l.trim())

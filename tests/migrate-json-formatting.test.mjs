@@ -6,6 +6,11 @@ import path from "node:path";
 import { test } from "node:test";
 
 import {
+  COMPACT_DUAL_ANCHOR_INNER,
+  JS_LITERAL_CITATION,
+  lintDeliveryReportCitations,
+} from "../lib/internal/tools/markdown-citation-lint.mjs";
+import {
   CANONICAL_JSON_INDENT_SPACES,
 } from "../lib/internal/tools/canonical-json-format.mjs";
 import {
@@ -19,9 +24,8 @@ import {
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
-/** Flags single-line `{ ... "kind": "lines"|"symbol" ... }` dual-anchor blobs (spec anti-pattern). */
-const COMPACT_DUAL_ANCHOR_INNER = /\{[^}\n\r]*"kind"\s*:\s*"(?:symbol|lines)"[^}\n\r]*"contentHash"\s*:/u;
-const JS_LITERAL_CITATION = /\{kind:\s*(?:'|lines|symbol)/u;
+/** Re-exported from markdown-citation-lint.mjs for backward-compatible test references. */
+export { COMPACT_DUAL_ANCHOR_INNER, JS_LITERAL_CITATION };
 
 function readComplianceDescriptor(rel) {
   return fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -184,6 +188,14 @@ test("abbreviateHashes shortens standalone 40-char git blobs", () => {
 test("abbreviateHashes ignores non-hash hex literals under abbreviation length gates", () => {
   const out = abbreviateHashes({ hex16: "a".repeat(16) }, 7);
   assert.deepEqual(out, { hex16: "a".repeat(16) });
+});
+
+test("lintDeliveryReportCitations flags JS-literal and compact dual-anchor forms", () => {
+  const jsLiteral = "claim {kind: lines, path: foo.md, range: [1, 2], contentHash: abc}";
+  const compact = 'claim {"kind":"lines","path":"foo.md","range":[1,2],"contentHash":"abc"}';
+  assert.equal(lintDeliveryReportCitations(jsLiteral).ok, false);
+  assert.equal(lintDeliveryReportCitations(compact).ok, false);
+  assert.equal(lintDeliveryReportCitations("```json\n{\"kind\":\"lines\"}\n```").ok, true);
 });
 
 test("markdown citation compliance scan flags compact and JS-literal dual-anchor forms", () => {

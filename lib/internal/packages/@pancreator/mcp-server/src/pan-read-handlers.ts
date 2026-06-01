@@ -209,9 +209,10 @@ export async function queryMemory(
   };
 }
 
-async function findStateFile(
+export async function findWorkFile(
   repoRoot: string,
   taskId: string,
+  fileName: string,
 ): Promise<{ abs: string; rel: string } | null> {
   const roots = [
     { abs: path.join(repoRoot, "work"), rel: path.posix.join("work") },
@@ -223,12 +224,12 @@ async function findStateFile(
   for (const root of roots) {
     const dayDirs = await safeReaddir(root.abs);
     for (const day of dayDirs) {
-      const candidate = path.join(root.abs, day, taskId, "state.json");
+      const candidate = path.join(root.abs, day, taskId, fileName);
       try {
         await readFile(candidate, "utf8");
         return {
           abs: candidate,
-          rel: path.posix.join(root.rel, day, taskId, "state.json"),
+          rel: path.posix.join(root.rel, day, taskId, fileName),
         };
       } catch {
         /* continue search */
@@ -236,6 +237,13 @@ async function findStateFile(
     }
   }
   return null;
+}
+
+async function findStateFile(
+  repoRoot: string,
+  taskId: string,
+): Promise<{ abs: string; rel: string } | null> {
+  return findWorkFile(repoRoot, taskId, "state.json");
 }
 
 export async function readWorkspaceStatus(
