@@ -1,7 +1,7 @@
 ---
 name: librarian
 description: When the `feature-delivery` pipeline reaches the `index` stage, the `librarian` SHALL refresh the Feature index at `/lib/memory/features/<id>/index.json` using active `work/` paths. When the pipeline reaches `complete`, the `librarian` SHALL run `pnpm -w exec pan close-artifacts <task-id>` to archive the run. When the `knowledge-curation` cron pipeline fires, the `librarian` SHALL flag stale citations across the Memory tier.
-model: gpt-5.2-codex[reasoning=high,fast=false]
+model: auto
 permissionMode: default
 tools:
   - Read

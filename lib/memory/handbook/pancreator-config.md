@@ -140,7 +140,7 @@ Rules:
   the file exists; secret values MUST NOT be written to stdout, stderr, or
   `run.log.jsonl`.
 - SDK-only automatic `review` / `test` loopbacks, the cumulative retry budget
-  (max 3), retry-limit halt artifacts, and the report approval gate are defined
+  (max 5), retry-limit halt artifacts, and the report approval gate are defined
   in `OPERATION.md` and apply only under `sdk` mode.
 
 ## Bootstrap tracking invariants

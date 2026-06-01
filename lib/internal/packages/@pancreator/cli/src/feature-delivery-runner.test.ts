@@ -37,11 +37,11 @@ function sampleLedger(overrides: Partial<FeatureDeliveryRunnerLedger> = {}): Fea
 }
 
 describe("feature-delivery-runner automation", () => {
-  it("applySdkRetrySideEffects halts when cumulative retries exceed 3", async () => {
+  it("applySdkRetrySideEffects halts when cumulative retries exceed the budget", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-halt-"));
     const state = sampleLedger({
       currentStage: "implement",
-      automation: { runnerInvocation: "sdk", cumulativeRetryCount: 3 },
+      automation: { runnerInvocation: "sdk", cumulativeRetryCount: 5 },
     });
     const summary = await applySdkRetrySideEffects({
       repoRoot: root,
@@ -50,7 +50,7 @@ describe("feature-delivery-runner automation", () => {
       fromStage: "review",
       now: new Date("2026-05-10T14:00:00.000Z"),
     });
-    expect(summary).toContain("retry_count=4");
+    expect(summary).toContain("retry_count=6");
     expect(state.status).toBe("halted");
   });
 

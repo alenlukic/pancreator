@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { frontmatterHasKey, splitAgentProjection } from "./cursor-agents-retrieval-contract.test.mjs";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
 const PAN_BIN = path.join(REPO_ROOT, "lib/internal/packages/@pancreator/cli/bin/pan.js");
@@ -59,6 +60,18 @@ test("pan cursor-sync writes projections for project_root dot", async () => {
   assert.ok(existsSync(path.join(root, ".cursor/agents/general-purpose.md")));
   const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
   assert.match(projection, /lib\/personas\/intake-analyst\.md/);
+  const { frontmatter, body } = splitAgentProjection(projection);
+  assert.equal(frontmatterHasKey(frontmatter, "tools"), false);
+  assert.equal(frontmatterHasKey(frontmatter, "disallowedTools"), false);
+  assert.equal(frontmatterHasKey(frontmatter, "metadata"), false);
+  assert.match(body, /next-prompt\.md/u);
+  assert.match(body, /handoff\.md/u);
+
+  const generalPurpose = await readFile(path.join(root, ".cursor/agents/general-purpose.md"), "utf8");
+  const gpParsed = splitAgentProjection(generalPurpose);
+  assert.equal(frontmatterHasKey(gpParsed.frontmatter, "tools"), true);
+  assert.equal(frontmatterHasKey(gpParsed.frontmatter, "metadata"), true);
+  assert.match(gpParsed.body, /next-prompt\.md/u);
 });
 
 test("pan cursor-sync writes projections for project_root .pancreator", async () => {

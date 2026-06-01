@@ -5,6 +5,8 @@ model: gpt-5.2-codex[reasoning=high,fast=false]
 permissionMode: default
 mcpServers:
   - pancreator-memory
+  - cursor-ide-browser
+skills: []
 maxTurns: 40
 isolation: worktree
 memory: project

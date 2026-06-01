@@ -9,7 +9,7 @@ skills: []
 maxTurns: 30
 isolation: none
 memory: project
-effort: low
+effort: medium
 color: indigo
 ---
 

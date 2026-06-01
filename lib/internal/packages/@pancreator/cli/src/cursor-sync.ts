@@ -82,27 +82,57 @@ function renderScalarBlock(key: string, value: unknown, indent = ""): string {
   return `${indent}${key}: ${yamlQuote(String(value))}`;
 }
 
-function renderMetadata(
-  metadata: Record<string, unknown> | undefined,
-  personaName: string,
-  canonicalPersonaRel: string,
-): string {
-  const merged = { ...(metadata ?? {}) };
-  merged["pancreator-base-persona"] = personaName;
-  merged["pancreator-model-tier"] = "canonical";
-  merged["pancreator-canonical-persona"] = canonicalPersonaRel;
-  const lines = ["metadata:"];
-  for (const [key, value] of Object.entries(merged)) {
-    if (Array.isArray(value)) {
-      lines.push(`  ${key}:`);
-      for (const item of value) {
-        lines.push(`    - ${yamlQuote(String(item))}`);
-      }
-    } else {
-      lines.push(`  ${key}: ${yamlQuote(String(value))}`);
-    }
+function projectPath(projectPrefix: string, relPath: string): string {
+  if (projectPrefix === ".") {
+    return relPath;
   }
-  return lines.join("\n");
+  return posixJoin(projectPrefix, relPath);
+}
+
+function buildSourceBackedRetrievalContract(
+  personaPathForText: string,
+  projectPrefix: string,
+): string[] {
+  const workPrompt = projectPath(projectPrefix, "work/<day>/<id>/next-prompt.md");
+  const workHandoff = projectPath(projectPrefix, "work/<day>/<id>/handoff.md");
+  const contextEconomy = projectPath(projectPrefix, "lib/memory/handbook/context-economy.md");
+  const workGlob = projectPath(projectPrefix, "work/**");
+  const steps = [
+    `Read \`${workPrompt}\` for the bounded stage scope; when no \`next-prompt.md\` exists for the active run, read \`${workHandoff}\` instead.`,
+    "Read `AGENTS.md` only when the bounded prompt omits the live operating contract the task needs.",
+    `Read \`${personaPathForText}\` only when the bounded prompt omits persona role semantics required for the task.`,
+    `Read \`${contextEconomy}\` only when the task requires context-budget or escalation decisions beyond what the bounded prompt states.`,
+    "Read `docs/M1.index.md`, `docs/PRD.index.md`, or `docs/PRD.summary.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md` only when the bounded prompt requires authoritative product wording the compact indexes do not cover.",
+    `Do not traverse \`${workGlob}\` (except the active run paths named in step 1), \`${projectPath(projectPrefix, "archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, "archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
+  ];
+  if (projectPrefix !== ".") {
+    steps.push(
+      `Project-root paths in prompts and ledgers are relative to \`${projectPrefix}/\`; resolve them under that prefix from the harness root.`,
+    );
+  }
+  return steps.map((step, index) => `${index + 1}. ${step}`);
+}
+
+function buildGeneralPurposeRetrievalContract(projectPrefix: string): string[] {
+  const workPrompt = projectPath(projectPrefix, "work/<day>/<id>/next-prompt.md");
+  const workHandoff = projectPath(projectPrefix, "work/<day>/<id>/handoff.md");
+  const contextEconomy = projectPath(projectPrefix, "lib/memory/handbook/context-economy.md");
+  const handbookIndex = projectPath(projectPrefix, "lib/memory/handbook/index.md");
+  const workGlob = projectPath(projectPrefix, "work/**");
+  const steps = [
+    `Read \`${workPrompt}\` for the bounded stage scope; when no \`next-prompt.md\` exists for the active run, read \`${workHandoff}\` instead.`,
+    "Read `AGENTS.md` only when the bounded prompt omits the live operating contract the task needs.",
+    `Read \`${contextEconomy}\` only when opening broad docs, memory, archived work, or generated artifacts beyond what the bounded prompt names.`,
+    `Read \`${contextEconomy}\` §"Model and context escalation guidance" only when choosing model class or delegating to an owner persona and the bounded prompt does not already state the escalation path.`,
+    `Prefer compact route documents such as \`docs/M1.index.md\`, \`docs/PRD.index.md\`, \`docs/PRD.summary.md\`, and \`${handbookIndex}\` before full source-of-truth documents only when the bounded prompt requires product or handbook authority the compact indexes can satisfy without full-source reads.`,
+    `Do not traverse \`${workGlob}\` (except the active run paths named in step 1), \`${projectPath(projectPrefix, "archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, "archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
+  ];
+  if (projectPrefix !== ".") {
+    steps.push(
+      `Project-root paths in prompts and ledgers are relative to \`${projectPrefix}/\`; resolve them under that prefix from the harness root.`,
+    );
+  }
+  return steps.map((step, index) => `${index + 1}. ${step}`);
 }
 
 export function buildAgentProjection(
@@ -117,16 +147,12 @@ export function buildAgentProjection(
     `${personaName}.md`,
   );
   const personaPathForText = canonicalPersonaRel;
-  const handbookPrefix = projectPrefix === "." ? "" : projectPrefix;
-  const workPrefix = projectPrefix === "." ? "" : projectPrefix;
 
   const frontmatterKeys: Array<[string, unknown]> = [
     ["name", personaName],
     ["description", `Canonical \`${personaName}\` subagent projection for persona-owned pipeline stages.`],
     ["model", data.model ?? "auto"],
     ["permissionMode", data.permissionMode ?? "default"],
-    ["tools", data.tools ?? []],
-    ["disallowedTools", data.disallowedTools ?? []],
     ["mcpServers", data.mcpServers ?? []],
     ["skills", data.skills ?? []],
     ["maxTurns", data.maxTurns ?? 30],
@@ -138,39 +164,30 @@ export function buildAgentProjection(
 
   const yamlLines = ["---"];
   for (const [key, value] of frontmatterKeys) {
+    if (key === "model") {
+      yamlLines.push(`model: ${String(value)}`);
+      continue;
+    }
     yamlLines.push(renderScalarBlock(key, value));
   }
-  yamlLines.push(renderMetadata(data.metadata as Record<string, unknown> | undefined, personaName, canonicalPersonaRel));
   yamlLines.push("---", "", `# ${personaName}`, "");
   yamlLines.push(
-    `This file is the Cursor projection for \`${personaName}\` at \`${personaPathForText}\`. It intentionally avoids duplicating persona prose,`,
+    `This file is the canonical Cursor projection for \`${personaName}\` at \`${personaPathForText}\`. It intentionally avoids duplicating persona prose,`,
     "PRD citations, and handbook excerpts so Cursor subagent startup stays small.",
     "",
     "## Retrieval contract",
     "",
-    "1. Read `AGENTS.md` for the live operating contract.",
-    `2. Read \`${personaPathForText}\` for role semantics before performing persona-owned work.`,
-    `3. Read \`${posixJoin(handbookPrefix, "lib/memory/handbook/context-economy.md")}\` only when the task requires context-budget decisions.`,
-    "4. Do not traverse `work/**`, `archive/work/**`, `lib/inbox/out/**`, `archive/inbox/**`, or `lib/inbox/threads/**` unless the task explicitly requires active-run handling or archival reconstruction.",
+    ...buildSourceBackedRetrievalContract(personaPathForText, projectPrefix),
   );
-
-  if (projectPrefix !== ".") {
-    yamlLines[yamlLines.length - 1] = yamlLines[yamlLines.length - 1]!.replace(
-      "`work/**`",
-      `\`${posixJoin(workPrefix, "work/**")}\``,
-    );
-    yamlLines.push(
-      `5. Project-root paths in prompts and ledgers are relative to \`${projectPrefix}/\`; resolve them under that prefix from the harness root.`,
-    );
-  }
 
   yamlLines.push("");
   return `${yamlLines.join("\n")}\n`;
 }
 
 export function buildGeneralPurposeProjection(projectPrefix: string): string {
-  const handbookPrefix = projectPrefix === "." ? "" : projectPrefix;
-  const canonicalPersona = posixJoin(handbookPrefix, "lib/memory/handbook/context-economy.md");
+  const contextEconomy = projectPath(projectPrefix, "lib/memory/handbook/context-economy.md");
+  const personaSpec = projectPath(projectPrefix, "lib/memory/handbook/persona-spec.md");
+  const retrievalSteps = buildGeneralPurposeRetrievalContract(projectPrefix).join("\n");
   return `---
 permissionMode: default
 tools:
@@ -203,8 +220,8 @@ metadata:
   pancreator-stability: experimental
   pancreator-handbook-anchors:
     - /AGENTS.md
-    - ${JSON.stringify(posixJoin(handbookPrefix, "lib/memory/handbook/context-economy.md"))}
-    - ${JSON.stringify(posixJoin(handbookPrefix, "lib/memory/handbook/persona-spec.md"))}
+    - ${JSON.stringify(contextEconomy)}
+    - ${JSON.stringify(personaSpec)}
   pancreator-checklist:
     - route-before-broad-read
     - prefer-owner-persona
@@ -223,10 +240,16 @@ Use this agent when the human operator does not know which persona should own a 
 
 ## Retrieval contract
 
-1. Read \`AGENTS.md\` for the live operating contract.
-2. Read \`${canonicalPersona}\` before opening broad docs, memory, archived work, or generated artifacts.
-3. Prefer compact handbook route documents before full source-of-truth documents.
-4. Do not traverse \`${posixJoin(handbookPrefix, "work/**")}\`, \`${posixJoin(handbookPrefix, "archive/work/**")}\`, or inbox out/thread paths unless the operator request explicitly requires active-run handling or archival reconstruction.
+${retrievalSteps}
+
+## Operating contract
+
+- Treat route discovery as the first step: determine whether an existing persona, skill, pipeline stage, or handbook page owns the work.
+- Delegate to the owner persona when the task maps cleanly to one.
+- Perform bounded bridge work only when no owner exists, the work is small, and the route is clear enough to avoid broad context loading.
+- When using this agent as a persona-as-prompt fallback, state the target persona in the first message.
+- Return a compact result that names the route chosen, the files touched or inspected, validation performed, and any remaining owner/persona handoff.
+- On bounded task completion, append \`## Next operator steps\` per \`/lib/memory/handbook/operator-output-contract.md\`: one item when only one follow-up exists; multiple items with **When to choose** and **Impact** when the operator must pick among paths. Label read-only verification as \`Read-only:\`; state exact commands and file paths for mutating steps. Runnable \`pan\` CLI lines MUST use \`pnpm -w exec pan …\` from the repo root (\`lib/memory/handbook/pancreator-config.md\`), not bare \`pan\`. Shell steps MUST be copy-paste-ready fenced \`bash\` blocks with every path enumerated—never "stage the touched files" or "and other files".
 `;
 }
 

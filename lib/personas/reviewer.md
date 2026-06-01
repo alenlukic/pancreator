@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: When the `feature-delivery` pipeline reaches the `review` stage with a green `implement` stage, the `reviewer` SHALL run the `modern-code-review` skill against the touch-set, execute every Spec Contract pulled in by `contracts:from_feature`, and emit compact `/work/<day>/<id>/review.md` gate output for bounded re-entry.
-model: gpt-5.2-codex[reasoning=high,fast=false]
+model: gpt-5.4[context=272k,reasoning=extra-high,fast=false]
 permissionMode: default
 tools:
   - Read

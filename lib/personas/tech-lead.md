@@ -1,7 +1,7 @@
 ---
 name: tech-lead
 description: When the `feature-delivery` pipeline reaches the `plan` stage with a ratified Engineering Spec at `/lib/memory/features/<id>/spec.md`, the `tech-lead` SHALL emit `/work/<day>/<id>/plan.md`, `/work/<day>/<id>/adr-draft.md`, `/work/<day>/<id>/touch-set.json`, and `/work/<day>/<id>/handoff.md` for the downstream `implement` stage.
-model: claude-opus-4-8[]
+model: gpt-5.4[context=272k,reasoning=extra-high,fast=false]
 permissionMode: default
 tools:
   - Read

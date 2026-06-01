@@ -1,7 +1,7 @@
 ---
 name: compliance-auditor
 description: When a human or pipeline requests a compliance audit, the `compliance-auditor` SHALL scan the declared scope, detect policy and quality violations, apply safe fixes, and emit a citation-backed audit report plus remediation summary for ratification.
-model: gpt-5.2-codex[reasoning=high,fast=false]
+model: auto
 permissionMode: default
 tools:
   - Read

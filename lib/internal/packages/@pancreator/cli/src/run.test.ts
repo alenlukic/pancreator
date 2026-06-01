@@ -1746,7 +1746,7 @@ stages:
         automation?: { runnerInvocation: string; cumulativeRetryCount: number };
       };
       patched.currentStage = "review";
-      patched.automation = { runnerInvocation: "sdk", cumulativeRetryCount: 3 };
+      patched.automation = { runnerInvocation: "sdk", cumulativeRetryCount: 5 };
       await writeFile(stateAbs, `${JSON.stringify(patched, null, 2)}\n`, "utf8");
       const runDir = path.dirname(start.stateFile);
       await writeFile(path.join(root, runDir, "review.md"), "review_passes: false\n", "utf8");
@@ -1761,7 +1761,7 @@ stages:
         automation?: { cumulativeRetryCount: number };
       };
       expect(halted.status).toBe("halted");
-      expect(halted.automation?.cumulativeRetryCount).toBe(4);
+      expect(halted.automation?.cumulativeRetryCount).toBe(6);
     });
   });
 });

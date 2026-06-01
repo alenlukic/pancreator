@@ -40,7 +40,7 @@ When `runner.cursor.invocation: sdk` is set in `pancreator.yaml`, `pan run` and
 `pan advance` invoke `CursorRunner` for the entering stage (mocked in unit tests;
 live SDK calls remain operator-scheduled). The CLI loads repo-root `.env` before
 SDK construction. Automatic `review` / `test` loopbacks, a cumulative retry
-budget of 3, retry-limit halt outbox artifacts, and the report approval gate apply
+budget of 5, retry-limit halt outbox artifacts, and the report approval gate apply
 only in SDK mode; manual mode preserves today's handoff-and-paste loop unchanged.
 
 Use this loop exactly:
@@ -122,7 +122,7 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
 4. After `review` or `test` artifacts exist, SDK mode MAY auto-advance when
    `review_passes` / `qa_passes` or route on `must_fix` / `qa_fails` without a
    separate operator `advance` for that branch.
-5. When cumulative `must_fix` and `qa_fails` retries exceed 3, the run halts with
+5. When cumulative `must_fix` and `qa_fails` retries exceed 5, the run halts with
    `status: halted` and one timestamp-prefixed file under
    `lib/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
 6. When `delivery-report.md` exists at the `report` stage, the runtime writes one

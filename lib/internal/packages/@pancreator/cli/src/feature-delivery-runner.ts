@@ -48,6 +48,8 @@ export interface FeatureDeliveryAutomationState {
 
 export const STAGE_REMEDIATION_PERSONA = "pancreator-engineer" as const;
 export const MAX_STAGE_REMEDIATION_ATTEMPTS = 2;
+/** Cumulative `must_fix` / `qa_fails` loopbacks allowed before SDK auto-advance halts. */
+export const FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET = 5;
 
 /** Minimal ledger slice shared by runner orchestration without importing feature-delivery-run. */
 export interface FeatureDeliveryRunnerLedger {
@@ -508,7 +510,7 @@ export async function writeRetryLimitHaltArtifact(input: {
     "",
     "# Feature-delivery retry limit halt",
     "",
-    `Task ${input.state.taskId} exceeded the cumulative automatic loopback budget (${input.retryCount} > 3).`,
+    `Task ${input.state.taskId} exceeded the cumulative automatic loopback budget (${input.retryCount} > ${FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET}).`,
     "",
   ].join("\n");
   await writeFile(abs, body, "utf8");
@@ -676,7 +678,7 @@ export async function applySdkRetrySideEffects(input: {
     return null;
   }
   const retryCount = incrementAutomationRetry(input.state);
-  if (retryCount <= 3) {
+  if (retryCount <= FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET) {
     return null;
   }
   input.state.status = "halted";
