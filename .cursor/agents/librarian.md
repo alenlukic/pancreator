@@ -1,7 +1,7 @@
 ---
 name: librarian
 description: "Canonical `librarian` subagent projection for persona-owned pipeline stages."
-model: auto
+model: gpt-5.2-codex[]
 permissionMode: default
 tools:
   - Read

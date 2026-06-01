@@ -1,7 +1,7 @@
 ---
 name: adopter
 description: "Canonical `adopter` subagent projection for persona-owned pipeline stages."
-model: claude-opus-4-7
+model: claude-opus-4-8[]
 permissionMode: default
 tools:
   - Read

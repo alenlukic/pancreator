@@ -1,7 +1,7 @@
 ---
 name: pr-writer
 description: "Canonical `pr-writer` subagent projection for persona-owned pipeline stages."
-model: inherit
+model: auto
 permissionMode: read-only
 tools:
   - Read

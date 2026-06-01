@@ -1,7 +1,7 @@
 ---
 name: adopter
 description: When a human runs `npx pancreator init` in an existing repository, the `adopter` SHALL scan languages, frameworks, test infrastructure, continuous-integration configuration, dependency manifests, and conventions, then emit `/lib/memory/adoption/scan-<date>.md` plus paired inbox items for human ratification.
-model: claude-opus-4-7
+model: claude-opus-4-8[]
 permissionMode: default
 tools:
   - Read

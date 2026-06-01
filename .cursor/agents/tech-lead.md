@@ -1,7 +1,7 @@
 ---
 name: tech-lead
 description: "Canonical `tech-lead` subagent projection for persona-owned pipeline stages."
-model: gpt-5.3-codex
+model: claude-opus-4-8[]
 permissionMode: default
 tools:
   - Read

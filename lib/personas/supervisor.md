@@ -1,7 +1,7 @@
 ---
 name: supervisor
 description: When any pipeline starts, the `supervisor` SHALL orchestrate stage transitions, enforce every declared gate, dispatch Intervention actions on the run log, and at the `ship` stage stage one pull request for the `human_approval` gate without ever pushing automatically.
-model: gpt-5.3-codex
+model: gpt-5.2-codex[]
 permissionMode: default
 tools:
   - Read

@@ -1,7 +1,7 @@
 ---
 name: pr-writer
 description: When the operator invokes `pr-writer` with a feature ID, work directory, or `next-prompt.md` path, the `pr-writer` SHALL synthesize one GitHub pull-request description from feature-delivery artifacts and the current git worktree and emit it as a fenced Markdown block in the chat response.
-model: inherit
+model: auto
 permissionMode: read-only
 tools:
   - Read

@@ -1,7 +1,7 @@
 ---
 name: persona-designer
 description: "Canonical `persona-designer` subagent projection for persona-owned pipeline stages."
-model: claude-4.6-sonnet-medium-thinking
+model: claude-sonnet-4-6[]
 permissionMode: default
 tools:
   - Read

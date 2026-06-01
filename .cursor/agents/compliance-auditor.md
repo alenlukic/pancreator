@@ -1,7 +1,7 @@
 ---
 name: compliance-auditor
 description: "Canonical `compliance-auditor` subagent projection for persona-owned pipeline stages."
-model: claude-4.6-sonnet-medium-thinking
+model: gpt-5.2-codex[]
 permissionMode: default
 tools:
   - Read

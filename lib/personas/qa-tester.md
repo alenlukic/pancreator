@@ -1,7 +1,7 @@
 ---
 name: qa-tester
 description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests), visual QA via Browser automation when the touch-set includes UI surfaces, manual verification against the touch-set, and emit `/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
-model: gpt-5.5
+model: claude-opus-4-8[]
 permissionMode: default
 tools:
   - Read
