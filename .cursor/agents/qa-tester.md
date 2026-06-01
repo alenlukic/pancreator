@@ -1,7 +1,7 @@
 ---
 name: qa-tester
 description: "Canonical `qa-tester` subagent projection for persona-owned pipeline stages."
-model: claude-opus-4-8[]
+model: gpt-5.2-codex
 permissionMode: default
 tools:
   - Read

@@ -1,7 +1,7 @@
 ---
 name: intake-analyst
 description: "Canonical `intake-analyst` subagent projection for persona-owned pipeline stages."
-model: claude-4.6-sonnet-medium-thinking
+model: claude-opus-4-8[]
 permissionMode: default
 tools:
   - Read
