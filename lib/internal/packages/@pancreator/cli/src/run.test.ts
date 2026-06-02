@@ -24,6 +24,16 @@ import { PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
 const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 
+function findLast<T>(items: readonly T[], pred: (item: T) => boolean): T | undefined {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (item !== undefined && pred(item)) {
+      return item;
+    }
+  }
+  return undefined;
+}
+
 const FEATURE_DELIVERY_PERSONAS = [
   "intake-analyst",
   "tech-lead",
@@ -469,11 +479,11 @@ describe("parseAndRun", () => {
     expect(advanceMsg.warningCount).toBeGreaterThan(0);
 
     const logText = await readFile(path.join(root, runLogFile), "utf8");
-    const advanceLine = logText
+    const logRecords = logText
       .split("\n")
       .filter(Boolean)
-      .map((line) => JSON.parse(line) as { name: string; attributes?: Record<string, unknown> })
-      .findLast((record) => record.name === "pancreator.pipeline.advance");
+      .map((line) => JSON.parse(line) as { name: string; attributes?: Record<string, unknown> });
+    const advanceLine = findLast(logRecords, (record) => record.name === "pancreator.pipeline.advance");
     expect(advanceLine).toBeDefined();
     expect(advanceLine?.attributes?.["pancreator.content_warning_count"]).toBeGreaterThan(0);
     expect(Array.isArray(advanceLine?.attributes?.["pancreator.content_warnings"])).toBe(true);
@@ -621,7 +631,7 @@ describe("parseAndRun", () => {
       pipelineId: "feature-delivery",
       taskId: "38670_1315_demo-feature",
       featureId: "demo-feature",
-      status: "in_progress",
+      status: "ready_for_stage_delegation",
       currentStage: "implement",
       createdAtIso: "2026-05-10T13:15:30.000Z",
       source: { inboxEntry: "demo-feature.md", inboxPath: "lib/inbox/in/demo-feature.md" },
@@ -755,10 +765,7 @@ describe("parseAndRun", () => {
       writeOut: (c) => out.push(c),
     });
     expect(code).toBe(1);
-    const result = JSON.parse(out.join("")) as {
-      command: string;
-      checks: Array<{ id: string; status: string }>;
-    };
+    const result = JSON.parse(out.join("")) as PanDoctorResult;
     expect(result.command).toBe("doctor");
     const ignoreCheck = result.checks.find((c) => c.id === "cursorindexingignore");
     expect(ignoreCheck?.status).toBe("fail");
@@ -1066,15 +1073,16 @@ describe("parseAndRun", () => {
     expect(reentry.currentStage).toBe("test");
 
     const logText = await readFile(path.join(root, start.runLogFile), "utf8");
-    const implementAdvanceLine = logText
+    const logRecords = logText
       .split("\n")
       .filter(Boolean)
-      .map((line) => JSON.parse(line) as { name: string; attributes?: Record<string, unknown> })
-      .findLast(
-        (record) =>
-          record.name === "pancreator.pipeline.advance" &&
-          record.attributes?.["pancreator.transition_event"] === "implementation_complete",
-      );
+      .map((line) => JSON.parse(line) as { name: string; attributes?: Record<string, unknown> });
+    const implementAdvanceLine = findLast(
+      logRecords,
+      (record) =>
+        record.name === "pancreator.pipeline.advance" &&
+        record.attributes?.["pancreator.transition_event"] === "implementation_complete",
+    );
     expect(implementAdvanceLine).toBeDefined();
     expect(implementAdvanceLine?.attributes?.["pancreator.content_warning_count"]).toBeGreaterThanOrEqual(1);
     expect(Array.isArray(implementAdvanceLine?.attributes?.["pancreator.content_warnings"])).toBe(true);

@@ -411,7 +411,7 @@ export async function parseAndRun(
     .option("--feature <featureId>", "Feature id override")
     .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
     .option("--format <format>", "Output format: json (default) or text")
-    .action(async (pipeline: string, inboxEntry: string | undefined, opts: { feature?: string; task?: string; format?: string }, cmd) => {
+    .action(async (pipeline: string, inboxEntry: string | undefined, opts: { feature?: string; task?: string; format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       if (pipeline !== "feature-delivery") {
         emitDeferredEnvelope(writeOut, repoRoot, {
@@ -448,7 +448,7 @@ export async function parseAndRun(
     .command("inbox")
     .description("List pending human directives under lib/inbox/in/")
     .option("--format <format>", "Output format: json (default) or text")
-    .action(async (opts: { format?: string }, cmd) => {
+    .action(async (opts: { format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       const inbox = new FileInbox(repoRoot);
       const entries = await inbox.listIn();
@@ -488,7 +488,7 @@ export async function parseAndRun(
     .description("Show pipeline and workspace status [deferred: M2 when task id omitted]")
     .argument("[taskId]", "Task id under work/")
     .option("--format <format>", "Output format: json (default) or text")
-    .action(async (taskId: string | undefined, opts: { format?: string }, cmd) => {
+    .action(async (taskId: string | undefined, opts: { format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       if (taskId === undefined) {
         emitDeferredEnvelope(writeOut, repoRoot, {
@@ -516,7 +516,7 @@ export async function parseAndRun(
     .description("Resolve the next feature-delivery advance command without mutating state")
     .argument("<taskId>", "Task id under work/")
     .option("--format <format>", "Output format: json (default) or text")
-    .action(async (taskId: string, opts: { format?: string }, cmd) => {
+    .action(async (taskId: string, opts: { format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       emitPayload(writeOut, repoRoot, await resolveFeatureDeliveryNext(repoRoot, taskId), format);
     });
@@ -528,7 +528,7 @@ export async function parseAndRun(
     .requiredOption("--artifact <path>", "Repo-relative artifact proving the current stage completed")
     .option("--event <event>", "Transition event override, for example must_fix during review")
     .option("--format <format>", "Output format: json (default) or text")
-    .action(async (taskId: string, opts: { artifact: string; event?: string; format?: string }, cmd) => {
+    .action(async (taskId: string, opts: { artifact: string; event?: string; format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       const result = await advanceFeatureDelivery({
         repoRoot,
@@ -549,7 +549,7 @@ export async function parseAndRun(
     .argument("<taskId>", "Task id under work/")
     .requiredOption("--stage <stage>", "Pipeline stage id")
     .option("--format <format>", "Output format: json (default) or text")
-    .action(async (taskId: string, opts: { stage: string; format?: string }, cmd) => {
+    .action(async (taskId: string, opts: { stage: string; format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       const result = await validateArtifactsForTask({
         repoRoot,
@@ -566,7 +566,7 @@ export async function parseAndRun(
     .command("doctor")
     .description("Read-only pre-close validation aggregator")
     .option("--format <format>", "Output format: json (default) or text")
-    .action(async (opts: { format?: string }, cmd) => {
+    .action(async (opts: { format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       const result = await runPanDoctor(repoRoot);
       emitPayload(writeOut, repoRoot, result, format);

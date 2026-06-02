@@ -1,6 +1,5 @@
 import { pathToFileURL } from "node:url";
 import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { resolveRepoPath } from "@pancreator/core";
 
 export interface CitationViolation {
