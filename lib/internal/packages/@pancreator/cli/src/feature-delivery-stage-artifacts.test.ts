@@ -43,11 +43,31 @@ describe("feature-delivery-stage-artifacts", () => {
 
     const validation = validateStageCompletionArtifacts(root, sampleState, "plan");
     expect(validation.ok).toBe(false);
+    expect(validation.warningCount).toBe(0);
     expect(validation.missing).toEqual([
       "work/172996_05-10-26/38670_1315_demo-feature/plan.md",
       "work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
       "work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
     ]);
+  });
+
+  it("assertAdvanceArtifacts rejects advance when adr-draft.md is missing", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-advance-adr-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "plan.md"), "# Plan\n\n## Scope\n\nBody.\n", "utf8");
+    await writeFile(path.join(runAbs, "touch-set.json"), "{}", "utf8");
+    await writeFile(path.join(runAbs, "handoff.md"), "# handoff", "utf8");
+
+    expect(() =>
+      assertAdvanceArtifacts(
+        root,
+        sampleState,
+        "plan",
+        "work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+        "human_approval",
+      ),
+    ).toThrow(/adr-draft\.md/u);
   });
 
   it("assertAdvanceArtifacts rejects advance when plan.md is missing", async () => {
@@ -66,6 +86,49 @@ describe("feature-delivery-stage-artifacts", () => {
         "human_approval",
       ),
     ).toThrow(/plan\.md/u);
+  });
+
+  it("validateStageCompletionArtifacts warns on malformed review.md content", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-content-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "review.md"), "# review\n\nno verdict line\n", "utf8");
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    expect(validation.missing).toEqual([]);
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("review_passes_unparseable");
+  });
+
+  it("AC-P7: validateStageCompletionArtifacts reports one warning for malformed review.md", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-ac-p7-malformed-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "review.md"), "# review\n\nno verdict line\n", "utf8");
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    expect(validation.warningCount).toBe(1);
+    expect(validation.missing).toEqual([]);
+  });
+
+  it("AC-P7: validateStageCompletionArtifacts reports zero warnings for valid review.md", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-ac-p7-valid-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "review.md"), "review_passes: true\n", "utf8");
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    expect(validation.warningCount).toBe(0);
+  });
+
+  it("validateStageCompletionArtifacts is clean for valid review.md", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-content-ok-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "review.md"), "review_passes: true\n", "utf8");
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    expect(validation.warningCount).toBe(0);
   });
 
   it("requiredArtifactsAfterStageWork covers every pipeline stage", () => {

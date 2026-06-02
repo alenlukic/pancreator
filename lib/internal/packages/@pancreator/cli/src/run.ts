@@ -17,8 +17,17 @@ import {
   readFeatureDeliveryStatusWithInterventions,
   refreshFeatureDeliveryPrompt,
   repairFeatureDeliveryState,
+  resolveFeatureDeliveryNext,
+  runPanDoctor,
   startFeatureDelivery,
+  validateArtifactsForTask,
+  type PanDoctorResult,
 } from "./feature-delivery-run.js";
+import {
+  formatCountdownIdLine,
+  parseInboxEntryPath,
+  parseRunDirParts,
+} from "./timestamp-decode.js";
 import { createInterventionCheckpointPort } from "./intervention-checkpoint.js";
 import { runCursorSync } from "./cursor-sync.js";
 import { runCreatePancreator, runPanInit } from "./pan-init.js";
@@ -66,7 +75,17 @@ export interface CliRunOptions {
   clock?: () => Date;
   /** Injectable Cursor SDK transport for feature-delivery runner tests. */
   testHooks?: import("./feature-delivery-runner.js").FeatureDeliveryTestHooks;
+  /** Default output format when a command omits `--format`. */
+  format?: OutputFormat;
 }
+
+type OutputFormat = "json" | "text";
+
+function resolveOutputFormat(commandFormat: string | undefined, defaultFormat?: OutputFormat): OutputFormat {
+  const raw = commandFormat ?? defaultFormat ?? "json";
+  return raw === "text" ? "text" : "json";
+}
+
 
 function emit(
   writeOut: (chunk: string) => void,
@@ -74,6 +93,124 @@ function emit(
   payload: object,
 ): void {
   writeOut(stringifyCliJson(repoRoot, payload));
+}
+
+function emitPayload(
+  writeOut: (chunk: string) => void,
+  repoRoot: string,
+  payload: object,
+  format: OutputFormat,
+): void {
+  if (format === "text") {
+    writeOut(`${formatPanText(payload)}\n`);
+    return;
+  }
+  emit(writeOut, repoRoot, payload);
+}
+
+export function formatPanText(payload: object): string {
+  const record = payload as Record<string, unknown>;
+  const command = record.command;
+  if (command === "inbox") {
+    const entries = (record.entries as string[] | undefined) ?? [];
+    return entries
+      .map((entry) => {
+        const parsed = parseInboxEntryPath(entry);
+        if (parsed === null) {
+          return entry;
+        }
+        return formatCountdownIdLine(parsed.dayBucket, parsed.taskId);
+      })
+      .join("\n");
+  }
+  if (command === "next") {
+    const taskId = String(record.taskId ?? "");
+    const runDir = String(record.runDir ?? "");
+    const parsed = parseRunDirParts(runDir);
+    const idLine =
+      parsed !== null ? formatCountdownIdLine(parsed.dayBucket, taskId) : taskId;
+    const lines = [
+      `task: ${idLine}`,
+      `stage: ${String(record.currentStage ?? "")}`,
+      `status: ${String(record.pipelineStatus ?? "")}`,
+      `next: ${String(record.nextHumanAction ?? "")}`,
+    ];
+    if (record.event !== null && record.event !== undefined) {
+      lines.push(`event: ${String(record.event)}`);
+    }
+    if (record.artifact !== null && record.artifact !== undefined) {
+      lines.push(`artifact: ${String(record.artifact)}`);
+    }
+    if (record.nextCommand !== null && record.nextCommand !== undefined) {
+      lines.push(`nextCommand: ${String(record.nextCommand)}`);
+    }
+    if (record.reason !== undefined) {
+      lines.push(`reason: ${String(record.reason)}`);
+    }
+    return lines.join("\n");
+  }
+  if (command === "status") {
+    const taskId = String(record.taskId ?? "");
+    const runDir = String(record.runDir ?? record.stateFile ?? "");
+    const runDirRel = runDir.includes("/") ? runDir.replace(/\/state\.json$/u, "") : "";
+    const parsed = parseRunDirParts(runDirRel.length > 0 ? runDirRel : runDir);
+    const idLine =
+      parsed !== null ? formatCountdownIdLine(parsed.dayBucket, taskId) : taskId;
+    const lines = [
+      `task: ${idLine}`,
+      `stage: ${String(record.currentStage ?? "")}`,
+      `pipeline: ${String(record.pipelineStatus ?? "")}`,
+      `next: ${String(record.nextHumanAction ?? "")}`,
+    ];
+    if (record.nextCommand !== null && record.nextCommand !== undefined) {
+      lines.push(`nextCommand: ${String(record.nextCommand)}`);
+    }
+    return lines.join("\n");
+  }
+  if (command === "run" || command === "advance" || record.command === "feature new") {
+    const taskId = String(record.taskId ?? "");
+    const runDir = String(record.runDir ?? record.stateFile ?? "");
+    const runDirRel = runDir.includes("/") ? runDir.replace(/\/state\.json$/u, "") : "";
+    const parsed = parseRunDirParts(runDirRel);
+    const idLine =
+      parsed !== null ? formatCountdownIdLine(parsed.dayBucket, taskId) : taskId;
+    const lines = [
+      `task: ${idLine}`,
+      `stage: ${String(record.currentStage ?? "")}`,
+      `next: ${String(record.nextHumanAction ?? "")}`,
+    ];
+    if (record.nextCommand !== null && record.nextCommand !== undefined) {
+      lines.push(`nextCommand: ${String(record.nextCommand)}`);
+    }
+    if (record.warningCount !== undefined && Number(record.warningCount) > 0) {
+      lines.push(`contentWarnings: ${String(record.warningCount)}`);
+    }
+    return lines.join("\n");
+  }
+  if (command === "doctor") {
+    const doctor = payload as PanDoctorResult;
+    const lines = [
+      `doctor: ${doctor.status} (pass=${doctor.passCount} fail=${doctor.failCount} skip=${doctor.skipCount})`,
+    ];
+    for (const check of doctor.checks) {
+      const remediation =
+        check.status === "fail" && check.remediation !== undefined ? ` — ${check.remediation}` : "";
+      lines.push(`${check.status.toUpperCase()} ${check.id}: ${check.label}${remediation}`);
+    }
+    return lines.join("\n");
+  }
+  if (command === "artifacts validate") {
+    const lines = [
+      `status: ${String(record.status ?? "ok")}`,
+      `warnings: ${String(record.warningCount ?? 0)}`,
+      ...((record.warnings as Array<{ path: string; message: string }> | undefined) ?? []).map(
+        (w) => `- ${w.path}: ${w.message}`,
+      ),
+      ...((record.missing as string[] | undefined) ?? []).map((m) => `missing: ${m}`),
+    ];
+    return lines.join("\n");
+  }
+  return JSON.stringify(payload, null, 2);
 }
 
 interface DeferredVerbConfig {
@@ -273,7 +410,9 @@ export async function parseAndRun(
     .argument("[inboxEntry]", "<day-bucket>/<file>.md relative to lib/inbox/in/ (not the lib/inbox/in/ prefix)")
     .option("--feature <featureId>", "Feature id override")
     .option("--task <taskId>", "Task id override matching <seconds-to-midnight>_<HHMM>_<slug>")
-    .action(async (pipeline: string, inboxEntry: string | undefined, opts: { feature?: string; task?: string }) => {
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (pipeline: string, inboxEntry: string | undefined, opts: { feature?: string; task?: string; format?: string }, cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
       if (pipeline !== "feature-delivery") {
         emitDeferredEnvelope(writeOut, repoRoot, {
           verb: "pan run",
@@ -287,7 +426,7 @@ export async function parseAndRun(
       if (inboxEntry === undefined) {
         throw new Error("feature-delivery requires an inbox entry under lib/inbox/in/.");
       }
-      emit(
+      emitPayload(
         writeOut,
         repoRoot,
         await startFeatureDelivery(
@@ -301,16 +440,19 @@ export async function parseAndRun(
           },
           "run",
         ),
+        format,
       );
     });
 
   program
     .command("inbox")
     .description("List pending human directives under lib/inbox/in/")
-    .action(async () => {
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (opts: { format?: string }, cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
       const inbox = new FileInbox(repoRoot);
       const entries = await inbox.listIn();
-      emit(writeOut, repoRoot, { command: "inbox", status: "ok", entries });
+      emitPayload(writeOut, repoRoot, { command: "inbox", status: "ok", entries }, format);
     });
 
   const feature = program
@@ -345,7 +487,9 @@ export async function parseAndRun(
     .command("status")
     .description("Show pipeline and workspace status [deferred: M2 when task id omitted]")
     .argument("[taskId]", "Task id under work/")
-    .action(async (taskId: string | undefined) => {
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (taskId: string | undefined, opts: { format?: string }, cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
       if (taskId === undefined) {
         emitDeferredEnvelope(writeOut, repoRoot, {
           verb: "pan status",
@@ -357,15 +501,25 @@ export async function parseAndRun(
         return;
       }
       const mgr = interventionManager(repoRoot);
-      emit(
+      emitPayload(
         writeOut,
         repoRoot,
         await readFeatureDeliveryStatusWithInterventions(repoRoot, taskId, (id) =>
           mgr.loadActiveState(id),
         ),
+        format,
       );
     });
 
+  program
+    .command("next")
+    .description("Resolve the next feature-delivery advance command without mutating state")
+    .argument("<taskId>", "Task id under work/")
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (taskId: string, opts: { format?: string }, cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
+      emitPayload(writeOut, repoRoot, await resolveFeatureDeliveryNext(repoRoot, taskId), format);
+    });
 
   program
     .command("advance")
@@ -373,19 +527,52 @@ export async function parseAndRun(
     .argument("<taskId>", "Task id under work/")
     .requiredOption("--artifact <path>", "Repo-relative artifact proving the current stage completed")
     .option("--event <event>", "Transition event override, for example must_fix during review")
-    .action(async (taskId: string, opts: { artifact: string; event?: string }) => {
-      emit(
-        writeOut,
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (taskId: string, opts: { artifact: string; event?: string; format?: string }, cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
+      const result = await advanceFeatureDelivery({
         repoRoot,
-        await advanceFeatureDelivery({
-          repoRoot,
-          taskId,
-          artifact: opts.artifact,
-          event: opts.event,
-          clock: options?.clock,
-          testHooks: options?.testHooks,
-        }),
-      );
+        taskId,
+        artifact: opts.artifact,
+        event: opts.event,
+        clock: options?.clock,
+        testHooks: options?.testHooks,
+      });
+      emitPayload(writeOut, repoRoot, result, format);
+    });
+
+  const artifacts = program.command("artifacts").description("Feature-delivery artifact tools");
+
+  artifacts
+    .command("validate")
+    .description("Read-only warn-first content validation for a stage")
+    .argument("<taskId>", "Task id under work/")
+    .requiredOption("--stage <stage>", "Pipeline stage id")
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (taskId: string, opts: { stage: string; format?: string }, cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
+      const result = await validateArtifactsForTask({
+        repoRoot,
+        taskId,
+        stage: opts.stage,
+      });
+      emitPayload(writeOut, repoRoot, result, format);
+      if (result.missing.length > 0 || result.warningCount > 0) {
+        exit.code = 1;
+      }
+    });
+
+  program
+    .command("doctor")
+    .description("Read-only pre-close validation aggregator")
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (opts: { format?: string }, cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
+      const result = await runPanDoctor(repoRoot);
+      emitPayload(writeOut, repoRoot, result, format);
+      if (result.status === "fail") {
+        exit.code = 1;
+      }
     });
 
   program

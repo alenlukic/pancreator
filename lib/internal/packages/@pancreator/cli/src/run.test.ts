@@ -6,7 +6,18 @@ import path from "node:path";
 import type { CursorSdkTransport } from "@pancreator/runner-cursor";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { parseAndRun, PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE, PAN_DEFERRED_EXIT_CODE } from "./run.js";
+import {
+  panDoctorCheckRegistry,
+  resolveNextStep,
+  type FeatureDeliveryState,
+  type PanDoctorResult,
+} from "./feature-delivery-run.js";
+import {
+  formatPanText,
+  parseAndRun,
+  PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
+  PAN_DEFERRED_EXIT_CODE,
+} from "./run.js";
 import { loadRepoEnv } from "./repo-env.js";
 import { PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 
@@ -116,6 +127,13 @@ stages:
   );
 }
 
+async function seedPlanStageAdvanceArtifacts(root: string, runDirRel: string): Promise<void> {
+  const runDir = path.join(root, runDirRel);
+  await writeFile(path.join(runDir, "plan.md"), "# Plan\n\n## Scope\n\nBody.\n", "utf8");
+  await writeFile(path.join(runDir, "adr-draft.md"), "# ADR\n\n## Decision\n\nBody.\n", "utf8");
+  await writeFile(path.join(runDir, "touch-set.json"), "{}\n", "utf8");
+}
+
 async function completeFeatureDeliveryRunForClose(
   root: string,
   taskId: string,
@@ -132,8 +150,7 @@ async function completeFeatureDeliveryRunForClose(
     repoRoot: root,
     writeOut: () => undefined,
   });
-  await writeFile(path.join(activeRunDir, "plan.md"), "# Plan", "utf8");
-  await writeFile(path.join(activeRunDir, "touch-set.json"), "{}\n", "utf8");
+  await seedPlanStageAdvanceArtifacts(root, activeRunDirRel);
   await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
     repoRoot: root,
     writeOut: () => undefined,
@@ -262,9 +279,493 @@ describe("parseAndRun", () => {
     expect(await readFile(path.join(root, msg.handoffFile), "utf8")).toContain(
       "Executor persona: intake-analyst",
     );
+    const runMsg = JSON.parse(raw) as { nextCommand?: string };
+    expect(runMsg.nextCommand).toMatch(/^pnpm -w exec pan advance /u);
     expect(await readFile(path.join(root, msg.runLogFile), "utf8")).toContain(
       '"stage_id":"invoke"',
     );
+  });
+
+  it("run --format text includes decoded timestamp and nextCommand", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-run-text-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(
+      path.join(root, "lib", "inbox", "in", "demo-feature.md"),
+      "# Demo Feature\n\nBuild the thing.",
+      "utf8",
+    );
+    const runOut: string[] = [];
+    const code = await parseAndRun(["run", "feature-delivery", "demo-feature.md", "--format", "text"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    expect(code).toBe(0);
+    const text = runOut.join("");
+    expect(text).toContain("38670_1315_demo-feature");
+    expect(text).toContain("2026-05-10 13:15 UTC");
+    expect(text).toContain("nextCommand: pnpm -w exec pan advance");
+  });
+
+  it("pan next returns the same nextCommand as run without mutating state", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-next-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(
+      path.join(root, "lib", "inbox", "in", "demo-feature.md"),
+      "# Demo Feature\n\nBuild the thing.",
+      "utf8",
+    );
+    const runOut: string[] = [];
+    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const runMsg = JSON.parse(runOut.join("")) as { taskId: string; nextCommand: string };
+    const stateBefore = await readFile(
+      path.join(root, "work", "172996_05-10-26", runMsg.taskId, "state.json"),
+      "utf8",
+    );
+    const nextOut: string[] = [];
+    const code = await parseAndRun(["next", runMsg.taskId], {
+      repoRoot: root,
+      writeOut: (c) => nextOut.push(c),
+    });
+    expect(code).toBe(0);
+    const nextMsg = JSON.parse(nextOut.join("")) as { nextCommand: string; source: string };
+    expect(nextMsg.nextCommand).toBe(runMsg.nextCommand);
+    expect(nextMsg.source).toBe("derived");
+    const stateAfter = await readFile(
+      path.join(root, "work", "172996_05-10-26", runMsg.taskId, "state.json"),
+      "utf8",
+    );
+    expect(stateAfter).toBe(stateBefore);
+  });
+
+  it("AC-P5b: persisted report-approval nextCommand survives pan status and pan next", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-report-next-cmd-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const runOut: string[] = [];
+    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId, stateFile } = JSON.parse(runOut.join("")) as { taskId: string; stateFile: string };
+    const outboxRel = "lib/inbox/out/172996_05-10-26/38670_1315_demo-feature-report-approval.md";
+    const persistedCmd = `pnpm -w exec pan advance ${taskId} --artifact ${outboxRel}`;
+    const statePath = path.join(root, stateFile);
+    const state = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
+    state.status = "waiting_for_human_gate";
+    state.currentStage = "report";
+    state.nextCommand = persistedCmd;
+    state.automation = { reportApprovalPending: true };
+    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+
+    const statusOut: string[] = [];
+    await parseAndRun(["status", taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
+    const statusMsg = JSON.parse(statusOut.join("")) as { nextCommand: string; source?: string };
+    expect(statusMsg.nextCommand).toBe(persistedCmd);
+
+    const nextOut: string[] = [];
+    await parseAndRun(["next", taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
+    const nextMsg = JSON.parse(nextOut.join("")) as {
+      nextCommand: string;
+      source: string;
+      artifact: string | null;
+      event: string | null;
+    };
+    expect(nextMsg.nextCommand).toBe(persistedCmd);
+    expect(nextMsg.source).toBe("persisted");
+    expect(nextMsg.artifact).toBe(outboxRel);
+    expect(nextMsg.event).toBeNull();
+
+    const nextTextOut: string[] = [];
+    await parseAndRun(["next", taskId, "--format", "text"], {
+      repoRoot: root,
+      writeOut: (c) => nextTextOut.push(c),
+    });
+    const nextText = nextTextOut.join("");
+    expect(nextText).toContain(`artifact: ${outboxRel}`);
+    expect(nextText).toContain(persistedCmd);
+  });
+
+  it("clears stale persisted nextCommand from state.json after advance", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-clear-next-cmd-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const runOut: string[] = [];
+    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId, stateFile } = JSON.parse(runOut.join("")) as { taskId: string; stateFile: string };
+    const outboxRel = "lib/inbox/out/172996_05-10-26/38670_1315_demo-feature-report-approval.md";
+    const staleCmd = `pnpm -w exec pan advance ${taskId} --artifact ${outboxRel}`;
+    const statePath = path.join(root, stateFile);
+    const state = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
+    state.nextCommand = staleCmd;
+    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+
+    const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Spec", "utf8");
+
+    const advanceOut: string[] = [];
+    const code = await parseAndRun(
+      ["advance", taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"],
+      { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
+    );
+    expect(code).toBe(0);
+
+    const persisted = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
+    expect(persisted.nextCommand).toBeUndefined();
+
+    const statusOut: string[] = [];
+    await parseAndRun(["status", taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
+    const statusMsg = JSON.parse(statusOut.join("")) as { nextCommand: string };
+    expect(statusMsg.nextCommand).not.toContain(outboxRel);
+    expect(statusMsg.nextCommand).toMatch(/touch-set\.json/u);
+
+    const nextOut: string[] = [];
+    await parseAndRun(["next", taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
+    const nextMsg = JSON.parse(nextOut.join("")) as { nextCommand: string; source: string };
+    expect(nextMsg.source).toBe("derived");
+    expect(nextMsg.nextCommand).not.toContain(outboxRel);
+    expect(nextMsg.nextCommand).toMatch(/touch-set\.json/u);
+  });
+
+  it("records content warnings on advance in run log and CLI envelope", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-advance-warnings-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const runOut: string[] = [];
+    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId, runLogFile } = JSON.parse(runOut.join("")) as { taskId: string; runLogFile: string };
+    const runDirRel = `work/172996_05-10-26/${taskId}`;
+    const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Spec", "utf8");
+    await parseAndRun(["advance", taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+      repoRoot: root,
+      writeOut: () => {},
+    });
+    await seedPlanStageAdvanceArtifacts(root, runDirRel);
+    await writeFile(path.join(root, runDirRel, "plan.md"), "# Plan only\n", "utf8");
+
+    const advanceOut: string[] = [];
+    const code = await parseAndRun(
+      ["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`],
+      { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
+    );
+    expect(code).toBe(0);
+    const advanceMsg = JSON.parse(advanceOut.join("")) as { warningCount: number; contentWarnings?: unknown[] };
+    expect(advanceMsg.warningCount).toBeGreaterThan(0);
+
+    const logText = await readFile(path.join(root, runLogFile), "utf8");
+    const advanceLine = logText
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { name: string; attributes?: Record<string, unknown> })
+      .findLast((record) => record.name === "pancreator.pipeline.advance");
+    expect(advanceLine).toBeDefined();
+    expect(advanceLine?.attributes?.["pancreator.content_warning_count"]).toBeGreaterThan(0);
+    expect(Array.isArray(advanceLine?.attributes?.["pancreator.content_warnings"])).toBe(true);
+  });
+
+  it("AC-P6: pan next and pan inbox --format text show decoded timestamps", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-text-decode-"));
+    await seedFeatureDeliveryRepo(root);
+    await mkdir(path.join(root, "lib", "inbox", "in", "172996_05-10-26"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "inbox", "in", "172996_05-10-26", "38670_1315_demo-feature.md"),
+      "# Demo",
+      "utf8",
+    );
+    const runOut: string[] = [];
+    await parseAndRun(["run", "feature-delivery", "172996_05-10-26/38670_1315_demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId } = JSON.parse(runOut.join("")) as { taskId: string };
+
+    const nextTextOut: string[] = [];
+    await parseAndRun(["next", taskId, "--format", "text"], {
+      repoRoot: root,
+      writeOut: (c) => nextTextOut.push(c),
+    });
+    const nextText = nextTextOut.join("");
+    expect(nextText).toContain(taskId);
+    expect(nextText).toContain("2026-05-10 13:15 UTC");
+    expect(nextText).toMatch(/^event: /m);
+
+    const inboxTextOut: string[] = [];
+    await parseAndRun(["inbox", "--format", "text"], { repoRoot: root, writeOut: (c) => inboxTextOut.push(c) });
+    const inboxText = inboxTextOut.join("");
+    expect(inboxText).toContain("172996_05-10-26/38670_1315_demo-feature");
+    expect(inboxText).toContain("2026-05-10 13:15 UTC");
+  });
+
+  it("AC-P7: pan artifacts validate exits non-zero for missing and malformed artifacts", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-artifacts-validate-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const runOut: string[] = [];
+    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId } = JSON.parse(runOut.join("")) as { taskId: string };
+    const runDirRel = `work/172996_05-10-26/${taskId}`;
+
+    const missingOut: string[] = [];
+    const missingCode = await parseAndRun(
+      ["artifacts", "validate", taskId, "--stage", "review"],
+      { repoRoot: root, writeOut: (c) => missingOut.push(c) },
+    );
+    expect(missingCode).toBe(1);
+    const missingMsg = JSON.parse(missingOut.join("")) as {
+      status: string;
+      warningCount: number;
+      missing: string[];
+    };
+    expect(missingMsg.status).toBe("invalid");
+    expect(missingMsg.warningCount).toBe(0);
+    expect(missingMsg.missing.length).toBeGreaterThan(0);
+
+    await writeFile(
+      path.join(root, runDirRel, "review.md"),
+      "# review\n\nno verdict line\n",
+      "utf8",
+    );
+    const warnOut: string[] = [];
+    const warnCode = await parseAndRun(
+      ["artifacts", "validate", taskId, "--stage", "review"],
+      { repoRoot: root, writeOut: (c) => warnOut.push(c) },
+    );
+    expect(warnCode).toBe(1);
+    const warnMsg = JSON.parse(warnOut.join("")) as { warningCount: number; missing: string[] };
+    expect(warnMsg.warningCount).toBe(1);
+    expect(warnMsg.missing).toEqual([]);
+
+    await writeFile(path.join(root, runDirRel, "review.md"), "review_passes: true\n", "utf8");
+    const cleanOut: string[] = [];
+    const cleanCode = await parseAndRun(
+      ["artifacts", "validate", taskId, "--stage", "review"],
+      { repoRoot: root, writeOut: (c) => cleanOut.push(c) },
+    );
+    expect(cleanCode).toBe(0);
+    const cleanMsg = JSON.parse(cleanOut.join("")) as { warningCount: number; status: string };
+    expect(cleanMsg.warningCount).toBe(0);
+    expect(cleanMsg.status).toBe("ok");
+
+    await writeFile(path.join(root, runDirRel, "plan.md"), "# Plan\n\nno headings\n", "utf8");
+    const planWarnOut: string[] = [];
+    const planWarnCode = await parseAndRun(
+      ["artifacts", "validate", taskId, "--stage", "plan"],
+      { repoRoot: root, writeOut: (c) => planWarnOut.push(c) },
+    );
+    expect(planWarnCode).toBe(1);
+    const planWarnMsg = JSON.parse(planWarnOut.join("")) as { warningCount: number };
+    expect(planWarnMsg.warningCount).toBe(1);
+  });
+
+  it("status --format text includes decoded timestamp and nextCommand", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-status-text-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(
+      path.join(root, "lib", "inbox", "in", "demo-feature.md"),
+      "# Demo Feature\n\nBuild the thing.",
+      "utf8",
+    );
+    const runOut: string[] = [];
+    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId } = JSON.parse(runOut.join("")) as { taskId: string };
+    const statusOut: string[] = [];
+    const code = await parseAndRun(["status", taskId, "--format", "text"], {
+      repoRoot: root,
+      writeOut: (c) => statusOut.push(c),
+    });
+    expect(code).toBe(0);
+    const text = statusOut.join("");
+    expect(text).toContain("38670_1315_demo-feature");
+    expect(text).toContain("2026-05-10 13:15 UTC");
+    expect(text).toContain("nextCommand: pnpm -w exec pan advance");
+  });
+
+  it("AC-P5a: resolveNextStep and pan next use review.md after must_fix with review_passes true", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-ac-p5a-reentry-"));
+    await seedFeatureDeliveryRepo(root);
+    const runDirRel = "work/172996_05-10-26/38670_1315_demo-feature";
+    const runDir = path.join(root, runDirRel);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(
+      path.join(runDir, "review.md"),
+      "review_passes: true\n",
+      "utf8",
+    );
+    const state: FeatureDeliveryState = {
+      schemaVersion: "1",
+      pipelineId: "feature-delivery",
+      taskId: "38670_1315_demo-feature",
+      featureId: "demo-feature",
+      status: "in_progress",
+      currentStage: "implement",
+      createdAtIso: "2026-05-10T13:15:30.000Z",
+      source: { inboxEntry: "demo-feature.md", inboxPath: "lib/inbox/in/demo-feature.md" },
+      artifacts: {
+        runDir: runDirRel,
+        stateFile: `${runDirRel}/state.json`,
+        handoffFile: `${runDirRel}/handoff.md`,
+        runLogFile: `${runDirRel}/run-log.jsonl`,
+      },
+      stages: [],
+      transitions: [],
+      nextHumanAction: "fix review findings",
+      advanceHistory: [
+        {
+          atIso: "2026-05-10T14:00:00.000Z",
+          kind: "advance",
+          from: "review",
+          to: "implement",
+          event: "must_fix",
+          artifact: `${runDirRel}/review.md`,
+        },
+      ],
+    };
+    await writeFile(path.join(root, state.artifacts.stateFile), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+
+    const step = resolveNextStep(state, { repoRoot: root });
+    expect(step.nextCommand).toMatch(/--artifact work\/172996_05-10-26\/38670_1315_demo-feature\/review\.md/u);
+    expect(step.nextCommand).not.toContain("implementation-report.md");
+
+    const nextOut: string[] = [];
+    const code = await parseAndRun(["next", state.taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
+    expect(code).toBe(0);
+    const nextMsg = JSON.parse(nextOut.join("")) as { nextCommand: string };
+    expect(nextMsg.nextCommand).toBe(step.nextCommand);
+    expect(nextMsg.nextCommand).toContain("/review.md");
+  });
+
+  it("AC-P5: advance JSON envelope includes nextCommand and text format shows task/stage/nextCommand", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-ac-p5-advance-text-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const runOut: string[] = [];
+    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => runOut.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId } = JSON.parse(runOut.join("")) as { taskId: string; nextCommand?: string };
+    const runDirRel = `work/172996_05-10-26/${taskId}`;
+    const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Spec", "utf8");
+
+    const advanceOut: string[] = [];
+    const code = await parseAndRun(
+      ["advance", taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"],
+      { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
+    );
+    expect(code).toBe(0);
+    const advanceMsg = JSON.parse(advanceOut.join("")) as {
+      command: string;
+      nextCommand?: string;
+      currentStage: string;
+      taskId: string;
+    };
+    expect(advanceMsg.command).toBe("advance");
+    expect(advanceMsg.nextCommand).toMatch(/^pnpm -w exec pan advance /u);
+
+    await seedPlanStageAdvanceArtifacts(root, runDirRel);
+    const textOut: string[] = [];
+    await parseAndRun(
+      ["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`, "--format", "text"],
+      {
+        repoRoot: root,
+        writeOut: (c) => textOut.push(c),
+      },
+    );
+    const text = textOut.join("");
+    expect(text).toContain(taskId);
+    expect(text).toContain("2026-05-10 13:15 UTC");
+    expect(text).toMatch(/^stage: /m);
+    expect(text).toContain("nextCommand: pnpm -w exec pan advance");
+  });
+
+  it("AC-P8: pan doctor check registry and text summary list pass/fail counts", () => {
+    const registry = panDoctorCheckRegistry();
+    expect(registry).toContain("shipped-ledger-cap");
+    expect(registry).toContain("cursorindexingignore");
+
+    const sample: PanDoctorResult = {
+      command: "doctor",
+      status: "fail",
+      passCount: 2,
+      failCount: 1,
+      skipCount: 0,
+      checks: [
+        {
+          id: "shipped-ledger-cap",
+          label: "Shipped-ledger row cap on lib/memory/active/current.md",
+          command: "rows=1 cap=10",
+          status: "pass",
+          exitCode: 0,
+        },
+        {
+          id: "cursorindexingignore",
+          label: ".cursorindexingignore availability",
+          command: ".cursorindexingignore",
+          status: "fail",
+          exitCode: 1,
+          remediation: "Restore .cursorindexingignore at the repository root",
+        },
+      ],
+    };
+    const text = formatPanText(sample);
+    expect(text).toContain("doctor: fail (pass=2 fail=1 skip=0)");
+    expect(text).toContain("PASS shipped-ledger-cap:");
+    expect(text).toContain("FAIL cursorindexingignore:");
+  });
+
+  it("pan doctor fails when .cursorindexingignore is missing", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-doctor-ignore-"));
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      "## Most recent shipped Features\n\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+      "utf8",
+    );
+    const out: string[] = [];
+    const code = await parseAndRun(["doctor", "--format", "json"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+    });
+    expect(code).toBe(1);
+    const result = JSON.parse(out.join("")) as {
+      command: string;
+      checks: Array<{ id: string; status: string }>;
+    };
+    expect(result.command).toBe("doctor");
+    const ignoreCheck = result.checks.find((c) => c.id === "cursorindexingignore");
+    expect(ignoreCheck?.status).toBe("fail");
+    expect(result.checks.some((c) => c.id === "shipped-ledger-cap")).toBe(true);
+    expect(result.passCount).toBeGreaterThanOrEqual(0);
+    expect(result.failCount).toBeGreaterThanOrEqual(1);
+    expect(result.passCount + result.failCount + result.skipCount).toBe(result.checks.length);
   });
 
   it("accepts inbox entries as lib/inbox/in/... or bucket-relative paths", async () => {
@@ -451,8 +952,7 @@ describe("parseAndRun", () => {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(runDir, "plan.md"), "# Plan", "utf8");
-    await writeFile(path.join(runDir, "touch-set.json"), "{}\n", "utf8");
+    await seedPlanStageAdvanceArtifacts(root, runDirRel);
     await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
@@ -467,6 +967,10 @@ describe("parseAndRun", () => {
       ["advance", start.taskId, "--event", "must_fix", "--artifact", `${runDirRel}/review.md`],
       { repoRoot: root, writeOut: () => undefined },
     );
+
+    const handoffAfterMustFix = await readFile(path.join(root, `${runDirRel}/handoff.md`), "utf8");
+    expect(handoffAfterMustFix).not.toContain("chain to test in one step");
+    expect(handoffAfterMustFix).toContain("implementation-report.md");
 
     await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
     const reentryOut: string[] = [];
@@ -504,6 +1008,78 @@ describe("parseAndRun", () => {
     });
   });
 
+  it("must_fix reentry records implement content warnings when implementation-report.md lacks ## heading", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-reentry-warnings-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; runLogFile: string };
+    const runDirRel = `work/172996_05-10-26/${start.taskId}`;
+    const runDir = path.join(root, runDirRel);
+
+    const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Spec", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await seedPlanStageAdvanceArtifacts(root, runDirRel);
+    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(
+      path.join(runDir, "implementation-report.md"),
+      "# Impl only\nno second-level heading\n",
+      "utf8",
+    );
+    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(runDir, "review.md"), "review_passes: false\n\n### must fix\n- MF-01", "utf8");
+    await parseAndRun(
+      ["advance", start.taskId, "--event", "must_fix", "--artifact", `${runDirRel}/review.md`],
+      { repoRoot: root, writeOut: () => undefined },
+    );
+
+    await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
+    const reentryOut: string[] = [];
+    const code = await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
+      repoRoot: root,
+      writeOut: (c) => reentryOut.push(c),
+    });
+    expect(code).toBe(0);
+    const reentry = JSON.parse(reentryOut.join("")) as {
+      reviewReentry?: boolean;
+      warningCount: number;
+      currentStage: string;
+    };
+    expect(reentry.reviewReentry).toBe(true);
+    expect(reentry.warningCount).toBeGreaterThanOrEqual(1);
+    expect(reentry.currentStage).toBe("test");
+
+    const logText = await readFile(path.join(root, start.runLogFile), "utf8");
+    const implementAdvanceLine = logText
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { name: string; attributes?: Record<string, unknown> })
+      .findLast(
+        (record) =>
+          record.name === "pancreator.pipeline.advance" &&
+          record.attributes?.["pancreator.transition_event"] === "implementation_complete",
+      );
+    expect(implementAdvanceLine).toBeDefined();
+    expect(implementAdvanceLine?.attributes?.["pancreator.content_warning_count"]).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(implementAdvanceLine?.attributes?.["pancreator.content_warnings"])).toBe(true);
+  });
+
   it("delegates final artifact closure to librarian for complete feature-delivery runs", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-complete-prompt-"));
     await seedFeatureDeliveryRepo(root);
@@ -525,8 +1101,7 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
-    await writeFile(path.join(runDir, "plan.md"), "# Plan", "utf8");
-    await writeFile(path.join(runDir, "touch-set.json"), "{}\n", "utf8");
+    await seedPlanStageAdvanceArtifacts(root, `work/172996_05-10-26/${start.taskId}`);
     await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
@@ -602,8 +1177,7 @@ describe("parseAndRun", () => {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(activeRunDir, "plan.md"), "# Plan", "utf8");
-    await writeFile(path.join(activeRunDir, "touch-set.json"), "{}\n", "utf8");
+    await seedPlanStageAdvanceArtifacts(root, activeRunDirRel);
     await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
@@ -721,6 +1295,13 @@ describe("parseAndRun", () => {
     const status = JSON.parse(statusOut.join("")) as { pipelineStatus: string; runDir: string };
     expect(status.pipelineStatus).toBe("closed");
     expect(status.runDir).toBe(closed.archivedRunDir);
+
+    const statusTextOut: string[] = [];
+    await parseAndRun(["status", start.taskId, "--format", "text"], {
+      repoRoot: root,
+      writeOut: (c) => statusTextOut.push(c),
+    });
+    expect(statusTextOut.join("")).toContain("2026-05-10 13:15 UTC");
   });
 
   it("report advance rejects JS-literal delivery-report citations", async () => {
@@ -744,8 +1325,7 @@ describe("parseAndRun", () => {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(activeRunDir, "plan.md"), "# Plan", "utf8");
-    await writeFile(path.join(activeRunDir, "touch-set.json"), "{}\n", "utf8");
+    await seedPlanStageAdvanceArtifacts(root, activeRunDirRel);
     await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
@@ -1628,8 +2208,7 @@ stages:
         testHooks: { sdkTransport: transport },
       });
       expect(specCode).toBe(0);
-      await writeFile(path.join(root, runDirRel, "plan.md"), "# Plan\n", "utf8");
-      await writeFile(path.join(root, runDirRel, "touch-set.json"), "{}\n", "utf8");
+      await seedPlanStageAdvanceArtifacts(root, runDirRel);
       const planCode = await parseAndRun(
         ["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`],
         { repoRoot: root, writeOut: () => undefined, testHooks: { sdkTransport: transport } },
