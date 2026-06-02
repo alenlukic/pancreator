@@ -1,0 +1,39 @@
+{
+  "fixture_hash": "83793d5b28208511",
+  "prompt_version": "1",
+  "samples": 5,
+  "metrics": {
+    "input_tokens": {
+      "mean": 34428.8,
+      "sd": 112.19162179057757
+    },
+    "output_tokens": {
+      "mean": 843.8,
+      "sd": 54.930501545134284
+    },
+    "cache_read_tokens": {
+      "mean": 24575.2,
+      "sd": 3012.9580415266323
+    },
+    "cache_write_tokens": {
+      "mean": 0,
+      "sd": 0
+    },
+    "total_tokens": {
+      "mean": 59847.8,
+      "sd": 3135.4185302763008
+    },
+    "duration_ms": {
+      "mean": 4554,
+      "sd": 471.51967085159873
+    },
+    "turn_count": {
+      "mean": 1,
+      "sd": 0
+    },
+    "tool_read_count": {
+      "mean": 10,
+      "sd": 0
+    }
+  }
+}

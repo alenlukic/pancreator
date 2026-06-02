@@ -724,6 +724,9 @@ export async function repairFeatureDeliveryState(
 
   const invocation = await readCursorInvocationMode(repoRoot);
   ensureAutomationState(state, invocation);
+  if (state.automation !== undefined) {
+    state.automation.cumulativeRetryCount = 0;
+  }
   if (invocation === "sdk") {
     state.status = "ready_for_stage_delegation";
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);

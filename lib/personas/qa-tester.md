@@ -123,10 +123,30 @@ The file MUST contain the five sections below in this order.
 The body of `/work/<day>/<id>/test-report.md` MUST stay at most 1500 words
 across the five sections combined.
 
+## Gate scope
+
+The `qa_passes` gate MUST reflect touch-set validation only. The `qa-tester`
+SHALL read `touch-set.json` `tests` entries with `kind: command` and SHALL
+treat a non-zero exit code from any such command as a gate failure unless the
+handoff card documents an explicit waiver for that command.
+
+The `qa-tester` SHALL record full-repository `pnpm lint`, `pnpm test`, and
+`node --test tests/*.test.mjs` in the Automated checks table with
+`pass/fail: excluded-from-gate`. Those commands MUST NOT set
+`qa_passes: false` when they fail.
+
+When `handoff.md` lists **Known pre-existing failures**, the `qa-tester` SHALL
+record matching failures as `pass/fail: excluded-from-gate` and SHALL NOT set
+`qa_passes: false` solely because a listed pre-existing failure reproduces.
+
 ## Automated verification
 
-You MUST run each of the following commands from the repository root and record
-the command, exit code, pass/fail, and a log path in the Automated checks table.
+You MUST run each touch-set `tests` entry with `kind: command` from
+`/work/<day>/<id>/touch-set.json` and record the command, exit code, pass/fail,
+and a log path in the Automated checks table.
+
+You MUST also run the following full-repository commands for operator
+visibility and record each with `pass/fail: excluded-from-gate`:
 
 ```bash
 pnpm lint
@@ -142,9 +162,10 @@ node lib/internal/tools/check-phase-0a-scaffold.mjs
 node lib/internal/tools/check-operator-output.mjs
 ```
 
-You MUST treat any non-zero exit code as a failure row. When a command is not
-applicable to the repository (for example, `run-compliance.mjs` is absent),
-you MUST record `exit code: N/A` and `pass/fail: skipped` with a note.
+You MUST treat any non-zero exit code from a touch-set gate command as a
+failure row. When a command is not applicable to the repository (for example,
+`run-compliance.mjs` is absent), you MUST record `exit code: N/A` and
+`pass/fail: skipped` with a note.
 
 ## Manual verification
 
@@ -201,12 +222,15 @@ modify any file outside the declared touch-set.
 
 ## Serious issues and re-entry
 
-When any automated check exits non-zero after lint autofixes are applied, or
-when manual verification reveals a logic defect or missing required artifact,
-you MUST set `qa_passes: false` and populate the Re-entry section with a
-compact must-fix list targeting `implement` (coder). You MUST NOT route the
-re-entry to `reviewer` unless the issue is review-gate-only (for example, a
-missing `review_passes` field in `review.md`).
+When any touch-set gate command exits non-zero after lint autofixes are
+applied, or when manual verification reveals a logic defect or missing
+required artifact, you MUST set `qa_passes: false` and populate the Re-entry
+section with a compact must-fix list targeting `implement` (coder). You MUST
+NOT route the re-entry to `reviewer` unless the issue is review-gate-only
+(for example, a missing `review_passes` field in `review.md`).
+
+Full-repository lint or test failures that are excluded from the gate per Gate
+scope MUST NOT generate a Re-entry must-fix entry.
 
 ## What you MUST NOT do
 
@@ -218,17 +242,19 @@ missing `review_passes` field in `review.md`).
 - You MUST NOT push to `main` and you MUST NOT open a pull request directly.
   The `supervisor` persona owns the `ship` stage; you stage `test-report.md`
   and exit.
-- You MUST NOT advance the `qa_passes` gate while any automated check exits
-  non-zero and remains unfixed.
-- You MUST NOT skip any command in the Automated verification section. Every
-  command MUST appear in the Automated checks table.
+- You MUST NOT advance the `qa_passes` gate while any touch-set gate command
+  exits non-zero and remains unfixed.
+- You MUST NOT skip any touch-set gate command or any full-repository command
+  in the Automated verification section. Every command MUST appear in the
+  Automated checks table.
 
 ## Conformance gates
 
-- The Automated checks table MUST contain one row per command in the Automated
-  verification section.
-- Every row with a non-zero exit code that remains unfixed MUST generate a
-  must-fix entry in the Re-entry section.
+- The Automated checks table MUST contain one row per touch-set gate command
+  and one row per full-repository command in the Automated verification
+  section.
+- Every touch-set gate row with a non-zero exit code that remains unfixed
+  MUST generate a must-fix entry in the Re-entry section.
 - The Verdict paragraph MUST be at most 80 words.
 - The full body MUST be at most 1500 words across the five sections.
 - Body prose MUST pass PRD §4.6 Layer 1 lint clean. Each rule below MUST hold:

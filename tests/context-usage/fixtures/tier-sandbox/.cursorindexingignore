@@ -1,0 +1,26 @@
+# Sandbox indexing policy (mirrors production intent, sandbox-relative paths)
+work/**
+archive/work/**
+lib/inbox/**
+archive/inbox/**
+
+docs/PRD.md
+docs/BOOTSTRAP.md
+
+**/migration-manifest*.json
+**/*.dry-run.json
+**/*.post-write.json
+**/*.write.json
+
+lib/memory/**/*.json
+lib/memory/**/delivery-report.md
+lib/memory/**/index.json
+
+pnpm-lock.yaml
+
+lib/memory/handbook/**
+lib/personas/**
+lib/personas/skills/**
+.cursor/rules/**
+
+.cursor/agents/**

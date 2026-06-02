@@ -14,6 +14,9 @@
     "migration:test": "node --test tests/migrate-timestamp-naming.test.mjs tests/migrate-inbox-convention.test.mjs",
     "context:budget": "node lib/internal/tools/context-budget-report.mjs",
     "context:budget:test": "node --test tests/context-budget-report.test.mjs",
+    "context:usage": "node tests/context-usage/run-live.mjs",
+    "context:usage:baseline": "node tests/context-usage/establish-baseline.mjs --samples 5",
+    "context:usage:test": "node --test tests/context-usage/context-usage.unit.test.mjs",
     "repo:structure:test": "node --test tests/repo-structure.test.mjs",
     "test": "turbo run test && node --test tests/repo-structure.test.mjs tests/migrate-json-formatting.test.mjs tests/migrate-timestamp-naming.test.mjs tests/migrate-inbox-convention.test.mjs tests/context-budget-report.test.mjs",
     "test:run-logger-conformance": "node --test tests/run-logger-conformance/*.test.mjs"
@@ -30,7 +33,15 @@
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "yaml": "catalog:",
-    "ajv": "^8.20.0"
+    "ajv": "^8.20.0",
+    "@cursor/sdk": "1.0.13"
+  },
+  "optionalDependencies": {
+    "@cursor/sdk-darwin-arm64": "1.0.13",
+    "@cursor/sdk-darwin-x64": "1.0.13",
+    "@cursor/sdk-linux-arm64": "1.0.13",
+    "@cursor/sdk-linux-x64": "1.0.13",
+    "@cursor/sdk-win32-x64": "1.0.13"
   },
   "dependencies": {
     "@langchain/langgraph": "1.3.2",
