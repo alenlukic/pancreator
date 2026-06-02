@@ -33,6 +33,7 @@ import { runCursorSync } from "./cursor-sync.js";
 import { runCreatePancreator, runPanInit } from "./pan-init.js";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { createFeatureDeliverySdkProgressReporter } from "./feature-delivery-sdk-progress.js";
 import {
   rewriteActiveMemoryFile,
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
@@ -86,6 +87,11 @@ function resolveOutputFormat(commandFormat: string | undefined, defaultFormat?: 
   return raw === "text" ? "text" : "json";
 }
 
+function featureDeliverySdkProgress(options: CliRunOptions | undefined) {
+  return createFeatureDeliverySdkProgressReporter({
+    writeErr: options?.writeErr ?? ((chunk: string) => process.stderr.write(chunk)),
+  });
+}
 
 function emit(
   writeOut: (chunk: string) => void,
@@ -437,6 +443,7 @@ export async function parseAndRun(
             taskId: opts.task,
             clock: options?.clock,
             testHooks: options?.testHooks,
+            progress: featureDeliverySdkProgress(options),
           },
           "run",
         ),
@@ -477,6 +484,7 @@ export async function parseAndRun(
             taskId: opts.task,
             clock: options?.clock,
             testHooks: options?.testHooks,
+            progress: featureDeliverySdkProgress(options),
           },
           "feature new",
         ),
@@ -537,6 +545,7 @@ export async function parseAndRun(
         event: opts.event,
         clock: options?.clock,
         testHooks: options?.testHooks,
+        progress: featureDeliverySdkProgress(options),
       });
       emitPayload(writeOut, repoRoot, result, format);
     });
@@ -593,6 +602,8 @@ export async function parseAndRun(
           artifact: opts.artifact,
           reason: opts.reason,
           clock: options?.clock,
+          testHooks: options?.testHooks,
+          progress: featureDeliverySdkProgress(options),
         }),
       );
     });

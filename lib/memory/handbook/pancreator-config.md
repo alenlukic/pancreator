@@ -142,6 +142,11 @@ Rules:
 - SDK-only automatic `review` / `test` loopbacks, the cumulative retry budget
   (max 5), retry-limit halt artifacts, and the report approval gate are defined
   in `OPERATION.md` and apply only under `sdk` mode.
+- While a stage runs, the CLI emits progress on stderr every 2 minutes and on
+  each stage transition. Agents that invoke `pan` from chat on the operator's
+  behalf SHALL set `PAN_FD_PROGRESS=ndjson`, monitor stderr for
+  `feature_delivery_progress` events, and relay concise status lines to chat per
+  `OPERATION.md` § SDK mode "Agent chat relay" and `AGENTS.md` §5.
 
 `runner.cursor.model_escalation.config` MAY name which entry under
 `pancreator-model-escalation.yaml` `configs` is active for SDK runs. When omitted,

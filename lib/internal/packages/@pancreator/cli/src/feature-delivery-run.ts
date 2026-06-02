@@ -35,6 +35,10 @@ import {
   type FeatureDeliveryAutomationState,
   type FeatureDeliveryTestHooks,
 } from "./feature-delivery-runner.js";
+import {
+  emitFeatureDeliveryStageTransition,
+  type FeatureDeliverySdkProgressReporter,
+} from "./feature-delivery-sdk-progress.js";
 import { assertDeliveryReportCitationFormat } from "./delivery-report-citation-lint.js";
 import {
   assertAdvanceArtifacts,
@@ -60,6 +64,13 @@ const FEATURE_DELIVERY_STAGES = [
 ] as const;
 const TERMINAL_STAGE = "complete" as const;
 const TASK_ID_PATTERN = /^\d+_\d{4}_[a-z0-9][a-z0-9_-]*$/u;
+
+function resolveFeatureDeliveryProgress(input: {
+  progress?: FeatureDeliverySdkProgressReporter;
+  testHooks?: FeatureDeliveryTestHooks;
+}): FeatureDeliverySdkProgressReporter | undefined {
+  return input.progress ?? input.testHooks?.progress;
+}
 
 type FeatureDeliveryStageId = (typeof FEATURE_DELIVERY_STAGES)[number];
 type FeatureDeliveryCurrentStage =
@@ -169,7 +180,7 @@ export interface ValidateArtifactsResult {
   present: string[];
 }
 
-export type { FeatureDeliveryAutomationState, FeatureDeliveryTestHooks };
+export type { FeatureDeliveryAutomationState, FeatureDeliveryTestHooks, FeatureDeliverySdkProgressReporter };
 
 export interface StartFeatureDeliveryInput {
   repoRoot: string;
@@ -178,6 +189,7 @@ export interface StartFeatureDeliveryInput {
   taskId?: string;
   clock?: () => Date;
   testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
 }
 
 export interface StartFeatureDeliveryResult {
@@ -227,6 +239,7 @@ export interface AdvanceFeatureDeliveryInput {
   event?: string;
   clock?: () => Date;
   testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
 }
 
 export interface AdvanceFeatureDeliveryResult {
@@ -257,6 +270,8 @@ export interface RepairFeatureDeliveryStateInput {
   artifact: string;
   reason: string;
   clock?: () => Date;
+  progress?: FeatureDeliverySdkProgressReporter;
+  testHooks?: FeatureDeliveryTestHooks;
 }
 
 export interface RepairFeatureDeliveryStateResult {
@@ -393,6 +408,7 @@ export async function startFeatureDelivery(
       compiled,
       now,
       testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
     });
   }
 
@@ -514,6 +530,7 @@ export async function advanceFeatureDelivery(
       reentry,
       now,
       testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
     });
   }
 
@@ -526,6 +543,7 @@ export async function advanceFeatureDelivery(
     artifactRel: artifact.rel,
     now,
     testHooks: input.testHooks,
+    progress: resolveFeatureDeliveryProgress(input),
   });
   if (reportApproval !== null) {
     return reportApproval;
@@ -584,6 +602,15 @@ export async function advanceFeatureDelivery(
     if (applied.toStage !== TERMINAL_STAGE) {
       prepareStageInvocationIndexForSdkEntry(state, applied.toStage, invocation);
       await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+      emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
+        taskId,
+        featureId: state.featureId,
+        fromStage: applied.fromStage,
+        toStage: applied.toStage,
+        event: applied.event,
+        persona: personaForStage(pipeline, applied.toStage) ?? undefined,
+        now,
+      });
       await invokeFeatureDeliveryEnteringStage({
         repoRoot,
         state,
@@ -592,6 +619,7 @@ export async function advanceFeatureDelivery(
         compiled,
         now,
         testHooks: input.testHooks,
+        progress: resolveFeatureDeliveryProgress(input),
       });
       resetStageInvocationIndex(state);
     }
@@ -614,6 +642,7 @@ export async function advanceFeatureDelivery(
           event: chainEvent,
           clock: input.clock,
           testHooks: input.testHooks,
+          progress: resolveFeatureDeliveryProgress(input),
         }),
     });
 
@@ -700,6 +729,15 @@ export async function repairFeatureDeliveryState(
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
     prepareStageInvocationIndexForSdkEntry(state, targetStage, invocation);
     await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
+    emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
+      taskId,
+      featureId: state.featureId,
+      fromStage: previousStage,
+      toStage: targetStage,
+      event: "manual_repair",
+      persona: personaForStage(pipeline, targetStage) ?? undefined,
+      now,
+    });
     await invokeFeatureDeliveryEnteringStage({
       repoRoot,
       state,
@@ -707,6 +745,8 @@ export async function repairFeatureDeliveryState(
       stageId: targetStage,
       compiled,
       now,
+      testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
     });
     resetStageInvocationIndex(state);
   }
@@ -2176,6 +2216,7 @@ async function tryAdvanceFromReportApproval(input: {
   artifactRel: string;
   now: Date;
   testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
 }): Promise<AdvanceFeatureDeliveryResult | null> {
   if (!input.artifactRel.startsWith("lib/inbox/out/")) {
     return null;
@@ -2265,6 +2306,7 @@ async function finishAdvanceAfterTransition(input: {
   applied: AppliedFeatureDeliveryTransition;
   now: Date;
   testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
 }): Promise<AdvanceFeatureDeliveryResult> {
   delete input.state.nextCommand;
   const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
@@ -2272,6 +2314,15 @@ async function finishAdvanceAfterTransition(input: {
     const compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
     prepareStageInvocationIndexForSdkEntry(input.state, input.state.currentStage, invocation);
     await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+    emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
+      taskId: input.taskId,
+      featureId: input.state.featureId,
+      fromStage: input.applied.fromStage,
+      toStage: input.applied.toStage,
+      event: input.applied.event,
+      persona: personaForStage(input.pipeline, input.state.currentStage) ?? undefined,
+      now: input.now,
+    });
     await invokeFeatureDeliveryEnteringStage({
       repoRoot: input.repoRoot,
       state: input.state,
@@ -2280,6 +2331,7 @@ async function finishAdvanceAfterTransition(input: {
       compiled,
       now: input.now,
       testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
     });
     resetStageInvocationIndex(input.state);
   }
@@ -2321,6 +2373,7 @@ async function advanceReviewReentryFromImplement(input: {
   reentry: ReviewReentryAdvancePlan;
   now: Date;
   testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
 }): Promise<AdvanceFeatureDeliveryResult> {
   const { repoRoot, taskId, state, pipeline, stateFileRel, reentry, now } = input;
   delete state.nextCommand;
@@ -2393,6 +2446,15 @@ async function advanceReviewReentryFromImplement(input: {
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
     prepareStageInvocationIndexForSdkEntry(state, state.currentStage, invocation);
     await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+    emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
+      taskId,
+      featureId: state.featureId,
+      fromStage: second.fromStage,
+      toStage: state.currentStage,
+      event: second.event,
+      persona: personaForStage(pipeline, state.currentStage) ?? undefined,
+      now,
+    });
     await invokeFeatureDeliveryEnteringStage({
       repoRoot,
       state,
@@ -2401,6 +2463,7 @@ async function advanceReviewReentryFromImplement(input: {
       compiled,
       now,
       testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
     });
     resetStageInvocationIndex(state);
   }

@@ -195,6 +195,13 @@ listings, or planner scratch notes into the executor prompt unless the generated
 prompt names the exact file. This handoff fidelity requirement mirrors the
 `AGENTS.md` §5 delegation policy.
 
+When an agent runs SDK-mode feature-delivery CLI commands from chat on the
+operator's behalf, the agent SHALL relay stderr progress to the operator chat
+surface: set `PAN_FD_PROGRESS=ndjson`, watch for `feature_delivery_progress`
+events, and post concise status on each `stage_enter`, `stage_transition`,
+`heartbeat`, and `stage_complete` before the command finishes. See
+`OPERATION.md` § SDK mode "Agent chat relay" and `AGENTS.md` §5.
+
 When execution finds ambiguity that changes scope, touch-set, acceptance
 criteria, or validation strategy, the executor SHALL stop and delegate back to
 `tech-lead`, `reviewer`, or `supervisor` rather than extending a local repair

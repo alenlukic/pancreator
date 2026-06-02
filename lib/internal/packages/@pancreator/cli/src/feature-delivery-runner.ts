@@ -19,6 +19,10 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  type FeatureDeliverySdkProgressReporter,
+  withFeatureDeliverySdkStageHeartbeat,
+} from "./feature-delivery-sdk-progress.js";
 import { readCursorInvocationMode, readStageRemediationEnabled } from "./pan-init.js";
 import {
   parseQaVerdict,
@@ -93,6 +97,7 @@ export interface FeatureDeliveryRunnerLedger {
 
 export interface FeatureDeliveryTestHooks {
   sdkTransport?: CursorSdkTransport;
+  progress?: FeatureDeliverySdkProgressReporter;
 }
 
 export function ensureAutomationState(
@@ -262,6 +267,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   compiled?: CompiledPipeline;
   now?: Date;
   testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
 }): Promise<RunnerInvocationEnvelope> {
   const repoRoot = path.resolve(input.repoRoot);
   const now = input.now ?? new Date();
@@ -292,43 +298,56 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
 
   let envelope: RunnerInvocationEnvelope | undefined;
   let runnerInvoked = false;
+  const progress = input.progress ?? input.testHooks?.progress;
 
-  await executeStageSlice(
-    input.pipeline,
-    input.stageId,
-    { state: input.state },
-    async (sliceStage, ctx) => {
-      if (runnerInvoked) {
-        return ctx;
-      }
-      runnerInvoked = true;
-      envelope = await runner.invoke({
-        persona,
-        message: `Execute feature-delivery stage ${sliceStage.id} for task ${input.state.taskId}.`,
-        stagePromptPath,
-        stagePromptContent,
-        artifactPath,
-        requiredArtifactPaths,
-        stageInvocationIndex,
-        runLogPath,
-        ledger: {
-          taskId: input.state.taskId,
-          pipelineId: input.state.pipelineId,
-          stageId: sliceStage.id,
-          featureId: input.state.featureId,
-        },
-        runLogFragment: buildStageRunLogFragment(
-          persona,
-          sliceStage.id,
-          stagePromptPath,
-          artifactPath,
-          requiredArtifactPaths,
-          stageInvocationIndex,
-        ),
-      });
-      return ctx;
+  await withFeatureDeliverySdkStageHeartbeat(
+    progress,
+    {
+      taskId: input.state.taskId,
+      featureId: input.state.featureId,
+      stageId: input.stageId,
+      persona: stage.persona,
+      now,
     },
-    knownPersonas.size > 0 ? { knownPersonas } : {},
+    async () => {
+      await executeStageSlice(
+        input.pipeline,
+        input.stageId,
+        { state: input.state },
+        async (sliceStage, ctx) => {
+          if (runnerInvoked) {
+            return ctx;
+          }
+          runnerInvoked = true;
+          envelope = await runner.invoke({
+            persona,
+            message: `Execute feature-delivery stage ${sliceStage.id} for task ${input.state.taskId}.`,
+            stagePromptPath,
+            stagePromptContent,
+            artifactPath,
+            requiredArtifactPaths,
+            stageInvocationIndex,
+            runLogPath,
+            ledger: {
+              taskId: input.state.taskId,
+              pipelineId: input.state.pipelineId,
+              stageId: sliceStage.id,
+              featureId: input.state.featureId,
+            },
+            runLogFragment: buildStageRunLogFragment(
+              persona,
+              sliceStage.id,
+              stagePromptPath,
+              artifactPath,
+              requiredArtifactPaths,
+              stageInvocationIndex,
+            ),
+          });
+          return ctx;
+        },
+        knownPersonas.size > 0 ? { knownPersonas } : {},
+      );
+    },
   );
 
   if (envelope === undefined) {

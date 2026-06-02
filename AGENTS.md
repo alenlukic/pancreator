@@ -32,6 +32,7 @@ language → `lib/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | `pancreator.yaml` phase and `project_root` config | `lib/memory/handbook/pancreator-config.md` |
 | Operator how-to (feature delivery, CLI, validation) | `OPERATION.md` |
 | `pan` CLI invocation (`pnpm -w exec pan`) | `lib/memory/handbook/pancreator-config.md` §“CLI invocation in this workspace” |
+| Feature-delivery SDK progress (CLI stderr + agent chat relay) | `OPERATION.md` § SDK mode; `AGENTS.md` §5 |
 | Model and context escalation | `lib/memory/handbook/context-economy.md` |
 | Active-memory orientation | `lib/memory/active/current.md` |
 | Active-memory layout | `lib/memory/active/README.md` |
@@ -139,6 +140,18 @@ this section in your response.
   those instructions, SHALL sequence them before, during, or after delegation as
   the instructions require, and SHALL NOT expand them into adjacent unrequested
   work.
+- **Feature-delivery SDK progress in chat.** When an agent runs
+  `pnpm -w exec pan run feature-delivery`, `pnpm -w exec pan feature new`,
+  `pnpm -w exec pan advance`, or `pnpm -w exec pan repair-state` on the
+  operator's behalf while `runner.cursor.invocation: sdk` is set, the agent
+  SHALL prefix the command with `PAN_FD_PROGRESS=ndjson`, monitor stderr for
+  `"event":"feature_delivery_progress"` lines, and post a concise
+  operator-visible chat update for each `stage_enter`, `stage_transition`,
+  `heartbeat`, and `stage_complete` event before the command finishes. Chat
+  updates MUST NOT paste raw NDJSON; they SHALL name `taskId`, `stageId`,
+  optional `persona`, elapsed time on heartbeats, and transition targets when
+  present. The agent SHALL parse stdout separately for the final JSON envelope.
+  See `OPERATION.md` § SDK mode "Agent chat relay".
 - **Stage diffs locally; never push.** No agent SHALL run `git push` or
   `git commit --no-verify`. Persona `disallowedTools` enforces this; AGENTS.md
   restates it for out-of-band tooling.
@@ -205,8 +218,6 @@ this section in your response.
   phase boundaries before the runner exists, hand-checked lints) carries
   `metadata.pancreator-bootstrap-only: true | false` so it can be retired or
   formalized later.
-- **Commit trailer.** Every bootstrap commit MUST carry
-  `Bootstrap-Phase: <N>` so the bootstrap is replayable end-to-end.
 
 ## 6 — What to do next
 

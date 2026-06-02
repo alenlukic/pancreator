@@ -77,6 +77,7 @@ lands, operators SHOULD apply this table manually.
 | Audit likely token cost sinks | `/lib/memory/handbook/context-cost-audit.md` | `/lib/memory/handbook/context-economy.md`, `/docs/M1.index.md` | Records current cost sinks and practical controls. |
 | Interpret or update `pancreator.yaml` | `/lib/memory/handbook/pancreator-config.md` | `/pancreator.yaml`, `/pancreator-defaults.yaml`, `/lib/personas/adopter.md` | Defines `project_root`, live bootstrap tracking, and the boundary between live policy and defaults. |
 | Run or document `pan` CLI commands for operators | `/lib/memory/handbook/pancreator-config.md` §“CLI invocation in this workspace” | `/lib/memory/handbook/operator-output-contract.md`, `/AGENTS.md` | Use `pnpm -w exec pan …` from repo root; bare `pan` is not on PATH. |
+| Relay feature-delivery SDK progress to operator chat | `/OPERATION.md` § SDK mode "Agent chat relay" | `/AGENTS.md` §5, `/lib/memory/handbook/context-economy.md` | Agents prefix with `PAN_FD_PROGRESS=ndjson`, monitor stderr, and post concise status lines; operators in a TTY get `[pan fd] …` on stderr automatically. |
 
 ## Retrieval discipline
 
