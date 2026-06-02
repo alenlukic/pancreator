@@ -29,7 +29,8 @@
     "turbo": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
-    "yaml": "catalog:"
+    "yaml": "catalog:",
+    "ajv": "^8.20.0"
   },
   "dependencies": {
     "@langchain/langgraph": "1.3.2",

@@ -142,6 +142,26 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
 - **Authorizer** — pluggable interface that gates intervention actions in
   library mode. Typed against Cedar `AuthorizationEngine`. Default:
   `LocalUserAuthorizer`.
+- **escalation config** — a named entry under the top-level `configs` key of
+  `pancreator-model-escalation.yaml`; each escalation config contains a per-persona tier map.
+- **escalation tier** — one entry in an escalation config's persona tier map; keyed by the
+  literal string `default` or by a non-negative integer; its value is a model string.
+- **tier key** — the integer key of an escalation tier entry; the effective model for stage
+  invocation index *N* is the tier whose tier key is the greatest integer ≤ *N*; when no
+  integer tier key applies, the `default` tier value is used.
+- **effective model** — the model string resolved from the active escalation config for a
+  given persona slug and stage invocation index; it overrides the static persona frontmatter
+  model for one SDK transport invocation.
+- **stage invocation index** — a non-negative integer equal to the number of times the
+  current stage has been invoked in the current run; `0` on the first invocation of each
+  stage; incremented by `1` on each loopback to the same stage; reset to `0` on first entry
+  to any new stage.
+- **model issue** — a transport-classified failure where `@cursor/sdk` returns an error
+  caused by an unresolvable model name, a provider-unavailable response, or a model quota
+  error; distinct from artifact-missing errors and stage-logic errors.
+- **active config** — the escalation config name selected for the current run; resolved from
+  `runner.cursor.model_escalation.config` in `pancreator.yaml`, or overridden by the
+  `PAN_MODEL_ESCALATION_CONFIG` environment variable.
 
 ## 3 — Contracts and verification vocabulary
 

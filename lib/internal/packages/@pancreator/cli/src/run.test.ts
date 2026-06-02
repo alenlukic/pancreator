@@ -100,6 +100,10 @@ function runnerInvokeLogLines(logText: string): string[] {
 }
 
 async function seedFeatureDeliveryRepo(root: string): Promise<void> {
+  await copyFile(
+    path.join(CANONICAL_REPO_ROOT, "pancreator-model-escalation.yaml"),
+    path.join(root, "pancreator-model-escalation.yaml"),
+  );
   await mkdir(path.join(root, "lib", "inbox", "in"), { recursive: true });
   await mkdir(path.join(root, "lib", "pipelines"), { recursive: true });
   const toolsDir = path.join(root, "lib", "internal", "tools");

@@ -45,10 +45,19 @@ export class RunnerTransportError extends Error {
 export interface FeatureDeliveryAutomationState {
   runnerInvocation: "manual" | "sdk";
   cumulativeRetryCount: number;
+  /** Per-stage SDK invocation counter for model escalation tiers. */
+  stageInvocationIndex?: number;
   reportApprovalPending?: boolean;
   stageRemediationCount?: number;
   lastRemediationStage?: string;
 }
+
+const SDK_STAGE_LOOPBACK_EVENTS = new Set([
+  "must_fix",
+  "qa_fails",
+  "qa_fails_plan_invalidating",
+  "needs_changes",
+]);
 
 export const STAGE_REMEDIATION_PERSONA = "pancreator-engineer" as const;
 export const MAX_STAGE_REMEDIATION_ATTEMPTS = 2;
@@ -71,7 +80,14 @@ export interface FeatureDeliveryRunnerLedger {
     nextPromptFile?: string;
     handoffFile?: string;
   };
-  advanceHistory?: ReadonlyArray<{ kind: string }>;
+  advanceHistory?: ReadonlyArray<{
+    kind: string;
+    event?: string;
+    to?: string;
+    from?: string;
+    atIso?: string;
+    artifact?: string;
+  }>;
   automation?: FeatureDeliveryAutomationState;
 }
 
@@ -84,11 +100,54 @@ export function ensureAutomationState(
   invocation: "manual" | "sdk",
 ): FeatureDeliveryAutomationState {
   if (state.automation === undefined) {
-    state.automation = { runnerInvocation: invocation, cumulativeRetryCount: 0 };
+    state.automation = {
+      runnerInvocation: invocation,
+      cumulativeRetryCount: 0,
+      stageInvocationIndex: 0,
+    };
   } else {
     state.automation.runnerInvocation = invocation;
+    if (state.automation.stageInvocationIndex === undefined) {
+      state.automation.stageInvocationIndex = 0;
+    }
   }
   return state.automation;
+}
+
+function lastAdvanceEntry(
+  state: FeatureDeliveryRunnerLedger,
+): { event: string; to: string } | undefined {
+  const history = state.advanceHistory ?? [];
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = history[index];
+    if (entry?.kind === "advance" && typeof entry.event === "string" && typeof entry.to === "string") {
+      return { event: entry.event, to: entry.to };
+    }
+  }
+  return undefined;
+}
+
+/** Updates stageInvocationIndex before an SDK transport call and returns the effective value. */
+export function prepareStageInvocationIndexForSdkEntry(
+  state: FeatureDeliveryRunnerLedger,
+  enteringStageId: string,
+  invocation: "manual" | "sdk",
+): number {
+  const automation = ensureAutomationState(state, invocation);
+  const current = automation.stageInvocationIndex ?? 0;
+  const last = lastAdvanceEntry(state);
+  if (last !== undefined && SDK_STAGE_LOOPBACK_EVENTS.has(last.event) && last.to === enteringStageId) {
+    automation.stageInvocationIndex = current + 1;
+  } else {
+    automation.stageInvocationIndex = 0;
+  }
+  return automation.stageInvocationIndex;
+}
+
+export function resetStageInvocationIndex(state: FeatureDeliveryRunnerLedger): void {
+  if (state.automation !== undefined) {
+    state.automation.stageInvocationIndex = 0;
+  }
 }
 
 export async function compileFeatureDeliveryPipeline(
@@ -157,9 +216,32 @@ function createCursorRunner(
   }
   return new CursorRunner({
     invocation,
+    repoRoot,
     cwd: repoRoot,
     apiKey: process.env.CURSOR_API_KEY,
     sdkTransport: testHooks?.sdkTransport,
+    appendEscalationLog: async (record) => {
+      await appendRunLogRecord(record.runLogPath, {
+        ts: rfc3339UtcMs(new Date()),
+        trace_id: newTraceId(),
+        span_id: newSpanId(),
+        name: "cursor.runner.escalation",
+        kind: "event",
+        status: {
+          code: record.severity === "ERROR" ? "ERROR" : "OK",
+          ...(record.warnMessage !== undefined ? { message: record.warnMessage } : {}),
+        },
+        attributes: { escalation: record.escalation, "pancreator.escalation.severity": record.severity },
+        resource: { "service.name": "pancreator", "service.version": "0.0.0" },
+        pancreator: {
+          task_id: asTaskId(record.ledger?.taskId ?? "0_0000_unknown"),
+          pipeline: record.ledger?.pipelineId ?? "unknown",
+          stage_id: record.ledger?.stageId ?? "unknown",
+          outcome: record.severity === "ERROR" ? "failure" : "success",
+          token_usage_unavailable: true,
+        },
+      });
+    },
   });
 }
 
@@ -199,6 +281,14 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const requiredArtifactPaths = requiredArtifactsAfterStageWork(input.state, input.stageId);
   const artifactPath = expectedArtifactForEnteringStage(input.state, input.stageId);
   const runner = createCursorRunner(repoRoot, "sdk", input.testHooks);
+  const stageInvocationIndex = input.state.automation?.stageInvocationIndex ?? 0;
+  const runLogPath = resolveRepoPath(repoRoot, input.state.artifacts.runLogFile);
+  const statePath = resolveRepoPath(repoRoot, input.state.artifacts.stateFile);
+  if (existsSync(statePath)) {
+    const existing = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
+    existing.automation = input.state.automation;
+    await writeFile(statePath, `${JSON.stringify(existing, null, 2)}\n`, "utf8");
+  }
 
   let envelope: RunnerInvocationEnvelope | undefined;
   let runnerInvoked = false;
@@ -219,6 +309,8 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
         stagePromptContent,
         artifactPath,
         requiredArtifactPaths,
+        stageInvocationIndex,
+        runLogPath,
         ledger: {
           taskId: input.state.taskId,
           pipelineId: input.state.pipelineId,
@@ -231,6 +323,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
           stagePromptPath,
           artifactPath,
           requiredArtifactPaths,
+          stageInvocationIndex,
         ),
       });
       return ctx;
@@ -297,6 +390,7 @@ function buildStageRunLogFragment(
   stagePromptPath: string,
   artifactPath: string,
   requiredArtifactPaths: readonly string[],
+  stageInvocationIndex: number,
 ): NonNullable<RunnerInvocationEnvelope["runLogFragment"]> {
   return {
     trace_id: newTraceId(),
@@ -305,6 +399,7 @@ function buildStageRunLogFragment(
     attributes: {
       "openinference.span.kind": "AGENT",
       "gen_ai.request.model": persona.model,
+      "pancreator.stage_invocation_index": stageInvocationIndex,
       "gen_ai.operation.name": `pancreator.pipeline.stage.${stageId}`,
       "gen_ai.provider.name": "cursor",
       "pancreator.persona": persona.name,
@@ -672,6 +767,7 @@ export async function applySdkRetrySideEffects(input: {
   if (retryCount <= FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET) {
     return null;
   }
+  resetStageInvocationIndex(input.state);
   input.state.status = "halted";
   input.state.currentStage = input.fromStage;
   input.state.nextHumanAction =

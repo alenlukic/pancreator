@@ -20,6 +20,13 @@ import {
 
 const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 
+async function seedEscalationConfig(root: string): Promise<void> {
+  await copyFile(
+    path.join(CANONICAL_REPO_ROOT, "pancreator-model-escalation.yaml"),
+    path.join(root, "pancreator-model-escalation.yaml"),
+  );
+}
+
 async function seedPersonas(root: string, names: string[]): Promise<void> {
   const personaDir = path.join(root, "lib", "personas");
   await mkdir(personaDir, { recursive: true });
@@ -74,6 +81,7 @@ describe("feature-delivery SDK stage remediation", () => {
 
   it("remediates partial plan output via pancreator-engineer and resumes the stage", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-remediate-"));
+    await seedEscalationConfig(root);
     await seedPersonas(root, ["tech-lead", STAGE_REMEDIATION_PERSONA]);
     const fixture = planPartial as StageFixture;
     const state = ledgerFromFixture(fixture);
@@ -95,6 +103,7 @@ describe("feature-delivery SDK stage remediation", () => {
 
   it("fails closed when remediation cannot restore required artifacts", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-remediate-fail-"));
+    await seedEscalationConfig(root);
     await seedPersonas(root, ["tech-lead", STAGE_REMEDIATION_PERSONA]);
     const fixture = {
       ...(planPartial as StageFixture),
@@ -119,6 +128,7 @@ describe("feature-delivery SDK stage remediation", () => {
 
   it("passes complete plan fixture without invoking remediation", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-complete-"));
+    await seedEscalationConfig(root);
     await seedPersonas(root, ["tech-lead", STAGE_REMEDIATION_PERSONA]);
     const fixture = planComplete as StageFixture;
     const state = ledgerFromFixture(fixture);

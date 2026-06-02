@@ -27,7 +27,9 @@ import {
   invokeFeatureDeliveryEnteringStage,
   maybePauseForReportApproval,
   parseReportApprovalArtifact,
+  prepareStageInvocationIndexForSdkEntry,
   readCursorInvocationForState,
+  resetStageInvocationIndex,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
   type FeatureDeliveryAutomationState,
@@ -382,6 +384,7 @@ export async function startFeatureDelivery(
   await writeFile(nextPromptFile, renderNextPrompt(repoRoot, state, pipeline), "utf8");
 
   if (invocation === "sdk") {
+    prepareStageInvocationIndexForSdkEntry(state, "intake", invocation);
     await invokeFeatureDeliveryEnteringStage({
       repoRoot,
       state,
@@ -579,6 +582,8 @@ export async function advanceFeatureDelivery(
 
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
     if (applied.toStage !== TERMINAL_STAGE) {
+      prepareStageInvocationIndexForSdkEntry(state, applied.toStage, invocation);
+      await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
       await invokeFeatureDeliveryEnteringStage({
         repoRoot,
         state,
@@ -588,6 +593,7 @@ export async function advanceFeatureDelivery(
         now,
         testHooks: input.testHooks,
       });
+      resetStageInvocationIndex(state);
     }
 
     await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
@@ -692,6 +698,8 @@ export async function repairFeatureDeliveryState(
   if (invocation === "sdk") {
     state.status = "ready_for_stage_delegation";
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
+    prepareStageInvocationIndexForSdkEntry(state, targetStage, invocation);
+    await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
     await invokeFeatureDeliveryEnteringStage({
       repoRoot,
       state,
@@ -700,6 +708,7 @@ export async function repairFeatureDeliveryState(
       compiled,
       now,
     });
+    resetStageInvocationIndex(state);
   }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
@@ -2261,6 +2270,8 @@ async function finishAdvanceAfterTransition(input: {
   const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
   if (invocation === "sdk" && input.state.status !== "halted" && input.state.currentStage !== TERMINAL_STAGE) {
     const compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
+    prepareStageInvocationIndexForSdkEntry(input.state, input.state.currentStage, invocation);
+    await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
     await invokeFeatureDeliveryEnteringStage({
       repoRoot: input.repoRoot,
       state: input.state,
@@ -2270,6 +2281,7 @@ async function finishAdvanceAfterTransition(input: {
       now: input.now,
       testHooks: input.testHooks,
     });
+    resetStageInvocationIndex(input.state);
   }
   await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
   await appendRunLogRecord(
@@ -2379,6 +2391,8 @@ async function advanceReviewReentryFromImplement(input: {
   const invocation = await readCursorInvocationForState(repoRoot, state);
   if (invocation === "sdk") {
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
+    prepareStageInvocationIndexForSdkEntry(state, state.currentStage, invocation);
+    await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
     await invokeFeatureDeliveryEnteringStage({
       repoRoot,
       state,
@@ -2388,6 +2402,7 @@ async function advanceReviewReentryFromImplement(input: {
       now,
       testHooks: input.testHooks,
     });
+    resetStageInvocationIndex(state);
   }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
