@@ -1,7 +1,4 @@
 ---
-name: intake-analyst
-description: "Canonical `intake-analyst` subagent projection for persona-owned pipeline stages."
-model: gpt-5.4[context=272k,reasoning=extra-high,fast=false]
 permissionMode: default
 mcpServers:
   - pancreator-memory
@@ -12,6 +9,9 @@ isolation: worktree
 memory: project
 effort: medium
 color: cyan
+name: intake-analyst
+model: claude-sonnet-4-6[thinking=true,context=200k,effort=high]
+description: Canonical `intake-analyst` subagent projection for persona-owned pipeline stages.
 ---
 
 # intake-analyst
