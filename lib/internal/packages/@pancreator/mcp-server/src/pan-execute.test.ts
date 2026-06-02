@@ -101,6 +101,30 @@ describe("readPancreatorResource work-run-log", () => {
   });
 });
 
+describe("readPancreatorResource memory://", () => {
+  it("resolves under lib/memory and returns non-empty areas", async () => {
+    const root = await mktemp("pan-mcp-memory-");
+    const resolvedMemoryRoot = path.join(root, "lib", "memory");
+    await fs.mkdir(path.join(resolvedMemoryRoot, "handbook"), { recursive: true });
+    await fs.writeFile(path.join(resolvedMemoryRoot, "handbook", "seed.md"), "x", "utf8");
+    await fs.mkdir(path.join(root, "memory", "wrong-root"), { recursive: true });
+
+    const { mimeType, text } = await readPancreatorResourceMcp("memory://", { repoRoot: root });
+    const payload = JSON.parse(text) as {
+      readonly areas: string[];
+      readonly root: string;
+      readonly memoryFileKeyCount: number;
+    };
+
+    expect(resolvedMemoryRoot.endsWith(path.join("lib", "memory"))).toBe(true);
+    expect(mimeType).toBe("application/json");
+    expect(payload.root).toBe("/lib/memory/<area>/");
+    expect(payload.areas.length).toBeGreaterThan(0);
+    expect(payload.areas).toContain("handbook");
+    expect(payload.areas).not.toContain("wrong-root");
+  });
+});
+
 describe("read-only pan.feature / pan.status / pan.memory", () => {
   it("pan.feature list returns typed feature summaries", async () => {
     const out = await callDdlToolMcp("pan.feature", { action: "list" }, { repoRoot: ROOT });

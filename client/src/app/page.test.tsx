@@ -5,6 +5,7 @@ import { DashboardPage } from "@/components/DashboardPage";
 const mockRunState = [
   {
     taskId: "65766_0543_demo-feature",
+    decodedTimestamp: "2026-06-02 05:43 UTC",
     sourceWarning: "pan status unavailable",
     stages: [
       {
@@ -167,6 +168,7 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("tab-cockpit")).toHaveClass("dashboard-tab-active");
       expect(screen.getByTestId("stage-grid")).toBeInTheDocument();
+      expect(screen.getByText("65766_0543_demo-feature (2026-06-02 05:43 UTC)")).toBeInTheDocument();
       expect(screen.getByTestId("stage-cell-intake")).toHaveTextContent("Gate: human_approval");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("tech-lead");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("Ratify the plan");

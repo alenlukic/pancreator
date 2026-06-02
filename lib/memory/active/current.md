@@ -41,7 +41,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
-| `surface-opt-p10-dashboard-safe-editing` | [indexed] (`2026-06-02T12:00:00.000Z`) | `lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md` | `lib/inbox/out/172973_06-02-26/55193_0840_surface-opt-p10-dashboard-safe-editing-report-approval.md` | `archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-…` |
+| `surface-opt-p10-dashboard-safe-editing` | [indexed] (`2026-06-02T15:33:17.000Z`) | `lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md` | `lib/inbox/out/172973_06-02-26/55193_0840_surface-opt-p10-dashboard-safe-editing-report-approval.md` | `archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-…` |
 | `surface-opt-p9-dashboard-operator-cockpit` | [indexed] (`2026-06-02T06:20:00.000Z`) | `lib/memory/features/surface-opt-p9-dashboard-operator-cockpit/delivery-report.md` | `lib/inbox/out/172973_06-02-26/64121_0611_surface-opt-p9-dashboard-operator-cockpit-report-approval.md` | `archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboar…` |
 | `surface-opt-p4-tighten-cursor-agents-retrieval-contracts` | [indexed] (`2026-06-01T06:20:00.000Z`) | `lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/delivery-report.md` | `lib/inbox/out/172974_06-01-26/64308_0608_surface-opt-p4-tighten-cursor-agents-retrieval-contracts-report-approval.md` | `archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-…` |
 | `surface-opt-p3-cap-current-md-shipped-features-ledger` | [indexed] (`2026-06-01T05:42:00.000Z`) | `lib/memory/features/surface-opt-p3-cap-current-md-shipped-features-ledger/delivery-report.md` | `lib/inbox/out/172974_06-01-26/65992_0540_surface-opt-p3-cap-current-md-shipped-features-ledger-report-approval.md` | `archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt…` |
@@ -65,9 +65,10 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-02T08:50:05.847Z`
+- Active-memory refreshed (UTC): `2026-06-02T15:35:30.676Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
 
 
 

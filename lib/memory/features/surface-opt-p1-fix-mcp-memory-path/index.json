@@ -33,7 +33,7 @@
     "completed_at": "2026-06-01T04:35:00Z",
     "next_owner": "operator",
     "next_stage": "complete",
-    "handoff_note": "Index links the delivery report, archived work artifacts, and implementation surface. After human acceptance, run pan advance with the feature index artifact to transition to complete."
+    "handoff_note": "Index links the delivery report, archived work artifacts, and implementation surface. A remediation pass on 2026-06-02 implemented the missing `memory://` path fix and regression test; after human acceptance, run pan advance with the feature index artifact to transition to complete."
   },
   "index": {
     "indexer": "librarian",

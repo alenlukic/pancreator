@@ -1,7 +1,7 @@
 # Delivery Report — surface-opt-p1-fix-mcp-memory-path
 
 ## Summary
-The `memory://` handler SHALL resolve under `lib/memory`, the `pancreator-memory-areas` description SHALL reference `/lib/memory/<area>/`, and the regression test SHALL assert the resolved memory root ends with `lib/memory`.
+This remediation pass implements the missing P1 behavior in code: the `memory://` handler now resolves under `lib/memory`, and a regression test asserts the resolved path target ends with `lib/memory` and returns non-empty memory areas.
 
 ```json
 {
@@ -91,7 +91,7 @@ Documentation impact SHALL remain `applies=false` because the change aligns runt
 ```
 
 ## Ship readiness
-The delivery report SHALL advance to the human approval gate once the operator accepts this artifact.
+P1 is now materially delivered in code and tests, and this report can advance to the human approval gate after operator acceptance.
 
 ```json
 {

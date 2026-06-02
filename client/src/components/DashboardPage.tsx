@@ -2,7 +2,7 @@
 
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { RunLogEvent, StageCell, TaskRunStateEnvelope } from "@/services/run-state";
+import { taskDisplayLabel, type RunLogEvent, type StageCell, type TaskRunStateEnvelope } from "@/services/run-state-shared";
 
 type Domain = {
   id: string;
@@ -136,8 +136,12 @@ export function StageMachineGrid({ tasks }: { tasks: TaskRunStateEnvelope[] }) {
   return (
     <div className="cockpit-grids">
       {tasks.map((task) => (
-        <section key={task.taskId} className="task-cockpit" aria-label={`Pipeline ${task.taskId}`}>
-          <h3 className="task-cockpit-title">{task.taskId}</h3>
+        <section
+          key={task.taskId}
+          className="task-cockpit"
+          aria-label={`Pipeline ${taskDisplayLabel(task)}`}
+        >
+          <h3 className="task-cockpit-title">{taskDisplayLabel(task)}</h3>
           {task.sourceWarning ? <p className="source-warning">{task.sourceWarning}</p> : null}
           <div className="stage-grid" data-testid="stage-grid">
             {task.stages.map((stage) => (
@@ -176,7 +180,7 @@ export function RunEventTimeline({ tasks }: { tasks: TaskRunStateEnvelope[] }) {
     <div className="run-timeline" data-testid="run-timeline">
       {tasks.map((task) => (
         <section key={task.taskId} className="run-timeline-task">
-          <h3>Run log · {task.taskId}</h3>
+          <h3>Run log · {taskDisplayLabel(task)}</h3>
           <div className="run-timeline-events">
             {task.runEvents.map((event) => (
               <RunEventItem key={`${task.taskId}-${event.timestamp}-${event.event}`} event={event} />

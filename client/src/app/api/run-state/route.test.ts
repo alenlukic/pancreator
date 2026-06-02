@@ -80,6 +80,7 @@ describe("GET /api/run-state", () => {
       const envelopes = await getActiveRunState(tempRoot);
       expect(envelopes).toHaveLength(1);
       expect(envelopes[0].taskId).toBe("65766_0543_demo-feature");
+      expect(envelopes[0].decodedTimestamp).toBe("2026-06-02 05:43 UTC");
       expect(envelopes[0].stages).toHaveLength(9);
       expect(envelopes[0].stages[1]).toMatchObject({
         name: "plan",
@@ -88,6 +89,19 @@ describe("GET /api/run-state", () => {
         humanGate: "human_approval",
       });
       expect(envelopes[0].stages[1].nextHumanAction).toContain("Ratify");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("populates decodedTimestamp from countdown run directory tokens", async () => {
+    writeState(tempRoot, "172996_05-10-26", "38670_1315_demo-feature");
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const envelopes = await getActiveRunState(tempRoot);
+      expect(envelopes).toHaveLength(1);
+      expect(envelopes[0].decodedTimestamp).toBe("2026-05-10 13:15 UTC");
     } finally {
       process.chdir(originalRoot);
     }
