@@ -119,6 +119,13 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
 2. Ensure repo-root `.env` defines `CURSOR_API_KEY` when using live SDK transport.
 3. Run and advance as in the manual loop; the CLI invokes the entering persona and
    appends one runner observability record per invocation to `run.log.jsonl`.
+   While a stage runs, the CLI emits progress on **stderr** every 2 minutes and
+   on each stage transition. Interactive terminals receive human-readable
+   `[pan fd] …` lines; non-TTY/agent invocations receive one NDJSON object per
+   line with `"event":"feature_delivery_progress"`. Stage transitions include
+   `transitionEvent` (for example `human_approval`, `review_passes`). Set
+   `PAN_FD_PROGRESS=text` or `PAN_FD_PROGRESS=ndjson` to override auto-detection.
+   Final command envelopes still print to stdout only.
 4. After `review` or `test` artifacts exist, SDK mode MAY auto-advance when
    `review_passes` / `qa_passes` or route on `must_fix` / `qa_fails` without a
    separate operator `advance` for that branch.
@@ -133,6 +140,42 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
    ```bash
    pnpm -w exec pan advance <task-id> --artifact lib/inbox/out/<day-bucket>/<approval-file>.md
    ```
+
+#### Agent chat relay
+
+When a Cursor agent runs SDK-mode feature-delivery commands from chat on the
+operator's behalf, stderr progress lines do not appear in the chat window unless
+the agent relays them. Apply this contract:
+
+1. Prefix the command with `PAN_FD_PROGRESS=ndjson` so progress is
+   machine-parseable regardless of TTY detection.
+2. Treat **stderr** as progress-only and **stdout** as the final JSON envelope.
+3. Post one short operator-visible chat line per progress event (`stage_enter`,
+   `stage_transition`, `heartbeat`, `stage_complete`) before the command exits.
+4. Monitor stderr while the command runs (for example shell output polling on
+   `feature_delivery_progress`) so heartbeats (~every 2 minutes) surface in
+   chat without waiting for the full run to finish.
+
+| Progress `kind` | Chat update (example) |
+|---|---|
+| `stage_enter` | Feature-delivery `task-1`: entering `plan` (tech-lead) |
+| `heartbeat` | Feature-delivery `task-1`: `plan` (tech-lead) still running — 4m 0s |
+| `stage_complete` | Feature-delivery `task-1`: finished `plan` (tech-lead) in 6m 12s |
+| `stage_transition` | Feature-delivery `task-1`: `plan` → `implement` (human_approval) |
+
+Do not paste raw NDJSON into chat. Derive elapsed time from the `elapsedMs`
+field on heartbeats and stage completions. On `stage_transition`, read
+`fromStage`, `toStage`, and `transitionEvent` when present.
+
+Example agent invocation:
+
+```bash
+PAN_FD_PROGRESS=ndjson pnpm -w exec pan run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
+```
+
+Operators running the same commands directly in an interactive terminal receive
+`[pan fd] …` text on stderr automatically; chat relay applies only when an
+agent executes the command on the operator's behalf.
 
 #### Model escalation tiers (SDK mode only)
 
@@ -255,7 +298,6 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 - Stage diffs locally only during bootstrap; agents do not push or commit without the operator.
 - Governed structural commits require `work/<day>/<task-id>/policy-compliance.json`
   per `lib/memory/handbook/policy-compliance-contract.md`.
-- Bootstrap commits carry trailer `Bootstrap-Phase: <N>`.
 - Pre-commit hooks enforce policy compliance; do not use `--no-verify` unless the operator directs it.
 
 ### Librarian pre-close validation
