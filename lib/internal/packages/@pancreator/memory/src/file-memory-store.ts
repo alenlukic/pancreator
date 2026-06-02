@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FeatureId } from "@pancreator/core";
+import { stringifyMemoryJson } from "./canonical-json-io.js";
 
 /**
  * Mem0-shaped key-value view over a repository `lib/memory/` tree.
@@ -134,7 +135,7 @@ export class FileMemoryStore implements MemoryStore {
    */
   async writeJsonFeatureIndex(id: FeatureId, value: unknown): Promise<void> {
     const rel = `features/${id}/index.json`;
-    const text = `${JSON.stringify(value, null, 2)}\n`;
+    const text = stringifyMemoryJson(this.memoryRoot, value);
     await this.set(rel, text);
   }
 }

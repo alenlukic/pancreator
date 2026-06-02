@@ -7,7 +7,16 @@ import pancreatorPlugin from "./lib/internal/tools/eslint-rules/no-horizontal-pr
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
-  { ignores: ["**/dist", "**/node_modules", "pnpm-lock.yaml", "lib/internal/tools/**/*.mjs"] },
+  {
+    ignores: [
+      "**/dist",
+      "**/node_modules",
+      "pnpm-lock.yaml",
+      "lib/internal/tools/**/*.mjs",
+      "client/**",
+      "**/next-env.d.ts",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

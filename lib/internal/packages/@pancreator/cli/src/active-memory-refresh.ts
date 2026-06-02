@@ -1,5 +1,6 @@
 import { resolveProjectPath, resolveRepoPath } from "@pancreator/core";
 import { existsSync } from "node:fs";
+import { stringifyCliJson } from "./canonical-json-io.js";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
@@ -394,7 +395,7 @@ export async function patchFeatureIndexArchivedInbox(
     }
   }
 
-  await writeFile(indexAbs, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  await writeFile(indexAbs, stringifyCliJson(repoRoot, parsed), "utf8");
 }
 
 export async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {

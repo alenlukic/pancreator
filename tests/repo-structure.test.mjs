@@ -14,6 +14,7 @@ import {
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const FDS_UTC_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
+const IGNORED_WALK_DIRS = new Set([".git", "node_modules", "dist", ".turbo"]);
 
 function read(rel) {
   return fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -23,20 +24,23 @@ function exists(rel) {
   return fs.existsSync(path.join(ROOT, rel));
 }
 
-
-function collectFiles(rel, predicate) {
+/** @param {string} rel posix path from repo root */
+function walkRepoFiles(rel, predicate = () => true) {
   const abs = path.join(ROOT, rel);
   if (!fs.existsSync(abs)) return [];
   const entry = fs.statSync(abs);
   if (entry.isFile()) return predicate(rel) ? [rel] : [];
   if (!entry.isDirectory()) return [];
-  const ignoredDirs = new Set([".git", "node_modules", "dist", ".turbo"]);
   const files = [];
   for (const child of fs.readdirSync(abs, { withFileTypes: true })) {
-    if (child.isDirectory() && ignoredDirs.has(child.name)) continue;
-    files.push(...collectFiles(path.posix.join(rel, child.name), predicate));
+    if (child.isDirectory() && IGNORED_WALK_DIRS.has(child.name)) continue;
+    files.push(...walkRepoFiles(path.posix.join(rel, child.name), predicate));
   }
   return files;
+}
+
+function collectFiles(rel, predicate) {
+  return walkRepoFiles(rel, predicate);
 }
 
 function daysToFdsForSuffix(mmDdYy) {
@@ -245,20 +249,7 @@ test("live normative surfaces use three-level work placeholders", () => {
     "lib/personas/skills",
     "tests/compliance",
   ];
-  const files = [];
-  const addPath = (rel) => {
-    const abs = path.join(ROOT, rel);
-    if (!fs.existsSync(abs)) return;
-    const stat = fs.statSync(abs);
-    if (stat.isDirectory()) {
-      for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
-        addPath(path.posix.join(rel, entry.name));
-      }
-    } else if (stat.isFile()) {
-      files.push(rel);
-    }
-  };
-  roots.forEach(addPath);
+  const files = roots.flatMap((rel) => walkRepoFiles(rel));
 
   const offenders = [];
   for (const rel of files) {

@@ -1,0 +1,24 @@
+import {
+  abbreviateHashes,
+  formatCanonicalJson,
+  resolveAbbrevLen,
+} from "../../../../tools/canonical-json-format.mjs";
+
+/** Derive repository root from a `lib/memory/` absolute directory. */
+export function repoRootFromMemoryRoot(memoryRoot: string): string {
+  const normalized = memoryRoot.replace(/\\/g, "/");
+  if (!normalized.endsWith("/lib/memory") && normalized !== "lib/memory") {
+    throw new Error(
+      `memoryRoot must end with lib/memory (got ${memoryRoot})`,
+    );
+  }
+  return normalized.slice(0, -"/lib/memory".length) || ".";
+}
+
+/** Serialize feature index and other memory-tier JSON with canonical layout. */
+export function stringifyMemoryJson(memoryRoot: string, value: unknown): string {
+  const repoRoot = repoRootFromMemoryRoot(memoryRoot);
+  const len = resolveAbbrevLen(repoRoot);
+  const abbreviated = abbreviateHashes(value, len);
+  return `${formatCanonicalJson(abbreviated, 0)}\n`;
+}

@@ -61,10 +61,184 @@ button {
 
 .dashboard {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.4fr) minmax(240px, 0.9fr);
+  grid-template-columns: minmax(220px, 0.9fr) minmax(320px, 2fr);
   gap: 1rem;
   padding: 1rem 1.5rem 1.5rem;
   align-items: start;
+}
+
+.panel-main {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-tab {
+  border: 1px solid color-mix(in srgb, var(--deep-teal) 35%, transparent);
+  background: color-mix(in srgb, white 25%, var(--eggshell));
+  color: var(--midnight-violet);
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.85rem;
+}
+
+.dashboard-tab-active {
+  background: var(--deep-teal);
+  color: var(--eggshell);
+  border-color: var(--deep-teal);
+}
+
+.cockpit-view {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.cockpit-empty {
+  margin: 0;
+  padding: 1rem;
+  border: 1px dashed color-mix(in srgb, var(--deep-teal) 40%, transparent);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.cockpit-grids {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.task-cockpit-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.source-warning {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: #8b2f2f;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.stage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.stage-cell {
+  border: 1px solid color-mix(in srgb, var(--deep-teal) 25%, transparent);
+  border-radius: 10px;
+  padding: 0.65rem;
+  background: color-mix(in srgb, white 30%, var(--eggshell));
+  min-height: 5.5rem;
+}
+
+.stage-cell-pending {
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+.stage-cell-active {
+  border-color: var(--deep-teal);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--deep-teal) 30%, transparent);
+  background: color-mix(in srgb, var(--deep-teal) 12%, var(--eggshell));
+}
+
+.stage-cell-complete {
+  border-color: color-mix(in srgb, var(--deep-teal) 55%, transparent);
+}
+
+.stage-cell-failed {
+  border-color: #8b2f2f;
+  background: color-mix(in srgb, #8b2f2f 8%, var(--eggshell));
+}
+
+.stage-cell-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+.stage-cell-header h4 {
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stage-cell-persona {
+  font-size: 0.72rem;
+  color: var(--deep-teal);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.stage-cell-gate,
+.stage-cell-action {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.stage-cell-command {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.run-timeline {
+  display: grid;
+  gap: 1rem;
+}
+
+.run-timeline-task h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--deep-teal);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.run-timeline-events {
+  display: grid;
+  gap: 0.65rem;
+  max-height: 40vh;
+  overflow: auto;
+}
+
+.run-timeline-item {
+  border-left: 3px solid var(--deep-teal);
+  padding-left: 0.75rem;
+}
+
+.run-timeline-item time {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--deep-teal);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.run-timeline-item h4 {
+  margin: 0.2rem 0;
+  font-size: 0.88rem;
+}
+
+.run-timeline-item p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .panel {
@@ -121,6 +295,7 @@ button {
 }
 
 .domain-card button,
+.dashboard-tab,
 .toggle-files,
 .modal-actions button,
 .crumb-link {
@@ -288,8 +463,18 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .stage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .app-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .stage-grid {
+    grid-template-columns: 1fr;
   }
 }

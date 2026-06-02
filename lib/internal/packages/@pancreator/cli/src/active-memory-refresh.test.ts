@@ -1,7 +1,9 @@
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
 
 import {
   deriveShippedMarkdownTable,
@@ -52,8 +54,52 @@ describe("resolveArchivedInboxPointer", () => {
     };
     expect(await resolveArchivedInboxPointer(root, rec)).toBe(archived);
   });
+});
 
-  it("patchFeatureIndexArchivedInbox backfills archived_inbox_source and source_inbox_item.path", async () => {
+describe("patchFeatureIndexArchivedInbox", () => {
+  let hadAbbrevEnv = false;
+  let prevAbbrevEnv: string | undefined;
+
+  beforeEach(() => {
+    hadAbbrevEnv = Object.hasOwn(process.env, JSON_FORMAT_ABBREV_ENV);
+    prevAbbrevEnv = process.env[JSON_FORMAT_ABBREV_ENV];
+    process.env[JSON_FORMAT_ABBREV_ENV] = "7";
+  });
+
+  afterEach(() => {
+    if (hadAbbrevEnv) {
+      process.env[JSON_FORMAT_ABBREV_ENV] = prevAbbrevEnv;
+    } else {
+      delete process.env[JSON_FORMAT_ABBREV_ENV];
+    }
+  });
+
+  it("preserves canonical primitive-array layout", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-archived-canonical-"));
+    const featureId = "demo-feature";
+    const indexAbs = path.join(root, "lib", "memory", "features", featureId, "index.json");
+    const prior = "lib/inbox/in/demo.md";
+    const archived = "archive/inbox/in/172996_05-10-26/task/demo.md";
+    await mkdir(path.dirname(indexAbs), { recursive: true });
+    await writeFile(
+      indexAbs,
+      [
+        "{",
+        '  "feature_id": "demo-feature",',
+        '  "depends_on": ["P5", "P6"],',
+        '  "source_inbox_item": { "path": "lib/inbox/in/demo.md" }',
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await patchFeatureIndexArchivedInbox(root, featureId, archived, prior);
+    const raw = await readFile(indexAbs, "utf8");
+    expect(raw).toMatch(/"depends_on": \["P5", "P6"\]/);
+  });
+
+  it("backfills archived_inbox_source and source_inbox_item.path", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-archived-patch-"));
     const featureId = "demo-feature";
     const indexAbs = path.join(root, "lib", "memory", "features", featureId, "index.json");

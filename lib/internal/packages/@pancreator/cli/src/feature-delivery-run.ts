@@ -60,7 +60,11 @@ const TERMINAL_STAGE = "complete" as const;
 const TASK_ID_PATTERN = /^\d+_\d{4}_[a-z0-9][a-z0-9_-]*$/u;
 
 type FeatureDeliveryStageId = (typeof FEATURE_DELIVERY_STAGES)[number];
-type FeatureDeliveryCurrentStage = FeatureDeliveryStageId | typeof TERMINAL_STAGE;
+type FeatureDeliveryCurrentStage =
+  | FeatureDeliveryStageId
+  | typeof TERMINAL_STAGE
+  | "aborted"
+  | "paused";
 
 export type StageStatus = "ready" | "pending" | "complete" | "blocked" | "skipped";
 export type PipelineStatus =
@@ -240,7 +244,6 @@ export interface AdvanceFeatureDeliveryResult {
   /** True when implement-stage advance with review.md chained implementation_complete and review_passes, landing at test. */
   reviewReentry?: boolean;
   nextCommand?: string | null;
-  event?: string | null;
   contentWarnings?: ArtifactContentWarning[];
   warningCount?: number;
 }
@@ -406,7 +409,7 @@ export async function startFeatureDelivery(
     nextPromptFile: nextPromptFileRel,
     currentStage: "intake",
     nextHumanAction: state.nextHumanAction,
-  });
+  }) as StartFeatureDeliveryResult;
 }
 
 /** Appends a run-log row for pan pause/resume/abort when a feature-delivery ledger exists. Returns false when no state file matches the task id. */
@@ -646,7 +649,7 @@ export async function advanceFeatureDelivery(
     nextHumanAction: state.nextHumanAction,
     contentWarnings,
     warningCount: contentWarnings.length,
-  });
+  }) as AdvanceFeatureDeliveryResult;
 }
 
 export async function repairFeatureDeliveryState(
@@ -1464,7 +1467,7 @@ export function resolveNextStep(
   if (
     state.status === "halted" ||
     state.status === "closed" ||
-    state.status === "aborted" ||
+    state.currentStage === "aborted" ||
     state.currentStage === TERMINAL_STAGE
   ) {
     return {
@@ -1560,7 +1563,7 @@ function isNonTerminalFeatureDeliveryState(state: FeatureDeliveryState): boolean
   return (
     state.status !== "halted" &&
     state.status !== "closed" &&
-    state.status !== "aborted" &&
+    state.currentStage !== "aborted" &&
     state.currentStage !== TERMINAL_STAGE
   );
 }
@@ -1570,8 +1573,13 @@ function enrichFeatureDeliveryEnvelope<T extends Record<string, unknown>>(
   state: FeatureDeliveryState,
   payload: T,
 ): T & { nextCommand?: string | null; event?: string | null; artifact?: string | null } {
+  type Enriched = T & {
+    nextCommand?: string | null;
+    event?: string | null;
+    artifact?: string | null;
+  };
   if (!isNonTerminalFeatureDeliveryState(state)) {
-    return { ...payload, nextCommand: null, event: null, artifact: null };
+    return { ...payload, nextCommand: null, event: null, artifact: null } as Enriched;
   }
   const step = resolveNextStep(state, { repoRoot });
   const enriched = {
@@ -1579,13 +1587,13 @@ function enrichFeatureDeliveryEnvelope<T extends Record<string, unknown>>(
     nextCommand: step.nextCommand,
   };
   if ("event" in payload) {
-    return enriched;
+    return enriched as Enriched;
   }
   return {
     ...enriched,
     event: step.event,
     artifact: step.artifact,
-  };
+  } as Enriched;
 }
 
 function decodedTimestampFields(
@@ -2289,7 +2297,7 @@ async function finishAdvanceAfterTransition(input: {
     nextPromptFile: requireNextPromptFile(input.state),
     nextPersona: personaForStage(input.pipeline, input.state.currentStage),
     nextHumanAction: input.state.nextHumanAction,
-  });
+  }) as AdvanceFeatureDeliveryResult;
 }
 
 async function advanceReviewReentryFromImplement(input: {
@@ -2401,7 +2409,7 @@ async function advanceReviewReentryFromImplement(input: {
     reviewReentry: true,
     contentWarnings,
     warningCount: contentWarnings.length,
-  });
+  }) as AdvanceFeatureDeliveryResult;
 }
 
 function defaultEventForStage(stage: string): string {
