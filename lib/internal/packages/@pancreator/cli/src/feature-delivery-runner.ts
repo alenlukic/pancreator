@@ -21,10 +21,14 @@ import path from "node:path";
 
 import { readCursorInvocationMode, readStageRemediationEnabled } from "./pan-init.js";
 import {
+  parseQaVerdict,
+  parseReviewPassesVerdict,
   primaryArtifactForEnteringStage,
   requiredArtifactsAfterStageWork,
   validateStageCompletionArtifacts,
 } from "./feature-delivery-stage-artifacts.js";
+
+export { parseQaVerdict, parseReviewPassesVerdict };
 import { listKnownPersonaIds, PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 import { configureCursorSdkTransportPrereqs, loadRepoEnv } from "./repo-env.js";
 
@@ -53,6 +57,7 @@ export const FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET = 5;
 
 /** Minimal ledger slice shared by runner orchestration without importing feature-delivery-run. */
 export interface FeatureDeliveryRunnerLedger {
+  nextCommand?: string;
   taskId: string;
   featureId: string;
   pipelineId: string;
@@ -329,7 +334,13 @@ async function remediateStageArtifacts(input: {
     missing = validateStageCompletionArtifacts(input.repoRoot, input.state, input.stageId).missing;
   }
   if (missing.length === 0) {
-    return { ok: true, missing: [], present: requiredArtifactsAfterStageWork(input.state, input.stageId) as string[] };
+    return {
+      ok: true,
+      missing: [],
+      present: requiredArtifactsAfterStageWork(input.state, input.stageId) as string[],
+      warnings: [],
+      warningCount: 0,
+    };
   }
 
   const engineer = await resolvePersona(input.repoRoot, STAGE_REMEDIATION_PERSONA);
@@ -439,26 +450,6 @@ function renderStageRemediationPrompt(input: {
     "4. Preserve existing valid artifacts; do not delete completed work.",
     "",
   ].join("\n");
-}
-
-export function parseReviewPassesVerdict(reviewMarkdown: string): boolean | null {
-  const match = reviewMarkdown.match(/review_passes:\s*(true|false)/iu);
-  if (match === null) {
-    return null;
-  }
-  return match[1].toLowerCase() === "true";
-}
-
-export function parseQaVerdict(testMarkdown: string): {
-  passes: boolean | null;
-  planInvalidating: boolean;
-} {
-  const passMatch = testMarkdown.match(/qa_passes:\s*(true|false)/iu);
-  const planMatch = testMarkdown.match(/plan_invalidating:\s*(true|false)/iu);
-  return {
-    passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
-    planInvalidating: planMatch !== null && planMatch[1].toLowerCase() === "true",
-  };
 }
 
 function makeDayDir(now: Date): string {
@@ -721,6 +712,7 @@ export async function maybePauseForReportApproval(input: {
   });
   input.state.status = "waiting_for_human_gate";
   ensureAutomationState(input.state, "sdk").reportApprovalPending = true;
+  input.state.nextCommand = `pnpm -w exec pan advance ${input.state.taskId} --artifact ${outboxRel}`;
   input.state.nextHumanAction =
     `Report approval required; edit decision in ${outboxRel} and advance with that artifact path.`;
   return outboxRel;

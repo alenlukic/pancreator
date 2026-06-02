@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { resolveRepoPath } from "@pancreator/core";
 import path from "node:path";
 import { existsSync } from "node:fs";
@@ -24,10 +25,18 @@ export interface StageArtifactContract {
   acceptedAdvanceArtifacts: readonly string[];
 }
 
+export interface ArtifactContentWarning {
+  path: string;
+  code: string;
+  message: string;
+}
+
 export interface StageArtifactValidation {
   ok: boolean;
   missing: string[];
   present: string[];
+  warnings: ArtifactContentWarning[];
+  warningCount: number;
 }
 
 const STAGE_IDS = [
@@ -43,8 +52,131 @@ const STAGE_IDS = [
 
 export type FeatureDeliveryStageId = (typeof STAGE_IDS)[number];
 
+const POLICY_COMPLIANCE_REQUIRED_KEYS = [
+  "task_id",
+  "governing_sources_checked",
+  "documentation_impact",
+  "policy_alignment",
+] as const;
+
 export function isFeatureDeliveryStageId(stage: string): stage is FeatureDeliveryStageId {
   return (STAGE_IDS as readonly string[]).includes(stage);
+}
+
+export function parseReviewPassesVerdict(reviewMarkdown: string): boolean | null {
+  const match = reviewMarkdown.match(/review_passes:\s*(true|false)/iu);
+  if (match === null) {
+    return null;
+  }
+  return match[1].toLowerCase() === "true";
+}
+
+export function parseQaVerdict(testMarkdown: string): {
+  passes: boolean | null;
+  planInvalidating: boolean;
+} {
+  const passMatch = testMarkdown.match(/qa_passes:\s*(true|false)/iu);
+  const planMatch = testMarkdown.match(/plan_invalidating:\s*(true|false)/iu);
+  return {
+    passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
+    planInvalidating: planMatch !== null && planMatch[1].toLowerCase() === "true",
+  };
+}
+
+function validateMarkdownBody(
+  rel: string,
+  content: string,
+): ArtifactContentWarning | null {
+  const trimmed = content.trim();
+  if (trimmed.length === 0) {
+    return { path: rel, code: "empty_markdown", message: "file is empty" };
+  }
+  const lines = content.split(/\r?\n/u);
+  const hasH2 = lines.some((line) => /^##\s+\S/u.test(line));
+  if (!hasH2) {
+    return { path: rel, code: "missing_h2", message: "markdown must include at least one ## heading" };
+  }
+  const hasBodyLine = lines.some((line) => {
+    const t = line.trim();
+    return t.length > 0 && !t.startsWith("#");
+  });
+  if (!hasBodyLine) {
+    return {
+      path: rel,
+      code: "missing_body",
+      message: "markdown must include at least one non-heading content line",
+    };
+  }
+  return null;
+}
+
+function readRepoText(repoRoot: string, rel: string): string | null {
+  const abs = resolveRepoPath(repoRoot, rel);
+  if (!existsSync(abs)) {
+    return null;
+  }
+  return readFileSync(abs, "utf8");
+}
+
+function validateArtifactContent(
+  repoRoot: string,
+  rel: string,
+): ArtifactContentWarning | null {
+  const base = path.posix.basename(rel);
+  const content = readRepoText(repoRoot, rel);
+  if (content === null) {
+    return null;
+  }
+
+  if (base === "review.md") {
+    if (parseReviewPassesVerdict(content) === null) {
+      return {
+        path: rel,
+        code: "review_passes_unparseable",
+        message: "review.md must contain review_passes: true or review_passes: false",
+      };
+    }
+    return null;
+  }
+
+  if (base === "test-report.md") {
+    if (parseQaVerdict(content).passes === null) {
+      return {
+        path: rel,
+        code: "qa_passes_unparseable",
+        message: "test-report.md must contain qa_passes: true or qa_passes: false",
+      };
+    }
+    return null;
+  }
+
+  if (base === "policy-compliance.json") {
+    try {
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      for (const key of POLICY_COMPLIANCE_REQUIRED_KEYS) {
+        if (!(key in parsed)) {
+          return {
+            path: rel,
+            code: "policy_compliance_missing_key",
+            message: `policy-compliance.json must include top-level key ${key}`,
+          };
+        }
+      }
+    } catch {
+      return {
+        path: rel,
+        code: "policy_compliance_invalid_json",
+        message: "policy-compliance.json must parse as JSON",
+      };
+    }
+    return null;
+  }
+
+  if (base === "plan.md" || base === "implementation-report.md") {
+    return validateMarkdownBody(rel, content);
+  }
+
+  return null;
 }
 
 export function stageArtifactContract(
@@ -156,6 +288,14 @@ export function requiredArtifactsAfterStageWork(
   return stageArtifactContract(state, stageId).requiredAfterStageWork;
 }
 
+const CONTENT_VALIDATED_BASENAMES = new Set([
+  "plan.md",
+  "implementation-report.md",
+  "review.md",
+  "test-report.md",
+  "policy-compliance.json",
+]);
+
 export function validateStageCompletionArtifacts(
   repoRoot: string,
   state: FeatureDeliveryArtifactState,
@@ -164,14 +304,28 @@ export function validateStageCompletionArtifacts(
   const required = requiredArtifactsAfterStageWork(state, stageId);
   const missing: string[] = [];
   const present: string[] = [];
+  const warnings: ArtifactContentWarning[] = [];
   for (const rel of required) {
     if (existsSync(resolveRepoPath(repoRoot, rel))) {
       present.push(rel);
+      const base = path.posix.basename(rel);
+      if (CONTENT_VALIDATED_BASENAMES.has(base)) {
+        const warning = validateArtifactContent(repoRoot, rel);
+        if (warning !== null) {
+          warnings.push(warning);
+        }
+      }
     } else {
       missing.push(rel);
     }
   }
-  return { ok: missing.length === 0, missing, present };
+  return {
+    ok: missing.length === 0,
+    missing,
+    present,
+    warnings,
+    warningCount: warnings.length,
+  };
 }
 
 export function assertAdvanceArtifacts(
@@ -187,7 +341,7 @@ export function assertAdvanceArtifacts(
       `Artifact ${artifact} is not valid for ${stage} on ${event}; expected one of: ${contract.acceptedAdvanceArtifacts.join(", ")}.`,
     );
   }
-  for (const required of contract.acceptedAdvanceArtifacts) {
+  for (const required of contract.requiredAfterStageWork) {
     if (!existsSync(resolveRepoPath(repoRoot, required))) {
       throw new Error(`Cannot advance ${stage}; required artifact is missing: ${required}.`);
     }

@@ -8,7 +8,8 @@ import {
   rfc3339UtcMs,
   type RunLogRecord,
 } from "@pancreator/run-logger";
-import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, rmdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -16,6 +17,7 @@ import { stringifyCliJson } from "./canonical-json-io.js";
 import {
   applyActiveMemoryRefreshOnArtifactClosure,
   patchFeatureIndexArchivedInbox,
+  SHIPPED_LEDGER_ROW_CAP,
 } from "./active-memory-refresh.js";
 import { readCursorInvocationMode } from "./pan-init.js";
 import {
@@ -32,7 +34,14 @@ import {
   type FeatureDeliveryTestHooks,
 } from "./feature-delivery-runner.js";
 import { assertDeliveryReportCitationFormat } from "./delivery-report-citation-lint.js";
-import { assertAdvanceArtifacts } from "./feature-delivery-stage-artifacts.js";
+import {
+  assertAdvanceArtifacts,
+  parseReviewPassesVerdict,
+  stageArtifactContract,
+  validateStageCompletionArtifacts,
+  type ArtifactContentWarning,
+} from "./feature-delivery-stage-artifacts.js";
+import { decodeCountdownTimestamp, parseRunDirParts } from "./timestamp-decode.js";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
 
@@ -113,6 +122,45 @@ export interface FeatureDeliveryState {
   nextHumanAction: string;
   advanceHistory?: FeatureDeliveryAdvanceHistoryEntry[];
   automation?: FeatureDeliveryAutomationState;
+  /** Runtime-generated exact resume command (report approval gate, etc.). */
+  nextCommand?: string;
+}
+
+export type NextStep = {
+  event: string | null;
+  artifact: string | null;
+  nextCommand: string | null;
+  source: "derived" | "persisted";
+  reason?: string;
+};
+
+export interface FeatureDeliveryNextResult {
+  command: "next";
+  status: "ok";
+  taskId: string;
+  featureId: string;
+  runDir: string;
+  currentStage: string;
+  pipelineStatus: string;
+  nextHumanAction: string;
+  event: string | null;
+  artifact: string | null;
+  nextCommand: string | null;
+  source: "derived" | "persisted";
+  reason?: string;
+  decodedTimestamp?: string;
+  decodedTimestampDiagnostic?: string;
+}
+
+export interface ValidateArtifactsResult {
+  command: "artifacts validate";
+  status: "ok" | "invalid";
+  taskId: string;
+  stage: string;
+  warningCount: number;
+  warnings: ArtifactContentWarning[];
+  missing: string[];
+  present: string[];
 }
 
 export type { FeatureDeliveryAutomationState, FeatureDeliveryTestHooks };
@@ -139,6 +187,11 @@ export interface StartFeatureDeliveryResult {
   nextPromptFile: string;
   currentStage: "intake";
   nextHumanAction: string;
+  nextCommand?: string | null;
+  event?: string | null;
+  artifact?: string | null;
+  contentWarnings?: ArtifactContentWarning[];
+  warningCount?: number;
 }
 
 export interface FeatureDeliveryStatusResult {
@@ -154,6 +207,11 @@ export interface FeatureDeliveryStatusResult {
   stateFile: string;
   nextPromptFile: string | null;
   nextHumanAction: string;
+  nextCommand?: string | null;
+  event?: string | null;
+  artifact?: string | null;
+  decodedTimestamp?: string;
+  decodedTimestampDiagnostic?: string;
 }
 
 export interface AdvanceFeatureDeliveryInput {
@@ -181,6 +239,10 @@ export interface AdvanceFeatureDeliveryResult {
   nextHumanAction: string;
   /** True when implement-stage advance with review.md chained implementation_complete and review_passes, landing at test. */
   reviewReentry?: boolean;
+  nextCommand?: string | null;
+  event?: string | null;
+  contentWarnings?: ArtifactContentWarning[];
+  warningCount?: number;
 }
 
 export interface RepairFeatureDeliveryStateInput {
@@ -313,8 +375,8 @@ export async function startFeatureDelivery(
   ensureAutomationState(state, invocation);
 
   await mkdir(runDir, { recursive: true });
-  await writeFile(handoffFile, renderHandoff(state, pipeline, directive), "utf8");
-  await writeFile(nextPromptFile, renderNextPrompt(state, pipeline), "utf8");
+  await writeFile(handoffFile, renderHandoff(repoRoot, state, pipeline, directive), "utf8");
+  await writeFile(nextPromptFile, renderNextPrompt(repoRoot, state, pipeline), "utf8");
 
   if (invocation === "sdk") {
     await invokeFeatureDeliveryEnteringStage({
@@ -331,7 +393,7 @@ export async function startFeatureDelivery(
   await writeFile(stateFile, stringifyCliJson(repoRoot, state), "utf8");
   await appendRunLogRecord(runLogFile, makeInvocationRecord(state, now));
 
-  return {
+  return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command,
     status: "ok",
     pipelineId: "feature-delivery",
@@ -344,7 +406,7 @@ export async function startFeatureDelivery(
     nextPromptFile: nextPromptFileRel,
     currentStage: "intake",
     nextHumanAction: state.nextHumanAction,
-  };
+  });
 }
 
 /** Appends a run-log row for pan pause/resume/abort when a feature-delivery ledger exists. Returns false when no state file matches the task id. */
@@ -388,9 +450,9 @@ export async function readFeatureDeliveryStatusWithInterventions(
   const raw = await readFile(stateFile.abs, "utf8");
   const parsed = JSON.parse(raw) as FeatureDeliveryState;
   const interventionState = await loadState(asTaskId(taskId));
-  return {
-    command: "status",
-    status: "ok",
+  const statusBase = {
+    command: "status" as const,
+    status: "ok" as const,
     taskId,
     pipelineId: parsed.pipelineId,
     featureId: parsed.featureId,
@@ -401,7 +463,9 @@ export async function readFeatureDeliveryStatusWithInterventions(
     stateFile: stateFile.rel,
     nextPromptFile: parsed.artifacts.nextPromptFile ?? null,
     nextHumanAction: parsed.nextHumanAction,
+    ...decodedTimestampFields(parsed.artifacts.runDir, taskId),
   };
+  return enrichFeatureDeliveryEnvelope(repoRoot, parsed, statusBase);
 }
 
 export async function advanceFeatureDelivery(
@@ -474,6 +538,9 @@ export async function advanceFeatureDelivery(
   }
   assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
 
+  const contentWarnings = collectStageContentWarnings(repoRoot, state, state.currentStage);
+
+  delete state.nextCommand;
   const applied = applyFeatureDeliveryTransition(state, transition, event, artifact.rel, now);
   const invocation = await readCursorInvocationForState(repoRoot, state);
   ensureAutomationState(state, invocation);
@@ -490,7 +557,15 @@ export async function advanceFeatureDelivery(
       await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
       await appendRunLogRecord(
         resolveRepoPath(repoRoot, state.artifacts.runLogFile),
-        makeAdvanceRecord(state, now, applied.fromStage, applied.toStage, applied.event, applied.artifact),
+        makeAdvanceRecord(
+          state,
+          now,
+          applied.fromStage,
+          applied.toStage,
+          applied.event,
+          applied.artifact,
+          { contentWarnings },
+        ),
       );
       const haltError = new Error(`Feature-delivery retry limit halt: ${haltSummary}`) as Error & {
         haltSummary: string;
@@ -551,10 +626,11 @@ export async function advanceFeatureDelivery(
       applied.toStage,
       applied.event,
       applied.artifact,
+      { contentWarnings },
     ),
   );
 
-  return {
+  return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command: "advance",
     status: "ok",
     taskId,
@@ -568,7 +644,9 @@ export async function advanceFeatureDelivery(
     nextPromptFile: requireNextPromptFile(state),
     nextPersona: personaForStage(pipeline, state.currentStage),
     nextHumanAction: state.nextHumanAction,
-  };
+    contentWarnings,
+    warningCount: contentWarnings.length,
+  });
 }
 
 export async function repairFeatureDeliveryState(
@@ -810,12 +888,12 @@ export async function closeFeatureDeliveryArtifacts(
     );
     await writeFile(
       resolveRepoPath(repoRoot, path.posix.join(persistedRunDirRel, "handoff.md")),
-      renderHandoff(state, pipeline),
+      renderHandoff(repoRoot, state, pipeline),
       "utf8",
     );
     await writeFile(
       resolveRepoPath(repoRoot, path.posix.join(persistedRunDirRel, "next-prompt.md")),
-      `# Generated by pan close-artifacts\n\n${renderNextPrompt(state, pipeline)}`,
+      `# Generated by pan close-artifacts\n\n${renderNextPrompt(repoRoot, state, pipeline)}`,
       "utf8",
     );
     await appendRunLogRecord(
@@ -1217,7 +1295,12 @@ function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
   ];
 }
 
-function renderHandoff(state: FeatureDeliveryState, pipeline: PipelineDefinition, directive?: string): string {
+function renderHandoff(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+  pipeline: PipelineDefinition,
+  directive?: string,
+): string {
   const nextPersona = personaForStage(pipeline, state.currentStage) ?? "human";
   const stage = state.currentStage;
   const excerpt = directive?.trim().split(/\r?\n/u).slice(0, 20).join("\n");
@@ -1235,7 +1318,7 @@ function renderHandoff(state: FeatureDeliveryState, pipeline: PipelineDefinition
 
 ## Stage contract
 
-${stageContractMarkdown(state, stage)}
+${stageContractMarkdown(repoRoot, state, stage)}
 
 ## In-scope paths
 
@@ -1276,7 +1359,11 @@ ${excerpt}
 `}`;
 }
 
-function renderNextPrompt(state: FeatureDeliveryState, pipeline: PipelineDefinition): string {
+function renderNextPrompt(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+  pipeline: PipelineDefinition,
+): string {
   if (state.currentStage === TERMINAL_STAGE && state.status === "closed") {
     return renderClosedPrompt(state);
   }
@@ -1293,41 +1380,288 @@ Read first, in this order:
 
 Do not read broad archives, full PRD/bootstrap docs, lib/inbox/notes/**, or unrelated work/** paths unless the handoff explicitly requires it.
 
-${stageContractMarkdown(state, stage)}
+${stageContractMarkdown(repoRoot, state, stage)}
 
 After the stage artifact is accepted by the human operator, run exactly one matching state command from the handoff instructions. Do not continue to the next persona in the same agent loop.
 `;
 }
 
-function stageContractMarkdown(state: FeatureDeliveryState, stage: string): string {
+function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, stage: string): string {
+  const advanceLine = (forStage: string, event?: string): string => {
+    if (forStage !== state.currentStage) {
+      return staticAdvanceLineForStage(state, forStage, event);
+    }
+    const step = resolveNextStep(state, { stage: forStage, event, repoRoot });
+    if (step.nextCommand !== null) {
+      return step.nextCommand;
+    }
+    return step.reason ?? "No advance command is available for the current ledger state.";
+  };
+
   switch (stage) {
     case "intake":
-      return `Input: ${state.source.inboxPath}\nOutput: lib/memory/features/${state.featureId}/spec.md\nAdvance after human ratification: pnpm -w exec pan advance ${state.taskId} --artifact lib/memory/features/${state.featureId}/spec.md`;
+      return `Input: ${state.source.inboxPath}\nOutput: lib/memory/features/${state.featureId}/spec.md\nAdvance after human ratification: ${advanceLine("intake")}`;
     case "plan":
-      return `Input: lib/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after human ratification: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/touch-set.json`;
+      return `Input: lib/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after human ratification: ${advanceLine("plan")}`;
     case "implement": {
-      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/implementation-report.md`;
-      const lastAdvance = lastAdvanceEntry(state);
-      if (lastAdvance?.event === "must_fix" && lastAdvance.from === "review") {
-        return `${base}\nAfter must_fix fixes, when ${state.artifacts.runDir}/review.md already records review_passes: true, chain to test in one step: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md`;
+      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
+      const reentry = resolveImplementMustFixReentry(state, repoRoot);
+      if (reentry !== null) {
+        return `${base}\nAfter must_fix fixes, when ${state.artifacts.runDir}/review.md already records review_passes: true, chain to test in one step: ${reentry.nextCommand}`;
       }
       return base;
     }
     case "review":
-      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/review.md\nReturn to implement on must-fix: pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: ${advanceLine("review", "review_passes")}\nReturn to implement on must-fix: pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
-      return `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nAdvance on pass: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/test-report.md\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`;
+      return `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
-      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: pnpm -w exec pan advance ${state.taskId} --artifact lib/memory/features/${state.featureId}/delivery-report.md`;
+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "ship":
-      return `Inputs: local diff, validation output, lib/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: pnpm -w exec pan advance ${state.taskId} --artifact ${state.artifacts.runDir}/policy-compliance.json`;
+      return `Inputs: local diff, validation output, lib/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
     case "index":
-      return `Inputs: delivery report and accepted ship artifacts\nOutput: lib/memory/features/${state.featureId}/index.json\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: pnpm -w exec pan advance ${state.taskId} --artifact lib/memory/features/${state.featureId}/index.json`;
+      return `Inputs: delivery report and accepted ship artifacts\nOutput: lib/memory/features/${state.featureId}/index.json\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
       return state.status === "closed" ? closedContractMarkdown(state) : finalClosureContractMarkdown(state);
     default:
       return `No stage contract is defined for ${stage}.`;
   }
+}
+
+function staticAdvanceLineForStage(
+  state: FeatureDeliveryState,
+  stage: string,
+  event?: string,
+): string {
+  const resolvedEvent = event ?? defaultEventForStage(stage);
+  const contract = stageArtifactContract(state, stage, resolvedEvent);
+  const cmd = `pnpm -w exec pan advance ${state.taskId} --artifact ${contract.primaryArtifact}`;
+  if (stage === "review" && resolvedEvent === "must_fix") {
+    return `pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${contract.primaryArtifact}`;
+  }
+  if (stage === "test" && resolvedEvent === "qa_fails") {
+    return `pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${contract.primaryArtifact}`;
+  }
+  return cmd;
+}
+
+export function resolveNextStep(
+  state: FeatureDeliveryState,
+  options?: { stage?: string; event?: string; repoRoot?: string },
+): NextStep {
+  const stage = options?.stage ?? state.currentStage;
+
+  if (state.nextCommand !== undefined && state.nextCommand.trim().length > 0) {
+    const parsed = parsePersistedAdvanceCommand(state.nextCommand);
+    return {
+      event: parsed.event,
+      artifact: parsed.artifact,
+      nextCommand: state.nextCommand,
+      source: "persisted",
+    };
+  }
+
+  if (
+    state.status === "halted" ||
+    state.status === "closed" ||
+    state.status === "aborted" ||
+    state.currentStage === TERMINAL_STAGE
+  ) {
+    return {
+      event: null,
+      artifact: null,
+      nextCommand: null,
+      source: "derived",
+      reason: `pipeline is terminal (${state.status}, stage ${state.currentStage})`,
+    };
+  }
+
+  const reentry = resolveImplementMustFixReentry(state, options?.repoRoot);
+  if (reentry !== null && stage === "implement") {
+    return reentry;
+  }
+
+  const event = options?.event ?? defaultEventForStage(stage);
+  try {
+    const contract = stageArtifactContract(state, stage, event);
+    const nextCommand = buildAdvanceCommand(state.taskId, contract.primaryArtifact, stage, event);
+    return {
+      event,
+      artifact: contract.primaryArtifact,
+      nextCommand,
+      source: "derived",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      event: null,
+      artifact: null,
+      nextCommand: null,
+      source: "derived",
+      reason: message,
+    };
+  }
+}
+
+function parsePersistedAdvanceCommand(nextCommand: string): {
+  event: string | null;
+  artifact: string | null;
+} {
+  const eventMatch = /--event\s+(\S+)/u.exec(nextCommand);
+  const artifactMatch = /--artifact\s+(\S+)/u.exec(nextCommand);
+  return {
+    event: eventMatch?.[1] ?? null,
+    artifact: artifactMatch?.[1] ?? null,
+  };
+}
+
+function buildAdvanceCommand(taskId: string, artifact: string, stage: string, event: string): string {
+  if (stage === "review" && event === "must_fix") {
+    return `pnpm -w exec pan advance ${taskId} --event must_fix --artifact ${artifact}`;
+  }
+  if (stage === "test" && (event === "qa_fails" || event === "qa_fails_plan_invalidating")) {
+    return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
+  }
+  return `pnpm -w exec pan advance ${taskId} --artifact ${artifact}`;
+}
+
+function resolveImplementMustFixReentry(
+  state: FeatureDeliveryState,
+  repoRoot?: string,
+): NextStep | null {
+  if (state.currentStage !== "implement") {
+    return null;
+  }
+  const lastAdvance = lastAdvanceEntry(state);
+  if (lastAdvance?.event !== "must_fix" || lastAdvance.from !== "review") {
+    return null;
+  }
+  const reviewArtifact = path.posix.join(state.artifacts.runDir, "review.md");
+  if (repoRoot === undefined) {
+    return null;
+  }
+  const reviewPath = resolveRepoPath(repoRoot, reviewArtifact);
+  if (!existsSync(reviewPath)) {
+    return null;
+  }
+  const verdict = parseReviewPassesVerdict(readFileSync(reviewPath, "utf8"));
+  if (verdict !== true) {
+    return null;
+  }
+  return {
+    event: "review_passes",
+    artifact: reviewArtifact,
+    nextCommand: buildAdvanceCommand(state.taskId, reviewArtifact, "review", "review_passes"),
+    source: "derived",
+  };
+}
+
+function isNonTerminalFeatureDeliveryState(state: FeatureDeliveryState): boolean {
+  return (
+    state.status !== "halted" &&
+    state.status !== "closed" &&
+    state.status !== "aborted" &&
+    state.currentStage !== TERMINAL_STAGE
+  );
+}
+
+function enrichFeatureDeliveryEnvelope<T extends Record<string, unknown>>(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+  payload: T,
+): T & { nextCommand?: string | null; event?: string | null; artifact?: string | null } {
+  if (!isNonTerminalFeatureDeliveryState(state)) {
+    return { ...payload, nextCommand: null, event: null, artifact: null };
+  }
+  const step = resolveNextStep(state, { repoRoot });
+  const enriched = {
+    ...payload,
+    nextCommand: step.nextCommand,
+  };
+  if ("event" in payload) {
+    return enriched;
+  }
+  return {
+    ...enriched,
+    event: step.event,
+    artifact: step.artifact,
+  };
+}
+
+function decodedTimestampFields(
+  runDirRel: string,
+  taskId: string,
+): { decodedTimestamp?: string; decodedTimestampDiagnostic?: string } {
+  const parsed = parseRunDirParts(runDirRel);
+  if (parsed === null) {
+    return {};
+  }
+  const decoded = decodeCountdownTimestamp(parsed.dayBucket, taskId);
+  if (decoded.ok) {
+    return { decodedTimestamp: decoded.utcLabel };
+  }
+  return { decodedTimestampDiagnostic: decoded.diagnostic };
+}
+
+export async function resolveFeatureDeliveryNext(
+  repoRootInput: string,
+  taskIdInput: string,
+): Promise<FeatureDeliveryNextResult> {
+  const repoRoot = path.resolve(repoRootInput);
+  const taskId = sanitizeTaskId(taskIdInput);
+  const stateFile = await findStateFile(repoRoot, taskId);
+  const state = await readFeatureDeliveryState(stateFile.abs);
+  const step = resolveNextStep(state, { repoRoot });
+  const decoded = decodedTimestampFields(state.artifacts.runDir, taskId);
+  return {
+    command: "next",
+    status: "ok",
+    taskId,
+    featureId: state.featureId,
+    runDir: state.artifacts.runDir,
+    currentStage: state.currentStage,
+    pipelineStatus: state.status,
+    nextHumanAction: state.nextHumanAction,
+    event: step.event,
+    artifact: step.artifact,
+    nextCommand: step.nextCommand,
+    source: step.source,
+    ...(step.reason !== undefined ? { reason: step.reason } : {}),
+    ...decoded,
+  };
+}
+
+export async function validateArtifactsForTask(input: {
+  repoRoot: string;
+  taskId: string;
+  stage: string;
+}): Promise<ValidateArtifactsResult> {
+  const repoRoot = path.resolve(input.repoRoot);
+  const taskId = sanitizeTaskId(input.taskId);
+  const stage = assertFeatureDeliveryStage(input.stage);
+  const stateFile = await findStateFile(repoRoot, taskId);
+  const state = await readFeatureDeliveryState(stateFile.abs);
+  const validation = validateStageCompletionArtifacts(repoRoot, state, stage);
+  const clean = validation.ok && validation.warningCount === 0;
+  return {
+    command: "artifacts validate",
+    status: clean ? "ok" : "invalid",
+    taskId,
+    stage,
+    warningCount: validation.warningCount,
+    warnings: validation.warnings,
+    missing: validation.missing,
+    present: validation.present,
+  };
+}
+
+function collectStageContentWarnings(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+  stage: string,
+): ArtifactContentWarning[] {
+  const validation = validateStageCompletionArtifacts(repoRoot, state, stage);
+  return validation.warnings;
 }
 
 function finalClosureContractMarkdown(state: FeatureDeliveryState): string {
@@ -1497,8 +1831,33 @@ function makeAdvanceRecord(
   toStage: string,
   event: string,
   artifact: string,
+  options?: { contentWarnings?: ArtifactContentWarning[] },
 ): RunLogRecord {
-  return makeStateRecord(state, now, "pancreator.pipeline.advance", fromStage, toStage, event, artifact);
+  const record = makeStateRecord(
+    state,
+    now,
+    "pancreator.pipeline.advance",
+    fromStage,
+    toStage,
+    event,
+    artifact,
+  );
+  const contentWarnings = options?.contentWarnings ?? [];
+  if (contentWarnings.length === 0) {
+    return record;
+  }
+  return {
+    ...record,
+    attributes: {
+      ...record.attributes,
+      "pancreator.content_warning_count": contentWarnings.length,
+      "pancreator.content_warnings": contentWarnings.map((warning) => ({
+        path: warning.path,
+        code: warning.code,
+        message: warning.message,
+      })),
+    },
+  };
 }
 
 function makeRepairRecord(
@@ -1667,11 +2026,30 @@ async function persistStateAndPrompts(
   pipeline: PipelineDefinition,
   mode: "advance" | "repair" | "refresh-prompt",
 ): Promise<void> {
-  await writeFile(resolveRepoPath(repoRoot, state.artifacts.stateFile), stringifyCliJson(repoRoot, state), "utf8");
-  await writeFile(resolveRepoPath(repoRoot, state.artifacts.handoffFile), renderHandoff(state, pipeline), "utf8");
+  const statePath = resolveRepoPath(repoRoot, state.artifacts.stateFile);
+  let existing: Record<string, unknown> = {};
+  try {
+    existing = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
+  } catch {
+    existing = {};
+  }
+  const serialized = JSON.parse(stringifyCliJson(repoRoot, state)) as Record<string, unknown>;
+  if (existing.schemaVersion !== undefined) {
+    serialized.schemaVersion = existing.schemaVersion;
+  }
+  const merged = { ...existing, ...serialized };
+  if (state.nextCommand === undefined || state.nextCommand.trim().length === 0) {
+    delete merged.nextCommand;
+  }
+  await writeFile(statePath, stringifyCliJson(repoRoot, merged), "utf8");
+  await writeFile(
+    resolveRepoPath(repoRoot, state.artifacts.handoffFile),
+    renderHandoff(repoRoot, state, pipeline),
+    "utf8",
+  );
   await writeFile(
     resolveRepoPath(repoRoot, requireNextPromptFile(state)),
-    `# Generated by pan ${mode}\n\n${renderNextPrompt(state, pipeline)}`,
+    `# Generated by pan ${mode}\n\n${renderNextPrompt(repoRoot, state, pipeline)}`,
     "utf8",
   );
 }
@@ -1713,14 +2091,6 @@ function applyFeatureDeliveryTransition(
     },
   ];
   return { fromStage, toStage, event, artifact: artifactRel };
-}
-
-function parseReviewPassesVerdict(reviewMarkdown: string): boolean | null {
-  const match = reviewMarkdown.match(/review_passes:\s*(true|false)/iu);
-  if (match === null) {
-    return null;
-  }
-  return match[1].toLowerCase() === "true";
 }
 
 function lastAdvanceEntry(
@@ -1879,6 +2249,7 @@ async function finishAdvanceAfterTransition(input: {
   now: Date;
   testHooks?: FeatureDeliveryTestHooks;
 }): Promise<AdvanceFeatureDeliveryResult> {
+  delete input.state.nextCommand;
   const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
   if (invocation === "sdk" && input.state.status !== "halted" && input.state.currentStage !== TERMINAL_STAGE) {
     const compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
@@ -1904,7 +2275,7 @@ async function finishAdvanceAfterTransition(input: {
       input.applied.artifact,
     ),
   );
-  return {
+  return enrichFeatureDeliveryEnvelope(input.repoRoot, input.state, {
     command: "advance",
     status: "ok",
     taskId: input.taskId,
@@ -1918,7 +2289,7 @@ async function finishAdvanceAfterTransition(input: {
     nextPromptFile: requireNextPromptFile(input.state),
     nextPersona: personaForStage(input.pipeline, input.state.currentStage),
     nextHumanAction: input.state.nextHumanAction,
-  };
+  });
 }
 
 async function advanceReviewReentryFromImplement(input: {
@@ -1932,6 +2303,7 @@ async function advanceReviewReentryFromImplement(input: {
   testHooks?: FeatureDeliveryTestHooks;
 }): Promise<AdvanceFeatureDeliveryResult> {
   const { repoRoot, taskId, state, pipeline, stateFileRel, reentry, now } = input;
+  delete state.nextCommand;
   const implementTransition = state.transitions.find(
     (candidate) => candidate.from === "implement" && candidate.on === "implementation_complete",
   );
@@ -1945,6 +2317,8 @@ async function advanceReviewReentryFromImplement(input: {
     reentry.implementationReport,
     "implementation_complete",
   );
+
+  const contentWarnings = collectStageContentWarnings(repoRoot, state, "implement");
 
   const first = applyFeatureDeliveryTransition(
     state,
@@ -1962,6 +2336,7 @@ async function advanceReviewReentryFromImplement(input: {
       first.toStage,
       first.event,
       first.artifact,
+      { contentWarnings },
     ),
   );
 
@@ -1989,6 +2364,7 @@ async function advanceReviewReentryFromImplement(input: {
       second.toStage,
       second.event,
       second.artifact,
+      { contentWarnings },
     ),
   );
 
@@ -2008,7 +2384,7 @@ async function advanceReviewReentryFromImplement(input: {
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
 
-  return {
+  return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command: "advance",
     status: "ok",
     taskId,
@@ -2023,7 +2399,9 @@ async function advanceReviewReentryFromImplement(input: {
     nextPersona: personaForStage(pipeline, state.currentStage),
     nextHumanAction: state.nextHumanAction,
     reviewReentry: true,
-  };
+    contentWarnings,
+    warningCount: contentWarnings.length,
+  });
 }
 
 function defaultEventForStage(stage: string): string {
@@ -2274,4 +2652,251 @@ async function safeReaddir(dir: string): Promise<string[]> {
     }
     throw error;
   }
+}
+
+export interface PanDoctorCheck {
+  id: string;
+  label: string;
+  command: string;
+  status: "pass" | "fail" | "skip";
+  exitCode?: number;
+  remediation?: string;
+}
+
+export interface PanDoctorResult {
+  command: "doctor";
+  status: "ok" | "fail";
+  passCount: number;
+  failCount: number;
+  skipCount: number;
+  checks: PanDoctorCheck[];
+}
+
+export const PAN_DOCTOR_REPO_CHECK_IDS = [
+  "active-fd-artifacts",
+  "shipped-ledger-cap",
+  "cursorindexingignore",
+] as const;
+
+export function panDoctorCheckRegistry(): readonly string[] {
+  return [...PAN_DOCTOR_SHELL_CHECKS.map((spec) => spec.id), ...PAN_DOCTOR_REPO_CHECK_IDS];
+}
+
+const PAN_DOCTOR_SHELL_CHECKS: ReadonlyArray<{ id: string; label: string; command: string }> = [
+  { id: "build", label: "pnpm run build", command: "pnpm run build" },
+  { id: "lint", label: "pnpm lint", command: "pnpm lint" },
+  { id: "lint-deps", label: "pnpm run lint:deps", command: "pnpm run lint:deps" },
+  { id: "typecheck", label: "pnpm typecheck", command: "pnpm typecheck" },
+  { id: "attw", label: "pnpm run attw", command: "pnpm run attw" },
+  { id: "publint", label: "pnpm run publint", command: "pnpm run publint" },
+  { id: "test", label: "pnpm test", command: "pnpm test" },
+  { id: "tests-mjs", label: "node --test tests/*.test.mjs", command: "node --test tests/*.test.mjs" },
+  {
+    id: "compliance",
+    label: "node lib/internal/tools/run-compliance.mjs",
+    command: "node lib/internal/tools/run-compliance.mjs",
+  },
+  {
+    id: "phase-0a-scaffold",
+    label: "node lib/internal/tools/check-phase-0a-scaffold.mjs",
+    command: "node lib/internal/tools/check-phase-0a-scaffold.mjs",
+  },
+  {
+    id: "context-budget-report",
+    label: "node lib/internal/tools/context-budget-report.mjs",
+    command: "node lib/internal/tools/context-budget-report.mjs",
+  },
+  {
+    id: "policy-compliance-hook",
+    label: "bash -n .cursor/hooks/enforce-policy-compliance.sh",
+    command: "bash -n .cursor/hooks/enforce-policy-compliance.sh",
+  },
+  {
+    id: "operator-output",
+    label: "node lib/internal/tools/check-operator-output.mjs",
+    command: "node lib/internal/tools/check-operator-output.mjs",
+  },
+];
+
+function runShellDoctorCheck(
+  repoRoot: string,
+  spec: { id: string; label: string; command: string },
+): PanDoctorCheck {
+  const result = spawnSync(spec.command, {
+    cwd: repoRoot,
+    shell: true,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const exitCode = result.status ?? 1;
+  if (exitCode === 0) {
+    return { id: spec.id, label: spec.label, command: spec.command, status: "pass", exitCode: 0 };
+  }
+  return {
+    id: spec.id,
+    label: spec.label,
+    command: spec.command,
+    status: "fail",
+    exitCode,
+    remediation: `cd ${repoRoot} && ${spec.command}`,
+  };
+}
+
+function countShippedLedgerDataRows(currentMd: string): number {
+  const header = "## Most recent shipped Features\n";
+  const idx = currentMd.indexOf(header);
+  if (idx === -1) {
+    return 0;
+  }
+  const tail = currentMd.slice(idx + header.length);
+  const relNext = tail.search(/\n## /u);
+  const inner = relNext === -1 ? tail : tail.slice(0, relNext);
+  return inner
+    .split("\n")
+    .filter(
+      (line) =>
+        line.startsWith("|") &&
+        !line.includes("---") &&
+        !/^\|\s*Feature\s*\|/u.test(line) &&
+        !/^\|\s*`—`\s*\|/u.test(line),
+    ).length;
+}
+
+async function listActiveFeatureDeliveryStates(
+  repoRoot: string,
+): Promise<Array<{ taskId: string; stage: string; state: FeatureDeliveryState }>> {
+  const workRoot = resolveProjectPath(repoRoot, "work");
+  const active: Array<{ taskId: string; stage: string; state: FeatureDeliveryState }> = [];
+  const dayDirs = await safeReaddir(workRoot);
+  for (const dayDir of dayDirs) {
+    const dayAbs = path.join(workRoot, dayDir);
+    const taskDirs = await safeReaddir(dayAbs);
+    for (const taskId of taskDirs) {
+      const stateAbs = path.join(dayAbs, taskId, "state.json");
+      if (!existsSync(stateAbs)) {
+        continue;
+      }
+      const state = await readFeatureDeliveryState(stateAbs);
+      if (state.pipelineId !== "feature-delivery") {
+        continue;
+      }
+      if (state.status === "closed" || state.currentStage === TERMINAL_STAGE) {
+        continue;
+      }
+      active.push({ taskId, stage: state.currentStage, state });
+    }
+  }
+  return active;
+}
+
+export async function runPanDoctor(repoRootInput: string): Promise<PanDoctorResult> {
+  const repoRoot = path.resolve(repoRootInput);
+  const checks: PanDoctorCheck[] = PAN_DOCTOR_SHELL_CHECKS.map((spec) => runShellDoctorCheck(repoRoot, spec));
+
+  const activeRuns = await listActiveFeatureDeliveryStates(repoRoot);
+  if (activeRuns.length === 0) {
+    checks.push({
+      id: "active-fd-artifacts",
+      label: "Active feature-delivery artifact content validation",
+      command: "(no active runs)",
+      status: "skip",
+      remediation: "No active feature-delivery state under work/",
+    });
+  } else {
+    const artifactIssues: string[] = [];
+    for (const run of activeRuns) {
+      const validation = validateStageCompletionArtifacts(repoRoot, run.state, run.stage);
+      for (const missing of validation.missing) {
+        artifactIssues.push(`${run.taskId}/${run.stage}: missing required artifact ${missing}`);
+      }
+      if (validation.warningCount > 0) {
+        for (const warning of validation.warnings) {
+          artifactIssues.push(`${run.taskId}/${run.stage}: ${warning.path} — ${warning.message}`);
+        }
+      }
+    }
+    if (artifactIssues.length === 0) {
+      checks.push({
+        id: "active-fd-artifacts",
+        label: "Active feature-delivery artifact content validation",
+        command: "pan artifacts validate (read-only aggregate)",
+        status: "pass",
+        exitCode: 0,
+      });
+    } else {
+      checks.push({
+        id: "active-fd-artifacts",
+        label: "Active feature-delivery artifact content validation",
+        command: "pan artifacts validate <taskId> --stage <stage>",
+        status: "fail",
+        exitCode: 1,
+        remediation: artifactIssues.join("; "),
+      });
+    }
+  }
+
+  const currentPath = resolveProjectPath(repoRoot, "lib", "memory", "active", "current.md");
+  if (!existsSync(currentPath)) {
+    checks.push({
+      id: "shipped-ledger-cap",
+      label: "Shipped-ledger row cap on lib/memory/active/current.md",
+      command: currentPath,
+      status: "fail",
+      exitCode: 1,
+      remediation: `Restore ${currentPath} or run pnpm -w exec pan refresh-active-memory`,
+    });
+  } else {
+    const currentMd = await readFile(currentPath, "utf8");
+    const rowCount = countShippedLedgerDataRows(currentMd);
+    if (rowCount > SHIPPED_LEDGER_ROW_CAP) {
+      checks.push({
+        id: "shipped-ledger-cap",
+        label: "Shipped-ledger row cap on lib/memory/active/current.md",
+        command: `count=${rowCount} cap=${SHIPPED_LEDGER_ROW_CAP}`,
+        status: "fail",
+        exitCode: 1,
+        remediation: `pnpm -w exec pan refresh-active-memory --dry-run (cap is ${SHIPPED_LEDGER_ROW_CAP} data rows)`,
+      });
+    } else {
+      checks.push({
+        id: "shipped-ledger-cap",
+        label: "Shipped-ledger row cap on lib/memory/active/current.md",
+        command: `rows=${rowCount} cap=${SHIPPED_LEDGER_ROW_CAP}`,
+        status: "pass",
+        exitCode: 0,
+      });
+    }
+  }
+
+  const ignorePath = path.join(repoRoot, ".cursorindexingignore");
+  if (!existsSync(ignorePath)) {
+    checks.push({
+      id: "cursorindexingignore",
+      label: ".cursorindexingignore availability",
+      command: ignorePath,
+      status: "fail",
+      exitCode: 1,
+      remediation: `Restore ${ignorePath} at the repository root`,
+    });
+  } else {
+    checks.push({
+      id: "cursorindexingignore",
+      label: ".cursorindexingignore availability",
+      command: ignorePath,
+      status: "pass",
+      exitCode: 0,
+    });
+  }
+
+  const passCount = checks.filter((c) => c.status === "pass").length;
+  const failCount = checks.filter((c) => c.status === "fail").length;
+  const skipCount = checks.filter((c) => c.status === "skip").length;
+  return {
+    command: "doctor",
+    status: failCount === 0 ? "ok" : "fail",
+    passCount,
+    failCount,
+    skipCount,
+    checks,
+  };
 }
