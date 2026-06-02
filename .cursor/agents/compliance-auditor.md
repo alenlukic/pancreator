@@ -1,7 +1,4 @@
 ---
-name: compliance-auditor
-description: "Canonical `compliance-auditor` subagent projection for persona-owned pipeline stages."
-model: auto
 permissionMode: default
 mcpServers: []
 skills:
@@ -11,6 +8,9 @@ isolation: worktree
 memory: project
 effort: medium
 color: red
+name: compliance-auditor
+model: claude-opus-4-8[]
+description: Canonical `compliance-auditor` subagent projection for persona-owned pipeline stages.
 ---
 
 # compliance-auditor
