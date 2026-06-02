@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "@/components/DashboardPage";
 
 const mockRunState = [
   {
     taskId: "65766_0543_demo-feature",
+    decodedTimestamp: "2026-06-02 05:43 UTC",
     sourceWarning: "pan status unavailable",
     stages: [
       {
@@ -95,8 +96,15 @@ const mockRunState = [
   },
 ];
 
-function mockFetchForDashboard(options: { runState?: unknown[]; listEntries?: unknown[] }) {
-  return vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+type MockFetchOptions = {
+  runState?: unknown[];
+  listEntries?: unknown[];
+  fileContent?: string;
+  postCalls?: { path: string; content: string }[];
+};
+
+function mockFetchForDashboard(options: MockFetchOptions = {}) {
+  return vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
     if (url.includes("/api/run-state")) {
       return new Response(JSON.stringify(options.runState ?? []), { status: 200 });
@@ -104,10 +112,29 @@ function mockFetchForDashboard(options: { runState?: unknown[]; listEntries?: un
     if (url.includes("/api/list")) {
       return new Response(JSON.stringify({ entries: options.listEntries ?? [] }), { status: 200 });
     }
+    if (url.includes("/api/file") && init?.method === "POST") {
+      const body = JSON.parse(String(init.body)) as { path: string; content: string };
+      options.postCalls?.push(body);
+      return new Response(JSON.stringify({}), { status: 200 });
+    }
     if (url.includes("/api/file")) {
-      return new Response(JSON.stringify({ content: "modal content" }), { status: 200 });
+      return new Response(
+        JSON.stringify({ content: options.fileContent ?? "modal content" }),
+        { status: 200 },
+      );
     }
     return new Response(JSON.stringify({}), { status: 404 });
+  });
+}
+
+async function openSampleFileInModal() {
+  fireEvent.click(screen.getByTestId("tab-files"));
+  await waitFor(() => {
+    expect(screen.getByText("sample.md")).toBeInTheDocument();
+  });
+  fireEvent.click(screen.getByText("sample.md"));
+  await waitFor(() => {
+    expect(screen.getByTestId("file-modal")).toBeInTheDocument();
   });
 }
 
@@ -141,6 +168,7 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("tab-cockpit")).toHaveClass("dashboard-tab-active");
       expect(screen.getByTestId("stage-grid")).toBeInTheDocument();
+      expect(screen.getByText("65766_0543_demo-feature (2026-06-02 05:43 UTC)")).toBeInTheDocument();
       expect(screen.getByTestId("stage-cell-intake")).toHaveTextContent("Gate: human_approval");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("tech-lead");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("Ratify the plan");
@@ -209,19 +237,138 @@ describe("DashboardPage", () => {
     });
 
     render(<DashboardPage />);
+    await openSampleFileInModal();
 
+    expect(screen.getByDisplayValue("modal content")).toBeInTheDocument();
+  });
+
+  it("opens the file modal in read-only mode with an edit affordance", async () => {
+    mockFetchForDashboard({
+      runState: mockRunState,
+      listEntries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
+    });
+
+    render(<DashboardPage />);
+    await openSampleFileInModal();
+
+    const textarea = screen.getByDisplayValue("modal content");
+    expect(textarea).toHaveAttribute("readOnly");
+    expect(screen.getByTestId("readonly-indicator")).toHaveTextContent("Read-only");
+    expect(screen.getByTestId("edit-button")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+
+  it("keeps save disabled when draft matches content", async () => {
+    const postCalls: { path: string; content: string }[] = [];
+    mockFetchForDashboard({
+      runState: mockRunState,
+      listEntries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
+      fileContent: "unchanged content",
+      postCalls,
+    });
+
+    render(<DashboardPage />);
+    await openSampleFileInModal();
+
+    fireEvent.click(screen.getByTestId("edit-button"));
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.click(saveButton);
+
+    expect(screen.queryByTestId("diff-view")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("confirm-save")).not.toBeInTheDocument();
+    expect(postCalls).toHaveLength(0);
+  });
+
+  it("shows diff review before any file write occurs", async () => {
+    const postCalls: { path: string; content: string }[] = [];
+    mockFetchForDashboard({
+      runState: mockRunState,
+      listEntries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
+      fileContent: "original line",
+      postCalls,
+    });
+
+    render(<DashboardPage />);
+    await openSampleFileInModal();
+
+    fireEvent.click(screen.getByTestId("edit-button"));
+    const textarea = screen.getByDisplayValue("original line");
+    fireEvent.change(textarea, { target: { value: "modified line" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("diff-view")).toBeInTheDocument();
+      expect(screen.getByTestId("confirm-save")).toBeInTheDocument();
+      expect(screen.getByTestId("cancel-save")).toBeInTheDocument();
+    });
+
+    expect(postCalls).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("confirm-save"));
+
+    await waitFor(() => {
+      expect(postCalls).toHaveLength(1);
+      expect(postCalls[0]).toEqual({
+        path: "lib/memory/sample.md",
+        content: "modified line",
+      });
+    });
+  });
+
+  it("blocks confirm-save for guarded pipeline-owned paths", async () => {
+    const postCalls: { path: string; content: string }[] = [];
+    mockFetchForDashboard({
+      runState: mockRunState,
+      listEntries: [
+        {
+          path: "work/172973_06-02-26/demo/handoff.md",
+          name: "handoff.md",
+          kind: "file",
+        },
+      ],
+      fileContent: "pipeline handoff",
+      postCalls,
+    });
+
+    render(<DashboardPage />);
     fireEvent.click(screen.getByTestId("tab-files"));
 
     await waitFor(() => {
-      expect(screen.getByText("sample.md")).toBeInTheDocument();
+      expect(screen.getByText("handoff.md")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("sample.md"));
+    fireEvent.click(screen.getByText("handoff.md"));
 
     await waitFor(() => {
       expect(screen.getByTestId("file-modal")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("modal content")).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByTestId("edit-button"));
+    fireEvent.change(screen.getByDisplayValue("pipeline handoff"), {
+      target: { value: "unsafe edit" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("confirm-save")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("confirm-save"));
+
+    const modal = screen.getByTestId("file-modal");
+
+    await waitFor(() => {
+      expect(within(modal).getByTestId("write-guard-error")).toHaveTextContent(
+        "Write blocked: work/172973_06-02-26/demo/handoff.md is a pipeline-owned file.",
+      );
+    });
+
+    expect(postCalls).toHaveLength(0);
+    expect(within(modal).queryByTestId("diff-view")).not.toBeInTheDocument();
   });
 
   it("drills into directories instead of opening them as files", async () => {

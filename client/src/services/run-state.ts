@@ -4,44 +4,25 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { findRepoRoot, resolveRepoPath } from "./repo-paths";
+import {
+  FEATURE_DELIVERY_STAGE_ORDER,
+  type RunLogEvent,
+  type StageCell,
+  type StageCellStatus,
+  type TaskRunStateEnvelope,
+} from "./run-state-shared";
+import { decodeCountdownTimestamp, parseRunDirParts } from "./timestamp-decode";
+
+export {
+  FEATURE_DELIVERY_STAGE_ORDER,
+  taskDisplayLabel,
+  type RunLogEvent,
+  type StageCell,
+  type StageCellStatus,
+  type TaskRunStateEnvelope,
+} from "./run-state-shared";
 
 const execFileAsync = promisify(execFile);
-
-export const FEATURE_DELIVERY_STAGE_ORDER = [
-  "intake",
-  "plan",
-  "implement",
-  "review",
-  "test",
-  "report",
-  "ship",
-  "index",
-  "complete",
-] as const;
-
-export type StageCellStatus = "pending" | "active" | "complete" | "failed";
-
-export type StageCell = {
-  name: string;
-  ownerPersona: string;
-  humanGate: string;
-  nextHumanAction: string;
-  nextCommand: string;
-  status: StageCellStatus;
-};
-
-export type RunLogEvent = {
-  timestamp: string;
-  event: string;
-  message: string;
-};
-
-export type TaskRunStateEnvelope = {
-  taskId: string;
-  stages: StageCell[];
-  runEvents: RunLogEvent[];
-  sourceWarning?: string;
-};
 
 type PersistedStage = {
   id: string;
@@ -72,7 +53,23 @@ type PanStatusEnvelope = {
   nextHumanAction?: string;
   nextCommand?: string | null;
   decodedTimestamp?: string;
+  decodedTimestampDiagnostic?: string;
 };
+
+function decodedTimestampFields(
+  runDirRel: string,
+  taskId: string,
+): { decodedTimestamp?: string; decodedTimestampDiagnostic?: string } {
+  const parsed = parseRunDirParts(runDirRel);
+  if (parsed === null) {
+    return {};
+  }
+  const decoded = decodeCountdownTimestamp(parsed.dayBucket, taskId);
+  if (decoded.ok) {
+    return { decodedTimestamp: decoded.utcLabel };
+  }
+  return { decodedTimestampDiagnostic: decoded.diagnostic };
+}
 
 const TERMINAL_PIPELINE_STATUSES = new Set(["complete", "closed"]);
 
@@ -330,8 +327,13 @@ async function buildTaskEnvelope(
     ];
   }
 
+  const localDecoded = decodedTimestampFields(state.artifacts.runDir, state.taskId);
+
   return {
     taskId: state.taskId,
+    decodedTimestamp: panResult.envelope?.decodedTimestamp ?? localDecoded.decodedTimestamp,
+    decodedTimestampDiagnostic:
+      panResult.envelope?.decodedTimestampDiagnostic ?? localDecoded.decodedTimestampDiagnostic,
     stages,
     runEvents,
     ...(panResult.warning !== undefined ? { sourceWarning: panResult.warning } : {}),

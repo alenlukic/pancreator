@@ -41,6 +41,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `surface-opt-p10-dashboard-safe-editing` | [indexed] (`2026-06-02T15:33:17.000Z`) | `lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md` | `lib/inbox/out/172973_06-02-26/55193_0840_surface-opt-p10-dashboard-safe-editing-report-approval.md` | `archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-…` |
 | `surface-opt-p9-dashboard-operator-cockpit` | [indexed] (`2026-06-02T06:20:00.000Z`) | `lib/memory/features/surface-opt-p9-dashboard-operator-cockpit/delivery-report.md` | `lib/inbox/out/172973_06-02-26/64121_0611_surface-opt-p9-dashboard-operator-cockpit-report-approval.md` | `archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboar…` |
 | `surface-opt-p4-tighten-cursor-agents-retrieval-contracts` | [indexed] (`2026-06-01T06:20:00.000Z`) | `lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/delivery-report.md` | `lib/inbox/out/172974_06-01-26/64308_0608_surface-opt-p4-tighten-cursor-agents-retrieval-contracts-report-approval.md` | `archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-…` |
 | `surface-opt-p3-cap-current-md-shipped-features-ledger` | [indexed] (`2026-06-01T05:42:00.000Z`) | `lib/memory/features/surface-opt-p3-cap-current-md-shipped-features-ledger/delivery-report.md` | `lib/inbox/out/172974_06-01-26/65992_0540_surface-opt-p3-cap-current-md-shipped-features-ledger-report-approval.md` | `archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt…` |
@@ -50,7 +51,6 @@ read per `lib/memory/handbook/context-economy.md`.
 | `embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs` | [indexed] (`2026-05-31T04:30:00.000Z`) | `lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md` | `lib/inbox/out/172975_05-31-26/71230_0412_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-rep…` | `archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/…` |
 | `embedded-harness-install-project-root-pancreator-and-fresh-install-manifest` | [indexed] (`2026-05-30T21:05:00.000Z`) | `lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md` | `lib/inbox/out/172976_05-30-26/11654_2045_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest-rep…` | `archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/…` |
 | `repository-layout-restructure-and-archive-migration` | [indexed] (`2026-05-30T07:00:00.000Z`) | `lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md` | `lib/inbox/out/172976_05-30-26/62732_0634_repository-layout-restructure-and-archive-migration-report-approval.md` | `archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-r…` |
-| `v0-ui-dashboard-subordinate-feature-pipeline-qa` | [indexed] (`2026-05-29T22:00:00.000Z`) | `lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md` | `—` | `archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-s…` |
 
 ## Risks and blockers
 
@@ -65,9 +65,11 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-02T06:17:31.450Z`
+- Active-memory refreshed (UTC): `2026-06-02T15:35:30.676Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
+
 
 
 

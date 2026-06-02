@@ -257,7 +257,7 @@ export async function readPancreatorResource(
   const root = path.resolve(ctx.repoRoot);
 
   if (uri === "memory://") {
-    const memoryRoot = path.join(root, "memory");
+    const memoryRoot = path.join(root, "lib", "memory");
     const areas = await listDirNames(memoryRoot);
     const store = new FileMemoryStore(memoryRoot);
     const memoryFileKeyCount = (await store.listKeys("")).length;

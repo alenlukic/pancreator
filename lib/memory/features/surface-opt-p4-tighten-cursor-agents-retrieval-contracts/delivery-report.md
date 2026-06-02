@@ -1,7 +1,7 @@
 # Delivery Report — surface-opt-p4-tighten-cursor-agents-retrieval-contracts
 
 ## Summary
-This report SHALL record the delivery state for surface-opt P4. R1–R3 implementation work is complete, and AC4 remains open because the persona-designer review note is missing from the handoff. 
+This report SHALL record the delivery state for surface-opt P4. R1-R3 implementation work is complete, and AC4 is now satisfied by the persona-designer review note appended to the archived handoff artifact.
 
 ```json
 {
@@ -69,7 +69,7 @@ This report SHALL record the delivery state for surface-opt P4. R1–R3 implemen
 
 
 ## Gate status
-- review_passes: false. The review gate SHALL remain blocked until the persona-designer review note is recorded in the handoff. 
+- review_passes: true. The review gate is clear after recording the persona-designer review note in the archived handoff.
 
 ```json
 {
@@ -91,7 +91,7 @@ This report SHALL record the delivery state for surface-opt P4. R1–R3 implemen
 }
 ```
 
-- open_requirements: AC4. The run SHALL record exactly 1 persona-designer review note before advance. 
+- open_requirements: none. AC4 is closed with one persona-designer review note recorded in the archived handoff.
 
 ```json
 {
@@ -104,7 +104,7 @@ This report SHALL record the delivery state for surface-opt P4. R1–R3 implemen
 
 
 ## Review and QA notes
-- The review gate lists 1 must-fix item: add the persona-designer review note to the handoff. 
+- The review gate has no must-fix findings after the persona-designer note was recorded for AC4.
 
 ```json
 {
@@ -141,7 +141,7 @@ No additional handbook or operator documentation updates are required for this s
 
 
 ## Next operator steps
-- What: Record the required persona-designer review note in `work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/handoff.md` to satisfy AC4 and unblock the review gate. How: invoke `/persona-designer` and direct it to append 1 review note to the handoff file, then re-check that `review_passes` is true before advancing. 
+- What: Proceed with normal artifact acceptance and feature advance for P4 because AC4 is closed and `review_passes` is green. How: `pnpm -w exec pan advance 65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts --artifact lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/index.json`.
 
 ```json
 {

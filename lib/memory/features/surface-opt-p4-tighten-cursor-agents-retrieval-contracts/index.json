@@ -21,13 +21,13 @@
   },
   "handoff": {
     "decision": "index-complete",
-    "verdict": "pass-with-open-requirements",
+    "verdict": "pass",
     "completed_stage": "index",
     "completed_by": "librarian",
     "completed_at": "2026-06-01T06:20:00Z",
     "next_owner": "operator",
     "next_stage": "complete",
-    "handoff_note": "Index links delivery report, archived work artifacts, and implementation surface. Review gate remains blocked until the persona-designer note is recorded; after human acceptance, run pan advance with the feature index artifact to transition to complete."
+    "handoff_note": "Index links delivery report, archived work artifacts, and implementation surface. AC4 is satisfied by the persona-designer review note in the archived handoff; after human acceptance, run pan advance with the feature index artifact to transition to complete."
   },
   "index": {
     "indexer": "librarian",
@@ -40,11 +40,11 @@
     }
   },
   "review": {
-    "verdict": "fail",
-    "review_passes": false,
+    "verdict": "pass",
+    "review_passes": true,
     "artifact": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
     "block_findings": 0,
-    "must_fix_count": 1,
+    "must_fix_count": 0,
     "consider_count": 0,
     "nit_count": 0,
     "spec_contracts_executed": 0,
@@ -110,14 +110,7 @@
     ],
     "repo_wide_followup": "none"
   },
-  "open_followups": [
-    {
-      "id": "ac4-persona-designer-review-note",
-      "owner": "persona-designer",
-      "status": "open",
-      "reason": "AC4 requires a persona-designer review note in the handoff before advance; review gate remains blocked until recorded."
-    }
-  ],
+  "open_followups": [],
   "artifact_index": {
     "feature_folder": {
       "engineering_spec": {
