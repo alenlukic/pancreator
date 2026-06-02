@@ -93,7 +93,6 @@ export function createFeatureDeliverySdkProgressReporter(
   input: CreateFeatureDeliverySdkProgressReporterInput,
 ): FeatureDeliverySdkProgressReporter {
   const sinkFormat = resolveProgressFormat(input.format);
-  const now = input.now ?? (() => new Date());
   return {
     emit(event: FeatureDeliverySdkProgressEvent): void {
       const payload =

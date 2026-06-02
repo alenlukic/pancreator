@@ -63,3 +63,13 @@ tmp/
 work/
 archive/
 lib/memory/checkpoints/
+
+# --- Context usage harness (manual SDK runs) ---
+
+tests/context-usage/output/
+
+# Committed tier-sandbox fixture (negate global work/archive ignores)
+!tests/context-usage/fixtures/tier-sandbox/work/
+!tests/context-usage/fixtures/tier-sandbox/work/**
+!tests/context-usage/fixtures/tier-sandbox/archive/
+!tests/context-usage/fixtures/tier-sandbox/archive/**

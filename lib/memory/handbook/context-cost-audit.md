@@ -49,6 +49,10 @@ After this pass, operators SHOULD restart or reindex Cursor and run 3-5
 comparable simple tasks. Compare cache-read totals against the recent post-pass
 baseline of roughly 770K cache-read tokens.
 
+For **SDK local runs** on the synthetic tier fixture (token stream from `turn-ended`
+events, not IDE cache-read), use the manual harness documented in
+`tests/context-usage/README.md` (`pnpm run context:usage` / `context:usage:baseline`).
+
 ## Current failure mode
 
 When `.cursorindexingignore` is absent, Cursor can re-index active work, archival
