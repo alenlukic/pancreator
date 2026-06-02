@@ -56,12 +56,71 @@ const DOMAINS: Domain[] = [
   },
 ];
 
+const GUARDED_PATH_SEGMENTS = [
+  "run.log.jsonl",
+  "state.json",
+  "handoff.md",
+  "next-prompt.md",
+] as const;
+
 type FileModalState = {
   path: string;
   content: string;
   draft: string;
   open: boolean;
+  isReadOnly: boolean;
+  showDiff: boolean;
+  writeGuardError: string | null;
 };
+
+function computeDiff(original: string, modified: string): string {
+  const oldLines = original.split("\n");
+  const newLines = modified.split("\n");
+  const hunks: string[] = [];
+  let oldIndex = 0;
+  let newIndex = 0;
+
+  while (oldIndex < oldLines.length || newIndex < newLines.length) {
+    if (
+      oldIndex < oldLines.length &&
+      newIndex < newLines.length &&
+      oldLines[oldIndex] === newLines[newIndex]
+    ) {
+      hunks.push(` ${oldLines[oldIndex]}`);
+      oldIndex += 1;
+      newIndex += 1;
+      continue;
+    }
+
+    const nextMatchInNew =
+      oldIndex < oldLines.length
+        ? newLines.findIndex((line, index) => index >= newIndex && line === oldLines[oldIndex])
+        : -1;
+    const nextMatchInOld =
+      newIndex < newLines.length
+        ? oldLines.findIndex((line, index) => index >= oldIndex && line === newLines[newIndex])
+        : -1;
+
+    if (
+      newIndex < newLines.length &&
+      (oldIndex >= oldLines.length ||
+        (nextMatchInOld === -1 && nextMatchInNew !== -1) ||
+        (nextMatchInNew !== -1 &&
+          (nextMatchInOld === -1 || nextMatchInNew - newIndex <= nextMatchInOld - oldIndex)))
+    ) {
+      hunks.push(`+${newLines[newIndex]}`);
+      newIndex += 1;
+      continue;
+    }
+
+    if (oldIndex < oldLines.length) {
+      hunks.push(`-${oldLines[oldIndex]}`);
+      oldIndex += 1;
+    }
+  }
+
+  return hunks.join("\n");
+}
 
 type DashboardTab = "cockpit" | "files";
 
@@ -149,6 +208,9 @@ export function DashboardPage() {
     content: "",
     draft: "",
     open: false,
+    isReadOnly: true,
+    showDiff: false,
+    writeGuardError: null,
   });
   const [status, setStatus] = useState<string>("");
   const [activeTab, setActiveTab] = useState<DashboardTab>("cockpit");
@@ -228,8 +290,36 @@ export function DashboardPage() {
       setStatus(data.error ?? "Unable to read file");
       return;
     }
-    setModal({ path: repoPath, content: data.content, draft: data.content, open: true });
+    setModal({
+      path: repoPath,
+      content: data.content,
+      draft: data.content,
+      open: true,
+      isReadOnly: true,
+      showDiff: false,
+      writeGuardError: null,
+    });
     setStatus("");
+  }
+
+  function enterEditMode() {
+    setModal((current) => ({
+      ...current,
+      isReadOnly: false,
+      showDiff: false,
+      writeGuardError: null,
+    }));
+  }
+
+  function requestSaveReview() {
+    if (modal.draft === modal.content) {
+      return;
+    }
+    setModal((current) => ({ ...current, showDiff: true, writeGuardError: null }));
+  }
+
+  function cancelSaveReview() {
+    setModal((current) => ({ ...current, showDiff: false, writeGuardError: null }));
   }
 
   async function handleEntryClick(entry: RepoListEntry) {
@@ -241,6 +331,16 @@ export function DashboardPage() {
   }
 
   async function saveFile() {
+    const isGuarded = GUARDED_PATH_SEGMENTS.some((segment) => modal.path.endsWith(segment));
+    if (isGuarded) {
+      setModal((current) => ({
+        ...current,
+        showDiff: false,
+        writeGuardError: `Write blocked: ${modal.path} is a pipeline-owned file.`,
+      }));
+      return;
+    }
+
     const response = await fetch("/api/file", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -254,6 +354,8 @@ export function DashboardPage() {
     setModal((current) => ({
       ...current,
       content: current.draft,
+      showDiff: false,
+      writeGuardError: null,
     }));
     setStatus("Saved without reload");
   }
@@ -407,17 +509,52 @@ export function DashboardPage() {
         <div className="modal-backdrop" data-testid="file-modal">
           <div className="modal-panel">
             <h3>{modal.path}</h3>
+            {modal.isReadOnly ? (
+              <span data-testid="readonly-indicator">Read-only</span>
+            ) : null}
             <textarea
               value={modal.draft}
+              readOnly={modal.isReadOnly || modal.showDiff}
               onChange={(event) => setModal((current) => ({ ...current, draft: event.target.value }))}
             />
+            {modal.showDiff ? (
+              <pre data-testid="diff-view">{computeDiff(modal.content, modal.draft)}</pre>
+            ) : null}
+            {modal.writeGuardError ? (
+              <p className="status" data-testid="write-guard-error">
+                {modal.writeGuardError}
+              </p>
+            ) : null}
             <div className="modal-actions">
-              <button type="button" onClick={() => void saveFile()}>
-                Save
-              </button>
+              {modal.isReadOnly ? (
+                <button type="button" data-testid="edit-button" onClick={enterEditMode}>
+                  Edit
+                </button>
+              ) : null}
+              {!modal.isReadOnly && !modal.showDiff ? (
+                <button
+                  type="button"
+                  disabled={modal.draft === modal.content}
+                  onClick={requestSaveReview}
+                >
+                  Save
+                </button>
+              ) : null}
+              {!modal.isReadOnly && modal.showDiff ? (
+                <>
+                  <button type="button" data-testid="confirm-save" onClick={() => void saveFile()}>
+                    Confirm save
+                  </button>
+                  <button type="button" data-testid="cancel-save" onClick={cancelSaveReview}>
+                    Cancel
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
-                onClick={() => setModal((current) => ({ ...current, open: false }))}
+                onClick={() =>
+                  setModal((current) => ({ ...current, open: false, writeGuardError: null }))
+                }
               >
                 Close
               </button>
