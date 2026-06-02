@@ -29,7 +29,6 @@ import {
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
   readCursorInvocationForState,
-  resetStageInvocationIndex,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
   type FeatureDeliveryAutomationState,
@@ -621,7 +620,6 @@ export async function advanceFeatureDelivery(
         testHooks: input.testHooks,
         progress: resolveFeatureDeliveryProgress(input),
       });
-      resetStageInvocationIndex(state);
     }
 
     await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
@@ -751,7 +749,6 @@ export async function repairFeatureDeliveryState(
       testHooks: input.testHooks,
       progress: resolveFeatureDeliveryProgress(input),
     });
-    resetStageInvocationIndex(state);
   }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
@@ -2336,7 +2333,6 @@ async function finishAdvanceAfterTransition(input: {
       testHooks: input.testHooks,
       progress: resolveFeatureDeliveryProgress(input),
     });
-    resetStageInvocationIndex(input.state);
   }
   await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
   await appendRunLogRecord(
@@ -2468,7 +2464,6 @@ async function advanceReviewReentryFromImplement(input: {
       testHooks: input.testHooks,
       progress: resolveFeatureDeliveryProgress(input),
     });
-    resetStageInvocationIndex(state);
   }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");

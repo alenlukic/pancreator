@@ -49,19 +49,17 @@ export class RunnerTransportError extends Error {
 export interface FeatureDeliveryAutomationState {
   runnerInvocation: "manual" | "sdk";
   cumulativeRetryCount: number;
-  /** Per-stage SDK invocation counter for model escalation tiers. */
+  /**
+   * Index used for the current SDK call (mirrors the per-stage map entry at prepare time).
+   * @deprecated Prefer `stageInvocationIndexByStage`; kept for persisted-state compatibility.
+   */
   stageInvocationIndex?: number;
+  /** Completed SDK entry count per stage id (next entry uses this value as its tier index). */
+  stageInvocationIndexByStage?: Record<string, number>;
   reportApprovalPending?: boolean;
   stageRemediationCount?: number;
   lastRemediationStage?: string;
 }
-
-const SDK_STAGE_LOOPBACK_EVENTS = new Set([
-  "must_fix",
-  "qa_fails",
-  "qa_fails_plan_invalidating",
-  "needs_changes",
-]);
 
 export const STAGE_REMEDIATION_PERSONA = "pancreator-engineer" as const;
 export const MAX_STAGE_REMEDIATION_ATTEMPTS = 2;
@@ -109,9 +107,13 @@ export function ensureAutomationState(
       runnerInvocation: invocation,
       cumulativeRetryCount: 0,
       stageInvocationIndex: 0,
+      stageInvocationIndexByStage: {},
     };
   } else {
     state.automation.runnerInvocation = invocation;
+    if (state.automation.stageInvocationIndexByStage === undefined) {
+      state.automation.stageInvocationIndexByStage = {};
+    }
     if (state.automation.stageInvocationIndex === undefined) {
       state.automation.stageInvocationIndex = 0;
     }
@@ -119,39 +121,26 @@ export function ensureAutomationState(
   return state.automation;
 }
 
-function lastAdvanceEntry(
-  state: FeatureDeliveryRunnerLedger,
-): { event: string; to: string } | undefined {
-  const history = state.advanceHistory ?? [];
-  for (let index = history.length - 1; index >= 0; index -= 1) {
-    const entry = history[index];
-    if (entry?.kind === "advance" && typeof entry.event === "string" && typeof entry.to === "string") {
-      return { event: entry.event, to: entry.to };
-    }
-  }
-  return undefined;
-}
-
-/** Updates stageInvocationIndex before an SDK transport call and returns the effective value. */
+/** Returns the tier index for this SDK entry and records the next visit for the stage. */
 export function prepareStageInvocationIndexForSdkEntry(
   state: FeatureDeliveryRunnerLedger,
   enteringStageId: string,
   invocation: "manual" | "sdk",
 ): number {
   const automation = ensureAutomationState(state, invocation);
-  const current = automation.stageInvocationIndex ?? 0;
-  const last = lastAdvanceEntry(state);
-  if (last !== undefined && SDK_STAGE_LOOPBACK_EVENTS.has(last.event) && last.to === enteringStageId) {
-    automation.stageInvocationIndex = current + 1;
-  } else {
-    automation.stageInvocationIndex = 0;
-  }
-  return automation.stageInvocationIndex;
+  const byStage = automation.stageInvocationIndexByStage ?? {};
+  automation.stageInvocationIndexByStage = byStage;
+  const index = byStage[enteringStageId] ?? 0;
+  automation.stageInvocationIndex = index;
+  byStage[enteringStageId] = index + 1;
+  return index;
 }
 
+/** Clears per-stage escalation counters (retry-limit halt and similar terminal resets). */
 export function resetStageInvocationIndex(state: FeatureDeliveryRunnerLedger): void {
   if (state.automation !== undefined) {
     state.automation.stageInvocationIndex = 0;
+    state.automation.stageInvocationIndexByStage = {};
   }
 }
 

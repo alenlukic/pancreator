@@ -261,33 +261,20 @@ describe("feature-delivery-runner automation", () => {
     expect(resolved).toBe("qa_fails_plan_invalidating");
   });
 
-  it("prepareStageInvocationIndexForSdkEntry increments on loopback and resets on new stage", () => {
-    const state = sampleLedger({
-      advanceHistory: [
-        {
-          atIso: "2026-05-10T12:00:00.000Z",
-          kind: "advance",
-          from: "review",
-          to: "implement",
-          event: "must_fix",
-          artifact: "work/demo/run/review.md",
-        },
-      ],
-    });
+  it("prepareStageInvocationIndexForSdkEntry tracks per-stage visit counts independently", () => {
+    const state = sampleLedger();
+    expect(prepareStageInvocationIndexForSdkEntry(state, "implement", "sdk")).toBe(0);
     expect(prepareStageInvocationIndexForSdkEntry(state, "implement", "sdk")).toBe(1);
+    expect(prepareStageInvocationIndexForSdkEntry(state, "review", "sdk")).toBe(0);
+    expect(prepareStageInvocationIndexForSdkEntry(state, "review", "sdk")).toBe(1);
+    expect(state.automation?.stageInvocationIndexByStage).toEqual({
+      implement: 2,
+      review: 2,
+    });
     resetStageInvocationIndex(state);
     expect(state.automation?.stageInvocationIndex).toBe(0);
-    state.advanceHistory = [
-      {
-        atIso: "2026-05-10T12:05:00.000Z",
-        kind: "advance",
-        from: "plan",
-        to: "implement",
-        event: "human_approval",
-        artifact: "work/demo/run/touch-set.json",
-      },
-    ];
-    expect(prepareStageInvocationIndexForSdkEntry(state, "implement", "sdk")).toBe(0);
+    expect(state.automation?.stageInvocationIndexByStage).toEqual({});
+    expect(prepareStageInvocationIndexForSdkEntry(state, "review", "sdk")).toBe(0);
   });
 
   it("invokeFeatureDeliveryEnteringStage uses escalated model on second loopback", async () => {
@@ -317,16 +304,11 @@ configs:
     };
     const state = sampleLedger({
       currentStage: "implement",
-      advanceHistory: [
-        {
-          atIso: "2026-05-10T12:00:00.000Z",
-          kind: "advance",
-          from: "review",
-          to: "implement",
-          event: "must_fix",
-          artifact: "work/demo/run/review.md",
-        },
-      ],
+      automation: {
+        runnerInvocation: "sdk",
+        cumulativeRetryCount: 1,
+        stageInvocationIndexByStage: { implement: 1 },
+      },
       artifacts: {
         runDir: "work/demo/run",
         stateFile: "work/demo/run/state.json",
@@ -372,11 +354,83 @@ configs:
     expect(captured).toEqual(["gpt-5.2-codex[reasoning=high,fast=false]"]);
     const persisted = JSON.parse(
       await readFile(path.join(root, state.artifacts.stateFile), "utf8"),
-    ) as { automation?: { stageInvocationIndex?: number } };
+    ) as {
+      automation?: {
+        stageInvocationIndex?: number;
+        stageInvocationIndexByStage?: Record<string, number>;
+      };
+    };
     expect(persisted.automation?.stageInvocationIndex).toBe(1);
+    expect(persisted.automation?.stageInvocationIndexByStage?.implement).toBe(2);
   });
 
-  it("stageInvocationIndex resets to zero after successful implement advance", async () => {
+  it("second review SDK entry escalates reviewer tier after must_fix cycle", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-escalate-review-"));
+    await seedEscalationConfig(root);
+    const personaDir = path.join(root, "lib", "personas");
+    await mkdir(personaDir, { recursive: true });
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "reviewer.md"),
+      path.join(personaDir, "reviewer.md"),
+    );
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "review", persona: "reviewer" }],
+    };
+    const state = sampleLedger({
+      currentStage: "review",
+      artifacts: {
+        runDir: "work/demo/run",
+        stateFile: "work/demo/run/state.json",
+        runLogFile: "work/demo/run/run.log.jsonl",
+        nextPromptFile: "work/demo/run/next-prompt.md",
+      },
+      automation: {
+        runnerInvocation: "sdk",
+        cumulativeRetryCount: 1,
+        stageInvocationIndex: 0,
+        stageInvocationIndexByStage: { implement: 2, review: 1 },
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(
+      path.join(root, state.artifacts.stateFile),
+      `${JSON.stringify({ automation: state.automation }, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+
+    const captured: string[] = [];
+    const transport: CursorSdkTransport = async (params) => {
+      captured.push(params.modelOverride ?? params.persona.model);
+      const cwd = params.cwd ?? root;
+      const required =
+        params.requiredArtifactPaths ??
+        (params.artifactPath !== undefined ? [params.artifactPath] : []);
+      for (const rel of required) {
+        const abs = path.join(cwd, rel);
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(abs, "mock-artifact\n", "utf8");
+      }
+      return { status: "ok", resultText: "ok" };
+    };
+
+    prepareStageInvocationIndexForSdkEntry(state, "review", "sdk");
+
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot: root,
+      state,
+      pipeline,
+      stageId: "review",
+      testHooks: { sdkTransport: transport },
+    });
+
+    expect(captured).toEqual(["gpt-5.4[context=272k,reasoning=extra-high,fast=false]"]);
+  });
+
+  it("preserves per-stage counts after successful implement advance to review", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-reset-success-"));
     const runDirRel = "work/172996_05-10-26/38670_1315_demo-feature";
     await seedSdkAdvanceRepo(root, runDirRel);
@@ -417,6 +471,7 @@ configs:
         runnerInvocation: "sdk",
         cumulativeRetryCount: 0,
         stageInvocationIndex: 1,
+        stageInvocationIndexByStage: { implement: 2 },
       },
       advanceHistory: [
         {
@@ -452,11 +507,15 @@ configs:
     });
 
     const persisted = JSON.parse(await readFile(path.join(root, stateFileRel), "utf8")) as {
-      automation?: { stageInvocationIndex?: number };
+      automation?: {
+        stageInvocationIndex?: number;
+        stageInvocationIndexByStage?: Record<string, number>;
+      };
       currentStage?: string;
     };
     expect(persisted.currentStage).toBe("review");
-    expect(persisted.automation?.stageInvocationIndex).toBe(0);
+    expect(persisted.automation?.stageInvocationIndexByStage?.implement).toBe(2);
+    expect(persisted.automation?.stageInvocationIndexByStage?.review).toBe(1);
   });
 
   it("parseReportApprovalArtifact reads approve and needs_changes decisions", () => {

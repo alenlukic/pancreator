@@ -190,18 +190,20 @@ Active config precedence:
 2. `runner.cursor.model_escalation.config` in `pancreator.yaml`
 3. `active_config` in `pancreator-model-escalation.yaml`
 
-`state.json` carries `automation.stageInvocationIndex` (default `0`). The index is written
-before each SDK invocation: `0` on first entry to a stage, incremented by `1` on `must_fix`
-or `qa_fails` loopbacks into the same stage, reset to `0` on cross-stage transitions and
-after successful stage completion. Tier resolution uses the greatest tier key ≤ the index,
-or `default` when no integer key applies.
+`state.json` carries `automation.stageInvocationIndexByStage` (per-stage visit counts) and
+mirrors the current stage index in `automation.stageInvocationIndex` before each SDK call.
+The tier index is `0` on the first SDK entry to a stage, `1` on the second entry to that
+same stage (for example a second `review` pass after a `must_fix` cycle), and so on.
+Counts are independent per stage id and are not cleared when the pipeline advances to a
+different stage. Tier resolution uses the greatest tier key ≤ the index, or `default` when
+no integer key applies.
 
 When the first SDK call for an invocation returns a **model issue**, `CursorRunner` walks
 this fallback order: lower keyed tiers (descending), `default`, higher keyed tiers
 (ascending), then `auto`. Non-model errors return immediately without fallback.
 
-Reset triggers: successful stage completion (before advancing), retry-limit halt, and first
-entry to a new stage.
+Reset triggers: retry-limit halt clears all per-stage counts; successful stage completion
+does not reset other stages' counts.
 
 `run.log.jsonl` records escalation under the nested `escalation` key, including
 `active_config`, `persona_slug`, `stage_invocation_index`, `resolved_model`,

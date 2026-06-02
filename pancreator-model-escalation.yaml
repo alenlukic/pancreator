@@ -69,8 +69,8 @@ configs:
         2: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
       compliance-auditor:
-        default: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       contract-writer:
         default: auto

@@ -42,6 +42,8 @@ describe("model escalation resolver", () => {
     expect(resolveEffectiveModel(loaded, "coder", 1).model).toBe("model-default");
     expect(resolveEffectiveModel(loaded, "coder", 3).model).toBe("model-tier-3");
     expect(resolveEffectiveModel(loaded, "coder", 5).model).toBe("model-tier-4");
+    expect(resolveEffectiveModel(loaded, "reviewer", 0).model).toBe("auto");
+    expect(resolveEffectiveModel(loaded, "reviewer", 1).model).toBe("model-reviewer-1");
   });
 
   it("walks fallback chain in down-chain, default, up-chain, auto order", () => {
