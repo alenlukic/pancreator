@@ -1,7 +1,22 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CursorRunner } from "./cursor-runner.js";
 import type { CursorSdkTransport } from "./sdk-transport.js";
 import type { RunnerPersonaInput } from "./types.js";
+
+const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
+
+const ESCALATION_CONFIG = `active_config: default
+
+configs:
+  default:
+    personas:
+      coder:
+        default: composer-2.5[fast=false]
+        1: gpt-5.2-codex[reasoning=high,fast=false]
+`;
 
 const samplePersona: RunnerPersonaInput = {
   name: "tech-writer",
@@ -52,7 +67,11 @@ describe("CursorRunner", () => {
   });
 
   it("sdk mode invokes transport and returns non-dry-run completion", async () => {
-    const runner = new CursorRunner({ invocation: "sdk", sdkTransport: mockSdkTransport });
+    const runner = new CursorRunner({
+      invocation: "sdk",
+      repoRoot: CANONICAL_REPO_ROOT,
+      sdkTransport: mockSdkTransport,
+    });
     const env = await runner.invoke({
       persona: samplePersona,
       message: "Implement stage",
@@ -70,6 +89,7 @@ describe("CursorRunner", () => {
     const captured: string[] = [];
     const runner = new CursorRunner({
       invocation: "sdk",
+      repoRoot: CANONICAL_REPO_ROOT,
       sdkTransport: async (params) => {
         captured.push(params.persona.model);
         return { status: "ok", resultText: "ok" };
@@ -86,11 +106,64 @@ describe("CursorRunner", () => {
   it("sdk mode surfaces transport errors without throwing", async () => {
     const runner = new CursorRunner({
       invocation: "sdk",
+      repoRoot: CANONICAL_REPO_ROOT,
       sdkTransport: async () => ({ status: "error", errorMessage: "no api key" }),
     });
     const env = await runner.invoke({ persona: samplePersona, message: "m" });
     expect(env.sdkResult?.status).toBe("error");
     expect(env.sdkResult?.errorMessage).toBe("no api key");
+  });
+
+  it("sdk mode uses escalated model from config without mutating persona defaults", async () => {
+    const root = path.join(os.tmpdir(), `pan-runner-esc-${Date.now()}`);
+    await mkdir(root, { recursive: true });
+    await writeFile(path.join(root, "pancreator-model-escalation.yaml"), ESCALATION_CONFIG, "utf8");
+    const captured: string[] = [];
+    const runner = new CursorRunner({
+      invocation: "sdk",
+      repoRoot: root,
+      cwd: root,
+      sdkTransport: async (params) => {
+        captured.push(params.modelOverride ?? params.persona.model);
+        return { status: "ok", resultText: "ok" };
+      },
+    });
+    const persona = { ...samplePersona, name: "coder", model: "composer-2.5[fast=false]" };
+    const env = await runner.invoke({
+      persona,
+      message: "Implement",
+      stageInvocationIndex: 1,
+    });
+    expect(captured).toEqual(["gpt-5.2-codex[reasoning=high,fast=false]"]);
+    expect(persona.model).toBe("composer-2.5[fast=false]");
+    expect(env.resolved.escalation?.resolved_model).toBe("gpt-5.2-codex[reasoning=high,fast=false]");
+  });
+
+  it("sdk mode records fallback success when a model issue recovers on retry", async () => {
+    const root = path.join(os.tmpdir(), `pan-runner-fallback-${Date.now()}`);
+    await mkdir(root, { recursive: true });
+    await writeFile(path.join(root, "pancreator-model-escalation.yaml"), ESCALATION_CONFIG, "utf8");
+    let attempts = 0;
+    const runner = new CursorRunner({
+      invocation: "sdk",
+      repoRoot: root,
+      cwd: root,
+      sdkTransport: async (params) => {
+        attempts += 1;
+        if (attempts === 1) {
+          return { status: "error", errorMessage: "unknown model" };
+        }
+        return { status: "ok", resultText: params.modelOverride ?? "ok" };
+      },
+    });
+    const env = await runner.invoke({
+      persona: { ...samplePersona, name: "coder", model: "composer-2.5[fast=false]" },
+      message: "Implement",
+      stageInvocationIndex: 0,
+    });
+    expect(env.sdkResult?.status).toBe("ok");
+    expect(env.resolved.model).toBe("gpt-5.2-codex[reasoning=high,fast=false]");
+    expect(attempts).toBe(2);
   });
 
   it("generates a request id when omitted", async () => {

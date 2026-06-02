@@ -8,6 +8,8 @@ import type { RunnerPersonaInput } from "./types.js";
 export interface CursorSdkInvokeParams {
   message: string;
   persona: RunnerPersonaInput;
+  /** One-shot model override; full string preserved for prompts and logs. */
+  modelOverride?: string;
   stagePromptPath?: string;
   stagePromptContent?: string;
   artifactPath?: string;
@@ -32,7 +34,7 @@ export function buildSdkPrompt(params: CursorSdkInvokeParams): string {
     "",
     `Persona: ${params.persona.name}`,
     `Persona contract: ${params.persona.description}`,
-    `Model: ${params.persona.model}`,
+    `Model: ${params.modelOverride ?? params.persona.model}`,
     `Max turns: ${params.persona.maxTurns}`,
     `Allowed tools: ${params.persona.tools.join(", ") || "(none)"}`,
     `Disallowed tools: ${params.persona.disallowedTools.join(", ") || "(none)"}`,
@@ -91,7 +93,8 @@ export function createDefaultCursorSdkTransport(): CursorSdkTransport {
 
     const { Agent, CursorAgentError } = await import("@cursor/sdk");
     const prompt = buildSdkPrompt(params);
-    const sdkModelId = resolveSdkModelId(params.persona.model);
+    const effectiveModel = params.modelOverride ?? params.persona.model;
+    const sdkModelId = resolveSdkModelId(effectiveModel);
     try {
       const result = await Agent.prompt(prompt, {
         apiKey,

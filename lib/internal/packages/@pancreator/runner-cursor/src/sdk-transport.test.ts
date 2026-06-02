@@ -49,6 +49,15 @@ describe("sdk-transport prompt and verification helpers", () => {
     expect(prompt).toContain("# Plan stage");
   });
 
+  it("buildSdkPrompt uses modelOverride when provided", () => {
+    const prompt = buildSdkPrompt({
+      message: "run",
+      persona,
+      modelOverride: "composer-2.5[fast=false]",
+    });
+    expect(prompt).toContain("Model: composer-2.5[fast=false]");
+  });
+
   it("findMissingArtifactPaths returns repo-relative gaps deterministically", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-verify-"));
     const existing = path.join(root, "work/demo/touch-set.json");

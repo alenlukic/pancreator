@@ -13,7 +13,7 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts --format esm --dts --clean --external yaml",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "attw": "attw --pack . --profile esm-only",
@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@cursor/sdk": "1.0.13",
-    "@pancreator/core": "workspace:*"
+    "@pancreator/core": "workspace:*",
+    "yaml": "catalog:"
   },
   "optionalDependencies": {
     "@cursor/sdk-darwin-arm64": "1.0.13",

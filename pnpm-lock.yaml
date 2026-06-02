@@ -63,15 +63,18 @@ importers:
       '@changesets/cli':
         specifier: 'catalog:'
         version: 2.31.0(@types/node@22.19.17)
+      '@eslint/js':
+        specifier: 'catalog:'
+        version: 9.39.4
       '@pancreator/cli':
         specifier: workspace:*
         version: link:lib/internal/packages/@pancreator/cli
       '@pancreator/mcp-server':
         specifier: workspace:*
         version: link:lib/internal/packages/@pancreator/mcp-server
-      '@eslint/js':
-        specifier: 'catalog:'
-        version: 9.39.4
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
       eslint:
         specifier: 'catalog:'
         version: 9.39.4
@@ -176,9 +179,6 @@ importers:
 
   lib/internal/packages/@pancreator/checkpointer-fs:
     dependencies:
-      '@pancreator/core':
-        specifier: workspace:*
-        version: link:../core
       '@langchain/core':
         specifier: ^0.3.0
         version: 0.3.80
@@ -188,6 +188,9 @@ importers:
       '@langchain/langgraph-checkpoint':
         specifier: 1.0.2
         version: 1.0.2(@langchain/core@0.3.80)
+      '@pancreator/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -210,6 +213,12 @@ importers:
 
   lib/internal/packages/@pancreator/cli:
     dependencies:
+      '@langchain/core':
+        specifier: ^0.3.0
+        version: 0.3.80
+      '@langchain/langgraph-checkpoint':
+        specifier: 1.0.2
+        version: 1.0.2(@langchain/core@0.3.80)
       '@pancreator/checkpointer-fs':
         specifier: workspace:*
         version: link:../checkpointer-fs
@@ -234,12 +243,6 @@ importers:
       '@pancreator/runner-cursor':
         specifier: workspace:*
         version: link:../runner-cursor
-      '@langchain/core':
-        specifier: ^0.3.0
-        version: 0.3.80
-      '@langchain/langgraph-checkpoint':
-        specifier: 1.0.2
-        version: 1.0.2(@langchain/core@0.3.80)
       commander:
         specifier: 'catalog:'
         version: 12.1.0
@@ -356,6 +359,9 @@ importers:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
         version: 0.17.4
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.17
       publint:
         specifier: 'catalog:'
         version: 0.2.12
@@ -443,6 +449,9 @@ importers:
 
   lib/internal/packages/@pancreator/mcp-server:
     dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
       '@pancreator/core':
         specifier: workspace:*
         version: link:../core
@@ -458,9 +467,6 @@ importers:
       '@pancreator/run-logger':
         specifier: workspace:*
         version: link:../run-logger
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.29.0
-        version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -564,9 +570,6 @@ importers:
 
   lib/internal/packages/@pancreator/pipeline:
     dependencies:
-      '@pancreator/core':
-        specifier: workspace:*
-        version: link:../core
       '@langchain/core':
         specifier: ^1.1.44
         version: 1.1.48(ws@8.21.0)
@@ -576,6 +579,9 @@ importers:
       '@langchain/langgraph-checkpoint':
         specifier: 1.0.2
         version: 1.0.2(@langchain/core@1.1.48(ws@8.21.0))
+      '@pancreator/core':
+        specifier: workspace:*
+        version: link:../core
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -660,6 +666,9 @@ importers:
       '@pancreator/core':
         specifier: workspace:*
         version: link:../core
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
     optionalDependencies:
       '@cursor/sdk-darwin-arm64':
         specifier: 1.0.13

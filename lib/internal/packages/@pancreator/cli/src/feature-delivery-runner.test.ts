@@ -1,21 +1,110 @@
 import { copyFile, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach, beforeEach } from "vitest";
 
 import {
   applySdkRetrySideEffects,
   invokeFeatureDeliveryEnteringStage,
   maybePauseForReportApproval,
   parseReportApprovalArtifact,
+  prepareStageInvocationIndexForSdkEntry,
+  resetStageInvocationIndex,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
 } from "./feature-delivery-runner.js";
 import type { FeatureDeliveryRunnerLedger } from "./feature-delivery-runner.js";
+import { advanceFeatureDelivery, type FeatureDeliveryState } from "./feature-delivery-run.js";
 import type { PipelineDefinition } from "@pancreator/pipeline";
 import type { CursorSdkTransport } from "@pancreator/runner-cursor";
 
 const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
+const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
+
+let hadAbbrevEnv = false;
+let prevAbbrevEnv: string | undefined;
+
+beforeEach(() => {
+  hadAbbrevEnv = Object.hasOwn(process.env, JSON_FORMAT_ABBREV_ENV);
+  prevAbbrevEnv = process.env[JSON_FORMAT_ABBREV_ENV];
+  process.env[JSON_FORMAT_ABBREV_ENV] = "7";
+});
+
+afterEach(() => {
+  if (hadAbbrevEnv) {
+    process.env[JSON_FORMAT_ABBREV_ENV] = prevAbbrevEnv;
+  } else {
+    delete process.env[JSON_FORMAT_ABBREV_ENV];
+  }
+});
+
+async function seedEscalationConfig(root: string): Promise<void> {
+  await copyFile(
+    path.join(CANONICAL_REPO_ROOT, "pancreator-model-escalation.yaml"),
+    path.join(root, "pancreator-model-escalation.yaml"),
+  );
+}
+
+async function seedSdkAdvanceRepo(root: string, runDirRel: string): Promise<void> {
+  await seedEscalationConfig(root);
+  await writeFile(
+    path.join(root, "pancreator.yaml"),
+    `project_root: "."
+runner:
+  cursor:
+    invocation: sdk
+`,
+    "utf8",
+  );
+  await mkdir(path.join(root, "lib", "pipelines"), { recursive: true });
+  await writeFile(
+    path.join(root, "lib", "pipelines", "feature-delivery.yaml"),
+    `id: feature-delivery
+version: "1"
+stages:
+  - id: intake
+    persona: intake-analyst
+  - id: plan
+    persona: tech-lead
+  - id: implement
+    persona: coder
+  - id: review
+    persona: reviewer
+  - id: test
+    persona: qa-tester
+  - id: report
+    persona: tech-writer
+  - id: ship
+    persona: supervisor
+  - id: index
+    persona: librarian
+`,
+    "utf8",
+  );
+  const personaDir = path.join(root, "lib", "personas");
+  await mkdir(personaDir, { recursive: true });
+  for (const persona of [
+    "intake-analyst",
+    "tech-lead",
+    "coder",
+    "reviewer",
+    "qa-tester",
+    "tech-writer",
+    "supervisor",
+    "librarian",
+  ] as const) {
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", `${persona}.md`),
+      path.join(personaDir, `${persona}.md`),
+    );
+  }
+  const runDir = path.join(root, runDirRel);
+  await mkdir(runDir, { recursive: true });
+  await writeFile(path.join(runDir, "handoff.md"), "# handoff\n", "utf8");
+  await writeFile(path.join(runDir, "next-prompt.md"), "# prompt\n", "utf8");
+  await writeFile(path.join(runDir, "touch-set.json"), "{}\n", "utf8");
+  await writeFile(path.join(runDir, "run.log.jsonl"), "", "utf8");
+}
 
 function sampleLedger(overrides: Partial<FeatureDeliveryRunnerLedger> = {}): FeatureDeliveryRunnerLedger {
   return {
@@ -72,6 +161,7 @@ describe("feature-delivery-runner automation", () => {
 
   it("invokeFeatureDeliveryEnteringStage invokes runner for the requested stage, not the pipeline entry", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-stage-slice-"));
+    await seedEscalationConfig(root);
     const personaDir = path.join(root, "lib", "personas");
     await mkdir(personaDir, { recursive: true });
     await copyFile(
@@ -169,6 +259,204 @@ describe("feature-delivery-runner automation", () => {
 
     const resolved = await resolveTestStageAdvanceEvent(root, state, "qa_fails", testRel);
     expect(resolved).toBe("qa_fails_plan_invalidating");
+  });
+
+  it("prepareStageInvocationIndexForSdkEntry increments on loopback and resets on new stage", () => {
+    const state = sampleLedger({
+      advanceHistory: [
+        {
+          atIso: "2026-05-10T12:00:00.000Z",
+          kind: "advance",
+          from: "review",
+          to: "implement",
+          event: "must_fix",
+          artifact: "work/demo/run/review.md",
+        },
+      ],
+    });
+    expect(prepareStageInvocationIndexForSdkEntry(state, "implement", "sdk")).toBe(1);
+    resetStageInvocationIndex(state);
+    expect(state.automation?.stageInvocationIndex).toBe(0);
+    state.advanceHistory = [
+      {
+        atIso: "2026-05-10T12:05:00.000Z",
+        kind: "advance",
+        from: "plan",
+        to: "implement",
+        event: "human_approval",
+        artifact: "work/demo/run/touch-set.json",
+      },
+    ];
+    expect(prepareStageInvocationIndexForSdkEntry(state, "implement", "sdk")).toBe(0);
+  });
+
+  it("invokeFeatureDeliveryEnteringStage uses escalated model on second loopback", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-escalate-loop-"));
+    await seedEscalationConfig(root);
+    await writeFile(
+      path.join(root, "pancreator-model-escalation.yaml"),
+      `active_config: default
+configs:
+  default:
+    personas:
+      coder:
+        default: composer-2.5[fast=false]
+        1: gpt-5.2-codex[reasoning=high,fast=false]
+`,
+      "utf8",
+    );
+    const personaDir = path.join(root, "lib", "personas");
+    await mkdir(personaDir, { recursive: true });
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "coder.md"),
+      path.join(personaDir, "coder.md"),
+    );
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "implement", persona: "coder" }],
+    };
+    const state = sampleLedger({
+      currentStage: "implement",
+      advanceHistory: [
+        {
+          atIso: "2026-05-10T12:00:00.000Z",
+          kind: "advance",
+          from: "review",
+          to: "implement",
+          event: "must_fix",
+          artifact: "work/demo/run/review.md",
+        },
+      ],
+      artifacts: {
+        runDir: "work/demo/run",
+        stateFile: "work/demo/run/state.json",
+        runLogFile: "work/demo/run/run.log.jsonl",
+        nextPromptFile: "work/demo/run/next-prompt.md",
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(
+      path.join(root, state.artifacts.stateFile),
+      `${JSON.stringify({ automation: state.automation }, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+
+    const captured: string[] = [];
+    const transport: CursorSdkTransport = async (params) => {
+      captured.push(params.modelOverride ?? params.persona.model);
+      const cwd = params.cwd ?? root;
+      const required =
+        params.requiredArtifactPaths ??
+        (params.artifactPath !== undefined ? [params.artifactPath] : []);
+      for (const rel of required) {
+        const abs = path.join(cwd, rel);
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(abs, "mock-artifact\n", "utf8");
+      }
+      return { status: "ok", resultText: "ok" };
+    };
+
+    prepareStageInvocationIndexForSdkEntry(state, "implement", "sdk");
+
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot: root,
+      state,
+      pipeline,
+      stageId: "implement",
+      testHooks: { sdkTransport: transport },
+    });
+
+    expect(captured).toEqual(["gpt-5.2-codex[reasoning=high,fast=false]"]);
+    const persisted = JSON.parse(
+      await readFile(path.join(root, state.artifacts.stateFile), "utf8"),
+    ) as { automation?: { stageInvocationIndex?: number } };
+    expect(persisted.automation?.stageInvocationIndex).toBe(1);
+  });
+
+  it("stageInvocationIndex resets to zero after successful implement advance", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-reset-success-"));
+    const runDirRel = "work/172996_05-10-26/38670_1315_demo-feature";
+    await seedSdkAdvanceRepo(root, runDirRel);
+    const stateFileRel = `${runDirRel}/state.json`;
+    const implementationReportRel = `${runDirRel}/implementation-report.md`;
+    await writeFile(path.join(root, implementationReportRel), "# Implementation report\n", "utf8");
+
+    const state: FeatureDeliveryState = {
+      schemaVersion: "1",
+      pipelineId: "feature-delivery",
+      taskId: "38670_1315_demo-feature",
+      featureId: "demo-feature",
+      status: "ready_for_stage_delegation",
+      currentStage: "implement",
+      createdAtIso: "2026-05-10T13:15:30.000Z",
+      source: { inboxEntry: "demo-feature.md", inboxPath: "lib/inbox/in/demo-feature.md" },
+      artifacts: {
+        runDir: runDirRel,
+        stateFile: stateFileRel,
+        handoffFile: `${runDirRel}/handoff.md`,
+        runLogFile: `${runDirRel}/run.log.jsonl`,
+        nextPromptFile: `${runDirRel}/next-prompt.md`,
+      },
+      stages: [
+        { id: "implement", persona: "coder", label: "Implement", status: "ready" },
+        { id: "review", persona: "reviewer", label: "Review", status: "pending" },
+      ],
+      transitions: [
+        {
+          from: "implement",
+          on: "implementation_complete",
+          to: "review",
+          humanAttention: "Reviewer receives only the handoff, touch-set, diff, and validation output.",
+        },
+      ],
+      nextHumanAction: "Complete implementation",
+      automation: {
+        runnerInvocation: "sdk",
+        cumulativeRetryCount: 0,
+        stageInvocationIndex: 1,
+      },
+      advanceHistory: [
+        {
+          atIso: "2026-05-10T14:00:00.000Z",
+          kind: "advance",
+          from: "review",
+          to: "implement",
+          event: "must_fix",
+          artifact: `${runDirRel}/review.md`,
+        },
+      ],
+    };
+    await writeFile(path.join(root, stateFileRel), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+
+    const transport: CursorSdkTransport = async (params) => {
+      const cwd = params.cwd ?? root;
+      const required =
+        params.requiredArtifactPaths ??
+        (params.artifactPath !== undefined ? [params.artifactPath] : []);
+      for (const rel of required) {
+        const abs = path.join(cwd, rel);
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(abs, "# Review\n\nPending human ratification.\n", "utf8");
+      }
+      return { status: "ok", resultText: "ok" };
+    };
+
+    await advanceFeatureDelivery({
+      repoRoot: root,
+      taskId: state.taskId,
+      artifact: implementationReportRel,
+      testHooks: { sdkTransport: transport },
+    });
+
+    const persisted = JSON.parse(await readFile(path.join(root, stateFileRel), "utf8")) as {
+      automation?: { stageInvocationIndex?: number };
+      currentStage?: string;
+    };
+    expect(persisted.currentStage).toBe("review");
+    expect(persisted.automation?.stageInvocationIndex).toBe(0);
   });
 
   it("parseReportApprovalArtifact reads approve and needs_changes decisions", () => {

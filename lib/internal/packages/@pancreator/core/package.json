@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
+    "@types/node": "^22.10.0",
     "publint": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:"

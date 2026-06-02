@@ -143,6 +143,12 @@ Rules:
   (max 5), retry-limit halt artifacts, and the report approval gate are defined
   in `OPERATION.md` and apply only under `sdk` mode.
 
+`runner.cursor.model_escalation.config` MAY name which entry under
+`pancreator-model-escalation.yaml` `configs` is active for SDK runs. When omitted,
+the file-level `active_config` scalar applies. `PAN_MODEL_ESCALATION_CONFIG` overrides
+both. Escalation applies only when `invocation` is `sdk`; see `OPERATION.md` § SDK mode
+for tier resolution, fallback order, and `run.log.jsonl` field names.
+
 ## Bootstrap tracking invariants
 
 The `bootstrap` block MUST keep three fields internally consistent:

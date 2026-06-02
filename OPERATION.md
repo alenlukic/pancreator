@@ -134,6 +134,37 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
    pnpm -w exec pan advance <task-id> --artifact lib/inbox/out/<day-bucket>/<approval-file>.md
    ```
 
+#### Model escalation tiers (SDK mode only)
+
+When `runner.cursor.invocation` is `sdk`, the runner reads the canonical config at
+`pancreator-model-escalation.yaml` in the repository root. Each config name under `configs`
+maps persona slugs to escalation tiers: a `default` model string plus optional integer tier
+keys whose values are full model strings (bracket qualifiers preserved).
+
+Active config precedence:
+
+1. `PAN_MODEL_ESCALATION_CONFIG` environment variable
+2. `runner.cursor.model_escalation.config` in `pancreator.yaml`
+3. `active_config` in `pancreator-model-escalation.yaml`
+
+`state.json` carries `automation.stageInvocationIndex` (default `0`). The index is written
+before each SDK invocation: `0` on first entry to a stage, incremented by `1` on `must_fix`
+or `qa_fails` loopbacks into the same stage, reset to `0` on cross-stage transitions and
+after successful stage completion. Tier resolution uses the greatest tier key ≤ the index,
+or `default` when no integer key applies.
+
+When the first SDK call for an invocation returns a **model issue**, `CursorRunner` walks
+this fallback order: lower keyed tiers (descending), `default`, higher keyed tiers
+(ascending), then `auto`. Non-model errors return immediately without fallback.
+
+Reset triggers: successful stage completion (before advancing), retry-limit halt, and first
+entry to a new stage.
+
+`run.log.jsonl` records escalation under the nested `escalation` key, including
+`active_config`, `persona_slug`, `stage_invocation_index`, `resolved_model`,
+`full_model_string`, and per-fallback fields `fallback_model`, `fallback_reason`, and
+`outcome` (`success` or `chain_exhausted`).
+
 ### Manual bootstrap workflow
 
 For non-runtime tasks:

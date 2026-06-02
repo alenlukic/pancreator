@@ -545,6 +545,23 @@ export async function runCreatePancreator(input: CreatePancreatorInput): Promise
   };
 }
 
+/** Reads `runner.cursor.model_escalation.config` from pancreator.yaml when present. */
+export async function readModelEscalationConfigName(repoRoot: string): Promise<string | undefined> {
+  const cfgPath = path.join(repoRoot, "pancreator.yaml");
+  if (!existsSync(cfgPath)) {
+    return undefined;
+  }
+  const raw = await readFile(cfgPath, "utf8");
+  const blockMatch = /runner:\s*\n(?:\s+.+\n)*?\s+cursor:\s*\n(?:\s+.+\n)*?\s+model_escalation:\s*\n(?:\s+.+\n)*?\s+config:\s*(\S+)/u.exec(
+    raw,
+  );
+  if (blockMatch?.[1] !== undefined) {
+    return blockMatch[1].replace(/^["']|["']$/gu, "");
+  }
+  const flatMatch = /runner\.cursor\.model_escalation\.config:\s*(\S+)/u.exec(raw);
+  return flatMatch?.[1]?.replace(/^["']|["']$/gu, "");
+}
+
 /** Reads `runner.cursor.invocation` from pancreator.yaml when present. */
 export async function readCursorInvocationMode(repoRoot: string): Promise<"manual" | "sdk"> {
   const cfgPath = path.join(repoRoot, "pancreator.yaml");

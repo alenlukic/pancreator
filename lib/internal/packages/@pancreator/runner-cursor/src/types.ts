@@ -60,9 +60,21 @@ export interface RunnerInvokeInput {
   stagePromptContent?: string;
   /** Pre-built run-log fragment (caller may omit for runner-generated span). */
   runLogFragment?: RunnerRunLogFragment;
+  /** Per-stage SDK invocation counter for model escalation tiers. */
+  stageInvocationIndex?: number;
+  /** Absolute path to run.log.jsonl for escalation observability records. */
+  runLogPath?: string;
 }
 
 export const RUNNER_INVOCATION_SCHEMA_VERSION = "1" as const;
+
+export interface RunnerEscalationResolved {
+  active_config: string;
+  persona_slug: string;
+  stage_invocation_index: number;
+  resolved_model: string;
+  full_model_string: string;
+}
 
 export interface RunnerResolvedInvocation {
   model: string;
@@ -74,6 +86,7 @@ export interface RunnerResolvedInvocation {
   stagePromptPath?: string;
   artifactPath?: string;
   ledger?: RunnerLedgerContext;
+  escalation?: RunnerEscalationResolved;
 }
 
 /**
@@ -98,15 +111,29 @@ export interface RunnerInvocationEnvelope {
   };
 }
 
+export type EscalationLogSeverity = "INFO" | "WARN" | "ERROR";
+
+export interface EscalationLogInput {
+  runLogPath: string;
+  severity: EscalationLogSeverity;
+  escalation: Record<string, unknown>;
+  ledger?: RunnerLedgerContext;
+  warnMessage?: string;
+}
+
 export interface CursorRunnerOptions {
   /** Default `manual`; SDK path requires explicit flag or config. */
   invocation?: RunnerInvocationMode;
+  /** Repository root for escalation config loading. */
+  repoRoot?: string;
   /** Repo root or workspace cwd for local SDK runs. */
   cwd?: string;
   /** Overrides `CURSOR_API_KEY` for SDK transport. */
   apiKey?: string;
   /** Injectable SDK transport (defaults to `Agent.prompt`). */
   sdkTransport?: import("./sdk-transport.js").CursorSdkTransport;
+  /** Caller-owned run-log append hook; runner-cursor does not import `@pancreator/run-logger`. */
+  appendEscalationLog?: (input: EscalationLogInput) => Promise<void>;
 }
 
 export interface Runner {
