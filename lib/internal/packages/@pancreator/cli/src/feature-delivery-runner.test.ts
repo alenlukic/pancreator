@@ -476,7 +476,7 @@ configs:
         runnerInvocation: "sdk",
         cumulativeRetryCount: 1,
         stageInvocationIndex: 0,
-        stageInvocationIndexByStage: { implement: 2, review: 1 },
+        stageInvocationIndexByStage: { implement: 2, review: 2 },
       },
     });
     const runDir = path.join(root, state.artifacts.runDir);
@@ -514,7 +514,9 @@ configs:
       testHooks: { sdkTransport: transport },
     });
 
-    expect(captured).toEqual(["gpt-5.4[context=272k,reasoning=extra-high,fast=false]"]);
+    expect(captured).toEqual([
+      "claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]",
+    ]);
   });
 
   it("preserves per-stage counts after successful implement advance to review", async () => {

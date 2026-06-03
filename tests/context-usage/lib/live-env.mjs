@@ -9,7 +9,9 @@ const INSTRUCTION = `
 
 Provide credentials, then re-run:
   pnpm run context:usage          # single run vs baseline
-  pnpm run context:usage:baseline # establish baseline (5 samples)
+  pnpm run context:usage:baseline # regenerate deterministic bounded baseline
+  pnpm run context:usage:calibrate # collect empirical overhead samples (manual spend)
+  pnpm run context:usage:calibrate:summary # derive overhead envelopes from samples
 
 The harness loads repo-root .env when CURSOR_API_KEY is unset (existing shell env wins).
 pnpm run context:usage* also sets CURSOR_CONTEXT_USAGE=1 for that process.
@@ -71,7 +73,7 @@ function ensureLiveUsageGate() {
     return;
   }
   const lifecycle = process.env.npm_lifecycle_event ?? "";
-  if (lifecycle === "context:usage" || lifecycle === "context:usage:baseline") {
+  if (lifecycle.startsWith("context:usage")) {
     process.env.CURSOR_CONTEXT_USAGE = "1";
   }
 }
