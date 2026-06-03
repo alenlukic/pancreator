@@ -41,6 +41,7 @@ const FEATURE_DELIVERY_PERSONAS = [
   "reviewer",
   "qa-tester",
   "tech-writer",
+  "compliance-auditor",
   "supervisor",
   "librarian",
   "pancreator-engineer",
@@ -70,6 +71,41 @@ runner:
 }
 
 function mockSdkTransport(onInvoke?: () => void): CursorSdkTransport {
+  const mockArtifactBody = (rel: string): string => {
+    const base = path.posix.basename(rel);
+    if (base === "plan.md") return "# Plan\n\n## Scope\n\nBody.\n";
+    if (base === "implementation-report.md") return "# Implementation report\n\n## Summary\n\nBody.\n";
+    if (base === "review.md") return "review_passes: true\n";
+    if (base === "test-report.md") return "qa_passes: true\n";
+    if (base === "compliance-result.json") {
+      return `${JSON.stringify(
+        {
+          compliance_passes: true,
+          final_gate: {
+            "pnpm lint": 0,
+            "pnpm typecheck": 0,
+            "pnpm test": 0,
+            "node --test tests/*.test.mjs": 0,
+          },
+        },
+        null,
+        2,
+      )}\n`;
+    }
+    if (base === "policy-compliance.json") {
+      return `${JSON.stringify(
+        {
+          task_id: "mock-task",
+          governing_sources_checked: ["AGENTS.md"],
+          documentation_impact: { status: "none" },
+          policy_alignment: { status: "aligned" },
+        },
+        null,
+        2,
+      )}\n`;
+    }
+    return "mock-artifact\n";
+  };
   return async (params) => {
     onInvoke?.();
     const cwd = params.cwd ?? process.cwd();
@@ -82,7 +118,7 @@ function mockSdkTransport(onInvoke?: () => void): CursorSdkTransport {
         continue;
       }
       await mkdir(path.dirname(abs), { recursive: true });
-      await writeFile(abs, "mock-artifact\n", "utf8");
+      await writeFile(abs, mockArtifactBody(rel), "utf8");
     }
     return { status: "ok", resultText: "mocked-sdk" };
   };
@@ -132,6 +168,8 @@ stages:
     persona: qa-tester
   - id: report
     persona: tech-writer
+  - id: compliance
+    persona: compliance-auditor
   - id: ship
     persona: supervisor
   - id: index
@@ -190,7 +228,41 @@ async function completeFeatureDeliveryRunForClose(
     repoRoot: root,
     writeOut: () => undefined,
   });
-  await writeFile(path.join(activeRunDir, "policy-compliance.json"), "{}\n", "utf8");
+  await writeFile(
+    path.join(activeRunDir, "compliance-result.json"),
+    `${JSON.stringify(
+      {
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 0,
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
+    repoRoot: root,
+    writeOut: () => undefined,
+  });
+  await writeFile(
+    path.join(activeRunDir, "policy-compliance.json"),
+    `${JSON.stringify(
+      {
+        task_id: taskId,
+        governing_sources_checked: ["AGENTS.md"],
+        documentation_impact: { status: "none" },
+        policy_alignment: { status: "aligned" },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
   await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/policy-compliance.json`], {
     repoRoot: root,
     writeOut: () => undefined,
@@ -1143,8 +1215,42 @@ describe("parseAndRun", () => {
       repoRoot: root,
       writeOut: () => undefined,
     });
+    await writeFile(
+      path.join(runDir, "compliance-result.json"),
+      `${JSON.stringify(
+        {
+          compliance_passes: true,
+          final_gate: {
+            "pnpm lint": 0,
+            "pnpm typecheck": 0,
+            "pnpm test": 0,
+            "node --test tests/*.test.mjs": 0,
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/compliance-result.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
 
-    await writeFile(path.join(runDir, "policy-compliance.json"), "{}\n", "utf8");
+    await writeFile(
+      path.join(runDir, "policy-compliance.json"),
+      `${JSON.stringify(
+        {
+          task_id: start.taskId,
+          governing_sources_checked: ["AGENTS.md"],
+          documentation_impact: { status: "none" },
+          policy_alignment: { status: "aligned" },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
     await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/policy-compliance.json`], {
       repoRoot: root,
       writeOut: () => undefined,
@@ -1215,7 +1321,41 @@ describe("parseAndRun", () => {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(activeRunDir, "policy-compliance.json"), "{}\n", "utf8");
+    await writeFile(
+      path.join(activeRunDir, "compliance-result.json"),
+      `${JSON.stringify(
+        {
+          compliance_passes: true,
+          final_gate: {
+            "pnpm lint": 0,
+            "pnpm typecheck": 0,
+            "pnpm test": 0,
+            "node --test tests/*.test.mjs": 0,
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(
+      path.join(activeRunDir, "policy-compliance.json"),
+      `${JSON.stringify(
+        {
+          task_id: start.taskId,
+          governing_sources_checked: ["AGENTS.md"],
+          documentation_impact: { status: "none" },
+          policy_alignment: { status: "aligned" },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
     await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/policy-compliance.json`], {
       repoRoot: root,
       writeOut: () => undefined,
@@ -1372,6 +1512,101 @@ describe("parseAndRun", () => {
     expect(code).toBe(1);
     const payload = JSON.parse(advanceOut.join("")) as { message: string };
     expect(payload.message).toContain("js-literal-citation");
+  });
+
+  it("routes report to compliance and blocks malformed ship policy artifact", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-report-to-compliance-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; currentStage: string };
+    const runDirRel = `work/172996_05-10-26/${start.taskId}`;
+    const runDir = path.join(root, runDirRel);
+
+    const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Spec", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await seedPlanStageAdvanceArtifacts(root, runDirRel);
+    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(runDir, "implementation-report.md"), "# Impl", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(runDir, "test-report.md"), "qa_passes: true", "utf8");
+    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/test-report.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
+    await writeFile(report, "# Delivery\n\nAll good.\n", "utf8");
+    const reportAdvanceOut: string[] = [];
+    const reportCode = await parseAndRun(
+      ["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"],
+      { repoRoot: root, writeOut: (c) => reportAdvanceOut.push(c) },
+    );
+    expect(reportCode).toBe(0);
+    const reportAdvance = JSON.parse(reportAdvanceOut.join("")) as {
+      currentStage: string;
+      nextPersona: string | null;
+    };
+    expect(reportAdvance.currentStage).toBe("compliance");
+    expect(reportAdvance.nextPersona).toBe("compliance-auditor");
+
+    await writeFile(
+      path.join(runDir, "compliance-result.json"),
+      `${JSON.stringify(
+        {
+          compliance_passes: true,
+          final_gate: {
+            "pnpm lint": 0,
+            "pnpm typecheck": 0,
+            "pnpm test": 0,
+            "node --test tests/*.test.mjs": 0,
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    const complianceAdvanceOut: string[] = [];
+    const complianceCode = await parseAndRun(
+      ["advance", start.taskId, "--artifact", `${runDirRel}/compliance-result.json`],
+      { repoRoot: root, writeOut: (c) => complianceAdvanceOut.push(c) },
+    );
+    expect(complianceCode).toBe(0);
+    const complianceAdvance = JSON.parse(complianceAdvanceOut.join("")) as { currentStage: string };
+    expect(complianceAdvance.currentStage).toBe("ship");
+
+    await writeFile(path.join(runDir, "policy-compliance.json"), "{}\n", "utf8");
+    const shipAdvanceOut: string[] = [];
+    const shipCode = await parseAndRun(
+      ["advance", start.taskId, "--artifact", `${runDirRel}/policy-compliance.json`],
+      { repoRoot: root, writeOut: (c) => shipAdvanceOut.push(c), writeErr: () => undefined },
+    );
+    expect(shipCode).toBe(1);
+    const shipFailure = JSON.parse(shipAdvanceOut.join("")) as { message: string };
+    expect(shipFailure.message).toContain("Cannot advance ship");
+    expect(shipFailure.message).toContain("policy_compliance_missing_key");
   });
 
   it("close-artifacts finalizes a prematurely archived run idempotently", async () => {
@@ -2256,7 +2491,11 @@ stages:
         "qa_passes: true\n",
         "utf8",
       );
-      await writeFile(path.join(root, runDirRel, "implementation-report.md"), "# Impl\n", "utf8");
+      await writeFile(
+        path.join(root, runDirRel, "implementation-report.md"),
+        "# Implementation report\n\n## Summary\n\nBody.\n",
+        "utf8",
+      );
       const advanceOut: string[] = [];
       const advanceCode = await parseAndRun(
         ["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`],
@@ -2297,7 +2536,11 @@ stages:
         "review_passes: false\n",
         "utf8",
       );
-      await writeFile(path.join(root, runDirRel, "implementation-report.md"), "# Impl\n", "utf8");
+      await writeFile(
+        path.join(root, runDirRel, "implementation-report.md"),
+        "# Implementation report\n\n## Summary\n\nBody.\n",
+        "utf8",
+      );
       const advanceOut: string[] = [];
       const advanceCode = await parseAndRun(
         ["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`],

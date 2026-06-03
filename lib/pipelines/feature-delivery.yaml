@@ -58,6 +58,9 @@ stages:
   - id: report
     persona: tech-writer
     label: Author the delivery report
+  - id: compliance
+    persona: compliance-auditor
+    label: Audit touch-set compliance and run final validation bundle
   - id: ship
     persona: supervisor
     label: Stage the PR (no auto-push, Q3)

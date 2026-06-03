@@ -79,10 +79,12 @@ Use this loop exactly:
    `pnpm -w exec pan close-artifacts <task-id>` once after final validation.
 
 `advance` runs after every accepted non-terminal stage: `intake`, `plan`,
-`implement`, `review`, `test`, `report`, `ship`, and `index`. Review has two
+`implement`, `review`, `test`, `report`, `compliance`, `ship`, and `index`. Review has two
 branches: passing review advances to `test`; must-fix review uses `--event must_fix`
 and returns to `implement`. Test has two branches: passing test advances to `report`;
-qa-fail uses `--event qa_fails` and returns to `implement`. Do not run `advance`
+qa-fail uses `--event qa_fails` and returns to `implement`. Compliance has two
+primary branches: passing compliance advances to `ship`; major compliance failures
+use `--event compliance_fails` and return to `implement`. Do not run `advance`
 after the final `complete` state.
 
 ### Post-invocation state machine
@@ -99,6 +101,7 @@ with `currentStage: intake`.
 | `review` | `reviewer` | `review_passes` or `must_fix` | Pass (→ test) or return to implement |
 | `test` | `qa-tester` | `qa_passes` or `qa_fails` | Pass (→ report) or return to implement |
 | `report` | `tech-writer` | `report_ready` | Accept delivery report |
+| `compliance` | `compliance-auditor` | `compliance_passes` or `compliance_fails` | Pass (→ ship) or return to implement |
 | `ship` | `supervisor` | `human_ratifies_local_diff` | Ratify local diff |
 | `index` | `librarian` | `artifacts_indexed` | Accept feature index |
 | `complete` | `librarian` | `artifacts_closed` via close-artifacts | Validate closure |
@@ -126,8 +129,8 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
    `transitionEvent` (for example `human_approval`, `review_passes`). Set
    `PAN_FD_PROGRESS=text` or `PAN_FD_PROGRESS=ndjson` to override auto-detection.
    Final command envelopes still print to stdout only.
-4. After `review` or `test` artifacts exist, SDK mode MAY auto-advance when
-   `review_passes` / `qa_passes` or route on `must_fix` / `qa_fails` without a
+4. After `review`, `test`, or `compliance` artifacts exist, SDK mode MAY auto-advance when
+   `review_passes` / `qa_passes` / `compliance_passes` or route on `must_fix` / `qa_fails` / `compliance_fails` without a
    separate operator `advance` for that branch.
 5. When cumulative `must_fix` and `qa_fails` retries exceed 5, the run halts with
    `status: halted` and one timestamp-prefixed file under
@@ -190,18 +193,20 @@ Active config precedence:
 2. `runner.cursor.model_escalation.config` in `pancreator.yaml`
 3. `active_config` in `pancreator-model-escalation.yaml`
 
-`state.json` carries `automation.stageInvocationIndex` (default `0`). The index is written
-before each SDK invocation: `0` on first entry to a stage, incremented by `1` on `must_fix`
-or `qa_fails` loopbacks into the same stage, reset to `0` on cross-stage transitions and
-after successful stage completion. Tier resolution uses the greatest tier key ≤ the index,
-or `default` when no integer key applies.
+`state.json` carries `automation.stageInvocationIndexByStage` (per-stage visit counts) and
+mirrors the current stage index in `automation.stageInvocationIndex` before each SDK call.
+The tier index is `0` on the first SDK entry to a stage, `1` on the second entry to that
+same stage (for example a second `review` pass after a `must_fix` cycle), and so on.
+Counts are independent per stage id and are not cleared when the pipeline advances to a
+different stage. Tier resolution uses the greatest tier key ≤ the index, or `default` when
+no integer key applies.
 
 When the first SDK call for an invocation returns a **model issue**, `CursorRunner` walks
 this fallback order: lower keyed tiers (descending), `default`, higher keyed tiers
 (ascending), then `auto`. Non-model errors return immediately without fallback.
 
-Reset triggers: successful stage completion (before advancing), retry-limit halt, and first
-entry to a new stage.
+Reset triggers: retry-limit halt clears all per-stage counts; successful stage completion
+does not reset other stages' counts.
 
 `run.log.jsonl` records escalation under the nested `escalation` key, including
 `active_config`, `persona_slug`, `stage_invocation_index`, `resolved_model`,
@@ -265,6 +270,8 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 | `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/test-report.md` |
 | `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
 | `report` | `tech-writer` | `lib/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/delivery-report.md` |
+| `compliance` (pass) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/compliance-result.json` |
+| `compliance` (major fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails --artifact <runDir>/compliance-result.json` |
 | `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/policy-compliance.json` |
 | `index` | `librarian` | `lib/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/index.json` |
 | `complete` | `librarian` | policy-compliance + index | `pnpm -w exec pan close-artifacts <task-id>` |

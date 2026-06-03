@@ -46,6 +46,7 @@ const STAGE_IDS = [
   "review",
   "test",
   "report",
+  "compliance",
   "ship",
   "index",
 ] as const;
@@ -57,6 +58,13 @@ const POLICY_COMPLIANCE_REQUIRED_KEYS = [
   "governing_sources_checked",
   "documentation_impact",
   "policy_alignment",
+] as const;
+
+export const COMPLIANCE_STAGE_EXIT_COMMANDS = [
+  "pnpm lint",
+  "pnpm typecheck",
+  "pnpm test",
+  "node --test tests/*.test.mjs",
 ] as const;
 
 export function isFeatureDeliveryStageId(stage: string): stage is FeatureDeliveryStageId {
@@ -71,15 +79,150 @@ export function parseReviewPassesVerdict(reviewMarkdown: string): boolean | null
   return match[1].toLowerCase() === "true";
 }
 
+export function parseReviewGateOutcome(reviewMarkdown: string): {
+  passes: boolean | null;
+  coreReentryRequired: boolean;
+  spotFixable: boolean;
+  excludedFromGate: boolean;
+} {
+  return {
+    passes: parseReviewPassesVerdict(reviewMarkdown),
+    coreReentryRequired: /core_reentry_required:\s*true/iu.test(reviewMarkdown),
+    spotFixable: /spot_fixable:\s*true/iu.test(reviewMarkdown),
+    excludedFromGate: /excluded_from_gate:\s*true/iu.test(reviewMarkdown),
+  };
+}
+
 export function parseQaVerdict(testMarkdown: string): {
   passes: boolean | null;
   planInvalidating: boolean;
+  coreReentryRequired: boolean;
+  spotFixable: boolean;
+  excludedFromGate: boolean;
 } {
   const passMatch = testMarkdown.match(/qa_passes:\s*(true|false)/iu);
   const planMatch = testMarkdown.match(/plan_invalidating:\s*(true|false)/iu);
   return {
     passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
     planInvalidating: planMatch !== null && planMatch[1].toLowerCase() === "true",
+    coreReentryRequired: /core_reentry_required:\s*true/iu.test(testMarkdown),
+    spotFixable: /spot_fixable:\s*true/iu.test(testMarkdown),
+    excludedFromGate: /excluded_from_gate:\s*true/iu.test(testMarkdown),
+  };
+}
+
+function readBool(record: Record<string, unknown>, key: string): boolean | null {
+  const value = record[key];
+  return typeof value === "boolean" ? value : null;
+}
+
+function parseFinalGateExitCodes(
+  value: unknown,
+): {
+  observed: boolean;
+  exitCodes: Map<string, number | null>;
+} {
+  const exitCodes = new Map<string, number | null>();
+  if (value === null || value === undefined) {
+    return { observed: false, exitCodes };
+  }
+  if (Array.isArray(value)) {
+    for (const row of value) {
+      if (row === null || typeof row !== "object" || Array.isArray(row)) {
+        continue;
+      }
+      const item = row as Record<string, unknown>;
+      const command = item.command;
+      if (typeof command !== "string" || command.trim().length === 0) {
+        continue;
+      }
+      const exitCode = item.exitCode;
+      exitCodes.set(command, typeof exitCode === "number" ? exitCode : null);
+    }
+    return { observed: exitCodes.size > 0, exitCodes };
+  }
+  if (typeof value !== "object") {
+    return { observed: false, exitCodes };
+  }
+  const record = value as Record<string, unknown>;
+  for (const command of COMPLIANCE_STAGE_EXIT_COMMANDS) {
+    const item = record[command];
+    if (typeof item === "number") {
+      exitCodes.set(command, item);
+      continue;
+    }
+    if (item !== null && typeof item === "object" && !Array.isArray(item)) {
+      const exitCode = (item as Record<string, unknown>).exitCode;
+      exitCodes.set(command, typeof exitCode === "number" ? exitCode : null);
+    }
+  }
+  return { observed: exitCodes.size > 0, exitCodes };
+}
+
+function parseComplianceVerdictFromRecord(record: Record<string, unknown>): {
+  passes: boolean | null;
+  planInvalidating: boolean;
+  coreReentryRequired: boolean;
+  spotFixable: boolean;
+  excludedFromGate: boolean;
+  finalGateObserved: boolean;
+  missingFinalGateCommands: string[];
+  failingFinalGateCommands: string[];
+} {
+  let passes = readBool(record, "compliance_passes");
+  const status = record.status;
+  if (passes === null && typeof status === "string") {
+    if (status === "pass") passes = true;
+    if (status === "fail") passes = false;
+  }
+  const finalGate = parseFinalGateExitCodes(record.final_gate);
+  const missingFinalGateCommands = COMPLIANCE_STAGE_EXIT_COMMANDS.filter(
+    (command) => !finalGate.exitCodes.has(command),
+  );
+  const failingFinalGateCommands = COMPLIANCE_STAGE_EXIT_COMMANDS.filter((command) => {
+    const exitCode = finalGate.exitCodes.get(command);
+    return typeof exitCode === "number" && exitCode !== 0;
+  });
+  return {
+    passes,
+    planInvalidating: readBool(record, "plan_invalidating") ?? false,
+    coreReentryRequired: readBool(record, "core_reentry_required") ?? false,
+    spotFixable: readBool(record, "spot_fixable") ?? false,
+    excludedFromGate: readBool(record, "excluded_from_gate") ?? false,
+    finalGateObserved: finalGate.observed,
+    missingFinalGateCommands,
+    failingFinalGateCommands,
+  };
+}
+
+export function parseComplianceVerdict(complianceContent: string): {
+  passes: boolean | null;
+  planInvalidating: boolean;
+  coreReentryRequired: boolean;
+  spotFixable: boolean;
+  excludedFromGate: boolean;
+  finalGateObserved: boolean;
+  missingFinalGateCommands: string[];
+  failingFinalGateCommands: string[];
+} {
+  try {
+    const parsed = JSON.parse(complianceContent) as unknown;
+    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parseComplianceVerdictFromRecord(parsed as Record<string, unknown>);
+    }
+  } catch {
+    // markdown fallback below
+  }
+  const passMatch = complianceContent.match(/compliance_passes:\s*(true|false)/iu);
+  return {
+    passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
+    planInvalidating: /plan_invalidating:\s*true/iu.test(complianceContent),
+    coreReentryRequired: /core_reentry_required:\s*true/iu.test(complianceContent),
+    spotFixable: /spot_fixable:\s*true/iu.test(complianceContent),
+    excludedFromGate: /excluded_from_gate:\s*true/iu.test(complianceContent),
+    finalGateObserved: false,
+    missingFinalGateCommands: [...COMPLIANCE_STAGE_EXIT_COMMANDS],
+    failingFinalGateCommands: [],
   };
 }
 
@@ -172,6 +315,25 @@ function validateArtifactContent(
     return null;
   }
 
+  if (base === "compliance-result.json") {
+    const verdict = parseComplianceVerdict(content);
+    if (verdict.passes === null) {
+      return {
+        path: rel,
+        code: "compliance_passes_unparseable",
+        message: "compliance-result.json must include compliance_passes: true or compliance_passes: false",
+      };
+    }
+    if (!verdict.finalGateObserved) {
+      return {
+        path: rel,
+        code: "compliance_final_gate_missing",
+        message: "compliance-result.json must include final_gate results for the compliance exit bundle",
+      };
+    }
+    return null;
+  }
+
   if (base === "plan.md" || base === "implementation-report.md") {
     return validateMarkdownBody(rel, content);
   }
@@ -217,8 +379,8 @@ export function stageArtifactContract(
     }
     case "review": {
       const review = path.posix.join(run, "review.md");
-      if (event !== "review_passes" && event !== "must_fix") {
-        throw new Error(`Review stage only supports review_passes or must_fix, got ${event}.`);
+      if (event !== "review_passes" && event !== "must_fix" && event !== "review_spot_fix") {
+        throw new Error(`Review stage only supports review_passes, must_fix, or review_spot_fix, got ${event}.`);
       }
       return {
         primaryArtifact: review,
@@ -228,9 +390,14 @@ export function stageArtifactContract(
     }
     case "test": {
       const testReport = path.posix.join(run, "test-report.md");
-      if (event !== "qa_passes" && event !== "qa_fails" && event !== "qa_fails_plan_invalidating") {
+      if (
+        event !== "qa_passes" &&
+        event !== "qa_fails" &&
+        event !== "qa_fails_plan_invalidating" &&
+        event !== "qa_spot_fix"
+      ) {
         throw new Error(
-          `Test stage only supports qa_passes, qa_fails, or qa_fails_plan_invalidating, got ${event}.`,
+          `Test stage only supports qa_passes, qa_fails, qa_fails_plan_invalidating, or qa_spot_fix, got ${event}.`,
         );
       }
       return {
@@ -251,6 +418,25 @@ export function stageArtifactContract(
         primaryArtifact: deliveryReport,
         requiredAfterStageWork: [deliveryReport],
         acceptedAdvanceArtifacts: [deliveryReport],
+      };
+    }
+    case "compliance": {
+      const complianceResult = path.posix.join(run, "compliance-result.json");
+      if (
+        event !== "compliance_passes" &&
+        event !== "compliance_fails" &&
+        event !== "compliance_fails_plan_invalidating" &&
+        event !== "compliance_spot_fix"
+      ) {
+        throw new Error(
+          "Compliance stage only supports compliance_passes, compliance_fails, " +
+            `compliance_fails_plan_invalidating, or compliance_spot_fix, got ${event}.`,
+        );
+      }
+      return {
+        primaryArtifact: complianceResult,
+        requiredAfterStageWork: [complianceResult],
+        acceptedAdvanceArtifacts: [complianceResult],
       };
     }
     case "ship": {
@@ -293,6 +479,7 @@ const CONTENT_VALIDATED_BASENAMES = new Set([
   "implementation-report.md",
   "review.md",
   "test-report.md",
+  "compliance-result.json",
   "policy-compliance.json",
 ]);
 
@@ -361,6 +548,8 @@ function defaultAdvanceEventForStage(stage: string): string {
       return "qa_passes";
     case "report":
       return "report_ready";
+    case "compliance":
+      return "compliance_passes";
     case "ship":
       return "human_ratifies_local_diff";
     case "index":
