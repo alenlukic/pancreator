@@ -25,14 +25,17 @@ import {
 } from "./feature-delivery-sdk-progress.js";
 import { readCursorInvocationMode, readStageRemediationEnabled } from "./pan-init.js";
 import {
+  type ArtifactContentWarning,
+  parseComplianceVerdict,
   parseQaVerdict,
+  parseReviewGateOutcome,
   parseReviewPassesVerdict,
   primaryArtifactForEnteringStage,
   requiredArtifactsAfterStageWork,
   validateStageCompletionArtifacts,
 } from "./feature-delivery-stage-artifacts.js";
 
-export { parseQaVerdict, parseReviewPassesVerdict };
+export { parseComplianceVerdict, parseQaVerdict, parseReviewGateOutcome, parseReviewPassesVerdict };
 import { listKnownPersonaIds, PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 import { configureCursorSdkTransportPrereqs, loadRepoEnv } from "./repo-env.js";
 
@@ -63,8 +66,26 @@ export interface FeatureDeliveryAutomationState {
 
 export const STAGE_REMEDIATION_PERSONA = "pancreator-engineer" as const;
 export const MAX_STAGE_REMEDIATION_ATTEMPTS = 2;
-/** Cumulative `must_fix` / `qa_fails` loopbacks allowed before SDK auto-advance halts. */
+/** Cumulative core rollback loopbacks allowed before SDK auto-advance halts. */
 export const FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET = 5;
+
+const WARNING_REMEDIATION_STAGES = new Set(["review", "test", "compliance", "ship"]);
+const BLOCKING_WARNING_CODES_BY_STAGE: Record<string, Set<string>> = {
+  compliance: new Set(["compliance_passes_unparseable", "compliance_final_gate_missing"]),
+  ship: new Set(["policy_compliance_missing_key", "policy_compliance_invalid_json"]),
+};
+
+function shouldRemediateWarnings(stageId: string, warnings: readonly ArtifactContentWarning[]): boolean {
+  return warnings.length > 0 && WARNING_REMEDIATION_STAGES.has(stageId);
+}
+
+function hasBlockingWarnings(stageId: string, warnings: readonly ArtifactContentWarning[]): boolean {
+  const blockingCodes = BLOCKING_WARNING_CODES_BY_STAGE[stageId];
+  if (blockingCodes === undefined || warnings.length === 0) {
+    return false;
+  }
+  return warnings.some((warning) => blockingCodes.has(warning.code));
+}
 
 /** Minimal ledger slice shared by runner orchestration without importing feature-delivery-run. */
 export interface FeatureDeliveryRunnerLedger {
@@ -347,7 +368,12 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const remediationEnabled = await readStageRemediationEnabled(repoRoot, {
     ledgerInvocation: input.state.automation?.runnerInvocation,
   });
-  if ((!validation.ok || envelope.sdkResult?.status === "error") && remediationEnabled) {
+  if (
+    (!validation.ok ||
+      shouldRemediateWarnings(input.stageId, validation.warnings) ||
+      envelope.sdkResult?.status === "error") &&
+    remediationEnabled
+  ) {
     validation = await remediateStageArtifacts({
       repoRoot,
       state: input.state,
@@ -358,10 +384,11 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
       requiredArtifactPaths,
       primaryArtifactPath: artifactPath,
       missing: validation.missing,
+      warnings: validation.warnings,
       runner,
       now,
     });
-    if (validation.ok) {
+    if (validation.ok && !hasBlockingWarnings(input.stageId, validation.warnings)) {
       envelope = {
         ...envelope,
         sdkResult: {
@@ -378,6 +405,12 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
       envelope.sdkResult?.errorMessage ??
       `Stage ${input.stageId} incomplete after ${MAX_STAGE_REMEDIATION_ATTEMPTS} remediation attempt(s): ${validation.missing.join(", ")}`;
     throw new RunnerTransportError(message);
+  }
+  if (hasBlockingWarnings(input.stageId, validation.warnings)) {
+    const warningSummary = validation.warnings.map((warning) => `${warning.path} (${warning.code})`).join(", ");
+    throw new RunnerTransportError(
+      `Stage ${input.stageId} has blocking validation warnings after remediation: ${warningSummary}`,
+    );
   }
 
   if (envelope.sdkResult?.status === "error") {
@@ -429,14 +462,18 @@ async function remediateStageArtifacts(input: {
   requiredArtifactPaths: readonly string[];
   primaryArtifactPath: string;
   missing: string[];
+  warnings: ArtifactContentWarning[];
   runner: CursorRunner;
   now: Date;
 }): Promise<ReturnType<typeof validateStageCompletionArtifacts>> {
   let missing = input.missing;
-  if (missing.length === 0) {
-    missing = validateStageCompletionArtifacts(input.repoRoot, input.state, input.stageId).missing;
+  let warnings = input.warnings;
+  if (missing.length === 0 && warnings.length === 0) {
+    const validation = validateStageCompletionArtifacts(input.repoRoot, input.state, input.stageId);
+    missing = validation.missing;
+    warnings = validation.warnings;
   }
-  if (missing.length === 0) {
+  if (missing.length === 0 && warnings.length === 0) {
     return {
       ok: true,
       missing: [],
@@ -454,7 +491,7 @@ async function remediateStageArtifacts(input: {
     automation.lastRemediationStage = input.stageId;
     input.state.status = "ready_for_stage_delegation";
     input.state.nextHumanAction =
-      `${STAGE_REMEDIATION_PERSONA} remediating missing ${input.stageId} artifacts (attempt ${attempt}/${MAX_STAGE_REMEDIATION_ATTEMPTS}).`;
+      `${STAGE_REMEDIATION_PERSONA} remediating ${input.stageId} stage artifacts (attempt ${attempt}/${MAX_STAGE_REMEDIATION_ATTEMPTS}).`;
 
     const remediationPromptRel = path.posix.join(
       input.state.artifacts.runDir,
@@ -466,6 +503,7 @@ async function remediateStageArtifacts(input: {
       stageId: input.stageId,
       stagePersona: input.stagePersona,
       missing,
+      warnings,
       stagePromptPath: input.stagePromptPath,
       requiredArtifactPaths: input.requiredArtifactPaths,
     });
@@ -510,11 +548,16 @@ async function remediateStageArtifacts(input: {
 
     const validation = validateStageCompletionArtifacts(input.repoRoot, input.state, input.stageId);
     if (validation.ok) {
+      if (shouldRemediateWarnings(input.stageId, validation.warnings)) {
+        warnings = validation.warnings;
+        continue;
+      }
       input.state.nextHumanAction =
         `${STAGE_REMEDIATION_PERSONA} restored ${input.stageId} artifacts; pipeline may advance when artifacts are ratified.`;
       return validation;
     }
     missing = validation.missing;
+    warnings = validation.warnings;
   }
 
   return validateStageCompletionArtifacts(input.repoRoot, input.state, input.stageId);
@@ -526,6 +569,7 @@ function renderStageRemediationPrompt(input: {
   stageId: string;
   stagePersona: string;
   missing: string[];
+  warnings: ArtifactContentWarning[];
   stagePromptPath: string;
   requiredArtifactPaths: readonly string[];
 }): string {
@@ -538,7 +582,13 @@ function renderStageRemediationPrompt(input: {
     "",
     "## Missing artifacts",
     "",
-    ...input.missing.map((artifact) => `- ${artifact}`),
+    ...(input.missing.length === 0 ? ["- none"] : input.missing.map((artifact) => `- ${artifact}`)),
+    "",
+    "## Validation warnings",
+    "",
+    ...(input.warnings.length === 0
+      ? ["- none"]
+      : input.warnings.map((warning) => `- ${warning.path}: ${warning.code} (${warning.message})`)),
     "",
     "## Required stage outputs (all must exist)",
     "",
@@ -548,7 +598,7 @@ function renderStageRemediationPrompt(input: {
     "",
     "1. Read the stage prompt at:",
     `   ${input.stagePromptPath}`,
-    "2. Create or repair ONLY the missing artifacts listed above.",
+    "2. Create or repair only missing artifacts and warning-causing issues listed above.",
     "3. Do not advance the pipeline, commit, or push.",
     "4. Preserve existing valid artifacts; do not delete completed work.",
     "",
@@ -698,6 +748,17 @@ export async function trySdkAutoChainAfterStageWork(input: {
   }
 
   const runDir = input.state.artifacts.runDir;
+  const attemptChain = async (event: string, artifactRel: string): Promise<boolean> => {
+    try {
+      await input.advanceFn(event, artifactRel);
+      return true;
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("No transition from ")) {
+        return false;
+      }
+      throw error;
+    }
+  };
   if (input.completedStageId === "review") {
     const reviewRel = path.posix.join(runDir, "review.md");
     const reviewAbs = path.join(input.repoRoot, reviewRel);
@@ -705,14 +766,15 @@ export async function trySdkAutoChainAfterStageWork(input: {
       return false;
     }
     const content = await readFile(reviewAbs, "utf8");
-    const verdict = parseReviewPassesVerdict(content);
-    if (verdict === true) {
-      await input.advanceFn("review_passes", reviewRel);
-      return true;
+    const verdict = parseReviewGateOutcome(content);
+    if (verdict.passes === true) {
+      return attemptChain("review_passes", reviewRel);
     }
-    if (verdict === false) {
-      await input.advanceFn("must_fix", reviewRel);
-      return true;
+    if (verdict.passes === false) {
+      if (verdict.spotFixable || verdict.excludedFromGate) {
+        return attemptChain("review_spot_fix", reviewRel);
+      }
+      return attemptChain("must_fix", reviewRel);
     }
     return false;
   }
@@ -726,13 +788,37 @@ export async function trySdkAutoChainAfterStageWork(input: {
     const content = await readFile(testAbs, "utf8");
     const verdict = parseQaVerdict(content);
     if (verdict.passes === true) {
-      await input.advanceFn("qa_passes", testRel);
-      return true;
+      return attemptChain("qa_passes", testRel);
     }
     if (verdict.passes === false) {
+      if (verdict.spotFixable || verdict.excludedFromGate) {
+        return attemptChain("qa_spot_fix", testRel);
+      }
       const chainEvent = verdict.planInvalidating ? "qa_fails_plan_invalidating" : "qa_fails";
-      await input.advanceFn(chainEvent, testRel);
-      return true;
+      return attemptChain(chainEvent, testRel);
+    }
+  }
+
+  if (input.completedStageId === "compliance") {
+    const complianceRel = path.posix.join(runDir, "compliance-result.json");
+    const complianceAbs = path.join(input.repoRoot, complianceRel);
+    if (!existsSync(complianceAbs)) {
+      return false;
+    }
+    const content = await readFile(complianceAbs, "utf8");
+    const verdict = parseComplianceVerdict(content);
+    const finalGateFails = verdict.failingFinalGateCommands.length > 0;
+    if (verdict.passes === true && !finalGateFails) {
+      return attemptChain("compliance_passes", complianceRel);
+    }
+    if (verdict.planInvalidating) {
+      return attemptChain("compliance_fails_plan_invalidating", complianceRel);
+    }
+    if (verdict.coreReentryRequired) {
+      return attemptChain("compliance_fails", complianceRel);
+    }
+    if (verdict.passes === false || finalGateFails || verdict.spotFixable || verdict.excludedFromGate) {
+      return attemptChain("compliance_spot_fix", complianceRel);
     }
   }
 
@@ -745,7 +831,10 @@ export async function resolveTestStageAdvanceEvent(
   event: string,
   artifactRel: string,
 ): Promise<string> {
-  if (state.currentStage !== "test" || event !== "qa_fails") {
+  if (
+    state.currentStage !== "test" ||
+    (event !== "qa_fails" && event !== "qa_passes" && event !== "qa_spot_fix")
+  ) {
     return event;
   }
   const testAbs = resolveRepoPath(repoRoot, artifactRel);
@@ -754,7 +843,50 @@ export async function resolveTestStageAdvanceEvent(
   }
   const content = await readFile(testAbs, "utf8");
   const verdict = parseQaVerdict(content);
-  return verdict.planInvalidating ? "qa_fails_plan_invalidating" : event;
+  if (verdict.passes === true) {
+    return "qa_passes";
+  }
+  if (verdict.passes === false) {
+    if (verdict.spotFixable || verdict.excludedFromGate) {
+      return "qa_spot_fix";
+    }
+    return verdict.planInvalidating ? "qa_fails_plan_invalidating" : "qa_fails";
+  }
+  return event;
+}
+
+export async function resolveComplianceStageAdvanceEvent(
+  repoRoot: string,
+  state: FeatureDeliveryRunnerLedger,
+  event: string,
+  artifactRel: string,
+): Promise<string> {
+  if (
+    state.currentStage !== "compliance" ||
+    (event !== "compliance_passes" && event !== "compliance_fails" && event !== "compliance_spot_fix")
+  ) {
+    return event;
+  }
+  const complianceAbs = resolveRepoPath(repoRoot, artifactRel);
+  if (!existsSync(complianceAbs)) {
+    return event;
+  }
+  const content = await readFile(complianceAbs, "utf8");
+  const verdict = parseComplianceVerdict(content);
+  const finalGateFails = verdict.failingFinalGateCommands.length > 0;
+  if (verdict.passes === true && !finalGateFails) {
+    return "compliance_passes";
+  }
+  if (verdict.planInvalidating) {
+    return "compliance_fails_plan_invalidating";
+  }
+  if (verdict.coreReentryRequired) {
+    return "compliance_fails";
+  }
+  if (verdict.passes === false || finalGateFails || verdict.spotFixable || verdict.excludedFromGate) {
+    return "compliance_spot_fix";
+  }
+  return event;
 }
 
 export async function applySdkRetrySideEffects(input: {
@@ -767,7 +899,9 @@ export async function applySdkRetrySideEffects(input: {
   if (
     input.event !== "must_fix" &&
     input.event !== "qa_fails" &&
-    input.event !== "qa_fails_plan_invalidating"
+    input.event !== "qa_fails_plan_invalidating" &&
+    input.event !== "compliance_fails" &&
+    input.event !== "compliance_fails_plan_invalidating"
   ) {
     return null;
   }

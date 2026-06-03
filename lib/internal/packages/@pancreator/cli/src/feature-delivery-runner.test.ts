@@ -10,6 +10,7 @@ import {
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
   resetStageInvocationIndex,
+  resolveComplianceStageAdvanceEvent,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
 } from "./feature-delivery-runner.js";
@@ -74,6 +75,8 @@ stages:
     persona: qa-tester
   - id: report
     persona: tech-writer
+  - id: compliance
+    persona: compliance-auditor
   - id: ship
     persona: supervisor
   - id: index
@@ -90,6 +93,7 @@ stages:
     "reviewer",
     "qa-tester",
     "tech-writer",
+    "compliance-auditor",
     "supervisor",
     "librarian",
   ] as const) {
@@ -104,6 +108,30 @@ stages:
   await writeFile(path.join(runDir, "next-prompt.md"), "# prompt\n", "utf8");
   await writeFile(path.join(runDir, "touch-set.json"), "{}\n", "utf8");
   await writeFile(path.join(runDir, "run.log.jsonl"), "", "utf8");
+}
+
+function mockStageArtifactBody(rel: string): string {
+  const base = path.posix.basename(rel);
+  if (base === "plan.md") return "# Plan\n\n## Scope\n\nBody.\n";
+  if (base === "implementation-report.md") return "# Implementation report\n\n## Summary\n\nBody.\n";
+  if (base === "review.md") return "review_passes: true\n";
+  if (base === "test-report.md") return "qa_passes: true\n";
+  if (base === "compliance-result.json") {
+    return `${JSON.stringify(
+      {
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 0,
+        },
+      },
+      null,
+      2,
+    )}\n`;
+  }
+  return "mock-artifact\n";
 }
 
 function sampleLedger(overrides: Partial<FeatureDeliveryRunnerLedger> = {}): FeatureDeliveryRunnerLedger {
@@ -141,6 +169,24 @@ describe("feature-delivery-runner automation", () => {
     });
     expect(summary).toContain("retry_count=6");
     expect(state.status).toBe("halted");
+  });
+
+  it("applySdkRetrySideEffects does not consume retry budget for compliance_spot_fix", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-no-retry-spot-fix-"));
+    const state = sampleLedger({
+      currentStage: "compliance",
+      automation: { runnerInvocation: "sdk", cumulativeRetryCount: 2 },
+    });
+    const summary = await applySdkRetrySideEffects({
+      repoRoot: root,
+      state,
+      event: "compliance_spot_fix",
+      fromStage: "compliance",
+      now: new Date("2026-05-10T14:00:00.000Z"),
+    });
+    expect(summary).toBeNull();
+    expect(state.automation?.cumulativeRetryCount).toBe(2);
+    expect(state.status).toBe("ready_for_stage_delegation");
   });
 
   it("maybePauseForReportApproval writes an outbox artifact when delivery report exists", async () => {
@@ -197,7 +243,7 @@ describe("feature-delivery-runner automation", () => {
       for (const rel of required) {
         const abs = path.join(cwd, rel);
         await mkdir(path.dirname(abs), { recursive: true });
-        await writeFile(abs, "mock-artifact\n", "utf8");
+        await writeFile(abs, mockStageArtifactBody(rel), "utf8");
       }
       return { status: "ok", resultText: "ok" };
     };
@@ -259,6 +305,47 @@ describe("feature-delivery-runner automation", () => {
 
     const resolved = await resolveTestStageAdvanceEvent(root, state, "qa_fails", testRel);
     expect(resolved).toBe("qa_fails_plan_invalidating");
+  });
+
+  it("resolveTestStageAdvanceEvent maps qa_passes to qa_spot_fix when report is spot-fixable", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-resolve-qa-spot-fix-"));
+    const state = sampleLedger({ currentStage: "test" });
+    const testRel = path.posix.join(state.artifacts.runDir, "test-report.md");
+    const testAbs = path.join(root, testRel);
+    await mkdir(path.dirname(testAbs), { recursive: true });
+    await writeFile(testAbs, "qa_passes: false\nspot_fixable: true\n", "utf8");
+
+    const resolved = await resolveTestStageAdvanceEvent(root, state, "qa_passes", testRel);
+    expect(resolved).toBe("qa_spot_fix");
+  });
+
+  it("resolveComplianceStageAdvanceEvent maps failing final gate to compliance_spot_fix", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-resolve-compliance-"));
+    const state = sampleLedger({ currentStage: "compliance" });
+    const complianceRel = path.posix.join(state.artifacts.runDir, "compliance-result.json");
+    const complianceAbs = path.join(root, complianceRel);
+    await mkdir(path.dirname(complianceAbs), { recursive: true });
+    await writeFile(
+      complianceAbs,
+      JSON.stringify({
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 1,
+        },
+      }),
+      "utf8",
+    );
+
+    const resolved = await resolveComplianceStageAdvanceEvent(
+      root,
+      state,
+      "compliance_passes",
+      complianceRel,
+    );
+    expect(resolved).toBe("compliance_spot_fix");
   });
 
   it("prepareStageInvocationIndexForSdkEntry tracks per-stage visit counts independently", () => {
@@ -336,7 +423,7 @@ configs:
       for (const rel of required) {
         const abs = path.join(cwd, rel);
         await mkdir(path.dirname(abs), { recursive: true });
-        await writeFile(abs, "mock-artifact\n", "utf8");
+        await writeFile(abs, mockStageArtifactBody(rel), "utf8");
       }
       return { status: "ok", resultText: "ok" };
     };
@@ -412,7 +499,7 @@ configs:
       for (const rel of required) {
         const abs = path.join(cwd, rel);
         await mkdir(path.dirname(abs), { recursive: true });
-        await writeFile(abs, "mock-artifact\n", "utf8");
+        await writeFile(abs, mockStageArtifactBody(rel), "utf8");
       }
       return { status: "ok", resultText: "ok" };
     };
@@ -494,7 +581,7 @@ configs:
       for (const rel of required) {
         const abs = path.join(cwd, rel);
         await mkdir(path.dirname(abs), { recursive: true });
-        await writeFile(abs, "# Review\n\nPending human ratification.\n", "utf8");
+        await writeFile(abs, mockStageArtifactBody(rel), "utf8");
       }
       return { status: "ok", resultText: "ok" };
     };

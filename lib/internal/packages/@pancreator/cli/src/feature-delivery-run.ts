@@ -29,6 +29,7 @@ import {
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
   readCursorInvocationForState,
+  resolveComplianceStageAdvanceEvent,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
   type FeatureDeliveryAutomationState,
@@ -58,6 +59,7 @@ const FEATURE_DELIVERY_STAGES = [
   "review",
   "test",
   "report",
+  "compliance",
   "ship",
   "index",
 ] as const;
@@ -549,7 +551,8 @@ export async function advanceFeatureDelivery(
   }
 
   const requestedEvent = input.event ?? defaultEventForStage(state.currentStage);
-  const event = await resolveTestStageAdvanceEvent(repoRoot, state, requestedEvent, artifact.rel);
+  const testResolvedEvent = await resolveTestStageAdvanceEvent(repoRoot, state, requestedEvent, artifact.rel);
+  const event = await resolveComplianceStageAdvanceEvent(repoRoot, state, testResolvedEvent, artifact.rel);
   const transition = state.transitions.find(
     (candidate) => candidate.from === state.currentStage && candidate.on === event,
   );
@@ -562,6 +565,12 @@ export async function advanceFeatureDelivery(
   assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
 
   const contentWarnings = collectStageContentWarnings(repoRoot, state, state.currentStage);
+  if ((state.currentStage === "ship" || state.currentStage === "compliance") && contentWarnings.length > 0) {
+    const details = contentWarnings
+      .map((warning) => `${warning.path}: ${warning.code} (${warning.message})`)
+      .join("; ");
+    throw new Error(`Cannot advance ${state.currentStage}; blocking content warnings remain: ${details}`);
+  }
 
   delete state.nextCommand;
   const applied = applyFeatureDeliveryTransition(state, transition, event, artifact.rel, now);
@@ -1237,6 +1246,12 @@ function stageGate(stage: PipelineStage): Pick<FeatureDeliveryStageState, "human
         humanGate: "qa_passes_or_reenter_implement",
         humanAttention: "Inspect test-report.md; approve only when qa_passes is true or send the run back to implement.",
       };
+    case "compliance":
+      return {
+        humanGate: "compliance_passes_or_reenter_implement",
+        humanAttention:
+          "Inspect compliance-result.json and final validation bundle; route minor drift to spot-fix and major findings to implement/plan.",
+      };
     case "ship":
       return {
         humanGate: "local_stage_only",
@@ -1304,6 +1319,12 @@ function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
     },
     {
       from: "review",
+      on: "review_spot_fix",
+      to: "review",
+      humanAttention: "Minor review findings stay in-stage; apply spot fixes and rerun review.",
+    },
+    {
+      from: "review",
       on: "review_passes",
       to: "test",
       humanAttention: "Human should still inspect review output before qa-tester runs.",
@@ -1312,13 +1333,19 @@ function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
       from: "test",
       on: "qa_passes",
       to: "report",
-      humanAttention: "Human should inspect test-report.md before report/ship.",
+      humanAttention: "Human should inspect test-report.md before report/compliance.",
     },
     {
       from: "test",
       on: "qa_fails",
       to: "implement",
       humanAttention: "Bounded re-entry; qa failures block shipping.",
+    },
+    {
+      from: "test",
+      on: "qa_spot_fix",
+      to: "test",
+      humanAttention: "Minor QA drift stays in-stage; apply spot fixes and rerun QA.",
     },
     {
       from: "test",
@@ -1329,8 +1356,32 @@ function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
     {
       from: "report",
       on: "report_ready",
-      to: "ship",
+      to: "compliance",
       humanAttention: "Delivery report must be useful to the operator, not just a changelog.",
+    },
+    {
+      from: "compliance",
+      on: "compliance_passes",
+      to: "ship",
+      humanAttention: "Compliance gate is green; continue to ship ratification.",
+    },
+    {
+      from: "compliance",
+      on: "compliance_spot_fix",
+      to: "compliance",
+      humanAttention: "Minor compliance drift stays in-stage; fix and rerun the compliance gate.",
+    },
+    {
+      from: "compliance",
+      on: "compliance_fails",
+      to: "implement",
+      humanAttention: "Major compliance failure routes back to implementation.",
+    },
+    {
+      from: "compliance",
+      on: "compliance_fails_plan_invalidating",
+      to: "plan",
+      humanAttention: "Plan-invalidating compliance issue routes back to planning.",
     },
     {
       from: "ship",
@@ -1383,6 +1434,8 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 - ${state.artifacts.runDir}/review.md
 - ${state.artifacts.runDir}/test-report.md
 - lib/memory/features/${state.featureId}/delivery-report.md
+- ${state.artifacts.runDir}/compliance-result.json
+- ${state.artifacts.runDir}/policy-compliance.json
 - lib/inbox/out/<timestamp>-${state.featureId}-delivery-report.md
 
 ## Explicit non-goals
@@ -1469,8 +1522,10 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
       return `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
+    case "compliance":
+      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nMinor drift (spot-fix and rerun compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nMajor issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
     case "ship":
-      return `Inputs: local diff, validation output, lib/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
+      return `Inputs: local diff, ${state.artifacts.runDir}/compliance-result.json, lib/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
     case "index":
       return `Inputs: delivery report and accepted ship artifacts\nOutput: lib/memory/features/${state.featureId}/index.json\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
@@ -1491,8 +1546,22 @@ function staticAdvanceLineForStage(
   if (stage === "review" && resolvedEvent === "must_fix") {
     return `pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${contract.primaryArtifact}`;
   }
-  if (stage === "test" && resolvedEvent === "qa_fails") {
-    return `pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${contract.primaryArtifact}`;
+  if (stage === "review" && resolvedEvent === "review_spot_fix") {
+    return `pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${contract.primaryArtifact}`;
+  }
+  if (
+    stage === "test" &&
+    (resolvedEvent === "qa_fails" || resolvedEvent === "qa_fails_plan_invalidating" || resolvedEvent === "qa_spot_fix")
+  ) {
+    return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
+  }
+  if (
+    stage === "compliance" &&
+    (resolvedEvent === "compliance_fails" ||
+      resolvedEvent === "compliance_fails_plan_invalidating" ||
+      resolvedEvent === "compliance_spot_fix")
+  ) {
+    return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
   }
   return cmd;
 }
@@ -1568,10 +1637,21 @@ function parsePersistedAdvanceCommand(nextCommand: string): {
 }
 
 function buildAdvanceCommand(taskId: string, artifact: string, stage: string, event: string): string {
-  if (stage === "review" && event === "must_fix") {
-    return `pnpm -w exec pan advance ${taskId} --event must_fix --artifact ${artifact}`;
+  if (stage === "review" && (event === "must_fix" || event === "review_spot_fix")) {
+    return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
   }
-  if (stage === "test" && (event === "qa_fails" || event === "qa_fails_plan_invalidating")) {
+  if (
+    stage === "test" &&
+    (event === "qa_fails" || event === "qa_fails_plan_invalidating" || event === "qa_spot_fix")
+  ) {
+    return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
+  }
+  if (
+    stage === "compliance" &&
+    (event === "compliance_fails" ||
+      event === "compliance_fails_plan_invalidating" ||
+      event === "compliance_spot_fix")
+  ) {
     return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
   }
   return `pnpm -w exec pan advance ${taskId} --artifact ${artifact}`;
@@ -2237,7 +2317,7 @@ async function tryAdvanceFromReportApproval(input: {
       (candidate) => candidate.from === "report" && candidate.on === "report_ready",
     );
     if (transition === undefined) {
-      throw new Error("feature-delivery pipeline is missing report → ship transition.");
+      throw new Error("feature-delivery pipeline is missing report → compliance transition.");
     }
     const applied = applyFeatureDeliveryTransition(
       input.state,
@@ -2310,8 +2390,9 @@ async function finishAdvanceAfterTransition(input: {
 }): Promise<AdvanceFeatureDeliveryResult> {
   delete input.state.nextCommand;
   const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
+  let compiled: Awaited<ReturnType<typeof compileFeatureDeliveryPipeline>> | undefined;
   if (invocation === "sdk" && input.state.status !== "halted" && input.state.currentStage !== TERMINAL_STAGE) {
-    const compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
+    compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
     prepareStageInvocationIndexForSdkEntry(input.state, input.state.currentStage, invocation);
     await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
     emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
@@ -2335,6 +2416,30 @@ async function finishAdvanceAfterTransition(input: {
     });
   }
   await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+  if (invocation === "sdk" && compiled !== undefined) {
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: input.repoRoot,
+      state: input.state,
+      pipeline: input.pipeline,
+      completedStageId: input.state.currentStage,
+      compiled,
+      now: input.now,
+      testHooks: input.testHooks,
+      advanceFn: async (chainEvent, chainArtifact) =>
+        advanceFeatureDelivery({
+          repoRoot: input.repoRoot,
+          taskId: input.taskId,
+          artifact: chainArtifact,
+          event: chainEvent,
+          testHooks: input.testHooks,
+          progress: resolveFeatureDeliveryProgress(input),
+        }),
+    });
+    if (chained) {
+      const refreshed = await readFeatureDeliveryState(resolveRepoPath(input.repoRoot, input.state.artifacts.stateFile));
+      Object.assign(input.state, refreshed);
+    }
+  }
   await appendRunLogRecord(
     resolveRepoPath(input.repoRoot, input.state.artifacts.runLogFile),
     makeAdvanceRecord(
@@ -2501,6 +2606,8 @@ function defaultEventForStage(stage: string): string {
       return "qa_passes";
     case "report":
       return "report_ready";
+    case "compliance":
+      return "compliance_passes";
     case "ship":
       return "human_ratifies_local_diff";
     case "index":
@@ -2553,6 +2660,12 @@ function applyStageStatuses(
       return stage;
     });
   }
+  if (event === "review_spot_fix") {
+    return stages.map((stage) => {
+      if (stage.id === "review") return { ...stage, status: "ready" };
+      return stage;
+    });
+  }
   if (event === "qa_fails") {
     return stages.map((stage) => {
       if (stage.id === "test") return { ...stage, status: "blocked" };
@@ -2569,6 +2682,36 @@ function applyStageStatuses(
       if (index < planIndex) return { ...stage, status: "complete" };
       if (stage.id === "plan") return { ...stage, status: "ready" };
       return { ...stage, status: "pending" };
+    });
+  }
+  if (event === "qa_spot_fix") {
+    return stages.map((stage) => {
+      if (stage.id === "test") return { ...stage, status: "ready" };
+      return stage;
+    });
+  }
+  if (event === "compliance_fails") {
+    return stages.map((stage) => {
+      if (stage.id === "compliance") return { ...stage, status: "blocked" };
+      if (stage.id === "implement") return { ...stage, status: "ready" };
+      return stage;
+    });
+  }
+  if (event === "compliance_fails_plan_invalidating") {
+    const planIndex = FEATURE_DELIVERY_STAGES.indexOf("plan");
+    return stages.map((stage) => {
+      const index = FEATURE_DELIVERY_STAGES.indexOf(stage.id as FeatureDeliveryStageId);
+      if (index < 0) return stage;
+      if (stage.id === "compliance") return { ...stage, status: "blocked" };
+      if (index < planIndex) return { ...stage, status: "complete" };
+      if (stage.id === "plan") return { ...stage, status: "ready" };
+      return { ...stage, status: "pending" };
+    });
+  }
+  if (event === "compliance_spot_fix") {
+    return stages.map((stage) => {
+      if (stage.id === "compliance") return { ...stage, status: "ready" };
+      return stage;
     });
   }
   return stages.map((stage) => {
@@ -2610,7 +2753,9 @@ function nextHumanActionForStage(
     case "test":
       return `${prefix}Delegate next-prompt.md to qa-tester; inspect ${state.artifacts.runDir}/test-report.md and choose pass or qa-fail.`;
     case "report":
-      return `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before ship.`;
+      return `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before compliance.`;
+    case "compliance":
+      return `${prefix}Delegate next-prompt.md to compliance-auditor; require compliance-result.json plus green compliance exit bundle before ship.`;
     case "ship":
       return `${prefix}Delegate next-prompt.md to supervisor; human must ratify the local diff before index.`;
     case "index":
@@ -2801,6 +2946,16 @@ const PAN_DOCTOR_SHELL_CHECKS: ReadonlyArray<{ id: string; label: string; comman
     command: "node lib/internal/tools/check-operator-output.mjs",
   },
 ];
+
+const COMPLIANCE_EXIT_CHECK_IDS = new Set(["lint", "typecheck", "test", "tests-mjs"]);
+
+export function complianceStageExitCheckBundle(): ReadonlyArray<{ id: string; label: string; command: string }> {
+  return PAN_DOCTOR_SHELL_CHECKS.filter((spec) => COMPLIANCE_EXIT_CHECK_IDS.has(spec.id));
+}
+
+export function complianceStageExitCommands(): readonly string[] {
+  return complianceStageExitCheckBundle().map((spec) => spec.command);
+}
 
 function runShellDoctorCheck(
   repoRoot: string,

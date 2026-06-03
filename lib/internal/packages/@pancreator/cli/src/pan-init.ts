@@ -101,8 +101,12 @@ stages:
     persona: coder
   - id: review
     persona: reviewer
+  - id: test
+    persona: qa-tester
   - id: report
     persona: tech-writer
+  - id: compliance
+    persona: compliance-auditor
   - id: ship
     persona: supervisor
   - id: index

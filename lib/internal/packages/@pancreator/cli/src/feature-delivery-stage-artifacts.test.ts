@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertAdvanceArtifacts,
+  parseComplianceVerdict,
   requiredArtifactsAfterStageWork,
   stageArtifactContract,
   validateStageCompletionArtifacts,
@@ -139,10 +140,40 @@ describe("feature-delivery-stage-artifacts", () => {
       "review",
       "test",
       "report",
+      "compliance",
       "ship",
       "index",
     ]) {
       expect(requiredArtifactsAfterStageWork(sampleState, stage).length).toBeGreaterThan(0);
     }
+  });
+
+  it("compliance stage contract supports pass, fail, and spot-fix events", () => {
+    expect(stageArtifactContract(sampleState, "compliance", "compliance_passes").primaryArtifact).toMatch(
+      /compliance-result\.json$/u,
+    );
+    expect(stageArtifactContract(sampleState, "compliance", "compliance_fails").primaryArtifact).toMatch(
+      /compliance-result\.json$/u,
+    );
+    expect(stageArtifactContract(sampleState, "compliance", "compliance_spot_fix").primaryArtifact).toMatch(
+      /compliance-result\.json$/u,
+    );
+  });
+
+  it("parseComplianceVerdict reads final gate command statuses", () => {
+    const verdict = parseComplianceVerdict(
+      JSON.stringify({
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 1,
+        },
+      }),
+    );
+    expect(verdict.passes).toBe(true);
+    expect(verdict.finalGateObserved).toBe(true);
+    expect(verdict.failingFinalGateCommands).toContain("node --test tests/*.test.mjs");
   });
 });

@@ -79,10 +79,12 @@ Use this loop exactly:
    `pnpm -w exec pan close-artifacts <task-id>` once after final validation.
 
 `advance` runs after every accepted non-terminal stage: `intake`, `plan`,
-`implement`, `review`, `test`, `report`, `ship`, and `index`. Review has two
+`implement`, `review`, `test`, `report`, `compliance`, `ship`, and `index`. Review has two
 branches: passing review advances to `test`; must-fix review uses `--event must_fix`
 and returns to `implement`. Test has two branches: passing test advances to `report`;
-qa-fail uses `--event qa_fails` and returns to `implement`. Do not run `advance`
+qa-fail uses `--event qa_fails` and returns to `implement`. Compliance has two
+primary branches: passing compliance advances to `ship`; major compliance failures
+use `--event compliance_fails` and return to `implement`. Do not run `advance`
 after the final `complete` state.
 
 ### Post-invocation state machine
@@ -99,6 +101,7 @@ with `currentStage: intake`.
 | `review` | `reviewer` | `review_passes` or `must_fix` | Pass (→ test) or return to implement |
 | `test` | `qa-tester` | `qa_passes` or `qa_fails` | Pass (→ report) or return to implement |
 | `report` | `tech-writer` | `report_ready` | Accept delivery report |
+| `compliance` | `compliance-auditor` | `compliance_passes` or `compliance_fails` | Pass (→ ship) or return to implement |
 | `ship` | `supervisor` | `human_ratifies_local_diff` | Ratify local diff |
 | `index` | `librarian` | `artifacts_indexed` | Accept feature index |
 | `complete` | `librarian` | `artifacts_closed` via close-artifacts | Validate closure |
@@ -126,8 +129,8 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
    `transitionEvent` (for example `human_approval`, `review_passes`). Set
    `PAN_FD_PROGRESS=text` or `PAN_FD_PROGRESS=ndjson` to override auto-detection.
    Final command envelopes still print to stdout only.
-4. After `review` or `test` artifacts exist, SDK mode MAY auto-advance when
-   `review_passes` / `qa_passes` or route on `must_fix` / `qa_fails` without a
+4. After `review`, `test`, or `compliance` artifacts exist, SDK mode MAY auto-advance when
+   `review_passes` / `qa_passes` / `compliance_passes` or route on `must_fix` / `qa_fails` / `compliance_fails` without a
    separate operator `advance` for that branch.
 5. When cumulative `must_fix` and `qa_fails` retries exceed 5, the run halts with
    `status: halted` and one timestamp-prefixed file under
@@ -267,6 +270,8 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 | `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/test-report.md` |
 | `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
 | `report` | `tech-writer` | `lib/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/delivery-report.md` |
+| `compliance` (pass) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/compliance-result.json` |
+| `compliance` (major fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails --artifact <runDir>/compliance-result.json` |
 | `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/policy-compliance.json` |
 | `index` | `librarian` | `lib/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/index.json` |
 | `complete` | `librarian` | policy-compliance + index | `pnpm -w exec pan close-artifacts <task-id>` |
