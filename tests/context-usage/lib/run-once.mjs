@@ -12,7 +12,7 @@ import {
 import { HARNESS_MODEL, resolveSdkModelId } from "./model.mjs";
 import { ensureCursorSdkRipgrepConfigured } from "./ripgrep.mjs";
 import { verifySandboxRun } from "./verify-run.mjs";
-import { compareToBaseline, computeFixtureHash, readPromptVersion } from "./stats.mjs";
+import { buildBudgetBaseline, compareToBudget, computeFixtureHash, readPromptVersion } from "./stats.mjs";
 
 const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PROMPT_PATH = path.join(HARNESS_ROOT, "prompt.md");
@@ -56,15 +56,18 @@ export async function runContextUsageOnce(options = {}) {
     await run.wait();
     assertUsageCaptured(metrics);
 
-    const verify = verifySandboxRun(sandboxCwd, toolPaths, prompt);
+    const verify = verifySandboxRun(sandboxCwd, toolPaths, prompt, undefined, metrics);
     if (!verify.ok) {
       throw new Error(`[context-usage] verification failed:\n${verify.errors.join("\n")}`);
     }
 
-    let baselineComparison = { ok: true, errors: [] };
+    let budgetComparison = { ok: true, errors: [] };
     if (!options.skipBaseline && fs.existsSync(BASELINE_PATH)) {
       const baseline = JSON.parse(fs.readFileSync(BASELINE_PATH, "utf8"));
-      baselineComparison = compareToBaseline(metrics, baseline);
+      budgetComparison = compareToBudget(metrics, baseline);
+    } else if (!options.skipBaseline) {
+      const baseline = buildBudgetBaseline({ modelId: sdkModelId });
+      budgetComparison = compareToBudget(metrics, baseline);
     }
 
     return {
@@ -72,7 +75,7 @@ export async function runContextUsageOnce(options = {}) {
       metrics,
       toolPaths,
       verify,
-      baselineComparison,
+      budgetComparison,
       fixture_hash: computeFixtureHash(),
       prompt_version: readPromptVersion(PROMPT_PATH),
     };

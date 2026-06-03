@@ -3,10 +3,16 @@ import { copyFile, mkdir, mkdtemp, readdir, readFile, rename, writeFile } from "
 import os from "node:os";
 import path from "node:path";
 
-import type { CursorSdkTransport } from "@pancreator/runner-cursor";
+import {
+  buildSdkPrompt,
+  type CursorSdkInvokeParams,
+  type CursorSdkTransport,
+} from "@pancreator/runner-cursor";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  advanceFeatureDelivery,
+  startFeatureDelivery,
   panDoctorCheckRegistry,
   resolveNextStep,
   type FeatureDeliveryState,
@@ -2331,6 +2337,108 @@ describe("operator tooling batch cli wiring", () => {
       expect(invokeCount).toBe(1);
       const runLogAfterAdvance = await readFile(path.join(root, start.runLogFile), "utf8");
       expect(runnerInvokeLogLines(runLogAfterAdvance)).toHaveLength(2);
+    });
+
+    it("composes representative sdk prompts for implement/review/test/compliance stages", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-prompt-shape-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "sdk");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo\n", "utf8");
+
+      const invocations: CursorSdkInvokeParams[] = [];
+      const baseTransport = mockSdkTransport();
+      const captureTransport: CursorSdkTransport = async (params) => {
+        invocations.push({
+          ...params,
+          requiredArtifactPaths: params.requiredArtifactPaths
+            ? [...params.requiredArtifactPaths]
+            : params.requiredArtifactPaths,
+        });
+        return baseTransport(params);
+      };
+
+      const start = await startFeatureDelivery({
+        repoRoot: root,
+        inboxEntry: "demo-feature.md",
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { sdkTransport: captureTransport },
+      });
+      const taskId = start.taskId;
+      const featureId = start.featureId;
+      const runDir = start.runDir;
+
+      const artifactForStage = (stage: string): string => {
+        switch (stage) {
+          case "intake":
+            return `lib/memory/features/${featureId}/spec.md`;
+          case "plan":
+            return `${runDir}/touch-set.json`;
+          case "implement":
+            return `${runDir}/implementation-report.md`;
+          case "review":
+            return `${runDir}/review.md`;
+          case "test":
+            return `${runDir}/test-report.md`;
+          case "report":
+            return `lib/memory/features/${featureId}/delivery-report.md`;
+          case "compliance":
+            return `${runDir}/compliance-result.json`;
+          case "ship":
+            return `${runDir}/policy-compliance.json`;
+          case "index":
+            return `lib/memory/features/${featureId}/index.json`;
+          default:
+            throw new Error(`No artifact mapping for stage ${stage}`);
+        }
+      };
+
+      let currentStage: string = start.currentStage;
+      const stopStages = new Set(["compliance", "ship", "index", "complete", "aborted", "paused"]);
+      for (let i = 0; i < 9; i += 1) {
+        if (stopStages.has(currentStage)) {
+          break;
+        }
+        const next = await advanceFeatureDelivery({
+          repoRoot: root,
+          taskId,
+          artifact: artifactForStage(currentStage),
+          testHooks: { sdkTransport: captureTransport },
+        });
+        currentStage = next.currentStage;
+      }
+
+      const stageParams = new Map<string, CursorSdkInvokeParams>();
+      for (const params of invocations) {
+        const match = params.message.match(/stage ([a-z-]+) for task/iu);
+        if (match !== null && !stageParams.has(match[1])) {
+          stageParams.set(match[1], params);
+        }
+      }
+
+      for (const stage of ["implement", "review", "test", "compliance"]) {
+        expect(stageParams.has(stage)).toBe(true);
+      }
+
+      const prompts = new Map(
+        [...stageParams.entries()].map(([stage, params]) => [stage, buildSdkPrompt(params)]),
+      );
+      const promptTokens = new Map(
+        [...prompts.entries()].map(([stage, prompt]) => [stage, Math.ceil(prompt.length / 4)]),
+      );
+
+      expect(prompts.get("implement")).toContain("Persona: coder");
+      expect(prompts.get("review")).toContain("Persona: reviewer");
+      expect(prompts.get("test")).toContain("Persona: qa-tester");
+      expect(prompts.get("compliance")).toContain("Persona: compliance-auditor");
+      expect(prompts.get("implement")).toContain("Use subagent/persona: coder");
+      expect(prompts.get("review")).toContain("Use subagent/persona: reviewer");
+      expect(prompts.get("test")).toContain("Use subagent/persona: qa-tester");
+      expect(prompts.get("compliance")).toContain("Use subagent/persona: compliance-auditor");
+      expect(prompts.get("compliance")).toContain("Compliance exit bundle (all MUST pass)");
+      expect(prompts.get("compliance")).toContain("pnpm lint");
+      expect(promptTokens.get("compliance")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
+      expect(promptTokens.get("review")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
     });
 
     it("does not call SDK transport for manual mode across run and advance", async () => {

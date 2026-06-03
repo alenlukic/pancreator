@@ -24,6 +24,20 @@ export class TurnEndedUsageMissingError extends Error {
   }
 }
 
+const TOOL_CALL_DEDUPE_STATE = new WeakMap();
+
+/**
+ * @param {string[]} toolPaths
+ */
+function getToolCallState(toolPaths) {
+  let state = TOOL_CALL_DEDUPE_STATE.get(toolPaths);
+  if (!state) {
+    state = { seenReadPaths: new Set() };
+    TOOL_CALL_DEDUPE_STATE.set(toolPaths, state);
+  }
+  return state;
+}
+
 /**
  * @returns {UsageMetrics}
  */
@@ -133,6 +147,7 @@ export function processStreamEvent(event, metrics, toolPaths, options = {}) {
   }
   const e = /** @type {Record<string, unknown>} */ (event);
   const type = String(e.type ?? "");
+  const toolCallState = getToolCallState(toolPaths);
 
   if (type === "turn-ended") {
     metrics.turn_count += 1;
@@ -149,8 +164,13 @@ export function processStreamEvent(event, metrics, toolPaths, options = {}) {
   if (type === "tool_call") {
     const paths = extractReadPathsFromToolEvent(e);
     if (paths.length > 0) {
-      metrics.tool_read_count += 1;
-      toolPaths.push(...paths);
+      for (const toolPath of paths) {
+        if (!toolCallState.seenReadPaths.has(toolPath)) {
+          toolCallState.seenReadPaths.add(toolPath);
+          toolPaths.push(toolPath);
+        }
+      }
+      metrics.tool_read_count = toolCallState.seenReadPaths.size;
     }
     return;
   }

@@ -9,7 +9,7 @@
 #     stronger, cheaper model (that model belongs in tier 1 or persona frontmatter).
 #   - When no valid model step exists, escalate via bracket qualifiers on the same
 #     family (effort=, reasoning=) per https://cursor.com/docs/models-and-pricing
-#   - Sparse tier keys are intentional: loopbacks 2–4 may reuse the prior tier.
+#   - Sparse tier keys are intentional: loopbacks may reuse the prior tier.
 #
 # Pricing reference: https://cursor.com/docs/models-and-pricing (API output $/1M
 # as primary cost axis). Capability tie-break: LiveBench-2026-01-08.
@@ -22,40 +22,35 @@ configs:
       # --- feature-delivery pipeline ---
 
       intake-analyst:
-        default: claude-sonnet-4-6[thinking=true,context=200k,effort=high]
-        3: claude-sonnet-4-6[thinking=true,context=200k,effort=xhigh,fast=false]
-        5: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       tech-lead:
-        default: auto
-        1: gpt-5.4[context=272k,reasoning=extra-high,fast=false]
-        4: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
-        5: gpt-5.5[context=272k,reasoning=extra-high,fast=false]
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       coder:
         default: composer-2.5[fast=false]
-        2: gpt-5.3-codex[reasoning=high,fast=false]
-        4: gpt-5.3-codex[reasoning=extra-high,fast=false]
+        2: gpt-5.2-codex[reasoning=high,fast=false]
+        3: gpt-5.3-codex[reasoning=high,fast=false]
+        4: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       reviewer:
-        default: auto
-        1: gpt-5.4[context=272k,reasoning=extra-high,fast=false]
-        3: gpt-5.5[context=272k,reasoning=high,fast=false]
-        5: gpt-5.5[context=272k,reasoning=extra-high,fast=false]
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       qa-tester:
-        default: gpt-5.3-codex[reasoning=high,fast=false]
-        2: gpt-5.3-codex[reasoning=extra-high,fast=false]
+        default: auto
+        2: gpt-5.3-codex[reasoning=high,fast=false]
+        4: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       tech-writer:
         default: auto
         1: gpt-5.4-mini
-        3: gpt-5.4[context=272k,reasoning=high,fast=false]
+        3: gpt-5.3-codex[reasoning=high,fast=false]
 
       supervisor:
         default: auto
-        3: gpt-5.4[context=272k,reasoning=high,fast=false]
-        5: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: gpt-5.4[context=272k,reasoning=high,fast=false]
+        4: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       librarian:
         default: auto
@@ -65,28 +60,74 @@ configs:
       # --- other MVP personas ---
 
       adopter:
-        default: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
+        default: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
       compliance-auditor:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        2: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       contract-writer:
         default: auto
-        2: claude-sonnet-4-6[thinking=true,context=200k,effort=high]
-        4: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        2: gpt-5.4[context=272k,reasoning=high,fast=false]
+        4: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       pancreator-engineer:
         default: auto
-        1: gpt-5.3-codex[reasoning=high,fast=false]
-        3: gpt-5.3-codex[reasoning=extra-high,fast=false]
+        1: gpt-5.4[context=272k,reasoning=high,fast=false]
+        3: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       persona-designer:
         default: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
-        3: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
       pr-writer:
         default: auto
         1: gpt-5.4-mini
-        3: gpt-5.4[context=272k,reasoning=high,fast=false]
+        3: gpt-5.3-codex[reasoning=high,fast=false]
+
+  auto:
+    personas:
+      # --- feature-delivery pipeline ---
+
+      intake-analyst:
+        default: auto
+
+      tech-lead:
+        default: auto
+
+      coder:
+        default: composer-2.5[fast=false]
+
+      reviewer:
+        default: auto
+
+      qa-tester:
+        default: auto
+
+      tech-writer:
+        default: auto
+
+      supervisor:
+        default: auto
+
+      librarian:
+        default: auto
+
+      # --- other MVP personas ---
+
+      adopter:
+        default: auto
+
+      compliance-auditor:
+        default: auto
+
+      contract-writer:
+        default: auto
+
+      pancreator-engineer:
+        default: auto
+
+      persona-designer:
+        default: auto
+
+      pr-writer:
+        default: auto
