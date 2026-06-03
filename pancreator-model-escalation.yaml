@@ -14,7 +14,7 @@
 # Pricing reference: https://cursor.com/docs/models-and-pricing (API output $/1M
 # as primary cost axis). Capability tie-break: LiveBench-2026-01-08.
 
-active_config: default
+active_config: complex
 
 configs:
   default:
@@ -41,6 +41,7 @@ configs:
         default: auto
         2: gpt-5.3-codex[reasoning=high,fast=false]
         4: gpt-5.4[context=272k,reasoning=high,fast=false]
+        5: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       tech-writer:
         default: auto
@@ -83,6 +84,73 @@ configs:
         default: auto
         1: gpt-5.4-mini
         3: gpt-5.3-codex[reasoning=high,fast=false]
+
+
+  complex:
+    personas:
+      # --- feature-delivery pipeline ---
+
+      intake-analyst:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      tech-lead:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      coder:
+        default: composer-2.5[fast=false]
+        2: gpt-5.3-codex[reasoning=high,fast=false]
+        4: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      reviewer:
+        default: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      qa-tester:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+        2: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      tech-writer:
+        default: auto
+        1: gpt-5.4-mini
+        3: gpt-5.3-codex[reasoning=high,fast=false]
+
+      supervisor:
+        default: auto
+        2: gpt-5.4[context=272k,reasoning=high,fast=false]
+        4: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      librarian:
+        default: auto
+        3: gpt-5.4[context=272k,reasoning=high,fast=false]
+        5: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      # --- other MVP personas ---
+
+      adopter:
+        default: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
+
+      compliance-auditor:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+        2: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      contract-writer:
+        default: auto
+        2: gpt-5.4[context=272k,reasoning=high,fast=false]
+        4: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      pancreator-engineer:
+        default: auto
+        1: gpt-5.4[context=272k,reasoning=high,fast=false]
+        3: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      persona-designer:
+        default: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      pr-writer:
+        default: auto
+        1: gpt-5.4-mini
+        3: gpt-5.3-codex[reasoning=high,fast=false]
+
 
   auto:
     personas:

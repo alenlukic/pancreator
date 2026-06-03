@@ -1,3 +1,4 @@
+import { resolveModelEscalationYamlPath, resolvePancreatorYamlPath } from "@pancreator/core";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -92,8 +93,8 @@ function validateModelEscalationStructure(config: unknown): string[] {
 
 /** Reads `runner.cursor.model_escalation.config` from pancreator.yaml when present. */
 export function readModelEscalationConfigFromPancreator(repoRoot: string): string | undefined {
-  const cfgPath = path.join(repoRoot, "pancreator.yaml");
-  if (!existsSync(cfgPath)) {
+  const cfgPath = resolvePancreatorYamlPath(repoRoot);
+  if (cfgPath === undefined) {
     return undefined;
   }
   const raw = readFileSync(cfgPath, "utf8");
@@ -144,7 +145,8 @@ export function loadModelEscalationConfig(
   repoRoot: string,
   options?: { configPath?: string; activeConfigOverride?: string },
 ): LoadedModelEscalation {
-  const filePath = options?.configPath ?? path.join(repoRoot, "pancreator-model-escalation.yaml");
+  const filePath =
+    options?.configPath ?? resolveModelEscalationYamlPath(repoRoot) ?? path.join(repoRoot, "pancreator-model-escalation.yaml");
   if (!existsSync(filePath)) {
     throw new ModelEscalationConfigError(
       `Model escalation config is required at ${filePath} when runner.cursor.invocation is sdk`,

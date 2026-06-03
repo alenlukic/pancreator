@@ -1,0 +1,317 @@
+{
+  "timestamp": "2026-06-03T18:00:23.502Z",
+  "trace_id": "fd-skeleton-implement-v1",
+  "stage_id": "implement",
+  "model": "composer-2.5",
+  "runtime": {
+    "sdk_version": "1.0.13",
+    "node_version": "v22.14.0",
+    "platform": "darwin-arm64"
+  },
+  "trace_context": "tests/compliance/context-usage/traces/fd-skeleton/implement.context.json",
+  "metrics": {
+    "input_tokens": 140352,
+    "output_tokens": 3890,
+    "cache_read_tokens": 130271,
+    "cache_write_tokens": 0,
+    "total_tokens": 274513,
+    "duration_ms": 28145,
+    "turn_count": 1,
+    "tool_read_count": 5
+  },
+  "normalized_reads": [
+    "AGENTS.md",
+    "pipeline/99999_sandbox/task/handoff.md",
+    "pipeline/99999_sandbox/task/touch-set.json",
+    "lib/internal/packages/demo-svc/handler.ts",
+    "pipeline/99999_sandbox/task/implementation-report.md"
+  ],
+  "read_events": [
+    {
+      "event_index": 45,
+      "path": "AGENTS.md"
+    },
+    {
+      "event_index": 48,
+      "path": "AGENTS.md"
+    },
+    {
+      "event_index": 52,
+      "path": "pipeline/99999_sandbox/task/handoff.md"
+    },
+    {
+      "event_index": 55,
+      "path": "pipeline/99999_sandbox/task/handoff.md"
+    },
+    {
+      "event_index": 59,
+      "path": "pipeline/99999_sandbox/task/touch-set.json"
+    },
+    {
+      "event_index": 62,
+      "path": "pipeline/99999_sandbox/task/touch-set.json"
+    },
+    {
+      "event_index": 66,
+      "path": "lib/internal/packages/demo-svc/handler.ts"
+    },
+    {
+      "event_index": 68,
+      "path": "lib/internal/packages/demo-svc/handler.ts"
+    },
+    {
+      "event_index": 141,
+      "path": "pipeline/99999_sandbox/task/implementation-report.md"
+    },
+    {
+      "event_index": 143,
+      "path": "pipeline/99999_sandbox/task/implementation-report.md"
+    }
+  ],
+  "read_verification": {
+    "ok": true,
+    "errors": []
+  },
+  "budget_comparison": {
+    "ok": false,
+    "errors": [
+      "input_tokens=140352 exceeds live envelope max=36432",
+      "cache_read_tokens=130271 exceeds live envelope max=32894",
+      "total_tokens=274513 exceeds live envelope max=70209",
+      "output_tokens=3890 exceeds live envelope max=1383"
+    ]
+  },
+  "context_analysis": {
+    "prompt_tokens_est": 489,
+    "expected_required_inputs": {
+      "files": [
+        {
+          "path": "AGENTS.md",
+          "chars": 161,
+          "estimated_tokens": 41
+        },
+        {
+          "path": "pipeline/99999_sandbox/task/handoff.md",
+          "chars": 220,
+          "estimated_tokens": 55
+        },
+        {
+          "path": "pipeline/99999_sandbox/task/touch-set.json",
+          "chars": 177,
+          "estimated_tokens": 45
+        },
+        {
+          "path": "lib/internal/packages/demo-svc/handler.ts",
+          "chars": 239,
+          "estimated_tokens": 60
+        }
+      ],
+      "total_chars": 797,
+      "total_estimated_tokens": 201
+    },
+    "observed_inputs": {
+      "files": [
+        {
+          "path": "AGENTS.md",
+          "exists": true,
+          "is_file": true,
+          "chars": 161,
+          "estimated_tokens": 41,
+          "required": true,
+          "allowlisted": true
+        },
+        {
+          "path": "pipeline/99999_sandbox/task/handoff.md",
+          "exists": true,
+          "is_file": true,
+          "chars": 220,
+          "estimated_tokens": 55,
+          "required": true,
+          "allowlisted": true
+        },
+        {
+          "path": "pipeline/99999_sandbox/task/touch-set.json",
+          "exists": true,
+          "is_file": true,
+          "chars": 177,
+          "estimated_tokens": 45,
+          "required": true,
+          "allowlisted": true
+        },
+        {
+          "path": "lib/internal/packages/demo-svc/handler.ts",
+          "exists": true,
+          "is_file": true,
+          "chars": 239,
+          "estimated_tokens": 60,
+          "required": true,
+          "allowlisted": true
+        },
+        {
+          "path": "pipeline/99999_sandbox/task/implementation-report.md",
+          "exists": true,
+          "is_file": true,
+          "chars": 1124,
+          "estimated_tokens": 281,
+          "required": false,
+          "allowlisted": true
+        }
+      ],
+      "total_chars": 1921,
+      "total_estimated_tokens": 482,
+      "required_estimated_tokens": 201,
+      "extra_estimated_tokens": 281
+    },
+    "read_sequence": [
+      {
+        "step_index": 1,
+        "event_index": 45,
+        "path": "AGENTS.md",
+        "first_seen": true,
+        "required": true,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 41,
+        "cumulative_estimated_tokens": 41
+      },
+      {
+        "step_index": 2,
+        "event_index": 48,
+        "path": "AGENTS.md",
+        "first_seen": false,
+        "required": true,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 41,
+        "cumulative_estimated_tokens": 41
+      },
+      {
+        "step_index": 3,
+        "event_index": 52,
+        "path": "pipeline/99999_sandbox/task/handoff.md",
+        "first_seen": true,
+        "required": true,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 55,
+        "cumulative_estimated_tokens": 96
+      },
+      {
+        "step_index": 4,
+        "event_index": 55,
+        "path": "pipeline/99999_sandbox/task/handoff.md",
+        "first_seen": false,
+        "required": true,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 55,
+        "cumulative_estimated_tokens": 96
+      },
+      {
+        "step_index": 5,
+        "event_index": 59,
+        "path": "pipeline/99999_sandbox/task/touch-set.json",
+        "first_seen": true,
+        "required": true,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 45,
+        "cumulative_estimated_tokens": 141
+      },
+      {
+        "step_index": 6,
+        "event_index": 62,
+        "path": "pipeline/99999_sandbox/task/touch-set.json",
+        "first_seen": false,
+        "required": true,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 45,
+        "cumulative_estimated_tokens": 141
+      },
+      {
+        "step_index": 7,
+        "event_index": 66,
+        "path": "lib/internal/packages/demo-svc/handler.ts",
+        "first_seen": true,
+        "required": true,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 60,
+        "cumulative_estimated_tokens": 201
+      },
+      {
+        "step_index": 8,
+        "event_index": 68,
+        "path": "lib/internal/packages/demo-svc/handler.ts",
+        "first_seen": false,
+        "required": true,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 60,
+        "cumulative_estimated_tokens": 201
+      },
+      {
+        "step_index": 9,
+        "event_index": 141,
+        "path": "pipeline/99999_sandbox/task/implementation-report.md",
+        "first_seen": true,
+        "required": false,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 281,
+        "cumulative_estimated_tokens": 482
+      },
+      {
+        "step_index": 10,
+        "event_index": 143,
+        "path": "pipeline/99999_sandbox/task/implementation-report.md",
+        "first_seen": false,
+        "required": false,
+        "exists": true,
+        "is_file": true,
+        "estimated_tokens": 281,
+        "cumulative_estimated_tokens": 482
+      }
+    ],
+    "allowances": {
+      "tool_calls_est": 900,
+      "tool_results_est": 425,
+      "sdk_runtime_est": 9000,
+      "tool_catalog_est": 3500,
+      "retrieval_allowance_est": 4000
+    },
+    "allowance_total_est": 17825,
+    "expected_explained_input_tokens": 18366,
+    "observed_input_tokens": 140352,
+    "observed_estimate_with_allowances": 18796,
+    "unexplained_input_tokens": 121556,
+    "deltas": {
+      "observed_minus_expected_explained": 121986,
+      "observed_minus_expected_required_visible": 139662,
+      "observed_minus_observed_visible": 139381
+    },
+    "envelope_comparison": {
+      "input_tokens": {
+        "observed": 140352,
+        "max": 36432,
+        "delta": 103920
+      },
+      "cache_read_tokens": {
+        "observed": 130271,
+        "max": 32894,
+        "delta": 97377
+      },
+      "total_tokens": {
+        "observed": 274513,
+        "max": 70209,
+        "delta": 204304
+      },
+      "output_tokens": {
+        "observed": 3890,
+        "max": 1383,
+        "delta": 2507
+      }
+    }
+  }
+}

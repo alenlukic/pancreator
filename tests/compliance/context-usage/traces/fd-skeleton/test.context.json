@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "trace_id": "fd-skeleton-test-v1",
+  "fixture_root": "tests/compliance/context-usage/fixtures/fd-skeleton",
+  "stage_id": "test",
+  "message": "Execute feature-delivery stage test for task 99999_0000_fd-skeleton.",
+  "stage_prompt": {
+    "path": "pipeline/99999_sandbox/task/next-prompt-test.md"
+  },
+  "required_artifact_paths": ["pipeline/99999_sandbox/task/test-report.md"],
+  "expected_required_reads": [
+    "AGENTS.md",
+    "pipeline/99999_sandbox/task/handoff.md",
+    "pipeline/99999_sandbox/task/implementation-report.md",
+    "tests/handler.test.ts"
+  ],
+  "allow_only_read_paths": [
+    "AGENTS.md",
+    "pipeline/99999_sandbox/task/handoff.md",
+    "pipeline/99999_sandbox/task/implementation-report.md",
+    "tests/handler.test.ts",
+    "lib/internal/packages/demo-svc/handler.ts",
+    "pipeline/99999_sandbox/task/test-report.md"
+  ],
+  "forbidden_read_patterns": ["^docs/PRD\\.md$", "^docs/BOOTSTRAP\\.md$", "^archive/work/", "^archive/inbox/", "^lib/inbox/"],
+  "persona": {
+    "name": "qa-tester",
+    "description": "When the feature-delivery pipeline reaches test, qa-tester SHALL validate expected behavior and report test outcomes for handoff into compliance.",
+    "model": "composer-2.5[fast=false]",
+    "max_turns": 30,
+    "tools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Write",
+      "Edit",
+      "Bash(pnpm test:*)",
+      "Bash(git status:*)"
+    ],
+    "disallowed_tools": ["Bash(rm:*)", "Bash(git push:*)", "Bash(git commit:*)"]
+  }
+}

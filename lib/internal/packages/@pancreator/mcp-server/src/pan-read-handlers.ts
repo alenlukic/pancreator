@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { readFile, readdir } from "node:fs/promises";
 
-import { asTaskId } from "@pancreator/core";
+import { asTaskId, resolvePancreatorYamlPath } from "@pancreator/core";
 import {
   FsInterventionStore,
   InterventionManager,
@@ -250,9 +250,12 @@ export async function readWorkspaceStatus(
   ctx: DdlExecutionContext,
   taskId?: string,
 ): Promise<WorkspaceStatusResult | { status: "error"; command: "status"; error: string }> {
-  const pancreatorYamlPath = path.join(ctx.repoRoot, "pancreator.yaml");
+  const pancreatorYamlPath = resolvePancreatorYamlPath(ctx.repoRoot);
   let bootstrap: Record<string, unknown> = {};
   try {
+    if (pancreatorYamlPath === undefined) {
+      throw new Error("missing pancreator.yaml");
+    }
     bootstrap = parseYaml(await readFile(pancreatorYamlPath, "utf8")) as Record<string, unknown>;
   } catch {
     bootstrap = {};

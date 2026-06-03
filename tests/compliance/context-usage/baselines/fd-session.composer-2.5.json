@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-06-03T17:15:18.699Z",
+  "model": "composer-2.5",
+  "source_trace_baseline": "tests/compliance/context-usage/baselines/fd-skeleton.json",
+  "source_model_baseline": "tests/compliance/context-usage/baselines/composer-2.5.json",
+  "trace_sequence": [
+    "fd-skeleton-implement-v1",
+    "fd-skeleton-review-v1",
+    "fd-skeleton-test-v1",
+    "fd-skeleton-compliance-v1"
+  ],
+  "per_step": {
+    "fd-skeleton-implement-v1": {
+      "trace_id": "fd-skeleton-implement-v1",
+      "stage_id": "implement",
+      "input_tokens_max": 20366,
+      "cache_read_tokens_max": 30000,
+      "total_tokens_max": 53366,
+      "output_tokens_max": 1383,
+      "turn_count_max": 3,
+      "duration_ms_max": 120000,
+      "tool_read_count": {
+        "min": 4,
+        "max": 7
+      }
+    },
+    "fd-skeleton-review-v1": {
+      "trace_id": "fd-skeleton-review-v1",
+      "stage_id": "review",
+      "input_tokens_max": 20357,
+      "cache_read_tokens_max": 30000,
+      "total_tokens_max": 53357,
+      "output_tokens_max": 1383,
+      "turn_count_max": 3,
+      "duration_ms_max": 120000,
+      "tool_read_count": {
+        "min": 4,
+        "max": 7
+      }
+    },
+    "fd-skeleton-test-v1": {
+      "trace_id": "fd-skeleton-test-v1",
+      "stage_id": "test",
+      "input_tokens_max": 20353,
+      "cache_read_tokens_max": 30000,
+      "total_tokens_max": 53353,
+      "output_tokens_max": 1383,
+      "turn_count_max": 3,
+      "duration_ms_max": 120000,
+      "tool_read_count": {
+        "min": 4,
+        "max": 7
+      }
+    },
+    "fd-skeleton-compliance-v1": {
+      "trace_id": "fd-skeleton-compliance-v1",
+      "stage_id": "compliance",
+      "input_tokens_max": 20312,
+      "cache_read_tokens_max": 30000,
+      "total_tokens_max": 53312,
+      "output_tokens_max": 1383,
+      "turn_count_max": 3,
+      "duration_ms_max": 120000,
+      "tool_read_count": {
+        "min": 4,
+        "max": 7
+      }
+    }
+  },
+  "cumulative": {
+    "input_tokens_max": 81388,
+    "cache_read_tokens_max": 120000,
+    "total_tokens_max": 213388,
+    "output_tokens_max": 5532
+  },
+  "cache_growth": {
+    "max_step_delta": 3000,
+    "basis": {
+      "live_tolerance": 3000,
+      "noise_floor": 0
+    }
+  }
+}

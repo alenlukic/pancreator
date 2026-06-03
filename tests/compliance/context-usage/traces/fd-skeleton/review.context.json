@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "trace_id": "fd-skeleton-review-v1",
+  "fixture_root": "tests/compliance/context-usage/fixtures/fd-skeleton",
+  "stage_id": "review",
+  "message": "Execute feature-delivery stage review for task 99999_0000_fd-skeleton.",
+  "stage_prompt": {
+    "path": "pipeline/99999_sandbox/task/next-prompt-review.md"
+  },
+  "required_artifact_paths": ["pipeline/99999_sandbox/task/review-report.md"],
+  "expected_required_reads": [
+    "AGENTS.md",
+    "pipeline/99999_sandbox/task/handoff.md",
+    "pipeline/99999_sandbox/task/implementation-report.md",
+    "pipeline/99999_sandbox/task/touch-set.json"
+  ],
+  "allow_only_read_paths": [
+    "AGENTS.md",
+    "pipeline/99999_sandbox/task/handoff.md",
+    "pipeline/99999_sandbox/task/implementation-report.md",
+    "pipeline/99999_sandbox/task/touch-set.json",
+    "lib/internal/packages/demo-svc/handler.ts",
+    "pipeline/99999_sandbox/task/review-report.md"
+  ],
+  "forbidden_read_patterns": ["^docs/PRD\\.md$", "^docs/BOOTSTRAP\\.md$", "^archive/work/", "^archive/inbox/", "^lib/inbox/"],
+  "persona": {
+    "name": "reviewer",
+    "description": "When the feature-delivery pipeline reaches review, the reviewer SHALL inspect stage artifacts for regressions, policy violations, and risk hotspots before test execution.",
+    "model": "composer-2.5[fast=false]",
+    "max_turns": 30,
+    "tools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Write",
+      "Edit",
+      "Bash(git diff:*)",
+      "Bash(git status:*)"
+    ],
+    "disallowed_tools": ["Bash(rm:*)", "Bash(git push:*)", "Bash(git commit:*)"]
+  }
+}

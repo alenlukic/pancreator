@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-06-03T18:08:50.042Z",
+  "prompt_id": "noop_terminate_v1",
+  "prompt_text": "Overhead calibration probe.\nDo not call tools.\nDo not read files.\nDo not load further context.\nReply with exactly:\nOVERHEAD_CALIBRATION_OK\nThen terminate immediately.",
+  "runs_per_condition": 1,
+  "models": [
+    {
+      "model": "composer-2.5",
+      "sdk_model_id": "composer-2.5",
+      "samples": {
+        "repo_root": [
+          {
+            "run_index": 1,
+            "condition": "repo_root",
+            "cwd": "/Users/alen/Dev/daedaline",
+            "metrics": {
+              "input_tokens": 17629,
+              "output_tokens": 77,
+              "cache_read_tokens": 4963,
+              "cache_write_tokens": 0,
+              "total_tokens": 22669,
+              "duration_ms": 1931,
+              "turn_count": 1,
+              "tool_read_count": 0
+            },
+            "tool_read_count": 0,
+            "tool_paths": [],
+            "ok": true
+          }
+        ],
+        "empty_dir": [
+          {
+            "run_index": 1,
+            "condition": "empty_dir",
+            "cwd": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-empty-cQ6tDj",
+            "metrics": {
+              "input_tokens": 10718,
+              "output_tokens": 78,
+              "cache_read_tokens": 7328,
+              "cache_write_tokens": 0,
+              "total_tokens": 18124,
+              "duration_ms": 1518,
+              "turn_count": 1,
+              "tool_read_count": 0
+            },
+            "tool_read_count": 0,
+            "tool_paths": [],
+            "ok": true
+          }
+        ]
+      }
+    }
+  ]
+}

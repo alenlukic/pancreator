@@ -10,10 +10,42 @@ export function readProjectRootFromYaml(raw: string): string {
   return value && value.length > 0 ? value : ".";
 }
 
-/** Reads `project_root` from harness-root `pancreator.yaml`; defaults to `"."` when absent. */
+const EMBEDDED_PROJECT_DIR = ".pancreator";
+
+/** Resolves live `pancreator.yaml` under an embedded harness or greenfield harness root. */
+export function resolvePancreatorYamlPath(harnessRoot: string): string | undefined {
+  const harness = path.resolve(harnessRoot);
+  const candidates = [
+    path.join(harness, EMBEDDED_PROJECT_DIR, "pancreator.yaml"),
+    path.join(harness, "pancreator.yaml"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+/** Resolves live `pancreator-model-escalation.yaml` for embedded or greenfield harness roots. */
+export function resolveModelEscalationYamlPath(harnessRoot: string): string | undefined {
+  const harness = path.resolve(harnessRoot);
+  const candidates = [
+    path.join(harness, EMBEDDED_PROJECT_DIR, "pancreator-model-escalation.yaml"),
+    path.join(harness, "pancreator-model-escalation.yaml"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+/** Reads `project_root` from the resolved live config; defaults to `"."` when absent. */
 export function readProjectRoot(harnessRoot: string): string {
-  const cfgPath = path.join(path.resolve(harnessRoot), "pancreator.yaml");
-  if (!existsSync(cfgPath)) {
+  const cfgPath = resolvePancreatorYamlPath(harnessRoot);
+  if (cfgPath === undefined) {
     return ".";
   }
   const raw = readFileSync(cfgPath, "utf8");
@@ -38,7 +70,16 @@ export function resolveProjectPath(harnessRoot: string, ...segments: string[]): 
 /** Resolves a project-relative posix path stored in ledgers and artifacts. */
 export function resolveRepoPath(harnessRoot: string, relPosix: string): string {
   const norm = relPosix.replace(/\\/gu, "/").replace(/^\/+/u, "");
-  if (norm === "pancreator.yaml" || norm === ".env" || norm.startsWith(".env.")) {
+  if (norm === "pancreator.yaml") {
+    return resolvePancreatorYamlPath(harnessRoot) ?? path.join(path.resolve(harnessRoot), "pancreator.yaml");
+  }
+  if (norm === "pancreator-model-escalation.yaml") {
+    return (
+      resolveModelEscalationYamlPath(harnessRoot) ??
+      path.join(path.resolve(harnessRoot), "pancreator-model-escalation.yaml")
+    );
+  }
+  if (norm === ".env" || norm.startsWith(".env.")) {
     return path.join(path.resolve(harnessRoot), ...norm.split("/"));
   }
   return resolveProjectPath(harnessRoot, ...norm.split("/"));

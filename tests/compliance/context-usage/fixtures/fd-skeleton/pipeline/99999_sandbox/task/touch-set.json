@@ -1,0 +1,7 @@
+{
+  "paths": [
+    "lib/internal/packages/demo-svc/handler.ts",
+    "pipeline/99999_sandbox/task/implementation-report.md"
+  ],
+  "symbols": ["handleRequest", "handleHealth"]
+}
