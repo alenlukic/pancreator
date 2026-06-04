@@ -35,8 +35,6 @@ real projects, not a frontend or design-skill showcase.
 - `lib/internal/packages/` — TypeScript workspace packages
 - `tests/` — repository tests and compliance fixtures
 - `lib/internal/tools/` — validation and maintenance scripts
-- `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/` — US-9
-  greenfield evidence schema, fixture, evaluator, and KPI baseline evidence (Phase 5)
 
 ## Architecture and core docs
 
