@@ -4,7 +4,7 @@
   "model": "composer-2.5",
   "run_index": 8,
   "combo": "task-high.composer-2.5",
-  "trace_path": "/Users/alen/Dev/daedaline/tests/compliance/context-usage/calibration/traces/task-high.composer-2.5/run-8-2026-06-03T22-55-03-842Z.ndjson",
+  "trace_path": "tests/compliance/context-usage/calibration/traces/task-high.composer-2.5/run-8-2026-06-03T22-55-03-842Z.ndjson",
   "metrics": {
     "input_tokens": 47692,
     "output_tokens": 1582,

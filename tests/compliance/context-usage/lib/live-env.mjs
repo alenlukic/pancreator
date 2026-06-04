@@ -35,6 +35,21 @@ export function resolveHarnessRepoRoot() {
 }
 
 /**
+ * @param {string} absolutePath
+ * @param {string} [repoRoot]
+ * @returns {string}
+ */
+export function repoRelativePath(absolutePath, repoRoot = resolveHarnessRepoRoot()) {
+  const relative = path.relative(repoRoot, absolutePath);
+  if (relative.startsWith("..")) {
+    throw new Error(
+      `[context-usage] path ${absolutePath} is outside repo root ${repoRoot}`,
+    );
+  }
+  return relative.split(path.sep).join("/");
+}
+
+/**
  * @param {string} [repoRoot]
  */
 export function loadRepoEnv(repoRoot = resolveHarnessRepoRoot()) {

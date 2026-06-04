@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { repoRelativePath } from "./live-env.mjs";
 import { extractReadPathsFromToolEvent } from "./trace-parse.mjs";
 
 /** @typedef {{
@@ -266,7 +267,7 @@ export function createTraceSink(config) {
         model: config.model,
         run_index: config.runIndex,
         combo: config.combo,
-        trace_path: tracePath,
+        trace_path: repoRelativePath(tracePath),
         metrics,
         tool_paths: toolPaths,
         turn_count: metrics.turn_count,

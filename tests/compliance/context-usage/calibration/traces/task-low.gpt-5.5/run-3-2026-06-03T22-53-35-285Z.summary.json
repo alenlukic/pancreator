@@ -4,7 +4,7 @@
   "model": "gpt-5.5",
   "run_index": 3,
   "combo": "task-low.gpt-5.5",
-  "trace_path": "/Users/alen/Dev/daedaline/tests/compliance/context-usage/calibration/traces/task-low.gpt-5.5/run-3-2026-06-03T22-53-35-285Z.ndjson",
+  "trace_path": "tests/compliance/context-usage/calibration/traces/task-low.gpt-5.5/run-3-2026-06-03T22-53-35-285Z.ndjson",
   "metrics": {
     "input_tokens": 29402,
     "output_tokens": 377,

@@ -331,7 +331,6 @@ points; live calibration remains operator-only. Review and QA gates pass on
 network calls:
 
 ```bash
-cd "/Users/alen/Dev/daedaline"
 pnpm run context:usage:test
 ```
 
@@ -360,7 +359,6 @@ analyzer inefficiencies, and task-contract parsing.
 required env vars, operators run the full prototype matrix:
 
 ```bash
-cd "/Users/alen/Dev/daedaline"
 export CURSOR_CONTEXT_USAGE=1
 export CURSOR_API_KEY=<key>
 pnpm run context:usage:calibrate

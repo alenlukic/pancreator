@@ -18,6 +18,7 @@ import {
   writeFindings,
 } from "./lib/analyzer.mjs";
 import { copyTaskFixtureToTemp } from "./lib/copy-sandbox.mjs";
+import { repoRelativePath } from "./lib/live-env.mjs";
 import {
   buildExpectedBaseline,
   computeVariableSamples,
@@ -119,7 +120,9 @@ test("collect-usage: turn-ended without usage throws", () => {
 });
 
 test("collect-usage: trace sink writes ndjson and summary", () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "context-usage-trace-"));
+  const traceDir = path.join(HARNESS_ROOT, "calibration", "traces");
+  fs.mkdirSync(traceDir, { recursive: true });
+  const tmp = fs.mkdtempSync(path.join(traceDir, ".unit-test-"));
   const sink = createTraceSink({
     traceDir: tmp,
     combo: "task-low.composer-2.5",
@@ -146,7 +149,7 @@ test("collect-usage: trace sink writes ndjson and summary", () => {
   const summary = sink.finish(metrics, ["docs/PRD.summary.md"]);
   assert.ok(fs.existsSync(sink.tracePath));
   assert.ok(fs.existsSync(sink.summaryPath));
-  assert.equal(summary.trace_path, sink.tracePath);
+  assert.equal(summary.trace_path, repoRelativePath(sink.tracePath));
   assert.equal(summary.turn_count, 1);
   fs.rmSync(tmp, { recursive: true, force: true });
 });
@@ -180,7 +183,9 @@ test("analyzer: inefficiencies for duplicate, decoy, and excess turns", () => {
 });
 
 test("analyzer: duplicate_read from createTraceSink summary with deduped tool_paths", () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "context-usage-trace-"));
+  const traceDir = path.join(HARNESS_ROOT, "calibration", "traces");
+  fs.mkdirSync(traceDir, { recursive: true });
+  const tmp = fs.mkdtempSync(path.join(traceDir, ".unit-test-"));
   const sink = createTraceSink({
     traceDir: tmp,
     combo: "task-low.composer-2.5",

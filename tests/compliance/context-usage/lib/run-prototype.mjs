@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 import { copyTaskFixtureToTemp } from "./copy-sandbox.mjs";
+import { repoRelativePath } from "./live-env.mjs";
 import {
   assertUsageCaptured,
   createEmptyMetrics,
@@ -83,8 +84,8 @@ export async function runPrototypeTask(input) {
       metrics,
       tool_paths: toolPaths,
       summary,
-      summary_path: trace.summaryPath,
-      trace_path: trace.tracePath,
+      summary_path: repoRelativePath(trace.summaryPath),
+      trace_path: summary.trace_path,
       runtime: { sdk_version: readCursorSdkVersion() },
     };
   } catch (error) {

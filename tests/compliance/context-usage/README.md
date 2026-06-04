@@ -37,7 +37,6 @@ Baselines:
 ## Offline commands (CI-safe)
 
 ```bash
-cd "/Users/alen/Dev/daedaline"
 pnpm run context:usage:test
 ```
 
@@ -46,7 +45,6 @@ pnpm run context:usage:test
 Requires `CURSOR_API_KEY` and `CURSOR_CONTEXT_USAGE=1` (set automatically by `pnpm run context:usage:*`).
 
 ```bash
-cd "/Users/alen/Dev/daedaline"
 pnpm run context:usage:calibrate
 pnpm run context:usage:analyze
 ```

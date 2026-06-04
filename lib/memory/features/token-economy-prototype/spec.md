@@ -281,7 +281,6 @@ operator accepts this artifact, the next state transition for this task SHALL be
 exactly:
 
 ```bash
-cd "/Users/alen/Dev/daedaline"
 pnpm -w exec pan advance 18834_1846_token-economy-prototype --artifact lib/memory/features/token-economy-prototype/spec.md
 ```
 
