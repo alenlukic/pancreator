@@ -19,6 +19,9 @@ import type { FeatureDeliveryRunnerLedger } from "./feature-delivery-runner.js";
 import { advanceFeatureDelivery, type FeatureDeliveryState } from "./feature-delivery-run.js";
 import type { PipelineDefinition } from "@pancreator/pipeline";
 import type { CursorSdkTransport } from "@pancreator/runner-cursor";
+import { stringifyCompactJson } from "@pancreator/core";
+
+import { stringifyCliJson } from "./canonical-json-io.js";
 
 const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
@@ -119,19 +122,15 @@ function mockStageArtifactBody(rel: string): string {
   if (base === "review.md") return "review_passes: true\n";
   if (base === "test-report.md") return "qa_passes: true\n";
   if (base === "compliance-result.json") {
-    return `${JSON.stringify(
-      {
-        compliance_passes: true,
-        final_gate: {
-          "pnpm lint": 0,
-          "pnpm typecheck": 0,
-          "pnpm test": 0,
-          "node --test tests/*.test.mjs": 0,
-        },
+    return stringifyCliJson(CANONICAL_REPO_ROOT, {
+      compliance_passes: true,
+      final_gate: {
+        "pnpm lint": 0,
+        "pnpm typecheck": 0,
+        "pnpm test": 0,
+        "node --test tests/*.test.mjs": 0,
       },
-      null,
-      2,
-    )}\n`;
+    });
   }
   return "mock-artifact\n";
 }
@@ -339,7 +338,7 @@ describe("feature-delivery-runner automation", () => {
     await mkdir(path.dirname(complianceAbs), { recursive: true });
     await writeFile(
       complianceAbs,
-      JSON.stringify({
+      stringifyCompactJson({
         compliance_passes: true,
         final_gate: {
           "pnpm lint": 0,
@@ -420,7 +419,7 @@ configs:
     await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
     await writeFile(
       path.join(root, state.artifacts.stateFile),
-      `${JSON.stringify({ automation: state.automation }, null, 2)}\n`,
+      stringifyCliJson(root, { automation: state.automation }),
       "utf8",
     );
     await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
@@ -498,7 +497,7 @@ configs:
     await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
     await writeFile(
       path.join(root, state.artifacts.stateFile),
-      `${JSON.stringify({ automation: state.automation }, null, 2)}\n`,
+      stringifyCliJson(root, { automation: state.automation }),
       "utf8",
     );
     await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
@@ -592,7 +591,7 @@ configs:
         },
       ],
     };
-    await writeFile(path.join(root, stateFileRel), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    await writeFile(path.join(root, stateFileRel), stringifyCliJson(root, state), "utf8");
 
     const transport: CursorSdkTransport = async (params) => {
       const cwd = params.cwd ?? root;

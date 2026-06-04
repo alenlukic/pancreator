@@ -2,15 +2,31 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { asTaskId } from "@pancreator/core";
+import { asTaskId, stringifyCompactJson } from "@pancreator/core";
 import { interventionJournalPath } from "@pancreator/intervention";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { callDdlToolMcp, readPancreatorResourceMcp } from "./create-mcp-server.js";
 import { listResourceDefinitions } from "./definitions.js";
 import { DdlDeferredToolError, executeDdlTool } from "./pan-execute.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..", "..", "..", "..", "..");
+const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
+
+let priorAbbrevLen: string | undefined;
+
+beforeEach(() => {
+  priorAbbrevLen = process.env[JSON_FORMAT_ABBREV_ENV];
+  process.env[JSON_FORMAT_ABBREV_ENV] = "7";
+});
+
+afterEach(() => {
+  if (priorAbbrevLen === undefined) {
+    delete process.env[JSON_FORMAT_ABBREV_ENV];
+  } else {
+    process.env[JSON_FORMAT_ABBREV_ENV] = priorAbbrevLen;
+  }
+});
 
 async function mktemp(prefix: string): Promise<string> {
   return await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -131,7 +147,7 @@ describe("read-only pan.feature / pan.status / pan.memory", () => {
     expect(out.status).toBe("ok");
     expect(out.command).toBe("feature.list");
     expect(Array.isArray(out.features)).toBe(true);
-    expect(JSON.stringify(out)).not.toContain('"stub"');
+    expect(stringifyCompactJson(out)).not.toContain('"stub"');
   });
 
   it("pan.feature show returns spec data or structured not-found", async () => {
@@ -143,7 +159,7 @@ describe("read-only pan.feature / pan.status / pan.memory", () => {
     expect(out.status).toBe("ok");
     expect(out.command).toBe("feature.show");
     expect(out.feature_id).toBe("ci-best-practices-batch");
-    expect(JSON.stringify(out)).not.toContain('"stub"');
+    expect(stringifyCompactJson(out)).not.toContain('"stub"');
   });
 
   it("pan.status returns workspace summary without taskId", async () => {
@@ -151,7 +167,7 @@ describe("read-only pan.feature / pan.status / pan.memory", () => {
     expect(out.status).toBe("ok");
     expect(out.command).toBe("status");
     expect(Array.isArray(out.activeTasks)).toBe(true);
-    expect(JSON.stringify(out)).not.toContain('"stub"');
+    expect(stringifyCompactJson(out)).not.toContain('"stub"');
   });
 
   it("pan.memory.query returns typed memory hits", async () => {
@@ -163,7 +179,7 @@ describe("read-only pan.feature / pan.status / pan.memory", () => {
     expect(out.status).toBe("ok");
     expect(out.command).toBe("memory.query");
     expect(Array.isArray(out.hits)).toBe(true);
-    expect(JSON.stringify(out)).not.toContain('"stub"');
+    expect(stringifyCompactJson(out)).not.toContain('"stub"');
   });
 });
 
@@ -181,6 +197,7 @@ describe("stdio MCP transport read tools", () => {
       command: process.execPath,
       args: [serverEntry],
       cwd: ROOT,
+      env: { ...process.env, [JSON_FORMAT_ABBREV_ENV]: "7" },
     });
     const client = new Client({ name: "pan-read-tools-test", version: "0.0.0" });
     await client.connect(transport);

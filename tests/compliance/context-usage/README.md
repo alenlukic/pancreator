@@ -55,8 +55,10 @@ Default matrix run: 2 overhead probes + `8 × 4` task runs (~34 API calls). Lowe
 node tests/compliance/context-usage/calibrate-matrix.mjs --runs 3
 ```
 
-Traces: `calibration/traces/<combo>/` (NDJSON + `.summary.json` per run).
-Findings: `calibration/findings/<combo>.json`.
+Traces: `calibration/traces/<combo>/` (NDJSON + `.summary.json` per run; **gitignored**,
+operator-local only). Each matrix run clears prior artifacts for that combo before writing
+new ones. `context:usage:analyze` deduplicates by `run_index`, keeping the newest summary.
+Findings: `calibration/findings/<combo>.json` (committed).
 
 Rebuild expected baselines from a saved raw file:
 

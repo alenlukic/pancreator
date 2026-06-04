@@ -18,9 +18,15 @@ import {
   collectRepoJson,
   formatCanonicalJson,
   isExcludedRelPath,
+  isGitignoredRelPath,
   resolveAbbrevLen,
   rewriteJsonText,
 } from "../lib/internal/tools/migrate-json-formatting.mjs";
+import {
+  formatJsonFileInPlace,
+  formatJsonFilesInPlace,
+} from "../lib/internal/tools/format-json-in-place.mjs";
+import { legacyPrettyJson } from "./helpers/legacy-json-stringify.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -121,14 +127,10 @@ test("resolveAbbrevLen: env override yields deterministic abbreviation length", 
 test("rewriteJsonText: abbreviates contentHash SHA-256 to prefix length", () => {
   const full =
     "2e25524c03b9de8baef18fc3216d90c1bd0c85ceae1a47d8b0fd2212b0d49508";
-  const input = `${JSON.stringify(
-    {
-      refs: [{ contentHash: full }],
-      keep: true,
-    },
-    null,
-    2,
-  )}\n`;
+  const input = legacyPrettyJson({
+    refs: [{ contentHash: full }],
+    keep: true,
+  });
   const { output, changed } = rewriteJsonText(input, 7);
   assert.equal(changed, true);
   const round = JSON.parse(output);
@@ -138,21 +140,58 @@ test("rewriteJsonText: abbreviates contentHash SHA-256 to prefix length", () => 
 test("rewriteJsonText is idempotent on stable output", () => {
   const full =
     "2e25524c03b9de8baef18fc3216d90c1bd0c85ceae1a47d8b0fd2212b0d49508";
-  const once = rewriteJsonText(
-    `${JSON.stringify({ contentHash: full }, null, 2)}\n`,
-    7,
-  );
+  const once = rewriteJsonText(legacyPrettyJson({ contentHash: full }), 7);
   const twice = rewriteJsonText(once.output, 7);
   assert.equal(twice.changed, false);
   assert.equal(twice.output, once.output);
 });
 
 test("rewriteJsonText keeps compact primitive arrays on one line", () => {
-  const formatted = rewriteJsonText(
-    `${JSON.stringify({ tags: [1, 2, 3], name: "x" }, null, 2)}\n`,
-    7,
-  ).output;
+  const formatted = rewriteJsonText(legacyPrettyJson({ tags: [1, 2, 3], name: "x" }), 7).output;
   assert.match(formatted, /"tags": \[1, 2, 3]/);
+});
+
+test("isGitignoredRelPath skips transient work/ JSON from repo scans", () => {
+  assert.equal(isGitignoredRelPath(ROOT, "work/example/policy-compliance.json"), true);
+  assert.equal(isGitignoredRelPath(ROOT, "lib/memory/active/current.md"), false);
+});
+
+test("formatJsonFileInPlace canonicalizes JSON.stringify-style policy artifacts", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pan-json-in-place-"));
+  const key = "PAN_JSON_FORMAT_ABBREV_LEN";
+  const prev = process.env[key];
+  process.env[key] = "7";
+  try {
+    const rel = "data/policy-compliance.json";
+    const abs = path.join(tmp, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(
+      abs,
+      legacyPrettyJson({
+        governing_sources_checked: [
+          "AGENTS.md",
+          "lib/memory/handbook/constitution.md",
+          "docs/PRD.md",
+        ],
+      }),
+      "utf8",
+    );
+    const first = formatJsonFileInPlace(abs, tmp);
+    assert.equal(first.changed, true);
+    const raw = fs.readFileSync(abs, "utf8");
+    assert.match(raw, /"governing_sources_checked": \["AGENTS.md"/);
+    const second = formatJsonFileInPlace(abs, tmp);
+    assert.equal(second.changed, false);
+    const batch = formatJsonFilesInPlace(tmp, [rel]);
+    assert.equal(batch.changed, 0);
+  } finally {
+    if (prev === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = prev;
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 test("formatCanonicalJson nests objects inside arrays across multiple lines", () => {
@@ -267,7 +306,7 @@ test("migration dry-run on canonically rewritten temp repo reports zero wouldRew
     fs.mkdirSync(path.join(tmp, "data"), { recursive: true });
     const obj = { a: 1, tags: ["x"] };
     const abbrev = resolveAbbrevLen(ROOT);
-    const canon = rewriteJsonText(`${JSON.stringify(obj, null, 2)}\n`, abbrev).output;
+    const canon = rewriteJsonText(legacyPrettyJson(obj), abbrev).output;
     fs.writeFileSync(path.join(tmp, "data", "x.json"), canon, "utf8");
     const out = execFileSync(process.execPath, [migrateScript, "--dry-run", "--root", tmp], {
       cwd: ROOT,
@@ -279,4 +318,47 @@ test("migration dry-run on canonically rewritten temp repo reports zero wouldRew
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+});
+
+const JSON_STRINGIFY_ALLOWLIST = new Set([
+  "lib/internal/tools/canonical-json-format.mjs",
+  "client/src/lib/json-io.ts",
+  "tests/helpers/legacy-json-stringify.mjs",
+]);
+
+test("JSON.stringify is confined to canonical-json implementation and browser/test shims", () => {
+  /** @type {string[]} */
+  const offenders = [];
+  /** @param {string} relDir */
+  function walk(relDir) {
+    const absDir = path.join(ROOT, relDir);
+    if (!fs.existsSync(absDir)) return;
+    for (const entry of fs.readdirSync(absDir, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === ".git" || entry.name === "dist") {
+        continue;
+      }
+      const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(rel);
+        continue;
+      }
+      if (!/\.(mjs|cjs|js|ts|tsx|mts|cts)$/u.test(entry.name)) {
+        continue;
+      }
+      const norm = rel.replace(/\\/g, "/").replace(/^\.\/+/, "");
+      if (JSON_STRINGIFY_ALLOWLIST.has(norm)) {
+        continue;
+      }
+      const text = fs.readFileSync(path.join(ROOT, rel), "utf8");
+      if (/JSON\.stringify\s*\(/u.test(text)) {
+        offenders.push(norm);
+      }
+    }
+  }
+  walk(".");
+  assert.deepEqual(
+    offenders,
+    [],
+    `JSON.stringify must not appear outside canonical-json-format.mjs, client json-io, and legacy test helper:\n${offenders.join("\n")}`,
+  );
 });

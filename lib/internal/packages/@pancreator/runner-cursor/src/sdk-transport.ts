@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { stringifyCompactJson } from "@pancreator/core";
+
 import { ensureCursorSdkRipgrepConfigured } from "./cursor-sdk-prereqs.js";
 import { resolveSdkModelId } from "./sdk-model.js";
 import {
@@ -142,7 +144,7 @@ export function createDefaultCursorSdkTransport(): CursorSdkTransport {
         typeof result.result === "string"
           ? result.result
           : result.result !== undefined
-            ? JSON.stringify(result.result)
+            ? stringifyCompactJson(result.result)
             : "";
       return { status: "ok", resultText };
     } catch (error) {

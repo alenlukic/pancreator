@@ -1,4 +1,5 @@
 import { asTaskId, resolveRepoPath } from "@pancreator/core";
+import { stringifyCliJson } from "./canonical-json-io.js";
 import {
   compilePipeline,
   executeStageSlice,
@@ -328,7 +329,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   if (existsSync(statePath)) {
     const existing = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
     existing.automation = input.state.automation;
-    await writeFile(statePath, `${JSON.stringify(existing, null, 2)}\n`, "utf8");
+    await writeFile(statePath, `${stringifyCliJson(repoRoot, existing)}\n`, "utf8");
   }
 
   let envelope: RunnerInvocationEnvelope | undefined;

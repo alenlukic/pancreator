@@ -3,7 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { analyzeTraceSummary, writeFindings } from "./lib/analyzer.mjs";
+import {
+  analyzeTraceSummary,
+  selectLatestSummariesByRunIndex,
+  writeFindings,
+} from "./lib/analyzer.mjs";
 
 const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const TRACE_ROOT = path.join(HARNESS_ROOT, "calibration", "traces");
@@ -22,10 +26,14 @@ function main() {
     if (!fs.statSync(comboDir).isDirectory()) {
       continue;
     }
-    const summaries = fs
+    const entries = fs
       .readdirSync(comboDir)
       .filter((name) => name.endsWith(".summary.json"))
-      .map((name) => JSON.parse(fs.readFileSync(path.join(comboDir, name), "utf8")));
+      .map((name) => ({
+        name,
+        summary: JSON.parse(fs.readFileSync(path.join(comboDir, name), "utf8")),
+      }));
+    const summaries = selectLatestSummariesByRunIndex(entries);
     const findings = summaries.map((summary) => analyzeTraceSummary(summary));
     const out = writeFindings(FINDINGS_DIR, combo, findings);
     console.log(`[context-usage] findings written: ${out}`);

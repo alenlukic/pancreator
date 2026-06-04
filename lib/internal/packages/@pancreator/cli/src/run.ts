@@ -32,7 +32,7 @@ import { createInterventionCheckpointPort } from "./intervention-checkpoint.js";
 import { runCursorSync } from "./cursor-sync.js";
 import { runCreatePancreator, runPanInit } from "./pan-init.js";
 
-import { stringifyCliJson } from "./canonical-json-io.js";
+import { quoteJsonString, stringifyCliJson } from "./canonical-json-io.js";
 import { createFeatureDeliverySdkProgressReporter } from "./feature-delivery-sdk-progress.js";
 import {
   rewriteActiveMemoryFile,
@@ -109,13 +109,13 @@ function emitPayload(
   format: OutputFormat,
 ): void {
   if (format === "text") {
-    writeOut(`${formatPanText(payload)}\n`);
+    writeOut(`${formatPanText(payload, repoRoot)}\n`);
     return;
   }
   emit(writeOut, repoRoot, payload);
 }
 
-export function formatPanText(payload: object): string {
+export function formatPanText(payload: object, repoRoot: string = process.cwd()): string {
   const record = payload as Record<string, unknown>;
   const command = record.command;
   if (command === "inbox") {
@@ -217,7 +217,7 @@ export function formatPanText(payload: object): string {
     ];
     return lines.join("\n");
   }
-  return JSON.stringify(payload, null, 2);
+  return stringifyCliJson(repoRoot, payload);
 }
 
 interface DeferredVerbConfig {
@@ -290,12 +290,12 @@ function buildDefaultIntakeMarkdown(opts: {
 }): string {
   const fm = [
     "---",
-    `title: ${JSON.stringify(opts.title)}`,
-    `feature_id: ${JSON.stringify(opts.featureId)}`,
+    `title: ${quoteJsonString(opts.title)}`,
+    `feature_id: ${quoteJsonString(opts.featureId)}`,
     "stage: intake",
-    `owner: ${JSON.stringify(opts.owner)}`,
+    `owner: ${quoteJsonString(opts.owner)}`,
     "status: open",
-    `created_at: ${JSON.stringify(opts.createdIso)}`,
+    `created_at: ${quoteJsonString(opts.createdIso)}`,
     "references: []",
     "---",
     "",
@@ -746,12 +746,12 @@ export async function parseAndRun(
           const templateBody = await readFile(templateAbs, "utf8");
           fileText = [
             "---",
-            `title: ${JSON.stringify(title)}`,
-            `feature_id: ${JSON.stringify(featureId)}`,
+            `title: ${quoteJsonString(title)}`,
+            `feature_id: ${quoteJsonString(featureId)}`,
             "stage: intake",
-            `owner: ${JSON.stringify(owner)}`,
+            `owner: ${quoteJsonString(owner)}`,
             "status: open",
-            `created_at: ${JSON.stringify(createdIso)}`,
+            `created_at: ${quoteJsonString(createdIso)}`,
             "references: []",
             "---",
             "",

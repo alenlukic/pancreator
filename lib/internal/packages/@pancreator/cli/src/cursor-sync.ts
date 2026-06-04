@@ -1,4 +1,4 @@
-import { projectRootAbs, readProjectRoot } from "@pancreator/core";
+import { projectRootAbs, quoteJsonString, readProjectRoot } from "@pancreator/core";
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { loadEmbeddedInstallManifestFromRepo } from "./pan-init.js";
@@ -67,7 +67,7 @@ function parseFrontmatter(raw: string): { data: Record<string, unknown>; body: s
 
 function yamlQuote(value: string): string {
   if (/[:#[\]{}&*!|>'"%@`\n]/u.test(value) || value.startsWith(" ") || value.endsWith(" ")) {
-    return JSON.stringify(value);
+    return quoteJsonString(value);
   }
   return value;
 }
@@ -220,8 +220,8 @@ metadata:
   pancreator-stability: experimental
   pancreator-handbook-anchors:
     - /AGENTS.md
-    - ${JSON.stringify(contextEconomy)}
-    - ${JSON.stringify(personaSpec)}
+    - ${quoteJsonString(contextEconomy)}
+    - ${quoteJsonString(personaSpec)}
   pancreator-checklist:
     - route-before-broad-read
     - prefer-owner-persona

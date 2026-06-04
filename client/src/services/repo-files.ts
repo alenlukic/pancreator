@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import { stringifyCompactJson } from "@/lib/json-io";
 import { findRepoRoot, isNotesPath, PathAccessError, resolveRepoPath } from "./repo-paths";
 
 export type WriteLogEntry = {
@@ -50,11 +51,11 @@ export async function writeRepoFile(
     timestamp: new Date().toISOString(),
   };
 
-  console.log(JSON.stringify({ event: "repo_file_write", ...entry }));
+  console.log(stringifyCompactJson({ event: "repo_file_write", ...entry }));
 
   const logPath = writeLogPath(repoRoot);
   await fsp.mkdir(path.dirname(logPath), { recursive: true });
-  await fsp.appendFile(logPath, `${JSON.stringify(entry)}\n`, "utf8");
+  await fsp.appendFile(logPath, `${stringifyCompactJson(entry)}\n`, "utf8");
 
   return entry;
 }

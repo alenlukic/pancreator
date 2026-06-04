@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   classifyProductionFindings,
@@ -15,8 +15,26 @@ import {
   runBoundedRepair,
   runTokenEconomySampleAudit,
 } from "./token-economy-sample-audit.js";
+import { stringifyCliJson } from "../canonical-json-io.js";
 
 describe("token-economy sample-audit", () => {
+  let hadAbbrevEnv = false;
+  let prevAbbrevEnv: string | undefined;
+
+  beforeEach(() => {
+    hadAbbrevEnv = Object.hasOwn(process.env, "PAN_JSON_FORMAT_ABBREV_LEN");
+    prevAbbrevEnv = process.env.PAN_JSON_FORMAT_ABBREV_LEN;
+    process.env.PAN_JSON_FORMAT_ABBREV_LEN = "7";
+  });
+
+  afterEach(() => {
+    if (hadAbbrevEnv) {
+      process.env.PAN_JSON_FORMAT_ABBREV_LEN = prevAbbrevEnv;
+    } else {
+      delete process.env.PAN_JSON_FORMAT_ABBREV_LEN;
+    }
+  });
+
   it("classifyProductionFindings detects forbidden PRD read", () => {
     const findings = classifyProductionFindings({
       task_id: "53589_test",
@@ -46,7 +64,7 @@ describe("token-economy sample-audit", () => {
     };
     await writeFile(
       path.join(traceDir, "implement-0-2026-06-04T00-00-00-000Z.summary.json"),
-      `${JSON.stringify(summary, null, 2)}\n`,
+      stringifyCliJson(root, summary),
       "utf8",
     );
     await writeFile(

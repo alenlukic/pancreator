@@ -1,8 +1,4 @@
-import {
-  abbreviateHashes,
-  formatCanonicalJson,
-  resolveAbbrevLen,
-} from "../../../../tools/canonical-json-format.mjs";
+import { stringifyRepoJson } from "@pancreator/core";
 
 /** Derive repository root from a `lib/memory/` absolute directory. */
 export function repoRootFromMemoryRoot(memoryRoot: string): string {
@@ -18,7 +14,5 @@ export function repoRootFromMemoryRoot(memoryRoot: string): string {
 /** Serialize feature index and other memory-tier JSON with canonical layout. */
 export function stringifyMemoryJson(memoryRoot: string, value: unknown): string {
   const repoRoot = repoRootFromMemoryRoot(memoryRoot);
-  const len = resolveAbbrevLen(repoRoot);
-  const abbreviated = abbreviateHashes(value, len);
-  return `${formatCanonicalJson(abbreviated, 0)}\n`;
+  return stringifyRepoJson(value, repoRoot);
 }

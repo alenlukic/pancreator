@@ -12,6 +12,7 @@ import {
   refreshCitationBody,
   refreshCitations,
 } from "../lib/internal/tools/refresh-citations.mjs";
+import { legacyPrettyJson } from "./helpers/legacy-json-stringify.mjs";
 
 function makeTempRepo() {
   const root = mkdtempSync(path.join(tmpdir(), "refresh-citations-"));
@@ -73,16 +74,12 @@ test("refreshCitationBody patches standalone JSON bodies", () => {
   const targetRel = "docs/standalone-target.md";
   mkdirSync(path.dirname(path.join(root, targetRel)), { recursive: true });
   writeFileSync(path.join(root, targetRel), "json-body\n", "utf8");
-  const body = `${JSON.stringify(
-    {
-      kind: "lines",
-      path: targetRel,
-      range: [1, 1],
-      contentHash: "TBD-on-commit",
-    },
-    null,
-    2,
-  )}\n`;
+  const body = legacyPrettyJson({
+    kind: "lines",
+    path: targetRel,
+    range: [1, 1],
+    contentHash: "TBD-on-commit",
+  });
   const { body: out, changed } = refreshCitationBody(body, 7, root);
   assert.equal(changed, true);
   assert.doesNotMatch(out, /TBD-on-commit/);

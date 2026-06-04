@@ -5,7 +5,8 @@ import {
   abbreviateHashes,
   formatCanonicalJson,
   resolveAbbrevLen,
-} from "../../../../tools/canonical-json-format.mjs";
+  stringifyCompactJson,
+} from "@pancreator/core";
 
 function stringifyTraceSummary(repoRoot: string, value: unknown): string {
   const len = resolveAbbrevLen(repoRoot);
@@ -182,7 +183,7 @@ export function processStreamEvent(
     }
     addUsageToMetrics(metrics, e.usage as Record<string, unknown>);
     if (options.debugStream) {
-      console.error("[sdk-trace:debug] turn-ended", JSON.stringify(e));
+      console.error("[sdk-trace:debug] turn-ended", stringifyCompactJson(e));
     }
     return;
   }
@@ -291,7 +292,7 @@ export function createTraceSink(config: TraceSinkConfig) {
   function writeRecord(record: Record<string, unknown>): void {
     const line = redactTraceRecord({ ts: new Date().toISOString(), ...record });
     records.push(line);
-    appendFileSync(tracePath, `${JSON.stringify(line)}\n`);
+    appendFileSync(tracePath, `${stringifyCompactJson(line)}\n`);
   }
 
   writeRecord({
@@ -365,7 +366,7 @@ export function createProductionTraceSink(config: ProductionTraceSinkConfig) {
   function writeRecord(record: Record<string, unknown>): void {
     const line = redactTraceRecord({ ts: new Date().toISOString(), ...record });
     records.push(line);
-    appendFileSync(tracePath, `${JSON.stringify(line)}\n`);
+    appendFileSync(tracePath, `${stringifyCompactJson(line)}\n`);
   }
 
   writeRecord({

@@ -24,6 +24,7 @@ import {
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
   PAN_DEFERRED_EXIT_CODE,
 } from "./run.js";
+import { stringifyCliJson } from "./canonical-json-io.js";
 import { loadRepoEnv } from "./repo-env.js";
 import { PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 
@@ -77,38 +78,30 @@ runner:
 }
 
 function mockSdkTransport(onInvoke?: () => void): CursorSdkTransport {
-  const mockArtifactBody = (rel: string): string => {
+  const mockArtifactBody = (repoRoot: string, rel: string): string => {
     const base = path.posix.basename(rel);
     if (base === "plan.md") return "# Plan\n\n## Scope\n\nBody.\n";
     if (base === "implementation-report.md") return "# Implementation report\n\n## Summary\n\nBody.\n";
     if (base === "review.md") return "review_passes: true\n";
     if (base === "test-report.md") return "qa_passes: true\n";
     if (base === "compliance-result.json") {
-      return `${JSON.stringify(
-        {
-          compliance_passes: true,
-          final_gate: {
-            "pnpm lint": 0,
-            "pnpm typecheck": 0,
-            "pnpm test": 0,
-            "node --test tests/*.test.mjs": 0,
-          },
+      return stringifyCliJson(repoRoot, {
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 0,
         },
-        null,
-        2,
-      )}\n`;
+      });
     }
     if (base === "policy-compliance.json") {
-      return `${JSON.stringify(
-        {
-          task_id: "mock-task",
-          governing_sources_checked: ["AGENTS.md"],
-          documentation_impact: { status: "none" },
-          policy_alignment: { status: "aligned" },
-        },
-        null,
-        2,
-      )}\n`;
+      return stringifyCliJson(repoRoot, {
+        task_id: "mock-task",
+        governing_sources_checked: ["AGENTS.md"],
+        documentation_impact: { status: "none" },
+        policy_alignment: { status: "aligned" },
+      });
     }
     return "mock-artifact\n";
   };
@@ -124,7 +117,7 @@ function mockSdkTransport(onInvoke?: () => void): CursorSdkTransport {
         continue;
       }
       await mkdir(path.dirname(abs), { recursive: true });
-      await writeFile(abs, mockArtifactBody(rel), "utf8");
+      await writeFile(abs, mockArtifactBody(cwd, rel), "utf8");
     }
     return { status: "ok", resultText: "mocked-sdk" };
   };
@@ -236,19 +229,15 @@ async function completeFeatureDeliveryRunForClose(
   });
   await writeFile(
     path.join(activeRunDir, "compliance-result.json"),
-    `${JSON.stringify(
-      {
-        compliance_passes: true,
-        final_gate: {
-          "pnpm lint": 0,
-          "pnpm typecheck": 0,
-          "pnpm test": 0,
-          "node --test tests/*.test.mjs": 0,
-        },
+    stringifyCliJson(root, {
+      compliance_passes: true,
+      final_gate: {
+        "pnpm lint": 0,
+        "pnpm typecheck": 0,
+        "pnpm test": 0,
+        "node --test tests/*.test.mjs": 0,
       },
-      null,
-      2,
-    )}\n`,
+    }),
     "utf8",
   );
   await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
@@ -257,16 +246,12 @@ async function completeFeatureDeliveryRunForClose(
   });
   await writeFile(
     path.join(activeRunDir, "policy-compliance.json"),
-    `${JSON.stringify(
-      {
-        task_id: taskId,
-        governing_sources_checked: ["AGENTS.md"],
-        documentation_impact: { status: "none" },
-        policy_alignment: { status: "aligned" },
-      },
-      null,
-      2,
-    )}\n`,
+    stringifyCliJson(root, {
+      task_id: taskId,
+      governing_sources_checked: ["AGENTS.md"],
+      documentation_impact: { status: "none" },
+      policy_alignment: { status: "aligned" },
+    }),
     "utf8",
   );
   await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/policy-compliance.json`], {
@@ -277,18 +262,14 @@ async function completeFeatureDeliveryRunForClose(
   const index = path.join(root, "lib", "memory", "features", featureId, "index.json");
   await writeFile(
     index,
-    `${JSON.stringify(
-      {
-        feature_id: featureId,
-        task_id: taskId,
-        status: "indexed",
-        indexed_at: "2026-05-10T13:30:00.000Z",
-        source_inbox_item: { path: inboxSourceRel },
-        delivery_report: { path: `lib/memory/features/${featureId}/delivery-report.md` },
-      },
-      null,
-      2,
-    )}\n`,
+    stringifyCliJson(root, {
+      feature_id: featureId,
+      task_id: taskId,
+      status: "indexed",
+      indexed_at: "2026-05-10T13:30:00.000Z",
+      source_inbox_item: { path: inboxSourceRel },
+      delivery_report: { path: `lib/memory/features/${featureId}/delivery-report.md` },
+    }),
     "utf8",
   );
   await parseAndRun(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/index.json`], {
@@ -453,7 +434,7 @@ describe("parseAndRun", () => {
     state.currentStage = "report";
     state.nextCommand = persistedCmd;
     state.automation = { reportApprovalPending: true };
-    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    await writeFile(statePath, stringifyCliJson(root, state), "utf8");
 
     const statusOut: string[] = [];
     await parseAndRun(["status", taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
@@ -499,7 +480,7 @@ describe("parseAndRun", () => {
     const statePath = path.join(root, stateFile);
     const state = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
     state.nextCommand = staleCmd;
-    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    await writeFile(statePath, stringifyCliJson(root, state), "utf8");
 
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
@@ -737,7 +718,7 @@ describe("parseAndRun", () => {
         },
       ],
     };
-    await writeFile(path.join(root, state.artifacts.stateFile), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    await writeFile(path.join(root, state.artifacts.stateFile), stringifyCliJson(root, state), "utf8");
 
     const step = resolveNextStep(state, { repoRoot: root });
     expect(step.nextCommand).toMatch(/--artifact work\/172996_05-10-26\/38670_1315_demo-feature\/review\.md/u);
@@ -1223,19 +1204,15 @@ describe("parseAndRun", () => {
     });
     await writeFile(
       path.join(runDir, "compliance-result.json"),
-      `${JSON.stringify(
-        {
-          compliance_passes: true,
-          final_gate: {
-            "pnpm lint": 0,
-            "pnpm typecheck": 0,
-            "pnpm test": 0,
-            "node --test tests/*.test.mjs": 0,
-          },
+      stringifyCliJson(root, {
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 0,
         },
-        null,
-        2,
-      )}\n`,
+      }),
       "utf8",
     );
     await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/compliance-result.json`], {
@@ -1245,16 +1222,12 @@ describe("parseAndRun", () => {
 
     await writeFile(
       path.join(runDir, "policy-compliance.json"),
-      `${JSON.stringify(
-        {
-          task_id: start.taskId,
-          governing_sources_checked: ["AGENTS.md"],
-          documentation_impact: { status: "none" },
-          policy_alignment: { status: "aligned" },
-        },
-        null,
-        2,
-      )}\n`,
+      stringifyCliJson(root, {
+        task_id: start.taskId,
+        governing_sources_checked: ["AGENTS.md"],
+        documentation_impact: { status: "none" },
+        policy_alignment: { status: "aligned" },
+      }),
       "utf8",
     );
     await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/policy-compliance.json`], {
@@ -1329,19 +1302,15 @@ describe("parseAndRun", () => {
     });
     await writeFile(
       path.join(activeRunDir, "compliance-result.json"),
-      `${JSON.stringify(
-        {
-          compliance_passes: true,
-          final_gate: {
-            "pnpm lint": 0,
-            "pnpm typecheck": 0,
-            "pnpm test": 0,
-            "node --test tests/*.test.mjs": 0,
-          },
+      stringifyCliJson(root, {
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 0,
         },
-        null,
-        2,
-      )}\n`,
+      }),
       "utf8",
     );
     await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
@@ -1350,16 +1319,12 @@ describe("parseAndRun", () => {
     });
     await writeFile(
       path.join(activeRunDir, "policy-compliance.json"),
-      `${JSON.stringify(
-        {
-          task_id: start.taskId,
-          governing_sources_checked: ["AGENTS.md"],
-          documentation_impact: { status: "none" },
-          policy_alignment: { status: "aligned" },
-        },
-        null,
-        2,
-      )}\n`,
+      stringifyCliJson(root, {
+        task_id: start.taskId,
+        governing_sources_checked: ["AGENTS.md"],
+        documentation_impact: { status: "none" },
+        policy_alignment: { status: "aligned" },
+      }),
       "utf8",
     );
     await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/policy-compliance.json`], {
@@ -1370,18 +1335,14 @@ describe("parseAndRun", () => {
     const inboxSourceRel = "lib/inbox/in/demo-feature.md";
     await writeFile(
       index,
-      `${JSON.stringify(
-        {
-          feature_id: "demo-feature",
-          task_id: start.taskId,
-          status: "indexed",
-          indexed_at: "2026-05-10T13:30:00.000Z",
-          source_inbox_item: { path: inboxSourceRel },
-          delivery_report: { path: "lib/memory/features/demo-feature/delivery-report.md" },
-        },
-        null,
-        2,
-      )}\n`,
+      stringifyCliJson(root, {
+        feature_id: "demo-feature",
+        task_id: start.taskId,
+        status: "indexed",
+        indexed_at: "2026-05-10T13:30:00.000Z",
+        source_inbox_item: { path: inboxSourceRel },
+        delivery_report: { path: "lib/memory/features/demo-feature/delivery-report.md" },
+      }),
       "utf8",
     );
     await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/index.json"], {
@@ -1410,50 +1371,46 @@ describe("parseAndRun", () => {
     await mkdir(path.join(root, "lib", "memory", "features", "compliance-tests"), { recursive: true });
     await writeFile(
       path.join(root, "lib", "memory", "features", "compliance-tests", "audit-history.json"),
-      `${JSON.stringify(
-        {
-          schema_version: "1",
-          max_entries: 5,
-          generated_at: "2026-05-10T13:59:00.000Z",
-          entries: [
-            {
-              audit_id: `${start.taskId}-20260510135900`,
-              task_id: start.taskId,
-              feature_id: "demo-feature",
-              recorded_at: "2026-05-10T13:59:00.000Z",
-              stage_status: "passed",
-              baseline_audit_id: null,
-              artifact_paths: {
-                compliance_result: `${activeRunDirRel}/compliance-result.json`,
-                run_dir: activeRunDirRel,
-              },
-              scope_snapshot: [
-                {
-                  path: `${activeRunDirRel}/touch-set.json`,
-                  exists: true,
-                  sha256: null,
-                  size_bytes: null,
-                },
-              ],
-              delta_summary: {
-                added: 0,
-                removed: 0,
-                modified: 0,
-                changed_paths: [`${activeRunDirRel}/touch-set.json`],
-              },
-              findings_summary: {
-                total: 0,
-                block: 0,
-                major: 0,
-                minor: 0,
-                note: 0,
-              },
+      stringifyCliJson(root, {
+        schema_version: "1",
+        max_entries: 5,
+        generated_at: "2026-05-10T13:59:00.000Z",
+        entries: [
+          {
+            audit_id: `${start.taskId}-20260510135900`,
+            task_id: start.taskId,
+            feature_id: "demo-feature",
+            recorded_at: "2026-05-10T13:59:00.000Z",
+            stage_status: "passed",
+            baseline_audit_id: null,
+            artifact_paths: {
+              compliance_result: `${activeRunDirRel}/compliance-result.json`,
+              run_dir: activeRunDirRel,
             },
-          ],
-        },
-        null,
-        2,
-      )}\n`,
+            scope_snapshot: [
+              {
+                path: `${activeRunDirRel}/touch-set.json`,
+                exists: true,
+                sha256: null,
+                size_bytes: null,
+              },
+            ],
+            delta_summary: {
+              added: 0,
+              removed: 0,
+              modified: 0,
+              changed_paths: [`${activeRunDirRel}/touch-set.json`],
+            },
+            findings_summary: {
+              total: 0,
+              block: 0,
+              major: 0,
+              minor: 0,
+              note: 0,
+            },
+          },
+        ],
+      }),
       "utf8",
     );
 
@@ -1639,19 +1596,15 @@ describe("parseAndRun", () => {
 
     await writeFile(
       path.join(runDir, "compliance-result.json"),
-      `${JSON.stringify(
-        {
-          compliance_passes: true,
-          final_gate: {
-            "pnpm lint": 0,
-            "pnpm typecheck": 0,
-            "pnpm test": 0,
-            "node --test tests/*.test.mjs": 0,
-          },
+      stringifyCliJson(root, {
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 0,
         },
-        null,
-        2,
-      )}\n`,
+      }),
       "utf8",
     );
     const complianceAdvanceOut: string[] = [];
@@ -2165,18 +2118,14 @@ describe("operator tooling batch cli wiring", () => {
     await mkdir(featureDir, { recursive: true });
     await writeFile(
       path.join(featureDir, "index.json"),
-      `${JSON.stringify(
-        {
-          feature_id: "ci-best-practices-batch",
-          task_id: taskId,
-          status: "indexed",
-          indexed_at: "2026-05-26T18:23:19.000Z",
-          intake: { source_inbox_item: stale },
-          delivery_report: { path: "lib/memory/features/ci-best-practices-batch/delivery-report.md" },
-        },
-        null,
-        2,
-      )}\n`,
+      stringifyCliJson(root, {
+        feature_id: "ci-best-practices-batch",
+        task_id: taskId,
+        status: "indexed",
+        indexed_at: "2026-05-26T18:23:19.000Z",
+        intake: { source_inbox_item: stale },
+        delivery_report: { path: "lib/memory/features/ci-best-practices-batch/delivery-report.md" },
+      }),
       "utf8",
     );
     await writeFile(path.join(featureDir, "delivery-report.md"), "# Delivery\n", "utf8");
@@ -2352,6 +2301,23 @@ describe("operator tooling batch cli wiring", () => {
   });
 
   describe("cursor runner harness", () => {
+    let hadAbbrevEnv: boolean;
+    let prevAbbrevEnv: string | undefined;
+
+    beforeEach(() => {
+      hadAbbrevEnv = Object.hasOwn(process.env, JSON_FORMAT_ABBREV_ENV);
+      prevAbbrevEnv = process.env[JSON_FORMAT_ABBREV_ENV];
+      process.env[JSON_FORMAT_ABBREV_ENV] = "7";
+    });
+
+    afterEach(() => {
+      if (hadAbbrevEnv) {
+        process.env[JSON_FORMAT_ABBREV_ENV] = prevAbbrevEnv;
+      } else {
+        delete process.env[JSON_FORMAT_ABBREV_ENV];
+      }
+    });
+
     it("invokes CursorRunner once on sdk run and advance", async () => {
       const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-run-advance-"));
       await seedFeatureDeliveryRepo(root);
@@ -2756,7 +2722,7 @@ stages:
       };
       patched.currentStage = "review";
       patched.automation = { runnerInvocation: "sdk", cumulativeRetryCount: 5 };
-      await writeFile(stateAbs, `${JSON.stringify(patched, null, 2)}\n`, "utf8");
+      await writeFile(stateAbs, stringifyCliJson(root, patched), "utf8");
       const runDir = path.dirname(start.stateFile);
       await writeFile(path.join(root, runDir, "review.md"), "review_passes: false\n", "utf8");
       const haltCode = await parseAndRun(

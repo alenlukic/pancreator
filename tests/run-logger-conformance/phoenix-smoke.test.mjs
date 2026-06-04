@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, before, describe, it } from "node:test";
 
+import { stringifyCompactJson } from "../../lib/internal/tools/canonical-json-format.mjs";
 import { bootPhoenix, tearDownPhoenix } from "./helpers/boot-phoenix.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -82,7 +83,7 @@ describe("run-logger Phoenix conformance (Option A)", () => {
     const ingest = await fetch("http://127.0.0.1:6006/v1/traces", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
+      body: stringifyCompactJson(payload),
     });
     assert.ok(ingest.ok || ingest.status === 415, `unexpected ingest status ${ingest.status}`);
     void root;

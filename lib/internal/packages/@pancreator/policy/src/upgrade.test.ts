@@ -2,6 +2,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { stringifyRepoJson } from "@pancreator/core";
 import { describe, expect, it } from "vitest";
 
 import { upgradePolicyConfig } from "./index.js";
@@ -61,7 +62,14 @@ describe("upgradePolicyConfig", () => {
   it("reads a file and upgrades", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "pan-pol2-"));
     const f = path.join(dir, "c.json");
-    await writeFile(f, `${JSON.stringify({ risk_tier: "low" }, null, 2)}\n`, "utf8");
+    const prevAbbrev = process.env.PAN_JSON_FORMAT_ABBREV_LEN;
+    process.env.PAN_JSON_FORMAT_ABBREV_LEN = "7";
+    await writeFile(f, stringifyRepoJson({ risk_tier: "low" }, dir), "utf8");
+    if (prevAbbrev === undefined) {
+      delete process.env.PAN_JSON_FORMAT_ABBREV_LEN;
+    } else {
+      process.env.PAN_JSON_FORMAT_ABBREV_LEN = prevAbbrev;
+    }
     const v = await upgradePolicyConfig(f);
     expect(v.riskTier).toBe("low");
   });

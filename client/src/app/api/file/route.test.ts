@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stringifyCompactJson } from "@/lib/json-io";
 import { GET, POST } from "@/app/api/file/route";
 import { readRepoFile, writeRepoFile } from "@/services/repo-files";
 import { resolveRepoPath } from "@/services/repo-paths";
@@ -47,7 +48,7 @@ describe("/api/file", () => {
         new Request("http://localhost/api/file", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: "lib/memory/sample.md", content: "updated" }),
+          body: stringifyCompactJson({ path: "lib/memory/sample.md", content: "updated" }),
         }),
       );
       expect(response.status).toBe(200);

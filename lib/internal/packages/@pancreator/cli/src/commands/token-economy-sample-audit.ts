@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { resolveProjectPath } from "@pancreator/core";
+import { quoteJsonString, resolveProjectPath, stringifyRepoJson } from "@pancreator/core";
 
 import {
   baselineKeyFromSummary,
@@ -53,7 +53,11 @@ async function readWatermark(repoRoot: string): Promise<Watermark | null> {
 async function writeWatermark(repoRoot: string, watermark: Watermark): Promise<void> {
   const dir = path.join(repoRoot, TOKEN_ECONOMY_DIR);
   await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, "last-audit.json"), `${JSON.stringify(watermark, null, 2)}\n`, "utf8");
+  await writeFile(
+    path.join(dir, "last-audit.json"),
+    `${stringifyRepoJson(watermark, repoRoot)}\n`,
+    "utf8",
+  );
 }
 
 async function collectSummaryPaths(
@@ -180,12 +184,12 @@ export async function createDeferredInboxItem(
   const lines = deferred.map((f) => `- **${f.kind}** (${f.path ?? "n/a"}): ${f.message}`);
   const body = [
     "---",
-    `title: ${JSON.stringify(slug)}`,
-    `feature_id: ${JSON.stringify(slug)}`,
+    `title: ${quoteJsonString(slug)}`,
+    `feature_id: ${quoteJsonString(slug)}`,
     "stage: intake",
     'owner: "intake-analyst"',
     "status: open",
-    `created_at: ${JSON.stringify(now.toISOString())}`,
+    `created_at: ${quoteJsonString(now.toISOString())}`,
     "references: []",
     "---",
     "",
@@ -271,7 +275,7 @@ export async function runTokenEconomySampleAudit(
   await mkdir(reportsDir, { recursive: true });
   const stamp = now.toISOString().replace(/[:.]/gu, "-");
   const reportPath = path.join(reportsDir, `${stamp}.json`);
-  await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  await writeFile(reportPath, `${stringifyRepoJson(report, repoRoot)}\n`, "utf8");
 
   await writeWatermark(repoRoot, {
     last_audit_at: now.toISOString(),

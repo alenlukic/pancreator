@@ -10,7 +10,7 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { PANCREATOR_CORE_VERSION } from "@pancreator/core";
+import { deepCloneJson, PANCREATOR_CORE_VERSION, stringifyRepoJson } from "@pancreator/core";
 
 import { listResourceDefinitions, listToolDefinitions, type DdlToolName } from "./definitions.js";
 import { executeDdlTool, readPancreatorResource, type DdlExecutionContext } from "./pan-execute.js";
@@ -30,12 +30,12 @@ export interface McpServerHandle {
   run: () => Promise<void>;
 }
 
-function callToolTextResult(payload: Record<string, unknown>) {
+function callToolTextResult(repoRoot: string, payload: Record<string, unknown>) {
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(payload, null, 2),
+        text: stringifyRepoJson(deepCloneJson(payload), repoRoot),
       },
     ],
   };
@@ -93,7 +93,7 @@ export function createMcpServer(
     const args = request.params.arguments ?? {};
     try {
       const out = await executeDdlTool(name, args, ctx);
-      return callToolTextResult(out);
+      return callToolTextResult(repoRoot, out);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return {

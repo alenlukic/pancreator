@@ -7,6 +7,7 @@ import {
   normalizePath,
   stripTempSandboxPrefix,
 } from "./paths.mjs";
+import { stringifyRepoJson } from "../../../../lib/internal/tools/canonical-json-format.mjs";
 import { getTaskSpec } from "./tasks.mjs";
 
 const DISCOVERY_TOOL_NAMES = new Set(["glob", "Glob", "grep", "Grep", "search", "Search"]);
@@ -246,6 +247,6 @@ export function writeFindings(findingsDir, combo, findings) {
     policy_violation_count: findings.reduce((n, f) => n + f.policy_violations.length, 0),
     inefficiency_count: findings.reduce((n, f) => n + f.inefficiencies.length, 0),
   };
-  fs.writeFileSync(outPath, `${JSON.stringify(payload, null, 2)}\n`);
+  fs.writeFileSync(outPath, stringifyRepoJson(payload));
   return outPath;
 }

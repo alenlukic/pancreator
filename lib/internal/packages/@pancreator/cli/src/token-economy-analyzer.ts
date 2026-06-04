@@ -1,6 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { stringifyRepoJson } from "@pancreator/core";
+
 export const PRODUCTION_FORBIDDEN_READ_PREFIXES = [
   "docs/PRD.md",
   "docs/BOOTSTRAP.md",
@@ -156,7 +158,8 @@ export async function updateRollingBaseline(
     updated_at: new Date().toISOString(),
   };
   const abs = path.join(baselinesDir, baselineFileName(key));
-  await writeFile(abs, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
+  const repoRoot = path.resolve(baselinesDir, "..", "..", "..");
+  await writeFile(abs, `${stringifyRepoJson(baseline, repoRoot)}\n`, "utf8");
   return baseline;
 }
 

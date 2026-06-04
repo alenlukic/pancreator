@@ -20,6 +20,7 @@ import {
   defaultManifestPath,
   writeManifest,
 } from "../lib/internal/tools/migrate-timestamp-naming.mjs";
+import { legacyPrettyJson } from "./helpers/legacy-json-stringify.mjs";
 
 test("daysToFds: FDS calendar day yields 0", () => {
   const d = new Date(Date.UTC(2500, 0, 1, 15, 0, 0));
@@ -218,7 +219,7 @@ test("defaultManifestPath prefers archived inbox convention run when indexed", (
     mkdirSync(featureDir, { recursive: true });
     writeFileSync(
       path.join(featureDir, "index.json"),
-      `${JSON.stringify({ featureId: "inbox-convention-migration", taskId }, null, 2)}\n`,
+      legacyPrettyJson({ featureId: "inbox-convention-migration", taskId }),
       "utf8",
     );
 

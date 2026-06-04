@@ -1,6 +1,8 @@
 import { appendFile, mkdir, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 
+import { stringifyCompactJson } from "@pancreator/core";
+
 import type { RunLogRecord } from "./record.js";
 import { isRunLogRecord } from "./record.js";
 
@@ -10,7 +12,7 @@ export interface RunLogAppendResult {
 }
 
 function encodeLine(record: RunLogRecord): string {
-  return `${JSON.stringify(record)}\n`;
+  return `${stringifyCompactJson(record)}\n`;
 }
 
 /**

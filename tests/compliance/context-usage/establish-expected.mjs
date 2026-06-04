@@ -11,6 +11,7 @@ import {
   comboKey,
   resolveExpectedBaselinePath,
 } from "./lib/tasks.mjs";
+import { stringifyRepoJson } from "../../../lib/internal/tools/canonical-json-format.mjs";
 
 const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_RAW = path.join(HARNESS_ROOT, "calibration", "raw", "matrix-samples.json");
@@ -92,7 +93,7 @@ export function establishExpectedFromRaw(argv = process.argv.slice(2)) {
       });
       const outPath = resolveExpectedBaselinePath(HARNESS_ROOT, taskId, sdkModelId);
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
-      fs.writeFileSync(outPath, `${JSON.stringify(expected, null, 2)}\n`);
+      fs.writeFileSync(outPath, stringifyRepoJson(expected, HARNESS_ROOT));
       written.push(outPath);
       console.log(
         `[context-usage] expected baseline ${combo}: upper=${expected.expected_total_tokens.upper_confidence_bound}`,

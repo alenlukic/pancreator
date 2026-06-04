@@ -14,6 +14,7 @@ import {
   validateDenyListedEvidencePaths,
   validateEvidenceStructure,
 } from "../lib/internal/tools/evaluate-greenfield-evidence.mjs";
+import { deepCloneJson } from "../lib/internal/tools/canonical-json-format.mjs";
 
 const FIXTURE_PATH =
   "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json";
@@ -74,7 +75,7 @@ test("validateEvidenceStructure accepts passing artifact", () => {
 });
 
 test("evaluateChecklistRules records gaps for incomplete checklist", () => {
-  const artifact = JSON.parse(JSON.stringify(PASSING_ARTIFACT));
+  const artifact = deepCloneJson(PASSING_ARTIFACT);
   artifact.checklist.plan_touch_set_authored = false;
   const result = evaluateChecklistRules(artifact);
   assert.ok(result.gaps.includes("plan_touch_set_authored"));
@@ -118,14 +119,14 @@ test("evaluateGreenfieldEvidenceFile includes input path", () => {
 });
 
 test("validateEvidenceStructure requires metadata.project_root", () => {
-  const artifact = JSON.parse(JSON.stringify(PASSING_ARTIFACT));
+  const artifact = deepCloneJson(PASSING_ARTIFACT);
   delete artifact.metadata.project_root;
   const errors = validateEvidenceStructure(artifact);
   assert.ok(errors.some((e) => e.includes("project_root")));
 });
 
 test("validateDenyListedEvidencePaths rejects archive paths", () => {
-  const artifact = JSON.parse(JSON.stringify(PASSING_ARTIFACT));
+  const artifact = deepCloneJson(PASSING_ARTIFACT);
   artifact.provenance.cli_commands = ["rsync archive/inbox/in/"];
   const errors = validateDenyListedEvidencePaths(artifact);
   assert.ok(errors.length > 0);

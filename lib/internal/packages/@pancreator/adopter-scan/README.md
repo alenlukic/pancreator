@@ -12,7 +12,8 @@ pnpm --filter @pancreator/adopter-scan run test
 
 ```typescript
 import { scanRepository } from "@pancreator/adopter-scan";
+import { stringifyRepoJson } from "@pancreator/core";
 
 const report = await scanRepository(process.cwd());
-console.log(JSON.stringify(report, null, 2));
+console.log(stringifyRepoJson(report));
 ```

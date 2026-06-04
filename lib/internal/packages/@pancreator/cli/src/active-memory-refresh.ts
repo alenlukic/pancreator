@@ -1,4 +1,4 @@
-import { resolveProjectPath, resolveRepoPath } from "@pancreator/core";
+import { quoteJsonString, resolveProjectPath, resolveRepoPath } from "@pancreator/core";
 import { existsSync } from "node:fs";
 import { stringifyCliJson } from "./canonical-json-io.js";
 import { readFile, readdir, writeFile } from "node:fs/promises";
@@ -48,7 +48,7 @@ export function validateActiveFeatureInboxPointers(repoRoot: string, sectionInne
   for (const rel of extractActiveFeatureInboxPointers(sectionInner)) {
     if (!existsSync(resolveRepoPath(repoRoot, rel))) {
       return (
-        `Active Feature pointer ${JSON.stringify(rel)} is missing under lib/inbox/in/; ` +
+        `Active Feature pointer ${quoteJsonString(rel)} is missing under lib/inbox/in/; ` +
         "set or clear the pointer manually in lib/memory/active/current.md " +
         "(pan close-artifacts clears matching pointers automatically during artifact closure)."
       );
@@ -554,7 +554,7 @@ async function computeActiveMemorySlices(repoRootAbs: string, now: Date): Promis
 
 function diffSlices(label: string, observed: string, computed: string): string {
   if (normalizeSectionInner(observed) === normalizeSectionInner(computed)) return "";
-  return `Section ${JSON.stringify(label)}:\n--- observed\n${observed}\n+++ computed\n${computed}\n`;
+  return `Section ${quoteJsonString(label)}:\n--- observed\n${observed}\n+++ computed\n${computed}\n`;
 }
 
 async function assembleRefreshedCurrentMd(
