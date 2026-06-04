@@ -1,3 +1,5 @@
+import { stringifyCompactJson } from "@pancreator/core";
+
 import type { PolicyBootstrapMeta } from "./config-v1.js";
 
 export interface BootstrapTrackingValidation {
@@ -99,7 +101,7 @@ export function validateBootstrapTracking(
         completedPhases.some((p, i) => p !== expectedM1[i]))
     ) {
       violations.push(
-        `bootstrap.completed_phases must be ${JSON.stringify(expectedM1)} when status is ${M1_RATIFIED_STATUS} (got ${JSON.stringify(completedPhases)})`,
+        `bootstrap.completed_phases must be ${stringifyCompactJson(expectedM1)} when status is ${M1_RATIFIED_STATUS} (got ${stringifyCompactJson(completedPhases)})`,
       );
     }
   }
@@ -123,7 +125,7 @@ export function validateBootstrapTracking(
     if (statusKind === "ratified") {
       const next = nextBootstrapAfterRatification(statusPhase);
       violations.push(
-        `bootstrap.status "${status}" is not a stable tracking state; ratify phase ${statusPhase} atomically with phase="${next.phase}", status="${next.status}", completed_phases=${JSON.stringify(next.completedPhases)}`,
+        `bootstrap.status "${status}" is not a stable tracking state; ratify phase ${statusPhase} atomically with phase="${next.phase}", status="${next.status}", completed_phases=${stringifyCompactJson(next.completedPhases)}`,
       );
     } else if (statusPhase !== currentPhase) {
       violations.push(
@@ -138,7 +140,7 @@ export function validateBootstrapTracking(
         completedPhases.some((p, i) => p !== expected[i]))
     ) {
       violations.push(
-        `bootstrap.completed_phases must be ${JSON.stringify(expected)} when phase is ${currentPhase} (got ${JSON.stringify(completedPhases)})`,
+        `bootstrap.completed_phases must be ${stringifyCompactJson(expected)} when phase is ${currentPhase} (got ${stringifyCompactJson(completedPhases)})`,
       );
     }
   }

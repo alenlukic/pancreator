@@ -1,4 +1,5 @@
 import { asTaskId, resolveRepoPath } from "@pancreator/core";
+import { stringifyCliJson } from "./canonical-json-io.js";
 import {
   compilePipeline,
   executeStageSlice,
@@ -23,7 +24,8 @@ import {
   type FeatureDeliverySdkProgressReporter,
   withFeatureDeliverySdkStageHeartbeat,
 } from "./feature-delivery-sdk-progress.js";
-import { readCursorInvocationMode, readStageRemediationEnabled } from "./pan-init.js";
+import { readCursorInvocationMode, readSdkSamplingConfig, readStageRemediationEnabled } from "./pan-init.js";
+import { shouldSampleSdkInvocation } from "./sdk-sampling.js";
 import {
   type ArtifactContentWarning,
   defaultAdvanceEventForStage,
@@ -185,11 +187,36 @@ export function runLogRecordFromRunnerEnvelope(
 ): RunLogRecord {
   const fragment = envelope.runLogFragment;
   const sdkError = envelope.sdkResult?.status === "error";
+  const usage = envelope.sdkResult?.usage;
+  const sampled = envelope.sdkResult?.sampled === true;
   const stageId =
     envelope.resolved.ledger?.stageId ??
     (typeof fragment?.attributes["pancreator.stage_id"] === "string"
       ? fragment.attributes["pancreator.stage_id"]
       : "unknown");
+  const attributes: Record<string, unknown> = {
+    ...(fragment?.attributes ?? {}),
+    "gen_ai.provider.name": "cursor",
+    "pancreator.feature_id": state.featureId,
+    "pancreator.state_file": state.artifacts.stateFile,
+    "pancreator.runner.request_id": envelope.requestId,
+  };
+  const pancreatorExt: RunLogRecord["pancreator"] = {
+    task_id: asTaskId(state.taskId),
+    pipeline: state.pipelineId,
+    stage_id: stageId,
+    outcome: sdkError ? "failure" : "success",
+    persona: envelope.personaName,
+    checkpoint_seq: state.advanceHistory?.length ?? 0,
+  };
+  if (usage !== undefined && sampled) {
+    attributes["gen_ai.usage.input_tokens"] = usage.input_tokens;
+    attributes["gen_ai.usage.output_tokens"] = usage.output_tokens;
+    attributes["pancreator.sampling.sampled"] = true;
+    attributes["pancreator.sampling.trace_path"] = usage.trace_path;
+  } else {
+    pancreatorExt.token_usage_unavailable = true;
+  }
   return {
     ts: rfc3339UtcMs(now),
     trace_id: fragment?.trace_id ?? envelope.requestId,
@@ -202,23 +229,9 @@ export function runLogRecordFromRunnerEnvelope(
         ? { message: envelope.sdkResult.errorMessage }
         : {}),
     },
-    attributes: {
-      ...(fragment?.attributes ?? {}),
-      "gen_ai.provider.name": "cursor",
-      "pancreator.feature_id": state.featureId,
-      "pancreator.state_file": state.artifacts.stateFile,
-      "pancreator.runner.request_id": envelope.requestId,
-    },
+    attributes,
     resource: { "service.name": "pancreator", "service.version": "0.0.0" },
-    pancreator: {
-      task_id: asTaskId(state.taskId),
-      pipeline: state.pipelineId,
-      stage_id: stageId,
-      outcome: sdkError ? "failure" : "success",
-      persona: envelope.personaName,
-      checkpoint_seq: state.advanceHistory?.length ?? 0,
-      token_usage_unavailable: true,
-    },
+    pancreator: pancreatorExt,
   };
 }
 
@@ -300,12 +313,23 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const artifactPath = expectedArtifactForEnteringStage(input.state, input.stageId);
   const runner = createCursorRunner(repoRoot, "sdk", input.testHooks);
   const stageInvocationIndex = input.state.automation?.stageInvocationIndex ?? 0;
+  const samplingConfig = await readSdkSamplingConfig(repoRoot);
+  const effectiveModel = persona.model;
+  const sampled = shouldSampleSdkInvocation({
+    config: samplingConfig,
+    taskId: input.state.taskId,
+    stageId: input.stageId,
+    persona: stage.persona,
+    model: effectiveModel,
+    invocationIndex: stageInvocationIndex,
+  });
+  const sdkTraceDirRel = path.posix.join(input.state.artifacts.runDir, "sdk-traces");
   const runLogPath = resolveRepoPath(repoRoot, input.state.artifacts.runLogFile);
   const statePath = resolveRepoPath(repoRoot, input.state.artifacts.stateFile);
   if (existsSync(statePath)) {
     const existing = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
     existing.automation = input.state.automation;
-    await writeFile(statePath, `${JSON.stringify(existing, null, 2)}\n`, "utf8");
+    await writeFile(statePath, `${stringifyCliJson(repoRoot, existing)}\n`, "utf8");
   }
 
   let envelope: RunnerInvocationEnvelope | undefined;
@@ -340,6 +364,15 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
             requiredArtifactPaths,
             stageInvocationIndex,
             runLogPath,
+            sampled,
+            sdkTrace: sampled
+              ? {
+                  traceDirRel: sdkTraceDirRel,
+                  stageId: sliceStage.id,
+                  invocationIndex: stageInvocationIndex,
+                  taskId: input.state.taskId,
+                }
+              : undefined,
             ledger: {
               taskId: input.state.taskId,
               pipelineId: input.state.pipelineId,

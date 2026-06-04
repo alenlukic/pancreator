@@ -8,6 +8,7 @@ import yaml from "yaml";
 import { validateBootstrapTracking } from "../lib/internal/packages/@pancreator/policy/dist/index.js";
 import {
   isExcludedRelPath,
+  isGitignoredRelPath,
   rewriteJsonText,
   resolveAbbrevLen,
 } from "../lib/internal/tools/migrate-json-formatting.mjs";
@@ -72,7 +73,9 @@ test("repository JSON files use two-space formatting", () => {
   const offenders = [];
   const posixRel = (rel) => rel.replace(/\\/g, "/");
   for (const rel of jsonFiles) {
-    if (isExcludedRelPath(posixRel(rel))) continue;
+    const normalized = posixRel(rel);
+    if (isExcludedRelPath(normalized)) continue;
+    if (isGitignoredRelPath(ROOT, normalized)) continue;
     const raw = read(rel);
     const { output } = rewriteJsonText(raw, abbrevLen);
     if (raw !== output) offenders.push(rel);
@@ -269,6 +272,7 @@ test("policy-compliance hook accepts only canonical three-level artifacts", () =
   assert.match(hook, /\^work\/\[\^\/\]\+\/\[\^\/\]\+\/policy-compliance\\\.json\$/);
   assert.doesNotMatch(hook, /\^work\/\[\^\/\]\+\/policy-compliance\\\.json\$/);
   assert.match(hook, /work\/<day>\/<task-id>\/policy-compliance\.json/);
+  assert.match(hook, /format-json-in-place\.mjs/);
 });
 
 test("Cursor implementation rules avoid broad lib-wide activation", () => {

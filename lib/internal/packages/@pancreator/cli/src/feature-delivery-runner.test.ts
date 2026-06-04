@@ -11,12 +11,17 @@ import {
   resetStageInvocationIndex,
   resolveComplianceStageAdvanceEvent,
   resolveTestStageAdvanceEvent,
+  runLogRecordFromRunnerEnvelope,
   trySdkAutoChainAfterStageWork,
 } from "./feature-delivery-runner.js";
+import type { RunnerInvocationEnvelope } from "@pancreator/runner-cursor";
 import type { FeatureDeliveryRunnerLedger } from "./feature-delivery-runner.js";
 import { advanceFeatureDelivery, type FeatureDeliveryState } from "./feature-delivery-run.js";
 import type { PipelineDefinition } from "@pancreator/pipeline";
 import type { CursorSdkTransport } from "@pancreator/runner-cursor";
+import { stringifyCompactJson } from "@pancreator/core";
+
+import { stringifyCliJson } from "./canonical-json-io.js";
 
 const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
@@ -28,6 +33,7 @@ beforeEach(() => {
   hadAbbrevEnv = Object.hasOwn(process.env, JSON_FORMAT_ABBREV_ENV);
   prevAbbrevEnv = process.env[JSON_FORMAT_ABBREV_ENV];
   process.env[JSON_FORMAT_ABBREV_ENV] = "7";
+  process.env.PAN_SDK_SAMPLING_FORCE_OFF = "1";
 });
 
 afterEach(() => {
@@ -116,19 +122,15 @@ function mockStageArtifactBody(rel: string): string {
   if (base === "review.md") return "review_passes: true\n";
   if (base === "test-report.md") return "qa_passes: true\n";
   if (base === "compliance-result.json") {
-    return `${JSON.stringify(
-      {
-        compliance_passes: true,
-        final_gate: {
-          "pnpm lint": 0,
-          "pnpm typecheck": 0,
-          "pnpm test": 0,
-          "node --test tests/*.test.mjs": 0,
-        },
+    return stringifyCliJson(CANONICAL_REPO_ROOT, {
+      compliance_passes: true,
+      final_gate: {
+        "pnpm lint": 0,
+        "pnpm typecheck": 0,
+        "pnpm test": 0,
+        "node --test tests/*.test.mjs": 0,
       },
-      null,
-      2,
-    )}\n`;
+    });
   }
   return "mock-artifact\n";
 }
@@ -336,7 +338,7 @@ describe("feature-delivery-runner automation", () => {
     await mkdir(path.dirname(complianceAbs), { recursive: true });
     await writeFile(
       complianceAbs,
-      JSON.stringify({
+      stringifyCompactJson({
         compliance_passes: true,
         final_gate: {
           "pnpm lint": 0,
@@ -417,7 +419,7 @@ configs:
     await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
     await writeFile(
       path.join(root, state.artifacts.stateFile),
-      `${JSON.stringify({ automation: state.automation }, null, 2)}\n`,
+      stringifyCliJson(root, { automation: state.automation }),
       "utf8",
     );
     await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
@@ -462,6 +464,8 @@ configs:
 
   it("second review SDK entry escalates reviewer tier after must_fix cycle", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-escalate-review-"));
+    const prevEscalation = process.env.PAN_MODEL_ESCALATION_CONFIG;
+    process.env.PAN_MODEL_ESCALATION_CONFIG = "default";
     await seedEscalationConfig(root);
     const personaDir = path.join(root, "lib", "personas");
     await mkdir(personaDir, { recursive: true });
@@ -493,7 +497,7 @@ configs:
     await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
     await writeFile(
       path.join(root, state.artifacts.stateFile),
-      `${JSON.stringify({ automation: state.automation }, null, 2)}\n`,
+      stringifyCliJson(root, { automation: state.automation }),
       "utf8",
     );
     await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
@@ -526,6 +530,11 @@ configs:
     expect(captured).toEqual([
       "claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]",
     ]);
+    if (prevEscalation === undefined) {
+      delete process.env.PAN_MODEL_ESCALATION_CONFIG;
+    } else {
+      process.env.PAN_MODEL_ESCALATION_CONFIG = prevEscalation;
+    }
   });
 
   it("preserves per-stage counts after successful implement advance to review", async () => {
@@ -582,7 +591,7 @@ configs:
         },
       ],
     };
-    await writeFile(path.join(root, stateFileRel), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    await writeFile(path.join(root, stateFileRel), stringifyCliJson(root, state), "utf8");
 
     const transport: CursorSdkTransport = async (params) => {
       const cwd = params.cwd ?? root;
@@ -614,6 +623,54 @@ configs:
     expect(persisted.currentStage).toBe("review");
     expect(persisted.automation?.stageInvocationIndexByStage?.implement).toBe(2);
     expect(persisted.automation?.stageInvocationIndexByStage?.review).toBe(1);
+  });
+
+  it("runLogRecordFromRunnerEnvelope emits usage when sampled capture present", () => {
+    const envelope = {
+      schemaVersion: "1",
+      runner: "cursor",
+      dryRun: false,
+      invocation: "sdk",
+      personaName: "coder",
+      requestId: "req-1",
+      userMessage: "run",
+      resolved: {
+        model: "composer-2.5",
+        routingDescription: "",
+        toolAllowlist: [],
+        toolDenylist: [],
+        maxTurns: 30,
+        invocation: "sdk",
+        ledger: { taskId: "t1", pipelineId: "feature-delivery", stageId: "implement" },
+      },
+      sdkResult: {
+        status: "ok",
+        sampled: true,
+        usage: {
+          input_tokens: 1200,
+          output_tokens: 400,
+          trace_path: "work/day/t1/sdk-traces/implement-0-stamp.ndjson",
+          summary_path: "work/day/t1/sdk-traces/implement-0-stamp.summary.json",
+        },
+      },
+    } as RunnerInvocationEnvelope;
+    const state = {
+      taskId: "t1",
+      featureId: "feat",
+      pipelineId: "feature-delivery",
+      currentStage: "implement",
+      status: "running",
+      nextHumanAction: "",
+      artifacts: {
+        runDir: "work/day/t1",
+        stateFile: "work/day/t1/state.json",
+        runLogFile: "work/day/t1/run.log.jsonl",
+      },
+    };
+    const record = runLogRecordFromRunnerEnvelope(envelope, state, new Date());
+    expect(record.attributes["gen_ai.usage.input_tokens"]).toBe(1200);
+    expect(record.attributes["pancreator.sampling.sampled"]).toBe(true);
+    expect(record.pancreator.token_usage_unavailable).toBeUndefined();
   });
 
   it("parseReportApprovalArtifact reads approve and needs_changes decisions", () => {

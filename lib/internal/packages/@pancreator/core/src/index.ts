@@ -17,3 +17,15 @@ export {
   resolveProjectPath,
   resolveRepoPath,
 } from "./project-root.js";
+export {
+  abbreviateHashes,
+  CANONICAL_JSON_INDENT_SPACES,
+  deepCloneJson,
+  formatCanonicalJson,
+  MAX_INLINE_ARRAY_CHARS,
+  quoteJsonString,
+  resolveAbbrevLen,
+  rewriteJsonText,
+  stringifyCompactJson,
+  stringifyRepoJson,
+} from "./canonical-json.js";

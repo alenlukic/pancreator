@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stringifyCompactJson } from "@/lib/json-io";
 import { GET } from "@/app/api/run-state/route";
 import { getActiveRunState, parseRunLogFile, synthesizeStageCells } from "@/services/run-state";
 
@@ -42,7 +43,7 @@ function writeState(
     nextHumanAction: "Ratify the plan before advancing.",
     ...overrides,
   };
-  fs.writeFileSync(path.join(runDir, "state.json"), JSON.stringify(state, null, 2));
+  fs.writeFileSync(path.join(runDir, "state.json"), stringifyCompactJson(state));
 }
 
 describe("GET /api/run-state", () => {
@@ -250,12 +251,12 @@ describe("GET /api/run-state", () => {
     fs.writeFileSync(
       logPath,
       [
-        JSON.stringify({
+        stringifyCompactJson({
           ts: "2026-06-01T10:00:00.000Z",
           name: "older-event",
           pancreator: { stage_id: "intake", outcome: "success", persona: "intake-analyst" },
         }),
-        JSON.stringify({
+        stringifyCompactJson({
           ts: "2026-06-02T12:00:00.000Z",
           name: "newer-event",
           pancreator: { stage_id: "plan", outcome: "success", persona: "tech-lead" },

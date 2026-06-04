@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { readFile, readdir } from "node:fs/promises";
 
-import { asTaskId, type TaskId } from "@pancreator/core";
+import { asTaskId, deepCloneJson, stringifyRepoJson, type TaskId } from "@pancreator/core";
 import { FileInbox } from "@pancreator/inbox";
 import {
   FsInterventionStore,
@@ -35,8 +35,8 @@ export interface DdlDeferredEnvelope {
 export class DdlDeferredToolError extends Error {
   readonly envelope: DdlDeferredEnvelope;
 
-  constructor(envelope: DdlDeferredEnvelope) {
-    super(JSON.stringify(envelope, null, 2));
+  constructor(envelope: DdlDeferredEnvelope, repoRoot: string) {
+    super(stringifyRepoJson(deepCloneJson(envelope), repoRoot));
     this.name = "DdlDeferredToolError";
     this.envelope = envelope;
     Object.setPrototypeOf(this, new.target.prototype);
@@ -154,9 +154,9 @@ export async function executeDdlTool(
       return { command: "abort", status: "ok", taskId, reason: reason ?? null };
     }
     case "pan.init":
-      throw new DdlDeferredToolError(ddlToolEnvelope("pan.init", "M3"));
+      throw new DdlDeferredToolError(ddlToolEnvelope("pan.init", "M3"), repoRoot);
     case "pan.run":
-      throw new DdlDeferredToolError(ddlToolEnvelope("pan.run", "M2"));
+      throw new DdlDeferredToolError(ddlToolEnvelope("pan.run", "M2"), repoRoot);
     case "pan.feature": {
       const action = getString(args, "action") ?? "list";
       if (action === "list") {
@@ -184,7 +184,7 @@ export async function executeDdlTool(
       return asToolRecord(result);
     }
     case "pan.approve":
-      throw new DdlDeferredToolError(ddlToolEnvelope("pan.approve", "M3"));
+      throw new DdlDeferredToolError(ddlToolEnvelope("pan.approve", "M3"), repoRoot);
     case "pan.memory": {
       const query = getString(args, "query");
       if (query === undefined || query === "") {
@@ -193,9 +193,9 @@ export async function executeDdlTool(
       return asToolRecord(await queryMemory({ repoRoot }, query));
     }
     case "pan.contracts":
-      throw new DdlDeferredToolError(ddlToolEnvelope("pan.contracts", "M2"));
+      throw new DdlDeferredToolError(ddlToolEnvelope("pan.contracts", "M2"), repoRoot);
     case "pan.lint":
-      throw new DdlDeferredToolError(ddlToolEnvelope("pan.lint", "M1"));
+      throw new DdlDeferredToolError(ddlToolEnvelope("pan.lint", "M1"), repoRoot);
     default: {
       const _exhaustive: never = name;
       return _exhaustive;
@@ -263,10 +263,9 @@ export async function readPancreatorResource(
     const memoryFileKeyCount = (await store.listKeys("")).length;
     return {
       mimeType: "application/json",
-      text: JSON.stringify(
-        { areas, root: "/lib/memory/<area>/", memoryFileKeyCount },
-        null,
-        2,
+      text: stringifyRepoJson(
+        deepCloneJson({ areas, root: "/lib/memory/<area>/", memoryFileKeyCount }),
+        root,
       ),
     };
   }
@@ -280,10 +279,9 @@ export async function readPancreatorResource(
     ]);
     return {
       mimeType: "application/json",
-      text: JSON.stringify(
-        { in: inFiles, out: outFiles, threads: threadFiles },
-        null,
-        2,
+      text: stringifyRepoJson(
+        deepCloneJson({ in: inFiles, out: outFiles, threads: threadFiles }),
+        root,
       ),
     };
   }

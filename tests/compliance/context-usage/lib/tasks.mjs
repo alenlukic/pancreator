@@ -71,11 +71,13 @@ const TASK_SPECS = {
       "docs/PRD.summary.md",
       "lib/memory/active/current.md",
       "lib/memory/handbook/routing.md",
+      "lib/memory/features/token-economy-probe/spec.md",
       "lib/internal/packages/demo-svc/handler.ts",
       "work/99999_probe/task/handoff.md",
     ],
     requiredReadPaths: [
       "lib/memory/active/current.md",
+      "lib/memory/features/token-economy-probe/spec.md",
       "lib/internal/packages/demo-svc/handler.ts",
       "work/99999_probe/task/handoff.md",
     ],
@@ -153,11 +155,13 @@ Prototype task-high (bounded edit task).
 Read only from this allowlist:
 ${allowlist}
 
-Required reads:
+Required reads (read each exactly once; do not re-read the same path):
 ${requiredReads}
 
 Do NOT read:
 ${forbidden}
+
+Do NOT use discovery tools (Glob, Grep, or broad directory listing). Paths above are exhaustive.
 
 You MUST write exactly one file: work/99999_probe/task/answer.md
 

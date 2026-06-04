@@ -28,6 +28,7 @@
     "@eslint/js": "catalog:",
     "@pancreator/cli": "workspace:*",
     "@pancreator/mcp-server": "workspace:*",
+    "@pancreator/runner-cursor": "workspace:*",
     "eslint": "catalog:",
     "publint": "catalog:",
     "turbo": "catalog:",

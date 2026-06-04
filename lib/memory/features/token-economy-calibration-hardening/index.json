@@ -1,0 +1,451 @@
+{
+  "feature_id": "token-economy-calibration-hardening",
+  "title": "Token Economy Calibration Hardening",
+  "task_id": "60274_0715_token-economy-calibration-hardening",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-04T07:42:09.000Z",
+  "lineage": {
+    "prior_feature": "token-economy-prototype",
+    "prior_feature_spec": "lib/memory/features/token-economy-prototype/spec.md",
+    "note": "Follow-on hardening pass on the shipped token-economy prototype calibration harness."
+  },
+  "work_packages": [
+    {
+      "id": "wp-1",
+      "label": "WP-1 — Clean calibration iteration",
+      "status": "shipped",
+      "outcome": "Zero policy violations across all four matrix combos; task-high contract hardened; analyzer path normalization applied."
+    },
+    {
+      "id": "wp-2",
+      "label": "WP-2 — Statistically defensible baselines",
+      "status": "shipped",
+      "outcome": "Default overhead runs raised to 8; committed overhead and expected baselines re-established from 2026-06-04 live calibration."
+    },
+    {
+      "id": "wp-3",
+      "label": "WP-3 — Expected-upper enforcement layer",
+      "status": "shipped",
+      "outcome": "compareObservedToExpectedUpper integrated in calibrate-matrix.mjs with warn-only default and --fail-on-exceedance strict gate."
+    },
+    {
+      "id": "wp-4",
+      "label": "WP-4 — Regression and compliance gates",
+      "status": "shipped",
+      "outcome": "Offline suite expanded to 28 tests; review, QA, and compliance exit bundle pass for feature scope."
+    }
+  ],
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
+      "range": [1, 109],
+      "contentHash": "110be55"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Spec ratified at plan advance per state.json advanceHistory intake→plan event."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-04T07:42:09.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-04T07:42:09.000Z",
+    "artifacts_indexed": 24,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": true
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 2,
+    "nit_count": 1,
+    "spec_contracts_executed": 0,
+    "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
+    "citation": {
+      "kind": "lines",
+      "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+      "range": [1, 93],
+      "contentHash": "cbae4b9"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "artifact": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+    "verification_gates": {
+      "context_usage_test": "pass (28/28)",
+      "context_usage_calibrate": "skipped (operator-on-demand)",
+      "context_usage_analyze": "pass",
+      "check_phase_0a": "pass (supplementary)",
+      "context_budget_report": "pass (supplementary)",
+      "pnpm_lint": "excluded-from-gate",
+      "run_compliance": "excluded-from-gate"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+      "range": [1, 64],
+      "contentHash": "87b487b"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+    "audit_id": "60274_0715_token-economy-calibration-hardening-20260604000000",
+    "baseline_audit_id": "65782_0543_token-economy-calibration-hardening-20260604000000",
+    "citation": {
+      "kind": "lines",
+      "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+      "range": [1, 225],
+      "contentHash": "53aeec3"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/token-economy-calibration-hardening/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/token-economy-calibration-hardening/delivery-report.md",
+      "range": [1, 367],
+      "contentHash": "820026c"
+    }
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "policy_compliance_artifact": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+    "pr_draft": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pr-draft.md",
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+      "range": [1, 119],
+      "contentHash": "655a70a"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "untracked-calibration-traces",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Untracked calibration/traces/** files from the 2026-06-04 live run remain local evidence only and are outside the touch-set for commit.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+        "range": [35, 35],
+        "contentHash": "7e6faf4"
+      }
+    },
+    {
+      "id": "unstaged-audit-history",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Unstaged lib/memory/features/compliance-tests/audit-history.json should stay outside the bounded review diff per touch-set preservation guidance.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+        "range": [83, 86],
+        "contentHash": "cbae4b9"
+      }
+    },
+    {
+      "id": "provenance-timestamp-mismatch",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "README provenance uses matrix-samples generated_at 2026-06-04T07:04:46Z while individual overhead and findings files carry earlier or later per-artifact stamps; consider one reconciled delivery note.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+        "range": [24, 25],
+        "contentHash": "cbae4b9"
+      }
+    },
+    {
+      "id": "staged-only-commit",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Branch token-economy-calibration-pass has zero commits ahead of main; operator must commit unstaged touch-set paths and push before gh pr create.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+        "range": [98, 113],
+        "contentHash": "655a70a"
+      }
+    },
+    {
+      "id": "orphaned-prior-work-dirs",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "Duplicate work/172971_06-04-26/63626_0619_token-economy-calibration-hardening/ and work/172971_06-04-26/65782_0543_token-economy-calibration-hardening/ artifacts from earlier task-id copies remain on disk; close-artifacts archives only the active 60274 run directory.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+        "range": [9, 9],
+        "contentHash": "53aeec3"
+      }
+    },
+    {
+      "id": "deferred-analyzer-export",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "selectLatestSummariesByRunIndex is exported with unit-test coverage only; production consumer analyze-calibration.mjs stays unstaged and outside touch-set.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+        "range": [24, 24],
+        "contentHash": "cbae4b9"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-touch-set",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/token-economy-calibration-hardening/spec.md",
+        "cited_path": "tests/compliance/context-usage/README.md",
+        "recorded_content_hash": "5aa9d74",
+        "live_content_hash": "3c790fe",
+        "verifier_status": "changed",
+        "note": "README updated for default 8-overhead cost, expected-upper enforcement, and calibration provenance."
+      },
+      {
+        "citing_path": "lib/memory/features/token-economy-calibration-hardening/spec.md",
+        "cited_path": "tests/compliance/context-usage/calibration/findings/task-high.composer-2.5.json",
+        "recorded_content_hash": "e1a2c8b",
+        "live_content_hash": "0ea55b3",
+        "verifier_status": "changed",
+        "note": "Findings regenerated after live calibration with policy_violation_count: 0."
+      }
+    ]
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/token-economy-calibration-hardening/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/token-economy-calibration-hardening/spec.md",
+          "range": [1, 232],
+          "contentHash": "3963e87"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/token-economy-calibration-hardening/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/token-economy-calibration-hardening/delivery-report.md",
+          "range": [1, 367],
+          "contentHash": "820026c"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/token-economy-calibration-hardening/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/"
+      },
+      "plan": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
+          "range": [1, 105],
+          "contentHash": "351b6df"
+        }
+      },
+      "adr_draft": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
+          "range": [1, 81],
+          "contentHash": "ccf54af"
+        }
+      },
+      "touch_set": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/touch-set.json",
+          "range": [1, 140],
+          "contentHash": "6ed3829"
+        }
+      },
+      "implementation_report": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+          "range": [1, 118],
+          "contentHash": "7e6faf4"
+        }
+      },
+      "review_report": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+          "range": [1, 93],
+          "contentHash": "cbae4b9"
+        }
+      },
+      "test_report": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+          "range": [1, 64],
+          "contentHash": "87b487b"
+        }
+      },
+      "compliance_result": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+          "range": [1, 225],
+          "contentHash": "53aeec3"
+        }
+      },
+      "policy_compliance": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+          "range": [1, 119],
+          "contentHash": "655a70a"
+        }
+      },
+      "pr_draft": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pr-draft.md",
+        "note": "Supervisor-authored PR body draft; gh pr create deferred until operator commits and pushes."
+      },
+      "handoff": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/handoff.md",
+          "range": [1, 54],
+          "contentHash": "80eda40"
+        }
+      },
+      "pipeline_close": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pipeline-close.md"
+      },
+      "run_log": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/qa-logs/",
+        "note": "QA and compliance gate command transcripts including context-usage:test and analyze."
+      }
+    },
+    "implementation_surface": {
+      "harness_root": {
+        "path": "tests/compliance/context-usage/"
+      },
+      "harness_readme": {
+        "path": "tests/compliance/context-usage/README.md",
+        "citation": {
+          "kind": "lines",
+          "path": "tests/compliance/context-usage/README.md",
+          "range": [1, 101],
+          "contentHash": "3c790fe"
+        }
+      },
+      "unit_tests": {
+        "path": "tests/compliance/context-usage/context-usage.unit.test.mjs",
+        "citation": {
+          "kind": "lines",
+          "path": "tests/compliance/context-usage/context-usage.unit.test.mjs",
+          "range": [1, 344],
+          "contentHash": "858905e"
+        }
+      },
+      "tasks_module": {
+        "path": "tests/compliance/context-usage/lib/tasks.mjs"
+      },
+      "analyzer_module": {
+        "path": "tests/compliance/context-usage/lib/analyzer.mjs"
+      },
+      "paths_module": {
+        "path": "tests/compliance/context-usage/lib/paths.mjs"
+      },
+      "expected_module": {
+        "path": "tests/compliance/context-usage/lib/expected.mjs"
+      },
+      "calibrate_matrix": {
+        "path": "tests/compliance/context-usage/calibrate-matrix.mjs"
+      },
+      "analyze_calibration": {
+        "path": "tests/compliance/context-usage/analyze-calibration.mjs",
+        "note": "Unstaged companion change outside touch-set; deferred per review and compliance."
+      },
+      "baselines": {
+        "path": "tests/compliance/context-usage/baselines/",
+        "note": "Four expected.* baselines and two overhead.* baselines committed at sample_count: 8."
+      },
+      "calibration_findings": {
+        "path": "tests/compliance/context-usage/calibration/findings/",
+        "note": "All four combo findings report policy_violation_count: 0 after 2026-06-04 calibration."
+      },
+      "calibration_raw": {
+        "path": "tests/compliance/context-usage/calibration/raw/matrix-samples.json"
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
+          "range": [1, 109],
+          "contentHash": "110be55"
+        }
+      },
+      "prior_prototype_delivery": {
+        "path": "lib/memory/features/token-economy-prototype/delivery-report.md",
+        "note": "Follow-on scope declared in prototype delivery report."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": []
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": true,
+    "librarian_populated": true,
+    "placeholder": false
+  },
+  "source_inbox_item": {
+    "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
+    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/."
+  }
+}

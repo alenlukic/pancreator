@@ -50,3 +50,27 @@ export function buildExpectedBaseline(input) {
 export function expectedUpperBound(overheadSummary, variableSummary) {
   return overheadSummary.upper_confidence_bound + variableSummary.upper_confidence_bound;
 }
+
+/**
+ * Compare an observed run total against a committed expected baseline upper bound.
+ * @param {{
+ *   taskId: string;
+ *   model: string;
+ *   observedTotal: number;
+ *   runIndex?: number;
+ *   expectedBaseline: { expected_total_tokens: { upper_confidence_bound: number } };
+ * }} input
+ */
+export function compareObservedToExpectedUpper(input) {
+  const upper = input.expectedBaseline.expected_total_tokens.upper_confidence_bound;
+  const exceeded = input.observedTotal > upper;
+  return {
+    task_id: input.taskId,
+    model: input.model,
+    run_index: input.runIndex ?? 0,
+    observed_total: input.observedTotal,
+    expected_upper: upper,
+    status: exceeded ? "exceedance" : "pass",
+    exceeded,
+  };
+}

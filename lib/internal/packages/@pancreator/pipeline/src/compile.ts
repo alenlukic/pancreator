@@ -1,4 +1,5 @@
 import { END, START, StateGraph } from "@langchain/langgraph";
+import { deepCloneJson } from "@pancreator/core";
 
 import { PipelineGraphAnnotation } from "./graph-state.js";
 import type {
@@ -244,5 +245,5 @@ function validateDefinition(definition: PipelineDefinition, options: CompilePipe
 
 /** Serializes and re-parses stage list for identity tests. */
 export function serializePipelineStages(stages: PipelineStage[]): PipelineStage[] {
-  return JSON.parse(JSON.stringify(stages)) as PipelineStage[];
+  return deepCloneJson(stages);
 }

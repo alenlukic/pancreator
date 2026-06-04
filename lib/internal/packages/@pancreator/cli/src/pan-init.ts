@@ -4,6 +4,10 @@ import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCursorSync } from "./cursor-sync.js";
+import {
+  DEFAULT_SDK_SAMPLING_CONFIG,
+  type SdkSamplingConfig,
+} from "./sdk-sampling.js";
 
 export interface EmbeddedInstallManifest {
   allow: string[];
@@ -579,7 +583,49 @@ export async function readModelEscalationConfigName(repoRoot: string): Promise<s
   return flatMatch?.[1]?.replace(/^["']|["']$/gu, "");
 }
 
-/** Reads `runner.cursor.invocation` from pancreator.yaml when present. */
+export type { SdkSamplingConfig } from "./sdk-sampling.js";
+
+function parseSdkSamplingBlock(raw: string): SdkSamplingConfig {
+  const config = { ...DEFAULT_SDK_SAMPLING_CONFIG };
+  const blockMatch = /sdkSampling:\s*\n([\s\S]*?)(?=\n\s*\w|\n\S|$)/u.exec(raw);
+  const block = blockMatch?.[1] ?? "";
+  const enabledMatch = /enabled:\s*(true|false)/u.exec(block);
+  if (enabledMatch) {
+    config.enabled = enabledMatch[1] === "true";
+  }
+  const rateMatch = /ratePercent:\s*(\d+)/u.exec(block);
+  if (rateMatch) {
+    config.ratePercent = Number(rateMatch[1]);
+  }
+  const scopeMatch = /scope:\s*([^\s#]+)/u.exec(block);
+  if (scopeMatch) {
+    config.scope = scopeMatch[1]!;
+  }
+  return config;
+}
+
+/** Reads `runner.cursor.sdkSampling` with PAN_SDK_SAMPLING_FORCE_ON/OFF overrides. */
+export async function readSdkSamplingConfig(repoRoot: string): Promise<SdkSamplingConfig> {
+  const forceOn =
+    process.env.PAN_SDK_SAMPLING_FORCE_ON === "1" ||
+    process.env.PAN_SDK_SAMPLING_FORCE_ON === "true";
+  const forceOff =
+    process.env.PAN_SDK_SAMPLING_FORCE_OFF === "1" ||
+    process.env.PAN_SDK_SAMPLING_FORCE_OFF === "true";
+  if (forceOff) {
+    return { enabled: false, ratePercent: 0, scope: "feature-delivery" };
+  }
+  if (forceOn) {
+    return { enabled: true, ratePercent: 100, scope: "feature-delivery" };
+  }
+  const cfgPath = resolvePancreatorYamlPath(repoRoot);
+  if (cfgPath === undefined) {
+    return { ...DEFAULT_SDK_SAMPLING_CONFIG };
+  }
+  const raw = await readFile(cfgPath, "utf8");
+  return parseSdkSamplingBlock(raw);
+}
+
 export async function readCursorInvocationMode(repoRoot: string): Promise<"manual" | "sdk"> {
   const cfgPath = resolvePancreatorYamlPath(repoRoot);
   if (cfgPath === undefined) return "manual";

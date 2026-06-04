@@ -1,8 +1,85 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-04T05:08:00.000Z",
+  "generated_at": "2026-06-04T09:40:30.279Z",
   "entries": [
+    {
+      "audit_id": "53589_0906_sampled-token-audit-20260604000000",
+      "task_id": "53589_0906_sampled-token-audit",
+      "feature_id": "sampled-token-audit",
+      "recorded_at": "2026-06-04T00:00:00.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "18834_1846_token-economy-prototype-20260603000000",
+      "artifact_paths": {
+        "compliance_result": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+        "run_dir": "work/172971_06-04-26/53589_0906_sampled-token-audit"
+      },
+      "scope_snapshot": [
+        {
+          "path": "AGENTS.md",
+          "exists": true,
+          "sha256": "a97a07d",
+          "size_bytes": 21778
+        },
+        {
+          "path": "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/compliance-result.json",
+          "exists": true,
+          "sha256": "b747139",
+          "size_bytes": 7009
+        },
+        {
+          "path": "lib/memory/features/sampled-token-audit/delivery-report.md",
+          "exists": true,
+          "sha256": "edd5c25",
+          "size_bytes": 10478
+        },
+        {
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
+          "exists": true,
+          "sha256": "de13d6c",
+          "size_bytes": 4152
+        },
+        {
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+          "exists": true,
+          "sha256": "db3270f",
+          "size_bytes": 6624
+        },
+        {
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+          "exists": true,
+          "sha256": "6cc059b",
+          "size_bytes": 5419
+        },
+        {
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
+          "exists": true,
+          "sha256": "695727e",
+          "size_bytes": 9094
+        }
+      ],
+      "delta_summary": {
+        "added": 6,
+        "removed": 0,
+        "modified": 1,
+        "changed_paths": [
+          "AGENTS.md",
+          "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/compliance-result.json",
+          "lib/memory/features/sampled-token-audit/delivery-report.md",
+          "work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
+          "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+          "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+          "work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json"
+        ]
+      },
+      "findings_summary": {
+        "total": 3,
+        "block": 1,
+        "major": 0,
+        "minor": 0,
+        "note": 2
+      }
+    },
     {
       "audit_id": "18834_1846_token-economy-prototype-20260603000000",
       "task_id": "18834_1846_token-economy-prototype",

@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { stringifyCompactJson } from "@pancreator/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -162,7 +163,7 @@ describe("feature-delivery-stage-artifacts", () => {
 
   it("parseComplianceVerdict reads final gate command statuses", () => {
     const verdict = parseComplianceVerdict(
-      JSON.stringify({
+      stringifyCompactJson({
         compliance_passes: true,
         final_gate: {
           "pnpm lint": 0,

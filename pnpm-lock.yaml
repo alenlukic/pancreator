@@ -91,6 +91,9 @@ importers:
       '@pancreator/mcp-server':
         specifier: workspace:*
         version: link:lib/internal/packages/@pancreator/mcp-server
+      '@pancreator/runner-cursor':
+        specifier: workspace:*
+        version: link:lib/internal/packages/@pancreator/runner-cursor
       ajv:
         specifier: ^8.20.0
         version: 8.20.0

@@ -85,6 +85,11 @@ JSON
   exit 0
 fi
 
+for artifact in "${artifacts[@]}"; do
+  node "$repo_root/lib/internal/tools/format-json-in-place.mjs" --root "$repo_root" "$artifact"
+  git add "$artifact"
+done
+
 staged_list_payload="$(printf '%s\n' "${staged_files[@]}" | python3 -c 'import json,sys; print(json.dumps([line.strip() for line in sys.stdin if line.strip()]))')"
 
 validation_result="$(python3 - "$staged_list_payload" "${artifacts[@]}" <<'PY'

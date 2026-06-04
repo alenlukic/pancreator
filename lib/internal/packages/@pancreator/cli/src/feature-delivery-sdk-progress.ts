@@ -1,3 +1,4 @@
+import { stringifyCompactJson } from "@pancreator/core";
 import { rfc3339UtcMs } from "@pancreator/run-logger";
 
 /** Interval between heartbeat progress events during an SDK stage invocation. */
@@ -82,7 +83,7 @@ function formatProgressText(event: FeatureDeliverySdkProgressEvent): string {
 
 function formatProgressNdjson(event: FeatureDeliverySdkProgressEvent): string {
   const { event: transitionEvent, ...rest } = event;
-  return JSON.stringify({
+  return stringifyCompactJson({
     event: "feature_delivery_progress",
     ...rest,
     ...(transitionEvent !== undefined ? { transitionEvent } : {}),

@@ -69,3 +69,7 @@ lib/memory/checkpoints/
 !tests/compliance/context-usage/fixtures/task-low/work/**
 !tests/compliance/context-usage/fixtures/task-high/work/
 !tests/compliance/context-usage/fixtures/task-high/work/**
+
+# Operator-local calibration traces (CI uses baselines/findings/raw only)
+tests/compliance/context-usage/calibration/traces/**
+!tests/compliance/context-usage/calibration/traces/.gitkeep

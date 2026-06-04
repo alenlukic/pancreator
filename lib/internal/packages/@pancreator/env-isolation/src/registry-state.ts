@@ -1,6 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { stringifyRepoJson } from "@pancreator/core";
+
 import {
   InvalidPortRangeError,
   PortRegistryCollisionError,
@@ -125,7 +127,7 @@ export async function writeRegistryStateAtomic(
   validatePortsInRange(state);
   await mkdir(path.dirname(filePath), { recursive: true });
   const tmp = `${filePath}.${process.pid}.${Date.now()}.tmp`;
-  const body = `${JSON.stringify(state, null, 2)}\n`;
+  const body = `${stringifyRepoJson(state, process.cwd())}\n`;
   await writeFile(tmp, body, "utf8");
   await rename(tmp, filePath);
 }

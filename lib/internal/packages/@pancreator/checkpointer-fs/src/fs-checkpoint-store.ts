@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { asTaskId, type TaskId } from "@pancreator/core";
+import { asTaskId, stringifyRepoJson, type TaskId } from "@pancreator/core";
 import { isCheckpointEnvelopeV1, type CheckpointEnvelopeV1 } from "./envelope.js";
 
 export class FsCheckpointStore {
@@ -28,7 +28,7 @@ export class FsCheckpointStore {
     const dir = this.taskDir(asTaskId(envelope.task_id));
     await mkdir(dir, { recursive: true });
     const target = this.pathFor(asTaskId(envelope.task_id), envelope.seq);
-    await writeFile(target, `${JSON.stringify(envelope, null, 2)}\n`, "utf8");
+    await writeFile(target, `${stringifyRepoJson(envelope, process.cwd())}\n`, "utf8");
   }
 
   /**

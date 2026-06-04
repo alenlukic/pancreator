@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "@/components/DashboardPage";
+import { stringifyCompactJson } from "@/lib/json-io";
 
 const mockRunState = [
   {
@@ -107,23 +108,23 @@ function mockFetchForDashboard(options: MockFetchOptions = {}) {
   return vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
     const url = String(input);
     if (url.includes("/api/run-state")) {
-      return new Response(JSON.stringify(options.runState ?? []), { status: 200 });
+      return new Response(stringifyCompactJson(options.runState ?? []), { status: 200 });
     }
     if (url.includes("/api/list")) {
-      return new Response(JSON.stringify({ entries: options.listEntries ?? [] }), { status: 200 });
+      return new Response(stringifyCompactJson({ entries: options.listEntries ?? [] }), { status: 200 });
     }
     if (url.includes("/api/file") && init?.method === "POST") {
       const body = JSON.parse(String(init.body)) as { path: string; content: string };
       options.postCalls?.push(body);
-      return new Response(JSON.stringify({}), { status: 200 });
+      return new Response(stringifyCompactJson({}), { status: 200 });
     }
     if (url.includes("/api/file")) {
       return new Response(
-        JSON.stringify({ content: options.fileContent ?? "modal content" }),
+        stringifyCompactJson({ content: options.fileContent ?? "modal content" }),
         { status: 200 },
       );
     }
-    return new Response(JSON.stringify({}), { status: 404 });
+    return new Response(stringifyCompactJson({}), { status: 404 });
   });
 }
 
@@ -375,11 +376,11 @@ describe("DashboardPage", () => {
     const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.includes("/api/run-state")) {
-        return new Response(JSON.stringify(mockRunState), { status: 200 });
+        return new Response(stringifyCompactJson(mockRunState), { status: 200 });
       }
       if (url.includes("/api/list?path=lib%2Fmemory%2Ffeatures")) {
         return new Response(
-          JSON.stringify({
+          stringifyCompactJson({
             entries: [{ path: "lib/memory/features/spec.md", name: "spec.md", kind: "file" }],
           }),
           { status: 200 },
@@ -387,13 +388,13 @@ describe("DashboardPage", () => {
       }
       if (url.includes("/api/list?path=lib%2Fmemory")) {
         return new Response(
-          JSON.stringify({
+          stringifyCompactJson({
             entries: [{ path: "lib/memory/features", name: "features", kind: "directory" }],
           }),
           { status: 200 },
         );
       }
-      return new Response(JSON.stringify({ entries: [] }), { status: 200 });
+      return new Response(stringifyCompactJson({ entries: [] }), { status: 200 });
     });
 
     render(<DashboardPage />);

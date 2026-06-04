@@ -2,6 +2,7 @@
 
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { stringifyCompactJson } from "@/lib/json-io";
 import { taskDisplayLabel, type RunLogEvent, type StageCell, type TaskRunStateEnvelope } from "@/services/run-state-shared";
 
 type Domain = {
@@ -348,7 +349,7 @@ export function DashboardPage() {
     const response = await fetch("/api/file", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: modal.path, content: modal.draft }),
+      body: stringifyCompactJson({ path: modal.path, content: modal.draft }),
     });
     const data = (await response.json()) as { error?: string };
     if (!response.ok) {

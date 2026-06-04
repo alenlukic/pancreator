@@ -14,6 +14,7 @@ import { requireLiveEnv, resolveHarnessRepoRoot } from "./lib/live-env.mjs";
 import { PROTOTYPE_MODELS } from "./lib/tasks.mjs";
 import { assertPrototypeModel, resolveOverheadBaselinePath, resolveSdkModelId } from "./lib/model.mjs";
 import { ensureCursorSdkRipgrepConfigured } from "./lib/ripgrep.mjs";
+import { stringifyRepoJson } from "../../../lib/internal/tools/canonical-json-format.mjs";
 
 const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const REPO_ROOT = resolveHarnessRepoRoot();
@@ -125,7 +126,7 @@ export async function calibrateOverhead(argv = process.argv.slice(2)) {
     };
     const outPath = resolveOverheadBaselinePath(HARNESS_ROOT, sdkModelId);
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
-    fs.writeFileSync(outPath, `${JSON.stringify(baseline, null, 2)}\n`);
+    fs.writeFileSync(outPath, stringifyRepoJson(baseline, REPO_ROOT));
     console.log(`[context-usage] overhead baseline written: ${outPath}`);
   }
 

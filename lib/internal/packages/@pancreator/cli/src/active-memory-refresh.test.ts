@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
 
+import { stringifyCliJson } from "./canonical-json-io.js";
 import {
   deriveShippedMarkdownTable,
   patchFeatureIndexArchivedInbox,
@@ -108,16 +109,12 @@ describe("patchFeatureIndexArchivedInbox", () => {
     await mkdir(path.dirname(indexAbs), { recursive: true });
     await writeFile(
       indexAbs,
-      JSON.stringify(
-        {
-          feature_id: featureId,
-          status: "indexed",
-          source_inbox_item: { path: prior, content_hash: "abc" },
-          intake: { source_inbox_item: prior },
-        },
-        null,
-        2,
-      ),
+      stringifyCliJson(root, {
+        feature_id: featureId,
+        status: "indexed",
+        source_inbox_item: { path: prior, content_hash: "abc" },
+        intake: { source_inbox_item: prior },
+      }),
       "utf8",
     );
 
@@ -131,6 +128,7 @@ describe("patchFeatureIndexArchivedInbox", () => {
 
 describe("deriveShippedMarkdownTable", () => {
   it("renders at most SHIPPED_LEDGER_ROW_CAP data rows when more indexed features exist", async () => {
+    process.env.PAN_JSON_FORMAT_ABBREV_LEN = "7";
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-shipped-ledger-cap-"));
     const featuresRoot = path.join(root, "lib", "memory", "features");
     await mkdir(featuresRoot, { recursive: true });
@@ -142,18 +140,14 @@ describe("deriveShippedMarkdownTable", () => {
       const shippedAt = new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString();
       await writeFile(
         indexAbs,
-        JSON.stringify(
-          {
-            feature_id: featureId,
-            status: "indexed",
-            indexed_at: shippedAt,
-            delivery_report: {
-              path: `lib/memory/features/${featureId}/delivery-report.md`,
-            },
+        stringifyCliJson(root, {
+          feature_id: featureId,
+          status: "indexed",
+          indexed_at: shippedAt,
+          delivery_report: {
+            path: `lib/memory/features/${featureId}/delivery-report.md`,
           },
-          null,
-          2,
-        ),
+        }),
         "utf8",
       );
     }

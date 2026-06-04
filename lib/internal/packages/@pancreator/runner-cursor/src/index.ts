@@ -30,8 +30,30 @@ export type { CursorSdkTransport, CursorSdkInvokeParams, CursorSdkInvokeResult }
 export {
   buildSdkPrompt,
   createDefaultCursorSdkTransport,
+  createStreamedCursorSdkTransport,
   findMissingArtifactPaths,
 } from "./sdk-transport.js";
+export type { CursorSdkUsageCapture } from "./sdk-transport.js";
+export {
+  assertUsageCaptured,
+  collectFromStream,
+  createEmptyMetrics,
+  createProductionTraceSink,
+  createTraceSink,
+  drainRunStream,
+  extractReadPathsFromToolEvent,
+  processStreamEvent,
+  redactTraceRecord,
+  repoRelativePath,
+  TurnEndedUsageMissingError,
+  UsageCaptureMissingError,
+} from "./sdk-trace-collector.js";
+export type {
+  ProductionTraceSinkConfig,
+  TraceSinkConfig,
+  TraceSummary,
+  UsageMetrics,
+} from "./sdk-trace-collector.js";
 export {
   ensureCursorSdkRipgrepConfigured,
   resolveCursorRipgrepBinaryPath,

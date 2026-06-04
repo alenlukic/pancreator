@@ -8,3 +8,7 @@ export function rewriteJsonText(
   text: string,
   abbrevLen: number,
 ): { changed: boolean; output: string };
+export function stringifyCompactJson(value: unknown): string;
+export function quoteJsonString(value: string): string;
+export function deepCloneJson<T>(value: T): T;
+export function stringifyRepoJson(value: unknown, repoRoot?: string): string;

@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
+import { establishExpectedFromRaw } from "./establish-expected.mjs";
 import {
   TurnEndedUsageMissingError,
   createEmptyMetrics,
@@ -15,12 +16,14 @@ import {
   analyzeTraceSummary,
   classifyInefficiencies,
   classifyPolicyViolations,
+  selectLatestSummariesByRunIndex,
   writeFindings,
 } from "./lib/analyzer.mjs";
 import { copyTaskFixtureToTemp } from "./lib/copy-sandbox.mjs";
 import { repoRelativePath } from "./lib/live-env.mjs";
 import {
   buildExpectedBaseline,
+  compareObservedToExpectedUpper,
   computeVariableSamples,
   expectedUpperBound,
 } from "./lib/expected.mjs";
@@ -31,7 +34,7 @@ import {
   resolveOverheadBaselinePath,
   resolveSdkModelId,
 } from "./lib/model.mjs";
-import { normalizePath } from "./lib/paths.mjs";
+import { normalizePath, stripTempSandboxPrefix } from "./lib/paths.mjs";
 import {
   PROTOTYPE_MODELS,
   TASK_IDS,
@@ -221,6 +224,107 @@ test("analyzer: analyzeTraceSummary and writeFindings", () => {
   const out = writeFindings(tmp, "task-high.gpt-5.5", [finding]);
   assert.ok(fs.existsSync(out));
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test("tasks: task-high prompt forbids discovery and includes durable spec", () => {
+  const high = getTaskSpec("task-high");
+  assert.ok(high.readAllowlist.includes("lib/memory/features/token-economy-probe/spec.md"));
+  assert.ok(high.requiredReadPaths.includes("lib/memory/features/token-economy-probe/spec.md"));
+  const prompt = buildTaskPrompt("task-high");
+  assert.match(prompt, /Do NOT use discovery tools/i);
+  assert.match(prompt, /read each exactly once/i);
+  assert.match(prompt, /token-economy-probe\/spec\.md/);
+});
+
+test("paths: stripTempSandboxPrefix reports fixture-relative paths", () => {
+  const tempPath =
+    "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/lib/memory/handbook/routing.md";
+  assert.equal(stripTempSandboxPrefix(tempPath), "lib/memory/handbook/routing.md");
+  assert.equal(normalizePath("docs/PRD.summary.md"), "docs/PRD.summary.md");
+});
+
+test("expected: compareObservedToExpectedUpper pass and exceedance", () => {
+  const baseline = {
+    expected_total_tokens: { upper_confidence_bound: 10000 },
+  };
+  const pass = compareObservedToExpectedUpper({
+    taskId: "task-low",
+    model: "composer-2.5",
+    observedTotal: 9000,
+    runIndex: 1,
+    expectedBaseline: baseline,
+  });
+  assert.equal(pass.status, "pass");
+  assert.equal(pass.exceeded, false);
+  const exceed = compareObservedToExpectedUpper({
+    taskId: "task-high",
+    model: "gpt-5.5",
+    observedTotal: 15000,
+    runIndex: 3,
+    expectedBaseline: baseline,
+  });
+  assert.equal(exceed.status, "exceedance");
+  assert.equal(exceed.exceeded, true);
+  assert.equal(exceed.expected_upper, 10000);
+});
+
+test("analyzer: selectLatestSummariesByRunIndex keeps newest trace per run", () => {
+  const selected = selectLatestSummariesByRunIndex([
+    {
+      name: "run-1-2026-06-03T22-54-11-607Z.summary.json",
+      summary: { run_index: 1, model: "composer-2.5" },
+    },
+    {
+      name: "run-1-2026-06-04T05-51-26-747Z.summary.json",
+      summary: { run_index: 1, model: "composer-2.5" },
+    },
+    {
+      name: "run-2-2026-06-04T05-51-30-637Z.summary.json",
+      summary: { run_index: 2, model: "composer-2.5" },
+    },
+  ]);
+  assert.equal(selected.length, 2);
+  assert.equal(selected[0].run_index, 1);
+  assert.equal(selected[1].run_index, 2);
+});
+
+test("analyzer: duplicate_read paths normalized from temp sandbox prefix", () => {
+  const tempPath =
+    "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-abc/lib/memory/active/current.md";
+  const ineff = classifyInefficiencies({
+    taskId: "task-high",
+    summary: {
+      tool_paths: [],
+      turn_count: 2,
+      trace_records: [
+        { type: "tool_call", name: "read", paths: [tempPath] },
+        { type: "tool_call", name: "read", paths: [tempPath] },
+      ],
+    },
+  });
+  const dup = ineff.find((i) => i.kind === "duplicate_read");
+  assert.ok(dup);
+  assert.equal(dup.path, "lib/memory/active/current.md");
+});
+
+test("establishExpectedFromRaw: throws when raw file is missing", () => {
+  assert.throws(
+    () => establishExpectedFromRaw(["--raw", path.join(os.tmpdir(), "missing-matrix-samples.json")]),
+    /missing calibration raw file/,
+  );
+});
+
+test("establishExpectedFromRaw: committed expected baselines match formula", () => {
+  for (const taskId of TASK_IDS) {
+    for (const model of PROTOTYPE_MODELS) {
+      const expectedPath = resolveExpectedBaselinePath(HARNESS_ROOT, taskId, model);
+      const payload = JSON.parse(fs.readFileSync(expectedPath, "utf8"));
+      assert.equal(
+        payload.expected_total_tokens.upper_confidence_bound,
+        expectedUpperBound(payload.overhead, payload.variable),
+      );
+    }
+  }
 });
 
 test("paths: normalizePath", () => {

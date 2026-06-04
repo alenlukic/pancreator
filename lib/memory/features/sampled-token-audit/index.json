@@ -1,0 +1,481 @@
+{
+  "feature_id": "sampled-token-audit",
+  "title": "Sampled Token Audit",
+  "task_id": "53589_0906_sampled-token-audit",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-04T09:42:10.000Z",
+  "lineage": {
+    "prior_feature": "token-economy-prototype",
+    "prior_feature_spec": "lib/memory/features/token-economy-prototype/spec.md",
+    "note": "Phase-1 production bridge from context-usage prototype harness into feature-delivery SDK invocations."
+  },
+  "work_packages": [
+    {
+      "id": "wp-1",
+      "label": "WP-1 — Sampling and trace capture",
+      "status": "shipped",
+      "outcome": "sdkSampling config, deterministic hash gate, shared sdk-trace-collector, streamed transport, run-log gen_ai.usage and pancreator.sampling fields."
+    },
+    {
+      "id": "wp-2",
+      "label": "WP-2 — Incremental audit command",
+      "status": "shipped",
+      "outcome": "pan token-economy sample-audit with watermark, --since, --sampled-only-task, and --repair entry."
+    },
+    {
+      "id": "wp-3",
+      "label": "WP-3 — Analysis heuristics",
+      "status": "shipped",
+      "outcome": "token-economy-analyzer production heuristics and rolling baselines under .pan/token-economy/."
+    },
+    {
+      "id": "wp-4",
+      "label": "WP-4 — Bounded repair loop",
+      "status": "shipped",
+      "outcome": "Low/medium auto-fix markers; high-scope defer via inbox slug; live repair-agent wiring deferred to operator dogfood."
+    },
+    {
+      "id": "wp-5",
+      "label": "WP-5 — Regression gates",
+      "status": "shipped",
+      "outcome": "311 offline tests pass across runner-cursor, CLI, compliance, and repository suites; review and QA gates green."
+    }
+  ],
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "source_inbox_item": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
+      "range": [1, 143],
+      "contentHash": "134d126"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Spec ratified at intake→plan advance per state.json advanceHistory."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-04T09:42:10.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-04T09:42:10.000Z",
+    "artifacts_indexed": 28,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": true
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 3,
+    "nit_count": 1,
+    "spec_contracts_executed": 0,
+    "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
+    "citation": {
+      "kind": "lines",
+      "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+      "range": [1, 107],
+      "contentHash": "db3270f"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "artifact": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+    "verification_gates": {
+      "runner_cursor_build": "pass",
+      "runner_cursor_test": "pass (25/25)",
+      "cli_test": "pass (119/119)",
+      "context_usage_test": "pass (23/23)",
+      "repo_tests": "pass (144/144)",
+      "check_phase_0a": "pass (supplementary)",
+      "context_budget_report": "pass (supplementary)",
+      "pnpm_lint": "excluded-from-gate",
+      "run_compliance": "excluded-from-gate"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+      "range": [1, 67],
+      "contentHash": "6cc059b"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+    "audit_id": "53589_0906_sampled-token-audit-20260604000000",
+    "baseline_audit_id": "18834_1846_token-economy-prototype-20260603000000",
+    "citation": {
+      "kind": "lines",
+      "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+      "range": [1, 269],
+      "contentHash": "9415a21"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/sampled-token-audit/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/sampled-token-audit/delivery-report.md",
+      "range": [1, 396],
+      "contentHash": "edd5c25"
+    }
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "policy_compliance_artifact": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+    "pr_draft": "work/172971_06-04-26/53589_0906_sampled-token-audit/pr-draft.md",
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+      "range": [1, 116],
+      "contentHash": "4d424ae"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "staged-only-commit",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Branch token-economy-calibration-pass has zero commits ahead of main; operator must commit staged touch-set paths and push before gh pr create.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+        "range": [94, 109],
+        "contentHash": "4d424ae"
+      }
+    },
+    {
+      "id": "companion-harness-touch-set",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "Staged edits to paths.mjs and tasks.mjs sit outside allowed_paths; consider amending touch-set via tech-lead for alignment.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "range": [26, 26],
+        "contentHash": "db3270f"
+      }
+    },
+    {
+      "id": "live-repair-agent",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "Spec WP-4 live repair-agent invocation defers to operator dogfood; offline tests satisfy defer-and-apply acceptance.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "range": [27, 27],
+        "contentHash": "db3270f"
+      }
+    },
+    {
+      "id": "runner-cursor-build-prerequisite",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "Compliance harness imports @pancreator/runner-cursor dist; operators MUST build runner-cursor before context-usage unit tests.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "range": [28, 28],
+        "contentHash": "db3270f"
+      }
+    },
+    {
+      "id": "model-escalation-rollback",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "pancreator-model-escalation.yaml sets active_config: auto for SDK dogfood; revert to default when dogfood sampling is complete.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "range": [32, 32],
+        "contentHash": "db3270f"
+      }
+    },
+    {
+      "id": "calibration-trace-evidence",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Untracked tests/compliance/context-usage/calibration/traces/** files remain local evidence only and are outside the touch-set for commit.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+        "range": [72, 75],
+        "contentHash": "4d424ae"
+      }
+    },
+    {
+      "id": "parallel-calibration-hardening",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Unstaged lib/memory/features/token-economy-calibration-hardening/** artifacts from a parallel follow-on run remain outside this feature commit scope.",
+      "citation": {
+        "kind": "lines",
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+        "range": [38, 44],
+        "contentHash": "9415a21"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/sampled-token-audit/spec.md",
+        "cited_path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
+        "recorded_content_hash": "pending",
+        "live_content_hash": "134d126",
+        "verifier_status": "pending",
+        "note": "Intake spec references carry contentHash: pending; refresh on next knowledge-curation sweep."
+      },
+      {
+        "citing_path": "lib/memory/features/sampled-token-audit/delivery-report.md",
+        "cited_path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+        "recorded_content_hash": "c397ed4",
+        "live_content_hash": "0e224cb",
+        "verifier_status": "changed",
+        "note": "Post-report compliance and QA artifact edits updated implementation-report body."
+      },
+      {
+        "citing_path": "lib/memory/features/sampled-token-audit/delivery-report.md",
+        "cited_path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "recorded_content_hash": "c9b1631",
+        "live_content_hash": "db3270f",
+        "verifier_status": "changed",
+        "note": "Review artifact updated after report-stage edits."
+      },
+      {
+        "citing_path": "lib/memory/features/sampled-token-audit/delivery-report.md",
+        "cited_path": "lib/internal/packages/@pancreator/runner-cursor/src/sdk-trace-collector.ts",
+        "recorded_content_hash": "aa03639",
+        "live_content_hash": "e4308aa",
+        "verifier_status": "changed",
+        "note": "Compliance safe-fix canonicalized SDK trace summary JSON formatting."
+      }
+    ]
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/sampled-token-audit/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/sampled-token-audit/spec.md",
+          "range": [1, 270],
+          "contentHash": "1525419"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/sampled-token-audit/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/sampled-token-audit/delivery-report.md",
+          "range": [1, 396],
+          "contentHash": "edd5c25"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/sampled-token-audit/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/"
+      },
+      "plan": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
+          "range": [1, 120],
+          "contentHash": "65e22bd"
+        }
+      },
+      "adr_draft": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+          "range": [1, 113],
+          "contentHash": "95d8fdc"
+        }
+      },
+      "touch_set": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
+          "range": [1, 213],
+          "contentHash": "695727e"
+        }
+      },
+      "implementation_report": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+          "range": [1, 91],
+          "contentHash": "0e224cb"
+        }
+      },
+      "review_report": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+          "range": [1, 107],
+          "contentHash": "db3270f"
+        }
+      },
+      "test_report": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+          "range": [1, 67],
+          "contentHash": "6cc059b"
+        }
+      },
+      "compliance_result": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+          "range": [1, 269],
+          "contentHash": "9415a21"
+        }
+      },
+      "policy_compliance": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+          "range": [1, 116],
+          "contentHash": "4d424ae"
+        }
+      },
+      "pr_draft": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/pr-draft.md",
+        "note": "Supervisor-authored PR body draft; gh pr create deferred until operator commits and pushes."
+      },
+      "handoff": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
+          "range": [1, 55],
+          "contentHash": "2a35fc0"
+        }
+      },
+      "pipeline_close": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/pipeline-close.md"
+      },
+      "run_log": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/qa-logs/",
+        "note": "QA and compliance gate command transcripts."
+      },
+      "sdk_traces": {
+        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/sdk-traces/",
+        "note": "Sampled SDK trace NDJSON and summary artifacts from QA dogfood runs."
+      }
+    },
+    "implementation_surface": {
+      "config": {
+        "path": "pancreator.yaml",
+        "note": "runner.cursor.sdkSampling defaults: enabled true, ratePercent 10, scope feature-delivery."
+      },
+      "model_escalation": {
+        "path": "pancreator-model-escalation.yaml",
+        "note": "active_config: auto for SDK dogfood; operator rollback to default when complete."
+      },
+      "sdk_sampling": {
+        "path": "lib/internal/packages/@pancreator/cli/src/sdk-sampling.ts"
+      },
+      "sdk_sampling_config": {
+        "path": "lib/internal/packages/@pancreator/cli/src/pan-init.ts"
+      },
+      "feature_delivery_runner": {
+        "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts"
+      },
+      "token_economy_analyzer": {
+        "path": "lib/internal/packages/@pancreator/cli/src/token-economy-analyzer.ts"
+      },
+      "sample_audit_command": {
+        "path": "lib/internal/packages/@pancreator/cli/src/commands/token-economy-sample-audit.ts"
+      },
+      "sdk_trace_collector": {
+        "path": "lib/internal/packages/@pancreator/runner-cursor/src/sdk-trace-collector.ts"
+      },
+      "sdk_transport": {
+        "path": "lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts"
+      },
+      "harness_collect_usage": {
+        "path": "tests/compliance/context-usage/lib/collect-usage.mjs",
+        "note": "Re-exports shared collector from @pancreator/runner-cursor dist."
+      },
+      "harness_companion_paths": {
+        "path": "tests/compliance/context-usage/lib/paths.mjs",
+        "note": "stripTempSandboxPrefix export; outside declared allowed_paths."
+      },
+      "harness_companion_tasks": {
+        "path": "tests/compliance/context-usage/lib/tasks.mjs",
+        "note": "task-high allowlist alignment; outside declared allowed_paths."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
+          "range": [1, 143],
+          "contentHash": "134d126"
+        }
+      },
+      "prior_prototype_delivery": {
+        "path": "lib/memory/features/token-economy-prototype/delivery-report.md",
+        "note": "Prototype harness patterns promoted into production SDK sampling."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": []
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": true,
+    "librarian_populated": true,
+    "placeholder": false
+  },
+  "source_inbox_item": {
+    "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
+    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/."
+  }
+}

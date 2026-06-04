@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 import { calibrateOverhead } from "./calibrate-overhead.mjs";
 import { establishExpectedFromRaw } from "./establish-expected.mjs";
 import { analyzeTraceSummary, writeFindings } from "./lib/analyzer.mjs";
+import { clearComboTraces } from "./lib/prune-combo-traces.mjs";
 import { requireLiveEnv, resolveHarnessRepoRoot } from "./lib/live-env.mjs";
 import { assertPrototypeModel } from "./lib/model.mjs";
 import { runPrototypeTask } from "./lib/run-prototype.mjs";
 import { PROTOTYPE_MODELS, TASK_IDS, comboKey } from "./lib/tasks.mjs";
 import { ensureCursorSdkRipgrepConfigured } from "./lib/ripgrep.mjs";
+import { stringifyRepoJson } from "../../../lib/internal/tools/canonical-json-format.mjs";
 
 const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const REPO_ROOT = resolveHarnessRepoRoot();
@@ -81,6 +83,9 @@ export async function calibrateMatrix(argv = process.argv.slice(2)) {
   for (const taskId of TASK_IDS) {
     for (const model of PROTOTYPE_MODELS) {
       const combo = comboKey(taskId, model);
+      const comboTraceDir = path.join(TRACE_DIR, combo);
+      fs.mkdirSync(comboTraceDir, { recursive: true });
+      clearComboTraces(comboTraceDir);
       totalsByCombo[combo] = [];
       findingsByCombo[combo] = [];
       for (let runIndex = 1; runIndex <= args.runs; runIndex += 1) {
@@ -110,16 +115,15 @@ export async function calibrateMatrix(argv = process.argv.slice(2)) {
   fs.mkdirSync(path.dirname(RAW_PATH), { recursive: true });
   fs.writeFileSync(
     RAW_PATH,
-    `${JSON.stringify(
+    stringifyRepoJson(
       {
         schema_version: 1,
         generated_at: new Date().toISOString(),
         runs_per_combo: args.runs,
         totals_by_combo: totalsByCombo,
       },
-      null,
-      2,
-    )}\n`,
+      REPO_ROOT,
+    ),
   );
   console.log(`[context-usage] matrix samples written: ${RAW_PATH}`);
 

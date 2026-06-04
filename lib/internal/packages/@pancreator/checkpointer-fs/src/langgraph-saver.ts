@@ -14,7 +14,7 @@ import {
   type CheckpointTuple,
   type PendingWrite,
 } from "@langchain/langgraph-checkpoint";
-import { asTaskId, type TaskId } from "@pancreator/core";
+import { asTaskId, stringifyCompactJson, stringifyRepoJson, type TaskId } from "@pancreator/core";
 
 import { isCheckpointEnvelopeV1, type CheckpointEnvelopeV1 } from "./envelope.js";
 
@@ -232,7 +232,7 @@ export class FsLangGraphCheckpointSaver extends BaseCheckpointSaver<number> {
     const envelope = envelopeFromPut(taskId, seq, copyCheckpoint(checkpoint), ddlMeta);
     const target = envelopePath(this.root, taskId, checkpointId);
     await mkdir(join(this.root, taskId), { recursive: true });
-    await writeFile(target, `${JSON.stringify(envelope, null, 2)}\n`, "utf8");
+    await writeFile(target, `${stringifyRepoJson(envelope, process.cwd())}\n`, "utf8");
     return {
       configurable: {
         thread_id: taskId,
@@ -256,7 +256,7 @@ export class FsLangGraphCheckpointSaver extends BaseCheckpointSaver<number> {
     const target = writesPath(this.root, thread, checkpointId);
     await mkdir(join(this.root, thread, WRITES_DIR), { recursive: true });
     const stored: StoredWrites = { taskId, checkpointId, writes: pending };
-    await writeFile(target, `${JSON.stringify(stored)}\n`, "utf8");
+    await writeFile(target, `${stringifyCompactJson(stored)}\n`, "utf8");
   }
 
   async deleteThread(threadId: string): Promise<void> {

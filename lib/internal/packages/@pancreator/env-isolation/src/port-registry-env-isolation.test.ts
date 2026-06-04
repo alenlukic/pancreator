@@ -2,7 +2,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { asTaskId } from "@pancreator/core";
+import { asTaskId, stringifyRepoJson } from "@pancreator/core";
 import { describe, expect, it } from "vitest";
 
 import { PortRegistryCollisionError } from "./errors.js";
@@ -84,7 +84,14 @@ describe("PortRegistryEnvIsolation", () => {
         maxPort: 7005,
         allocations: { x: [7000, 7001], y: [7001, 7002] },
       };
-      await writeFile(file, `${JSON.stringify(bad, null, 2)}\n`, "utf8");
+      const prevAbbrev = process.env.PAN_JSON_FORMAT_ABBREV_LEN;
+      process.env.PAN_JSON_FORMAT_ABBREV_LEN = "7";
+      await writeFile(file, stringifyRepoJson(bad, repoRoot), "utf8");
+      if (prevAbbrev === undefined) {
+        delete process.env.PAN_JSON_FORMAT_ABBREV_LEN;
+      } else {
+        process.env.PAN_JSON_FORMAT_ABBREV_LEN = prevAbbrev;
+      }
       await expect(readRegistryState(file, 7000, 7005)).rejects.toThrow(PortRegistryCollisionError);
     } finally {
       await cleanup();

@@ -19,6 +19,18 @@ export function normalizePath(rel) {
 }
 
 /**
+ * Strip temporary calibration sandbox prefixes to keep paths fixture-relative.
+ * @param {string} relPath
+ */
+export function stripTempSandboxPrefix(relPath) {
+  const normalized = normalizePath(relPath);
+  const match = normalized.match(
+    /(?:^|\/)context-usage-task-(?:low|high)-[^/]+\/(.+)$/u,
+  );
+  return match?.[1] ? normalizePath(match[1]) : normalized;
+}
+
+/**
  * @param {string} relPath
  */
 export function toExactPathRegex(relPath) {

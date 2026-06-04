@@ -10,10 +10,11 @@ import {
   normalizeComplianceAuditHistoryForArchivedRun,
   persistComplianceAuditHistoryForResult,
 } from "./compliance-audit-history.js";
+import { stringifyCliJson } from "./canonical-json-io.js";
 
-async function writeJson(abs: string, value: unknown): Promise<void> {
+async function writeJson(repoRoot: string, abs: string, value: unknown): Promise<void> {
   await mkdir(path.dirname(abs), { recursive: true });
-  await writeFile(abs, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  await writeFile(abs, stringifyCliJson(repoRoot, value), "utf8");
 }
 
 describe("compliance-audit-history", () => {
@@ -35,7 +36,7 @@ describe("compliance-audit-history", () => {
   it("backfills history from indexed compliance artifacts", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-audit-history-backfill-"));
     const resultRel = "archive/work/172996_05-10-26/38670_1315_demo-feature/compliance-result.json";
-    await writeJson(path.join(root, resultRel), {
+    await writeJson(root, path.join(root, resultRel), {
       taskId: "38670_1315_demo-feature",
       featureId: "demo-feature",
       auditedAt: "2026-05-10T14:10:00.000Z",
@@ -48,7 +49,7 @@ describe("compliance-audit-history", () => {
         ],
       },
     });
-    await writeJson(path.join(root, "lib/memory/features/demo-feature/index.json"), {
+    await writeJson(root, path.join(root, "lib/memory/features/demo-feature/index.json"), {
       feature_id: "demo-feature",
       task_id: "38670_1315_demo-feature",
       indexed_at: "2026-05-10T14:20:00.000Z",
@@ -72,14 +73,14 @@ describe("compliance-audit-history", () => {
   it("persists compliance result metadata and computes baseline delta", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-audit-history-persist-"));
     const baselineResultRel = "archive/work/172995_05-11-26/40000_1200_old/compliance-result.json";
-    await writeJson(path.join(root, baselineResultRel), {
+    await writeJson(root, path.join(root, baselineResultRel), {
       taskId: "40000_1200_old",
       featureId: "old",
       auditedAt: "2026-05-11T12:00:00.000Z",
       compliance_passes: true,
       scope: { inputsAudited: ["lib/memory/features/shared.md"] },
     });
-    await writeJson(path.join(root, "lib/memory/features/old/index.json"), {
+    await writeJson(root, path.join(root, "lib/memory/features/old/index.json"), {
       feature_id: "old",
       task_id: "40000_1200_old",
       indexed_at: "2026-05-11T12:05:00.000Z",
@@ -93,11 +94,11 @@ describe("compliance-audit-history", () => {
     await ensureComplianceAuditHistoryBackfilled(root);
 
     const runDirRel = "work/172994_05-12-26/39999_1210_new";
-    await writeJson(path.join(root, `${runDirRel}/touch-set.json`), { touched: ["x"] });
-    await writeJson(path.join(root, `${runDirRel}/review.md`), { review: true });
-    await writeJson(path.join(root, `${runDirRel}/test-report.md`), { qa: true });
-    await writeJson(path.join(root, "lib/memory/features/new/delivery-report.md"), { delivered: true });
-    await writeJson(path.join(root, `${runDirRel}/compliance-result.json`), {
+    await writeJson(root, path.join(root, `${runDirRel}/touch-set.json`), { touched: ["x"] });
+    await writeJson(root, path.join(root, `${runDirRel}/review.md`), { review: true });
+    await writeJson(root, path.join(root, `${runDirRel}/test-report.md`), { qa: true });
+    await writeJson(root, path.join(root, "lib/memory/features/new/delivery-report.md"), { delivered: true });
+    await writeJson(root, path.join(root, `${runDirRel}/compliance-result.json`), {
       taskId: "39999_1210_new",
       featureId: "new",
       auditedAt: "2026-05-12T12:30:00.000Z",
@@ -136,7 +137,7 @@ describe("compliance-audit-history", () => {
   it("rewrites run-scoped paths after close-artifacts archive move", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-audit-history-normalize-"));
     const runDirRel = "work/172994_05-12-26/39999_1210_new";
-    await writeJson(path.join(root, COMPLIANCE_AUDIT_HISTORY_REL), {
+    await writeJson(root, path.join(root, COMPLIANCE_AUDIT_HISTORY_REL), {
       schema_version: "1",
       max_entries: 5,
       generated_at: "2026-05-12T12:31:00.000Z",

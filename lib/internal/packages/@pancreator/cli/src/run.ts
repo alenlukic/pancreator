@@ -32,12 +32,13 @@ import { createInterventionCheckpointPort } from "./intervention-checkpoint.js";
 import { runCursorSync } from "./cursor-sync.js";
 import { runCreatePancreator, runPanInit } from "./pan-init.js";
 
-import { stringifyCliJson } from "./canonical-json-io.js";
+import { quoteJsonString, stringifyCliJson } from "./canonical-json-io.js";
 import { createFeatureDeliverySdkProgressReporter } from "./feature-delivery-sdk-progress.js";
 import {
   rewriteActiveMemoryFile,
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
 } from "./active-memory-refresh.js";
+import { runTokenEconomySampleAudit } from "./commands/token-economy-sample-audit.js";
 
 export { PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE };
 
@@ -108,13 +109,13 @@ function emitPayload(
   format: OutputFormat,
 ): void {
   if (format === "text") {
-    writeOut(`${formatPanText(payload)}\n`);
+    writeOut(`${formatPanText(payload, repoRoot)}\n`);
     return;
   }
   emit(writeOut, repoRoot, payload);
 }
 
-export function formatPanText(payload: object): string {
+export function formatPanText(payload: object, repoRoot: string = process.cwd()): string {
   const record = payload as Record<string, unknown>;
   const command = record.command;
   if (command === "inbox") {
@@ -216,7 +217,7 @@ export function formatPanText(payload: object): string {
     ];
     return lines.join("\n");
   }
-  return JSON.stringify(payload, null, 2);
+  return stringifyCliJson(repoRoot, payload);
 }
 
 interface DeferredVerbConfig {
@@ -289,12 +290,12 @@ function buildDefaultIntakeMarkdown(opts: {
 }): string {
   const fm = [
     "---",
-    `title: ${JSON.stringify(opts.title)}`,
-    `feature_id: ${JSON.stringify(opts.featureId)}`,
+    `title: ${quoteJsonString(opts.title)}`,
+    `feature_id: ${quoteJsonString(opts.featureId)}`,
     "stage: intake",
-    `owner: ${JSON.stringify(opts.owner)}`,
+    `owner: ${quoteJsonString(opts.owner)}`,
     "status: open",
-    `created_at: ${JSON.stringify(opts.createdIso)}`,
+    `created_at: ${quoteJsonString(opts.createdIso)}`,
     "references: []",
     "---",
     "",
@@ -745,12 +746,12 @@ export async function parseAndRun(
           const templateBody = await readFile(templateAbs, "utf8");
           fileText = [
             "---",
-            `title: ${JSON.stringify(title)}`,
-            `feature_id: ${JSON.stringify(featureId)}`,
+            `title: ${quoteJsonString(title)}`,
+            `feature_id: ${quoteJsonString(featureId)}`,
             "stage: intake",
-            `owner: ${JSON.stringify(owner)}`,
+            `owner: ${quoteJsonString(owner)}`,
             "status: open",
-            `created_at: ${JSON.stringify(createdIso)}`,
+            `created_at: ${quoteJsonString(createdIso)}`,
             "references: []",
             "---",
             "",
@@ -792,6 +793,34 @@ export async function parseAndRun(
         });
       }
       exit.code = code;
+    });
+
+  const tokenEconomy = program
+    .command("token-economy")
+    .description("Token economy observability for sampled feature-delivery SDK runs");
+
+  tokenEconomy
+    .command("sample-audit")
+    .description("Incrementally audit sdk-traces summaries newer than the last watermark")
+    .option("--since <iso>", "Restrict scan to summaries at or after this ISO timestamp")
+    .option("--sampled-only-task <taskId>", "Restrict analysis to one task work directory")
+    .option("--repair", "Run bounded repair for low/medium findings; defer high-scope to inbox", false)
+    .action(async (cmdOpts: { since?: string; sampledOnlyTask?: string; repair?: boolean }) => {
+      const result = await runTokenEconomySampleAudit({
+        repoRoot,
+        since: cmdOpts.since,
+        sampledOnlyTask: cmdOpts.sampledOnlyTask,
+        repair: Boolean(cmdOpts.repair),
+        clock: options?.clock,
+      });
+      emit(writeOut, repoRoot, {
+        command: "token-economy sample-audit",
+        status: "ok",
+        report_path: result.reportPath,
+        summaries_scanned: result.report.summaries_scanned,
+        finding_count: result.report.findings.length,
+        ...(result.report.repair ? { repair: result.report.repair } : {}),
+      });
     });
 
   program

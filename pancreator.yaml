@@ -33,6 +33,10 @@ runner:
     # When true (default under sdk), incomplete stage artifacts trigger
     # pancreator-engineer remediation before the stage is treated as complete.
     stage_remediation: true
+    sdkSampling:
+      enabled: true
+      ratePercent: 10
+      scope: feature-delivery
 contract_bundle:
   kind: rego
   telemetry_gates: [coverage-floor, bundle-size-delta, feature-contracts-pull]

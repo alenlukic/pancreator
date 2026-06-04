@@ -42,10 +42,22 @@ export interface RunnerRunLogFragment {
   attributes: Record<string, unknown>;
 }
 
+export interface SdkTraceContext {
+  /** Repo-relative directory for sdk-traces (e.g. work/<day>/<task>/sdk-traces). */
+  traceDirRel: string;
+  stageId: string;
+  invocationIndex: number;
+  taskId: string;
+}
+
 export interface RunnerInvokeInput {
   persona: RunnerPersonaInput;
   /** User or operator message for this step. */
   message: string;
+  /** When true, use streamed SDK transport with trace capture. */
+  sampled?: boolean;
+  /** Trace sink coordinates for sampled invocations. */
+  sdkTrace?: SdkTraceContext;
   /** Optional correlation id for run logs. */
   requestId?: string;
   /** Absolute or repo-relative stage prompt path. */
@@ -108,6 +120,13 @@ export interface RunnerInvocationEnvelope {
     status: "ok" | "error";
     errorMessage?: string;
     resultText?: string;
+    sampled?: boolean;
+    usage?: {
+      input_tokens: number;
+      output_tokens: number;
+      trace_path: string;
+      summary_path: string;
+    };
   };
 }
 

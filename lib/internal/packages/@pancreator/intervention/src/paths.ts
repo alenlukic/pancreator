@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { TaskId } from "@pancreator/core";
+import { quoteJsonString, type TaskId } from "@pancreator/core";
 
 import {
   InterventionJournalPathError,
@@ -21,7 +21,7 @@ export function assertSafeTaskIdForPath(taskId: string): void {
     taskId.includes("..")
   ) {
     throw new InvalidTaskIdForJournalError(
-      `Task id ${JSON.stringify(taskId)} is not safe for a journal file name.`,
+      `Task id ${quoteJsonString(taskId)} is not safe for a journal file name.`,
     );
   }
 }

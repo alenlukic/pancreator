@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import type { TaskId } from "@pancreator/core";
+import { stringifyCompactJson, type TaskId } from "@pancreator/core";
 
 import { MalformedJournalLineError } from "./errors.js";
 import {
@@ -65,7 +65,7 @@ export class FsInterventionStore implements InterventionStore {
     const file = interventionJournalPath(this.repoRoot, taskId);
     assertJournalPathInScheduler(this.repoRoot, file);
     await fs.mkdir(path.dirname(file), { recursive: true });
-    await fs.appendFile(file, `${JSON.stringify(record)}\n`, "utf8");
+    await fs.appendFile(file, `${stringifyCompactJson(record)}\n`, "utf8");
   }
 
   async readJournal(taskId: TaskId): Promise<readonly InterventionRecord[]> {
