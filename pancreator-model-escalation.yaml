@@ -14,7 +14,7 @@
 # Pricing reference: https://cursor.com/docs/models-and-pricing (API output $/1M
 # as primary cost axis). Capability tie-break: LiveBench-2026-01-08.
 
-active_config: default
+active_config: auto
 
 configs:
   default:

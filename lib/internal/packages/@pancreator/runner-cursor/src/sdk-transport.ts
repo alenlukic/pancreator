@@ -3,7 +3,15 @@ import path from "node:path";
 
 import { ensureCursorSdkRipgrepConfigured } from "./cursor-sdk-prereqs.js";
 import { resolveSdkModelId } from "./sdk-model.js";
-import type { RunnerPersonaInput } from "./types.js";
+import {
+  assertUsageCaptured,
+  createEmptyMetrics,
+  createProductionTraceSink,
+  drainRunStream,
+  processStreamEvent,
+  repoRelativePath,
+} from "./sdk-trace-collector.js";
+import type { RunnerPersonaInput, SdkTraceContext } from "./types.js";
 
 export interface CursorSdkInvokeParams {
   message: string;
@@ -16,6 +24,16 @@ export interface CursorSdkInvokeParams {
   requiredArtifactPaths?: readonly string[];
   cwd?: string;
   apiKey?: string;
+  /** Streamed capture path for sampled feature-delivery invocations. */
+  sampled?: boolean;
+  sdkTrace?: SdkTraceContext;
+}
+
+export interface CursorSdkUsageCapture {
+  input_tokens: number;
+  output_tokens: number;
+  trace_path: string;
+  summary_path: string;
 }
 
 export interface CursorSdkInvokeResult {
@@ -23,6 +41,8 @@ export interface CursorSdkInvokeResult {
   resultText?: string;
   errorMessage?: string;
   missingArtifacts?: string[];
+  sampled?: boolean;
+  usage?: CursorSdkUsageCapture;
 }
 
 export type CursorSdkTransport = (params: CursorSdkInvokeParams) => Promise<CursorSdkInvokeResult>;
@@ -128,6 +148,113 @@ export function createDefaultCursorSdkTransport(): CursorSdkTransport {
     } catch (error) {
       if (error instanceof CursorAgentError) {
         return { status: "error", errorMessage: error.message };
+      }
+      throw error;
+    }
+  };
+}
+
+/** Streamed transport: Agent.send + onDelta capture for sampled feature-delivery invocations. */
+export function createStreamedCursorSdkTransport(): CursorSdkTransport {
+  return async (params) => {
+    const apiKey = params.apiKey ?? process.env.CURSOR_API_KEY;
+    if (!apiKey) {
+      return {
+        status: "error",
+        errorMessage: "CURSOR_API_KEY is required when runner.cursor.invocation is sdk",
+      };
+    }
+
+    const cwd = params.cwd ?? process.cwd();
+    if (!ensureCursorSdkRipgrepConfigured(cwd)) {
+      return {
+        status: "error",
+        errorMessage:
+          `Ripgrep binary not found for @cursor/sdk-${process.platform}-${process.arch}. Install @cursor/sdk optional platform binaries or set CURSOR_RIPGREP_PATH to an absolute rg path.`,
+      };
+    }
+
+    const traceCtx = params.sdkTrace;
+    if (traceCtx === undefined) {
+      return {
+        status: "error",
+        errorMessage: "sdkTrace context is required for streamed SDK transport",
+      };
+    }
+
+    const { Agent, CursorAgentError } = await import("@cursor/sdk");
+    const prompt = buildSdkPrompt(params);
+    const effectiveModel = params.modelOverride ?? params.persona.model;
+    const sdkModelId = resolveSdkModelId(effectiveModel);
+    const traceDirAbs = path.join(cwd, traceCtx.traceDirRel);
+    const sink = createProductionTraceSink({
+      traceDir: traceDirAbs,
+      stageId: traceCtx.stageId,
+      invocationIndex: traceCtx.invocationIndex,
+      taskId: traceCtx.taskId,
+      model: sdkModelId,
+      repoRoot: cwd,
+    });
+
+    const metrics = createEmptyMetrics();
+    const toolPaths: string[] = [];
+    const wallStartMs = Date.now();
+
+    try {
+      const agent = await Agent.create({
+        apiKey,
+        model: { id: sdkModelId },
+        local: { cwd, settingSources: ["project"] },
+      });
+
+      try {
+        const run = await agent.send(prompt, {
+          model: { id: sdkModelId },
+          onDelta: ({ update }) => {
+            processStreamEvent(update, metrics, toolPaths);
+            sink.onEvent(update);
+          },
+        });
+        await drainRunStream(run, {
+          metrics,
+          toolPaths,
+          wallStartMs,
+          onEvent: sink.onEvent.bind(sink),
+        });
+        await run.wait();
+        assertUsageCaptured(metrics);
+
+        sink.finish(metrics, toolPaths, params.persona.name);
+        const required =
+          params.requiredArtifactPaths ??
+          (params.artifactPath !== undefined ? [params.artifactPath] : []);
+        const missingArtifacts = findMissingArtifactPaths(cwd, required);
+        if (missingArtifacts.length > 0) {
+          return {
+            status: "error",
+            errorMessage: `Cursor SDK run finished but required artifacts are missing: ${missingArtifacts.join(", ")}`,
+            missingArtifacts,
+            sampled: true,
+          };
+        }
+
+        return {
+          status: "ok",
+          resultText: "",
+          sampled: true,
+          usage: {
+            input_tokens: metrics.input_tokens,
+            output_tokens: metrics.output_tokens,
+            trace_path: repoRelativePath(sink.tracePath, cwd),
+            summary_path: repoRelativePath(sink.summaryPath, cwd),
+          },
+        };
+      } finally {
+        agent.close();
+      }
+    } catch (error) {
+      if (error instanceof CursorAgentError) {
+        return { status: "error", errorMessage: error.message, sampled: true };
       }
       throw error;
     }

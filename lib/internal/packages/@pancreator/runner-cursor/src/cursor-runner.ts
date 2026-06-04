@@ -10,6 +10,7 @@ import {
 } from "./model-escalation.js";
 import {
   createDefaultCursorSdkTransport,
+  createStreamedCursorSdkTransport,
   type CursorSdkInvokeResult,
   type CursorSdkTransport,
 } from "./sdk-transport.js";
@@ -28,10 +29,12 @@ import { RUNNER_INVOCATION_SCHEMA_VERSION } from "./types.js";
  */
 export class CursorRunner implements Runner {
   private readonly sdkTransport: CursorSdkTransport;
+  private readonly streamedSdkTransport: CursorSdkTransport;
   private escalationCache: LoadedModelEscalation | undefined;
 
   constructor(private readonly options: CursorRunnerOptions = {}) {
     this.sdkTransport = options.sdkTransport ?? createDefaultCursorSdkTransport();
+    this.streamedSdkTransport = createStreamedCursorSdkTransport();
   }
 
   async invoke(input: RunnerInvokeInput): Promise<RunnerInvocationEnvelope> {
@@ -111,6 +114,8 @@ export class CursorRunner implements Runner {
         artifactPath: input.artifactPath,
         errorMessage: sdkOutcome.errorMessage,
         resultText: sdkOutcome.resultText,
+        sampled: sdkOutcome.sampled,
+        usage: sdkOutcome.usage,
       };
       if (sdkOutcome.resolvedModel !== undefined) {
         envelope.resolved.model = sdkOutcome.resolvedModel;
@@ -138,6 +143,7 @@ export class CursorRunner implements Runner {
     stageInvocationIndex: number;
     primaryModel: string;
   }): Promise<CursorSdkInvokeResult & { resolvedModel?: string }> {
+    const transport = input.input.sampled ? this.streamedSdkTransport : this.sdkTransport;
     const transportParams = {
       message: input.input.message,
       persona: input.persona,
@@ -145,11 +151,13 @@ export class CursorRunner implements Runner {
       stagePromptContent: input.input.stagePromptContent,
       artifactPath: input.input.artifactPath,
       requiredArtifactPaths: input.input.requiredArtifactPaths,
-      cwd: this.options.cwd,
+      cwd: this.options.cwd ?? this.options.repoRoot,
       apiKey: this.options.apiKey,
+      sampled: input.input.sampled,
+      sdkTrace: input.input.sdkTrace,
     };
 
-    const primary = await this.sdkTransport({
+    const primary = await transport({
       ...transportParams,
       modelOverride: input.primaryModel,
     });
@@ -167,7 +175,7 @@ export class CursorRunner implements Runner {
 
     for (const fallbackModel of chain) {
       attempted.push(fallbackModel);
-      const outcome = await this.sdkTransport({
+      const outcome = await transport({
         ...transportParams,
         modelOverride: fallbackModel,
       });

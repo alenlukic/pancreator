@@ -35,7 +35,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- `(none)`
+- `sampled-token-audit` — pipeline `complete` (`53589_0906_sampled-token-audit`); awaiting operator commit and `close-artifacts`
 
 ## Most recent shipped Features
 

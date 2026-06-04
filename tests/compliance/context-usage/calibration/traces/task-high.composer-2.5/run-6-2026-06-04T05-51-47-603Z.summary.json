@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "task_id": "task-high",
+  "model": "composer-2.5",
+  "run_index": 6,
+  "combo": "task-high.composer-2.5",
+  "trace_path": "tests/compliance/context-usage/calibration/traces/task-high.composer-2.5/run-6-2026-06-04T05-51-47-603Z.ndjson",
+  "metrics": {
+    "input_tokens": 34849,
+    "output_tokens": 692,
+    "cache_read_tokens": 30262,
+    "cache_write_tokens": 0,
+    "total_tokens": 65803,
+    "duration_ms": 5065,
+    "turn_count": 1,
+    "tool_read_count": 4
+  },
+  "tool_paths": [
+    "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/active/current.md",
+    "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/internal/packages/demo-svc/handler.ts",
+    "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/features/token-economy-probe/spec.md",
+    "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/work/99999_probe/task/handoff.md"
+  ],
+  "turn_count": 1,
+  "trace_records": [
+    {
+      "ts": "2026-06-04T05:51:47.603Z",
+      "type": "run_start",
+      "task_id": "task-high",
+      "model": "composer-2.5",
+      "run_index": 6,
+      "combo": "task-high.composer-2.5"
+    },
+    {
+      "ts": "2026-06-04T05:51:49.393Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/active/current.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/active/current.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:49.412Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/active/current.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/active/current.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:49.564Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/internal/packages/demo-svc/handler.ts"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/internal/packages/demo-svc/handler.ts"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:49.599Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/internal/packages/demo-svc/handler.ts"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/internal/packages/demo-svc/handler.ts"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:49.712Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/features/token-economy-probe/spec.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/features/token-economy-probe/spec.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:49.730Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/features/token-economy-probe/spec.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/lib/memory/features/token-economy-probe/spec.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:49.898Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/work/99999_probe/task/handoff.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/work/99999_probe/task/handoff.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:49.940Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/work/99999_probe/task/handoff.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/work/99999_probe/task/handoff.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:51.033Z",
+      "type": "tool_call",
+      "name": "edit",
+      "paths": [],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/work/99999_probe/task/answer.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:51.134Z",
+      "type": "tool_call",
+      "name": "edit",
+      "paths": [],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/work/99999_probe/task/answer.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:51.213Z",
+      "type": "tool_call",
+      "name": "edit",
+      "paths": [],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-UOlOrs/work/99999_probe/task/answer.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:52.641Z",
+      "type": "turn_ended",
+      "turn": 1,
+      "usage": {
+        "input": 34849,
+        "output": 692,
+        "cacheRead": 30262,
+        "cacheWrite": 0
+      }
+    },
+    {
+      "ts": "2026-06-04T05:51:52.669Z",
+      "type": "run_end",
+      "metrics": {
+        "input_tokens": 34849,
+        "output_tokens": 692,
+        "cache_read_tokens": 30262,
+        "cache_write_tokens": 0,
+        "total_tokens": 65803,
+        "duration_ms": 5065,
+        "turn_count": 1,
+        "tool_read_count": 4
+      },
+      "tool_read_count": 4
+    }
+  ]
+}

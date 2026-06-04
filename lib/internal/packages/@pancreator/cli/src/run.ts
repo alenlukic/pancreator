@@ -38,6 +38,7 @@ import {
   rewriteActiveMemoryFile,
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
 } from "./active-memory-refresh.js";
+import { runTokenEconomySampleAudit } from "./commands/token-economy-sample-audit.js";
 
 export { PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE };
 
@@ -792,6 +793,34 @@ export async function parseAndRun(
         });
       }
       exit.code = code;
+    });
+
+  const tokenEconomy = program
+    .command("token-economy")
+    .description("Token economy observability for sampled feature-delivery SDK runs");
+
+  tokenEconomy
+    .command("sample-audit")
+    .description("Incrementally audit sdk-traces summaries newer than the last watermark")
+    .option("--since <iso>", "Restrict scan to summaries at or after this ISO timestamp")
+    .option("--sampled-only-task <taskId>", "Restrict analysis to one task work directory")
+    .option("--repair", "Run bounded repair for low/medium findings; defer high-scope to inbox", false)
+    .action(async (cmdOpts: { since?: string; sampledOnlyTask?: string; repair?: boolean }) => {
+      const result = await runTokenEconomySampleAudit({
+        repoRoot,
+        since: cmdOpts.since,
+        sampledOnlyTask: cmdOpts.sampledOnlyTask,
+        repair: Boolean(cmdOpts.repair),
+        clock: options?.clock,
+      });
+      emit(writeOut, repoRoot, {
+        command: "token-economy sample-audit",
+        status: "ok",
+        report_path: result.reportPath,
+        summaries_scanned: result.report.summaries_scanned,
+        finding_count: result.report.findings.length,
+        ...(result.report.repair ? { repair: result.report.repair } : {}),
+      });
     });
 
   program

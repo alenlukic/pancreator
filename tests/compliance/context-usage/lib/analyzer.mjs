@@ -1,10 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { findForbiddenPaths, findMissingRequiredReads, normalizePath } from "./paths.mjs";
+import {
+  findForbiddenPaths,
+  findMissingRequiredReads,
+  normalizePath,
+  stripTempSandboxPrefix,
+} from "./paths.mjs";
 import { getTaskSpec } from "./tasks.mjs";
 
 const DISCOVERY_TOOL_NAMES = new Set(["glob", "Glob", "grep", "Grep", "search", "Search"]);
+
+/**
+ * @param {string} relPath
+ */
+function normalizeObservedPath(relPath) {
+  return stripTempSandboxPrefix(normalizePath(relPath));
+}
 
 /**
  * @param {unknown} record
@@ -29,7 +41,7 @@ function isDiscoveryToolCall(record) {
  */
 export function classifyPolicyViolations(input) {
   const spec = getTaskSpec(input.taskId);
-  const toolPaths = (input.summary.tool_paths ?? []).map(normalizePath);
+  const toolPaths = (input.summary.tool_paths ?? []).map(normalizeObservedPath);
   /** @type {Array<Record<string, unknown>>} */
   const violations = [];
 
@@ -112,7 +124,7 @@ function rawReadPathsFromTraceRecords(records) {
     if (Array.isArray(recordPaths)) {
       for (const p of recordPaths) {
         if (typeof p === "string" && p.trim()) {
-          paths.push(normalizePath(p));
+          paths.push(normalizeObservedPath(p));
         }
       }
     }
@@ -132,7 +144,7 @@ function rawReadPathsFromTraceRecords(records) {
  */
 export function classifyInefficiencies(input) {
   const spec = getTaskSpec(input.taskId);
-  const toolPaths = (input.summary.tool_paths ?? []).map(normalizePath);
+  const toolPaths = (input.summary.tool_paths ?? []).map(normalizeObservedPath);
   const rawReadPaths = rawReadPathsFromTraceRecords(input.summary.trace_records);
   const duplicateScanPaths =
     rawReadPaths.length > 0 ? rawReadPaths : toolPaths;
@@ -172,6 +184,26 @@ export function classifyInefficiencies(input) {
   }
 
   return inefficiencies;
+}
+
+/**
+ * When multiple trace summaries exist per run index (e.g. after re-calibration),
+ * keep the lexicographically latest filename so analyze uses the newest run only.
+ * @param {{ name: string; summary: Record<string, unknown> }[]} entries
+ */
+export function selectLatestSummariesByRunIndex(entries) {
+  /** @type {Map<number, { name: string; summary: Record<string, unknown> }>} */
+  const byRun = new Map();
+  for (const entry of entries) {
+    const runIndex = Number(entry.summary.run_index ?? 0);
+    const prev = byRun.get(runIndex);
+    if (!prev || entry.name > prev.name) {
+      byRun.set(runIndex, entry);
+    }
+  }
+  return [...byRun.values()]
+    .sort((a, b) => Number(a.summary.run_index) - Number(b.summary.run_index))
+    .map((entry) => entry.summary);
 }
 
 /**

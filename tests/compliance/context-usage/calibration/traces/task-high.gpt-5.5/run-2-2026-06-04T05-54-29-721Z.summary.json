@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "task_id": "task-high",
+  "model": "gpt-5.5",
+  "run_index": 2,
+  "combo": "task-high.gpt-5.5",
+  "trace_path": "tests/compliance/context-usage/calibration/traces/task-high.gpt-5.5/run-2-2026-06-04T05-54-29-721Z.ndjson",
+  "metrics": {
+    "input_tokens": 45055,
+    "output_tokens": 717,
+    "cache_read_tokens": 41984,
+    "cache_write_tokens": 0,
+    "total_tokens": 87756,
+    "duration_ms": 15276,
+    "turn_count": 1,
+    "tool_read_count": 4
+  },
+  "tool_paths": [
+    "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/active/current.md",
+    "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/internal/packages/demo-svc/handler.ts",
+    "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/features/token-economy-probe/spec.md",
+    "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/handoff.md"
+  ],
+  "turn_count": 1,
+  "trace_records": [
+    {
+      "ts": "2026-06-04T05:54:29.721Z",
+      "type": "run_start",
+      "task_id": "task-high",
+      "model": "gpt-5.5",
+      "run_index": 2,
+      "combo": "task-high.gpt-5.5"
+    },
+    {
+      "ts": "2026-06-04T05:54:34.220Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/active/current.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/active/current.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:34.225Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/internal/packages/demo-svc/handler.ts"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/internal/packages/demo-svc/handler.ts"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:34.240Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/features/token-economy-probe/spec.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/features/token-economy-probe/spec.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:34.241Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/handoff.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/handoff.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:34.245Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/active/current.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/active/current.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:34.245Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/internal/packages/demo-svc/handler.ts"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/internal/packages/demo-svc/handler.ts"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:34.257Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/handoff.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/handoff.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:34.277Z",
+      "type": "tool_call",
+      "name": "read",
+      "paths": [
+        "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/features/token-economy-probe/spec.md"
+      ],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/lib/memory/features/token-economy-probe/spec.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:43.382Z",
+      "type": "tool_call",
+      "name": "edit",
+      "paths": [],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/answer.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:43.621Z",
+      "type": "tool_call",
+      "name": "edit",
+      "paths": [],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/answer.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:43.622Z",
+      "type": "tool_call",
+      "name": "edit",
+      "paths": [],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/answer.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:43.699Z",
+      "type": "tool_call",
+      "name": "edit",
+      "paths": [],
+      "args": {
+        "path": "/var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-A5qJQl/work/99999_probe/task/answer.md"
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:44.969Z",
+      "type": "turn_ended",
+      "turn": 1,
+      "usage": {
+        "input": 45055,
+        "output": 717,
+        "cacheRead": 41984,
+        "cacheWrite": 0
+      }
+    },
+    {
+      "ts": "2026-06-04T05:54:44.998Z",
+      "type": "run_end",
+      "metrics": {
+        "input_tokens": 45055,
+        "output_tokens": 717,
+        "cache_read_tokens": 41984,
+        "cache_write_tokens": 0,
+        "total_tokens": 87756,
+        "duration_ms": 15276,
+        "turn_count": 1,
+        "tool_read_count": 4
+      },
+      "tool_read_count": 4
+    }
+  ]
+}
