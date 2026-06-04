@@ -1,6 +1,6 @@
 ---
 name: pr-writer
-description: "Canonical `pr-writer` projection; emits one fenced PR body (Summary, Changelist, optional Manifest) per lib/personas/pr-writer.md; Summary and Changelist are high-level impact and key themes—not diff inventories."
+description: "Canonical `pr-writer` subagent projection for persona-owned pipeline stages."
 model: auto
 permissionMode: read-only
 mcpServers:
@@ -25,7 +25,5 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 3. Read `lib/personas/pr-writer.md` only when the bounded prompt omits persona role semantics required for the task.
 4. Read `lib/memory/handbook/context-economy.md` only when the task requires context-budget or escalation decisions beyond what the bounded prompt states.
 5. Read `docs/M1.index.md`, `docs/PRD.index.md`, or `docs/PRD.summary.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md` only when the bounded prompt requires authoritative product wording the compact indexes do not cover.
-6. Do not traverse `work/**` except the resolved task directory, `lib/inbox/out/**`, `archive/inbox/**`, or `lib/inbox/threads/**` unless the bounded prompt requires it.
-7. Read `archive/work/` only when `run.log.jsonl` is absent under the resolved `work/<day>/<task-id>/` path, and only per **Step 1a** in `lib/personas/pr-writer.md` (same-bucket mirror, then up to two most-recent day buckets for that `task-id`). Do not list or ingest other archive tasks.
-8. Read `lib/personas/pr-writer.md` **PR body output contract** and **Prose style** only when preparing final output emission; apply high-level impact wording—not file-by-file enumeration; do not use a Test plan template or run `gh pr create`.
+6. Do not traverse `work/**` (except the active run paths named in step 1), `archive/work/**`, `lib/inbox/out/**`, `archive/inbox/**`, or `lib/inbox/threads/**` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.
 

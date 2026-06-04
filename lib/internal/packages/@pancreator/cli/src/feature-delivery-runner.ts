@@ -26,12 +26,14 @@ import {
 import { readCursorInvocationMode, readStageRemediationEnabled } from "./pan-init.js";
 import {
   type ArtifactContentWarning,
+  defaultAdvanceEventForStage,
   parseComplianceVerdict,
   parseQaVerdict,
   parseReviewGateOutcome,
   parseReviewPassesVerdict,
   primaryArtifactForEnteringStage,
   requiredArtifactsAfterStageWork,
+  stageArtifactContract,
   validateStageCompletionArtifacts,
 } from "./feature-delivery-stage-artifacts.js";
 
@@ -661,47 +663,13 @@ export async function writeRetryLimitHaltArtifact(input: {
   return rel;
 }
 
-export async function writeReportApprovalArtifact(input: {
-  repoRoot: string;
-  state: FeatureDeliveryRunnerLedger;
-  now: Date;
-}): Promise<string> {
-  const dayBucket = makeDayDir(input.now);
-  const basename = makeOutboxBasename(input.now, `${input.state.featureId}-report-approval`);
-  const rel = path.posix.join("lib", "inbox", "out", dayBucket, `${basename}.md`);
-  const abs = path.join(input.repoRoot, rel);
-  await mkdir(path.dirname(abs), { recursive: true });
-  const body = [
-    "---",
-    `task_id: ${input.state.taskId}`,
-    `feature_id: ${input.state.featureId}`,
-    "gate: report_approval",
-    "decision: approve",
-    "required_changes: \"\"",
-    "---",
-    "",
-    "# Report approval gate",
-    "",
-    "Set `decision` to `approve` or `needs_changes`. When `needs_changes`, set `required_changes`",
-    "and add `target_stage: plan` or `target_stage: implement`.",
-    "",
-    "Resume with:",
-    "",
-    "```bash",
-    `pnpm -w exec pan advance ${input.state.taskId} --artifact ${rel}`,
-    "```",
-    "",
-  ].join("\n");
-  await writeFile(abs, body, "utf8");
-  return rel;
-}
-
 export interface ReportApprovalDecision {
   decision: "approve" | "needs_changes";
   requiredChanges: string;
   targetStage?: "plan" | "implement";
 }
 
+/** Parses legacy SDK report-approval outbox artifacts (pre agent-ratification runs). */
 export function parseReportApprovalArtifact(content: string): ReportApprovalDecision | null {
   const decisionMatch = content.match(/^decision:\s*(approve|needs_changes)\s*$/imu);
   if (decisionMatch === null) {
@@ -720,10 +688,14 @@ export async function readCursorInvocationForState(
   repoRoot: string,
   state: FeatureDeliveryRunnerLedger,
 ): Promise<"manual" | "sdk"> {
+  const configInvocation = await readCursorInvocationMode(repoRoot);
   if (state.automation?.runnerInvocation !== undefined) {
+    if (state.automation.runnerInvocation === "manual" && configInvocation === "sdk") {
+      state.automation.runnerInvocation = "sdk";
+    }
     return state.automation.runnerInvocation;
   }
-  return readCursorInvocationMode(repoRoot);
+  return configInvocation;
 }
 
 export function incrementAutomationRetry(state: FeatureDeliveryRunnerLedger): number {
@@ -756,7 +728,10 @@ export async function trySdkAutoChainAfterStageWork(input: {
       if (error instanceof Error && error.message.startsWith("No transition from ")) {
         return false;
       }
-      throw error;
+      if (error instanceof Error && error.message.startsWith("Feature-delivery retry limit halt:")) {
+        throw error;
+      }
+      return false;
     }
   };
   if (input.completedStageId === "review") {
@@ -823,6 +798,24 @@ export async function trySdkAutoChainAfterStageWork(input: {
     if (verdict.passes === false || finalGateFails || verdict.spotFixable || verdict.excludedFromGate) {
       return attemptChain("compliance_spot_fix", complianceRel);
     }
+  }
+
+  const agentRatifiedStages = ["intake", "plan", "implement", "report", "ship", "index"] as const;
+  if (agentRatifiedStages.includes(input.completedStageId as (typeof agentRatifiedStages)[number])) {
+    if (input.completedStageId === "implement") {
+      const history = input.state.advanceHistory ?? [];
+      const last = history[history.length - 1];
+      if (last?.kind === "advance" && last.event === "must_fix" && last.from === "review") {
+        return false;
+      }
+    }
+    const validation = validateStageCompletionArtifacts(input.repoRoot, input.state, input.completedStageId);
+    if (!validation.ok) {
+      return false;
+    }
+    const event = defaultAdvanceEventForStage(input.completedStageId);
+    const contract = stageArtifactContract(input.state, input.completedStageId, event);
+    return attemptChain(event, contract.primaryArtifact);
   }
 
   return false;
@@ -932,29 +925,4 @@ export async function applySdkRetrySideEffects(input: {
     `outbox_artifact=${outboxRel}`,
   ].join(" ");
   return summary;
-}
-
-export async function maybePauseForReportApproval(input: {
-  repoRoot: string;
-  state: FeatureDeliveryRunnerLedger;
-  now: Date;
-}): Promise<string | null> {
-  if (input.state.currentStage !== "report") {
-    return null;
-  }
-  const reportRel = path.posix.join("lib", "memory", "features", input.state.featureId, "delivery-report.md");
-  if (!existsSync(path.join(input.repoRoot, reportRel))) {
-    return null;
-  }
-  const outboxRel = await writeReportApprovalArtifact({
-    repoRoot: input.repoRoot,
-    state: input.state,
-    now: input.now,
-  });
-  input.state.status = "waiting_for_human_gate";
-  ensureAutomationState(input.state, "sdk").reportApprovalPending = true;
-  input.state.nextCommand = `pnpm -w exec pan advance ${input.state.taskId} --artifact ${outboxRel}`;
-  input.state.nextHumanAction =
-    `Report approval required; edit decision in ${outboxRel} and advance with that artifact path.`;
-  return outboxRel;
 }

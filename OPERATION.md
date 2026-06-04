@@ -39,9 +39,11 @@ advances the ledger after acceptance.
 When `runner.cursor.invocation: sdk` is set in `pancreator.yaml`, `pan run` and
 `pan advance` invoke `CursorRunner` for the entering stage (mocked in unit tests;
 live SDK calls remain operator-scheduled). The CLI loads repo-root `.env` before
-SDK construction. Automatic `review` / `test` loopbacks, a cumulative retry
-budget of 5, retry-limit halt outbox artifacts, and the report approval gate apply
-only in SDK mode; manual mode preserves today's handoff-and-paste loop unchanged.
+SDK construction. Automatic stage-to-stage advancement, `review` / `test` /
+`compliance` loopbacks, a cumulative retry budget of 5, and retry-limit halt
+outbox artifacts apply only in SDK mode; manual mode preserves the handoff-and-paste loop unchanged.
+In SDK mode the handing-off persona validates stage artifacts and the runtime
+auto-advances when validation passes—human gates are not paused between stages.
 
 Use this loop exactly:
 
@@ -132,17 +134,12 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
 4. After `review`, `test`, or `compliance` artifacts exist, SDK mode MAY auto-advance when
    `review_passes` / `qa_passes` / `compliance_passes` or route on `must_fix` / `qa_fails` / `compliance_fails` without a
    separate operator `advance` for that branch.
-5. When cumulative `must_fix` and `qa_fails` retries exceed 5, the run halts with
+5. When cumulative `must_fix`, `qa_fails`, and `compliance_fails` retries exceed 5, the run halts with
    `status: halted` and one timestamp-prefixed file under
    `lib/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
-6. When `delivery-report.md` exists at the `report` stage, the runtime writes one
-   timestamp-prefixed approval artifact under `lib/inbox/out/<day-bucket>/` with
-   front matter `gate: report_approval` and `decision: approve | needs_changes`.
-   Resume with:
-
-   ```bash
-   pnpm -w exec pan advance <task-id> --artifact lib/inbox/out/<day-bucket>/<approval-file>.md
-   ```
+6. When the run reaches `complete`, the runtime writes `work/<day>/<task-id>/pipeline-close.md`
+   (outcome summary, residual issues, operator next steps). Review that file before archival closure.
+7. Run `pnpm -w exec pan close-artifacts <task-id>` once after reviewing `pipeline-close.md`.
 
 #### Agent chat relay
 
@@ -275,6 +272,14 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 | `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/policy-compliance.json` |
 | `index` | `librarian` | `lib/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/index.json` |
 | `complete` | `librarian` | policy-compliance + index | `pnpm -w exec pan close-artifacts <task-id>` |
+
+Compliance audit history contract (feature-delivery compliance stage):
+
+- Saved audit ledger: `lib/memory/features/compliance-tests/audit-history.json`
+- Retention: newest 5 audits
+- Default baseline: previous saved audit entry
+- Optional baseline override: set `baseline_audit_id` in `<runDir>/compliance-result.json` to one of the saved audit IDs
+- Audit focus: path-level delta between the selected baseline snapshot and the current compliance scope
 
 Inspection and recovery:
 

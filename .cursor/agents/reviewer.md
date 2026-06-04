@@ -1,4 +1,7 @@
 ---
+name: reviewer
+description: "Canonical `reviewer` subagent projection for persona-owned pipeline stages."
+model: gpt-5.4[context=272k,reasoning=high,fast=false]
 permissionMode: default
 mcpServers:
   - pancreator-memory
@@ -10,9 +13,6 @@ isolation: worktree
 memory: project
 effort: medium
 color: blue
-name: reviewer
-model: gpt-5.2-codex[reasoning=high,fast=false]
-description: Canonical `reviewer` subagent projection for persona-owned pipeline stages.
 ---
 
 # reviewer

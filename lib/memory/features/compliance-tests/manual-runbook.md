@@ -51,6 +51,20 @@ automation and automatic structure-change execution remain deferred.
 6. Record run completion in a run log document using
    `lib/memory/features/compliance-tests/run-template.json`.
 
+## Feature-delivery audit history procedure
+
+For `feature-delivery` compliance stage runs, maintain the saved-audit ledger:
+
+1. Persist every compliance audit to
+   `lib/memory/features/compliance-tests/audit-history.json`.
+2. Keep newest entries first and trim the ledger to at most 5 entries.
+3. Use the previous saved audit by default as the baseline diff focus.
+4. When needed, set `baseline_audit_id` in
+   `work/<day>/<task-id>/compliance-result.json` to one saved audit id from the
+   ledger.
+5. Record effective delta paths in the compliance result artifact so the next
+   compliance run can reuse snapshot metadata without git-history reconstruction.
+
 ## Timestamp Capture
 
 - Required fields for each run record:

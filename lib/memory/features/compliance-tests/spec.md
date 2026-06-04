@@ -97,6 +97,15 @@ artifact confirmed the handoff to planning remains in force.
   and MUST emit warnings to both `console` and `lib/inbox/out` by default.
 - WHEN a compliance run completes, the system MUST persist run timestamp,
   trigger mode, test identifiers, and pass/fail outcomes.
+- WHEN the feature-delivery compliance stage records an audit, the system MUST
+  persist it into `lib/memory/features/compliance-tests/audit-history.json`
+  using a rolling newest-first ledger capped at 5 entries.
+- WHEN no baseline override is supplied, the compliance stage MUST focus its
+  audit scope on the diff between the current compliance snapshot and the
+  previous saved audit in `audit-history.json`.
+- WHEN a baseline override is supplied, the compliance stage MUST accept one
+  saved audit id from `audit-history.json` and use that selected audit as the
+  diff baseline for focus scope.
 - WHEN trigger policies or invocation behavior change, the feature delivery
   slice MUST update `AGENTS.md` policy guidance so agent-trigger conditions for
   compliance runs remain explicit and current.
