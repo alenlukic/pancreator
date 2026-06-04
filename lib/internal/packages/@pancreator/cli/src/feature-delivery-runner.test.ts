@@ -6,7 +6,6 @@ import { describe, expect, it, afterEach, beforeEach } from "vitest";
 import {
   applySdkRetrySideEffects,
   invokeFeatureDeliveryEnteringStage,
-  maybePauseForReportApproval,
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
   resetStageInvocationIndex,
@@ -189,20 +188,30 @@ describe("feature-delivery-runner automation", () => {
     expect(state.status).toBe("ready_for_stage_delegation");
   });
 
-  it("maybePauseForReportApproval writes an outbox artifact when delivery report exists", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "pan-report-gate-"));
-    const state = sampleLedger();
+  it("trySdkAutoChainAfterStageWork auto-advances report when delivery report exists", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-report-auto-advance-"));
+    const state = sampleLedger({ currentStage: "report" });
     const reportRel = path.join(root, "lib", "memory", "features", state.featureId, "delivery-report.md");
     await mkdir(path.dirname(reportRel), { recursive: true });
-    await writeFile(reportRel, "# Delivery report", "utf8");
-    const outboxRel = await maybePauseForReportApproval({
+    await writeFile(reportRel, "# Delivery report\n", "utf8");
+    let advanced = false;
+    const chained = await trySdkAutoChainAfterStageWork({
       repoRoot: root,
       state,
+      pipeline: {
+        id: "feature-delivery",
+        stages: [{ id: "report", persona: "tech-writer" }],
+      },
+      completedStageId: "report",
       now: new Date("2026-05-10T14:05:00.000Z"),
+      advanceFn: async () => {
+        advanced = true;
+        return {};
+      },
     });
-    expect(outboxRel).toMatch(/^lib\/inbox\/out\//u);
-    expect(state.status).toBe("waiting_for_human_gate");
-    expect(state.automation?.reportApprovalPending).toBe(true);
+    expect(chained).toBe(true);
+    expect(advanced).toBe(true);
+    expect(state.status).not.toBe("waiting_for_human_gate");
   });
 
   it("invokeFeatureDeliveryEnteringStage invokes runner for the requested stage, not the pipeline entry", async () => {

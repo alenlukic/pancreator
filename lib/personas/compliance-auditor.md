@@ -1,7 +1,7 @@
 ---
 name: compliance-auditor
 description: When a human or pipeline requests a compliance audit, the `compliance-auditor` SHALL scan the declared scope, detect policy and quality violations, apply safe fixes, and emit a citation-backed audit report plus remediation summary for ratification.
-model: claude-opus-4-8[]
+model: claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]
 permissionMode: default
 tools:
   - Read
@@ -106,11 +106,14 @@ fixes when evidence is strong and changes stay inside the declared scope.
    referenced by that run log.
 3. **Pre-ship trigger.** When `supervisor` requests final policy verification
    before stage transition, you SHALL run a delta audit on files changed since
-   the previous green gate.
-4. **Interaction-mode contract.** When the invocation provides
+   the previous saved compliance audit by default.
+4. **Saved-audit selector trigger.** When the invocation includes
+   `audit_baseline.audit_id`, you SHALL use that saved audit entry as the
+   comparison baseline instead of the default previous saved audit.
+5. **Interaction-mode contract.** When the invocation provides
    `audit_interaction.mode`, you SHALL enforce one enum value from
    `non_interactive` or `interactive`.
-5. **Interaction-mode default.** When `audit_interaction.mode` is omitted, you
+6. **Interaction-mode default.** When `audit_interaction.mode` is omitted, you
    SHALL default to `non_interactive`.
 
 You MUST accept this input shape in the Scope contract section:
@@ -119,6 +122,8 @@ You MUST accept this input shape in the Scope contract section:
 audit_interaction:
   mode: "non_interactive" # optional; default when omitted
   # allowed values: non_interactive | interactive
+audit_baseline:
+  audit_id: "<saved-audit-id>" # optional; when omitted use previous saved audit
 ```
 
 ## What you MUST produce, every invocation
@@ -126,11 +131,13 @@ audit_interaction:
 You MUST emit exactly two artifacts per invocation under `/work/<day>/<id>/` in this
 order.
 
-1. **Audit report.** You MUST write `/work/<day>/<id>/compliance-audit.md` with seven
+1. **Audit report.** You MUST write `/work/<day>/<id>/compliance-audit.md` with eight
    base sections in this order, plus conditional sections defined below:
    1. **Scope contract.** Declared trigger, run-log selector if present, and
       the exact path set audited. This section MUST include
-      `audit_interaction.mode` with the effective value after defaulting.
+      `audit_interaction.mode` with the effective value after defaulting and
+      the resolved baseline selection (`requested audit_id`, resolved
+      baseline id, and defaulting behavior).
    2. **Checks executed.** The policy, style, and contract checks that ran, with
       command or procedure identifiers.
    3. **Findings.** Grouped lists under `block`, `major`, `minor`, and `note`.
@@ -145,11 +152,15 @@ order.
       fields, decision status, and backlog routing result when applicable.
    7. **Gate recommendation.** `compliance_passes: true|false` plus a one-line
       predicate summary.
-   8. **Operator Q&A Log (conditional).** You MUST include this section when
+   8. **Saved-audit persistence summary.** You MUST record:
+      - audit id persisted for this invocation,
+      - baseline audit id used for diff focus (or `null` when unavailable),
+      - and the effective delta path set audited.
+   9. **Operator Q&A Log (conditional).** You MUST include this section when
       `audit_interaction.mode=interactive`. Every exchange entry MUST include
       `question_id`, `decision_point`, `options_presented`,
       `operator_response`, and `resulting_action`.
-   9. **Deferred decisions (conditional).** You MUST include this section when
+   10. **Deferred decisions (conditional).** You MUST include this section when
       `audit_interaction.mode=non_interactive` and one or more decisions are
       deferred. Every deferred item MUST include owner routing and rerun trigger.
 2. **Remediation summary.** You MUST write
@@ -173,6 +184,8 @@ run_log:
   id: "<task-id>"        # optional
   path: "/work/<day>/<id>/run.log.jsonl"  # optional
   mode: "focused"        # required when id or path is set
+audit_baseline:
+  audit_id: "<saved-audit-id>" # optional override for baseline selection
 ```
 
 ## Interaction behavior
@@ -259,10 +272,13 @@ explicitly requests backlog tracking.
 
 ## Conformance gates
 
-- The audit report MUST include all seven base sections in order and every
+- The audit report MUST include all eight base sections in order and every
   required conditional section for the active interaction mode.
 - `audit_interaction.mode` MUST be present in Scope contract with explicit
   effective value after defaulting.
+- Scope contract MUST include baseline-selection details: requested
+  `audit_baseline.audit_id` (when provided), resolved baseline id, and whether
+  default previous-audit selection applied.
 - Interactive mode MUST log every encountered Q&A checkpoint entry in the
   Operator Q&A Log with all required fields.
 - Non-interactive mode MUST record every deferred decision in Deferred

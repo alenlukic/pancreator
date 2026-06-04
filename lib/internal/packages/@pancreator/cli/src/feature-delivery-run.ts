@@ -19,13 +19,19 @@ import {
   patchFeatureIndexArchivedInbox,
   SHIPPED_LEDGER_ROW_CAP,
 } from "./active-memory-refresh.js";
+import {
+  COMPLIANCE_AUDIT_HISTORY_MAX,
+  COMPLIANCE_AUDIT_HISTORY_REL,
+  complianceAuditPromptContext,
+  normalizeComplianceAuditHistoryForArchivedRun,
+  persistComplianceAuditHistoryForResult,
+} from "./compliance-audit-history.js";
 import { readCursorInvocationMode } from "./pan-init.js";
 import {
   applySdkRetrySideEffects,
   compileFeatureDeliveryPipeline,
   ensureAutomationState,
   invokeFeatureDeliveryEnteringStage,
-  maybePauseForReportApproval,
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
   readCursorInvocationForState,
@@ -40,6 +46,7 @@ import {
   type FeatureDeliverySdkProgressReporter,
 } from "./feature-delivery-sdk-progress.js";
 import { assertDeliveryReportCitationFormat } from "./delivery-report-citation-lint.js";
+import { ensurePipelineCloseDoc, PIPELINE_CLOSE_FILENAME, pipelineCloseRel } from "./feature-delivery-pipeline-close.js";
 import {
   assertAdvanceArtifacts,
   parseReviewPassesVerdict,
@@ -366,6 +373,7 @@ export async function startFeatureDelivery(
   const handoffFile = path.join(runDir, "handoff.md");
   const runLogFile = path.join(runDir, "run.log.jsonl");
   const nextPromptFile = path.join(runDir, "next-prompt.md");
+  const invocation = await readCursorInvocationMode(repoRoot);
 
   const state: FeatureDeliveryState = {
     schemaVersion: FEATURE_DELIVERY_STATE_SCHEMA_VERSION,
@@ -386,14 +394,14 @@ export async function startFeatureDelivery(
       runLogFile: runLogFileRel,
       nextPromptFile: nextPromptFileRel,
     },
-    stages: buildStageStates(pipeline),
+    stages: buildStageStates(pipeline, invocation),
     transitions: featureDeliveryTransitions(pipeline),
     nextHumanAction:
       "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan.",
   };
 
-  const invocation = await readCursorInvocationMode(repoRoot);
   ensureAutomationState(state, invocation);
+  state.nextHumanAction = nextHumanActionForStage(state, "intake", undefined, invocation);
 
   await mkdir(runDir, { recursive: true });
   await writeFile(handoffFile, renderHandoff(repoRoot, state, pipeline, directive), "utf8");
@@ -415,6 +423,30 @@ export async function startFeatureDelivery(
 
   await writeFile(stateFile, stringifyCliJson(repoRoot, state), "utf8");
   await appendRunLogRecord(runLogFile, makeInvocationRecord(state, now));
+
+  if (invocation === "sdk") {
+    const compiledForChain = compiled ?? (await compileFeatureDeliveryPipeline(repoRoot, pipeline));
+    await trySdkAutoChainAfterStageWork({
+      repoRoot,
+      state,
+      pipeline,
+      completedStageId: "intake",
+      compiled: compiledForChain,
+      now,
+      testHooks: input.testHooks,
+      advanceFn: async (chainEvent, chainArtifact) =>
+        advanceFeatureDelivery({
+          repoRoot,
+          taskId,
+          artifact: chainArtifact,
+          event: chainEvent,
+          clock: input.clock,
+          testHooks: input.testHooks,
+          progress: resolveFeatureDeliveryProgress(input),
+        }),
+    });
+    Object.assign(state, await readFeatureDeliveryState(stateFile));
+  }
 
   return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command,
@@ -564,6 +596,18 @@ export async function advanceFeatureDelivery(
   }
   assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
 
+  if (state.currentStage === "compliance") {
+    await persistComplianceAuditHistoryForResult({
+      repoRoot,
+      taskId: state.taskId,
+      featureId: state.featureId,
+      runDir: state.artifacts.runDir,
+      complianceResultRel: artifact.rel,
+      defaultScopePaths: complianceScopePathsForFeatureState(state),
+      now,
+    });
+  }
+
   const contentWarnings = collectStageContentWarnings(repoRoot, state, state.currentStage);
   if ((state.currentStage === "ship" || state.currentStage === "compliance") && contentWarnings.length > 0) {
     const details = contentWarnings
@@ -574,6 +618,9 @@ export async function advanceFeatureDelivery(
 
   delete state.nextCommand;
   const applied = applyFeatureDeliveryTransition(state, transition, event, artifact.rel, now);
+  if (applied.toStage === TERMINAL_STAGE) {
+    await ensurePipelineCloseDoc(repoRoot, state, now);
+  }
   const invocation = await readCursorInvocationForState(repoRoot, state);
   ensureAutomationState(state, invocation);
 
@@ -653,9 +700,7 @@ export async function advanceFeatureDelivery(
         }),
     });
 
-    if (!chained) {
-      await maybePauseForReportApproval({ repoRoot, state, now });
-    } else {
+    if (chained) {
       const refreshed = await readFeatureDeliveryState(stateFile.abs);
       Object.assign(state, refreshed);
     }
@@ -714,7 +759,12 @@ export async function repairFeatureDeliveryState(
 
   state.currentStage = targetStage;
   state.status = "repaired";
-  state.nextHumanAction = nextHumanActionForStage(state, targetStage, `Manual state repair: ${reason}`);
+  state.nextHumanAction = nextHumanActionForStage(
+    state,
+    targetStage,
+    `Manual state repair: ${reason}`,
+    state.automation?.runnerInvocation ?? (await readCursorInvocationMode(repoRoot)),
+  );
   state.stages = repairStageStatuses(state.stages, targetStage);
   state.advanceHistory = [
     ...(state.advanceHistory ?? []),
@@ -859,6 +909,10 @@ export async function closeFeatureDeliveryArtifacts(
 
   await assertExistingFile(resolveRepoPath(repoRoot, policyRel), policyRel);
   await assertExistingFile(resolveRepoPath(repoRoot, indexRel), indexRel);
+  await assertExistingFile(
+    resolveRepoPath(repoRoot, path.posix.join(runDirRel, PIPELINE_CLOSE_FILENAME)),
+    path.posix.join(runDirRel, PIPELINE_CLOSE_FILENAME),
+  );
 
   if (!alreadyArchived) {
     await assertExistingFile(inboxSourceAbs, closure.inboxSourceRel);
@@ -891,6 +945,10 @@ export async function closeFeatureDeliveryArtifacts(
   const activeMemoryAbs = resolveRepoPath(repoRoot, activeMemoryRel);
   const activeMemorySnapshot = existsSync(activeMemoryAbs)
     ? await readFile(activeMemoryAbs, "utf8")
+    : null;
+  const complianceAuditHistoryAbs = resolveRepoPath(repoRoot, COMPLIANCE_AUDIT_HISTORY_REL);
+  const complianceAuditHistorySnapshot = existsSync(complianceAuditHistoryAbs)
+    ? await readFile(complianceAuditHistoryAbs, "utf8")
     : null;
 
   if (!alreadyArchived) {
@@ -968,6 +1026,12 @@ export async function closeFeatureDeliveryArtifacts(
       closure.inboxArchiveRel,
       closure.inboxSourceRel,
     );
+    await normalizeComplianceAuditHistoryForArchivedRun({
+      repoRoot,
+      taskId: state.taskId,
+      fromRunDir: previousRunDir,
+      toRunDir: closure.workArchiveRel,
+    });
 
     const activeMemoryRefresh = await applyActiveMemoryRefreshOnArtifactClosure(repoRoot, {
       archivedInboxSourceRel: closure.inboxSourceRel,
@@ -1036,6 +1100,13 @@ export async function closeFeatureDeliveryArtifacts(
         await writeFile(activeMemoryAbs, activeMemorySnapshot, "utf8");
       } catch (rollbackError) {
         rollbackFailures.push(`restore active memory (${formatError(rollbackError)})`);
+      }
+    }
+    if (complianceAuditHistorySnapshot !== null) {
+      try {
+        await writeFile(complianceAuditHistoryAbs, complianceAuditHistorySnapshot, "utf8");
+      } catch (rollbackError) {
+        rollbackFailures.push(`restore compliance audit history (${formatError(rollbackError)})`);
       }
     }
 
@@ -1217,17 +1288,59 @@ function stateIncludesStage(state: FeatureDeliveryState, stageId: string): boole
   return state.stages.some((stage) => stage.id === stageId);
 }
 
-function buildStageStates(pipeline: PipelineDefinition): FeatureDeliveryStageState[] {
+function buildStageStates(
+  pipeline: PipelineDefinition,
+  invocation: "manual" | "sdk" = "manual",
+): FeatureDeliveryStageState[] {
   return pipeline.stages.map((stage, index) => ({
     id: stage.id,
     ...(stage.persona !== undefined ? { persona: stage.persona } : {}),
     ...(stage.label !== undefined ? { label: stage.label } : {}),
     status: index === 0 ? "ready" : "pending",
-    ...stageGate(stage),
+    ...stageGate(stage, invocation),
   }));
 }
 
-function stageGate(stage: PipelineStage): Pick<FeatureDeliveryStageState, "humanGate" | "humanAttention"> {
+function stageGate(
+  stage: PipelineStage,
+  invocation: "manual" | "sdk",
+): Pick<FeatureDeliveryStageState, "humanGate" | "humanAttention"> {
+  if (invocation === "sdk") {
+    switch (stage.id) {
+      case "intake":
+      case "plan":
+      case "report":
+      case "ship":
+      case "index":
+        return {
+          humanGate: "agent_ratification",
+          humanAttention: "The handing-off persona validates stage artifacts before the runtime advances.",
+        };
+      case "implement":
+        return {
+          humanGate: "operator_intervention_available",
+          humanAttention: "Use pan pause/resume/abort if implementation drifts; SDK auto-advances when artifacts pass validation.",
+        };
+      case "review":
+        return {
+          humanGate: "agent_ratifies_review_outcome",
+          humanAttention: "Reviewer validates review.md; SDK routes on review_passes, must_fix, or spot-fix.",
+        };
+      case "test":
+        return {
+          humanGate: "agent_ratifies_qa_outcome",
+          humanAttention: "QA validates test-report.md; SDK routes on qa_passes, qa_fails, or spot-fix.",
+        };
+      case "compliance":
+        return {
+          humanGate: "agent_ratifies_compliance_outcome",
+          humanAttention:
+            "Compliance-auditor validates compliance-result.json; SDK routes on pass, spot-fix, or re-entry.",
+        };
+      default:
+        return {};
+    }
+  }
   switch (stage.id) {
     case "intake":
       return {
@@ -1436,6 +1549,7 @@ function renderHandoff(
 ): string {
   const nextPersona = personaForStage(pipeline, state.currentStage) ?? "human";
   const stage = state.currentStage;
+  const sdkMode = state.automation?.runnerInvocation === "sdk";
   const excerpt = directive?.trim().split(/\r?\n/u).slice(0, 20).join("\n");
   return `# Feature delivery handoff — ${state.featureId}
 
@@ -1466,12 +1580,17 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 - lib/memory/features/${state.featureId}/delivery-report.md
 - ${state.artifacts.runDir}/compliance-result.json
 - ${state.artifacts.runDir}/policy-compliance.json
+- ${state.artifacts.runDir}/${PIPELINE_CLOSE_FILENAME}
 - lib/inbox/out/<timestamp>-${state.featureId}-delivery-report.md
 
 ## Explicit non-goals
 
 - Do not read or write lib/inbox/notes/.
-- Do not continue past a human gate without explicit ratification.
+- ${
+    sdkMode
+      ? "Validate stage artifacts before handoff; SDK mode auto-advances when validation passes."
+      : "Do not continue past a human gate without explicit ratification."
+  }
 - Do not push, open a PR, or commit without the human operator.
 - Do not carry planning context into implementation; use the stage prompt and named stage inputs.
 
@@ -1504,6 +1623,7 @@ function renderNextPrompt(
   }
   const persona = personaForStage(pipeline, state.currentStage) ?? "human";
   const stage = state.currentStage;
+  const sdkMode = state.automation?.runnerInvocation === "sdk";
   return `You are executing the ${stage} stage for feature-delivery task ${state.taskId}.
 
 Use subagent/persona: ${persona}
@@ -1517,7 +1637,11 @@ Do not read broad archives, full PRD/bootstrap docs, lib/inbox/notes/**, or unre
 
 ${stageContractMarkdown(repoRoot, state, stage)}
 
-After the stage artifact is accepted by the human operator, run exactly one matching state command from the handoff instructions. Do not continue to the next persona in the same agent loop.
+${
+  sdkMode
+    ? "Validate required stage artifacts before finishing. SDK mode ratifies on your behalf and auto-advances when validation passes; do not run pan advance manually in the same loop."
+    : "After the stage artifact is accepted by the human operator, run exactly one matching state command from the handoff instructions. Do not continue to the next persona in the same agent loop."
+}
 `;
 }
 
@@ -1535,9 +1659,13 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
 
   switch (stage) {
     case "intake":
-      return `Input: ${state.source.inboxPath}\nOutput: lib/memory/features/${state.featureId}/spec.md\nAdvance after human ratification: ${advanceLine("intake")}`;
+      return `Input: ${state.source.inboxPath}\nOutput: lib/memory/features/${state.featureId}/spec.md\nAdvance after ${
+        state.automation?.runnerInvocation === "sdk" ? "agent validates spec" : "human ratification"
+      }: ${advanceLine("intake")}`;
     case "plan":
-      return `Input: lib/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after human ratification: ${advanceLine("plan")}`;
+      return `Input: lib/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after ${
+        state.automation?.runnerInvocation === "sdk" ? "agent validates plan artifacts" : "human ratification"
+      }: ${advanceLine("plan")}`;
     case "implement": {
       const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
       const reentry = resolveImplementMustFixReentry(state, repoRoot);
@@ -1553,7 +1681,7 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
-      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nMinor drift (spot-fix and rerun compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nMajor issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
+      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nMinor drift (spot-fix and rerun compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nMajor issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
     case "ship": {
       const shipInputs = stateIncludesStage(state, "compliance")
         ? `local diff, ${state.artifacts.runDir}/compliance-result.json, lib/memory/features/${state.featureId}/delivery-report.md`
@@ -1561,12 +1689,39 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
       return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
     }
     case "index":
-      return `Inputs: delivery report and accepted ship artifacts\nOutput: lib/memory/features/${state.featureId}/index.json\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
+      return `Inputs: delivery report and accepted ship artifacts\nOutputs: lib/memory/features/${state.featureId}/index.json, ${pipelineCloseRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
       return state.status === "closed" ? closedContractMarkdown(state) : finalClosureContractMarkdown(state);
     default:
       return `No stage contract is defined for ${stage}.`;
   }
+}
+
+function complianceScopePathsForFeatureState(state: FeatureDeliveryState): string[] {
+  return [
+    path.posix.join(state.artifacts.runDir, "touch-set.json"),
+    path.posix.join(state.artifacts.runDir, "review.md"),
+    path.posix.join(state.artifacts.runDir, "test-report.md"),
+    path.posix.join("lib", "memory", "features", state.featureId, "delivery-report.md"),
+  ];
+}
+
+function complianceAuditFocusContract(repoRoot: string, state: FeatureDeliveryState): string {
+  const promptContext = complianceAuditPromptContext({
+    repoRoot,
+    defaultScopePaths: complianceScopePathsForFeatureState(state),
+  });
+  if (promptContext === null) {
+    return "Saved audits: none yet (history will initialize on first persisted compliance result). Default baseline: none. Effective delta focus: current compliance scope.";
+  }
+  const available = promptContext.availableAuditIds;
+  const baseline = promptContext.defaultBaselineAuditId ?? "none";
+  const deltaPaths =
+    promptContext.deltaSummary.changed_paths.length === 0
+      ? "(no path-level changes detected against baseline snapshot)"
+      : promptContext.deltaSummary.changed_paths.join(", ");
+  const options = available.length === 0 ? "none" : available.join(", ");
+  return `Saved audits (newest first, max ${COMPLIANCE_AUDIT_HISTORY_MAX}): ${options}\nDefault baseline audit: ${baseline}\nEffective delta path focus: ${deltaPaths}\nOptional selector: set baseline_audit_id in compliance-result.json to one saved audit id from the list above.`;
 }
 
 function staticAdvanceLineForStage(
@@ -1837,11 +1992,12 @@ function collectStageContentWarnings(
 
 function finalClosureContractMarkdown(state: FeatureDeliveryState): string {
   const closure = finalClosurePaths(state);
-  return `Final artifact closure is delegated to librarian after the human operator has already ratified validation and indexing.
+  const closeDoc = pipelineCloseRel(state);
+  return `Final artifact closure follows ${closeDoc} in the active run directory.
 
 Librarian task:
 
-1. Confirm the run is complete and the active artifacts exist.
+1. Confirm the run is complete, ${closeDoc} exists, and the active artifacts exist.
 2. Execute the artifact closure command exactly once:
 
 \`\`\`bash
@@ -2248,7 +2404,12 @@ function applyFeatureDeliveryTransition(
   const toStage = transition.to as FeatureDeliveryCurrentStage;
   state.currentStage = toStage;
   state.status = toStage === TERMINAL_STAGE ? "complete" : "ready_for_stage_delegation";
-  state.nextHumanAction = nextHumanActionForStage(state, toStage, transition.humanAttention);
+  state.nextHumanAction = nextHumanActionForStage(
+    state,
+    toStage,
+    transition.humanAttention,
+    state.automation?.runnerInvocation ?? "manual",
+  );
   state.stages = applyStageStatuses(state.stages, fromStage, toStage, event);
   state.advanceHistory = [
     ...(state.advanceHistory ?? []),
@@ -2382,6 +2543,7 @@ async function tryAdvanceFromReportApproval(input: {
     input.state,
     targetStage,
     `Report approval needs_changes: ${decision.requiredChanges}`,
+    input.state.automation?.runnerInvocation ?? "manual",
   );
   input.state.stages = repairStageStatuses(input.state.stages, targetStage);
   input.state.advanceHistory = [
@@ -2773,8 +2935,33 @@ function nextHumanActionForStage(
   state: FeatureDeliveryState,
   stage: string,
   extra?: string,
+  invocation: "manual" | "sdk" = "manual",
 ): string {
   const prefix = extra === undefined ? "" : `${extra} `;
+  if (invocation === "sdk") {
+    switch (stage) {
+      case "intake":
+      case "plan":
+      case "report":
+        return `${prefix}SDK validates stage artifacts and auto-advances when validation passes.`;
+      case "implement":
+        return `${prefix}SDK invokes coder; auto-advances to review when implementation-report.md validates.`;
+      case "review":
+      case "test":
+      case "compliance":
+        return `${prefix}SDK routes from stage verdict artifacts without operator advance.`;
+      case "ship":
+        return `${prefix}SDK validates policy-compliance.json and auto-advances after local diff checks.`;
+      case "index":
+        return `${prefix}SDK validates index.json, writes ${pipelineCloseRel(state)}, and advances to complete.`;
+      case "complete":
+        return state.status === "closed"
+          ? `${prefix}Artifact closure complete; review ${pipelineCloseRel(state)} in the archived run directory.`
+          : `${prefix}Review ${pipelineCloseRel(state)} then run pan close-artifacts once.`;
+      default:
+        return `${prefix}No SDK action defined for ${stage}.`;
+    }
+  }
   switch (stage) {
     case "intake":
       return `${prefix}Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing.`;

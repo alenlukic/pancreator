@@ -535,7 +535,7 @@ export function assertAdvanceArtifacts(
   }
 }
 
-function defaultAdvanceEventForStage(stage: string): string {
+export function defaultAdvanceEventForStage(stage: string): string {
   switch (stage) {
     case "intake":
     case "plan":
