@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "kind": "overhead",
+  "model": "composer-2.5",
+  "prompt_id": "noop_terminate_v1",
+  "sample_count": 1,
+  "total_tokens": {
+    "n": 1,
+    "min": 23454,
+    "max": 23454,
+    "mean": 23454,
+    "median": 23454,
+    "mad": 0,
+    "iqr": 0,
+    "p75": 23454,
+    "p90": 23454,
+    "p95": 23454,
+    "quantile_target": 0.9,
+    "upper_confidence_bound": 23454,
+    "confidence": 0.8
+  },
+  "generated_at": "2026-06-03T22:52:52.767Z"
+}

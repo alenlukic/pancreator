@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
-import { asTaskId, resolveProjectPath } from "@pancreator/core";
+import { asTaskId, resolvePancreatorYamlPath, resolveProjectPath } from "@pancreator/core";
 import { Command } from "commander";
 import { FileInbox } from "@pancreator/inbox";
 import {
@@ -708,8 +708,8 @@ export async function parseAndRun(
         if (!slugOk) {
           throw new Error("slug MUST use lowercase letters, digits, underscores, or hyphens starting with alphanumerics.");
         }
-        if (!existsSync(path.join(repoRoot, "pancreator.yaml"))) {
-          throw new Error("Missing pancreator.yaml at repository root; run from an initialized Pancreator workspace.");
+        if (resolvePancreatorYamlPath(repoRoot) === undefined) {
+          throw new Error("Missing pancreator.yaml under project root or repository root; run from an initialized Pancreator workspace.");
         }
         const now = options?.clock !== undefined ? options.clock() : new Date();
         const dayBucket = makeUtcDayBucket(now);

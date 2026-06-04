@@ -1,4 +1,4 @@
-import { projectRootAbs } from "@pancreator/core";
+import { projectRootAbs, resolvePancreatorYamlPath } from "@pancreator/core";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -83,6 +83,9 @@ const EMBEDDED_PANCREATOR_YAML = `project_root: ".pancreator"
 runner:
   cursor:
     invocation: sdk
+    stage_remediation: true
+    model_escalation:
+      config: default
 risk_tier: medium
 `;
 
@@ -118,6 +121,9 @@ function embeddedScaffoldEntries(manifest: EmbeddedInstallManifest): Record<stri
   const entries: Record<string, string> = {};
   for (const rel of manifest.allow) {
     const norm = rel.replace(/\/$/u, "");
+    if (norm === "pancreator.yaml" || norm === "pancreator-model-escalation.yaml") {
+      continue;
+    }
     if (norm.endsWith("/") || rel.endsWith("/")) {
       entries[`${norm}/.gitkeep`] = "";
     } else {
@@ -218,11 +224,11 @@ function buildScaffoldPlan(
     }));
   }
 
-  const plan: Array<{ rel: string; scope: "harness_root" | "project_root"; content: string }> = [
-    { rel: "pancreator.yaml", scope: "harness_root", content: EMBEDDED_PANCREATOR_YAML },
-  ];
+  const plan: Array<{ rel: string; scope: "harness_root" | "project_root"; content: string }> = [];
   for (const rel of manifest.harness_root_allow) {
-    if (rel === "pancreator.yaml") continue;
+    if (rel === "pancreator.yaml" || rel === "pancreator-model-escalation.yaml") {
+      continue;
+    }
     const harnessRel = rel.endsWith("/") ? `${rel}.gitkeep` : rel;
     plan.push({ rel: harnessRel, scope: "harness_root", content: "" });
   }
@@ -233,6 +239,13 @@ function buildScaffoldPlan(
     }
     plan.push({ rel, scope: "project_root", content });
   }
+  plan.unshift({ rel: "pancreator.yaml", scope: "project_root", content: EMBEDDED_PANCREATOR_YAML });
+  const escalationSeedPath = path.join(resolvePackageHarnessRoot(), "pancreator-model-escalation.yaml");
+  plan.push({
+    rel: "pancreator-model-escalation.yaml",
+    scope: "project_root",
+    content: existsSync(escalationSeedPath) ? readFileSync(escalationSeedPath, "utf8") : "",
+  });
   return plan;
 }
 
@@ -551,8 +564,8 @@ export async function runCreatePancreator(input: CreatePancreatorInput): Promise
 
 /** Reads `runner.cursor.model_escalation.config` from pancreator.yaml when present. */
 export async function readModelEscalationConfigName(repoRoot: string): Promise<string | undefined> {
-  const cfgPath = path.join(repoRoot, "pancreator.yaml");
-  if (!existsSync(cfgPath)) {
+  const cfgPath = resolvePancreatorYamlPath(repoRoot);
+  if (cfgPath === undefined) {
     return undefined;
   }
   const raw = await readFile(cfgPath, "utf8");
@@ -568,8 +581,8 @@ export async function readModelEscalationConfigName(repoRoot: string): Promise<s
 
 /** Reads `runner.cursor.invocation` from pancreator.yaml when present. */
 export async function readCursorInvocationMode(repoRoot: string): Promise<"manual" | "sdk"> {
-  const cfgPath = path.join(repoRoot, "pancreator.yaml");
-  if (!existsSync(cfgPath)) return "manual";
+  const cfgPath = resolvePancreatorYamlPath(repoRoot);
+  if (cfgPath === undefined) return "manual";
   const raw = await readFile(cfgPath, "utf8");
   const match = /runner:\s*\n(?:\s+.+\n)*?\s+cursor:\s*\n(?:\s+.+\n)*?\s+invocation:\s*(manual|sdk)/u.exec(raw);
   if (match?.[1] === "sdk") return "sdk";
@@ -582,15 +595,15 @@ export async function readStageRemediationEnabled(
   repoRoot: string,
   options?: { ledgerInvocation?: "manual" | "sdk" },
 ): Promise<boolean> {
-  const cfgPath = path.join(repoRoot, "pancreator.yaml");
+  const cfgPath = resolvePancreatorYamlPath(repoRoot);
   let invocation = await readCursorInvocationMode(repoRoot);
-  if (invocation === "manual" && !existsSync(cfgPath) && options?.ledgerInvocation === "sdk") {
+  if (invocation === "manual" && cfgPath === undefined && options?.ledgerInvocation === "sdk") {
     invocation = "sdk";
   }
   if (invocation !== "sdk") {
     return false;
   }
-  if (!existsSync(cfgPath)) {
+  if (cfgPath === undefined) {
     return true;
   }
   const raw = await readFile(cfgPath, "utf8");

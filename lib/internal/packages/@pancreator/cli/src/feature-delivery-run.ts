@@ -387,7 +387,7 @@ export async function startFeatureDelivery(
       nextPromptFile: nextPromptFileRel,
     },
     stages: buildStageStates(pipeline),
-    transitions: featureDeliveryTransitions(),
+    transitions: featureDeliveryTransitions(pipeline),
     nextHumanAction:
       "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan.",
   };
@@ -1209,6 +1209,14 @@ function makeTaskId(now: Date, featureId: string): string {
   return `${secondsToMidnight}_${hh}${mm}_${featureId}`;
 }
 
+function pipelineIncludesStage(pipeline: PipelineDefinition | undefined, stageId: string): boolean {
+  return pipeline?.stages.some((stage) => stage.id === stageId) ?? true;
+}
+
+function stateIncludesStage(state: FeatureDeliveryState, stageId: string): boolean {
+  return state.stages.some((stage) => stage.id === stageId);
+}
+
 function buildStageStates(pipeline: PipelineDefinition): FeatureDeliveryStageState[] {
   return pipeline.stages.map((stage, index) => ({
     id: stage.id,
@@ -1267,8 +1275,9 @@ function stageGate(stage: PipelineStage): Pick<FeatureDeliveryStageState, "human
   }
 }
 
-function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
-  return [
+function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliveryTransition[] {
+  const includeCompliance = pipelineIncludesStage(pipeline, "compliance");
+  const transitions: FeatureDeliveryTransition[] = [
     {
       from: "created",
       on: "invoke",
@@ -1396,6 +1405,27 @@ function featureDeliveryTransitions(): FeatureDeliveryTransition[] {
       humanAttention: "Confirm archive/index state and outbox report.",
     },
   ];
+  if (includeCompliance) {
+    return transitions;
+  }
+  return transitions
+    .filter((transition) => transition.from !== "compliance" && transition.to !== "compliance")
+    .map((transition) => {
+      if (transition.from === "report" && transition.on === "report_ready") {
+        return {
+          ...transition,
+          to: "ship",
+          humanAttention: "Delivery report ratified; continue to ship ratification.",
+        };
+      }
+      if (transition.from === "test" && transition.on === "qa_passes") {
+        return {
+          ...transition,
+          humanAttention: "Human should inspect test-report.md before report and ship.",
+        };
+      }
+      return transition;
+    });
 }
 
 function renderHandoff(
@@ -1524,8 +1554,12 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
       return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nMinor drift (spot-fix and rerun compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nMajor issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
-    case "ship":
-      return `Inputs: local diff, ${state.artifacts.runDir}/compliance-result.json, lib/memory/features/${state.featureId}/delivery-report.md\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
+    case "ship": {
+      const shipInputs = stateIncludesStage(state, "compliance")
+        ? `local diff, ${state.artifacts.runDir}/compliance-result.json, lib/memory/features/${state.featureId}/delivery-report.md`
+        : `local diff, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md`;
+      return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
+    }
     case "index":
       return `Inputs: delivery report and accepted ship artifacts\nOutput: lib/memory/features/${state.featureId}/index.json\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
@@ -2317,7 +2351,7 @@ async function tryAdvanceFromReportApproval(input: {
       (candidate) => candidate.from === "report" && candidate.on === "report_ready",
     );
     if (transition === undefined) {
-      throw new Error("feature-delivery pipeline is missing report → compliance transition.");
+      throw new Error("feature-delivery pipeline is missing report → report_ready transition.");
     }
     const applied = applyFeatureDeliveryTransition(
       input.state,
@@ -2753,7 +2787,9 @@ function nextHumanActionForStage(
     case "test":
       return `${prefix}Delegate next-prompt.md to qa-tester; inspect ${state.artifacts.runDir}/test-report.md and choose pass or qa-fail.`;
     case "report":
-      return `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before compliance.`;
+      return stateIncludesStage(state, "compliance")
+        ? `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before compliance.`
+        : `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before ship.`;
     case "compliance":
       return `${prefix}Delegate next-prompt.md to compliance-auditor; require compliance-result.json plus green compliance exit bundle before ship.`;
     case "ship":

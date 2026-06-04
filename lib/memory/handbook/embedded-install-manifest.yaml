@@ -2,6 +2,8 @@
 # Project-relative paths are rooted at <project_root> unless noted as harness_root.
 
 allow:
+  - pancreator.yaml
+  - pancreator-model-escalation.yaml
   - lib/personas/
   - lib/personas/skills/
   - lib/pipelines/
@@ -20,7 +22,6 @@ allow:
   - .pan/scheduler/
 
 harness_root_allow:
-  - pancreator.yaml
   - .cursor/agents/
 
 deny_prefixes:

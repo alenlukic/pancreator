@@ -12,6 +12,8 @@ export {
   projectRootAbs,
   readProjectRoot,
   readProjectRootFromYaml,
+  resolveModelEscalationYamlPath,
+  resolvePancreatorYamlPath,
   resolveProjectPath,
   resolveRepoPath,
 } from "./project-root.js";

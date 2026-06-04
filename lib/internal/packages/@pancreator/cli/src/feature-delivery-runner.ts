@@ -799,7 +799,10 @@ export async function trySdkAutoChainAfterStageWork(input: {
     }
   }
 
-  if (input.completedStageId === "compliance") {
+  if (
+    input.completedStageId === "compliance" &&
+    input.pipeline.stages.some((stage) => stage.id === "compliance")
+  ) {
     const complianceRel = path.posix.join(runDir, "compliance-result.json");
     const complianceAbs = path.join(input.repoRoot, complianceRel);
     if (!existsSync(complianceAbs)) {

@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "combo": "task-low.composer-2.5",
+  "generated_at": "2026-06-03T23:07:26.399Z",
+  "runs": [
+    {
+      "task_id": "task-low",
+      "model": "composer-2.5",
+      "run_index": 1,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-zkFu6T/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-zkFu6T/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-zkFu6T/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-zkFu6T/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-zkFu6T/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-zkFu6T/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-zkFu6T/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-zkFu6T/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "composer-2.5",
+      "run_index": 2,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-cY7lJ2/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-cY7lJ2/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-cY7lJ2/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-cY7lJ2/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-cY7lJ2/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-cY7lJ2/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-cY7lJ2/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-cY7lJ2/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "composer-2.5",
+      "run_index": 3,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-NDe7lL/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-NDe7lL/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-NDe7lL/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-NDe7lL/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-NDe7lL/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-NDe7lL/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-NDe7lL/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-NDe7lL/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "composer-2.5",
+      "run_index": 4,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-uVElVZ/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-uVElVZ/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-uVElVZ/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-uVElVZ/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-uVElVZ/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-uVElVZ/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-uVElVZ/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-uVElVZ/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "composer-2.5",
+      "run_index": 5,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-AmuPXw/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-AmuPXw/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-AmuPXw/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-AmuPXw/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-AmuPXw/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-AmuPXw/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-AmuPXw/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-AmuPXw/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "composer-2.5",
+      "run_index": 6,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-nFHYw9/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-nFHYw9/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-nFHYw9/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-nFHYw9/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-nFHYw9/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-nFHYw9/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-nFHYw9/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-nFHYw9/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "composer-2.5",
+      "run_index": 7,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-8OgM72/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-8OgM72/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-8OgM72/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-8OgM72/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-8OgM72/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-8OgM72/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-8OgM72/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-8OgM72/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "composer-2.5",
+      "run_index": 8,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-fQdYcS/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-fQdYcS/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-fQdYcS/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-fQdYcS/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-fQdYcS/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-fQdYcS/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-fQdYcS/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-fQdYcS/work/99999_probe/task/handoff.md"
+        }
+      ]
+    }
+  ],
+  "policy_violation_count": 0,
+  "inefficiency_count": 32
+}

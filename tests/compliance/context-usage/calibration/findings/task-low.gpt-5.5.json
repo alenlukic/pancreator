@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "combo": "task-low.gpt-5.5",
+  "generated_at": "2026-06-03T23:07:26.399Z",
+  "runs": [
+    {
+      "task_id": "task-low",
+      "model": "gpt-5.5",
+      "run_index": 1,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-ACRzMQ/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-ACRzMQ/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-ACRzMQ/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-ACRzMQ/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-ACRzMQ/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-ACRzMQ/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-ACRzMQ/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-ACRzMQ/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "gpt-5.5",
+      "run_index": 2,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-3UwL6o/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-3UwL6o/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-3UwL6o/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-3UwL6o/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-3UwL6o/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-3UwL6o/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-3UwL6o/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-3UwL6o/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "gpt-5.5",
+      "run_index": 3,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-bdi6Qq/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-bdi6Qq/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-bdi6Qq/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-bdi6Qq/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-bdi6Qq/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-bdi6Qq/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-bdi6Qq/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-bdi6Qq/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "gpt-5.5",
+      "run_index": 4,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-UGVOTK/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-UGVOTK/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-UGVOTK/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-UGVOTK/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-UGVOTK/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-UGVOTK/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-UGVOTK/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-UGVOTK/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "gpt-5.5",
+      "run_index": 5,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-hKuXBS/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-hKuXBS/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-hKuXBS/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-hKuXBS/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-hKuXBS/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-hKuXBS/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-hKuXBS/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-hKuXBS/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "gpt-5.5",
+      "run_index": 6,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-KE9TjT/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-KE9TjT/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-KE9TjT/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-KE9TjT/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-KE9TjT/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-KE9TjT/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-KE9TjT/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-KE9TjT/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "gpt-5.5",
+      "run_index": 7,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-5xqGrT/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-5xqGrT/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-5xqGrT/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-5xqGrT/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-5xqGrT/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-5xqGrT/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-5xqGrT/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-5xqGrT/work/99999_probe/task/handoff.md"
+        }
+      ]
+    },
+    {
+      "task_id": "task-low",
+      "model": "gpt-5.5",
+      "run_index": 8,
+      "policy_violations": [],
+      "inefficiencies": [
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-03jqDF/docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-03jqDF/docs/PRD.summary.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-03jqDF/lib/memory/active/current.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-03jqDF/lib/memory/active/current.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-03jqDF/lib/memory/handbook/routing.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-03jqDF/lib/memory/handbook/routing.md"
+        },
+        {
+          "kind": "duplicate_read",
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-03jqDF/work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-low-03jqDF/work/99999_probe/task/handoff.md"
+        }
+      ]
+    }
+  ],
+  "policy_violation_count": 0,
+  "inefficiency_count": 32
+}
