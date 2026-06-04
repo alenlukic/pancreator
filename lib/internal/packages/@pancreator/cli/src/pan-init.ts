@@ -121,6 +121,9 @@ function embeddedScaffoldEntries(manifest: EmbeddedInstallManifest): Record<stri
   const entries: Record<string, string> = {};
   for (const rel of manifest.allow) {
     const norm = rel.replace(/\/$/u, "");
+    if (norm === "pancreator.yaml" || norm === "pancreator-model-escalation.yaml") {
+      continue;
+    }
     if (norm.endsWith("/") || rel.endsWith("/")) {
       entries[`${norm}/.gitkeep`] = "";
     } else {

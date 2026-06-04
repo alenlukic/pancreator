@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import { PROTOTYPE_MODELS } from "./tasks.mjs";
+
 /** Mirrors {@link resolveSdkModelId} from runner-cursor sdk-model.ts (bracket stripping only). */
 const SDK_MODEL_ALIASES = {
   "claude-4.6-sonnet-medium-thinking": "claude-sonnet-4-6",
@@ -18,6 +20,19 @@ export function resolveSdkModelId(personaModel) {
 export const HARNESS_MODEL = "composer-2.5";
 
 /**
+ * @param {string} modelId
+ */
+export function assertPrototypeModel(modelId) {
+  const resolved = resolveSdkModelId(modelId);
+  if (!PROTOTYPE_MODELS.includes(resolved)) {
+    throw new Error(
+      `[context-usage] model "${modelId}" is not in prototype matrix (${PROTOTYPE_MODELS.join(", ")})`,
+    );
+  }
+  return resolved;
+}
+
+/**
  * @param {string[]} args
  * @param {string} [defaultModel]
  */
@@ -25,35 +40,20 @@ export function parseModelArg(args, defaultModel = HARNESS_MODEL) {
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (arg === "--model" && args[i + 1]) {
-      return resolveSdkModelId(args[i + 1]);
+      return assertPrototypeModel(args[i + 1]);
     }
     if (arg.startsWith("--model=")) {
-      return resolveSdkModelId(arg.slice("--model=".length));
+      return assertPrototypeModel(arg.slice("--model=".length));
     }
   }
-  return resolveSdkModelId(defaultModel);
+  return assertPrototypeModel(defaultModel);
 }
 
 /**
+ * @param {string} harnessRoot
  * @param {string} modelId
  */
-export function baselineFileNameForModel(modelId) {
+export function resolveOverheadBaselinePath(harnessRoot, modelId) {
   const normalized = resolveSdkModelId(modelId);
-  return `${normalized}.json`;
-}
-
-/**
- * @param {string} harnessRoot
- * @param {string} modelId
- */
-export function resolveModelBaselinePath(harnessRoot, modelId) {
-  return path.join(harnessRoot, "baselines", baselineFileNameForModel(modelId));
-}
-
-/**
- * @param {string} harnessRoot
- * @param {string} modelId
- */
-export function resolveFdSessionBaselinePath(harnessRoot, modelId) {
-  return path.join(harnessRoot, "baselines", `fd-session.${baselineFileNameForModel(modelId)}`);
+  return path.join(harnessRoot, "baselines", `overhead.${normalized}.json`);
 }

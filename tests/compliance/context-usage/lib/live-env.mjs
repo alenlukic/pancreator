@@ -5,18 +5,20 @@ import { fileURLToPath } from "node:url";
 const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const INSTRUCTION = `
-[context-usage] Live harness is manual-only.
+[context-usage] Live harness is manual-only (operator spend).
 
-Provide credentials, then re-run:
-  pnpm run context:usage -- --model composer-2.5          # single run vs baseline
-  pnpm run context:usage:baseline -- --model composer-2.5 # regenerate deterministic bounded baseline
-  pnpm run context:usage:calibrate # collect empirical overhead samples (manual spend)
-  pnpm run context:usage:calibrate:summary # derive overhead envelopes from samples
-  pnpm run context:usage:fd-trace -- --all                # representative trace suite
-  pnpm run context:usage:fd-trace:session -- --model composer-2.5 # same-session growth check
+Prototype matrix: {task-low, task-high} x {composer-2.5, gpt-5.5}
+
+Provide credentials, then re-run from repo root:
+  pnpm run context:usage:calibrate              # full matrix (~34 API calls at default --runs 8)
+  pnpm run context:usage:expected -- --raw <path> # rebuild expected baselines from raw samples
+  pnpm run context:usage:analyze                # re-run analyzer on existing trace summaries
+
+Overhead-only probes:
+  node tests/compliance/context-usage/calibrate-overhead.mjs --runs 10
 
 The harness loads repo-root .env when CURSOR_API_KEY is unset (existing shell env wins).
-pnpm run context:usage* also sets CURSOR_CONTEXT_USAGE=1 for that process.
+pnpm run context:usage:* sets CURSOR_CONTEXT_USAGE=1 for that process.
 
 Alternatively export explicitly:
   export CURSOR_CONTEXT_USAGE=1
@@ -33,8 +35,6 @@ export function resolveHarnessRepoRoot() {
 }
 
 /**
- * Loads repo-root \`.env\` into \`process.env\` without logging values.
- * Existing process env wins; missing \`.env\` is a no-op.
  * @param {string} [repoRoot]
  */
 export function loadRepoEnv(repoRoot = resolveHarnessRepoRoot()) {
@@ -67,9 +67,6 @@ export function loadRepoEnv(repoRoot = resolveHarnessRepoRoot()) {
   }
 }
 
-/**
- * pnpm run context:usage* is explicit operator opt-in for live API spend.
- */
 function ensureLiveUsageGate() {
   if (process.env.CURSOR_CONTEXT_USAGE === "1") {
     return;

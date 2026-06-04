@@ -41,6 +41,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `token-economy-prototype` | [indexed] (`2026-06-04T03:30:00.000Z`) | `lib/memory/features/token-economy-prototype/delivery-report.md` | `—` | `archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md` |
 | `context-usage-test-harness` | [indexed] (`2026-06-02T20:30:00.000Z`) | `lib/memory/features/context-usage-test-harness/delivery-report.md` | `lib/inbox/out/172973_06-02-26/13760_2010_context-usage-test-harness-report-approval.md` | `archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md` |
 | `fd-pipeline-sdk-mode-retry-model-escalation-tiers` | [indexed] (`2026-06-02T18:10:16.000Z`) | `lib/memory/features/fd-pipeline-sdk-mode-retry-model-escalation-tiers/delivery-report.md` | `lib/inbox/out/172973_06-02-26/21184_1806_fd-pipeline-sdk-mode-retry-model-escalation-tiers-report-approval.md` | `archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk…` |
 | `surface-opt-p10-dashboard-safe-editing` | [indexed] (`2026-06-02T15:33:17.000Z`) | `lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md` | `lib/inbox/out/172973_06-02-26/55193_0840_surface-opt-p10-dashboard-safe-editing-report-approval.md` | `archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-…` |
@@ -50,7 +51,6 @@ read per `lib/memory/handbook/context-economy.md`.
 | `surface-opt-p2-fix-mcp-work-run-log-path` | [indexed] (`2026-06-01T05:15:00.000Z`) | `lib/memory/features/surface-opt-p2-fix-mcp-work-run-log-path/delivery-report.md` | `lib/inbox/out/172974_06-01-26/68098_0505_surface-opt-p2-fix-mcp-work-run-log-path-report-approval.md` | `archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-l…` |
 | `surface-opt-p1-fix-mcp-memory-path` | [indexed] (`2026-06-01T04:35:00.000Z`) | `lib/memory/features/surface-opt-p1-fix-mcp-memory-path/delivery-report.md` | `lib/inbox/out/172974_06-01-26/70365_0427_surface-opt-p1-fix-mcp-memory-path-report-approval.md` | `archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path…` |
 | `bootstrap-phase-5-m1-exit-close-docs-bootstrap` | [indexed] (`2026-05-31T12:00:00.000Z`) | `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md` | `—` | `archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-…` |
-| `embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs` | [indexed] (`2026-05-31T04:30:00.000Z`) | `lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md` | `lib/inbox/out/172975_05-31-26/71230_0412_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-rep…` | `archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/…` |
 
 ## Risks and blockers
 
@@ -65,9 +65,10 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-02T20:20:45.153Z`
+- Active-memory refreshed (UTC): `2026-06-04T03:27:25.964Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
 
 
 

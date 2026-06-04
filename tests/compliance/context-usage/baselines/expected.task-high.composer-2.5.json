@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "task_id": "task-high",
+  "model": "composer-2.5",
+  "formula": "overhead.upper_confidence_bound + variable.upper_confidence_bound",
+  "overhead_median": 23454,
+  "overhead": {
+    "n": 1,
+    "min": 23454,
+    "max": 23454,
+    "mean": 23454,
+    "median": 23454,
+    "mad": 0,
+    "iqr": 0,
+    "p75": 23454,
+    "p90": 23454,
+    "p95": 23454,
+    "quantile_target": 0.9,
+    "upper_confidence_bound": 23454,
+    "confidence": 0.8
+  },
+  "variable": {
+    "n": 8,
+    "min": 60549,
+    "max": 93081,
+    "mean": 70009.875,
+    "median": 68131.5,
+    "mad": 1529.5,
+    "iqr": 2869.5,
+    "p75": 69556.5,
+    "p90": 76833.29999999999,
+    "p95": 84957.15,
+    "quantile_target": 0.9,
+    "upper_confidence_bound": 93081,
+    "confidence": 0.8
+  },
+  "expected_total_tokens": {
+    "upper_confidence_bound": 116535,
+    "quantile_target": 0.9,
+    "confidence": 0.8
+  },
+  "sample_count": 8,
+  "generated_at": "2026-06-03T22:58:40.430Z"
+}

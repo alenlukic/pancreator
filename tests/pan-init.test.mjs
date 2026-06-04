@@ -51,7 +51,7 @@ test("pan init embedded apply scaffolds under .pancreator and preserves host AGE
   assert.match(result.stdout, /"mode"\s*:\s*"embedded"/);
   assert.equal(await readFile(agentsPath, "utf8"), "# Host operator card\n");
   assert.ok(existsSync(path.join(root, ".pancreator", "lib", "memory", "active", "current.md")));
-  const harnessYaml = await readFile(path.join(root, "pancreator.yaml"), "utf8");
+  const harnessYaml = await readFile(path.join(root, ".pancreator", "pancreator.yaml"), "utf8");
   assert.match(harnessYaml, /project_root:\s*["']?\.pancreator["']?/);
   assert.match(harnessYaml, /invocation:\s*sdk/);
   assert.doesNotMatch(harnessYaml, /completed_phases/);

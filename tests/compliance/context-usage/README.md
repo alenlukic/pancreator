@@ -1,15 +1,74 @@
-# Compliance mirror: context-usage
+# Token economy prototype harness
 
-This directory is the canonical context-usage harness root in this repository.
+Canonical root: `tests/compliance/context-usage/`
 
-Legacy references to `tests/context-usage/` may appear in older artifacts; prefer
-`tests/compliance/context-usage/` for all current operator and agent workflows.
+This harness implements the **token-economy prototype**: exactly four live calibration
+combinations (`task-low` / `task-high` × `composer-2.5` / `gpt-5.5`), overhead-anchored
+expected consumption, NDJSON traces, and an analyzer for policy violations and
+inefficiencies.
 
-## Canonical commands
+Legacy `tests/context-usage/`, fd-trace, tier-sandbox, and live-envelope flows are
+removed from this tree.
+
+## Prototype matrix
+
+|  | `composer-2.5` | `gpt-5.5` |
+|---|---|---|
+| **task-low** (routing, no writes) | ✓ | ✓ |
+| **task-high** (multi-read + one artifact write) | ✓ | ✓ |
+
+Fixtures: `fixtures/task-low/`, `fixtures/task-high/` (each includes decoy `docs/PRD.md`).
+
+## Expected consumption formula
+
+For each observed task run:
+
+`variable_tokens = observed_total_tokens - overhead.median(model)`
+
+Expected upper bound:
+
+`overhead.upper_confidence_bound(model) + variable.upper_confidence_bound(task, model)`
+
+Baselines:
+
+- `baselines/overhead.<model>.json`
+- `baselines/expected.<task>.<model>.json`
+
+## Offline commands (CI-safe)
 
 ```bash
 cd "/Users/alen/Dev/daedaline"
 pnpm run context:usage:test
-pnpm run context:usage:fd-trace -- --trace tests/compliance/context-usage/traces/fd-skeleton/implement.context.json --model composer-2.5 --debug-context
-pnpm run context:usage:fd-trace:ratify -- --quantile 0.9 --confidence 0.8 --min-runs 3 tests/compliance/context-usage/output/<report-1>.json tests/compliance/context-usage/output/<report-2>.json tests/compliance/context-usage/output/<report-3>.json
 ```
+
+## Operator-only live calibration
+
+Requires `CURSOR_API_KEY` and `CURSOR_CONTEXT_USAGE=1` (set automatically by `pnpm run context:usage:*`).
+
+```bash
+cd "/Users/alen/Dev/daedaline"
+pnpm run context:usage:calibrate
+pnpm run context:usage:analyze
+```
+
+Default matrix run: 2 overhead probes + `8 × 4` task runs (~34 API calls). Lower cost:
+
+```bash
+node tests/compliance/context-usage/calibrate-matrix.mjs --runs 3
+```
+
+Traces: `calibration/traces/<combo>/` (NDJSON + `.summary.json` per run).
+Findings: `calibration/findings/<combo>.json`.
+
+Rebuild expected baselines from a saved raw file:
+
+```bash
+pnpm run context:usage:expected -- --raw tests/compliance/context-usage/calibration/raw/matrix-samples.json
+```
+
+## Iterative loop
+
+1. `pnpm run context:usage:calibrate`
+2. Inspect `calibration/findings/`
+3. Batch-fix prompts, fixtures, or task rules
+4. Repeat until violations and inefficiencies are gone or only irreducible overhead remains

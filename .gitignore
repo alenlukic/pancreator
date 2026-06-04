@@ -64,12 +64,8 @@ work/
 archive/
 lib/memory/checkpoints/
 
-# --- Context usage harness (manual SDK runs) ---
-
-tests/context-usage/output/
-
-# Committed tier-sandbox fixture (negate global work/archive ignores)
-!tests/context-usage/fixtures/tier-sandbox/work/
-!tests/context-usage/fixtures/tier-sandbox/work/**
-!tests/context-usage/fixtures/tier-sandbox/archive/
-!tests/context-usage/fixtures/tier-sandbox/archive/**
+# Committed prototype fixtures (negate global work/archive ignores)
+!tests/compliance/context-usage/fixtures/task-low/work/
+!tests/compliance/context-usage/fixtures/task-low/work/**
+!tests/compliance/context-usage/fixtures/task-high/work/
+!tests/compliance/context-usage/fixtures/task-high/work/**

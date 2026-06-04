@@ -3,8 +3,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
 
+import { getTaskSpec } from "./tasks.mjs";
+
 const HARNESS_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-export const FIXTURE_ROOT = path.join(HARNESS_ROOT, "fixtures", "tier-sandbox");
 
 /**
  * @param {string} dir
@@ -41,27 +42,36 @@ function copyRecursive(src, dest) {
 }
 
 /**
- * Copies the committed tier sandbox to a temp directory for isolated SDK runs.
- * @returns {Promise<string>} absolute path to the copy (SDK cwd)
+ * @param {string} taskId
+ * @returns {Promise<string>} absolute path to temp sandbox cwd
  */
-export async function copySandboxToTemp() {
-  if (!fs.existsSync(FIXTURE_ROOT)) {
-    throw new Error(`[context-usage] missing fixture: ${FIXTURE_ROOT}`);
+export async function copyTaskFixtureToTemp(taskId) {
+  const spec = getTaskSpec(taskId);
+  if (!fs.existsSync(spec.fixtureRoot)) {
+    throw new Error(`[context-usage] missing fixture: ${spec.fixtureRoot}`);
   }
-  const fileCount = countFiles(FIXTURE_ROOT);
+  const fileCount = countFiles(spec.fixtureRoot);
   if (fileCount < 5) {
     throw new Error(
-      `[context-usage] fixture sanity check failed: expected non-empty tree, found ${fileCount} files`,
+      `[context-usage] fixture sanity check failed for ${taskId}: expected non-empty tree, found ${fileCount} files`,
     );
   }
-  const prefix = path.join(os.tmpdir(), "context-usage-sandbox-");
+  const prefix = path.join(os.tmpdir(), `context-usage-${taskId}-`);
   const dest = await fs.promises.mkdtemp(prefix);
-  copyRecursive(FIXTURE_ROOT, dest);
-  const copiedCount = countFiles(dest);
-  if (copiedCount < fileCount) {
-    throw new Error(
-      `[context-usage] copy incomplete: source ${fileCount} files, destination ${copiedCount}`,
-    );
-  }
+  copyRecursive(spec.fixtureRoot, dest);
   return dest;
 }
+
+/**
+ * @deprecated Use copyTaskFixtureToTemp(taskId). Kept for transitional imports.
+ * @param {string} [taskId]
+ */
+export async function copySandboxToTemp(taskId = "task-low") {
+  return copyTaskFixtureToTemp(taskId);
+}
+
+export function resolveFixtureRoot(taskId) {
+  return getTaskSpec(taskId).fixtureRoot;
+}
+
+export { HARNESS_ROOT };

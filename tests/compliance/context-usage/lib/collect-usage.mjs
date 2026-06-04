@@ -1,4 +1,7 @@
-import { READ_TOOL_NAMES } from "./expected.mjs";
+import fs from "node:fs";
+import path from "node:path";
+
+import { extractReadPathsFromToolEvent } from "./trace-parse.mjs";
 
 /** @typedef {{
  *   input_tokens: number;
@@ -83,63 +86,6 @@ export function addUsageToMetrics(metrics, usage) {
 }
 
 /**
- * @param {string} maybePath
- */
-function isConcreteReadPath(maybePath) {
-  if (!maybePath || /[*?{}\[\]]/u.test(maybePath)) {
-    return false;
-  }
-  const normalized = maybePath.replace(/\\/g, "/");
-  if (normalized.endsWith("/")) {
-    return false;
-  }
-  const leaf = normalized.split("/").pop() ?? "";
-  if (!leaf.includes(".")) {
-    return false;
-  }
-  return true;
-}
-
-/**
- * Extract read/grep paths from SDK tool_call events (defensive parsing).
- * @param {unknown} event
- * @returns {string[]}
- */
-export function extractReadPathsFromToolEvent(event) {
-  if (!event || typeof event !== "object") {
-    return [];
-  }
-  const e = /** @type {Record<string, unknown>} */ (event);
-  const name = String(e.name ?? "");
-  if (!READ_TOOL_NAMES.has(name)) {
-    return [];
-  }
-  const isReadTool = /^read$/iu.test(name);
-  if (!isReadTool) {
-    return [];
-  }
-  const paths = [];
-  const args = e.args ?? e.input;
-  if (args && typeof args === "object") {
-    const a = /** @type {Record<string, unknown>} */ (args);
-    if (typeof a.path === "string" && isConcreteReadPath(a.path)) {
-      paths.push(a.path);
-    }
-  }
-  if (typeof args === "string") {
-    try {
-      const parsed = JSON.parse(args);
-      if (typeof parsed?.path === "string" && isConcreteReadPath(parsed.path)) {
-        paths.push(String(parsed.path));
-      }
-    } catch {
-      // ignore non-JSON args
-    }
-  }
-  return paths;
-}
-
-/**
  * @param {unknown} event
  * @param {UsageMetrics} metrics
  * @param {string[]} toolPaths
@@ -176,12 +122,7 @@ export function processStreamEvent(event, metrics, toolPaths, options = {}) {
       }
       metrics.tool_read_count = toolCallState.seenReadPaths.size;
     }
-    return;
   }
-
-  // Do not aggregate generic `event.usage` payloads on non-turn-ended events.
-  // When using both `onDelta` and `run.stream()`, those payloads can be duplicated
-  // or cumulative and dramatically overcount tokens.
 }
 
 /**
@@ -202,8 +143,6 @@ export async function collectFromStream(stream, options = {}) {
 }
 
 /**
- * Drain `run.stream()` into metrics/toolPaths. Token usage is NOT on this stream;
- * pass `onDelta` to `agent.send()` and feed updates through `processStreamEvent`.
  * @param {import("@cursor/sdk").Run} run
  * @param {{
  *   metrics: UsageMetrics;
@@ -245,14 +184,96 @@ export function assertUsageCaptured(metrics) {
 }
 
 /**
- * @deprecated Prefer agent.send onDelta + drainRunStream; run.stream() lacks turn-ended usage.
- * @param {import("@cursor/sdk").Run} run
- * @param {{ debugStream?: boolean }} [options]
+ * @param {{
+ *   traceDir: string;
+ *   combo: string;
+ *   runIndex: number;
+ *   taskId: string;
+ *   model: string;
+ * }} config
  */
-export async function collectFromRun(run, options = {}) {
-  const metrics = createEmptyMetrics();
-  const toolPaths = [];
-  const start = Date.now();
-  await drainRunStream(run, { metrics, toolPaths, wallStartMs: start, ...options });
-  return { metrics, toolPaths };
+export function createTraceSink(config) {
+  const comboDir = path.join(config.traceDir, config.combo);
+  fs.mkdirSync(comboDir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const tracePath = path.join(comboDir, `run-${config.runIndex}-${stamp}.ndjson`);
+  const summaryPath = path.join(comboDir, `run-${config.runIndex}-${stamp}.summary.json`);
+  /** @type {Array<Record<string, unknown>>} */
+  const records = [];
+
+  /**
+   * @param {Record<string, unknown>} record
+   */
+  function writeRecord(record) {
+    const line = { ts: new Date().toISOString(), ...record };
+    records.push(line);
+    fs.appendFileSync(tracePath, `${JSON.stringify(line)}\n`);
+  }
+
+  writeRecord({
+    type: "run_start",
+    task_id: config.taskId,
+    model: config.model,
+    run_index: config.runIndex,
+    combo: config.combo,
+  });
+
+  return {
+    tracePath,
+    summaryPath,
+    /**
+     * @param {unknown} event
+     */
+    onEvent(event) {
+      if (!event || typeof event !== "object") {
+        return;
+      }
+      const e = /** @type {Record<string, unknown>} */ (event);
+      const type = String(e.type ?? "");
+      if (type === "turn-ended" && e.usage && typeof e.usage === "object") {
+        const fields = normalizeUsageFields(
+          /** @type {Record<string, unknown>} */ (e.usage),
+        );
+        writeRecord({
+          type: "turn_ended",
+          turn: records.filter((r) => r.type === "turn_ended").length + 1,
+          usage: fields,
+        });
+        return;
+      }
+      if (type === "tool_call") {
+        writeRecord({
+          type: "tool_call",
+          name: e.name,
+          paths: extractReadPathsFromToolEvent(e),
+          args: e.args ?? e.input,
+        });
+      }
+    },
+    /**
+     * @param {UsageMetrics} metrics
+     * @param {string[]} toolPaths
+     */
+    finish(metrics, toolPaths) {
+      writeRecord({
+        type: "run_end",
+        metrics: { ...metrics },
+        tool_read_count: metrics.tool_read_count,
+      });
+      const summary = {
+        schema_version: 1,
+        task_id: config.taskId,
+        model: config.model,
+        run_index: config.runIndex,
+        combo: config.combo,
+        trace_path: tracePath,
+        metrics,
+        tool_paths: toolPaths,
+        turn_count: metrics.turn_count,
+        trace_records: records,
+      };
+      fs.writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
+      return summary;
+    },
+  };
 }
