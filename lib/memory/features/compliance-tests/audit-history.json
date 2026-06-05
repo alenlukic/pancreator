@@ -1,8 +1,129 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-04T20:45:00.000Z",
+  "generated_at": "2026-06-05T05:16:06.077Z",
   "entries": [
+    {
+      "audit_id": "69803_0436_batch-feature-delivery-runs-sequential-parallel-20260605045100",
+      "task_id": "69803_0436_batch-feature-delivery-runs-sequential-parallel",
+      "feature_id": "batch-feature-delivery-runs-sequential-parallel",
+      "recorded_at": "2026-06-05T04:51:00.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "73472_0335_build-mode-inbox-scaffolding-20260605034700",
+      "artifact_paths": {
+        "compliance_result": "archive/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
+        "run_dir": "archive/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel"
+      },
+      "scope_snapshot": [
+        {
+          "path": "lib/memory/features/batch-feature-delivery-runs-sequential-parallel/delivery-report.md",
+          "exists": true,
+          "sha256": "97fd113",
+          "size_bytes": 12207
+        },
+        {
+          "path": "archive/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+          "exists": true,
+          "sha256": "9308acf",
+          "size_bytes": 5164
+        },
+        {
+          "path": "archive/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+          "exists": true,
+          "sha256": "2cd1512",
+          "size_bytes": 5452
+        },
+        {
+          "path": "archive/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/touch-set.json",
+          "exists": true,
+          "sha256": "5612470",
+          "size_bytes": 3539
+        }
+      ],
+      "delta_summary": {
+        "added": 4,
+        "removed": 4,
+        "modified": 0,
+        "changed_paths": [
+          "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+          "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+          "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/touch-set.json",
+          "lib/memory/features/batch-feature-delivery-runs-sequential-parallel/delivery-report.md",
+          "lib/memory/features/build-mode-inbox-scaffolding/delivery-report.md",
+          "archive/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+          "archive/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+          "archive/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/touch-set.json"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
+    {
+      "audit_id": "73472_0335_build-mode-inbox-scaffolding-20260605034700",
+      "task_id": "73472_0335_build-mode-inbox-scaffolding",
+      "feature_id": "build-mode-inbox-scaffolding",
+      "recorded_at": "2026-06-05T03:47:00.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "80200_1640_retire-governed-commit-20260604204500",
+      "artifact_paths": {
+        "compliance_result": "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
+        "run_dir": "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding"
+      },
+      "scope_snapshot": [
+        {
+          "path": "lib/memory/features/build-mode-inbox-scaffolding/delivery-report.md",
+          "exists": true,
+          "sha256": "9cf2dfc",
+          "size_bytes": 9894
+        },
+        {
+          "path": "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+          "exists": true,
+          "sha256": "ffd1366",
+          "size_bytes": 3786
+        },
+        {
+          "path": "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+          "exists": true,
+          "sha256": "78043df",
+          "size_bytes": 4342
+        },
+        {
+          "path": "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/touch-set.json",
+          "exists": true,
+          "sha256": "bd1c1d8",
+          "size_bytes": 4052
+        }
+      ],
+      "delta_summary": {
+        "added": 4,
+        "removed": 5,
+        "modified": 0,
+        "changed_paths": [
+          ".cursor/hooks.json",
+          "AGENTS.md",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.ts",
+          "lib/memory/features/build-mode-inbox-scaffolding/delivery-report.md",
+          "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+          "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+          "archive/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/touch-set.json",
+          "work/172971_06-04-26/80200_1640_retire-governed-commit/compliance-audit.md",
+          "work/172971_06-04-26/80200_1640_retire-governed-commit/compliance-result.json"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
     {
       "audit_id": "80200_1640_retire-governed-commit-20260604204500",
       "task_id": "80200_1640_retire-governed-commit",
@@ -219,77 +340,6 @@
         "major": 0,
         "minor": 0,
         "note": 2
-      }
-    },
-    {
-      "audit_id": "18834_1846_token-economy-prototype-20260603000000",
-      "task_id": "18834_1846_token-economy-prototype",
-      "feature_id": "token-economy-prototype",
-      "recorded_at": "2026-06-03T00:00:00.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": "68576_0457_compliance-tests-20260427000000",
-      "artifact_paths": {
-        "compliance_result": "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/compliance-result.json",
-        "run_dir": "archive/work/172972_06-03-26/18834_1846_token-economy-prototype",
-        "index_json": "lib/memory/features/token-economy-prototype/index.json"
-      },
-      "scope_snapshot": [
-        {
-          "path": "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/compliance-result.json",
-          "exists": true,
-          "sha256": "b747139",
-          "size_bytes": 7009
-        }
-      ],
-      "delta_summary": {
-        "added": 1,
-        "removed": 1,
-        "modified": 0,
-        "changed_paths": [
-          "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/compliance-result.json",
-          "archive/work/173009_04-27-26/68576_0457_compliance-tests/compliance-audit.md"
-        ]
-      },
-      "findings_summary": {
-        "total": 1,
-        "block": 1,
-        "major": 0,
-        "minor": 0,
-        "note": 0
-      }
-    },
-    {
-      "audit_id": "68576_0457_compliance-tests-20260427000000",
-      "task_id": "68576_0457_compliance-tests",
-      "feature_id": "compliance-tests",
-      "recorded_at": "2026-04-27T00:00:00.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": null,
-      "artifact_paths": {
-        "compliance_audit": "archive/work/173009_04-27-26/68576_0457_compliance-tests/compliance-audit.md",
-        "run_dir": "archive/work/173009_04-27-26/68576_0457_compliance-tests",
-        "index_json": "lib/memory/features/compliance-tests/index.json"
-      },
-      "scope_snapshot": [
-        {
-          "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/compliance-audit.md",
-          "exists": true,
-          "sha256": "90fd914",
-          "size_bytes": 9975
-        }
-      ],
-      "delta_summary": {
-        "added": 0,
-        "removed": 0,
-        "modified": 0,
-        "changed_paths": []
-      },
-      "findings_summary": {
-        "total": 0,
-        "block": 0,
-        "major": 0,
-        "minor": 0,
-        "note": 0
       }
     }
   ]

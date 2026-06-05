@@ -10,6 +10,27 @@ export type FeatureDeliverySdkProgressKind =
   | "heartbeat"
   | "stage_complete";
 
+export type FeatureDeliveryBatchProgressKind =
+  | "batch_enter"
+  | "batch_run_start"
+  | "batch_run_complete"
+  | "batch_run_failed"
+  | "batch_slot_free"
+  | "batch_merge_start"
+  | "batch_complete";
+
+export interface FeatureDeliveryBatchProgressEvent {
+  kind: FeatureDeliveryBatchProgressKind;
+  batchId: string;
+  taskId?: string;
+  atIso: string;
+  parallelism?: number;
+  inboxEntry?: string;
+  branch?: string;
+  error?: string;
+  mergeBranch?: string;
+}
+
 export interface FeatureDeliverySdkProgressEvent {
   kind: FeatureDeliverySdkProgressKind;
   taskId: string;
@@ -27,6 +48,10 @@ export type FeatureDeliverySdkProgressFormat = "auto" | "text" | "ndjson";
 
 export interface FeatureDeliverySdkProgressReporter {
   emit(event: FeatureDeliverySdkProgressEvent): void;
+}
+
+export interface FeatureDeliveryBatchProgressReporter {
+  emit(event: FeatureDeliveryBatchProgressEvent): void;
 }
 
 export interface CreateFeatureDeliverySdkProgressReporterInput {
@@ -90,6 +115,35 @@ function formatProgressNdjson(event: FeatureDeliverySdkProgressEvent): string {
   });
 }
 
+function formatBatchProgressText(event: FeatureDeliveryBatchProgressEvent): string {
+  const prefix = "[pan fd]";
+  switch (event.kind) {
+    case "batch_enter":
+      return `${prefix} batch ${event.batchId}: starting (${event.parallelism ?? 1} slot(s))`;
+    case "batch_run_start":
+      return `${prefix} batch ${event.batchId}: run start ${event.taskId ?? "?"} (${event.inboxEntry ?? ""})`;
+    case "batch_run_complete":
+      return `${prefix} batch ${event.batchId}: run complete ${event.taskId ?? "?"}`;
+    case "batch_run_failed":
+      return `${prefix} batch ${event.batchId}: run failed ${event.taskId ?? "?"} — ${event.error ?? "unknown"}`;
+    case "batch_slot_free":
+      return `${prefix} batch ${event.batchId}: slot free${event.taskId !== undefined ? ` (${event.taskId})` : ""}`;
+    case "batch_merge_start":
+      return `${prefix} batch ${event.batchId}: merge start → ${event.mergeBranch ?? "?"}`;
+    case "batch_complete":
+      return `${prefix} batch ${event.batchId}: complete`;
+    default:
+      return `${prefix} batch ${event.batchId}: ${event.kind}`;
+  }
+}
+
+function formatBatchProgressNdjson(event: FeatureDeliveryBatchProgressEvent): string {
+  return stringifyCompactJson({
+    event: "feature_delivery_progress",
+    ...event,
+  });
+}
+
 export function createFeatureDeliverySdkProgressReporter(
   input: CreateFeatureDeliverySdkProgressReporterInput,
 ): FeatureDeliverySdkProgressReporter {
@@ -104,6 +158,25 @@ export function createFeatureDeliverySdkProgressReporter(
 }
 
 export function noopFeatureDeliverySdkProgressReporter(): FeatureDeliverySdkProgressReporter {
+  return { emit: () => undefined };
+}
+
+export function createFeatureDeliveryBatchProgressReporter(
+  input: CreateFeatureDeliverySdkProgressReporterInput,
+): FeatureDeliveryBatchProgressReporter {
+  const sinkFormat = resolveProgressFormat(input.format);
+  return {
+    emit(event: FeatureDeliveryBatchProgressEvent): void {
+      const payload =
+        sinkFormat === "text"
+          ? `${formatBatchProgressText(event)}\n`
+          : `${formatBatchProgressNdjson(event)}\n`;
+      input.writeErr(payload);
+    },
+  };
+}
+
+export function noopFeatureDeliveryBatchProgressReporter(): FeatureDeliveryBatchProgressReporter {
   return { emit: () => undefined };
 }
 

@@ -17,7 +17,19 @@ export function worktreeStubVersion(): string {
 export {
   GitWorktreePool,
   type GitWorktreePoolOptions,
+  type WorktreeAcquireOptions,
 } from "./git-worktree-pool.js";
+export {
+  emptyPoolState,
+  readPoolState,
+  writePoolStateAtomic,
+  WORKTREE_POOL_STATE_VERSION,
+  WORKTREE_POOL_STATE_VERSION_V1,
+  type WorktreePoolState,
+  type WorktreePoolStateV1,
+  type WorktreePoolStateV2,
+  type WorktreeSlotRecord,
+} from "./pool-state.js";
 export { createMemoryGitOps, createNodeGitOps, type GitOps } from "./git-ops.js";
 export {
   InvalidTaskIdError,

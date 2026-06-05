@@ -5,9 +5,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  assertIntakeSlug,
   buildBuildPlanIntakeMarkdown,
   createIntakeDirective,
   makeUtcDayBucket,
+  readOptionalTextFile,
   secondsToMidnightUtc,
   slugifyIntakeBasename,
   utcHhmm,
@@ -37,6 +39,23 @@ describe("intake-scaffold", () => {
     expect(slugifyIntakeBasename("!!!")).toBe("build-request");
   });
 
+  it("assertIntakeSlug accepts conformant slugs and rejects invalid basenames", () => {
+    expect(() => assertIntakeSlug("build-mode-inbox-scaffolding")).not.toThrow();
+    expect(() => assertIntakeSlug("feature_2")).not.toThrow();
+    expect(() => assertIntakeSlug("Bad Slug")).toThrow(/slug MUST use lowercase/);
+    expect(() => assertIntakeSlug("-leading-hyphen")).toThrow(/slug MUST use lowercase/);
+  });
+
+  it("readOptionalTextFile reads repo-relative paths", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-build-intake-read-"));
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const rel = "tmp/prompt.txt";
+    const abs = path.join(root, rel);
+    await mkdir(path.dirname(abs), { recursive: true });
+    await writeFile(abs, "operator prompt body\n", "utf8");
+    await expect(readOptionalTextFile(root, rel)).resolves.toBe("operator prompt body\n");
+  });
+
   it("creates build-plan inbox directives with canonical paths", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-build-intake-"));
     await seedMinimalWorkspace(root);
@@ -63,6 +82,45 @@ describe("intake-scaffold", () => {
     expect(body).toContain("implement build-mode inbox auto-create");
     expect(body).toContain("## Plan snapshot");
     expect(body).toContain("Add CLI");
+  });
+
+  it("refuses overwrite when the target inbox path already exists", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-build-intake-overwrite-"));
+    await seedMinimalWorkspace(root);
+    const stamp = new Date(Date.UTC(2026, 5, 4, 9, 6, 0));
+    const fileText = buildBuildPlanIntakeMarkdown({
+      title: "Overwrite test",
+      featureId: "overwrite-slug",
+      owner: "intake-analyst",
+      createdIso: stamp.toISOString(),
+      operatorPrompt: "prompt",
+      planText: "plan",
+    });
+    await createIntakeDirective({
+      repoRoot: root,
+      slug: "overwrite-slug",
+      now: stamp,
+      fileText,
+    });
+    await expect(
+      createIntakeDirective({
+        repoRoot: root,
+        slug: "overwrite-slug",
+        now: stamp,
+        fileText,
+      }),
+    ).rejects.toThrow(/Refusing to overwrite existing inbox directive at lib\/inbox\/in\//);
+  });
+
+  it("refuses creation outside an initialized Pancreator workspace", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-build-intake-no-yaml-"));
+    await expect(
+      createIntakeDirective({
+        repoRoot: root,
+        slug: "no-yaml",
+        fileText: "body",
+      }),
+    ).rejects.toThrow(/Missing pancreator\.yaml/);
   });
 
   it("creates directives when archive and active day buckets coexist", async () => {

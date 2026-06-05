@@ -33,6 +33,7 @@
     "@pancreator/pipeline": "workspace:*",
     "@pancreator/run-logger": "workspace:*",
     "@pancreator/runner-cursor": "workspace:*",
+    "@pancreator/worktree": "workspace:*",
     "commander": "catalog:"
   },
   "devDependencies": {
