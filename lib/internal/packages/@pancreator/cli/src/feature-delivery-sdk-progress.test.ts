@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   FEATURE_DELIVERY_SDK_HEARTBEAT_MS,
+  createFeatureDeliveryBatchProgressReporter,
   createFeatureDeliverySdkProgressReporter,
   withFeatureDeliverySdkStageHeartbeat,
 } from "./feature-delivery-sdk-progress.js";
@@ -78,5 +79,32 @@ describe("feature-delivery-sdk-progress", () => {
         stageId: "plan",
       }, async () => "ok"),
     ).resolves.toBe("ok");
+  });
+
+  it("emits batch ndjson progress with batchId and atIso", () => {
+    const err: string[] = [];
+    const reporter = createFeatureDeliveryBatchProgressReporter({
+      writeErr: (chunk) => err.push(chunk),
+      format: "ndjson",
+      now: () => new Date("2026-06-05T12:00:00.000Z"),
+    });
+    reporter.emit({
+      kind: "batch_enter",
+      batchId: "batch-1",
+      parallelism: 2,
+      atIso: "2026-06-05T12:00:00.000Z",
+    });
+    const parsed = JSON.parse(err.join("").trim()) as {
+      event: string;
+      kind: string;
+      batchId: string;
+      atIso: string;
+    };
+    expect(parsed).toMatchObject({
+      event: "feature_delivery_progress",
+      kind: "batch_enter",
+      batchId: "batch-1",
+      atIso: "2026-06-05T12:00:00.000Z",
+    });
   });
 });

@@ -35,7 +35,11 @@ import { runCursorSync } from "./cursor-sync.js";
 import { runCreatePancreator, runPanInit } from "./pan-init.js";
 
 import { quoteJsonString, stringifyCliJson } from "./canonical-json-io.js";
-import { createFeatureDeliverySdkProgressReporter } from "./feature-delivery-sdk-progress.js";
+import { runFeatureDeliveryBatch } from "./feature-delivery-batch.js";
+import {
+  createFeatureDeliveryBatchProgressReporter,
+  createFeatureDeliverySdkProgressReporter,
+} from "./feature-delivery-sdk-progress.js";
 import {
   rewriteActiveMemoryFile,
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
@@ -85,6 +89,8 @@ export interface CliRunOptions {
   clock?: () => Date;
   /** Injectable Cursor SDK transport for feature-delivery runner tests. */
   testHooks?: import("./feature-delivery-runner.js").FeatureDeliveryTestHooks;
+  /** Injectable batch orchestration hooks for batch run tests. */
+  batchTestHooks?: import("./feature-delivery-batch.js").BatchRunTestHooks;
   /** Default output format when a command omits `--format`. */
   format?: OutputFormat;
 }
@@ -353,6 +359,65 @@ export async function parseAndRun(
         }),
       );
     });
+
+  const batch = program.command("batch").description("Batch feature-delivery orchestration");
+
+  batch
+    .command("run")
+    .description("Run multiple feature-delivery sub-runs on isolated worktree branches")
+    .argument("<inboxEntries...>", "Inbox entries relative to lib/inbox/in/")
+    .option("--parallel <n>", "Maximum concurrent sub-runs (default 1)", "1")
+    .option("--base <ref>", "Base ref for run branches and merge branch")
+    .option("--merge-branch <name>", "Integration branch name for successful run merges")
+    .option("--dry-run", "Print planned branches and inbox order without git mutations", false)
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(
+      async (
+        inboxEntries: string[],
+        opts: {
+          parallel?: string;
+          base?: string;
+          mergeBranch?: string;
+          dryRun?: boolean;
+          format?: string;
+        },
+      ) => {
+        const format = resolveOutputFormat(opts.format, options?.format);
+        const parallel = Number.parseInt(opts.parallel ?? "1", 10);
+        if (!Number.isFinite(parallel) || parallel < 1) {
+          throw new Error("--parallel must be a positive integer.");
+        }
+        const writeErr = options?.writeErr ?? ((chunk: string) => process.stderr.write(chunk));
+        const result = await runFeatureDeliveryBatch({
+          repoRoot,
+          args: {
+            inboxEntries,
+            parallel,
+            baseRef: opts.base,
+            mergeBranch: opts.mergeBranch,
+            dryRun: Boolean(opts.dryRun),
+          },
+          clock: options?.clock,
+          testHooks: options?.batchTestHooks,
+          progress: createFeatureDeliveryBatchProgressReporter({ writeErr }),
+          writeOut,
+          writeErr,
+        });
+        if (format === "text") {
+          writeOut(
+            `${[
+              `batch: ${result.batchId}`,
+              `status: ${result.status}`,
+              `ledger: ${result.ledgerPath}`,
+              `merge: ${result.mergeStatus}`,
+              `success: ${result.successCount}`,
+              `failed: ${result.failureCount}`,
+            ].join("\n")}\n`,
+          );
+        }
+        exit.code = result.exitCode;
+      },
+    );
 
   program
     .command("run")

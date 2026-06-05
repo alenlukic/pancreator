@@ -18,6 +18,32 @@ policy requires a durable copy.
    pnpm -w exec pan intake new <slug>
    ```
 
+   When Cursor Build mode completes a plan for a net-new request without an
+   existing inbox directive, scaffold the directive **after plan completion and
+   before the first implementation edit** with:
+
+   ```bash
+   pnpm -w exec pan intake from-build-plan <slug> \
+     --title "<human-readable title>" \
+     --operator-prompt "<verbatim operator prompt>" \
+     --plan-text "<completed plan markdown>"
+   ```
+
+   File equivalents when shell-escaping is awkward:
+
+   ```bash
+   pnpm -w exec pan intake from-build-plan <slug> \
+     --title "<human-readable title>" \
+     --prompt-file path/to/prompt.txt \
+     --plan-file path/to/plan.md
+   ```
+
+   Optional frontmatter overrides: `--owner <persona>`, `--feature-id <id>`.
+   When omitted, title and feature id default to `<slug>` and owner defaults to
+   `intake-analyst`. The command writes
+   `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md` with
+   `source_channel: cursor-build-mode` in YAML frontmatter.
+
 2. Do **not** use `lib/inbox/notes/` for agent work; it is human-only scratch space.
    Promote drafts from notes into `lib/inbox/in/` before any agent acts on them.
 
@@ -187,6 +213,57 @@ does not reset other stages' counts.
 `active_config`, `persona_slug`, `stage_invocation_index`, `resolved_model`,
 `full_model_string`, and per-fallback fields `fallback_model`, `fallback_reason`, and
 `outcome` (`success` or `chain_exhausted`).
+
+### Batch feature-delivery runs
+
+`pnpm -w exec pan batch run` orchestrates multiple inbox directives as isolated
+sub-runs on worktree branches. Each sub-run requires SDK mode
+(`runner.cursor.invocation: sdk`). The orchestrator copies gitignored inbox
+directives into each worktree, invokes `startFeatureDelivery`, runs librarian
+pre-close validation (`pnpm -w exec pan check`) and `close-artifacts` on
+successes, continues on failure, and merges successful branches into one
+integration branch in CLI argument order.
+
+Sequential (default):
+
+```bash
+pnpm -w exec pan batch run 172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md \
+  172970_06-05-26/71489_0408_other-feature.md
+```
+
+Parallel (operator-capped concurrency):
+
+```bash
+pnpm -w exec pan batch run --parallel 2 \
+  172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md \
+  172970_06-05-26/71489_0408_other-feature.md \
+  172970_06-05-26/71489_0408_third-feature.md
+```
+
+Dry-run (no git or worktree mutations):
+
+```bash
+pnpm -w exec pan batch run --dry-run lib/inbox/in/172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md
+```
+
+Flags:
+
+- `--parallel N` — maximum concurrent sub-runs (default `1`).
+- `--base <ref>` — base ref for run branches and merge branch (default: current `HEAD`).
+- `--merge-branch <name>` — integration branch (default: `pan/batch-<batchId>/integration`).
+- `--dry-run` — print planned branches, parallelism, and inbox order; exit zero without starting sub-runs.
+
+Batch ledger: `work/<day>/batch-<batchId>/batch.json`. Sub-run branches:
+`pan/batch-<batchId>/<task-id>`. Worktrees: `.pan/worktrees/<task-id>/`.
+
+When `PAN_FD_PROGRESS=ndjson` is set, batch-level progress events
+(`batch_enter`, `batch_run_start`, `batch_run_complete`, `batch_run_failed`,
+`batch_slot_free`, `batch_merge_start`, `batch_complete`) emit on stderr with
+`batchId`, optional `taskId`, and RFC3339 `atIso`.
+
+**Env-collision caveat:** `--parallel` greater than `1` shares host environment
+variables and ports across concurrent SDK sub-runs. Full `EnvIsolation` is out
+of scope; cap parallelism or serialize runs that bind the same ports.
 
 ### Tasks outside feature-delivery
 

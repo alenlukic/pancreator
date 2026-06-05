@@ -2185,6 +2185,38 @@ describe("operator tooling batch cli wiring", () => {
     expect(await readFile(path.join(root, payload.path), "utf8")).toContain("## Custom body");
   });
 
+  it("rejects pan intake from-build-plan without operator prompt or plan text", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-intake-build-plan-missing-"));
+    await seedMinimalWorkspace(root);
+    const missingPrompt: string[] = [];
+    const missingPromptCode = await parseAndRun(
+      ["intake", "from-build-plan", "build-mode-inbox", "--plan-text", "plan only"],
+      {
+        repoRoot: root,
+        writeOut: (c) => missingPrompt.push(c),
+        writeErr: (c) => missingPrompt.push(c),
+      },
+    );
+    expect(missingPromptCode).toBe(1);
+    expect(missingPrompt.join("")).toContain(
+      "from-build-plan requires --operator-prompt or --prompt-file with non-empty content.",
+    );
+
+    const missingPlan: string[] = [];
+    const missingPlanCode = await parseAndRun(
+      ["intake", "from-build-plan", "build-mode-inbox", "--operator-prompt", "prompt only"],
+      {
+        repoRoot: root,
+        writeOut: (c) => missingPlan.push(c),
+        writeErr: (c) => missingPlan.push(c),
+      },
+    );
+    expect(missingPlanCode).toBe(1);
+    expect(missingPlan.join("")).toContain(
+      "from-build-plan requires --plan-text or --plan-file with non-empty content.",
+    );
+  });
+
   it("writes pan intake from-build-plan with operator prompt and plan snapshot", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-intake-build-plan-"));
     await seedMinimalWorkspace(root);
@@ -2214,6 +2246,37 @@ describe("operator tooling batch cli wiring", () => {
     expect(body).toContain("source_channel: cursor-build-mode");
     expect(body).toContain("implement build-mode inbox auto-create");
     expect(body).toContain("## Plan snapshot");
+  });
+
+  it("writes pan intake from-build-plan from prompt-file and plan-file", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-intake-build-plan-files-"));
+    await seedMinimalWorkspace(root);
+    const promptPath = path.join(root, "build-prompt.txt");
+    const planPath = path.join(root, "build-plan.md");
+    await writeFile(promptPath, "file-backed operator prompt", "utf8");
+    await writeFile(planPath, "## File plan\n\n1. Scaffold\n2. Document", "utf8");
+    const out: string[] = [];
+    await parseAndRun(
+      [
+        "intake",
+        "from-build-plan",
+        "file-backed-slug",
+        "--prompt-file",
+        "build-prompt.txt",
+        "--plan-file",
+        "build-plan.md",
+      ],
+      {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date(Date.UTC(2026, 5, 4, 11, 0, 0)),
+      },
+    );
+    const payload = JSON.parse(out.join("")) as { command: string; path: string; status: string };
+    expect(payload.status).toBe("ok");
+    const body = await readFile(path.join(root, payload.path), "utf8");
+    expect(body).toContain("file-backed operator prompt");
+    expect(body).toContain("## File plan");
   });
 
   it("refresh-active-memory derives Archived source from indexed feature lineage", async () => {

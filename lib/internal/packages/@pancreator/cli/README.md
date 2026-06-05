@@ -19,7 +19,35 @@ pnpm -w exec pan status <task-id>
 pnpm -w exec pan pause <task-id>
 pnpm -w exec pan resume <task-id>
 pnpm -w exec pan abort <task-id> --reason "superseded"
+pnpm -w exec pan batch run <inbox-entry>...
 ```
+
+## Batch feature-delivery runs
+
+`batch run` orchestrates multiple inbox directives on isolated worktree branches.
+SDK mode is required. Sub-runs continue on failure; successful branches merge in
+CLI argument order.
+
+```bash
+# Sequential (default)
+pnpm -w exec pan batch run a.md b.md
+
+# Parallel (max 2 concurrent sub-runs)
+pnpm -w exec pan batch run --parallel 2 a.md b.md c.md
+
+# Dry-run
+pnpm -w exec pan batch run --dry-run a.md b.md
+```
+
+| Flag | Description |
+|---|---|
+| `--parallel <n>` | Max concurrent sub-runs (default `1`) |
+| `--base <ref>` | Base ref for run and merge branches |
+| `--merge-branch <name>` | Integration branch name |
+| `--dry-run` | Print plan without git/worktree mutations |
+
+See `OPERATION.md` § "Batch feature-delivery runs" for ledger paths, progress
+events, and the env-collision caveat for `--parallel` greater than `1`.
 
 ## Feature-delivery invocation
 

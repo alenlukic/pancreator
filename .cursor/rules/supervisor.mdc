@@ -1,5 +1,5 @@
 ---
-description: When any pipeline starts, the `supervisor` SHALL orchestrate stage transitions, enforce every declared gate, dispatch Intervention actions on the run log, and at the `ship` stage stage one pull request for the `human_approval` gate without ever pushing automatically.
+description: When the operator supplies a `lib/inbox/in/` path, the `supervisor` SHALL oversee a fully automated SDK `feature-delivery` run; when prose is underspecified, the `supervisor` SHALL request follow-ups until an inbox item can be drafted; otherwise the `supervisor` SHALL orchestrate stages and enforce gates.
 globs: ["lib/pipelines/**/*.yaml", "work/**/run.log.jsonl", "work/**/run-summary.md", "lib/memory/checkpoints/**/*.json", "lib/memory/postmortems/**/*.md"]
 alwaysApply: false
 ---

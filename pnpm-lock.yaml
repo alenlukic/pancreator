@@ -265,6 +265,9 @@ importers:
       '@pancreator/runner-cursor':
         specifier: workspace:*
         version: link:../runner-cursor
+      '@pancreator/worktree':
+        specifier: workspace:*
+        version: link:../worktree
       commander:
         specifier: 'catalog:'
         version: 12.1.0
