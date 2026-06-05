@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { legacyPrettyJson } from "../../../../../../tests/helpers/legacy-json-stringify.mjs";
 import { describe, expect, it } from "vitest";
 
 import { scanRepository } from "./scan.js";
@@ -12,9 +11,7 @@ describe("scanRepository", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "pan-adopt-"));
     writeFileSync(
       path.join(root, "package.json"),
-      legacyPrettyJson({
-        devDependencies: { vitest: "^3.0.0" },
-      }),
+      '{\n  "devDependencies": {\n    "vitest": "^3.0.0"\n  }\n}\n',
       "utf8",
     );
     const r = await scanRepository(root);

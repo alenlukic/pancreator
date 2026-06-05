@@ -1,7 +1,7 @@
 ---
 name: intake-analyst
 description: "Canonical `intake-analyst` subagent projection for persona-owned pipeline stages."
-model: gpt-5.4[context=272k,reasoning=high,fast=false]
+model: auto
 permissionMode: default
 mcpServers:
   - pancreator-memory

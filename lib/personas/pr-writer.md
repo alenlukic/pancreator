@@ -140,8 +140,7 @@ implementation inventory.
   touched file or per `git diff --stat` entry.
 - MUST NOT include identifiers (function, class, export, flag, or env-var
   names) unless the rename or flag **is** the shipped change.
-- MUST NOT mirror `policy-compliance.json` touch-set or diff path lists
-  line-for-line.
+- MUST NOT mirror `touch-set.json` or raw diff path lists line-for-line.
 - Order bullets by reviewer importance (behavior first; docs and tests last
   unless documentation is the headline change).
 
@@ -220,7 +219,7 @@ You MUST read each of the following from the artifact directory when present:
   from AGENT stage records per `/lib/memory/handbook/run-log-schema.md`. You
   MUST NOT fabricate manifest rows from `pancreator.pipeline.advance`,
   `cursor.runner.escalation`, or other non-AGENT events.
-- `policy-compliance.json` — touch-set and risk-tier confirmation.
+- `touch-set.json` — declared pipeline touch-set when present.
 - `handoff.md` — stage narrative and context.
 - `plan.md` — technical design summary.
 - `lib/memory/features/<id>/delivery-report.md` — upstream `tech-writer` output
@@ -229,7 +228,7 @@ You MUST read each of the following from the artifact directory when present:
 
 You MUST run `git status` and `git diff` against the PR base branch or `main`.
 When staged changes exist, you MUST also run `git diff --staged`. You MUST
-compare every changed path to the feature touch-set in `policy-compliance.json`.
+compare every changed path to `touch-set.json` when the touch-set is present.
 When changed paths exist that the pipeline run does not explain, you SHALL
 analyze those paths and fold them into the `## Summary` and `## Changelist`
 as grouped thematic items per **Prose style**. You MUST NOT silently omit

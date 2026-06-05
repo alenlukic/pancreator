@@ -2,6 +2,7 @@ import { projectRootAbs, quoteJsonString, readProjectRoot } from "@pancreator/co
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { loadEmbeddedInstallManifestFromRepo } from "./pan-init.js";
+import { syncPersonaModelsFromEscalation } from "./cursor-sync-persona-models.js";
 
 export interface CursorSyncWrittenEntry {
   path: string;
@@ -16,6 +17,9 @@ export interface CursorSyncResult {
   projectRootRel: string;
   count: number;
   written: CursorSyncWrittenEntry[];
+  activeEscalationConfig?: string;
+  escalationConfigPath?: string;
+  personaModelsSynced?: number;
 }
 
 export interface CursorSyncOptions {
@@ -291,11 +295,13 @@ export function runCursorSync(harnessRootInput: string, options: CursorSyncOptio
     throw new Error(`No persona specs found under ${personasDir}`);
   }
 
+  const personaModelSync = syncPersonaModelsFromEscalation(harnessRoot, projectRootRel, { dryRun });
+
   if (!dryRun) {
     mkdirSync(agentsDir, { recursive: true });
   }
 
-  const written: CursorSyncWrittenEntry[] = [];
+  const written: CursorSyncWrittenEntry[] = [...personaModelSync.written];
 
   for (const file of personaFiles) {
     const personaName = file.replace(/\.md$/u, "");
@@ -333,6 +339,15 @@ export function runCursorSync(harnessRootInput: string, options: CursorSyncOptio
     projectRootRel,
     count: personaFiles.length + 1,
     written,
+    ...(personaModelSync.activeConfigName !== undefined
+      ? { activeEscalationConfig: personaModelSync.activeConfigName }
+      : {}),
+    ...(personaModelSync.escalationConfigPath !== undefined
+      ? { escalationConfigPath: personaModelSync.escalationConfigPath }
+      : {}),
+    ...(personaModelSync.written.length > 0
+      ? { personaModelsSynced: personaModelSync.written.length }
+      : {}),
   };
 }
 

@@ -1,7 +1,7 @@
 ---
 name: compliance-auditor
 description: When a human or pipeline requests a compliance audit, the `compliance-auditor` SHALL scan the declared scope, detect policy and quality violations, apply safe fixes, and emit a citation-backed audit report plus remediation summary for ratification.
-model: claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]
+model: auto
 permissionMode: default
 tools:
   - Read
@@ -41,7 +41,6 @@ metadata:
     - /lib/memory/handbook/contract-style.md
     - /lib/memory/handbook/contract-format.md
     - /lib/memory/handbook/documentation-impact-contract.md
-    - /lib/memory/handbook/policy-compliance-contract.md
     - /lib/memory/handbook/run-log-schema.md
   pancreator-checklist:
     - sixteen-field-yaml-complete
@@ -70,11 +69,6 @@ references:
     range: [1, 115]
     contentHash: 1fcda8c
     note: "Mandatory documentation impact decision contract."
-  - kind: lines
-    path: /lib/memory/handbook/policy-compliance-contract.md
-    range: [47, 118]
-    contentHash: 58b85ea
-    note: "Policy-compliance artifact shape and commit-time enforcement linkage."
   - kind: lines
     path: /lib/memory/handbook/run-log-schema.md
     range: [1, 220]
@@ -169,12 +163,10 @@ order.
    - a checklist of unresolved findings,
    - and explicit next-owner routing for remaining work.
 
-When the audited delta includes non-`work/` structural changes, you MUST
-validate policy-compliance gate readiness per
-`/lib/memory/handbook/policy-compliance-contract.md`: staged
-`/work/<day>/<task-id>/policy-compliance.json` presence, required JSON fields, and
-documentation-impact linkage. You MUST record this validation in Checks
-executed and Findings.
+When the audited delta includes handbook, persona, pipeline, or operator-surface
+changes, you MUST evaluate documentation-impact per
+`/lib/memory/handbook/documentation-impact-contract.md` and record the decision in
+Checks executed and Findings.
 
 For focused mode, you MUST include the accepted input contract in the Scope
 contract section:
@@ -267,8 +259,7 @@ explicitly requests backlog tracking.
   `lib/personas/contract-writer.md` without explicit human ratification.
 - You MAY apply deterministic maintenance-only updates in those files (for
   example `references[].contentHash` refreshes, citation range realignment, and
-  canonical/mirror parity sync) when policy-compliance and
-  documentation-impact obligations are satisfied.
+  canonical/mirror parity sync) when documentation-impact obligations are satisfied.
 
 ## Conformance gates
 
@@ -292,9 +283,9 @@ explicitly requests backlog tracking.
 - Every `approved` proposal MUST map to exactly one backlog item in
   `/lib/memory/backlog/index.yaml`, and the created item id MUST appear in the
   audit report.
-- Any invocation that audits non-`work/` structural changes MUST include one
-  explicit finding or note confirming policy-compliance artifact validation
-  against `/work/<day>/<task-id>/policy-compliance.json` contract requirements.
+- Any invocation that audits handbook, persona, or operator-surface changes MUST
+  include an explicit documentation-impact decision per
+  `/lib/memory/handbook/documentation-impact-contract.md`.
 - Focused mode MUST reject any edit whose path is absent from the run-log
   lineage unless human input expands scope.
 - Body prose in emitted artifacts MUST satisfy Layer 1 style rules in

@@ -76,7 +76,11 @@ export const FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET = 5;
 const WARNING_REMEDIATION_STAGES = new Set(["review", "test", "compliance", "ship"]);
 const BLOCKING_WARNING_CODES_BY_STAGE: Record<string, Set<string>> = {
   compliance: new Set(["compliance_passes_unparseable", "compliance_final_gate_missing"]),
-  ship: new Set(["policy_compliance_missing_key", "policy_compliance_invalid_json"]),
+  ship: new Set([
+    "ship_ratification_missing_key",
+    "ship_ratification_invalid_json",
+    "ship_ratification_not_ratified",
+  ]),
 };
 
 function shouldRemediateWarnings(stageId: string, warnings: readonly ArtifactContentWarning[]): boolean {

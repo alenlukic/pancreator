@@ -20,3 +20,5 @@ export {
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
   PAN_DEFERRED_EXIT_CODE,
 } from "./run.js";
+export type { WorkArchiveHygieneIssue, WorkArchiveHygieneScanResult } from "./work-archive-hygiene.js";
+export { isExemptOrphanWorkDirectory, scanWorkArchiveHygiene } from "./work-archive-hygiene.js";

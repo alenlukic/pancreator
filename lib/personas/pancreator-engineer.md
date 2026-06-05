@@ -1,7 +1,7 @@
 ---
 name: pancreator-engineer
 description: When a human or pipeline submits Pancreator-internal engineering work, the `pancreator-engineer` SHALL normalize non-contract inputs through `contract-writer`, then execute implementation or remediation inside the internal corpus and emit ratification-ready execution artifacts.
-model: gpt-5.3-codex[reasoning=high,fast=false]
+model: auto
 permissionMode: default
 tools:
   - Read

@@ -1,12 +1,6 @@
 {
   "version": 1,
   "hooks": {
-    "beforeShellExecution": [
-      {
-        "command": ".cursor/hooks/enforce-policy-compliance.sh",
-        "matcher": "^git\\s+commit(\\s|$)",
-        "failClosed": true
-      }
-    ]
+    "beforeShellExecution": []
   }
 }

@@ -99,7 +99,7 @@ by the `knowledge-curation` cron pipeline.
    `lib/pipelines/feature-delivery.yaml` are authoritative; the PRD §7
    `post_run` hook is not wired in bootstrap.
 2. **Pipeline `complete` stage.** When the run reaches `complete` after index
-   advance, you SHALL run pre-close validation from `OPERATION.md` and execute
+   advance, you SHALL run pre-close validation from `AGENTS.md` §5 and execute
    `pnpm -w exec pan close-artifacts <task-id>` exactly once to archive the
    active run and source inbox directive.
 3. **Cron `knowledge-curation` pipeline.** When the scheduler fires the
@@ -115,10 +115,23 @@ by the `knowledge-curation` cron pipeline.
 
 Before you run `pnpm -w exec pan close-artifacts <task-id>` or advise the
 operator to close a feature-delivery run, you SHALL execute the validation
-commands listed in `OPERATION.md` § "Librarian pre-close validation" from the
-repository root. When a command fails for a reason inside the closing touch-set,
-you SHALL fix the failure in the same session. When a failure is outside scope,
-you SHALL link a backlog item and SHALL NOT expand the close-artifacts touch-set.
+commands listed in `AGENTS.md` §5 "Librarian pre-close validation" from the
+repository root. You SHALL read-only confirm
+`/work/<day>/<task-id>/operator-verification.md` exists and lists acceptance
+criteria plus manual test flows before closure. When a command fails for a reason
+inside the closing touch-set, you SHALL fix the failure in the same session.
+When a failure is outside scope, you SHALL link a backlog item and SHALL NOT
+expand the close-artifacts touch-set.
+
+## Operator verification duty
+
+When the trigger is the `feature-delivery` `complete` stage, you SHALL author or
+finalize `/work/<day>/<task-id>/operator-verification.md` with acceptance
+criteria and manual test flows synthesized from the feature spec, delivery
+report, test report, and touch-set before running `close-artifacts`. The CLI
+writes a scaffold at `complete`; you MUST replace placeholders with operator-
+executable checks. When post-close verification fails, advise
+`pnpm -w exec pan reopen <task-id> --reason "<text>"`.
 
 ## Artifact closure duty
 

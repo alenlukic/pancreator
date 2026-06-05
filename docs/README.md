@@ -1,11 +1,12 @@
 # Docs
 
-This directory holds high-level product and bootstrap documents that operators may need, but that should not clutter the repository root.
+This directory holds high-level product documents. Operators normally route through
+`M1.index.md`, `PRD.summary.md`, and `PRD.index.md` before opening full sources here.
 
-- `M1.index.md` — compact M1/bootstrap route map; read this before opening full bootstrap or PRD sources for routine M1 work.
+- `M1.index.md` — compact product route map for routine M1 work.
 - `PRD.summary.md` — compact product orientation.
 - `PRD.index.md` — section-level PRD routing map.
 - `PRD.md` — full product requirements; explicit-read by default for detailed requirements and line-anchored citations.
-- `BOOTSTRAP.md` — historical record of the completed bootstrap (phases −1 through 5, M1 ratified 2026-05-31). Retained as the canonical, replayable phase sequence behind the `Bootstrap-Phase` commit trailer and `pan re-adopt` lineage; explicit-read by default when compact routing is insufficient. Live state lives in `../pancreator.yaml`.
+- `BOOTSTRAP.md` — closed historical phase record (phases −1 through 5). Explicit-read when replaying closed phases or repairing phase-anchored citations.
 
-- `../pancreator.yaml` — live bootstrap tracking and `project_root`; route through `../lib/memory/handbook/pancreator-config.md` before editing.
+- `../pancreator.yaml` — live policy and `project_root`; route through `../lib/memory/handbook/pancreator-config.md` before editing. Runtime routing for agents: `../AGENTS.md` §8.

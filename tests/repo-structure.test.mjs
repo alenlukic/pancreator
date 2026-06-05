@@ -5,7 +5,6 @@ import { test } from "node:test";
 
 import yaml from "yaml";
 
-import { validateBootstrapTracking } from "../lib/internal/packages/@pancreator/policy/dist/index.js";
 import {
   isExcludedRelPath,
   isGitignoredRelPath,
@@ -55,6 +54,13 @@ function daysToFdsForSuffix(mmDdYy) {
 
 const OUT_OF_BAND_MANIFEST = "out-of-band.manifest.json";
 
+function isComplianceAuditWorkTask(taskAbs) {
+  return (
+    fs.existsSync(path.join(taskAbs, "compliance-audit.md")) &&
+    fs.existsSync(path.join(taskAbs, "compliance-result.json"))
+  );
+}
+
 function isOutOfBandWorkTask(taskAbs) {
   const manifestPath = path.join(taskAbs, OUT_OF_BAND_MANIFEST);
   if (!fs.existsSync(manifestPath)) {
@@ -62,6 +68,10 @@ function isOutOfBandWorkTask(taskAbs) {
   }
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   return typeof manifest?.reason === "string" && manifest.reason.trim().length >= 12;
+}
+
+function isExemptActiveWorkTaskWithoutState(taskAbs) {
+  return isOutOfBandWorkTask(taskAbs) || isComplianceAuditWorkTask(taskAbs);
 }
 
 
@@ -103,22 +113,12 @@ test("operator-facing root keeps implementation under internal while tests and d
 });
 
 
-test("pancreator.yaml tracks live bootstrap state and embedded project root", async () => {
+test("pancreator.yaml declares embedded project root without bootstrap tracking", async () => {
   const config = read("pancreator.yaml");
   assert.match(config, /^project_root:\s+"\."$/m);
 
   const doc = yaml.parse(config);
-  const bootstrap = doc?.bootstrap;
-  const validation = validateBootstrapTracking({
-    phase: bootstrap?.phase,
-    status: bootstrap?.status,
-    completedPhases: bootstrap?.completed_phases ?? bootstrap?.completedPhases,
-  });
-  assert.equal(
-    validation.ok,
-    true,
-    validation.violations.join("\n"),
-  );
+  assert.equal(doc?.bootstrap, undefined);
 
   const defaults = read("pancreator-defaults.yaml");
   assert.doesNotMatch(defaults, /^bootstrap:\s*$/m);
@@ -178,7 +178,7 @@ test("active work task directories without feature-delivery state are absent", (
       const taskAbs = path.join(dayAbs, taskEntry.name);
       const taskRel = path.posix.join("work", dayEntry.name, taskEntry.name);
       const statePath = path.join(taskAbs, "state.json");
-      if (!fs.existsSync(statePath) && !isOutOfBandWorkTask(taskAbs)) {
+      if (!fs.existsSync(statePath) && !isExemptActiveWorkTaskWithoutState(taskAbs)) {
         offenders.push(taskRel);
       }
     }
@@ -186,7 +186,7 @@ test("active work task directories without feature-delivery state are absent", (
   assert.deepEqual(
     offenders,
     [],
-    "work/<day>/<task-id>/ without state.json is orphan residue; archive via librarian, add out-of-band.manifest.json for active manual work, or write manifests under archive/work",
+    "work/<day>/<task-id>/ without state.json is orphan residue; archive via librarian, add out-of-band.manifest.json, or retain compliance-audit.md plus compliance-result.json from /compliance-auditor",
   );
 });
 test("planning/execution handoff contract is represented across active memory, pipeline, and personas", () => {
@@ -241,10 +241,22 @@ test("librarian owns close-artifacts archival contract", () => {
   assert.doesNotMatch(librarian, /archive_completed_work/);
 });
 
+test("active work tree has no feature-delivery runs awaiting close-artifacts", async () => {
+  const { scanWorkArchiveHygiene } = await import("@pancreator/cli");
+  const { issues } = await scanWorkArchiveHygiene(ROOT);
+  const offenders = issues.map(
+    (issue) => `${issue.code} ${issue.path}${issue.taskId ? ` (${issue.taskId})` : ""}`,
+  );
+  assert.deepEqual(
+    offenders,
+    [],
+    "work/archive hygiene issues detected; run pnpm -w exec pan check and close-artifacts per remediation",
+  );
+});
+
 test("live normative surfaces use three-level work placeholders", () => {
   const roots = [
     "AGENTS.md",
-    ".cursor/hooks/enforce-policy-compliance.sh",
     ".cursor/rules",
     "docs",
     "lib/internal/packages",
@@ -267,12 +279,16 @@ test("live normative surfaces use three-level work placeholders", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("policy-compliance hook accepts only canonical three-level artifacts", () => {
-  const hook = read(".cursor/hooks/enforce-policy-compliance.sh");
-  assert.match(hook, /\^work\/\[\^\/\]\+\/\[\^\/\]\+\/policy-compliance\\\.json\$/);
-  assert.doesNotMatch(hook, /\^work\/\[\^\/\]\+\/policy-compliance\\\.json\$/);
-  assert.match(hook, /work\/<day>\/<task-id>\/policy-compliance\.json/);
-  assert.match(hook, /format-json-in-place\.mjs/);
+test("AGENTS documents Build-mode inbox scaffolding contract", () => {
+  const agents = read("AGENTS.md");
+  assert.match(agents, /Build-mode inbox scaffolding/);
+  assert.match(agents, /pan intake from-build-plan/);
+});
+
+test("Cursor hooks do not enforce commit-time policy artifacts", () => {
+  const hooks = JSON.parse(read(".cursor/hooks.json"));
+  const beforeShell = hooks.hooks?.beforeShellExecution ?? [];
+  assert.equal(beforeShell.length, 0);
 });
 
 test("Cursor implementation rules avoid broad lib-wide activation", () => {

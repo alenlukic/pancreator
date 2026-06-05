@@ -58,3 +58,10 @@ export {
   ensureCursorSdkRipgrepConfigured,
   resolveCursorRipgrepBinaryPath,
 } from "./cursor-sdk-prereqs.js";
+export {
+  loadModelEscalationConfig,
+  ModelEscalationConfigError,
+  parseModelEscalationFile,
+  resolveActiveConfigName,
+} from "./model-escalation.js";
+export type { LoadedModelEscalation, ModelEscalationFileConfig } from "./model-escalation.js";

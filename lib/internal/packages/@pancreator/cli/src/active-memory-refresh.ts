@@ -398,6 +398,86 @@ export async function patchFeatureIndexArchivedInbox(
   await writeFile(indexAbs, stringifyCliJson(repoRoot, parsed), "utf8");
 }
 
+/** Restores feature index.json active inbox paths after pan reopen. */
+export async function patchFeatureIndexReopenedInbox(
+  repoRoot: string,
+  featureId: string,
+  activeInboxRel: string,
+): Promise<void> {
+  const indexAbs = resolveProjectPath(repoRoot, "lib", "memory", "features", featureId, "index.json");
+  if (!existsSync(indexAbs)) {
+    return;
+  }
+  const parsed = JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>;
+  delete parsed["archived_inbox_source"];
+
+  const sourceInbox = parsed["source_inbox_item"];
+  if (sourceInbox !== undefined && typeof sourceInbox === "object") {
+    const rec = sourceInbox as Record<string, unknown>;
+    rec["path"] = activeInboxRel;
+    if (rec["prior_path"] === activeInboxRel) {
+      delete rec["prior_path"];
+    }
+  } else {
+    parsed["source_inbox_item"] = { path: activeInboxRel };
+  }
+
+  const intake = parsed["intake"];
+  if (intake && typeof intake === "object") {
+    const intakeRec = intake as Record<string, unknown>;
+    if (typeof intakeRec["source_inbox_item"] === "string") {
+      intakeRec["source_inbox_item"] = activeInboxRel;
+    }
+  }
+
+  const delivery = parsed["delivery_report"];
+  if (delivery && typeof delivery === "object") {
+    delete (delivery as Record<string, unknown>)["archived_inbox_source"];
+  }
+
+  await writeFile(indexAbs, stringifyCliJson(repoRoot, parsed), "utf8");
+}
+
+function restoreActiveFeaturePointerForReopenedInbox(sectionInner: string, activeInboxRel: string): string {
+  const active = normalizeInboxRel(activeInboxRel);
+  const pointers = extractActiveFeatureInboxPointers(sectionInner);
+  if (pointers.includes(active)) {
+    return sectionInner;
+  }
+  const trimmed = sectionInner.trim();
+  if (trimmed.length === 0 || trimmed.includes("(none)")) {
+    return `\n- \`${active}\`\n`;
+  }
+  return `${sectionInner.trimEnd()}\n- \`${active}\`\n`;
+}
+
+/** Restores Active Feature pointer after pan reopen when the inbox source was unarchived. */
+export async function applyActiveMemoryRefreshOnReopen(
+  repoRoot: string,
+  input: { activeInboxSourceRel: string; clock?: () => Date },
+): Promise<{ path: string; activeFeatureRestored: boolean }> {
+  const repoRootAbs = path.resolve(repoRoot);
+  const currentAbs = resolveRepoPath(repoRootAbs, CURRENT_MD_REL);
+  if (!existsSync(currentAbs)) {
+    return { path: CURRENT_MD_REL, activeFeatureRestored: false };
+  }
+  const raw = await readFile(currentAbs, "utf8");
+  const now = input.clock?.() ?? new Date();
+  const activeObserved = getSectionInner(raw, "Active Feature");
+  const restoredInner = restoreActiveFeaturePointerForReopenedInbox(activeObserved, input.activeInboxSourceRel);
+  const restored = restoredInner !== activeObserved;
+  const assembled = await assembleRefreshedCurrentMd(
+    repoRootAbs,
+    raw,
+    now,
+    restored ? restoredInner : undefined,
+  );
+  if (restored) {
+    await writeFile(currentAbs, assembled, "utf8");
+  }
+  return { path: CURRENT_MD_REL, activeFeatureRestored: restored };
+}
+
 export async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {
   const featuresRoot = resolveProjectPath(repoRoot, "lib", "memory", "features");
   let dirs: string[] = [];

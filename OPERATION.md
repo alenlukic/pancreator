@@ -1,8 +1,8 @@
 # Pancreator operator how-to
 
-Canonical operator procedure for bootstrap Phase 5. For the cross-tool agent
-contract read `AGENTS.md`. For product and bootstrap routing read
-`docs/M1.index.md`, `docs/PRD.summary.md`, and `docs/PRD.index.md`.
+Procedure for inbox workflow, feature delivery, the `pan` CLI, and pre-close
+validation. Agent obligations live in `AGENTS.md`. Product routing:
+`docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md`.
 
 ## Inbox lifecycle
 
@@ -138,44 +138,22 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
    `status: halted` and one timestamp-prefixed file under
    `lib/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
 6. When the run reaches `complete`, the runtime writes `work/<day>/<task-id>/pipeline-close.md`
-   (outcome summary, residual issues, operator next steps). Review that file before archival closure.
-7. Run `pnpm -w exec pan close-artifacts <task-id>` once after reviewing `pipeline-close.md`.
+   (outcome summary, residual issues, operator next steps) and
+   `operator-verification.md` (acceptance criteria and manual test flows scaffold).
+   Review both files before archival closure.
+7. Run `pnpm -w exec pan close-artifacts <task-id>` once after reviewing
+   `pipeline-close.md` and finalizing `operator-verification.md`.
 
-#### Agent chat relay
+#### Progress in the terminal vs chat
 
-When a Cursor agent runs SDK-mode feature-delivery commands from chat on the
-operator's behalf, stderr progress lines do not appear in the chat window unless
-the agent relays them. Apply this contract:
+In an interactive terminal, stderr shows human-readable `[pan fd] …` lines
+automatically while stages run. Set `PAN_FD_PROGRESS=text` or
+`PAN_FD_PROGRESS=ndjson` to override auto-detection. Final command envelopes
+print to stdout only.
 
-1. Prefix the command with `PAN_FD_PROGRESS=ndjson` so progress is
-   machine-parseable regardless of TTY detection.
-2. Treat **stderr** as progress-only and **stdout** as the final JSON envelope.
-3. Post one short operator-visible chat line per progress event (`stage_enter`,
-   `stage_transition`, `heartbeat`, `stage_complete`) before the command exits.
-4. Monitor stderr while the command runs (for example shell output polling on
-   `feature_delivery_progress`) so heartbeats (~every 2 minutes) surface in
-   chat without waiting for the full run to finish.
-
-| Progress `kind` | Chat update (example) |
-|---|---|
-| `stage_enter` | Feature-delivery `task-1`: entering `plan` (tech-lead) |
-| `heartbeat` | Feature-delivery `task-1`: `plan` (tech-lead) still running — 4m 0s |
-| `stage_complete` | Feature-delivery `task-1`: finished `plan` (tech-lead) in 6m 12s |
-| `stage_transition` | Feature-delivery `task-1`: `plan` → `implement` (human_approval) |
-
-Do not paste raw NDJSON into chat. Derive elapsed time from the `elapsedMs`
-field on heartbeats and stage completions. On `stage_transition`, read
-`fromStage`, `toStage`, and `transitionEvent` when present.
-
-Example agent invocation:
-
-```bash
-PAN_FD_PROGRESS=ndjson pnpm -w exec pan run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
-```
-
-Operators running the same commands directly in an interactive terminal receive
-`[pan fd] …` text on stderr automatically; chat relay applies only when an
-agent executes the command on the operator's behalf.
+When an agent runs SDK-mode commands from chat on your behalf, progress does
+not appear in the chat window unless the agent relays it. See `AGENTS.md` §5
+"Feature-delivery SDK progress in chat".
 
 #### Model escalation tiers (SDK mode only)
 
@@ -210,16 +188,16 @@ does not reset other stages' counts.
 `full_model_string`, and per-fallback fields `fallback_model`, `fallback_reason`, and
 `outcome` (`success` or `chain_exhausted`).
 
-### Manual bootstrap workflow
+### Tasks outside feature-delivery
 
-For non-runtime tasks:
+For ad-hoc work that does not use the feature-delivery ledger:
 
-1. Read `AGENTS.md` and `lib/memory/active/current.md` unless simple task mode applies.
+1. Check `lib/memory/active/current.md` for active pointers.
 2. Route through `docs/M1.index.md` before full `docs/BOOTSTRAP.md` or `docs/PRD.md`.
-3. Treat `lib/inbox/in/` as the canonical queue.
-4. Separate planning from execution: emit `work/<day>/<task-id>/handoff.md`,
-   then delegate to the owning persona.
-5. Stage local diffs; obtain human ratification at phase boundaries.
+3. Put requests in `lib/inbox/in/` when they need org tracking.
+4. Separate planning from execution: use `work/<day>/<task-id>/handoff.md`,
+   then delegate to the owning persona (`AGENTS.md` §4).
+5. Stage local diffs and ratify at phase boundaries before commit.
 
 ## Embedded install checklist
 
@@ -241,7 +219,7 @@ For adopting Pancreator into an existing repository with `project_root: ".pancre
 
 ### Manual agent sync
 
-When persona specs change or cursor agents were not emitted during init, regenerate projections manually:
+When persona specs change or cursor agents were not emitted during init, regenerate projections manually. When `pancreator-model-escalation.yaml` is present, `cursor-sync` first copies each listed persona's `default` tier model from the active escalation config (resolved like SDK runs: `PAN_MODEL_ESCALATION_CONFIG`, then `runner.cursor.model_escalation.config` in `pancreator.yaml`, then the file-level `active_config`) into `lib/personas/<slug>.md`, then mirrors personas to `.cursor/agents/`. Personas omitted from the active config are left unchanged.
 
 ```bash
 pnpm -w exec pan cursor-sync [--dry-run] [harnessRoot]
@@ -269,9 +247,16 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 | `report` | `tech-writer` | `lib/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/delivery-report.md` |
 | `compliance` (pass) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/compliance-result.json` |
 | `compliance` (major fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails --artifact <runDir>/compliance-result.json` |
-| `ship` | `supervisor` | `<runDir>/policy-compliance.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/policy-compliance.json` |
+| `ship` | `supervisor` | `<runDir>/ship-ratification.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/ship-ratification.json` |
 | `index` | `librarian` | `lib/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/index.json` |
-| `complete` | `librarian` | policy-compliance + index | `pnpm -w exec pan close-artifacts <task-id>` |
+| `complete` | `librarian` | ship-ratification + index + operator-verification | `pnpm -w exec pan close-artifacts <task-id>` |
+
+Ad-hoc and recovery verbs:
+
+| Verb | When | Command |
+|---|---|---|
+| Ad-hoc close | Build-mode workspace with verification pack | `pnpm -w exec pan close-out-of-band work/<day>/<task-id> --feature <id> --reason "<text>"` |
+| Reopen | Post-close verification failed | `pnpm -w exec pan reopen <task-id> --reason "<text>" [--stage <stage>]` |
 
 Compliance audit history contract (feature-delivery compliance stage):
 
@@ -284,6 +269,7 @@ Compliance audit history contract (feature-delivery compliance stage):
 Inspection and recovery:
 
 ```bash
+pnpm -w exec pan check
 pnpm -w exec pan status <task-id>
 pnpm -w exec pan refresh-prompt <task-id>
 pnpm -w exec pan pause <task-id>
@@ -292,6 +278,7 @@ pnpm -w exec pan abort <task-id> --reason "superseded or unsafe"
 pnpm -w exec pan repair-state <task-id> --stage review \
   --artifact work/<day>/<task-id>/review.md \
   --reason "out-of-band work reached review before advance"
+pnpm -w exec pan reopen <task-id> --reason "Operator verification failed after close"
 ```
 
 Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
@@ -299,24 +286,26 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 ## Active memory refresh
 
 - Set **Active Feature** in `lib/memory/active/current.md` explicitly when work starts.
-- Run `pnpm -w exec pan refresh-active-memory [--dry-run]` before governed commits when
-  shipped-feature rows or the managed operator-notes stamp drift from indexed artifacts.
+- Run `pnpm -w exec pan refresh-active-memory [--dry-run]` when shipped-feature rows
+  or the managed operator-notes stamp drift from indexed artifacts.
 - `pnpm -w exec pan close-artifacts <task-id>` refreshes shipped rows and clears Active
   Feature to `(none)` when it matched the archived inbox source.
 - `lib/memory/features/*/index.json` remain the indexed source of truth for features.
 
-## Commit and policy-compliance
+## Version control and optional PR drafting
 
-- Stage diffs locally only during bootstrap; agents do not push or commit without the operator.
-- Governed structural commits require `work/<day>/<task-id>/policy-compliance.json`
-  per `lib/memory/handbook/policy-compliance-contract.md`.
-- Pre-commit hooks enforce policy compliance; do not use `--no-verify` unless the operator directs it.
+- Stage diffs locally; obtain human ratification before commit or push.
+- Pancreator does not enforce commit gates or touch-set parity at commit time.
+- Optional: invoke `/pr-writer` with a feature ID or `work/<day>/<task-id>/` path to
+  draft a GitHub PR body from pipeline artifacts and the current git worktree.
 
-### Librarian pre-close validation
+### Pre-close validation checklist
 
-Before `pnpm -w exec pan close-artifacts <task-id>`, the librarian (or operator
-acting as closer) SHALL run these checks from the repository root and SHALL fix
-bounded failures in the same session when policy allows:
+`pnpm -w exec pan check` runs the same named checks as read-only aggregation (pass/fail report only; it does not modify the repository). The deprecated `pan doctor` alias prints a stderr warning and delegates to `pan check`.
+
+Before `pnpm -w exec pan close-artifacts <task-id>`, run these checks from the
+repository root. Agents performing closure follow the obligations in
+`AGENTS.md` §5 "Librarian pre-close validation":
 
 ```bash
 pnpm run build
@@ -330,16 +319,15 @@ node --test tests/*.test.mjs
 node lib/internal/tools/run-compliance.mjs
 node lib/internal/tools/check-phase-0a-scaffold.mjs
 node lib/internal/tools/context-budget-report.mjs
-bash -n .cursor/hooks/enforce-policy-compliance.sh
 node lib/internal/tools/check-operator-output.mjs
 ```
 
-When a check fails for reasons outside the closing task touch-set, the closer SHALL
-open or link a backlog item instead of expanding scope.
+When a check fails for reasons outside the closing task touch-set, open or link
+a backlog item instead of expanding scope.
 
 This repository does not ship GitHub Actions workflows under `.github/workflows/`.
 The qa-tester stage and librarian pre-close validation above are the canonical
-quality gates during bootstrap.
+local quality gates for this repository.
 
 ## Troubleshooting
 
@@ -351,7 +339,9 @@ quality gates during bootstrap.
 | Bare `pan` command fails | CLI not on PATH | Use `pnpm -w exec pan …` per `lib/memory/handbook/pancreator-config.md` |
 | Active memory drift | Skipped refresh | `pnpm -w exec pan refresh-active-memory --dry-run` then apply |
 | Operator-output lint fails | Bare `pan` in runnable block | Run `node lib/internal/tools/check-operator-output.mjs` and fix cited paths |
+| `close-artifacts` fails: missing operator-verification.md | Verification pack not authored at complete | Finalize `work/<day>/<task-id>/operator-verification.md` (scaffold lands at `complete`); then rerun `pnpm -w exec pan close-artifacts <task-id>`. |
 | `close-artifacts` fails: active run directory missing or archive already exists | Librarian archived `work/` during index instead of waiting for `close-artifacts` | Do not manually `mv` work directories; run `pnpm -w exec pan close-artifacts <task-id>` only at `complete`. When work is already under `archive/work/`, closure finalizes state idempotently. |
+| Completed runs still under `work/` while peers are in `archive/work/` | `close-artifacts` skipped after `complete`, or superseded retry task dirs left behind | Run `pnpm -w exec pan check` and resolve `work-archive-hygiene` findings: `close-artifacts` each `complete` run (canonical task first when duplicates share a feature); superseded duplicates MAY close after inbox is already archived. |
 | `advance` rejects delivery-report citation lint | JS-literal or compact inline citations in `delivery-report.md` | Run `node lib/internal/tools/reformat-markdown-citations.mjs` and follow `lib/memory/handbook/contract-templates/delivery-report.template.md` |
 
 For deferred CLI verbs, read the JSON envelope (`milestone`, `tracking_intake`,

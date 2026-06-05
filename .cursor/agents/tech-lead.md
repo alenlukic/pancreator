@@ -1,7 +1,7 @@
 ---
 name: tech-lead
 description: "Canonical `tech-lead` subagent projection for persona-owned pipeline stages."
-model: gpt-5.4[context=272k,reasoning=extra-high,fast=false]
+model: auto
 permissionMode: default
 mcpServers:
   - pancreator-memory

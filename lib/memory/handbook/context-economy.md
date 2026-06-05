@@ -200,7 +200,8 @@ operator's behalf, the agent SHALL relay stderr progress to the operator chat
 surface: set `PAN_FD_PROGRESS=ndjson`, watch for `feature_delivery_progress`
 events, and post concise status on each `stage_enter`, `stage_transition`,
 `heartbeat`, and `stage_complete` before the command finishes. See
-`OPERATION.md` § SDK mode "Agent chat relay" and `AGENTS.md` §5.
+`AGENTS.md` §5. Operators in a TTY receive `[pan fd] …` on stderr automatically;
+see `OPERATION.md` § SDK mode.
 
 When execution finds ambiguity that changes scope, touch-set, acceptance
 criteria, or validation strategy, the executor SHALL stop and delegate back to
@@ -262,7 +263,7 @@ for human decisions unless debugging a specific generator.
 | Subagent invocation and model escalation | `lib/memory/handbook/context-economy.md` §“Model and context escalation guidance” | One canonical `.cursor/agents/<name>.md` per persona; escalate model class per documented triggers. |
 | Feature implementation | `lib/memory/features/<id>/spec.md` | Canonical Engineering Spec for that Feature. |
 | Bootstrap phase authority | `docs/BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |
-| Governance and policy artifacts | `lib/memory/handbook/policy-compliance-contract.md`, `lib/memory/handbook/documentation-impact-contract.md` | Required for governed commits and post-task documentation decisions. |
+| Governance and documentation-impact | `lib/memory/handbook/documentation-impact-contract.md`, `lib/memory/handbook/constitution.md` | Required for post-task documentation decisions; optional `/pr-writer` for PR bodies. |
 
 ## Operator maintenance
 

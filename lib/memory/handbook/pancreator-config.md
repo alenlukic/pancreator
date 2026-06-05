@@ -1,7 +1,7 @@
 # Pancreator Config
 
 `pancreator.yaml` is the live operator-facing configuration file for this repository.
-`pancreator-defaults.yaml` contains default policy values and historical bootstrap defaults; it is not the live bootstrap phase tracker.
+`pancreator-defaults.yaml` contains default policy values; it is not the live config file.
 
 ## `project_root`
 
@@ -56,17 +56,17 @@ During adoption, the adopter SHOULD:
 3. use `.` for self-hosting/self-development setups,
 4. avoid writing `pancreator.yaml` directly unless the operator has ratified config-write mode.
 
-## Bootstrap tracking
+## Closed bootstrap history
 
-Live bootstrap state belongs in `pancreator.yaml` under the `bootstrap` block.
+Bootstrap phases −1 through 5 are closed (M1 ratified 2026-05-31). Phase
+sequencing, exit criteria, and ratification evidence live in `docs/BOOTSTRAP.md`
+and `lib/memory/features/bootstrap-phase-*`. `pancreator.yaml` does not carry a
+`bootstrap` tracking block; do not use closed-phase status as a live behavior gate.
+`docs/M1.index.md` is the compact route for M1 scope before loading full PRD sources.
 
-For this repository, the current live state is Phase 5 / M1 ratified
-(`m1-ratified`, human GO recorded 2026-05-31) with phases `-1` through `5`
-completed. M1 closure evidence and the ratification record live under
-`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/`. M2
-planning opens via inbox. Phoenix trace verification remains deferred.
-
-`docs/BOOTSTRAP.md` remains the phase-contract and milestone reference. `docs/M1.index.md` is the compact route for M1/bootstrap context before loading the full bootstrap or PRD documents.
+When upgrading legacy workspaces that still contain a `bootstrap` block,
+`@pancreator/policy` exports optional `validateBootstrapTracking()` and
+`nextBootstrapAfterRatification()` helpers for consistency checks during migration.
 
 ## CLI invocation in this workspace
 
@@ -146,36 +146,14 @@ Rules:
   each stage transition. Agents that invoke `pan` from chat on the operator's
   behalf SHALL set `PAN_FD_PROGRESS=ndjson`, monitor stderr for
   `feature_delivery_progress` events, and relay concise status lines to chat per
-  `OPERATION.md` § SDK mode "Agent chat relay" and `AGENTS.md` §5.
+  `AGENTS.md` §5. Operators running in a TTY receive `[pan fd] …` on stderr
+  automatically; see `OPERATION.md` § SDK mode.
 
 `runner.cursor.model_escalation.config` MAY name which entry under
 `pancreator-model-escalation.yaml` `configs` is active for SDK runs. When omitted,
 the file-level `active_config` scalar applies. `PAN_MODEL_ESCALATION_CONFIG` overrides
 both. Escalation applies only when `invocation` is `sdk`; see `OPERATION.md` § SDK mode
 for tier resolution, fallback order, and `run.log.jsonl` field names.
-
-## Bootstrap tracking invariants
-
-The `bootstrap` block MUST keep three fields internally consistent:
-
-| Field | Rule |
-|---|---|
-| `phase` | Current active bootstrap phase as a string integer (`"5"`). |
-| `status` | MUST be `phase-<N>-in-progress` where `<N>` equals `phase`. |
-| `completed_phases` | MUST list every phase from `"-1"` through `<N - 1>` with no gaps. |
-
-Ratifying a phase boundary is an **atomic advance**. Operators MUST NOT leave
-`status: phase-<N>-ratified` as a stable end state. After human ratification of
-phase `N`, update all three fields together:
-
-1. Append `"N"` to `completed_phases`.
-2. Set `phase` to `"N + 1"`.
-3. Set `status` to `phase-<N + 1>-in-progress`.
-
-`@pancreator/policy` exports `validateBootstrapTracking()` and
-`nextBootstrapAfterRatification()` for the expected post-ratification shape.
-Repository tests call the validator against live `pancreator.yaml` so partial
-updates fail CI instead of drifting.
 
 ## Operator documentation (`OPERATION.md`)
 

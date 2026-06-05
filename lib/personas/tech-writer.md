@@ -1,7 +1,7 @@
 ---
 name: tech-writer
 description: When the `feature-delivery` pipeline reaches the `report` stage, the `tech-writer` SHALL draft one Delivery Report at `/lib/memory/features/<id>/delivery-report.md` for the named Feature, then exit so the `notifier` post-run step stages the file to `lib/inbox/out/`.
-model: gpt-5.4-mini
+model: auto
 permissionMode: default
 tools:
   - Read

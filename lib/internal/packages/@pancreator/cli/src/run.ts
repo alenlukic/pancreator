@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 
-import { asTaskId, resolvePancreatorYamlPath, resolveProjectPath } from "@pancreator/core";
+import { asTaskId, resolveProjectPath } from "@pancreator/core";
 import { Command } from "commander";
 import { FileInbox } from "@pancreator/inbox";
 import {
@@ -18,11 +18,13 @@ import {
   refreshFeatureDeliveryPrompt,
   repairFeatureDeliveryState,
   resolveFeatureDeliveryNext,
-  runPanDoctor,
+  runPanCheck,
   startFeatureDelivery,
   validateArtifactsForTask,
-  type PanDoctorResult,
+  type PanCheckResult,
 } from "./feature-delivery-run.js";
+import { closeOutOfBandWorkspace } from "./close-out-of-band.js";
+import { reopenFeatureDelivery } from "./reopen-feature-delivery.js";
 import {
   formatCountdownIdLine,
   parseInboxEntryPath,
@@ -39,8 +41,16 @@ import {
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
 } from "./active-memory-refresh.js";
 import { runTokenEconomySampleAudit } from "./commands/token-economy-sample-audit.js";
+import {
+  buildBuildPlanIntakeMarkdown,
+  buildDefaultIntakeMarkdown,
+  createIntakeDirective,
+  readOptionalTextFile,
+  assertIntakeSlug,
+} from "./intake-scaffold.js";
 
 export { PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE };
+export { makeUtcDayBucket } from "./intake-scaffold.js";
 
 /** Stable exit code for deferred stub verbs (`pan init`, MCP deferrals surfaced through the CLI shim, etc.). */
 export const PAN_DEFERRED_EXIT_CODE = 125;
@@ -66,8 +76,6 @@ function defaultDeferredTrackingIntake(cliVerb: string): string {
   }
   return BATCH_DEFERRAL_TRACKING_INTAKE;
 }
-
-const FDS_UTC_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
 
 export interface CliRunOptions {
   repoRoot?: string;
@@ -194,12 +202,12 @@ export function formatPanText(payload: object, repoRoot: string = process.cwd())
     }
     return lines.join("\n");
   }
-  if (command === "doctor") {
-    const doctor = payload as PanDoctorResult;
+  if (command === "check") {
+    const checkResult = payload as PanCheckResult;
     const lines = [
-      `doctor: ${doctor.status} (pass=${doctor.passCount} fail=${doctor.failCount} skip=${doctor.skipCount})`,
+      `check: ${checkResult.status} (pass=${checkResult.passCount} fail=${checkResult.failCount} skip=${checkResult.skipCount})`,
     ];
-    for (const check of doctor.checks) {
+    for (const check of checkResult.checks) {
       const remediation =
         check.status === "fail" && check.remediation !== undefined ? ` — ${check.remediation}` : "";
       lines.push(`${check.status.toUpperCase()} ${check.id}: ${check.label}${remediation}`);
@@ -258,70 +266,6 @@ function deferredVerbAction(
     exit.code = PAN_DEFERRED_EXIT_CODE;
   };
 }
-
-function makeUtcDayBucket(now: Date): string {
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  const d = now.getUTCDate();
-  const dayStart = Date.UTC(y, m, d, 0, 0, 0, 0);
-  const daysToFds = Math.floor((FDS_UTC_MS - dayStart) / 86400000);
-  const mm = String(m + 1).padStart(2, "0");
-  const dd = String(d).padStart(2, "0");
-  const yy = String(y % 100).padStart(2, "0");
-  return `${daysToFds}_${mm}-${dd}-${yy}`;
-}
-
-/** Seconds remaining until the next UTC midnight; matches task-id SID semantics. */
-function secondsToMidnightUtc(now: Date): number {
-  const dayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
-  const nextDayStart = dayStart + 86400000;
-  return Math.max(0, Math.floor((nextDayStart - now.getTime()) / 1000));
-}
-
-function utcHhmm(now: Date): string {
-  return `${String(now.getUTCHours()).padStart(2, "0")}${String(now.getUTCMinutes()).padStart(2, "0")}`;
-}
-
-function buildDefaultIntakeMarkdown(opts: {
-  readonly title: string;
-  readonly featureId: string;
-  readonly owner: string;
-  readonly createdIso: string;
-}): string {
-  const fm = [
-    "---",
-    `title: ${quoteJsonString(opts.title)}`,
-    `feature_id: ${quoteJsonString(opts.featureId)}`,
-    "stage: intake",
-    `owner: ${quoteJsonString(opts.owner)}`,
-    "status: open",
-    `created_at: ${quoteJsonString(opts.createdIso)}`,
-    "references: []",
-    "---",
-    "",
-    `# ${opts.title}`,
-    "",
-    "## Problem",
-    "",
-    "## Goal",
-    "",
-    "## Required outcomes",
-    "",
-    "## Acceptance criteria",
-    "",
-    "## Out of scope",
-    "",
-  ].join("\n");
-  return fm;
-}
-
-function isArchivedDayBucketCollision(repoRoot: string, dayBucket: string): boolean {
-  const active = resolveProjectPath(repoRoot, "lib", "inbox", "in", dayBucket);
-  const archived = resolveProjectPath(repoRoot, "archive", "inbox", "in", dayBucket);
-  return existsSync(active) && existsSync(archived);
-}
-
-
 
 /**
  * Parses CLI arguments and runs the matching handler. The argv parameter MUST omit
@@ -572,17 +516,35 @@ export async function parseAndRun(
       }
     });
 
+  const emitPanCheck = async (opts: { format?: string }) => {
+    const format = resolveOutputFormat(opts.format, options?.format);
+    const result = await runPanCheck(repoRoot);
+    emitPayload(writeOut, repoRoot, result, format);
+    if (result.status === "fail") {
+      exit.code = 1;
+    }
+  };
+
+  program
+    .command("check")
+    .description(
+      "Run read-only pre-close validation checks (reports pass/fail; does not modify the repository)",
+    )
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (opts: { format?: string }) => {
+      await emitPanCheck(opts);
+    });
+
   program
     .command("doctor")
-    .description("Read-only pre-close validation aggregator")
+    .description("Deprecated alias for pan check")
     .option("--format <format>", "Output format: json (default) or text")
-    .action(async (opts: { format?: string }, _cmd) => {
-      const format = resolveOutputFormat(opts.format, options?.format);
-      const result = await runPanDoctor(repoRoot);
-      emitPayload(writeOut, repoRoot, result, format);
-      if (result.status === "fail") {
-        exit.code = 1;
-      }
+    .action(async (opts: { format?: string }) => {
+      const writeErr = options?.writeErr ?? ((chunk: string) => process.stderr.write(chunk));
+      writeErr(
+        "pan doctor is deprecated; use `pnpm -w exec pan check` (read-only validation, no auto-fix).\n",
+      );
+      await emitPanCheck(opts);
     });
 
   program
@@ -641,6 +603,57 @@ export async function parseAndRun(
     });
 
   program
+    .command("close-out-of-band")
+    .description("Archive an ad-hoc work directory after operator verification is authored")
+    .argument("<runDir>", "Repo-relative run directory work/<day>/<task-id>")
+    .requiredOption("--feature <featureId>", "Feature id for the ad-hoc workspace")
+    .requiredOption("--reason <text>", "Human-readable reason for closing the workspace")
+    .option("--inbox-source <path>", "Repo-relative source inbox path under lib/inbox/in/")
+    .option("--scaffold-verification", "Write operator-verification.md scaffold when missing (tests only)")
+    .action(
+      async (
+        runDir: string,
+        opts: { feature: string; reason: string; inboxSource?: string; scaffoldVerification?: boolean },
+      ) => {
+        emit(
+          writeOut,
+          repoRoot,
+          await closeOutOfBandWorkspace({
+            repoRoot,
+            runDirRel: runDir,
+            featureId: opts.feature,
+            reason: opts.reason,
+            inboxSourceRel: opts.inboxSource,
+            scaffoldVerification: opts.scaffoldVerification === true,
+            clock: options?.clock,
+          }),
+        );
+      },
+    );
+
+  program
+    .command("reopen")
+    .description("Unarchive a closed task and restore it to intake or a specific pipeline stage")
+    .argument("<taskId>", "Task id under archive/work/")
+    .requiredOption("--reason <text>", "Human-readable reason for reopening")
+    .option("--stage <stage>", "Pipeline stage to restore (default: intake)")
+    .action(async (taskId: string, opts: { reason: string; stage?: string }) => {
+      emit(
+        writeOut,
+        repoRoot,
+        await reopenFeatureDelivery({
+          repoRoot,
+          taskId,
+          stage: opts.stage,
+          reason: opts.reason,
+          clock: options?.clock,
+          testHooks: options?.testHooks,
+          progress: featureDeliverySdkProgress(options),
+        }),
+      );
+    });
+
+  program
     .command("approve")
     .description("Approve a gated action [deferred: M3]")
     .action(
@@ -684,7 +697,7 @@ export async function parseAndRun(
         verb: "pan lint",
         milestone: "M1",
         manual_workaround:
-          "Use `pnpm lint`, `pnpm run check:phase0a`, and `bash -n .cursor/hooks/enforce-policy-compliance.sh` locally until pan wraps the bundles.",
+          "Use `pnpm lint` and `pnpm run check:phase0a` locally until pan wraps the bundles.",
       }),
     );
 
@@ -705,32 +718,12 @@ export async function parseAndRun(
         slugArg: string,
         cmdOpts: { title?: string; owner?: string; featureId?: string; fromTemplate?: string },
       ) => {
-        const slugOk = /^[a-z0-9][a-z0-9_-]*$/u.test(slugArg);
-        if (!slugOk) {
-          throw new Error("slug MUST use lowercase letters, digits, underscores, or hyphens starting with alphanumerics.");
-        }
-        if (resolvePancreatorYamlPath(repoRoot) === undefined) {
-          throw new Error("Missing pancreator.yaml under project root or repository root; run from an initialized Pancreator workspace.");
-        }
+        assertIntakeSlug(slugArg);
         const now = options?.clock !== undefined ? options.clock() : new Date();
-        const dayBucket = makeUtcDayBucket(now);
-        if (isArchivedDayBucketCollision(repoRoot, dayBucket)) {
-          throw new Error(
-            `Refusing to write into archived day-bucket ${dayBucket} because both lib/inbox/in and archive/inbox/in contain that directory.`,
-          );
-        }
-        const sid = secondsToMidnightUtc(now);
-        const hhmm = utcHhmm(now);
-        const targetRel = path.posix.join("lib/inbox/in", dayBucket, `${sid}_${hhmm}_${slugArg}.md`);
-        const targetAbs = resolveProjectPath(repoRoot, ...targetRel.split("/"));
-        if (existsSync(targetAbs)) {
-          throw new Error(`Refusing to overwrite existing inbox directive at ${targetRel}.`);
-        }
         const title = cmdOpts.title && cmdOpts.title.length > 0 ? cmdOpts.title : slugArg;
         const owner = cmdOpts.owner ?? "intake-analyst";
         const featureId = cmdOpts.featureId ?? slugArg;
         const createdIso = now.toISOString();
-        await mkdir(path.dirname(targetAbs), { recursive: true });
         let fileText: string;
         if (cmdOpts.fromTemplate !== undefined && cmdOpts.fromTemplate !== "") {
           const templateRel = path.posix.join(
@@ -761,8 +754,83 @@ export async function parseAndRun(
         } else {
           fileText = buildDefaultIntakeMarkdown({ title, featureId, owner, createdIso });
         }
-        await writeFile(targetAbs, `${fileText.trimEnd()}\n`, "utf8");
-        emit(writeOut, repoRoot, { command: "intake new", status: "ok", path: targetRel });
+        const created = await createIntakeDirective({
+          repoRoot,
+          slug: slugArg,
+          now,
+          fileText,
+        });
+        emit(writeOut, repoRoot, { command: "intake new", status: "ok", path: created.path });
+      },
+    );
+
+  intakeCmd
+    .command("from-build-plan")
+    .argument("<slug>", "Semantic basename suffix (lowercase slug with hyphens)")
+    .description(
+      "Emit an inbox directive from a Cursor Build-mode operator prompt and completed plan snapshot",
+    )
+    .option("--title <text>", "Directive title shown in Markdown heading and YAML frontmatter", "")
+    .option("--owner <persona>", "Owner recorded in YAML frontmatter", "intake-analyst")
+    .option("--feature-id <id>", "Feature id retained in YAML frontmatter")
+    .option("--operator-prompt <text>", "Verbatim operator prompt from Cursor Build mode")
+    .option("--prompt-file <path>", "Read operator prompt from a repo-relative or absolute file")
+    .option("--plan-text <text>", "Completed plan markdown shown to the operator")
+    .option("--plan-file <path>", "Read completed plan markdown from a repo-relative or absolute file")
+    .action(
+      async (
+        slugArg: string,
+        cmdOpts: {
+          title?: string;
+          owner?: string;
+          featureId?: string;
+          operatorPrompt?: string;
+          promptFile?: string;
+          planText?: string;
+          planFile?: string;
+        },
+      ) => {
+        assertIntakeSlug(slugArg);
+        const operatorPrompt =
+          cmdOpts.promptFile !== undefined && cmdOpts.promptFile.length > 0
+            ? (await readOptionalTextFile(repoRoot, cmdOpts.promptFile)).trim()
+            : (cmdOpts.operatorPrompt ?? "").trim();
+        const planText =
+          cmdOpts.planFile !== undefined && cmdOpts.planFile.length > 0
+            ? (await readOptionalTextFile(repoRoot, cmdOpts.planFile)).trim()
+            : (cmdOpts.planText ?? "").trim();
+        if (operatorPrompt.length === 0) {
+          throw new Error(
+            "from-build-plan requires --operator-prompt or --prompt-file with non-empty content.",
+          );
+        }
+        if (planText.length === 0) {
+          throw new Error("from-build-plan requires --plan-text or --plan-file with non-empty content.");
+        }
+        const now = options?.clock !== undefined ? options.clock() : new Date();
+        const title = cmdOpts.title && cmdOpts.title.length > 0 ? cmdOpts.title : slugArg;
+        const owner = cmdOpts.owner ?? "intake-analyst";
+        const featureId = cmdOpts.featureId ?? slugArg;
+        const fileText = buildBuildPlanIntakeMarkdown({
+          title,
+          featureId,
+          owner,
+          createdIso: now.toISOString(),
+          operatorPrompt,
+          planText,
+        });
+        const created = await createIntakeDirective({
+          repoRoot,
+          slug: slugArg,
+          now,
+          fileText,
+        });
+        emit(writeOut, repoRoot, {
+          command: "intake from-build-plan",
+          status: "ok",
+          path: created.path,
+          slug: slugArg,
+        });
       },
     );
 

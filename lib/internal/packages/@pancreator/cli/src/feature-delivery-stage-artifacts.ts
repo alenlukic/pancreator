@@ -3,6 +3,8 @@ import { resolveRepoPath } from "@pancreator/core";
 import path from "node:path";
 import { existsSync } from "node:fs";
 
+import { OPERATOR_VERIFICATION_FILENAME, validateOperatorVerificationMarkdown } from "./operator-verification.js";
+
 /** Minimal state slice for artifact path resolution without importing feature-delivery-run. */
 export interface FeatureDeliveryArtifactState {
   featureId: string;
@@ -53,12 +55,7 @@ const STAGE_IDS = [
 
 export type FeatureDeliveryStageId = (typeof STAGE_IDS)[number];
 
-const POLICY_COMPLIANCE_REQUIRED_KEYS = [
-  "task_id",
-  "governing_sources_checked",
-  "documentation_impact",
-  "policy_alignment",
-] as const;
+const SHIP_RATIFICATION_REQUIRED_KEYS = ["task_id", "human_ratified_diff"] as const;
 
 export const COMPLIANCE_STAGE_EXIT_COMMANDS = [
   "pnpm lint",
@@ -293,23 +290,30 @@ function validateArtifactContent(
     return null;
   }
 
-  if (base === "policy-compliance.json") {
+  if (base === "ship-ratification.json") {
     try {
       const parsed = JSON.parse(content) as Record<string, unknown>;
-      for (const key of POLICY_COMPLIANCE_REQUIRED_KEYS) {
+      for (const key of SHIP_RATIFICATION_REQUIRED_KEYS) {
         if (!(key in parsed)) {
           return {
             path: rel,
-            code: "policy_compliance_missing_key",
-            message: `policy-compliance.json must include top-level key ${key}`,
+            code: "ship_ratification_missing_key",
+            message: `ship-ratification.json must include top-level key ${key}`,
           };
         }
+      }
+      if (parsed.human_ratified_diff !== true) {
+        return {
+          path: rel,
+          code: "ship_ratification_not_ratified",
+          message: "ship-ratification.json must set human_ratified_diff to true",
+        };
       }
     } catch {
       return {
         path: rel,
-        code: "policy_compliance_invalid_json",
-        message: "policy-compliance.json must parse as JSON",
+        code: "ship_ratification_invalid_json",
+        message: "ship-ratification.json must parse as JSON",
       };
     }
     return null;
@@ -329,6 +333,18 @@ function validateArtifactContent(
         path: rel,
         code: "compliance_final_gate_missing",
         message: "compliance-result.json must include final_gate results for the compliance exit bundle",
+      };
+    }
+    return null;
+  }
+
+  if (base === OPERATOR_VERIFICATION_FILENAME) {
+    const shape = validateOperatorVerificationMarkdown(content);
+    if (!shape.ok) {
+      return {
+        path: rel,
+        code: "operator_verification_shape",
+        message: shape.warnings.join("; "),
       };
     }
     return null;
@@ -440,11 +456,11 @@ export function stageArtifactContract(
       };
     }
     case "ship": {
-      const policy = path.posix.join(run, "policy-compliance.json");
+      const ratification = path.posix.join(run, "ship-ratification.json");
       return {
-        primaryArtifact: policy,
-        requiredAfterStageWork: [policy],
-        acceptedAdvanceArtifacts: [policy],
+        primaryArtifact: ratification,
+        requiredAfterStageWork: [ratification],
+        acceptedAdvanceArtifacts: [ratification],
       };
     }
     case "index": {
@@ -480,7 +496,8 @@ const CONTENT_VALIDATED_BASENAMES = new Set([
   "review.md",
   "test-report.md",
   "compliance-result.json",
-  "policy-compliance.json",
+  "ship-ratification.json",
+  OPERATOR_VERIFICATION_FILENAME,
 ]);
 
 export function validateStageCompletionArtifacts(

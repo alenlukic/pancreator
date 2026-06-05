@@ -152,7 +152,7 @@ test("rewriteJsonText keeps compact primitive arrays on one line", () => {
 });
 
 test("isGitignoredRelPath skips transient work/ JSON from repo scans", () => {
-  assert.equal(isGitignoredRelPath(ROOT, "work/example/policy-compliance.json"), true);
+  assert.equal(isGitignoredRelPath(ROOT, "work/example/ship-ratification.json"), true);
   assert.equal(isGitignoredRelPath(ROOT, "lib/memory/active/current.md"), false);
 });
 
@@ -162,7 +162,7 @@ test("formatJsonFileInPlace canonicalizes JSON.stringify-style policy artifacts"
   const prev = process.env[key];
   process.env[key] = "7";
   try {
-    const rel = "data/policy-compliance.json";
+    const rel = "data/ship-ratification.json";
     const abs = path.join(tmp, rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(

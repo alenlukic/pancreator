@@ -41,7 +41,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
+    "source_inbox_item": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
@@ -127,7 +127,8 @@
       "path": "lib/memory/features/token-economy-calibration-hardening/delivery-report.md",
       "range": [1, 367],
       "contentHash": "820026c"
-    }
+    },
+    "archived_inbox_source": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
@@ -422,7 +423,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
+        "path": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
@@ -445,7 +446,9 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/."
-  }
+    "path": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
+    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md"
+  },
+  "archived_inbox_source": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md"
 }

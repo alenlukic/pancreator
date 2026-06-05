@@ -4,11 +4,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { operatorVerificationRel } from "./operator-verification.js";
+
 export const PIPELINE_CLOSE_FILENAME = "pipeline-close.md";
 
 export interface PipelineCloseAdvanceEntry {
   atIso: string;
-  kind: "advance" | "repair" | "close";
+  kind: "advance" | "repair" | "close" | "reopen";
   from: string;
   to: string;
   event: string;
@@ -69,6 +71,7 @@ export function renderPipelineCloseDoc(
 ): string {
   const deliveryReportRel = path.posix.join("lib", "memory", "features", state.featureId, "delivery-report.md");
   const indexRel = path.posix.join("lib", "memory", "features", state.featureId, "index.json");
+  const verificationRel = operatorVerificationRel(state);
   const residual: string[] = [];
 
   if (state.status === "halted") {
@@ -112,7 +115,8 @@ ${residualSection}
 
 ## Operator next steps
 
-- Read-only: inspect \`${deliveryReportRel}\`, \`${indexRel}\`, and the local diff.
+- Read-only: inspect \`${deliveryReportRel}\`, \`${indexRel}\`, \`${verificationRel}\`, and the local diff.
+- Read-only: execute acceptance criteria and manual test flows in \`${verificationRel}\` before archival when possible; reopen with \`pnpm -w exec pan reopen ${state.taskId}\` when verification fails after close.
 - Read-only: review this file and update residual issues or next steps before archival when needed.
 - When satisfied, run exactly once:
 

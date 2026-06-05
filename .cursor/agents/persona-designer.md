@@ -1,7 +1,7 @@
 ---
 name: persona-designer
 description: "Canonical `persona-designer` subagent projection for persona-owned pipeline stages."
-model: claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]
+model: auto
 permissionMode: default
 mcpServers:
   - pancreator-memory

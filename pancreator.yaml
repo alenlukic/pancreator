@@ -1,26 +1,6 @@
-# Bootstrap repo policy and live tracking state.
-# `project_root: "."` is the self-hosting value: this harness is embedded in
-# the same repository it is currently developing.
+# Live workspace policy.
+# `project_root: "."` — harness and target project share the same repository root.
 project_root: "."
-
-bootstrap:
-  phase: "5"
-  status: m1-ratified
-  completed_phases: ["-1", "0", "1", "2", "3", "4", "5"]
-  placeholder: false
-  enforced_today: false
-  current_focus: "M1 bootstrap ratified 2026-05-31 (human GO recorded). xeremia-sandbox US-9 PoC and embedded-install AC8 SDK smoke passed without operator workarounds. M2 planning opens via inbox."
-  note: "Bootstrap Phase 4 ratified 2026-05-19. M1 ratified 2026-05-31 per m1-closure-ratification-request.md (GO). US-9 greenfield evidence evaluator pass on xeremia-sandbox, embedded harness + cursor-sync/init seeding shipped, SDK feature-delivery validated on external target. Phoenix trace verification remains deferred per us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md."
-  evidence:
-    - docs/BOOTSTRAP.md Phase 5 exit criterion satisfied; M1 ratified 2026-05-31.
-    - lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md is the M1 closure ratification packet.
-    - lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json and xeremia-greenfield-evidence-evaluator.json record US-9 adopt pass on xeremia-sandbox.
-    - lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-ac8-smoke-evidence.json records AC8 SDK restart without rsync, bridge script, or hand-authored inbox paths.
-    - lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json records embedded install manifest and project_root wiring.
-    - lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json records cursor-sync, init seeding, and inbox path fixes.
-    - lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md records Phase 4 dogfood exit evidence.
-    - lib/internal/packages/@pancreator/** contains the Phase 3 substrate package implementations.
-    - lib/pipelines/*.yaml contains the five MVP pipeline definitions.
 
 risk_tier: medium
 threshold_policy: defaults.medium  # from pancreator-defaults.yaml
@@ -47,8 +27,7 @@ commands:
   build: "npm run build"
   lint: "npm run lint"
 
-# Minimal override shape for bootstrap:
-# keep empty unless a local bootstrap experiment needs an explicit override.
+# Minimal override shape: keep empty unless a local experiment needs an explicit override.
 overrides:
   gates: {}
   gates_on_failure: {}
