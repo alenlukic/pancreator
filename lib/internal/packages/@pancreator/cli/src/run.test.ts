@@ -13,13 +13,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   advanceFeatureDelivery,
   startFeatureDelivery,
-  panDoctorCheckRegistry,
+  panCheckRegistry,
   resolveNextStep,
   type FeatureDeliveryState,
-  type PanDoctorResult,
+  type PanCheckResult,
 } from "./feature-delivery-run.js";
 import {
   formatPanText,
+  makeUtcDayBucket,
   parseAndRun,
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
   PAN_DEFERRED_EXIT_CODE,
@@ -95,12 +96,10 @@ function mockSdkTransport(onInvoke?: () => void): CursorSdkTransport {
         },
       });
     }
-    if (base === "policy-compliance.json") {
+    if (base === "ship-ratification.json") {
       return stringifyCliJson(repoRoot, {
         task_id: "mock-task",
-        governing_sources_checked: ["AGENTS.md"],
-        documentation_impact: { status: "none" },
-        policy_alignment: { status: "aligned" },
+        human_ratified_diff: true,
       });
     }
     return "mock-artifact\n";
@@ -244,17 +243,15 @@ async function completeFeatureDeliveryRunForClose(
     repoRoot: root,
     writeOut: () => undefined,
   });
-  await writeFile(
-    path.join(activeRunDir, "policy-compliance.json"),
-    stringifyCliJson(root, {
-      task_id: taskId,
-      governing_sources_checked: ["AGENTS.md"],
-      documentation_impact: { status: "none" },
-      policy_alignment: { status: "aligned" },
-    }),
-    "utf8",
-  );
-  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/policy-compliance.json`], {
+    await writeFile(
+      path.join(activeRunDir, "ship-ratification.json"),
+      stringifyCliJson(root, {
+        task_id: taskId,
+        human_ratified_diff: true,
+      }),
+      "utf8",
+    );
+  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -779,13 +776,14 @@ describe("parseAndRun", () => {
     expect(text).toContain("nextCommand: pnpm -w exec pan advance");
   });
 
-  it("AC-P8: pan doctor check registry and text summary list pass/fail counts", () => {
-    const registry = panDoctorCheckRegistry();
+  it("AC-P8: pan check registry and text summary list pass/fail counts", () => {
+    const registry = panCheckRegistry();
+    expect(registry).toContain("work-archive-hygiene");
     expect(registry).toContain("shipped-ledger-cap");
     expect(registry).toContain("cursorindexingignore");
 
-    const sample: PanDoctorResult = {
-      command: "doctor",
+    const sample: PanCheckResult = {
+      command: "check",
       status: "fail",
       passCount: 2,
       failCount: 1,
@@ -809,13 +807,13 @@ describe("parseAndRun", () => {
       ],
     };
     const text = formatPanText(sample);
-    expect(text).toContain("doctor: fail (pass=2 fail=1 skip=0)");
+    expect(text).toContain("check: fail (pass=2 fail=1 skip=0)");
     expect(text).toContain("PASS shipped-ledger-cap:");
     expect(text).toContain("FAIL cursorindexingignore:");
   });
 
-  it("pan doctor fails when .cursorindexingignore is missing", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "pan-doctor-ignore-"));
+  it("pan check fails when .cursorindexingignore is missing", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-check-ignore-"));
     await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
     await writeFile(
       path.join(root, "lib", "memory", "active", "current.md"),
@@ -823,19 +821,42 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const out: string[] = [];
-    const code = await parseAndRun(["doctor", "--format", "json"], {
+    const code = await parseAndRun(["check", "--format", "json"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
     });
     expect(code).toBe(1);
-    const result = JSON.parse(out.join("")) as PanDoctorResult;
-    expect(result.command).toBe("doctor");
+    const result = JSON.parse(out.join("")) as PanCheckResult;
+    expect(result.command).toBe("check");
     const ignoreCheck = result.checks.find((c) => c.id === "cursorindexingignore");
     expect(ignoreCheck?.status).toBe("fail");
     expect(result.checks.some((c) => c.id === "shipped-ledger-cap")).toBe(true);
     expect(result.passCount).toBeGreaterThanOrEqual(0);
     expect(result.failCount).toBeGreaterThanOrEqual(1);
     expect(result.passCount + result.failCount + result.skipCount).toBe(result.checks.length);
+  });
+
+  it("pan doctor alias warns and returns check envelope", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-doctor-alias-"));
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      "## Most recent shipped Features\n\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+      "utf8",
+    );
+    await writeFile(path.join(root, ".cursorindexingignore"), "work/**\n", "utf8");
+    const err: string[] = [];
+    const out: string[] = [];
+    const code = await parseAndRun(["doctor", "--format", "json"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      writeErr: (c) => err.push(c),
+    });
+    expect(err.join("")).toContain("pan doctor is deprecated");
+    expect(code).not.toBe(0);
+    const result = JSON.parse(out.join("")) as PanCheckResult;
+    expect(result.command).toBe("check");
+    expect(result.failCount).toBeGreaterThan(0);
   });
 
   it("accepts inbox entries as lib/inbox/in/... or bucket-relative paths", async () => {
@@ -1221,16 +1242,14 @@ describe("parseAndRun", () => {
     });
 
     await writeFile(
-      path.join(runDir, "policy-compliance.json"),
+      path.join(runDir, "ship-ratification.json"),
       stringifyCliJson(root, {
         task_id: start.taskId,
-        governing_sources_checked: ["AGENTS.md"],
-        documentation_impact: { status: "none" },
-        policy_alignment: { status: "aligned" },
+        human_ratified_diff: true,
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/policy-compliance.json`], {
+    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/ship-ratification.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1318,16 +1337,14 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
     await writeFile(
-      path.join(activeRunDir, "policy-compliance.json"),
+      path.join(activeRunDir, "ship-ratification.json"),
       stringifyCliJson(root, {
         task_id: start.taskId,
-        governing_sources_checked: ["AGENTS.md"],
-        documentation_impact: { status: "none" },
-        policy_alignment: { status: "aligned" },
+        human_ratified_diff: true,
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/policy-compliance.json`], {
+    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1479,6 +1496,74 @@ describe("parseAndRun", () => {
     expect(statusTextOut.join("")).toContain("2026-05-10 13:15 UTC");
   });
 
+  it("close-artifacts rejects missing operator-verification.md", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-close-missing-verification-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    await completeFeatureDeliveryRunForClose(root, start.taskId, "demo-feature", "172996_05-10-26");
+    const activeRunDirRel = `work/172996_05-10-26/${start.taskId}`;
+    await (await import("node:fs/promises")).unlink(path.join(root, activeRunDirRel, "operator-verification.md"));
+
+    const closeOut: string[] = [];
+    const code = await parseAndRun(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => closeOut.push(c),
+      writeErr: (c) => closeOut.push(c),
+    });
+    expect(code).toBe(1);
+    expect(closeOut.join("")).toContain("operator-verification.md");
+  });
+
+  it("reopen unarchives a closed feature-delivery run to intake", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-reopen-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await parseAndRun(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    const dayDir = "172996_05-10-26";
+    await completeFeatureDeliveryRunForClose(root, start.taskId, "demo-feature", dayDir);
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      "# Current focus\n\n## Active Feature\n\n- `(none)`\n\n## Most recent shipped Features\n\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n\n## Operator notes\n\n- `(none)`\n",
+      "utf8",
+    );
+    const closeCode = await parseAndRun(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    expect(closeCode).toBe(0);
+
+    const reopenOut: string[] = [];
+    const code = await parseAndRun(
+      ["reopen", start.taskId, "--reason", "Operator verification failed on flow one."],
+      { repoRoot: root, writeOut: (c) => reopenOut.push(c), writeErr: (c) => reopenOut.push(c) },
+    );
+    expect(code).toBe(0);
+    const reopened = JSON.parse(reopenOut.join("")) as {
+      pipelineStatus: string;
+      currentStage: string;
+      runDir: string;
+    };
+    expect(reopened.pipelineStatus).toBe("reopened");
+    expect(reopened.currentStage).toBe("intake");
+    expect(reopened.runDir).toBe(`work/${dayDir}/${start.taskId}`);
+    expect(existsSync(path.join(root, reopened.runDir, "state.json"))).toBe(true);
+    expect(existsSync(path.join(root, "archive", "work", dayDir, start.taskId))).toBe(false);
+  });
+
   it("report advance rejects JS-literal delivery-report citations", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-report-citation-lint-"));
     await seedFeatureDeliveryRepo(root);
@@ -1616,16 +1701,16 @@ describe("parseAndRun", () => {
     const complianceAdvance = JSON.parse(complianceAdvanceOut.join("")) as { currentStage: string };
     expect(complianceAdvance.currentStage).toBe("ship");
 
-    await writeFile(path.join(runDir, "policy-compliance.json"), "{}\n", "utf8");
+    await writeFile(path.join(runDir, "ship-ratification.json"), "{}\n", "utf8");
     const shipAdvanceOut: string[] = [];
     const shipCode = await parseAndRun(
-      ["advance", start.taskId, "--artifact", `${runDirRel}/policy-compliance.json`],
+      ["advance", start.taskId, "--artifact", `${runDirRel}/ship-ratification.json`],
       { repoRoot: root, writeOut: (c) => shipAdvanceOut.push(c), writeErr: () => undefined },
     );
     expect(shipCode).toBe(1);
     const shipFailure = JSON.parse(shipAdvanceOut.join("")) as { message: string };
     expect(shipFailure.message).toContain("Cannot advance ship");
-    expect(shipFailure.message).toContain("policy_compliance_missing_key");
+    expect(shipFailure.message).toContain("ship_ratification_missing_key");
   });
 
   it("close-artifacts finalizes a prematurely archived run idempotently", async () => {
@@ -1914,19 +1999,6 @@ describe("operator tooling batch cli wiring", () => {
     }
   });
 
-  function makeUtcDayBucket(now: Date): string {
-    const FDS_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
-    const y = now.getUTCFullYear();
-    const m = now.getUTCMonth();
-    const d = now.getUTCDate();
-    const dayStart = Date.UTC(y, m, d, 0, 0, 0, 0);
-    const daysToFds = Math.floor((FDS_MS - dayStart) / 86400000);
-    const mm = String(m + 1).padStart(2, "0");
-    const dd = String(d).padStart(2, "0");
-    const yy = String(y % 100).padStart(2, "0");
-    return `${daysToFds}_${mm}-${dd}-${yy}`;
-  }
-
   const emptyShippedInner =
     `\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n` +
     "|---|---|---|---|---|\n" +
@@ -2073,17 +2145,25 @@ describe("operator tooling batch cli wiring", () => {
     expect(freshPath).toMatch(/\/86400_0000_new-day\.md$/);
   });
 
-  it("refuses pan intake new when archived and active buckets collide", async () => {
+  it("writes pan intake new when archived and active day buckets coexist", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-intake-archive-"));
     await seedMinimalWorkspace(root);
     const bucket = makeUtcDayBucket(new Date(Date.UTC(2026, 1, 2, 9, 0, 0)));
     await mkdir(path.join(root, "lib", "inbox", "in", bucket), { recursive: true });
     await mkdir(path.join(root, "archive", "inbox", "in", bucket), { recursive: true });
+    const out: string[] = [];
     const code = await parseAndRun(
-      ["intake", "new", "zzz"],
-      { repoRoot: root, clock: () => new Date(Date.UTC(2026, 1, 2, 9, 0, 0)), writeOut: () => {}, writeErr: () => {} },
+      ["intake", "new", "coexist-slug"],
+      {
+        repoRoot: root,
+        clock: () => new Date(Date.UTC(2026, 1, 2, 9, 0, 0)),
+        writeOut: (c) => out.push(c),
+      },
     );
-    expect(code).toBe(1);
+    expect(code).toBe(0);
+    const msg = JSON.parse(out.join("")) as { status: string; path: string };
+    expect(msg.status).toBe("ok");
+    expect(existsSync(path.join(root, msg.path))).toBe(true);
   });
 
   it("hydrates pan intake new bodies from handbook contract templates when requested", async () => {
@@ -2103,6 +2183,37 @@ describe("operator tooling batch cli wiring", () => {
     );
     const payload = JSON.parse(out.join("")) as { path: string };
     expect(await readFile(path.join(root, payload.path), "utf8")).toContain("## Custom body");
+  });
+
+  it("writes pan intake from-build-plan with operator prompt and plan snapshot", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-intake-build-plan-"));
+    await seedMinimalWorkspace(root);
+    const out: string[] = [];
+    await parseAndRun(
+      [
+        "intake",
+        "from-build-plan",
+        "build-mode-inbox",
+        "--title",
+        "Build-mode inbox scaffolding",
+        "--operator-prompt",
+        "implement build-mode inbox auto-create",
+        "--plan-text",
+        "## Plan\n\n1. CLI\n2. AGENTS.md",
+      ],
+      {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date(Date.UTC(2026, 5, 4, 10, 15, 0)),
+      },
+    );
+    const payload = JSON.parse(out.join("")) as { command: string; path: string; status: string };
+    expect(payload.status).toBe("ok");
+    expect(payload.command).toBe("intake from-build-plan");
+    const body = await readFile(path.join(root, payload.path), "utf8");
+    expect(body).toContain("source_channel: cursor-build-mode");
+    expect(body).toContain("implement build-mode inbox auto-create");
+    expect(body).toContain("## Plan snapshot");
   });
 
   it("refresh-active-memory derives Archived source from indexed feature lineage", async () => {
@@ -2410,7 +2521,7 @@ describe("operator tooling batch cli wiring", () => {
           case "compliance":
             return `${runDir}/compliance-result.json`;
           case "ship":
-            return `${runDir}/policy-compliance.json`;
+            return `${runDir}/ship-ratification.json`;
           case "index":
             return `lib/memory/features/${featureId}/index.json`;
           default:

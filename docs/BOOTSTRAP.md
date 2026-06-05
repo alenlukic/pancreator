@@ -1,14 +1,14 @@
 # Pancreator Bootstrap Sequence
 
 > **Status — bootstrap complete (historical record).** All phases (−1 through 5)
-> are closed. M1 was ratified 2026-05-31 (human GO recorded). `pancreator.yaml`
-> tracks `bootstrap.phase: "5"`, `status: m1-ratified`,
-> `completed_phases: ["-1", "0", "1", "2", "3", "4", "5"]`; M2 planning opens via
-> inbox. This document is retained as the canonical, replayable phase record that
-> the `Bootstrap-Phase: <N>` commit trailer and `pan re-adopt` lineage depend on;
-> it is no longer an active work plan. For current routing read `docs/M1.index.md`,
-> and for live state read `pancreator.yaml`. The phase sections below are preserved
-> verbatim as the historical sequence; only this banner reflects post-close status.
+> are closed. M1 was ratified 2026-05-31 (human GO recorded). M2 planning opens
+> via inbox. This document is retained as the canonical, replayable phase record
+> that the `Bootstrap-Phase: <N>` commit trailer and `pan re-adopt` lineage
+> depend on; it is no longer an active work plan. For current routing read
+> `docs/M1.index.md`, `lib/memory/active/current.md`, and inbox. Closed-phase
+> evidence lives under `lib/memory/features/bootstrap-phase-*`. The phase
+> sections below are preserved verbatim as the historical sequence; only this
+> banner reflects post-close status.
 
 > **Intent.** Carry Pancreator from a bare git repo to a self-hosting Delivery Pipeline that
 > implements the rest of M1 under its own Contracts + Personas + Pipelines. Each phase
@@ -264,8 +264,9 @@ Outputs: a single staged PR with delivery report = the empirical proof Pancreato
 xeremia-sandbox US-9 greenfield pass, AC8 SDK smoke, embedded-install fixes.
 Ratification record:
 `lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md`
-(GO, 2026-05-31). Live status: `pancreator.yaml` → `m1-ratified`. M2 planning
-opens via inbox. Phoenix trace verification remains deferred.
+(GO, 2026-05-31). M2 planning opens via inbox. Phoenix trace verification
+remains deferred. Closed-phase evidence lives under
+`lib/memory/features/bootstrap-phase-*`; live routing uses inbox and active memory.
 
 The Delivery Pipeline now implements its own remaining M1 deliverables. From this
 point forward Pancreator is dogfooding itself; humans only act at the gates Q3 / risk

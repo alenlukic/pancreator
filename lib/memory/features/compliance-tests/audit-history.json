@@ -1,8 +1,149 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-04T09:40:30.279Z",
+  "generated_at": "2026-06-04T20:45:00.000Z",
   "entries": [
+    {
+      "audit_id": "80200_1640_retire-governed-commit-20260604204500",
+      "task_id": "80200_1640_retire-governed-commit",
+      "feature_id": "retire-governed-commit",
+      "recorded_at": "2026-06-04T20:45:00.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "53589_0906_sampled-token-audit-20260604000000",
+      "artifact_paths": {
+        "compliance_result": "work/172971_06-04-26/80200_1640_retire-governed-commit/compliance-result.json",
+        "compliance_audit": "work/172971_06-04-26/80200_1640_retire-governed-commit/compliance-audit.md",
+        "run_dir": "work/172971_06-04-26/80200_1640_retire-governed-commit"
+      },
+      "scope_snapshot": [
+        {
+          "path": "work/172971_06-04-26/80200_1640_retire-governed-commit/compliance-audit.md",
+          "exists": true,
+          "sha256": "0e88c64",
+          "size_bytes": 7313
+        },
+        {
+          "path": "work/172971_06-04-26/80200_1640_retire-governed-commit/compliance-result.json",
+          "exists": true,
+          "sha256": "afba305",
+          "size_bytes": 5293
+        },
+        {
+          "path": "AGENTS.md",
+          "exists": true,
+          "sha256": "9a785bd",
+          "size_bytes": 24815
+        },
+        {
+          "path": ".cursor/hooks.json",
+          "exists": true,
+          "sha256": "db32849",
+          "size_bytes": 68
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.ts",
+          "exists": true,
+          "sha256": "be96e41",
+          "size_bytes": 17911
+        }
+      ],
+      "delta_summary": {
+        "added": 0,
+        "removed": 2,
+        "modified": 18,
+        "changed_paths": [
+          ".cursor/hooks.json",
+          ".cursor/hooks/enforce-policy-compliance.sh",
+          "AGENTS.md",
+          "OPERATION.md",
+          "docs/M1.index.md",
+          "docs/PRD.summary.md",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
+          "lib/internal/packages/@pancreator/cli/src/run.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/run.ts",
+          "lib/memory/backlog/index.yaml",
+          "lib/memory/handbook/documentation-impact-contract.md",
+          "lib/memory/handbook/context-economy.md",
+          "lib/memory/handbook/index.md",
+          "lib/memory/handbook/operator-output-contract.md",
+          "lib/memory/handbook/policy-compliance-contract.md",
+          "lib/personas/compliance-auditor.md",
+          "lib/personas/pr-writer.md",
+          "tests/migrate-json-formatting.test.mjs",
+          "tests/repo-structure.test.mjs"
+        ]
+      },
+      "findings_summary": {
+        "total": 3,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 3
+      }
+    },
+    {
+      "audit_id": "74800_1800_broad-sweep-operator-verification-delta-20260604183000",
+      "task_id": "74800_1800_broad-sweep-operator-verification-delta",
+      "feature_id": "operator-verification-and-reopen",
+      "recorded_at": "2026-06-04T18:30:00.000Z",
+      "stage_status": "failed",
+      "baseline_audit_id": "53589_0906_sampled-token-audit-20260604000000",
+      "artifact_paths": {
+        "compliance_result": "work/172971_06-04-26/74800_1800_broad-sweep-operator-verification-delta/compliance-result.json",
+        "compliance_audit": "work/172971_06-04-26/74800_1800_broad-sweep-operator-verification-delta/compliance-audit.md",
+        "run_dir": "work/172971_06-04-26/74800_1800_broad-sweep-operator-verification-delta"
+      },
+      "scope_snapshot": [
+        {
+          "path": "work/172971_06-04-26/74800_1800_broad-sweep-operator-verification-delta/compliance-audit.md",
+          "exists": true,
+          "sha256": "9797610",
+          "size_bytes": 8259
+        },
+        {
+          "path": "lib/memory/features/operator-verification-and-reopen/spec.md",
+          "exists": true,
+          "sha256": "424e036",
+          "size_bytes": 1542
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/operator-verification.ts",
+          "exists": true,
+          "sha256": "5769469",
+          "size_bytes": 6530
+        },
+        {
+          "path": "AGENTS.md",
+          "exists": true,
+          "sha256": "e5e7bb9",
+          "size_bytes": 24975
+        }
+      ],
+      "delta_summary": {
+        "added": 11,
+        "removed": 1,
+        "modified": 51,
+        "changed_paths": [
+          "lib/internal/packages/@pancreator/cli/src/operator-verification.ts",
+          "lib/internal/packages/@pancreator/cli/src/close-out-of-band.ts",
+          "lib/internal/packages/@pancreator/cli/src/reopen-feature-delivery.ts",
+          "lib/memory/features/operator-verification-and-reopen/spec.md",
+          "lib/memory/handbook/contract-templates/operator-verification.template.md",
+          "AGENTS.md",
+          "OPERATION.md",
+          "lib/pipelines/feature-delivery.yaml"
+        ]
+      },
+      "findings_summary": {
+        "total": 5,
+        "block": 1,
+        "major": 0,
+        "minor": 1,
+        "note": 3
+      }
+    },
     {
       "audit_id": "53589_0906_sampled-token-audit-20260604000000",
       "task_id": "53589_0906_sampled-token-audit",
@@ -11,8 +152,8 @@
       "stage_status": "passed",
       "baseline_audit_id": "18834_1846_token-economy-prototype-20260603000000",
       "artifact_paths": {
-        "compliance_result": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
-        "run_dir": "work/172971_06-04-26/53589_0906_sampled-token-audit"
+        "compliance_result": "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+        "run_dir": "archive/work/172971_06-04-26/53589_0906_sampled-token-audit"
       },
       "scope_snapshot": [
         {
@@ -34,25 +175,25 @@
           "size_bytes": 10478
         },
         {
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
+          "path": "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
           "exists": true,
           "sha256": "de13d6c",
           "size_bytes": 4152
         },
         {
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+          "path": "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
           "exists": true,
           "sha256": "db3270f",
           "size_bytes": 6624
         },
         {
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+          "path": "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
           "exists": true,
           "sha256": "6cc059b",
           "size_bytes": 5419
         },
         {
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
+          "path": "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
           "exists": true,
           "sha256": "695727e",
           "size_bytes": 9094
@@ -66,10 +207,10 @@
           "AGENTS.md",
           "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/compliance-result.json",
           "lib/memory/features/sampled-token-audit/delivery-report.md",
-          "work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
-          "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
-          "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
-          "work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json"
+          "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
+          "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+          "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+          "archive/work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json"
         ]
       },
       "findings_summary": {

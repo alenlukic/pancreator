@@ -47,7 +47,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
+    "source_inbox_item": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
@@ -135,7 +135,8 @@
       "path": "lib/memory/features/sampled-token-audit/delivery-report.md",
       "range": [1, 396],
       "contentHash": "edd5c25"
-    }
+    },
+    "archived_inbox_source": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
@@ -452,7 +453,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
+        "path": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
@@ -475,7 +476,9 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/."
-  }
+    "path": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
+    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md"
+  },
+  "archived_inbox_source": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md"
 }

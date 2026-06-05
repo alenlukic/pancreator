@@ -7,13 +7,13 @@ personas, pipeline stages, durable memory, inbox workflow, and the `pan` CLI.
 This repository is the operating surface for running and hardening that loop in
 real projects, not a frontend or design-skill showcase.
 
-[Status](#current-status) · [Operator guide](OPERATION.md) · [AGENTS](AGENTS.md) · [Bootstrap](docs/BOOTSTRAP.md) · [PRD](docs/PRD.summary.md)
+[Operator guide](OPERATION.md) · [AGENTS](AGENTS.md) · [PRD](docs/PRD.summary.md)
 
 ## System overview
 
 | Area | Path | Role |
 |---|---|---|
-| Operating contract | `AGENTS.md` | Cross-tool rules, routing, bootstrap status |
+| Operating contract | `AGENTS.md` | Cross-tool rules and routing |
 | Operator how-to | `OPERATION.md` | Inbox, feature-delivery loop, CLI, validation |
 | Personas | `lib/personas/` | Agent roles and constraints |
 | Skills | `lib/personas/skills/` | Reusable procedures |
@@ -24,9 +24,9 @@ real projects, not a frontend or design-skill showcase.
 
 ## Key paths
 
-- `pancreator.yaml` — live policy and bootstrap phase (`lib/memory/handbook/pancreator-config.md`)
-- `docs/M1.index.md` — compact M1/bootstrap route map
-- `docs/BOOTSTRAP.md` — full phase plan and exit criteria
+- `pancreator.yaml` — live policy and `project_root` (`lib/memory/handbook/pancreator-config.md`)
+- `docs/M1.index.md` — compact product route map
+- `docs/BOOTSTRAP.md` — historical phase record (explicit-read when replaying closed phases)
 - `docs/PRD.summary.md` / `docs/PRD.index.md` — compact PRD routing
 - `docs/PRD.md` — full product requirements
 - `lib/memory/active/current.md` — active-memory orientation
@@ -41,7 +41,6 @@ real projects, not a frontend or design-skill showcase.
 - [System architecture ADR](lib/memory/adr/0002-system-architecture-map.md)
 - [Backlog tracking ADR](lib/memory/adr/0001-backlog-tracking.md)
 - [M1 route map](docs/M1.index.md)
-- [Bootstrap plan](docs/BOOTSTRAP.md)
 - [PRD summary](docs/PRD.summary.md) · [PRD index](docs/PRD.index.md) · [Full PRD](docs/PRD.md)
 - [Operating contract](AGENTS.md)
 - [Operator how-to](OPERATION.md)

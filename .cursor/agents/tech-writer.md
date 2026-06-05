@@ -1,7 +1,7 @@
 ---
 name: tech-writer
 description: "Canonical `tech-writer` subagent projection for persona-owned pipeline stages."
-model: gpt-5.4-mini
+model: auto
 permissionMode: default
 mcpServers:
   - pancreator-memory

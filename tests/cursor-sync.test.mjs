@@ -26,9 +26,46 @@ function parseJsonStdout(stdout) {
   return JSON.parse(stdout.trim());
 }
 
+test("pan cursor-sync applies active escalation default models before agent projection", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cursor-sync-escalation-"));
+  await writeFile(path.join(root, "pancreator.yaml"), 'project_root: "."\n', "utf8");
+  const escalationYaml = await readFile(
+    path.join(REPO_ROOT, "pancreator-model-escalation.yaml"),
+    "utf8",
+  );
+  await writeFile(
+    path.join(root, "pancreator-model-escalation.yaml"),
+    escalationYaml.replace(/^active_config:\s*auto/mu, "active_config: default"),
+    "utf8",
+  );
+  const personaSrc = path.join(REPO_ROOT, "lib/personas/intake-analyst.md");
+  await mkdir(path.join(root, "lib/personas"), { recursive: true });
+  await cp(personaSrc, path.join(root, "lib/personas/intake-analyst.md"));
+  const beforePersona = await readFile(path.join(root, "lib/personas/intake-analyst.md"), "utf8");
+
+  const result = runPan(["cursor-sync"], root);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const payload = parseJsonStdout(result.stdout);
+  assert.equal(payload.activeEscalationConfig, "default");
+  assert.ok(payload.personaModelsSynced >= 1);
+  assert.ok(
+    payload.written.some((entry) => entry.path === "lib/personas/intake-analyst.md"),
+  );
+
+  const afterPersona = await readFile(path.join(root, "lib/personas/intake-analyst.md"), "utf8");
+  assert.notEqual(afterPersona, beforePersona);
+  assert.match(afterPersona, /model:\s*gpt-5\.4\[context=272k,reasoning=high,fast=false\]/u);
+  const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
+  assert.match(projection, /^model:\s*gpt-5\.4\[context=272k,reasoning=high,fast=false\]/m);
+});
+
 test("pan cursor-sync --dry-run emits envelope without writing files", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cursor-sync-dry-"));
   await writeFile(path.join(root, "pancreator.yaml"), 'project_root: "."\n', "utf8");
+  await cp(
+    path.join(REPO_ROOT, "pancreator-model-escalation.yaml"),
+    path.join(root, "pancreator-model-escalation.yaml"),
+  );
   await cp(path.join(REPO_ROOT, "lib/personas"), path.join(root, "lib/personas"), { recursive: true });
   await mkdir(path.join(root, ".cursor/agents"), { recursive: true });
   await writeFile(path.join(root, ".cursor/agents/.gitkeep"), "", "utf8");

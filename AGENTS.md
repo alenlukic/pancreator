@@ -6,11 +6,13 @@
 ## 1 — Repo identity
 
 Pancreator is a simulated product-org agentic Delivery Pipeline (personas,
-skills, pipelines, contracts). The repo is in **bootstrap**; see `docs/BOOTSTRAP.md`.
-Product requirements live in `docs/PRD.md`, but routine work SHOULD route through
+skills, pipelines, contracts). Runtime policy lives in `pancreator.yaml`
+(`project_root`, `runner`, `risk_tier`). Current work routes through inbox,
+`lib/memory/active/current.md`, and feature indexes per `AGENTS.md` §6. Product
+requirements live in `docs/PRD.md`, but routine work SHOULD route through
 `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md` first. Agents SHOULD read
 full `docs/PRD.md` or `docs/BOOTSTRAP.md` only when the task needs authoritative wording,
-phase-exit detail, citation repair, or line-anchored requirements per
+closed-phase replay detail, citation repair, or line-anchored requirements per
 `lib/memory/handbook/context-economy.md`.
 
 ## 2 — Routing map (canon and contracts)
@@ -26,21 +28,23 @@ language → `lib/memory/handbook/glossary.md`; persona YAML and Cursor projecti
 | Default AI context, indexing boundaries, explicit-read rules | `lib/memory/handbook/context-economy.md` |
 | Memory-tier taxonomy and tier rules | `lib/memory/handbook/memory-tiers.md` |
 | `simple task mode` | `lib/memory/handbook/context-economy.md` |
-| M1/bootstrap routing before full PRD/BOOTSTRAP reads | `docs/M1.index.md` |
+| M1 and product routing before full PRD/BOOTSTRAP reads | `docs/M1.index.md` |
 | Subagent invocation and model escalation | `lib/memory/handbook/context-economy.md` |
 | Current context cost audit | `lib/memory/handbook/context-cost-audit.md` |
-| `pancreator.yaml` phase and `project_root` config | `lib/memory/handbook/pancreator-config.md` |
+| `pancreator.yaml` runtime policy and `project_root` | `lib/memory/handbook/pancreator-config.md` |
 | Operator how-to (feature delivery, CLI, validation) | `OPERATION.md` |
 | `pan` CLI invocation (`pnpm -w exec pan`) | `lib/memory/handbook/pancreator-config.md` §“CLI invocation in this workspace” |
-| Feature-delivery SDK progress (CLI stderr + agent chat relay) | `OPERATION.md` § SDK mode; `AGENTS.md` §5 |
+| Feature-delivery SDK progress (CLI stderr + agent chat relay) | `AGENTS.md` §5 | `OPERATION.md` § SDK mode (operator TTY progress) |
 | Model and context escalation | `lib/memory/handbook/context-economy.md` |
 | Active-memory orientation | `lib/memory/active/current.md` |
 | Active-memory layout | `lib/memory/active/README.md` |
 | Active planning/execution handoff pointers | `lib/memory/active/handoffs.md` |
 | Post-task documentation impact | `lib/memory/handbook/documentation-impact-contract.md` |
-| Governed-commit policy compliance artifact | `lib/memory/handbook/policy-compliance-contract.md` |
+| Optional PR description drafting | `lib/personas/pr-writer.md` |
 | Inbox lifecycle and operator sandbox | `lib/memory/handbook/inbox-lifecycle.md` |
 | Operator completion output (next steps block) | `lib/memory/handbook/operator-output-contract.md` |
+| Operator verification pack at close | `lib/memory/handbook/contract-templates/operator-verification.template.md` |
+| Reopen closed tasks / ad-hoc close | `OPERATION.md` § Operator verification pack |
 | Layer 1 normative style | `lib/memory/handbook/contract-style.md` |
 | Clause wrapper schema | `lib/memory/handbook/contract-format.md` |
 | Run log schema | `lib/memory/handbook/run-log-schema.md` |
@@ -70,8 +74,8 @@ Both meta-personas are self-protected: no agent and no persona SHALL modify role
 semantics, authority boundaries, tool grants, or safety constraints unless
 explicit human ratification is recorded. Deterministic maintenance-only updates
 (for example `references[].contentHash` refreshes, citation range realignment,
-canonical or mirror parity sync) MAY proceed when policy-compliance and
-documentation-impact obligations are satisfied.
+canonical or mirror parity sync) MAY proceed when documentation-impact
+obligations are satisfied.
 
 ## 4 — Pipeline-step delegation rule
 
@@ -147,11 +151,42 @@ this section in your response.
   SHALL prefix the command with `PAN_FD_PROGRESS=ndjson`, monitor stderr for
   `"event":"feature_delivery_progress"` lines, and post a concise
   operator-visible chat update for each `stage_enter`, `stage_transition`,
-  `heartbeat`, and `stage_complete` event before the command finishes. Chat
-  updates MUST NOT paste raw NDJSON; they SHALL name `taskId`, `stageId`,
-  optional `persona`, elapsed time on heartbeats, and transition targets when
-  present. The agent SHALL parse stdout separately for the final JSON envelope.
-  See `OPERATION.md` § SDK mode "Agent chat relay".
+  `heartbeat`, and `stage_complete` event before the command finishes. The agent
+  SHALL treat **stderr** as progress-only and **stdout** as the final JSON
+  envelope. Chat updates MUST NOT paste raw NDJSON; they SHALL name `taskId`,
+  `stageId`, optional `persona`, elapsed time on heartbeats (from `elapsedMs`),
+  and transition targets (`fromStage`, `toStage`, `transitionEvent`) when
+  present. The agent SHALL monitor stderr while the command runs so heartbeats
+  (~every 2 minutes) surface in chat without waiting for the full run to finish.
+  Example chat lines:
+
+  | Progress `kind` | Chat update (example) |
+  |---|---|
+  | `stage_enter` | Feature-delivery `task-1`: entering `plan` (tech-lead) |
+  | `heartbeat` | Feature-delivery `task-1`: `plan` (tech-lead) still running — 4m 0s |
+  | `stage_complete` | Feature-delivery `task-1`: finished `plan` (tech-lead) in 6m 12s |
+  | `stage_transition` | Feature-delivery `task-1`: `plan` → `implement` (human_approval) |
+
+  Example invocation:
+
+  ```bash
+  PAN_FD_PROGRESS=ndjson pnpm -w exec pan run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
+  ```
+
+  Operators running the same commands in an interactive terminal receive
+  `[pan fd] …` text on stderr automatically; see `OPERATION.md` § SDK mode.
+- **Build-mode inbox scaffolding.** When an operator submits a net-new product or
+  pipeline request through Cursor Build mode (Agent composer mode) without naming
+  an existing `lib/inbox/in/` directive, the agent SHALL present a plan before
+  implementation edits. Upon plan completion and before the first repository edit
+  that implements the plan, the agent SHALL run
+  `pnpm -w exec pan intake from-build-plan <slug>` with `--title`,
+  `--operator-prompt`, and `--plan-text` (or `--prompt-file` / `--plan-file`
+  when shell-escaping is awkward). The agent SHALL choose `<slug>` as a lowercase
+  hyphenated feature id derived from the request title. When the operator named
+  an existing inbox path or an active `work/<day>/<task-id>/` run owns the work,
+  the agent SHALL NOT create a duplicate directive. When `simple task mode`
+  applies, the agent SHALL NOT create an inbox directive.
 - **Stage diffs locally; never push.** No agent SHALL run `git push` or
   `git commit --no-verify`. Persona `disallowedTools` enforces this; AGENTS.md
   restates it for out-of-band tooling.
@@ -206,11 +241,42 @@ this section in your response.
   use `pnpm -w exec pan <subcommand> …` from the repository root, not bare
   `pan …`. Prose MAY name the logical verb; copy-paste **How** clauses MUST
   use the prefix per `lib/memory/handbook/pancreator-config.md`.
-- **Policy-compliance artifact gate is mandatory for governed commits.** Tasks
-  that stage structural changes outside active run work SHALL stage
-  `/work/<day>/<task-id>/policy-compliance.json` per
-  `lib/memory/handbook/policy-compliance-contract.md`; commit-time hooks enforce
-  fail-closed behavior when the artifact is missing or invalid.
+- **Version control is operator-owned.** Pancreator does not enforce commit
+  gates, touch-set parity at commit time, or staged-file policy artifacts. The
+  single-operator harness MAY use `/pr-writer` to draft pull-request bodies from
+  feature-delivery artifacts and the current git worktree; that flow is optional.
+- **Librarian pre-close validation.** Before running
+  `pnpm -w exec pan close-artifacts <task-id>` or advising the operator to
+  close a feature-delivery run, the librarian (or any agent acting as closer)
+  SHALL execute these validation commands from the repository root and SHALL fix
+  bounded failures in the same session when policy allows:
+
+  ```bash
+  pnpm run build
+  pnpm lint
+  pnpm run lint:deps
+  pnpm typecheck
+  pnpm run attw
+  pnpm run publint
+  pnpm test
+  node --test tests/*.test.mjs
+  node lib/internal/tools/run-compliance.mjs
+  node lib/internal/tools/check-phase-0a-scaffold.mjs
+  node lib/internal/tools/context-budget-report.mjs
+  node lib/internal/tools/check-operator-output.mjs
+  ```
+
+  When a check fails for reasons outside the closing task touch-set, the closer
+  SHALL open or link a backlog item instead of expanding the close-artifacts
+  touch-set. The command list also appears in `OPERATION.md` § "Pre-close
+  validation checklist" for operators acting as closer.
+- **Operator verification at close.** Before `close-artifacts` or
+  `close-out-of-band`, the closing agent SHALL author or finalize
+  `operator-verification.md` with acceptance criteria and manual test flows per
+  `lib/memory/handbook/contract-templates/operator-verification.template.md`.
+  When post-close verification fails, operators SHALL use
+  `pnpm -w exec pan reopen <task-id> --reason "<text>"` optionally with
+  `--stage <stage>`.
 - **Stage exit criteria are non-negotiable.** This mirrors the PRD R-class
   circuit-breaker pattern; the bootstrap correctness ratchet is its own
   contract.
@@ -224,7 +290,7 @@ this section in your response.
 1. Read `lib/memory/active/current.md` for current pointers unless `simple task
    mode` applies. Operators and agents performing operator-facing work SHALL read
    `OPERATION.md` for inbox, feature-delivery, CLI, and pre-close validation
-   procedure. For M1/bootstrap routing, read `docs/M1.index.md` before full
+   procedure. For M1 and product routing, read `docs/M1.index.md` before full
    `docs/BOOTSTRAP.md`. Agents SHOULD skim `docs/PRD.summary.md` and `docs/PRD.index.md`
    before loading full `docs/PRD.md`.
 2. Check `/lib/inbox/in/` for directives (canonical queue every phase boundary).
@@ -248,7 +314,7 @@ this section in your response.
 
 6. Operators SHALL interpret `pan` JSON envelopes carrying `"status":"deferred"` as the canonical deferral protocol: each deferred verb exits **`125`** and documents `milestone`, `tracking_intake`, and `manual_workaround` in **`lib/internal/packages/@pancreator/cli/src/run.ts`**.
 7. Operators SHALL author new **`lib/inbox/in/<utc-day>/<sid_hhmm_slug>.md`** directives with **`pnpm -w exec pan intake new <slug>`**, keeping UTC bucket naming aligned with **`lib/memory/handbook/inbox-lifecycle.md`** and **`lib/memory/features/timestamp-naming-conventions/spec.md`**.
-8. Operators SHALL set **`lib/memory/active/current.md`** Active Feature bullets explicitly when work becomes active; the refresher SHALL NOT infer active work from the inbox queue. **`pnpm -w exec pan close-artifacts`** SHALL refresh shipped-feature rows and the managed operator-notes stamp and SHALL clear Active Feature to **`(none)`** when it matched the archived inbox source. Operators SHALL run **`pnpm -w exec pan refresh-active-memory [--dry-run]`** before other governed commits when those derived slices drift outside artifact closure (`lib/memory/features/*/index.json` remain the indexed source of truth).
+8. Operators SHALL set **`lib/memory/active/current.md`** Active Feature bullets explicitly when work becomes active; the refresher SHALL NOT infer active work from the inbox queue. **`pnpm -w exec pan close-artifacts`** SHALL refresh shipped-feature rows and the managed operator-notes stamp and SHALL clear Active Feature to **`(none)`** when it matched the archived inbox source. Operators MAY run **`pnpm -w exec pan refresh-active-memory [--dry-run]`** when derived active-memory slices drift outside artifact closure (`lib/memory/features/*/index.json` remain the indexed source of truth).
 
 ## 7 — Workspace map
 
@@ -282,31 +348,25 @@ this section in your response.
 /lib/internal/tools/                  validation and maintenance scripts
 /archive/work/           completed run artifacts; explicit-read only
 /.pan/{worktrees,sandboxes,scheduler}/  control-plane state
-/docs/                         high-level product and bootstrap documents
+/docs/                         high-level product documents
 /docs/README.md                  docs directory guide
 /docs/PRD.md                     product spec
-/docs/M1.index.md                 compact M1/bootstrap route map
-/docs/BOOTSTRAP.md                phase-by-phase bootstrap plan
-/pancreator.yaml                  live policy, bootstrap tracking, and project_root
-/pancreator-defaults.yaml         risk-tier defaults introduced during Phase 2
+/docs/M1.index.md                 compact product route map
+/docs/BOOTSTRAP.md                closed historical phase record
+/pancreator.yaml                  live policy and project_root
+/pancreator-defaults.yaml         risk-tier defaults
 ```
 
-## 8 — Bootstrap status (live)
+## 8 — Runtime defaults
 
-`pancreator.yaml` tracks the repo at Bootstrap Phase 5 with status
-`m1-ratified`. Phases -1 through 5 are complete for tracking purposes:
-scaffold, handbook seeds, persona roster, M1 substrate, static MVP pipelines,
-ratified US-1 dogfood exit, US-9 xeremia-sandbox PoC, and embedded-install
-operator-loop fixes. Human GO recorded 2026-05-31 in
-`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md`.
-M2 planning opens via inbox.
+`pancreator.yaml` holds live runtime policy: `project_root`, `runner`,
+`risk_tier`, and related knobs. It does not track closed bootstrap phase status;
+do not use bootstrap completion as a primary routing or behavior gate.
 
-The US-1 dogfood proof bundle was ratified on 2026-05-19. M1 bootstrap closure
-was ratified on 2026-05-31. xeremia-sandbox US-9 greenfield evidence passed
-in-repo evaluation on 2026-05-31; AC8 SDK smoke (task `69385_0443_us9-ac8-smoke`)
-confirmed feature-delivery restart without rsync, bridge script, or
-hand-authored inbox paths. Phoenix trace verification remains deferred per
-`lib/memory/features/us-1-dogfood-phase-4-exit/phoenix-trace-evidence.md`.
+Current work routes through inbox directives, `lib/memory/active/current.md`,
+and `lib/memory/features/*/index.json`. Closed bootstrap history lives in
+`docs/BOOTSTRAP.md` and ratification artifacts under
+`lib/memory/features/bootstrap-phase-*` for explicit replay only.
 
 When `runner.cursor.invocation: sdk` is set, `pnpm -w exec pan run` and
 `pnpm -w exec pan advance` invoke CursorRunner for the entering stage. Manual
@@ -319,6 +379,6 @@ files without changing state.
 
 ## 9 — Stability
 
-This file is bootstrap-canonical. Changes require an inbox item and human
-ratification. Promotion to `stability: stable` follows Phase 5 dogfood
+This file is the repository operating card. Changes require an inbox item and
+human ratification. Promotion to `stability: stable` follows Phase 5 dogfood
 validation.

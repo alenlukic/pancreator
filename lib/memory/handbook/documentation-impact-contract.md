@@ -33,7 +33,6 @@ references:
     note: "Backlog index schema defines required fields for deferred follow-up items."
 related:
   - /lib/memory/adr/0004-documentation-impact-contract.md
-  - /lib/memory/handbook/policy-compliance-contract.md
   - /lib/memory/backlog/index.yaml
   - /lib/memory/handbook/backlog-format.md
   - /AGENTS.md
@@ -103,10 +102,11 @@ documentation/reference surface changed and why no follow-up is required.
 
 ## 6 - Enforcement linkage
 
-This contract defines required decision content. Commit-time enforcement SHALL
-be routed through `/lib/memory/handbook/policy-compliance-contract.md`, which
-binds documentation-impact decisions to machine-checkable
-`/work/<day>/<task-id>/policy-compliance.json` artifacts.
+This contract defines required decision content. Agents SHALL record
+documentation-impact outcomes in task artifacts (for example
+`compliance-audit.md`, delivery reports, or backlog items) and in operator-visible
+responses. Pancreator does not enforce commit-time gates for single-operator
+workflows.
 
 ## 7 - Stability
 

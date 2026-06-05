@@ -76,11 +76,9 @@ items:
     links:
       - /lib/memory/adr/0004-documentation-impact-contract.md
       - /lib/memory/handbook/documentation-impact-contract.md
-      - /lib/memory/handbook/policy-compliance-contract.md
-      - /.cursor/hooks/enforce-policy-compliance.sh
       - /AGENTS.md
-    evidence: "ADR-0004 requires per-task documentation-impact decisions; current enforcement is a local Cursor commit hook and is not yet a repository-level git pre-commit or CI gate."
-    notes: "Operationalize policy-compliance enforcement as shared git/CI controls that verify applies decision records, changed-surface linkage, and deferral backlog linkage outside Cursor-local environments."
+    evidence: "ADR-0004 requires per-task documentation-impact decisions; the n=1 harness records them in audit artifacts and operator output rather than commit-time gates."
+    notes: "Revisit only if multi-operator or CI enforcement is required; governed-commit hooks were retired in favor of operator-owned version control."
 
   - id: bootstrap-artifact-changelog-unification
     title: Define and implement unified artifact changelog contract

@@ -67,3 +67,7 @@ stages:
   - id: index
     persona: librarian
     label: Index emitted artifacts and refresh the feature index before librarian artifact closure
+    outputs:
+      - lib/memory/features/<feature-id>/index.json
+      - work/<day>/<task-id>/pipeline-close.md
+      - work/<day>/<task-id>/operator-verification.md

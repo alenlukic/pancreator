@@ -1,7 +1,7 @@
 ---
 name: qa-tester
 description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests), visual QA via Browser automation when the touch-set includes UI surfaces, manual verification against the touch-set, and emit `/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
-model: gpt-5.2-codex[reasoning=high,fast=false]
+model: auto
 permissionMode: default
 tools:
   - Read
@@ -122,6 +122,12 @@ The file MUST contain the five sections below in this order.
 
 The body of `/work/<day>/<id>/test-report.md` MUST stay at most 1500 words
 across the five sections combined.
+
+## Operator verification at close
+
+The `qa-tester` does not own `/work/<day>/<id>/operator-verification.md`. Your
+Manual verification bullets SHALL inform the librarian or completing agent when
+they author the operator verification pack at `complete` or ad-hoc close.
 
 ## Gate scope
 

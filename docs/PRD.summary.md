@@ -19,20 +19,18 @@ control plane (`pnpm -w exec pan` for feature-delivery, init, and inbox flows).
   intake through ship with human approval gates.
 - **Memory:** Handbook canon, ADRs, backlog, per-Feature folders under
   `/lib/memory/features/<id>/` with `spec.md` as the Engineering Spec.
-- **Governance:** Dual-anchor citations, documentation-impact decisions,
-  policy-compliance artifacts for non-`work/` structural changes, local stage
-  only (no auto-push).
+- **Governance:** Dual-anchor citations, documentation-impact decisions, local
+  stage only (no auto-push); version control is operator-owned at n=1 scale.
 
-## Bootstrap state in this repo
+## Runtime policy in this repo
 
-`pancreator.yaml` tracks this repo at Bootstrap Phase 5 with status
-`m1-ratified`. Phases -1 through 5 are complete for tracking: scaffold,
-substrate, US-1 dogfood, US-9 xeremia PoC, and embedded-install fixes are
-shipped. M1 bootstrap was ratified 2026-05-31 (GO recorded in
-`lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/m1-closure-ratification-request.md`);
-M2 planning opens via inbox. Phoenix trace verification remains deferred. The
-`pan` CLI invokes `feature-delivery` with optional SDK mode
-(`runner.cursor.invocation: sdk`). Full LangGraph automatic execution remains M2+.
+`pancreator.yaml` holds live runtime policy (`project_root`, `runner`,
+`risk_tier`). Bootstrap phases −1 through 5 are closed (M1 ratified 2026-05-31);
+closed-phase records live in `docs/BOOTSTRAP.md` and
+`lib/memory/features/bootstrap-phase-*`. Current work routes through inbox and
+`lib/memory/active/current.md`. The `pan` CLI invokes `feature-delivery` with
+optional SDK mode (`runner.cursor.invocation: sdk`). Full LangGraph automatic
+execution remains M2+.
 
 M1 US-8 proof is package-boundary enforcement (no horizontal primitive deps, sub-path
 exports, CI conformance) rather than standalone `examples/` apps. `chat-with-persona`

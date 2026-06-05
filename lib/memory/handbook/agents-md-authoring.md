@@ -75,7 +75,7 @@ stable numbered form:
 5. **Working agreement.** Non-negotiable operating constraints.
 6. **How to discover what to do next.** Operator queue and navigation order.
 7. **Workspace map.** Canonical top-level path map.
-8. **Bootstrap status (live).** Current implementation state.
+8. **Runtime defaults.** Live `pancreator.yaml` policy and routing expectations.
 9. **Stability.** Change authority and promotion path.
 
 Section numbering MAY increase when new mandatory sections are ratified. A

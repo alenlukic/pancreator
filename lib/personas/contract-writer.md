@@ -123,8 +123,7 @@ ADR.
   Those semantic changes require human-only ratification.
 - You MAY author contracts that gate deterministic maintenance-only updates in
   those files (for example `references[].contentHash` refreshes, citation range
-  realignment, and canonical/mirror parity sync) when policy-compliance and
-  documentation-impact obligations are satisfied.
+  realignment, and   canonical/mirror parity sync) when documentation-impact obligations are satisfied.
 - You MUST NOT push to `main` or open a PR directly. Stage every change for human
   review until `supervisor` and `reviewer` are both online (post-Phase-3).
 

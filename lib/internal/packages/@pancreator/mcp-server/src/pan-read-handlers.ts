@@ -57,7 +57,7 @@ export interface MemoryQueryResult extends DdlReadEnvelope {
 export interface WorkspaceStatusResult extends DdlReadEnvelope {
   readonly status: "ok";
   readonly command: "status";
-  readonly bootstrap: Record<string, unknown>;
+  readonly config: Record<string, unknown>;
   readonly activeTasks: readonly string[];
   readonly task?: Record<string, unknown>;
 }
@@ -251,14 +251,14 @@ export async function readWorkspaceStatus(
   taskId?: string,
 ): Promise<WorkspaceStatusResult | { status: "error"; command: "status"; error: string }> {
   const pancreatorYamlPath = resolvePancreatorYamlPath(ctx.repoRoot);
-  let bootstrap: Record<string, unknown> = {};
+  let config: Record<string, unknown> = {};
   try {
     if (pancreatorYamlPath === undefined) {
       throw new Error("missing pancreator.yaml");
     }
-    bootstrap = parseYaml(await readFile(pancreatorYamlPath, "utf8")) as Record<string, unknown>;
+    config = parseYaml(await readFile(pancreatorYamlPath, "utf8")) as Record<string, unknown>;
   } catch {
-    bootstrap = {};
+    config = {};
   }
 
   const workRoot = path.join(ctx.repoRoot, "work");
@@ -275,7 +275,7 @@ export async function readWorkspaceStatus(
     return {
       status: "ok",
       command: "status",
-      bootstrap,
+      config,
       activeTasks,
     };
   }
@@ -294,7 +294,7 @@ export async function readWorkspaceStatus(
   return {
     status: "ok",
     command: "status",
-    bootstrap,
+    config,
     activeTasks,
     task: {
       taskId,

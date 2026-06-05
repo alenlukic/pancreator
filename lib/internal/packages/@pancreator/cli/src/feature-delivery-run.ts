@@ -16,7 +16,9 @@ import path from "node:path";
 import { stringifyCliJson } from "./canonical-json-io.js";
 import {
   applyActiveMemoryRefreshOnArtifactClosure,
+  applyActiveMemoryRefreshOnReopen,
   patchFeatureIndexArchivedInbox,
+  patchFeatureIndexReopenedInbox,
   SHIPPED_LEDGER_ROW_CAP,
 } from "./active-memory-refresh.js";
 import {
@@ -48,6 +50,11 @@ import {
 import { assertDeliveryReportCitationFormat } from "./delivery-report-citation-lint.js";
 import { ensurePipelineCloseDoc, PIPELINE_CLOSE_FILENAME, pipelineCloseRel } from "./feature-delivery-pipeline-close.js";
 import {
+  ensureOperatorVerificationDoc,
+  OPERATOR_VERIFICATION_FILENAME,
+  operatorVerificationRel,
+} from "./operator-verification.js";
+import {
   assertAdvanceArtifacts,
   parseReviewPassesVerdict,
   stageArtifactContract,
@@ -55,6 +62,12 @@ import {
   type ArtifactContentWarning,
 } from "./feature-delivery-stage-artifacts.js";
 import { decodeCountdownTimestamp, parseRunDirParts } from "./timestamp-decode.js";
+import {
+  formatWorkArchiveHygieneRemediation,
+  listCanonicalWorkDayDirs,
+  listTaskDirNames,
+  scanWorkArchiveHygiene,
+} from "./work-archive-hygiene.js";
 
 export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
 
@@ -94,6 +107,7 @@ export type PipelineStatus =
   | "waiting_for_human_gate"
   | "complete"
   | "closed"
+  | "reopened"
   | "repaired"
   | "halted";
 
@@ -115,7 +129,7 @@ export interface FeatureDeliveryTransition {
 
 export interface FeatureDeliveryAdvanceHistoryEntry {
   atIso: string;
-  kind: "advance" | "repair" | "close";
+  kind: "advance" | "repair" | "close" | "reopen";
   from: string;
   to: string;
   event: string;
@@ -125,7 +139,7 @@ export interface FeatureDeliveryAdvanceHistoryEntry {
 
 export interface FeatureDeliveryState {
   schemaVersion: typeof FEATURE_DELIVERY_STATE_SCHEMA_VERSION;
-  pipelineId: "feature-delivery";
+  pipelineId: "feature-delivery" | "out-of-band";
   taskId: string;
   featureId: string;
   status: PipelineStatus;
@@ -141,6 +155,7 @@ export interface FeatureDeliveryState {
     handoffFile: string;
     runLogFile: string;
     nextPromptFile?: string;
+    operatorVerificationFile?: string;
   };
   stages: FeatureDeliveryStageState[];
   transitions: FeatureDeliveryTransition[];
@@ -337,6 +352,7 @@ export interface CloseFeatureDeliveryArtifactsResult {
   runLogFile: string;
   nextPromptFile: string;
   nextHumanAction: string;
+  operatorVerificationFile: string;
   /** True when the run was already under archive/work/ and closure finalized state only. */
   alreadyArchived?: boolean;
 }
@@ -620,6 +636,8 @@ export async function advanceFeatureDelivery(
   const applied = applyFeatureDeliveryTransition(state, transition, event, artifact.rel, now);
   if (applied.toStage === TERMINAL_STAGE) {
     await ensurePipelineCloseDoc(repoRoot, state, now);
+    const verificationRel = await ensureOperatorVerificationDoc(repoRoot, state, now);
+    state.artifacts.operatorVerificationFile = verificationRel;
   }
   const invocation = await readCursorInvocationForState(repoRoot, state);
   ensureAutomationState(state, invocation);
@@ -879,16 +897,26 @@ export async function closeFeatureDeliveryArtifacts(
   const activeRunDirAbs = resolveRepoPath(repoRoot, closure.runDirRel);
   const archiveRunDirAbs = resolveRepoPath(repoRoot, closure.workArchiveRel);
   const inboxSourceAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
-  const inboxArchiveAbs = resolveRepoPath(repoRoot, closure.inboxArchiveRel);
-  const policyRelActive = path.posix.join(closure.runDirRel, "policy-compliance.json");
-  const policyRelArchive = path.posix.join(closure.workArchiveRel, "policy-compliance.json");
+  let inboxArchiveRel = closure.inboxArchiveRel;
+  let inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
+  const shipRatificationRelActive = path.posix.join(closure.runDirRel, "ship-ratification.json");
+  const shipRatificationRelArchive = path.posix.join(closure.workArchiveRel, "ship-ratification.json");
   const indexRel = path.posix.join("lib", "memory", "features", state.featureId, "index.json");
   const activeMemoryRel = path.posix.join("lib", "memory", "active", "current.md");
 
   const activeRunExists = existsSync(activeRunDirAbs);
   const archiveRunExists = existsSync(archiveRunDirAbs);
   const inboxSourceExists = existsSync(inboxSourceAbs);
-  const inboxArchiveExists = existsSync(inboxArchiveAbs);
+  let inboxArchiveExists = existsSync(inboxArchiveAbs);
+  if (!inboxSourceExists && !inboxArchiveExists) {
+    const run = parseWorkRunDir(closure.runDirRel, taskId);
+    const siblingArchive = await findSiblingArchivedInboxPath(repoRoot, closure.inboxSourceRel, run.dayDir);
+    if (siblingArchive !== null) {
+      inboxArchiveRel = siblingArchive.rel;
+      inboxArchiveAbs = siblingArchive.abs;
+      inboxArchiveExists = true;
+    }
+  }
 
   if (activeRunExists && archiveRunExists) {
     throw new Error(
@@ -898,7 +926,7 @@ export async function closeFeatureDeliveryArtifacts(
 
   const alreadyArchived = !activeRunExists && archiveRunExists;
   const runDirRel = alreadyArchived ? closure.workArchiveRel : closure.runDirRel;
-  const policyRel = alreadyArchived ? policyRelArchive : policyRelActive;
+  const shipRatificationRel = alreadyArchived ? shipRatificationRelArchive : shipRatificationRelActive;
 
   if (!alreadyArchived) {
     await assertExistingDirectory(activeRunDirAbs, closure.runDirRel);
@@ -907,16 +935,25 @@ export async function closeFeatureDeliveryArtifacts(
     await assertExistingDirectory(archiveRunDirAbs, closure.workArchiveRel);
   }
 
-  await assertExistingFile(resolveRepoPath(repoRoot, policyRel), policyRel);
+  await assertExistingFile(resolveRepoPath(repoRoot, shipRatificationRel), shipRatificationRel);
   await assertExistingFile(resolveRepoPath(repoRoot, indexRel), indexRel);
   await assertExistingFile(
     resolveRepoPath(repoRoot, path.posix.join(runDirRel, PIPELINE_CLOSE_FILENAME)),
     path.posix.join(runDirRel, PIPELINE_CLOSE_FILENAME),
   );
+  await assertExistingFile(
+    resolveRepoPath(repoRoot, path.posix.join(runDirRel, OPERATOR_VERIFICATION_FILENAME)),
+    path.posix.join(runDirRel, OPERATOR_VERIFICATION_FILENAME),
+  );
 
+  const inboxAlreadyArchivedForRun = !inboxSourceExists && inboxArchiveExists;
   if (!alreadyArchived) {
-    await assertExistingFile(inboxSourceAbs, closure.inboxSourceRel);
-    await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
+    if (inboxAlreadyArchivedForRun) {
+      await assertExistingFile(inboxArchiveAbs, inboxArchiveRel);
+    } else {
+      await assertExistingFile(inboxSourceAbs, closure.inboxSourceRel);
+      await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
+    }
   } else if (!inboxArchiveExists && inboxSourceExists) {
     await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
   } else if (inboxArchiveExists && inboxSourceExists) {
@@ -953,7 +990,9 @@ export async function closeFeatureDeliveryArtifacts(
 
   if (!alreadyArchived) {
     await mkdir(path.dirname(archiveRunDirAbs), { recursive: true });
-    await mkdir(path.dirname(inboxArchiveAbs), { recursive: true });
+    if (!inboxAlreadyArchivedForRun) {
+      await mkdir(path.dirname(inboxArchiveAbs), { recursive: true });
+    }
   } else if (inboxSourceExists && !inboxArchiveExists) {
     await mkdir(path.dirname(inboxArchiveAbs), { recursive: true });
   }
@@ -962,8 +1001,12 @@ export async function closeFeatureDeliveryArtifacts(
   let runArchived = alreadyArchived;
   try {
     if (!alreadyArchived) {
-      await rename(inboxSourceAbs, inboxArchiveAbs);
-      inboxArchived = true;
+      if (!inboxAlreadyArchivedForRun) {
+        await rename(inboxSourceAbs, inboxArchiveAbs);
+        inboxArchived = true;
+      } else {
+        inboxArchived = true;
+      }
       await rename(activeRunDirAbs, archiveRunDirAbs);
       runArchived = true;
       await assertExistingDirectory(archiveRunDirAbs, closure.workArchiveRel);
@@ -980,6 +1023,7 @@ export async function closeFeatureDeliveryArtifacts(
       handoffFile: path.posix.join(closure.workArchiveRel, "handoff.md"),
       runLogFile: path.posix.join(closure.workArchiveRel, "run.log.jsonl"),
       nextPromptFile: path.posix.join(closure.workArchiveRel, "next-prompt.md"),
+      operatorVerificationFile: path.posix.join(closure.workArchiveRel, OPERATOR_VERIFICATION_FILENAME),
     };
     state.status = "closed";
     state.nextHumanAction =
@@ -1017,13 +1061,13 @@ export async function closeFeatureDeliveryArtifacts(
     );
     await appendRunLogRecord(
       resolveRepoPath(repoRoot, path.posix.join(persistedRunDirRel, "run.log.jsonl")),
-      makeCloseRecord(state, now, previousRunDir, closure.workArchiveRel, closure.inboxSourceRel, closure.inboxArchiveRel),
+      makeCloseRecord(state, now, previousRunDir, closure.workArchiveRel, closure.inboxSourceRel, inboxArchiveRel),
     );
 
     await patchFeatureIndexArchivedInbox(
       repoRoot,
       state.featureId,
-      closure.inboxArchiveRel,
+      inboxArchiveRel,
       closure.inboxSourceRel,
     );
     await normalizeComplianceAuditHistoryForArchivedRun({
@@ -1046,13 +1090,14 @@ export async function closeFeatureDeliveryArtifacts(
       currentStage: TERMINAL_STAGE,
       pipelineStatus: "closed",
       archivedRunDir: closure.workArchiveRel,
-      archivedInboxPath: closure.inboxArchiveRel,
+      archivedInboxPath: inboxArchiveRel,
       activeMemoryPath: activeMemoryRefresh.path,
       activeFeatureCleared: activeMemoryRefresh.activeFeatureCleared,
       stateFile: state.artifacts.stateFile,
       runLogFile: state.artifacts.runLogFile,
       nextPromptFile: requireNextPromptFile(state),
       nextHumanAction: state.nextHumanAction,
+      operatorVerificationFile: state.artifacts.operatorVerificationFile ?? path.posix.join(closure.workArchiveRel, OPERATOR_VERIFICATION_FILENAME),
       ...(alreadyArchived ? { alreadyArchived: true } : {}),
     };
   } catch (error) {
@@ -1117,6 +1162,245 @@ export async function closeFeatureDeliveryArtifacts(
     }
     throw error;
   }
+}
+
+export interface ReopenFeatureDeliveryInput {
+  repoRoot: string;
+  taskId: string;
+  stage?: string;
+  reason: string;
+  clock?: () => Date;
+  testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
+}
+
+export interface ReopenFeatureDeliveryResult {
+  command: "reopen";
+  status: "ok";
+  taskId: string;
+  featureId: string;
+  previousStage: string;
+  currentStage: string;
+  pipelineStatus: "reopened";
+  runDir: string;
+  stateFile: string;
+  handoffFile: string;
+  nextPromptFile: string;
+  nextPersona: string | null;
+  nextHumanAction: string;
+  reason: string;
+}
+
+export async function reopenFeatureDelivery(
+  input: ReopenFeatureDeliveryInput,
+): Promise<ReopenFeatureDeliveryResult> {
+  const repoRoot = path.resolve(input.repoRoot);
+  const taskId = sanitizeTaskId(input.taskId);
+  const now = input.clock?.() ?? new Date();
+  const reason = input.reason.trim();
+  if (reason.length < 12) {
+    throw new Error("reopen requires a concrete --reason with at least 12 characters.");
+  }
+
+  const stateFile = await findStateFile(repoRoot, taskId);
+  const state = await readFeatureDeliveryState(stateFile.abs);
+
+  if (state.status !== "closed") {
+    throw new Error(`Task ${taskId} must be closed before reopen; got status ${state.status}.`);
+  }
+
+  const targetStageInput = input.stage?.trim();
+  let targetStage: FeatureDeliveryStageId | typeof TERMINAL_STAGE;
+  if (targetStageInput === undefined || targetStageInput.length === 0) {
+    targetStage = state.pipelineId === "out-of-band" ? "intake" : "intake";
+  } else {
+    if (targetStageInput === TERMINAL_STAGE || targetStageInput === "closed") {
+      throw new Error(`reopen MUST NOT target terminal stage ${targetStageInput}.`);
+    }
+    targetStage = assertFeatureDeliveryStage(targetStageInput);
+  }
+
+  const closure = finalClosurePaths(state);
+  const activeRunDirAbs = resolveRepoPath(repoRoot, closure.runDirRel);
+  const archiveRunDirAbs = resolveRepoPath(repoRoot, closure.workArchiveRel);
+
+  if (existsSync(activeRunDirAbs)) {
+    throw new Error(
+      `Active run directory already exists at ${closure.runDirRel}; resolve the duplicate before reopen.`,
+    );
+  }
+  if (!existsSync(archiveRunDirAbs)) {
+    throw new Error(`Archived run directory is missing: ${closure.workArchiveRel}.`);
+  }
+
+  const inboxSourceAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
+  const inboxArchiveAbs = resolveRepoPath(repoRoot, closure.inboxArchiveRel);
+  let inboxRestored = false;
+
+  await mkdir(path.dirname(activeRunDirAbs), { recursive: true });
+  await rename(archiveRunDirAbs, activeRunDirAbs);
+  await removeEmptyDirectoryIfPresent(path.dirname(archiveRunDirAbs), path.posix.dirname(closure.workArchiveRel));
+
+  if (existsSync(inboxArchiveAbs) && !existsSync(inboxSourceAbs)) {
+    await mkdir(path.dirname(inboxSourceAbs), { recursive: true });
+    await rename(inboxArchiveAbs, inboxSourceAbs);
+    inboxRestored = true;
+  }
+
+  const previousStage = state.currentStage;
+  rewriteActiveWorkArtifactPaths(state, closure.runDirRel);
+
+  if (state.pipelineId === "feature-delivery") {
+    const pipeline = loadFeatureDeliveryPipeline(repoRoot);
+    state.stages = repairStageStatuses(state.stages, targetStage);
+    state.currentStage = targetStage;
+    state.nextHumanAction = nextHumanActionForStage(
+      state,
+      targetStage,
+      `Operator reopen: ${reason}`,
+      state.automation?.runnerInvocation ?? (await readCursorInvocationMode(repoRoot)),
+    );
+    state.advanceHistory = [
+      ...(state.advanceHistory ?? []),
+      {
+        atIso: rfc3339UtcMs(now),
+        kind: "reopen",
+        from: previousStage,
+        to: targetStage,
+        event: "operator_reopen",
+        artifact: closure.runDirRel,
+        reason,
+      },
+    ];
+    state.status = "reopened";
+    ensureAutomationState(state, state.automation?.runnerInvocation ?? (await readCursorInvocationMode(repoRoot)));
+    if (state.automation !== undefined) {
+      state.automation.cumulativeRetryCount = 0;
+    }
+    await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
+    await appendRunLogRecord(
+      resolveRepoPath(repoRoot, state.artifacts.runLogFile),
+      makeReopenRecord(state, now, previousStage, targetStage, reason),
+    );
+    await patchFeatureIndexReopenedInbox(repoRoot, state.featureId, closure.inboxSourceRel);
+    await applyActiveMemoryRefreshOnReopen(repoRoot, {
+      activeInboxSourceRel: closure.inboxSourceRel,
+      clock: input.clock,
+    });
+    await normalizeComplianceAuditHistoryForArchivedRun({
+      repoRoot,
+      taskId: state.taskId,
+      fromRunDir: closure.workArchiveRel,
+      toRunDir: closure.runDirRel,
+    });
+
+    const invocation = state.automation?.runnerInvocation ?? (await readCursorInvocationMode(repoRoot));
+    if (invocation === "sdk") {
+      state.status = "ready_for_stage_delegation";
+      const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
+      prepareStageInvocationIndexForSdkEntry(state, targetStage, invocation);
+      await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
+      emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
+        taskId,
+        featureId: state.featureId,
+        fromStage: previousStage,
+        toStage: targetStage,
+        event: "operator_reopen",
+        persona: personaForStage(pipeline, targetStage) ?? undefined,
+        now,
+      });
+      await invokeFeatureDeliveryEnteringStage({
+        repoRoot,
+        state,
+        pipeline,
+        stageId: targetStage,
+        compiled,
+        now,
+        testHooks: input.testHooks,
+        progress: resolveFeatureDeliveryProgress(input),
+      });
+      await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
+    }
+
+    return {
+      command: "reopen",
+      status: "ok",
+      taskId,
+      featureId: state.featureId,
+      previousStage,
+      currentStage: state.currentStage,
+      pipelineStatus: "reopened",
+      runDir: state.artifacts.runDir,
+      stateFile: state.artifacts.stateFile,
+      handoffFile: state.artifacts.handoffFile,
+      nextPromptFile: requireNextPromptFile(state),
+      nextPersona: personaForStage(pipeline, state.currentStage),
+      nextHumanAction: state.nextHumanAction,
+      reason,
+    };
+  }
+
+  state.currentStage = targetStage;
+  state.status = "reopened";
+  state.pipelineId = "feature-delivery";
+  const pipeline = loadFeatureDeliveryPipeline(repoRoot);
+  state.stages = buildStageStates(pipeline, state.automation?.runnerInvocation ?? "manual");
+  state.transitions = featureDeliveryTransitions(pipeline);
+  state.stages = repairStageStatuses(state.stages, targetStage);
+  state.nextHumanAction = nextHumanActionForStage(
+    state,
+    targetStage,
+    `Out-of-band reopen promoted to feature-delivery: ${reason}`,
+    state.automation?.runnerInvocation ?? "manual",
+  );
+  state.advanceHistory = [
+    ...(state.advanceHistory ?? []),
+    {
+      atIso: rfc3339UtcMs(now),
+      kind: "reopen",
+      from: previousStage,
+      to: targetStage,
+      event: "operator_reopen",
+      artifact: closure.runDirRel,
+      reason,
+    },
+  ];
+  await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
+  if (inboxRestored) {
+    await patchFeatureIndexReopenedInbox(repoRoot, state.featureId, closure.inboxSourceRel);
+    await applyActiveMemoryRefreshOnReopen(repoRoot, {
+      activeInboxSourceRel: closure.inboxSourceRel,
+      clock: input.clock,
+    });
+  }
+
+  return {
+    command: "reopen",
+    status: "ok",
+    taskId,
+    featureId: state.featureId,
+    previousStage,
+    currentStage: state.currentStage,
+    pipelineStatus: "reopened",
+    runDir: state.artifacts.runDir,
+    stateFile: state.artifacts.stateFile,
+    handoffFile: state.artifacts.handoffFile,
+    nextPromptFile: requireNextPromptFile(state),
+    nextPersona: personaForStage(pipeline, state.currentStage),
+    nextHumanAction: state.nextHumanAction,
+    reason,
+  };
+}
+
+function rewriteActiveWorkArtifactPaths(state: FeatureDeliveryState, activeRunDirRel: string): void {
+  state.artifacts = {
+    runDir: activeRunDirRel,
+    stateFile: path.posix.join(activeRunDirRel, "state.json"),
+    handoffFile: path.posix.join(activeRunDirRel, "handoff.md"),
+    runLogFile: path.posix.join(activeRunDirRel, "run.log.jsonl"),
+    nextPromptFile: path.posix.join(activeRunDirRel, "next-prompt.md"),
+    operatorVerificationFile: path.posix.join(activeRunDirRel, OPERATOR_VERIFICATION_FILENAME),
+  };
 }
 
 /**
@@ -1579,8 +1863,9 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 - ${state.artifacts.runDir}/test-report.md
 - lib/memory/features/${state.featureId}/delivery-report.md
 - ${state.artifacts.runDir}/compliance-result.json
-- ${state.artifacts.runDir}/policy-compliance.json
+- ${state.artifacts.runDir}/ship-ratification.json
 - ${state.artifacts.runDir}/${PIPELINE_CLOSE_FILENAME}
+- ${state.artifacts.runDir}/${OPERATOR_VERIFICATION_FILENAME}
 - lib/inbox/out/<timestamp>-${state.featureId}-delivery-report.md
 
 ## Explicit non-goals
@@ -1599,8 +1884,6 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 - node --test tests/*.test.mjs
 - node lib/internal/tools/check-phase-0a-scaffold.mjs
 - node lib/internal/tools/context-budget-report.mjs
-- bash -n .cursor/hooks/enforce-policy-compliance.sh
-
 ## Re-entry rule
 
 If scope changes, validation repeatedly fails, or the touch-set is incomplete, stop and delegate back to supervisor, tech-lead, or reviewer instead of extending the executor loop.
@@ -1686,10 +1969,10 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
       const shipInputs = stateIncludesStage(state, "compliance")
         ? `local diff, ${state.artifacts.runDir}/compliance-result.json, lib/memory/features/${state.featureId}/delivery-report.md`
         : `local diff, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md`;
-      return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/policy-compliance.json\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
+      return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/ship-ratification.json (human_ratified_diff: true)\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
     }
     case "index":
-      return `Inputs: delivery report and accepted ship artifacts\nOutputs: lib/memory/features/${state.featureId}/index.json, ${pipelineCloseRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
+      return `Inputs: delivery report and accepted ship artifacts\nOutputs: lib/memory/features/${state.featureId}/index.json, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
       return state.status === "closed" ? closedContractMarkdown(state) : finalClosureContractMarkdown(state);
     default:
@@ -1997,7 +2280,7 @@ function finalClosureContractMarkdown(state: FeatureDeliveryState): string {
 
 Librarian task:
 
-1. Confirm the run is complete, ${closeDoc} exists, and the active artifacts exist.
+1. Confirm the run is complete, ${closeDoc} exists, ${operatorVerificationRel(state)} exists, and the active artifacts exist.
 2. Execute the artifact closure command exactly once:
 
 \`\`\`bash
@@ -2043,19 +2326,25 @@ function finalClosurePaths(state: FeatureDeliveryState): {
   inboxArchiveRel: string;
 } {
   const run = parseWorkRunDir(state.artifacts.runDir, state.taskId);
+  const activeRunDirRel = path.posix.join("work", run.dayDir, run.taskId);
+  const workArchiveRel = path.posix.join("archive", "work", run.dayDir, run.taskId);
   const inboxSourceRel = state.source.inboxPath.replace(/\\/gu, "/").replace(/^\/+/, "");
   return {
-    runDirRel: state.artifacts.runDir,
-    workArchiveRel: path.posix.join("archive", "work", run.dayDir, run.taskId),
+    runDirRel: activeRunDirRel,
+    workArchiveRel,
     inboxSourceRel,
     inboxArchiveRel: archiveInboxPathForSource(inboxSourceRel, run.dayDir, run.taskId),
   };
 }
 
 function parseWorkRunDir(runDirRel: string, expectedTaskId: string): { dayDir: string; taskId: string } {
-  const parts = runDirRel.split("/");
+  let norm = runDirRel.replace(/\\/gu, "/").replace(/^\/+/, "");
+  if (norm.startsWith("archive/work/")) {
+    norm = norm.slice("archive/".length);
+  }
+  const parts = norm.split("/");
   if (parts.length !== 3 || parts[0] !== "work") {
-    throw new Error(`feature-delivery runDir must be work/<day>/<task-id>; got ${runDirRel}.`);
+    throw new Error(`feature-delivery runDir must be work/<day>/<task-id> or archive/work/<day>/<task-id>; got ${runDirRel}.`);
   }
   const [, dayDir, taskId] = parts;
   if (taskId !== expectedTaskId) {
@@ -2077,6 +2366,33 @@ function archiveInboxPathForSource(sourceRel: string, dayDir: string, taskId: st
   const alreadyNested = parts.length >= 3 && isWorkStyleDayDir(parts[0]) && parts[1] === taskId;
   const archiveTail = alreadyNested ? tail : path.posix.join(dayDir, taskId, path.posix.basename(tail));
   return path.posix.join("archive", "inbox", "in", archiveTail);
+}
+
+/**
+ * When a superseded run shares an inbox directive archived under a sibling task id,
+ * locate the existing archive/inbox/in/<day>/<peer-task>/<basename> path.
+ */
+async function findSiblingArchivedInboxPath(
+  repoRoot: string,
+  inboxSourceRel: string,
+  dayDir: string,
+): Promise<{ rel: string; abs: string } | null> {
+  const basename = path.posix.basename(inboxSourceRel);
+  const dayArchiveRoot = resolveProjectPath(repoRoot, "archive", "inbox", "in", dayDir);
+  if (!existsSync(dayArchiveRoot)) {
+    return null;
+  }
+  for (const peerTaskId of await safeReaddir(dayArchiveRoot)) {
+    const candidateAbs = path.join(dayArchiveRoot, peerTaskId, basename);
+    if (!existsSync(candidateAbs)) {
+      continue;
+    }
+    return {
+      rel: path.posix.join("archive", "inbox", "in", dayDir, peerTaskId, basename),
+      abs: candidateAbs,
+    };
+  }
+  return null;
 }
 
 function isWorkStyleDayDir(value: string): boolean {
@@ -2209,6 +2525,31 @@ function makeRepairRecord(
     attributes: {
       ...record.attributes,
       "pancreator.repair.reason": reason,
+    },
+  };
+}
+
+function makeReopenRecord(
+  state: FeatureDeliveryState,
+  now: Date,
+  fromStage: string,
+  toStage: string,
+  reason: string,
+): RunLogRecord {
+  const record = makeStateRecord(
+    state,
+    now,
+    "pancreator.pipeline.reopen",
+    fromStage,
+    toStage,
+    "operator_reopen",
+    state.artifacts.runDir,
+  );
+  return {
+    ...record,
+    attributes: {
+      ...record.attributes,
+      "pancreator.reopen.reason": reason,
     },
   };
 }
@@ -2951,7 +3292,7 @@ function nextHumanActionForStage(
       case "compliance":
         return `${prefix}SDK routes from stage verdict artifacts without operator advance.`;
       case "ship":
-        return `${prefix}SDK validates policy-compliance.json and auto-advances after local diff checks.`;
+        return `${prefix}SDK validates ship-ratification.json and auto-advances after local diff checks.`;
       case "index":
         return `${prefix}SDK validates index.json, writes ${pipelineCloseRel(state)}, and advances to complete.`;
       case "complete":
@@ -3106,7 +3447,7 @@ async function safeReaddir(dir: string): Promise<string[]> {
   }
 }
 
-export interface PanDoctorCheck {
+export interface PanCheckEntry {
   id: string;
   label: string;
   command: string;
@@ -3115,26 +3456,36 @@ export interface PanDoctorCheck {
   remediation?: string;
 }
 
-export interface PanDoctorResult {
-  command: "doctor";
+export interface PanCheckResult {
+  command: "check";
   status: "ok" | "fail";
   passCount: number;
   failCount: number;
   skipCount: number;
-  checks: PanDoctorCheck[];
+  checks: PanCheckEntry[];
 }
 
-export const PAN_DOCTOR_REPO_CHECK_IDS = [
+/** @deprecated Renamed to {@link PanCheckEntry}. */
+export type PanDoctorCheck = PanCheckEntry;
+
+/** @deprecated Renamed to {@link PanCheckResult}. */
+export type PanDoctorResult = PanCheckResult;
+
+export const PAN_CHECK_REPO_CHECK_IDS = [
   "active-fd-artifacts",
+  "work-archive-hygiene",
   "shipped-ledger-cap",
   "cursorindexingignore",
 ] as const;
 
-export function panDoctorCheckRegistry(): readonly string[] {
-  return [...PAN_DOCTOR_SHELL_CHECKS.map((spec) => spec.id), ...PAN_DOCTOR_REPO_CHECK_IDS];
+export function panCheckRegistry(): readonly string[] {
+  return [...PAN_CHECK_SHELL_CHECKS.map((spec) => spec.id), ...PAN_CHECK_REPO_CHECK_IDS];
 }
 
-const PAN_DOCTOR_SHELL_CHECKS: ReadonlyArray<{ id: string; label: string; command: string }> = [
+/** @deprecated Renamed to {@link panCheckRegistry}. */
+export const panDoctorCheckRegistry = panCheckRegistry;
+
+const PAN_CHECK_SHELL_CHECKS: ReadonlyArray<{ id: string; label: string; command: string }> = [
   { id: "build", label: "pnpm run build", command: "pnpm run build" },
   { id: "lint", label: "pnpm lint", command: "pnpm lint" },
   { id: "lint-deps", label: "pnpm run lint:deps", command: "pnpm run lint:deps" },
@@ -3159,11 +3510,6 @@ const PAN_DOCTOR_SHELL_CHECKS: ReadonlyArray<{ id: string; label: string; comman
     command: "node lib/internal/tools/context-budget-report.mjs",
   },
   {
-    id: "policy-compliance-hook",
-    label: "bash -n .cursor/hooks/enforce-policy-compliance.sh",
-    command: "bash -n .cursor/hooks/enforce-policy-compliance.sh",
-  },
-  {
     id: "operator-output",
     label: "node lib/internal/tools/check-operator-output.mjs",
     command: "node lib/internal/tools/check-operator-output.mjs",
@@ -3173,17 +3519,17 @@ const PAN_DOCTOR_SHELL_CHECKS: ReadonlyArray<{ id: string; label: string; comman
 const COMPLIANCE_EXIT_CHECK_IDS = new Set(["lint", "typecheck", "test", "tests-mjs"]);
 
 export function complianceStageExitCheckBundle(): ReadonlyArray<{ id: string; label: string; command: string }> {
-  return PAN_DOCTOR_SHELL_CHECKS.filter((spec) => COMPLIANCE_EXIT_CHECK_IDS.has(spec.id));
+  return PAN_CHECK_SHELL_CHECKS.filter((spec) => COMPLIANCE_EXIT_CHECK_IDS.has(spec.id));
 }
 
 export function complianceStageExitCommands(): readonly string[] {
   return complianceStageExitCheckBundle().map((spec) => spec.command);
 }
 
-function runShellDoctorCheck(
+function runShellCheck(
   repoRoot: string,
   spec: { id: string; label: string; command: string },
-): PanDoctorCheck {
+): PanCheckEntry {
   const result = spawnSync(spec.command, {
     cwd: repoRoot,
     shell: true,
@@ -3229,10 +3575,10 @@ async function listActiveFeatureDeliveryStates(
 ): Promise<Array<{ taskId: string; stage: string; state: FeatureDeliveryState }>> {
   const workRoot = resolveProjectPath(repoRoot, "work");
   const active: Array<{ taskId: string; stage: string; state: FeatureDeliveryState }> = [];
-  const dayDirs = await safeReaddir(workRoot);
+  const dayDirs = await listCanonicalWorkDayDirs(workRoot);
   for (const dayDir of dayDirs) {
     const dayAbs = path.join(workRoot, dayDir);
-    const taskDirs = await safeReaddir(dayAbs);
+    const taskDirs = await listTaskDirNames(dayAbs);
     for (const taskId of taskDirs) {
       const stateAbs = path.join(dayAbs, taskId, "state.json");
       if (!existsSync(stateAbs)) {
@@ -3251,9 +3597,9 @@ async function listActiveFeatureDeliveryStates(
   return active;
 }
 
-export async function runPanDoctor(repoRootInput: string): Promise<PanDoctorResult> {
+export async function runPanCheck(repoRootInput: string): Promise<PanCheckResult> {
   const repoRoot = path.resolve(repoRootInput);
-  const checks: PanDoctorCheck[] = PAN_DOCTOR_SHELL_CHECKS.map((spec) => runShellDoctorCheck(repoRoot, spec));
+  const checks: PanCheckEntry[] = PAN_CHECK_SHELL_CHECKS.map((spec) => runShellCheck(repoRoot, spec));
 
   const activeRuns = await listActiveFeatureDeliveryStates(repoRoot);
   if (activeRuns.length === 0) {
@@ -3295,6 +3641,26 @@ export async function runPanDoctor(repoRootInput: string): Promise<PanDoctorResu
         remediation: artifactIssues.join("; "),
       });
     }
+  }
+
+  const hygiene = await scanWorkArchiveHygiene(repoRoot);
+  if (hygiene.issues.length === 0) {
+    checks.push({
+      id: "work-archive-hygiene",
+      label: "work/ vs archive/work/ feature-delivery hygiene",
+      command: "scanWorkArchiveHygiene (read-only)",
+      status: "pass",
+      exitCode: 0,
+    });
+  } else {
+    checks.push({
+      id: "work-archive-hygiene",
+      label: "work/ vs archive/work/ feature-delivery hygiene",
+      command: `issues=${hygiene.issues.length} pending_close=${hygiene.pendingCloseCount}`,
+      status: "fail",
+      exitCode: 1,
+      remediation: formatWorkArchiveHygieneRemediation(hygiene.issues),
+    });
   }
 
   const currentPath = resolveProjectPath(repoRoot, "lib", "memory", "active", "current.md");
@@ -3354,7 +3720,7 @@ export async function runPanDoctor(repoRootInput: string): Promise<PanDoctorResu
   const failCount = checks.filter((c) => c.status === "fail").length;
   const skipCount = checks.filter((c) => c.status === "skip").length;
   return {
-    command: "doctor",
+    command: "check",
     status: failCount === 0 ? "ok" : "fail",
     passCount,
     failCount,
@@ -3362,3 +3728,6 @@ export async function runPanDoctor(repoRootInput: string): Promise<PanDoctorResu
     checks,
   };
 }
+
+/** @deprecated Renamed to {@link runPanCheck}. */
+export const runPanDoctor = runPanCheck;

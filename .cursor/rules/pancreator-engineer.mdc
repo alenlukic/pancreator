@@ -13,7 +13,6 @@ globs:
   - "lib/memory/handbook/index.md"
   - "lib/memory/handbook/inbox-lifecycle.md"
   - "lib/memory/handbook/memory-tiers.md"
-  - "lib/memory/handbook/policy-compliance-contract.md"
   - "lib/memory/handbook/run-log-schema.md"
   - "lib/internal/packages/@pancreator/**"
   - "lib/internal/packages/pancreator/**"

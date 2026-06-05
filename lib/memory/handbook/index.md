@@ -33,7 +33,6 @@ related:
   - /lib/memory/handbook/agents-md-authoring.md
   - /lib/memory/handbook/constitution.md
   - /lib/memory/handbook/documentation-impact-contract.md
-  - /lib/memory/handbook/policy-compliance-contract.md
   - /lib/memory/handbook/inbox-lifecycle.md
   - /lib/memory/handbook/run-log-schema.md
   - /lib/memory/handbook/backlog-format.md
@@ -64,7 +63,7 @@ lands, operators SHOULD apply this table manually.
 | Author or update `/AGENTS.md` | `/lib/memory/handbook/agents-md-authoring.md` | `/lib/memory/handbook/constitution.md`, `/lib/memory/handbook/documentation-impact-contract.md` | Follow AGENTS change-control and trigger rules; include governance and documentation-impact checks. |
 | Interpret governance and organizational rules | `/lib/memory/handbook/constitution.md` | `/AGENTS.md`, `/docs/PRD.md` | Use constitution for charter-level governance. Use AGENTS/PRD only as supporting context when needed. |
 | Decide documentation-impact updates or deferrals | `/lib/memory/handbook/documentation-impact-contract.md` | `/lib/memory/handbook/backlog-format.md`, `/lib/memory/handbook/agents-md-authoring.md` | Required post-task decision flow lives in documentation-impact contract; use backlog-format for deferral recording schema. |
-| Prepare commit-time policy-compliance artifact and enforcement evidence | `/lib/memory/handbook/policy-compliance-contract.md` | `/lib/memory/handbook/documentation-impact-contract.md`, `/lib/memory/handbook/constitution.md` | Use policy-compliance contract for machine-checkable `work/<day>/<task-id>/policy-compliance.json` artifacts and fail-closed commit gate behavior. |
+| Draft optional GitHub PR description from feature-delivery artifacts | `/lib/personas/pr-writer.md` | `/lib/memory/handbook/operator-output-contract.md`, `/lib/memory/handbook/run-log-schema.md` | Invoke `/pr-writer` with feature ID or work directory; output is a fenced PR body for operator paste into `gh pr create`. |
 | Process inbox lifecycle and archival flow | `/lib/memory/handbook/inbox-lifecycle.md` | `/AGENTS.md` | Inbox state model and manual archival procedure are defined in inbox-lifecycle. |
 | Format agent completion output for the operator | `/lib/memory/handbook/operator-output-contract.md` | `/AGENTS.md`, `/lib/memory/handbook/persona-spec.md` | Defines the mandatory `## Next operator steps` block (what/how, read-only labels, multi-option when/impact). |
 | Validate run-log schema and observability fields | `/lib/memory/handbook/run-log-schema.md` | `/lib/memory/handbook/glossary.md` | Run-log contract is canonical for `/work/<day>/<id>/run.log.jsonl`; glossary resolves shared telemetry nouns. |
@@ -75,9 +74,9 @@ lands, operators SHOULD apply this table manually.
 | Reduce default AI context load and decide what to index versus explicit-read | `/lib/memory/handbook/context-economy.md` | `/lib/memory/handbook/index.md`, `/lib/memory/active/current.md`, `/lib/memory/active/handoffs.md`, `/lib/memory/handbook/memory-tiers.md`, `/lib/memory/handbook/context-cost-audit.md`, `/docs/PRD.summary.md`, `/docs/PRD.index.md`, `/docs/M1.index.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, planning/execution handoffs, PRD/M1 summary-first discipline, and operator verification expectations. |
 | Choose Cursor subagent and model escalation | `/lib/memory/handbook/context-economy.md` | `/AGENTS.md`, `/lib/memory/handbook/persona-spec.md` | Invoke `.cursor/agents/<name>.md` directly; escalate model class per context-economy triggers. |
 | Audit likely token cost sinks | `/lib/memory/handbook/context-cost-audit.md` | `/lib/memory/handbook/context-economy.md`, `/docs/M1.index.md` | Records current cost sinks and practical controls. |
-| Interpret or update `pancreator.yaml` | `/lib/memory/handbook/pancreator-config.md` | `/pancreator.yaml`, `/pancreator-defaults.yaml`, `/lib/personas/adopter.md` | Defines `project_root`, live bootstrap tracking, and the boundary between live policy and defaults. |
+| Interpret or update `pancreator.yaml` | `/lib/memory/handbook/pancreator-config.md` | `/pancreator.yaml`, `/pancreator-defaults.yaml`, `/lib/personas/adopter.md` | Defines `project_root`, live runtime policy, and the boundary between live config and defaults. |
 | Run or document `pan` CLI commands for operators | `/lib/memory/handbook/pancreator-config.md` §“CLI invocation in this workspace” | `/lib/memory/handbook/operator-output-contract.md`, `/AGENTS.md` | Use `pnpm -w exec pan …` from repo root; bare `pan` is not on PATH. |
-| Relay feature-delivery SDK progress to operator chat | `/OPERATION.md` § SDK mode "Agent chat relay" | `/AGENTS.md` §5, `/lib/memory/handbook/context-economy.md` | Agents prefix with `PAN_FD_PROGRESS=ndjson`, monitor stderr, and post concise status lines; operators in a TTY get `[pan fd] …` on stderr automatically. |
+| Relay feature-delivery SDK progress to operator chat | `/AGENTS.md` §5 | `/OPERATION.md` § SDK mode, `/lib/memory/handbook/context-economy.md` | Agents prefix with `PAN_FD_PROGRESS=ndjson`, monitor stderr, and post concise status lines; operators in a TTY get `[pan fd] …` on stderr automatically. |
 
 ## Retrieval discipline
 

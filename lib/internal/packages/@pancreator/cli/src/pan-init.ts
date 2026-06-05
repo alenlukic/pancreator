@@ -76,10 +76,6 @@ export function pathMatchesDenyPrefix(relPosix: string, denyPrefixes: string[]):
 }
 
 const GREENFIELD_PANCREATOR_YAML = `project_root: "."
-bootstrap:
-  phase: "5"
-  status: phase-5-in-progress
-  completed_phases: ["-1", "0", "1", "2", "3", "4"]
 risk_tier: medium
 `;
 

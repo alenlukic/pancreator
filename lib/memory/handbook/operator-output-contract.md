@@ -71,7 +71,7 @@ subagent block was visible in the parent chat surface.
 ## 2.1 — Automated conformance check
 
 Maintainers SHALL run `node lib/internal/tools/check-operator-output.mjs` from the
-repository root before governed commits that touch operator-visible surfaces.
+repository root before commits that touch operator-visible surfaces.
 The checker scans runnable fenced code blocks in `AGENTS.md`, `README.md`,
 `OPERATION.md`, `lib/personas/`, `.cursor/agents/`, `.cursor/rules/`, and
 `lib/memory/handbook/` and exits non-zero when a line invokes bare `pan …`
@@ -297,7 +297,8 @@ active task.
 | Delegate next persona | Hand off execution | Paste `work/<day>/<task-id>/next-prompt.md` into `/<persona>` |
 | Pick up inbox work | Start next feature | Read-only: `ls lib/inbox/in/`; mutating: `pnpm -w exec pan run feature-delivery <day-bucket>/<file>.md` |
 | Verify only | Confirm artifact | Read-only: open cited path(s) and check acceptance criteria |
-| Governed commit | Stage and commit (operator) | Full `git add <every-path>` then `git commit -m "$(cat <<'EOF' … EOF)"`; verify `work/<day>/<task-id>/policy-compliance.json` when required |
+| Local commit | Stage and commit (operator) | Full `git add <every-path>` then `git commit -m "$(cat <<'EOF' … EOF)"` |
+| Optional PR body | Draft description before `gh pr create` | Invoke `/pr-writer` with feature ID or `work/<day>/<task-id>/` path; paste fenced output into `gh pr create --body-file` |
 | Run tests before commit | Verify green | `pnpm test` (or the exact `pnpm` script named in `package.json`) |
 | Close run | Archive after acceptance | `pnpm -w exec pan close-artifacts <task-id>` after human validates index |
 | Blocked task | Unblock or escalate | State owner persona and the file the operator must edit or the ratification required |

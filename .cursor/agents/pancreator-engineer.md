@@ -1,7 +1,7 @@
 ---
 name: pancreator-engineer
 description: "Canonical `pancreator-engineer` subagent projection for persona-owned pipeline stages."
-model: gpt-5.3-codex[reasoning=high,fast=false]
+model: auto
 permissionMode: default
 mcpServers: []
 skills: []
