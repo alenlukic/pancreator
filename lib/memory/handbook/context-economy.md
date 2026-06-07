@@ -48,20 +48,18 @@ related:
 
 Agents and operators SHOULD load the smallest surface that resolves the task:
 
-1. Read the **delivery operating card** first for the working agreement and
-   delivery workspace map: `README.md` §Delivery operating card when
-   `project_root` is `.`; `.pancreator/AGENTS.md` when embedded.
+1. Read the **agent operating card** first: `AGENTS.md` (self-host) or
+   `.pancreator/AGENTS.md` (embedded).
 2. Read `lib/memory/active/current.md` when the task needs current Feature pointers
    inside **active-memory** and `simple task mode` does not apply.
-3. Read `OPERATION.md` when the task needs inbox, feature-delivery, or CLI procedure.
+3. Read `OPERATION.md` when the task needs human operator procedure context.
 4. Read `lib/memory/handbook/index.md` and follow at most one primary route plus
    stated secondaries.
 
-**Internal surface only** (Pancreator self-development and meta-personas): read
-root `AGENTS.md`, then route through `docs/PRD.summary.md`, `docs/PRD.index.md`,
-and `docs/M1.index.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md`. Feature-delivery
-stage personas MUST NOT load `docs/**` or internal `AGENTS.md` unless the bounded
-prompt names an internal task.
+**Internal product docs** (`docs/**`): read only for Pancreator self-development
+or meta-persona tasks. Route through `docs/PRD.summary.md` and `docs/PRD.index.md`
+before full `docs/PRD.md` or `docs/BOOTSTRAP.md`. Feature-delivery stage personas
+MUST NOT load `docs/**` unless the bounded prompt names an internal task.
 
 Agents MUST NOT read, traverse, ingest, cite, or modify files under
 `/lib/inbox/notes/` per inbox lifecycle.
@@ -204,7 +202,7 @@ operator's behalf, the agent SHALL relay stderr progress to the operator chat
 surface: set `PAN_FD_PROGRESS=ndjson`, watch for `feature_delivery_progress`
 events, and post concise status on each `stage_enter`, `stage_transition`,
 `heartbeat`, and `stage_complete` before the command finishes. See
-`README.md` §Delivery operating card §Working agreement. Operators in a TTY receive `[pan fd] …` on stderr automatically;
+`AGENTS.md` §5. Operators in a TTY receive `[pan fd] …` on stderr automatically;
 see `OPERATION.md` § SDK mode.
 
 When execution finds ambiguity that changes scope, touch-set, acceptance
@@ -261,7 +259,8 @@ for human decisions unless debugging a specific generator.
 | Memory-tier taxonomy | `lib/memory/handbook/memory-tiers.md` | Defines **active-memory**, **active-work**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
 | Active-memory pointers | `lib/memory/active/current.md` | Summaries only; follow links into durable or archival tiers. |
 | Planning/execution handoffs | `lib/memory/active/handoffs.md` | Pointer-only map for active handoff cards under `work/<day>/<task-id>/handoff.md`. |
-| Delivery operating card | `README.md` §Delivery operating card (self-host) or `.pancreator/AGENTS.md` (embedded) | Cross-tool delivery contract; not internal `AGENTS.md`. |
+| Agent operating card | `AGENTS.md` (self-host) or `.pancreator/AGENTS.md` (embedded) | Cross-tool agent contract; explicit-read on self-host. |
+| Human operator procedures | `OPERATION.md` | Human-only; indexed external surface. |
 | Product intent (internal) | `docs/PRD.summary.md` | Pancreator self-dev only; explicit-read by default indexing policy. |
 | Section-level PRD routing (internal) | `docs/PRD.index.md` | Pancreator self-dev only. |
 | M1 and bootstrap routing (internal) | `docs/M1.index.md` | Pancreator self-dev only. |

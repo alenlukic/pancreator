@@ -1,9 +1,9 @@
 # Pancreator operator how-to
 
 Procedure for inbox workflow, feature delivery, the `pan` CLI, and pre-close
-validation. Agent obligations live in `README.md` §Delivery operating card
-(self-host) or `.pancreator/AGENTS.md` (embedded). Internal product routing for
-Pancreator self-development: root `AGENTS.md` and `docs/` (explicit-read).
+validation. This file is for **human operators** only. Agent operating
+instructions live in `AGENTS.md` (self-host) or `.pancreator/AGENTS.md`
+(embedded). Product spec and bootstrap history: `docs/` (internal; explicit-read).
 
 ## Inbox lifecycle
 
@@ -179,8 +179,8 @@ automatically while stages run. Set `PAN_FD_PROGRESS=text` or
 print to stdout only.
 
 When an agent runs SDK-mode commands from chat on your behalf, progress does
-not appear in the chat window unless the agent relays it. See `README.md`
-§Delivery operating card §Working agreement.
+not appear in the chat window unless the agent relays it. See `AGENTS.md` §5
+and `OPERATION.md` § SDK mode.
 
 #### Model escalation tiers (SDK mode only)
 
@@ -273,7 +273,7 @@ For ad-hoc work that does not use the feature-delivery ledger:
 1. Check `lib/memory/active/current.md` for active pointers.
 2. Put requests in `lib/inbox/in/` when they need org tracking.
 3. Separate planning from execution: use `work/<day>/<task-id>/handoff.md`,
-   then delegate to the owning persona (`README.md` §Delivery operating card).
+   then delegate to the owning persona (see `AGENTS.md` §4).
 4. Stage local diffs and ratify at phase boundaries before commit.
 
 Pancreator self-development (internal surface only): read root `AGENTS.md`, then
@@ -389,7 +389,7 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 
 Before `pnpm -w exec pan close-artifacts <task-id>`, run these checks from the
 repository root. Agents performing closure follow the obligations in
-`README.md` §Delivery operating card §Working agreement:
+`AGENTS.md` §5:
 
 ```bash
 pnpm run build

@@ -147,7 +147,7 @@ Rules:
   each stage transition. Agents that invoke `pan` from chat on the operator's
   behalf SHALL set `PAN_FD_PROGRESS=ndjson`, monitor stderr for
   `feature_delivery_progress` events, and relay concise status lines to chat per
-  `README.md` §Delivery operating card. Operators running in a TTY receive `[pan fd] …` on stderr
+  `AGENTS.md` §5. Operators running in a TTY receive `[pan fd] …` on stderr
   automatically; see `OPERATION.md` § SDK mode.
 
 `runner.cursor.model_escalation.config` MAY name which entry under
@@ -161,11 +161,10 @@ for tier resolution, fallback order, and `run.log.jsonl` field names.
 When a change affects operator-facing interfaces (CLI flags or subcommands,
 documented paths under `lib/inbox/`, `work/`, or `lib/memory/features/`,
 default values, or environment variables), the author SHALL update
-`OPERATION.md` in the same change set. `README.md` SHALL remain the external
-entry point with the delivery operating card appendix and a pointer to
-`OPERATION.md` for procedure. Embedded installs use `.pancreator/AGENTS.md` and
-`.pancreator/OPERATION.md` instead. Internal Pancreator self-development uses
-root `AGENTS.md` and `docs/`.
+`OPERATION.md` in the same change set. `README.md` SHALL remain a high-level
+external landing page with a pointer to `OPERATION.md`. Agent obligations live
+in `AGENTS.md` (self-host) or `.pancreator/AGENTS.md` (embedded). Product
+spec and bootstrap history: `docs/` (internal).
 
 ## Editing guidance
 

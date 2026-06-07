@@ -11,12 +11,12 @@ references:
     path: README.md
     range: [1, 10]
     contentHash: pending
-    note: External landing page and delivery operating card appendix.
+    note: External landing page (high-level only).
   - kind: lines
     path: AGENTS.md
     range: [1, 10]
     contentHash: pending
-    note: Internal Pancreator self-development operating card.
+    note: Internal agent operating card (explicit-read on self-host).
   - kind: lines
     path: lib/memory/handbook/context-economy.md
     range: [45, 70]
@@ -46,9 +46,8 @@ surface**. These nouns are distinct from contract-template YAML keys named
 
 Paths used for Pancreator-powered agentic development on a target project:
 
-- `README.md` (including the **Delivery operating card** appendix when
-  `project_root` is `.`)
-- `OPERATION.md`
+- `README.md` — high-level external landing page
+- `OPERATION.md` — detailed human operator procedures
 - `lib/personas/`, `lib/pipelines/`, `lib/personas/skills/`
 - `lib/memory/handbook/` delivery-operations pages (inbox, operator output,
   pancreator-config, run-log schema)
@@ -56,15 +55,16 @@ Paths used for Pancreator-powered agentic development on a target project:
   `lib/memory/features/`
 - `lib/internal/packages/`, `lib/internal/tools/` (implementation extension)
 
-When `project_root` is `.pancreator`, the delivery operating card SHALL live at
-`.pancreator/AGENTS.md` and procedures at `.pancreator/OPERATION.md`. The host
-repository `AGENTS.md` SHALL receive an additive Pancreator pointer block only.
+When `project_root` is `.pancreator`, the agent operating card SHALL live at
+`.pancreator/AGENTS.md` and human procedures at `.pancreator/OPERATION.md`. The
+host repository `AGENTS.md` SHALL receive an additive Pancreator pointer block
+only.
 
 ### Internal surface
 
 Paths used to plan and build Pancreator itself:
 
-- Root `AGENTS.md` in the Pancreator product repository (daedaline self-host)
+- Root `AGENTS.md` — agent operating instructions (explicit-read on self-host)
 - `docs/**` (PRD, bootstrap, M1 route maps, and `docs/README.md` directory guide)
 - `lib/memory/adr/`, `lib/memory/backlog/`, `lib/memory/research/`
 - `lib/memory/features/bootstrap-phase-*`
@@ -81,11 +81,12 @@ task builds or evolves Pancreator.
 
 ## Consequences
 
-- Feature-delivery personas read the **delivery operating card** first, not
-  internal `AGENTS.md`.
+- Feature-delivery personas read `AGENTS.md` (self-host) or
+  `.pancreator/AGENTS.md` (embedded) for agent obligations; humans use
+  `OPERATION.md`.
 - Meta-personas (`pancreator-engineer`, `persona-designer`, `contract-writer`,
-  `compliance-auditor`) read internal `AGENTS.md` and `docs/**` when the task
-  evolves Pancreator.
+  `compliance-auditor`) read `AGENTS.md` and `docs/**` when the task evolves
+  Pancreator.
 - `pan init` seeds `.pancreator/AGENTS.md` and `.pancreator/OPERATION.md` for
   embedded adopt; greenfield installs seed delivery templates at harness root.
 - Handbook, glossary, and context-economy pages SHALL document both surfaces and

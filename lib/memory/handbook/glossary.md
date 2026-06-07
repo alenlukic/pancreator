@@ -292,19 +292,20 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   wholesale sweeps.
 - **external surface** — repository paths used for Pancreator-powered feature
   delivery on a target project. Default indexed entrypoints include `README.md`
-  (delivery operating card appendix when `project_root` is `.`), `OPERATION.md`,
-  `lib/memory/active/`, personas, pipelines, and delivery handbook routes. When
-  `project_root` is `.pancreator`, the delivery operating card lives at
-  `.pancreator/AGENTS.md`. Policy: `lib/memory/adr/0008-external-vs-internal-surfaces.md`.
+  (high-level landing), `OPERATION.md` (human procedures), `lib/memory/active/`,
+  personas, pipelines, and delivery handbook routes. Agent operating instructions
+  live in `AGENTS.md` (self-host, explicit-read) or `.pancreator/AGENTS.md`
+  (embedded). Policy: `lib/memory/adr/0008-external-vs-internal-surfaces.md`.
 - **internal surface** — repository paths used to plan and build Pancreator
   itself, including root `AGENTS.md` (daedaline self-host), `docs/**`,
   `lib/memory/adr/`, `lib/memory/backlog/`, bootstrap feature specs, `tests/**`,
   and `client/`. Excluded from default semantic indexing; explicit-read when the
   task evolves Pancreator. Policy: `lib/memory/adr/0008-external-vs-internal-surfaces.md`.
-- **delivery operating card** — the cross-tool delivery contract for feature
-  delivery: pipeline delegation, working agreement, operator queue, delivery
-  workspace map, and runtime defaults. Self-host (`project_root: "."`): `README.md`
-  §Delivery operating card. Embedded adopt: `.pancreator/AGENTS.md`.
+- **agent operating card** — the cross-tool agent contract: pipeline delegation,
+  working agreement, operator queue, workspace map, and runtime defaults.
+  Self-host: root `AGENTS.md` (explicit-read). Embedded adopt:
+  `.pancreator/AGENTS.md`. Resolver: `resolveDeliveryOperatingCard` in
+  `@pancreator/core`.
 - **generated-machine-artifact** — machine-oriented JSON, manifests, dry-run
   outputs, compliance bundles, and structured logs excluded from default
   semantic indexing unless a task documents inclusion.
@@ -360,11 +361,10 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   toolchain, with no dependency on the Pancreator CLI, conventions, or
   `pancreator.yaml`.
 - **AGENTS.md** — repo-level Markdown briefing per the Linux Foundation
-  Agentic AI Foundation standard. In the Pancreator product repository
-  (daedaline self-host), root `AGENTS.md` is the **internal surface** operating
-  card for building Pancreator itself. Feature-delivery agents read the
-  **delivery operating card** instead. Embedded installs place the delivery card
-  at `.pancreator/AGENTS.md` and preserve the host project's root `AGENTS.md`.
+  Agentic AI Foundation standard. Root `AGENTS.md` holds agent operating
+  instructions (explicit-read on self-host). Human operators use `OPERATION.md`.
+  Embedded installs place the agent card at `.pancreator/AGENTS.md` and preserve
+  the host project's root `AGENTS.md` with an additive pointer block.
 - **MCP server (`@pancreator/mcp-server`)** — publishes Pancreator primitives as
   MCP Tools and Resources. Stdio in MVP; HTTP at M5.
 - **A2A (`@pancreator/a2a`)** — Linux-Foundation-hosted Agent-to-Agent v1.x.

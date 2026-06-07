@@ -280,10 +280,10 @@ test("live normative surfaces use three-level work placeholders", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("README delivery card documents Build-mode inbox scaffolding contract", () => {
-  const readme = read("README.md");
-  assert.match(readme, /Build-mode inbox scaffolding/);
-  assert.match(readme, /pan intake from-build-plan/);
+test("AGENTS.md documents Build-mode inbox scaffolding contract", () => {
+  const agents = read("AGENTS.md");
+  assert.match(agents, /Build-mode inbox scaffolding/);
+  assert.match(agents, /pan intake from-build-plan/);
 });
 
 test("Cursor hooks do not enforce commit-time policy artifacts", () => {

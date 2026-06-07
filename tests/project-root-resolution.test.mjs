@@ -47,8 +47,8 @@ test("resolveRepoPath keeps harness-root pancreator.yaml", async () => {
   assert.equal(resolveRepoPath(harness, "work/day/task/state.json"), path.join(harness, "work", "day", "task", "state.json"));
 });
 
-test("resolveDeliveryOperatingCardRel prefers README appendix on self-host", () => {
-  assert.equal(resolveDeliveryOperatingCardRel(REPO_ROOT), "README.md");
+test("resolveDeliveryOperatingCardRel returns AGENTS.md on self-host", () => {
+  assert.equal(resolveDeliveryOperatingCardRel(REPO_ROOT), "AGENTS.md");
 });
 
 test("resolveDeliveryOperatingCardRel uses embedded AGENTS under .pancreator", async () => {

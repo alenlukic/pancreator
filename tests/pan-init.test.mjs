@@ -54,7 +54,7 @@ test("pan init embedded apply scaffolds under .pancreator and preserves host AGE
   assert.match(hostAgents, /<!-- pancreator-harness-augment -->/);
   assert.ok(existsSync(path.join(root, ".pancreator", "AGENTS.md")));
   assert.ok(existsSync(path.join(root, ".pancreator", "OPERATION.md")));
-  assert.match(await readFile(path.join(root, ".pancreator", "AGENTS.md"), "utf8"), /Delivery operating card/);
+  assert.match(await readFile(path.join(root, ".pancreator", "AGENTS.md"), "utf8"), /Agent operating card/);
   assert.ok(existsSync(path.join(root, ".pancreator", "lib", "memory", "active", "current.md")));
   const harnessYaml = await readFile(path.join(root, ".pancreator", "pancreator.yaml"), "utf8");
   assert.match(harnessYaml, /project_root:\s*["']?\.pancreator["']?/);
@@ -87,5 +87,5 @@ test("pan init greenfield apply writes project_root dot at harness root", async 
   assert.match(harnessYaml, /project_root:\s*["']?\./);
   assert.ok(existsSync(path.join(root, "README.md")));
   assert.ok(existsSync(path.join(root, "OPERATION.md")));
-  assert.match(await readFile(path.join(root, "AGENTS.md"), "utf8"), /Delivery operating card/);
+  assert.match(await readFile(path.join(root, "AGENTS.md"), "utf8"), /Agent operating card/);
 });
