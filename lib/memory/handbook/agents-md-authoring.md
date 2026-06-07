@@ -14,32 +14,32 @@ references:
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [57, 71]
-    contentHash: 51973c1
+    contentHash: 40b0827
     note: "Phase 0b requires `/lib/memory/handbook/agents-md-authoring.md` as a handbook seed."
   - kind: lines
     path: AGENTS.md
-    range: [3, 6]
-    contentHash: fcc9af6
-    note: "AGENTS defines itself as the primary cross-tool contract and declares symlink surfaces."
+    range: [3, 5]
+    contentHash: 3dc743c
+    note: "AGENTS defines itself as the internal agent operating card and external surface split."
   - kind: lines
     path: AGENTS.md
-    range: [16, 30]
-    contentHash: d3e4a75
+    range: [19, 44]
+    contentHash: 3dc743c
     note: "AGENTS canon table defines mandatory handbook references."
   - kind: lines
     path: AGENTS.md
-    range: [55, 71]
-    contentHash: 1941cd3
+    range: [67, 89]
+    contentHash: 3dc743c
     note: "AGENTS delegation rule defines when work is delegated versus performed directly."
   - kind: lines
     path: AGENTS.md
-    range: [75, 100]
-    contentHash: 28c22c2
+    range: [91, 174]
+    contentHash: 3dc743c
     note: "AGENTS working agreement defines non-negotiable operating constraints."
   - kind: lines
     path: AGENTS.md
-    range: [158, 160]
-    contentHash: 0dd1d3f
+    range: [265, 269]
+    contentHash: 3dc743c
     note: "AGENTS changes require inbox item plus explicit human ratification."
 related:
   - /AGENTS.md

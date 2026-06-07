@@ -13,17 +13,17 @@ references:
   - kind: lines
     path: docs/BOOTSTRAP.md
     range: [63, 77]
-    contentHash: 5d67920
+    contentHash: 40b0827
     note: "Phase 0b handbook seed list requires `/lib/memory/handbook/index.md` as the MemoryRouter routing table."
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [229, 231]
-    contentHash: 31546d1
+    contentHash: f28ca2d
     note: "Glossary defines MemoryRouter behavior against this file."
   - kind: lines
     path: AGENTS.md
-    range: [18, 30]
-    contentHash: fbc85e1
+    range: [19, 44]
+    contentHash: 3dc743c
     note: "Canon table declares handbook pages that this index routes by intent."
 related:
   - /lib/memory/handbook/glossary.md
@@ -41,6 +41,7 @@ related:
   - /lib/memory/handbook/memory-tiers.md
   - /lib/memory/handbook/context-cost-audit.md
   - /lib/memory/handbook/pancreator-config.md
+  - /lib/memory/handbook/compliance-runs.md
 ---
 
 # Handbook Routing Index
@@ -78,6 +79,7 @@ lands, operators SHOULD apply this table manually.
 | Run or document `pan` CLI commands for operators | `/lib/memory/handbook/pancreator-config.md` §“CLI invocation in this workspace” | `/lib/memory/handbook/operator-output-contract.md`, `/OPERATION.md` | Use `pnpm -w exec pan …` from repo root; bare `pan` is not on PATH. |
 | Relay feature-delivery SDK progress to operator chat | `/AGENTS.md` §5 | `/OPERATION.md` § SDK mode, `/lib/memory/handbook/context-economy.md` | Agents prefix with `PAN_FD_PROGRESS=ndjson`, monitor stderr, and post concise status lines; operators in a TTY get `[pan fd] …` on stderr automatically. |
 | External versus internal repository surfaces | `/lib/memory/adr/0008-external-vs-internal-surfaces.md` | `/lib/memory/handbook/glossary.md`, `/lib/memory/handbook/context-economy.md` | Defines README, OPERATION, and AGENTS surface split and de-indexing policy. |
+| Run compliance tests after structure changes | `/lib/memory/handbook/compliance-runs.md` | `/lib/memory/features/compliance-tests/manual-runbook.md`, `/AGENTS.md` §6.2 | Defines when agents SHALL run `tests/compliance/` descriptors; scheduled cadence remains deferred. |
 
 ## Retrieval discipline
 

@@ -12,18 +12,18 @@ purpose: |
 references:
   - kind: lines
     path: AGENTS.md
-    range: [116, 174]
-    contentHash: e037427
-    note: "AGENTS working agreement binds all agents to this contract at task completion."
+    range: [91, 174]
+    contentHash: 3dc743c
+    note: "AGENTS §5 working agreement binds all agents to this contract at task completion."
   - kind: lines
     path: lib/memory/handbook/persona-spec.md
     range: [124, 140]
-    contentHash: 4c164cf
+    contentHash: 45e27d0
     note: "Persona body discipline extends to operator-visible completion output."
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [114, 128]
-    contentHash: 546e807
+    contentHash: 50ba88e
     note: "Manual inbox archival and ratification are common next-step targets."
 related:
   - /AGENTS.md
