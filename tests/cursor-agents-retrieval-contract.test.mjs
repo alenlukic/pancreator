@@ -48,6 +48,8 @@ export function broadReadsAreConditional(body) {
     if (!/^\d+\./u.test(trimmed)) continue;
     const mentionsBroadDoc =
       /`AGENTS\.md`/u.test(trimmed) ||
+      /`README\.md`/u.test(trimmed) ||
+      /`\.pancreator\/AGENTS\.md`/u.test(trimmed) ||
       /`lib\/personas\//u.test(trimmed) ||
       /`lib\/memory\/handbook\/context-economy\.md`/u.test(trimmed);
     if (mentionsBroadDoc && !/\bonly when\b/u.test(trimmed)) {

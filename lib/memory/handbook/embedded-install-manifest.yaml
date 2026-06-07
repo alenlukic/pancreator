@@ -2,6 +2,8 @@
 # Project-relative paths are rooted at <project_root> unless noted as harness_root.
 
 allow:
+  - AGENTS.md
+  - OPERATION.md
   - pancreator.yaml
   - pancreator-model-escalation.yaml
   - lib/personas/
@@ -35,6 +37,4 @@ deny_prefixes:
   - lib/memory/smes/
   - lib/internal/
   - tests/
-  - docs/PRD.md
-  - docs/BOOTSTRAP.md
-  - docs/M1.index.md
+  - docs/

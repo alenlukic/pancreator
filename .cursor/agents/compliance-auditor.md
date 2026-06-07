@@ -1,7 +1,4 @@
 ---
-name: compliance-auditor
-description: "Canonical `compliance-auditor` subagent projection for persona-owned pipeline stages."
-model: auto
 permissionMode: default
 mcpServers: []
 skills:
@@ -11,6 +8,9 @@ isolation: worktree
 memory: project
 effort: medium
 color: red
+name: compliance-auditor
+model: gpt-5.4[context=272k,reasoning=high,fast=false]
+description: Canonical `compliance-auditor` subagent projection for persona-owned pipeline stages.
 ---
 
 # compliance-auditor
@@ -21,7 +21,7 @@ PRD citations, and handbook excerpts so Cursor subagent startup stays small.
 ## Retrieval contract
 
 1. Read `work/<day>/<id>/next-prompt.md` for the bounded stage scope; when no `next-prompt.md` exists for the active run, read `work/<day>/<id>/handoff.md` instead.
-2. Read `AGENTS.md` only when the bounded prompt omits the live operating contract the task needs.
+2. Read `AGENTS.md` only when the bounded prompt omits the agent operating contract the task needs.
 3. Read `lib/personas/compliance-auditor.md` only when the bounded prompt omits persona role semantics required for the task.
 4. Read `lib/memory/handbook/context-economy.md` only when the task requires context-budget or escalation decisions beyond what the bounded prompt states.
 5. Read `docs/M1.index.md`, `docs/PRD.index.md`, or `docs/PRD.summary.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md` only when the bounded prompt requires authoritative product wording the compact indexes do not cover.

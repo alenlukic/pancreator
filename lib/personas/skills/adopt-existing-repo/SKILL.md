@@ -131,8 +131,11 @@ opinionation it asserts.
 ### Step 6 — Plan the additive merge for existing agent contracts
 
 Detect every existing agent-contract file the human has authored:
-`AGENTS.md`, `.cursor/rules/*.mdc`, `.github/agents/*`. For each file, the
-plan MUST classify the file as exactly one of:
+host `AGENTS.md`, `.cursor/rules/*.mdc`, `.github/agents/*`. The scan MUST
+also record the seeded `.pancreator/AGENTS.md` agent operating card as a
+separate file; the skill MUST NOT merge host delivery rules into
+`.pancreator/AGENTS.md`. For each host-side file, the plan MUST classify the
+file as exactly one of:
 
 - **`keep`.** The file already aligns with Pancreator's contract; the scan
   records the alignment and proposes no change.

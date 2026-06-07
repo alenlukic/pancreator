@@ -10,6 +10,7 @@ import {
   projectRootAbs,
   readProjectRoot,
   readProjectRootFromYaml,
+  resolveDeliveryOperatingCardRel,
   resolveProjectPath,
   resolveRepoPath,
 } from "../lib/internal/packages/@pancreator/core/dist/index.js";
@@ -44,6 +45,21 @@ test("resolveRepoPath keeps harness-root pancreator.yaml", async () => {
   await writeFile(path.join(harness, "pancreator.yaml"), "project_root: .\n", "utf8");
   assert.equal(resolveRepoPath(harness, "pancreator.yaml"), path.join(harness, "pancreator.yaml"));
   assert.equal(resolveRepoPath(harness, "work/day/task/state.json"), path.join(harness, "work", "day", "task", "state.json"));
+});
+
+test("resolveDeliveryOperatingCardRel returns AGENTS.md on self-host", () => {
+  assert.equal(resolveDeliveryOperatingCardRel(REPO_ROOT), "AGENTS.md");
+});
+
+test("resolveDeliveryOperatingCardRel uses embedded AGENTS under .pancreator", async () => {
+  const harness = await mkdtemp(path.join(os.tmpdir(), "delivery-card-embedded-"));
+  await mkdir(path.join(harness, ".pancreator"), { recursive: true });
+  await writeFile(
+    path.join(harness, ".pancreator", "pancreator.yaml"),
+    'project_root: ".pancreator"\nrisk_tier: medium\n',
+    "utf8",
+  );
+  assert.equal(resolveDeliveryOperatingCardRel(harness), ".pancreator/AGENTS.md");
 });
 
 test("pan intake new writes under project_root for embedded harness", async () => {

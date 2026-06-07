@@ -34,7 +34,8 @@ Self-hosting (daedaline):
 pnpm -w exec pan run feature-delivery 172976_05-30-26/13329_2017_embedded-harness-project-root-install.md
 ```
 
-Embedded adopt (host repo with existing `AGENTS.md`; scaffold under `.pancreator/`):
+Embedded adopt (host repo with existing `AGENTS.md`; scaffold under `.pancreator/`;
+delivery card at `.pancreator/AGENTS.md`, procedures at `.pancreator/OPERATION.md`):
 
 ```bash
 cd /path/to/host-repo
@@ -160,10 +161,10 @@ for tier resolution, fallback order, and `run.log.jsonl` field names.
 When a change affects operator-facing interfaces (CLI flags or subcommands,
 documented paths under `lib/inbox/`, `work/`, or `lib/memory/features/`,
 default values, or environment variables), the author SHALL update
-`OPERATION.md` in the same change set. `README.md` SHALL remain a short entry
-point that routes to `OPERATION.md` for procedure. `AGENTS.md` and
-`docs/M1.index.md` SHALL keep a pointer to `OPERATION.md` in operator-routing
-sections.
+`OPERATION.md` in the same change set. `README.md` SHALL remain a high-level
+external landing page with a pointer to `OPERATION.md`. Agent obligations live
+in `AGENTS.md` (self-host) or `.pancreator/AGENTS.md` (embedded). Product
+spec and bootstrap history: `docs/` (internal).
 
 ## Editing guidance
 

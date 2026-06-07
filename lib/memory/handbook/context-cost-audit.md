@@ -32,7 +32,7 @@ controls used to reduce default load.
 | Generated machine artifacts | Exclude generated JSON, manifests, dry-run/write outputs, and lockfiles from default semantic indexing. |
 | Broad handbook/persona sweeps | Treat internal operating content as routeable by handbook index, not default-loaded. |
 | Broad implementation rule triggers | Keep `coder.mdc` scoped to implementation packages, tests, tools, and explicit touch-set files instead of broad `lib/**/*` activation. |
-| Operator-facing root clutter from implementation, tests, tools, and completed work | Move implementation surfaces to `lib/internal/packages/` and `lib/internal/tools/`, keep repository tests at root `tests/`, and move completed runs to `archive/work/`; keep `work/` for active runs only. |
+| Operator-facing root clutter from implementation, tests, tools, and completed work | Move implementation surfaces to `lib/internal/packages/` and `lib/internal/tools/`, keep repository tests at root `tests/`, and move completed runs to `archive/work/`; keep `work/` for active runs only. Split `AGENTS.md` and `docs/**` (internal) from external `README.md` and `OPERATION.md`. |
 
 ## Known risks
 

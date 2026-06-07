@@ -2,45 +2,33 @@
 
 *A simulated product organization for agentic software delivery.*
 
-Pancreator gives operators and agents a shared, file-native delivery pipeline:
-personas, pipeline stages, durable memory, inbox workflow, and the `pan` CLI.
-This repository is the operating surface for running and hardening that loop in
-real projects, not a frontend or design-skill showcase.
+Pancreator gives operators a shared, file-native delivery pipeline: personas,
+pipeline stages, durable memory, inbox workflow, and the `pan` CLI. This
+repository is the harness for running and hardening that loop in real projects.
 
-[Operator guide](OPERATION.md) · [AGENTS](AGENTS.md) · [PRD](docs/PRD.summary.md)
+**[Operator guide → OPERATION.md](OPERATION.md)**
 
-## System overview
+## What you get
 
-| Area | Path | Role |
-|---|---|---|
-| Operating contract | `AGENTS.md` | Cross-tool rules and routing |
-| Operator how-to | `OPERATION.md` | Inbox, feature-delivery loop, CLI, validation |
-| Personas | `lib/personas/` | Agent roles and constraints |
-| Skills | `lib/personas/skills/` | Reusable procedures |
-| Handbook | `lib/memory/handbook/` | Canon: glossary, contracts, context economy |
-| Inbox | `lib/inbox/in`, `out`, `threads` | Local transient comms (gitignored; `notes/` is human-only) |
-| Memory | `lib/memory/` | ADRs, backlog, features, active pointers |
-| Implementation | `lib/internal/` | Packages, tools, work archive |
+| Area | Path |
+|---|---|
+| Operator procedures | [`OPERATION.md`](OPERATION.md) |
+| Personas and pipelines | `lib/personas/`, `lib/pipelines/` |
+| Active work pointers | `lib/memory/active/current.md` |
+| Inbox (local, gitignored) | `lib/inbox/in`, `out`, `threads` |
+| CLI policy | `pancreator.yaml` |
 
 ## Key paths
 
-- `pancreator.yaml` — live policy and `project_root` (`lib/memory/handbook/pancreator-config.md`)
-- `docs/M1.index.md` — compact product route map
-- `docs/BOOTSTRAP.md` — historical phase record (explicit-read when replaying closed phases)
-- `docs/PRD.summary.md` / `docs/PRD.index.md` — compact PRD routing
-- `docs/PRD.md` — full product requirements
-- `lib/memory/active/current.md` — active-memory orientation
-- `lib/memory/active/handoffs.md` — pointer-only handoff map
-- `work/` — active runs (archived to `archive/work/`)
-- `lib/internal/packages/` — TypeScript workspace packages
-- `tests/` — repository tests and compliance fixtures
-- `lib/internal/tools/` — validation and maintenance scripts
+- `pancreator.yaml` — live policy and `project_root`
+- `lib/memory/active/current.md` — what is active now
+- `work/` — active feature-delivery runs (archived to `archive/work/` after close)
+- `lib/internal/packages/` — TypeScript packages (`pan` CLI and runtime)
 
-## Architecture and core docs
+## Internal surfaces (explicit-read)
 
-- [System architecture ADR](lib/memory/adr/0002-system-architecture-map.md)
-- [Backlog tracking ADR](lib/memory/adr/0001-backlog-tracking.md)
-- [M1 route map](docs/M1.index.md)
-- [PRD summary](docs/PRD.summary.md) · [PRD index](docs/PRD.index.md) · [Full PRD](docs/PRD.md)
-- [Operating contract](AGENTS.md)
-- [Operator how-to](OPERATION.md)
+These paths are excluded from default semantic indexing. Humans open them when
+needed; agents load them only when the task requires them.
+
+- [`AGENTS.md`](AGENTS.md) — agent operating instructions
+- [`docs/`](docs/) — product requirements and bootstrap history

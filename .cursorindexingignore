@@ -8,9 +8,15 @@ archive/work/**
 lib/inbox/**
 archive/inbox/**
 
-# Full high-volume specs; use compact route docs first
-docs/PRD.md
-docs/BOOTSTRAP.md
+# Internal product and self-development surfaces (entire docs/ tree, including docs/README.md)
+docs/**
+docs/README.md
+AGENTS.md
+lib/memory/adr/**
+lib/memory/backlog/**
+lib/memory/research/**
+client/**
+tests/**
 
 # Generated manifests / bulky machine outputs
 **/migration-manifest*.json

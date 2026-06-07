@@ -5,6 +5,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCursorSync } from "./cursor-sync.js";
 import {
+  augmentHostAgentsContent,
+  greenfieldReadmeTemplate,
+  loadDeliveryAgentsTemplate,
+  loadOperationTemplate,
+} from "./delivery-templates.js";
+import {
   DEFAULT_SDK_SAMPLING_CONFIG,
   type SdkSamplingConfig,
 } from "./sdk-sampling.js";
@@ -89,11 +95,7 @@ runner:
 risk_tier: medium
 `;
 
-const GREENFIELD_SCAFFOLD: Record<string, string> = {
-  "pancreator.yaml": GREENFIELD_PANCREATOR_YAML,
-  "AGENTS.md": "# AGENTS.md\n\nOperator card for this Pancreator workspace.\n",
-  "lib/memory/active/current.md": "# Active memory\n\n## Active Feature\n\n- `(none)`\n",
-  "lib/pipelines/feature-delivery.yaml": `id: feature-delivery
+const GREENFIELD_PIPELINE_YAML = `id: feature-delivery
 version: "1"
 stages:
   - id: intake
@@ -114,14 +116,34 @@ stages:
     persona: supervisor
   - id: index
     persona: librarian
-`,
-};
+`;
+
+function greenfieldScaffoldEntries(): Record<string, string> {
+  const pkg = resolvePackageHarnessRoot();
+  return {
+    "README.md": greenfieldReadmeTemplate("Pancreator workspace"),
+    "pancreator.yaml": GREENFIELD_PANCREATOR_YAML,
+    "AGENTS.md": loadDeliveryAgentsTemplate(pkg),
+    "OPERATION.md": loadOperationTemplate(pkg),
+    "lib/memory/active/current.md": "# Active memory\n\n## Active Feature\n\n- `(none)`\n",
+    "lib/pipelines/feature-delivery.yaml": GREENFIELD_PIPELINE_YAML,
+  };
+}
 
 function embeddedScaffoldEntries(manifest: EmbeddedInstallManifest): Record<string, string> {
+  const pkg = resolvePackageHarnessRoot();
   const entries: Record<string, string> = {};
   for (const rel of manifest.allow) {
     const norm = rel.replace(/\/$/u, "");
     if (norm === "pancreator.yaml" || norm === "pancreator-model-escalation.yaml") {
+      continue;
+    }
+    if (norm === "AGENTS.md") {
+      entries[norm] = loadDeliveryAgentsTemplate(pkg);
+      continue;
+    }
+    if (norm === "OPERATION.md") {
+      entries[norm] = loadOperationTemplate(pkg);
       continue;
     }
     if (norm.endsWith("/") || rel.endsWith("/")) {
@@ -132,14 +154,21 @@ function embeddedScaffoldEntries(manifest: EmbeddedInstallManifest): Record<stri
   }
   entries["lib/memory/active/current.md"] =
     "# Active memory\n\n## Active Feature\n\n- `(none)`\n";
-  entries["lib/pipelines/feature-delivery.yaml"] = GREENFIELD_SCAFFOLD["lib/pipelines/feature-delivery.yaml"]!;
+  entries["lib/pipelines/feature-delivery.yaml"] = GREENFIELD_PIPELINE_YAML;
   return entries;
 }
 
 export type InitMode = "greenfield" | "embedded";
 
 export function detectInitMode(harnessRoot: string): InitMode {
-  return existsSync(path.join(path.resolve(harnessRoot), "AGENTS.md")) ? "embedded" : "greenfield";
+  const root = path.resolve(harnessRoot);
+  if (existsSync(path.join(root, ".pancreator", "pancreator.yaml"))) {
+    return "embedded";
+  }
+  if (existsSync(path.join(root, "AGENTS.md"))) {
+    return "embedded";
+  }
+  return "greenfield";
 }
 
 export interface PanInitInput {
@@ -217,7 +246,7 @@ function buildScaffoldPlan(
   manifest: EmbeddedInstallManifest,
 ): Array<{ rel: string; scope: "harness_root" | "project_root"; content: string }> {
   if (mode === "greenfield") {
-    return Object.entries(GREENFIELD_SCAFFOLD).map(([rel, content]) => ({
+    return Object.entries(greenfieldScaffoldEntries()).map(([rel, content]) => ({
       rel,
       scope: "harness_root" as const,
       content,
@@ -451,6 +480,15 @@ export async function runPanInit(input: PanInitInput): Promise<PanInitResult> {
       personaSeed = seeded.personaSeed;
       handbookSeed = seeded.handbookSeed;
       cursorSync = runEmbeddedCursorSync(harnessRoot, manifest, false);
+
+      const hostAgentsPath = path.join(harnessRoot, "AGENTS.md");
+      if (existsSync(hostAgentsPath)) {
+        const prior = readFileSync(hostAgentsPath, "utf8");
+        const augmented = augmentHostAgentsContent(prior);
+        if (augmented !== prior) {
+          await writeFile(hostAgentsPath, augmented, "utf8");
+        }
+      }
     }
 
     const now = input.clock?.() ?? new Date();

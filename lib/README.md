@@ -1,6 +1,9 @@
 # Source Corpus
 
-`lib/` contains the agentic operating corpus and internal implementation surfaces. The repository root remains the operator entry point, while high-level product/bootstrap documents live in `docs/` and repository-level tests live in `tests/`.
+`lib/` contains the agentic operating corpus and internal implementation surfaces.
+External operators enter through [`README.md`](../README.md) and
+[`OPERATION.md`](../OPERATION.md). Agent operating instructions live in
+`AGENTS.md` (explicit-read). Pancreator product docs: `docs/`.
 
 - `ensembles/` — future ensemble configurations.
 - `inbox/` — operator request/response queue and thread history.
