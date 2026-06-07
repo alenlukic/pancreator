@@ -60,6 +60,21 @@ reachable by explicit read.
 When an operator expires stale active-memory prose, the operator SHALL delete
 or replace summaries so `lib/memory/active/**` does not become an archival mirror.
 
+## External versus internal surfaces
+
+When an agent names **external surface**, the agent SHALL treat paths documented
+at `lib/memory/adr/0008-external-vs-internal-surfaces.md` as the default
+feature-delivery context. The **delivery operating card** is the primary
+cross-tool entry for delivery agents.
+
+When an agent names **internal surface**, the agent SHALL treat `AGENTS.md`,
+`docs/**`, ADRs, backlog, bootstrap features, `tests/**`, and `client/` as
+Pancreator self-development context excluded from default semantic indexing.
+
+When `project_root` is `.pancreator`, the delivery operating card SHALL resolve
+to `.pancreator/AGENTS.md` via `resolveDeliveryOperatingCard` in
+`@pancreator/core`.
+
 
 ## Active work
 

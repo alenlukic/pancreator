@@ -34,7 +34,8 @@ Self-hosting (daedaline):
 pnpm -w exec pan run feature-delivery 172976_05-30-26/13329_2017_embedded-harness-project-root-install.md
 ```
 
-Embedded adopt (host repo with existing `AGENTS.md`; scaffold under `.pancreator/`):
+Embedded adopt (host repo with existing `AGENTS.md`; scaffold under `.pancreator/`;
+delivery card at `.pancreator/AGENTS.md`, procedures at `.pancreator/OPERATION.md`):
 
 ```bash
 cd /path/to/host-repo
@@ -146,7 +147,7 @@ Rules:
   each stage transition. Agents that invoke `pan` from chat on the operator's
   behalf SHALL set `PAN_FD_PROGRESS=ndjson`, monitor stderr for
   `feature_delivery_progress` events, and relay concise status lines to chat per
-  `AGENTS.md` §5. Operators running in a TTY receive `[pan fd] …` on stderr
+  `README.md` §Delivery operating card. Operators running in a TTY receive `[pan fd] …` on stderr
   automatically; see `OPERATION.md` § SDK mode.
 
 `runner.cursor.model_escalation.config` MAY name which entry under
@@ -160,10 +161,11 @@ for tier resolution, fallback order, and `run.log.jsonl` field names.
 When a change affects operator-facing interfaces (CLI flags or subcommands,
 documented paths under `lib/inbox/`, `work/`, or `lib/memory/features/`,
 default values, or environment variables), the author SHALL update
-`OPERATION.md` in the same change set. `README.md` SHALL remain a short entry
-point that routes to `OPERATION.md` for procedure. `AGENTS.md` and
-`docs/M1.index.md` SHALL keep a pointer to `OPERATION.md` in operator-routing
-sections.
+`OPERATION.md` in the same change set. `README.md` SHALL remain the external
+entry point with the delivery operating card appendix and a pointer to
+`OPERATION.md` for procedure. Embedded installs use `.pancreator/AGENTS.md` and
+`.pancreator/OPERATION.md` instead. Internal Pancreator self-development uses
+root `AGENTS.md` and `docs/`.
 
 ## Editing guidance
 

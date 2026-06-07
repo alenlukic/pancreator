@@ -49,7 +49,12 @@ test("pan init embedded apply scaffolds under .pancreator and preserves host AGE
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const payload = JSON.parse(result.stdout.trim());
   assert.match(result.stdout, /"mode"\s*:\s*"embedded"/);
-  assert.equal(await readFile(agentsPath, "utf8"), "# Host operator card\n");
+  const hostAgents = await readFile(agentsPath, "utf8");
+  assert.match(hostAgents, /# Host operator card/);
+  assert.match(hostAgents, /<!-- pancreator-harness-augment -->/);
+  assert.ok(existsSync(path.join(root, ".pancreator", "AGENTS.md")));
+  assert.ok(existsSync(path.join(root, ".pancreator", "OPERATION.md")));
+  assert.match(await readFile(path.join(root, ".pancreator", "AGENTS.md"), "utf8"), /Delivery operating card/);
   assert.ok(existsSync(path.join(root, ".pancreator", "lib", "memory", "active", "current.md")));
   const harnessYaml = await readFile(path.join(root, ".pancreator", "pancreator.yaml"), "utf8");
   assert.match(harnessYaml, /project_root:\s*["']?\.pancreator["']?/);
@@ -80,4 +85,7 @@ test("pan init greenfield apply writes project_root dot at harness root", async 
   assert.match(result.stdout, /"mode"\s*:\s*"greenfield"/);
   const harnessYaml = await readFile(path.join(root, "pancreator.yaml"), "utf8");
   assert.match(harnessYaml, /project_root:\s*["']?\./);
+  assert.ok(existsSync(path.join(root, "README.md")));
+  assert.ok(existsSync(path.join(root, "OPERATION.md")));
+  assert.match(await readFile(path.join(root, "AGENTS.md"), "utf8"), /Delivery operating card/);
 });

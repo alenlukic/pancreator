@@ -18,6 +18,10 @@ export {
   resolveRepoPath,
 } from "./project-root.js";
 export {
+  resolveDeliveryOperatingCard,
+  resolveDeliveryOperatingCardRel,
+} from "./delivery-operating-card.js";
+export {
   abbreviateHashes,
   CANONICAL_JSON_INDENT_SPACES,
   deepCloneJson,

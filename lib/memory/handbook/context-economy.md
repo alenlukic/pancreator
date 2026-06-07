@@ -48,20 +48,20 @@ related:
 
 Agents and operators SHOULD load the smallest surface that resolves the task:
 
-1. Read `AGENTS.md` first for the working agreement and workspace map.
+1. Read the **delivery operating card** first for the working agreement and
+   delivery workspace map: `README.md` §Delivery operating card when
+   `project_root` is `.`; `.pancreator/AGENTS.md` when embedded.
 2. Read `lib/memory/active/current.md` when the task needs current Feature pointers
    inside **active-memory** and `simple task mode` does not apply.
-3. Read `docs/M1.index.md` for M1/bootstrap routing before full `docs/BOOTSTRAP.md`.
-4. Read `docs/PRD.summary.md` and `docs/PRD.index.md` for product orientation before full
-   `docs/PRD.md`.
-5. Read `lib/memory/handbook/index.md` and follow at most one primary route plus
+3. Read `OPERATION.md` when the task needs inbox, feature-delivery, or CLI procedure.
+4. Read `lib/memory/handbook/index.md` and follow at most one primary route plus
    stated secondaries.
-6. Read full `docs/PRD.md` or `docs/BOOTSTRAP.md` only when the task requires
-   authoritative wording, scope change, citation repair, line-anchored
-   requirements, or phase-exit detail.
 
-`docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md` remain the default
-low-detail product and milestone orientation surfaces.
+**Internal surface only** (Pancreator self-development and meta-personas): read
+root `AGENTS.md`, then route through `docs/PRD.summary.md`, `docs/PRD.index.md`,
+and `docs/M1.index.md` before full `docs/PRD.md` or `docs/BOOTSTRAP.md`. Feature-delivery
+stage personas MUST NOT load `docs/**` or internal `AGENTS.md` unless the bounded
+prompt names an internal task.
 
 Agents MUST NOT read, traverse, ingest, cite, or modify files under
 `/lib/inbox/notes/` per inbox lifecycle.
@@ -110,8 +110,9 @@ attachments when the task requires them.
 
 Typical explicit-read surfaces include:
 
-- Full `docs/PRD.md` for deep spec work after `docs/PRD.summary.md` and `docs/PRD.index.md`.
-- Full `docs/BOOTSTRAP.md` for bootstrap phase gates after `docs/M1.index.md`.
+- Internal `AGENTS.md` and entire `docs/**` tree (Pancreator product development).
+- `lib/memory/adr/`, `lib/memory/backlog/`, `lib/memory/research/`, `tests/**`.
+- Full `docs/PRD.md` and `docs/BOOTSTRAP.md` after compact internal routes.
 - Selected `work/**` artifacts for active-run handling.
 - Selected `archive/work/**`, `lib/inbox/out/**`, `archive/inbox/**`,
   and `lib/inbox/threads/**` artifacts for historical reconstruction.
@@ -131,6 +132,8 @@ When `simple task mode` applies, the mode SHALL cover small code edits, lint
 invocations, typecheck invocations, build invocations, test invocations,
 dependency inspection, file lookup, mechanical refactors, formatting fixes, and
 repository maintenance that requires no product reasoning.
+
+While `simple task mode` applies, an agent MUST NOT read internal `AGENTS.md`.
 
 While `simple task mode` applies, an agent MUST NOT read `docs/PRD.md`.
 
@@ -200,7 +203,7 @@ operator's behalf, the agent SHALL relay stderr progress to the operator chat
 surface: set `PAN_FD_PROGRESS=ndjson`, watch for `feature_delivery_progress`
 events, and post concise status on each `stage_enter`, `stage_transition`,
 `heartbeat`, and `stage_complete` before the command finishes. See
-`AGENTS.md` §5. Operators in a TTY receive `[pan fd] …` on stderr automatically;
+`README.md` §Delivery operating card §Working agreement. Operators in a TTY receive `[pan fd] …` on stderr automatically;
 see `OPERATION.md` § SDK mode.
 
 When execution finds ambiguity that changes scope, touch-set, acceptance
@@ -257,9 +260,10 @@ for human decisions unless debugging a specific generator.
 | Memory-tier taxonomy | `lib/memory/handbook/memory-tiers.md` | Defines **active-memory**, **active-work**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
 | Active-memory pointers | `lib/memory/active/current.md` | Summaries only; follow links into durable or archival tiers. |
 | Planning/execution handoffs | `lib/memory/active/handoffs.md` | Pointer-only map for active handoff cards under `work/<day>/<task-id>/handoff.md`. |
-| Product intent at low detail | `docs/PRD.summary.md` | Orientation only; not a substitute for `docs/PRD.md` when citations need line anchors. |
-| Section-level PRD routing | `docs/PRD.index.md` | Picks which `docs/PRD.md` section to open next. |
-| M1 and bootstrap routing | `docs/M1.index.md` | Prefer this before full `docs/BOOTSTRAP.md` or full `docs/PRD.md` for M1 work. |
+| Delivery operating card | `README.md` §Delivery operating card (self-host) or `.pancreator/AGENTS.md` (embedded) | Cross-tool delivery contract; not internal `AGENTS.md`. |
+| Product intent (internal) | `docs/PRD.summary.md` | Pancreator self-dev only; explicit-read by default indexing policy. |
+| Section-level PRD routing (internal) | `docs/PRD.index.md` | Pancreator self-dev only. |
+| M1 and bootstrap routing (internal) | `docs/M1.index.md` | Pancreator self-dev only. |
 | Subagent invocation and model escalation | `lib/memory/handbook/context-economy.md` §“Model and context escalation guidance” | One canonical `.cursor/agents/<name>.md` per persona; escalate model class per documented triggers. |
 | Feature implementation | `lib/memory/features/<id>/spec.md` | Canonical Engineering Spec for that Feature. |
 | Bootstrap phase authority | `docs/BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |

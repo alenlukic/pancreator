@@ -1,8 +1,9 @@
 # Pancreator operator how-to
 
 Procedure for inbox workflow, feature delivery, the `pan` CLI, and pre-close
-validation. Agent obligations live in `AGENTS.md`. Product routing:
-`docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md`.
+validation. Agent obligations live in `README.md` §Delivery operating card
+(self-host) or `.pancreator/AGENTS.md` (embedded). Internal product routing for
+Pancreator self-development: root `AGENTS.md` and `docs/` (explicit-read).
 
 ## Inbox lifecycle
 
@@ -178,8 +179,8 @@ automatically while stages run. Set `PAN_FD_PROGRESS=text` or
 print to stdout only.
 
 When an agent runs SDK-mode commands from chat on your behalf, progress does
-not appear in the chat window unless the agent relays it. See `AGENTS.md` §5
-"Feature-delivery SDK progress in chat".
+not appear in the chat window unless the agent relays it. See `README.md`
+§Delivery operating card §Working agreement.
 
 #### Model escalation tiers (SDK mode only)
 
@@ -273,7 +274,7 @@ For ad-hoc work that does not use the feature-delivery ledger:
 2. Route through `docs/M1.index.md` before full `docs/BOOTSTRAP.md` or `docs/PRD.md`.
 3. Put requests in `lib/inbox/in/` when they need org tracking.
 4. Separate planning from execution: use `work/<day>/<task-id>/handoff.md`,
-   then delegate to the owning persona (`AGENTS.md` §4).
+   then delegate to the owning persona (`README.md` §Delivery operating card).
 5. Stage local diffs and ratify at phase boundaries before commit.
 
 ## Embedded install checklist
@@ -286,9 +287,11 @@ For adopting Pancreator into an existing repository with `project_root: ".pancre
    pnpm -w exec pan init --apply
    ```
 
-2. Verify `.cursor/agents/` is populated (for example `.cursor/agents/intake-analyst.md` exists at the harness root).
-3. Open the harness root in Cursor.
-4. Run feature delivery in SDK mode (embedded `pancreator.yaml` defaults to `runner.cursor.invocation: sdk`):
+2. Verify `.pancreator/AGENTS.md` and `.pancreator/OPERATION.md` exist.
+3. Verify host `AGENTS.md` contains the Pancreator augment pointer block.
+4. Verify `.cursor/agents/` is populated (for example `.cursor/agents/intake-analyst.md` exists at the harness root).
+5. Open the harness root in Cursor.
+6. Run feature delivery in SDK mode (embedded `pancreator.yaml` defaults to `runner.cursor.invocation: sdk`):
 
    ```bash
    pnpm -w exec pan run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
@@ -382,7 +385,7 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 
 Before `pnpm -w exec pan close-artifacts <task-id>`, run these checks from the
 repository root. Agents performing closure follow the obligations in
-`AGENTS.md` §5 "Librarian pre-close validation":
+`README.md` §Delivery operating card §Working agreement:
 
 ```bash
 pnpm run build

@@ -36,9 +36,12 @@ test("classifyExclusiveTier separates handbook, active work, archival, durable J
   assert.equal(classifyExclusiveTier("work/README.md"), "active_work");
   assert.equal(classifyExclusiveTier("archive/work/172997_05-09-26/example/plan.md"), "archival_memory");
   assert.equal(classifyExclusiveTier("lib/internal/packages/@pancreator/core/src/index.ts"), "source_code");
+  assert.equal(classifyExclusiveTier("docs/PRD.summary.md"), "internal_product");
+  assert.equal(classifyExclusiveTier("AGENTS.md"), "internal_product");
+  assert.equal(classifyExclusiveTier("lib/memory/adr/0001-backlog-tracking.md"), "internal_build");
   assert.equal(
     classifyExclusiveTier("tests/compliance/schemas/latest.yaml"),
-    "source_code",
+    "internal_build",
   );
 });
 
@@ -61,7 +64,7 @@ test("tier char sums reconcile with total corpus and indexable partitioning", ()
   assert.equal(s.activeChars, s.byTier.active_memory.chars);
 });
 
-test("indexing policy excludes archival, full specs, and agent projections while keeping compact routes", () => {
+test("indexing policy excludes internal product, archival, and agent projections while keeping external routes", () => {
   const matchers = indexingMatchersFromRoot(ROOT);
   assert.ok(isIndexingExcluded(".cursor/agents/tech-lead.md", matchers));
   assert.ok(isIndexingExcluded("archive/inbox/in/example.md", matchers));
@@ -70,17 +73,20 @@ test("indexing policy excludes archival, full specs, and agent projections while
   assert.ok(isIndexingExcluded("lib/inbox/notes/private.md", matchers));
   assert.ok(isIndexingExcluded("docs/PRD.md", matchers));
   assert.ok(isIndexingExcluded("docs/BOOTSTRAP.md", matchers));
+  assert.ok(isIndexingExcluded("docs/PRD.summary.md", matchers));
+  assert.ok(isIndexingExcluded("docs/M1.index.md", matchers));
+  assert.ok(isIndexingExcluded("AGENTS.md", matchers));
   assert.ok(!isIndexingExcluded("lib/memory/active/README.md", matchers));
-  assert.ok(!isIndexingExcluded("docs/PRD.summary.md", matchers));
-  assert.ok(!isIndexingExcluded("docs/M1.index.md", matchers));
+  assert.ok(!isIndexingExcluded("README.md", matchers));
+  assert.ok(!isIndexingExcluded("OPERATION.md", matchers));
 });
 
-test("CLI exits zero with eight tiers and aggregate labels", () => {
+test("CLI exits zero with nine tiers and aggregate labels", () => {
   const script = path.join(ROOT, "lib", "internal", "tools", "context-budget-report.mjs");
   const r = spawnSync(process.execPath, [script], { encoding: "utf8", cwd: ROOT });
   assert.equal(r.status, 0, r.stderr);
   const out = r.stdout;
-  assert.match(out, /active memory[\s\S]*active work[\s\S]*durable memory[\s\S]*archival memory[\s\S]*internal operating[\s\S]*product context[\s\S]*source code[\s\S]*generated machine/);
+  assert.match(out, /active memory[\s\S]*active work[\s\S]*durable memory[\s\S]*archival memory[\s\S]*internal operating[\s\S]*internal product[\s\S]*internal build[\s\S]*source code[\s\S]*generated machine/);
   assert.match(out, /total corpus/);
   assert.match(out, /indexable default context/);
   assert.match(out, /explicit-read-only corpus/);
