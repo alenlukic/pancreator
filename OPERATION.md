@@ -271,11 +271,15 @@ of scope; cap parallelism or serialize runs that bind the same ports.
 For ad-hoc work that does not use the feature-delivery ledger:
 
 1. Check `lib/memory/active/current.md` for active pointers.
-2. Route through `docs/M1.index.md` before full `docs/BOOTSTRAP.md` or `docs/PRD.md`.
-3. Put requests in `lib/inbox/in/` when they need org tracking.
-4. Separate planning from execution: use `work/<day>/<task-id>/handoff.md`,
+2. Put requests in `lib/inbox/in/` when they need org tracking.
+3. Separate planning from execution: use `work/<day>/<task-id>/handoff.md`,
    then delegate to the owning persona (`README.md` §Delivery operating card).
-5. Stage local diffs and ratify at phase boundaries before commit.
+4. Stage local diffs and ratify at phase boundaries before commit.
+
+Pancreator self-development (internal surface only): read root `AGENTS.md`, then
+route through `docs/PRD.summary.md` and `docs/PRD.index.md` before full
+`docs/PRD.md` or `docs/BOOTSTRAP.md`. The entire `docs/` tree, including
+`docs/README.md`, is explicit-read and excluded from default semantic indexing.
 
 ## Embedded install checklist
 

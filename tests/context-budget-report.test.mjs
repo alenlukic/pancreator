@@ -37,6 +37,7 @@ test("classifyExclusiveTier separates handbook, active work, archival, durable J
   assert.equal(classifyExclusiveTier("archive/work/172997_05-09-26/example/plan.md"), "archival_memory");
   assert.equal(classifyExclusiveTier("lib/internal/packages/@pancreator/core/src/index.ts"), "source_code");
   assert.equal(classifyExclusiveTier("docs/PRD.summary.md"), "internal_product");
+  assert.equal(classifyExclusiveTier("docs/README.md"), "internal_product");
   assert.equal(classifyExclusiveTier("AGENTS.md"), "internal_product");
   assert.equal(classifyExclusiveTier("lib/memory/adr/0001-backlog-tracking.md"), "internal_build");
   assert.equal(
@@ -73,6 +74,7 @@ test("indexing policy excludes internal product, archival, and agent projections
   assert.ok(isIndexingExcluded("lib/inbox/notes/private.md", matchers));
   assert.ok(isIndexingExcluded("docs/PRD.md", matchers));
   assert.ok(isIndexingExcluded("docs/BOOTSTRAP.md", matchers));
+  assert.ok(isIndexingExcluded("docs/README.md", matchers));
   assert.ok(isIndexingExcluded("docs/PRD.summary.md", matchers));
   assert.ok(isIndexingExcluded("docs/M1.index.md", matchers));
   assert.ok(isIndexingExcluded("AGENTS.md", matchers));

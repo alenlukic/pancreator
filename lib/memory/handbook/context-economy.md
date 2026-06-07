@@ -110,7 +110,8 @@ attachments when the task requires them.
 
 Typical explicit-read surfaces include:
 
-- Internal `AGENTS.md` and entire `docs/**` tree (Pancreator product development).
+- Internal `AGENTS.md` and entire `docs/**` tree, including `docs/README.md`
+  (Pancreator product development; explicit-read only).
 - `lib/memory/adr/`, `lib/memory/backlog/`, `lib/memory/research/`, `tests/**`.
 - Full `docs/PRD.md` and `docs/BOOTSTRAP.md` after compact internal routes.
 - Selected `work/**` artifacts for active-run handling.

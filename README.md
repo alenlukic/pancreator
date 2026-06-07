@@ -23,7 +23,7 @@ real projects, not a frontend or design-skill showcase.
 | Implementation | `lib/internal/` | Packages, tools, work archive |
 
 Pancreator self-development (product spec, internal operating card) lives under
-`docs/` and `AGENTS.md` — explicit-read; not part of routine delivery context.
+`docs/` (explicit-read; not semantically indexed) and internal `AGENTS.md`.
 
 ## Key paths
 

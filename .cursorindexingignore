@@ -8,8 +8,9 @@ archive/work/**
 lib/inbox/**
 archive/inbox/**
 
-# Internal product and self-development surfaces
+# Internal product and self-development surfaces (entire docs/ tree, including docs/README.md)
 docs/**
+docs/README.md
 AGENTS.md
 lib/memory/adr/**
 lib/memory/backlog/**

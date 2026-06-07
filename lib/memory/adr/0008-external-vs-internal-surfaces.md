@@ -65,7 +65,7 @@ repository `AGENTS.md` SHALL receive an additive Pancreator pointer block only.
 Paths used to plan and build Pancreator itself:
 
 - Root `AGENTS.md` in the Pancreator product repository (daedaline self-host)
-- `docs/**` (PRD, bootstrap, M1 route maps)
+- `docs/**` (PRD, bootstrap, M1 route maps, and `docs/README.md` directory guide)
 - `lib/memory/adr/`, `lib/memory/backlog/`, `lib/memory/research/`
 - `lib/memory/features/bootstrap-phase-*`
 - `archive/**`, `tests/**`, `client/` (monorepo operator cockpit)

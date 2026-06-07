@@ -102,6 +102,7 @@ test("operator-facing root keeps implementation under internal while tests and d
   assert.ok(exists("docs/PRD.md"));
   assert.ok(exists("docs/BOOTSTRAP.md"));
   assert.ok(exists("docs/M1.index.md"));
+  assert.ok(exists("docs/README.md"));
   assert.ok(exists("work/README.md"));
   assert.equal(exists("packages"), false);
   assert.equal(exists("lib/internal/tests"), false);
