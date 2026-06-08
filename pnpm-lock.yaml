@@ -118,6 +118,21 @@ importers:
 
   client:
     dependencies:
+      '@pancreator/core':
+        specifier: workspace:*
+        version: link:../lib/internal/packages/@pancreator/core
+      '@pancreator/intervention':
+        specifier: workspace:*
+        version: link:../lib/internal/packages/@pancreator/intervention
+      '@pancreator/persona':
+        specifier: workspace:*
+        version: link:../lib/internal/packages/@pancreator/persona
+      '@pancreator/runner-cursor':
+        specifier: workspace:*
+        version: link:../lib/internal/packages/@pancreator/runner-cursor
+      '@pancreator/scheduler':
+        specifier: workspace:*
+        version: link:../lib/internal/packages/@pancreator/scheduler
       '@radix-ui/react-collapsible':
         specifier: ^1.1.3
         version: 1.1.12(@types/react-dom@18.3.7(@types/react@18.3.29))(@types/react@18.3.29)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -265,6 +280,9 @@ importers:
       '@pancreator/runner-cursor':
         specifier: workspace:*
         version: link:../runner-cursor
+      '@pancreator/scheduler':
+        specifier: workspace:*
+        version: link:../scheduler
       '@pancreator/worktree':
         specifier: workspace:*
         version: link:../worktree
@@ -710,6 +728,34 @@ importers:
       '@cursor/sdk-win32-x64':
         specifier: 1.0.13
         version: 1.0.13
+    devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.17.4
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.17
+      publint:
+        specifier: 'catalog:'
+        version: 0.2.12
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.1(postcss@8.5.12)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/node@22.19.17)(jsdom@26.1.0)(yaml@2.8.3)
+
+  lib/internal/packages/@pancreator/scheduler:
+    dependencies:
+      '@pancreator/core':
+        specifier: workspace:*
+        version: link:../core
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'

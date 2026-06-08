@@ -4,7 +4,16 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stringifyCompactJson } from "@/lib/json-io";
 import { GET } from "@/app/api/run-state/route";
-import { getActiveRunState, parseRunLogFile, synthesizeStageCells } from "@/services/run-state";
+import {
+  collectHumanGateQueue,
+  deriveRunDirFromTaskId,
+  getActiveRunState,
+  parseRunLogFile,
+  synthesizeStageCells,
+  activeStageElapsedMs,
+  newestStageTelemetryChip,
+} from "@/services/run-state";
+import { stageArtifactPathsForStage } from "@/services/stage-artifact-contract";
 
 function writeState(
   root: string,
@@ -36,6 +45,7 @@ function writeState(
       { id: "review", persona: "reviewer", label: "Review", status: "pending" },
       { id: "test", persona: "qa-tester", label: "Test", status: "pending" },
       { id: "report", persona: "tech-writer", label: "Report", status: "pending" },
+      { id: "compliance", persona: "supervisor", label: "Compliance", status: "pending" },
       { id: "ship", persona: "supervisor", label: "Ship", status: "pending" },
       { id: "index", persona: "librarian", label: "Index", status: "pending" },
     ],
@@ -73,7 +83,7 @@ describe("GET /api/run-state", () => {
     }
   });
 
-  it("returns one envelope with nine stages for an active task", async () => {
+  it("returns one envelope with ten stages including compliance for an active task", async () => {
     writeState(tempRoot, "172973_06-02-26", "65766_0543_demo-feature");
     const originalRoot = process.cwd();
     process.chdir(tempRoot);
@@ -81,8 +91,10 @@ describe("GET /api/run-state", () => {
       const envelopes = await getActiveRunState(tempRoot);
       expect(envelopes).toHaveLength(1);
       expect(envelopes[0].taskId).toBe("65766_0543_demo-feature");
+      expect(envelopes[0].featureId).toBe("demo-feature");
       expect(envelopes[0].decodedTimestamp).toBe("2026-06-02 05:43 UTC");
-      expect(envelopes[0].stages).toHaveLength(9);
+      expect(envelopes[0].stages).toHaveLength(10);
+      expect(envelopes[0].stages.map((stage) => stage.name)).toContain("compliance");
       expect(envelopes[0].stages[1]).toMatchObject({
         name: "plan",
         ownerPersona: "tech-lead",
@@ -177,7 +189,53 @@ describe("GET /api/run-state", () => {
       },
       null,
     );
-    expect(cells.find((stage) => stage.name === "intake")?.nextHumanAction).toBe("Intake ratified");
+    const intake = cells.find((stage) => stage.name === "intake");
+    expect(intake?.humanAttention).toBe("Intake ratified");
+    expect(intake?.nextHumanAction).toBe("");
+  });
+
+  it("keeps humanAttention separate from nextCommand on active stages", () => {
+    const cells = synthesizeStageCells(
+      {
+        taskId: "65766_0543_active-attention-feature",
+        status: "ready_for_stage_delegation",
+        currentStage: "plan",
+        nextHumanAction: "Ratify the plan.",
+        artifacts: {
+          runDir: "work/demo",
+          runLogFile: "work/demo/run.log.jsonl",
+        },
+        stages: [
+          { id: "intake", persona: "intake-analyst", status: "complete" },
+          {
+            id: "plan",
+            persona: "tech-lead",
+            status: "ready",
+            humanGate: "human_approval",
+            humanAttention: "Persisted operator note",
+          },
+          { id: "implement", persona: "coder", status: "pending" },
+          { id: "review", persona: "reviewer", status: "pending" },
+          { id: "test", persona: "qa-tester", status: "pending" },
+          { id: "report", persona: "tech-writer", status: "pending" },
+          { id: "ship", persona: "supervisor", status: "pending" },
+          { id: "index", persona: "librarian", status: "pending" },
+        ],
+      },
+      {
+        taskId: "65766_0543_active-attention-feature",
+        currentStage: "plan",
+        nextHumanAction: "Ratify the plan.",
+        nextCommand: "pnpm -w exec pan advance demo --artifact plan.md",
+      },
+    );
+    const plan = cells.find((stage) => stage.name === "plan");
+    expect(plan).toMatchObject({
+      status: "active",
+      nextHumanAction: "Ratify the plan.",
+      nextCommand: "pnpm -w exec pan advance demo --artifact plan.md",
+      humanAttention: "Persisted operator note",
+    });
   });
 
   it("marks blocked stages as failed with humanAttention", () => {
@@ -211,7 +269,75 @@ describe("GET /api/run-state", () => {
     );
     expect(cells.find((stage) => stage.name === "review")).toMatchObject({
       status: "failed",
-      nextHumanAction: "Address must_fix findings",
+      humanAttention: "Address must_fix findings",
+      nextHumanAction: "",
+    });
+  });
+
+  it("enriches envelopes with runDir and inboxSource metadata", async () => {
+    writeState(tempRoot, "172973_06-02-26", "65766_0543_metadata-feature", {
+      source: {
+        inboxEntry: "demo.md",
+        inboxPath: "lib/inbox/in/demo.md",
+      },
+    });
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const envelopes = await getActiveRunState(tempRoot);
+      expect(envelopes[0]).toMatchObject({
+        taskId: "65766_0543_metadata-feature",
+        runDir: "work/172973_06-02-26/65766_0543_metadata-feature",
+        inboxSource: "lib/inbox/in/demo.md",
+      });
+      expect(deriveRunDirFromTaskId("65766_0543_metadata-feature", envelopes)).toBe(
+        "work/172973_06-02-26/65766_0543_metadata-feature",
+      );
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("collects human gate queue entries across active runs", () => {
+    const queue = collectHumanGateQueue([
+      {
+        taskId: "task-a",
+        runDir: "work/day-a/task-a",
+        stages: [
+          {
+            name: "plan",
+            ownerPersona: "tech-lead",
+            humanGate: "human_approval",
+            nextHumanAction: "Ratify plan",
+            nextCommand: "",
+            humanAttention: "",
+            status: "active",
+          },
+        ],
+        runEvents: [],
+      },
+      {
+        taskId: "task-b",
+        runDir: "work/day-b/task-b",
+        stages: [
+          {
+            name: "review",
+            ownerPersona: "reviewer",
+            humanGate: "human_approval",
+            nextHumanAction: "",
+            nextCommand: "",
+            humanAttention: "",
+            status: "pending",
+          },
+        ],
+        runEvents: [],
+      },
+    ]);
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).toMatchObject({
+      taskId: "task-a",
+      stageName: "plan",
+      humanGate: "human_approval",
     });
   });
 
@@ -241,6 +367,103 @@ describe("GET /api/run-state", () => {
     } finally {
       process.chdir(originalRoot);
     }
+  });
+
+  it("parses escalation, retry, and deferral telemetry from run.log.jsonl", async () => {
+    const runDir = path.join(tempRoot, "work", "172973_06-02-26", "65766_0543_telemetry-feature");
+    fs.mkdirSync(runDir, { recursive: true });
+    writeState(tempRoot, "172973_06-02-26", "65766_0543_telemetry-feature");
+    const logPath = path.join(runDir, "run.log.jsonl");
+    fs.writeFileSync(
+      logPath,
+      [
+        stringifyCompactJson({
+          ts: "2026-06-02T12:00:00.000Z",
+          name: "cursor.runner.escalation",
+          pancreator: { stage_id: "implement", outcome: "success" },
+          attributes: { escalation: "composer-2.5[fast=false]" },
+        }),
+        stringifyCompactJson({
+          ts: "2026-06-02T11:00:00.000Z",
+          name: "pancreator.pipeline.advance",
+          pancreator: { stage_id: "review", outcome: "success" },
+          attributes: { "pancreator.transition_event": "must_fix" },
+        }),
+        stringifyCompactJson({
+          ts: "2026-06-02T10:00:00.000Z",
+          name: "pancreator.pipeline.defer",
+          pancreator: { stage_id: "test", outcome: "success" },
+          status: { code: "OK", message: "deferred to operator" },
+        }),
+      ].join("\n"),
+    );
+
+    const events = await parseRunLogFile(logPath);
+    expect(events[0]).toMatchObject({
+      escalationLabel: "composer-2.5[fast=false]",
+      stageId: "implement",
+    });
+    expect(events[1]).toMatchObject({ retryBadge: true, stageId: "review" });
+    expect(events[2]).toMatchObject({ deferralBadge: true, stageId: "test" });
+
+    const chip = newestStageTelemetryChip(events, "implement");
+    expect(chip).toMatchObject({ kind: "escalation", label: "composer-2.5[fast=false]" });
+
+    const elapsed = activeStageElapsedMs(
+      events,
+      "implement",
+      Date.parse("2026-06-02T12:02:14.000Z"),
+    );
+    expect(elapsed).toBe(134_000);
+  });
+
+  it("resolves stage artifact paths for plan and implement stages", () => {
+    const input = {
+      featureId: "demo-feature",
+      runDir: "work/day/task",
+    };
+    expect(stageArtifactPathsForStage(input, "plan")).toEqual([
+      "work/day/task/plan.md",
+      "work/day/task/adr-draft.md",
+      "work/day/task/touch-set.json",
+      "work/day/task/handoff.md",
+    ]);
+    expect(stageArtifactPathsForStage(input, "implement")).toEqual([
+      "work/day/task/implementation-report.md",
+    ]);
+    expect(stageArtifactPathsForStage({ ...input, designSteps: true }, "plan")).toContain(
+      "lib/memory/features/demo-feature/ux-spec.md",
+    );
+  });
+
+  it("synthesizes compliance between report and ship", () => {
+    const cells = synthesizeStageCells(
+      {
+        taskId: "65766_0543_compliance-order",
+        status: "ready_for_stage_delegation",
+        currentStage: "report",
+        nextHumanAction: "Write delivery report",
+        artifacts: {
+          runDir: "work/demo",
+          runLogFile: "work/demo/run.log.jsonl",
+        },
+        stages: [
+          { id: "intake", persona: "intake-analyst", status: "complete" },
+          { id: "plan", persona: "tech-lead", status: "complete" },
+          { id: "implement", persona: "coder", status: "complete" },
+          { id: "review", persona: "reviewer", status: "complete" },
+          { id: "test", persona: "qa-tester", status: "complete" },
+          { id: "report", persona: "tech-writer", status: "ready" },
+          { id: "compliance", persona: "supervisor", status: "pending" },
+          { id: "ship", persona: "supervisor", status: "pending" },
+          { id: "index", persona: "librarian", status: "pending" },
+        ],
+      },
+      null,
+    );
+    const names = cells.map((stage) => stage.name);
+    expect(names.indexOf("compliance")).toBe(names.indexOf("report") + 1);
+    expect(names.indexOf("ship")).toBe(names.indexOf("compliance") + 1);
   });
 
   it("parses run.log.jsonl in reverse-chronological order", async () => {

@@ -41,16 +41,16 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `cockpit-v2-maintenance-toolkit-compliance-tests` | [indexed] (`2026-06-08T17:02:53.000Z`) | `lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md` | `—` | `archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-mainte…` |
+| `cockpit-v2-local-scheduler-tick-and-run-history` | [indexed] (`2026-06-08T16:24:18.000Z`) | `lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md` | `—` | `archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automa…` |
+| `cockpit-v2-automation-registry-and-management-ui` | [indexed] (`2026-06-08T16:12:00.000Z`) | `lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md` | `—` | `archive/inbox/in/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/54351_0854_cockpit-v2-autom…` |
+| `cockpit-v2-active-memory-inbox-triage-multi-run-view` | [indexed] (`2026-06-08T11:05:00.000Z`) | `lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md` | `—` | `archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-p…` |
+| `cockpit-v2-live-run-refresh-and-stage-artifact-drawer` | [indexed] (`2026-06-08T10:30:00.000Z`) | `lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md` | `—` | `archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-…` |
+| `cockpit-v2-pipeline-command-center-and-human-gate-queue` | [indexed] (`2026-06-08T10:30:00.000Z`) | `lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md` | `—` | `archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v…` |
+| `cockpit-v2-ux-spec-and-information-architecture` | [indexed] (`2026-06-08T09:45:00.000Z`) | `lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md` | `—` | `archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spe…` |
 | `batch-feature-delivery-runs-sequential-parallel` | [indexed] (`2026-06-05T05:15:00.000Z`) | `lib/memory/features/batch-feature-delivery-runs-sequential-parallel/delivery-report.md` | `—` | `archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-del…` |
 | `build-mode-inbox-scaffolding` | [indexed] (`2026-06-05T04:05:00.000Z`) | `lib/memory/features/build-mode-inbox-scaffolding/delivery-report.md` | `—` | `archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md` |
 | `sampled-token-audit` | [indexed] (`2026-06-04T09:42:10.000Z`) | `lib/memory/features/sampled-token-audit/delivery-report.md` | `—` | `archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md` |
-| `token-economy-calibration-hardening` | [indexed] (`2026-06-04T07:42:09.000Z`) | `lib/memory/features/token-economy-calibration-hardening/delivery-report.md` | `—` | `archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-har…` |
-| `token-economy-prototype` | [indexed] (`2026-06-04T03:30:00.000Z`) | `lib/memory/features/token-economy-prototype/delivery-report.md` | `—` | `archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md` |
-| `context-usage-test-harness` | [indexed] (`2026-06-02T20:30:00.000Z`) | `lib/memory/features/context-usage-test-harness/delivery-report.md` | `lib/inbox/out/172973_06-02-26/13760_2010_context-usage-test-harness-report-approval.md` | `archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md` |
-| `fd-pipeline-sdk-mode-retry-model-escalation-tiers` | [indexed] (`2026-06-02T18:10:16.000Z`) | `lib/memory/features/fd-pipeline-sdk-mode-retry-model-escalation-tiers/delivery-report.md` | `lib/inbox/out/172973_06-02-26/21184_1806_fd-pipeline-sdk-mode-retry-model-escalation-tiers-report-approval.md` | `archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk…` |
-| `surface-opt-p10-dashboard-safe-editing` | [indexed] (`2026-06-02T15:33:17.000Z`) | `lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md` | `lib/inbox/out/172973_06-02-26/55193_0840_surface-opt-p10-dashboard-safe-editing-report-approval.md` | `archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-…` |
-| `surface-opt-p9-dashboard-operator-cockpit` | [indexed] (`2026-06-02T06:20:00.000Z`) | `lib/memory/features/surface-opt-p9-dashboard-operator-cockpit/delivery-report.md` | `lib/inbox/out/172973_06-02-26/64121_0611_surface-opt-p9-dashboard-operator-cockpit-report-approval.md` | `archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboar…` |
-| `surface-opt-p4-tighten-cursor-agents-retrieval-contracts` | [indexed] (`2026-06-01T06:20:00.000Z`) | `lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/delivery-report.md` | `lib/inbox/out/172974_06-01-26/64308_0608_surface-opt-p4-tighten-cursor-agents-retrieval-contracts-report-approval.md` | `archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-…` |
 
 ## Risks and blockers
 
@@ -65,9 +65,16 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-05T05:16:06.083Z`
+- Active-memory refreshed (UTC): `2026-06-08T17:26:11.295Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
+
+
+
+
+
+
 
 
 
