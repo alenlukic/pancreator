@@ -97,6 +97,8 @@ test("pan cursor-sync writes projections for project_root dot", async () => {
   assert.ok(existsSync(path.join(root, ".cursor/agents/general-purpose.md")));
   assert.ok(existsSync(path.join(root, ".cursor/rules/coder.mdc")));
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/rules/coder.mdc"));
+  assert.ok(existsSync(path.join(root, ".cursor/hooks.json")));
+  assert.ok(payload.written.some((entry) => entry.path === ".cursor/hooks.json"));
   const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
   assert.match(projection, /lib\/personas\/intake-analyst\.md/);
   const { frontmatter, body } = splitAgentProjection(projection);

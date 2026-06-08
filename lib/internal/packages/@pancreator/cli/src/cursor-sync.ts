@@ -380,6 +380,26 @@ function emitCursorRules(
   return written;
 }
 
+const DEFAULT_CURSOR_HOOKS_JSON = `{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": []
+  }
+}
+`;
+
+function emitCursorHooks(harnessRoot: string, dryRun: boolean): CursorSyncWrittenEntry[] {
+  const hooksDir = path.join(harnessRoot, ".cursor");
+  const outRel = ".cursor/hooks.json";
+  const outAbs = path.join(harnessRoot, outRel);
+  const content = DEFAULT_CURSOR_HOOKS_JSON;
+  if (!dryRun) {
+    mkdirSync(hooksDir, { recursive: true });
+    writeFileSync(outAbs, content, "utf8");
+  }
+  return [{ path: outRel, action: dryRun ? "would_write" : "write" }];
+}
+
 export function runCursorSync(harnessRootInput: string, options: CursorSyncOptions = {}): CursorSyncResult {
   const dryRun = options.dryRun ?? false;
   const harnessRoot = path.resolve(harnessRootInput);
@@ -439,6 +459,7 @@ export function runCursorSync(harnessRootInput: string, options: CursorSyncOptio
   }
 
   written.push(...emitCursorRules(harnessRoot, projectRoot, projectRootRel, dryRun));
+  written.push(...emitCursorHooks(harnessRoot, dryRun));
 
   return {
     command: "cursor-sync",
