@@ -157,7 +157,7 @@ context is useful; otherwise perform the work directly and cite this section.
   create it before reading, writing, listing, or failing on that path and SHALL
   add `.gitkeep` when Git tracks the path. This does not apply to generated,
   local-only, or run-scoped paths such as `lib/inbox/`, `work/<day>/<task-id>/`,
-  archive entries, or `.pan/` sandboxes.
+  archive entries, `.pan/` sandboxes, or `sandbox/`.
 - **Inbox is local-only** under `lib/inbox/`; never read or modify `lib/inbox/notes/`.
   Durable archival copies belong under `archive/inbox/`.
 - **Human in-loop** at phase boundaries (`LocalUserAuthorizer`).
@@ -232,6 +232,7 @@ scheduler wiring lands.
 /archive/inbox/in/               durable archived inbound directives
 /work/<day>/<task-id>/           active pipeline workspace
 /archive/work/                   completed runs (explicit-read)
+/sandbox/                        operator/agent scratch QA (gitignored; copy repo slices freely)
 /lib/internal/packages/          TypeScript packages
 /lib/internal/tools/             validation scripts
 /tests/                          repository tests

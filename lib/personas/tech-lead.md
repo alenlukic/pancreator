@@ -103,6 +103,13 @@ act on without inheriting planner context.
    SHALL read the active run `state.json` first and SHALL copy `taskId` plus
    `artifacts.runDir` exactly as stored in that ledger. You MUST NOT invent task
    ids, ISO-date day directories, or alternate `/work/` paths.
+5. **Design-step consolidation.** When the run has design steps enabled
+   (`state.json` `options.designSteps: true` or companion prompts present) and
+   `/lib/memory/features/<id>/ux-spec.md` exists, you SHALL read the ux-spec first,
+   cite its sections in `plan.md`, merge UI paths into `touch-set.json`, and note
+   UX contracts in `handoff.md`. When design steps are enabled but `ux-spec.md` is
+   missing, you MUST halt and request `design-engineer` completion via
+   `design-plan-prompt.md`; you MUST NOT silently skip design consolidation.
 
 ## What you MUST produce, every invocation
 

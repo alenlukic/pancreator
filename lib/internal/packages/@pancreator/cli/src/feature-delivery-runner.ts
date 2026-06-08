@@ -24,12 +24,23 @@ import {
   type FeatureDeliverySdkProgressReporter,
   withFeatureDeliverySdkStageHeartbeat,
 } from "./feature-delivery-sdk-progress.js";
+import {
+  DESIGN_ENGINEER_PERSONA,
+  designPlanPromptRel,
+  designQaPromptRel,
+  designQaReportRel,
+  designStepsEnabled,
+  uxSpecRel,
+  type FeatureDeliveryDesignOptions,
+} from "./design-steps.js";
 import { readCursorInvocationMode, readSdkSamplingConfig, readStageRemediationEnabled } from "./pan-init.js";
 import { shouldSampleSdkInvocation } from "./sdk-sampling.js";
 import {
   type ArtifactContentWarning,
   defaultAdvanceEventForStage,
+  mergedTestStageVerdict,
   parseComplianceVerdict,
+  parseDesignQaVerdict,
   parseQaVerdict,
   parseReviewGateOutcome,
   parseReviewPassesVerdict,
@@ -39,7 +50,13 @@ import {
   validateStageCompletionArtifacts,
 } from "./feature-delivery-stage-artifacts.js";
 
-export { parseComplianceVerdict, parseQaVerdict, parseReviewGateOutcome, parseReviewPassesVerdict };
+export {
+  parseComplianceVerdict,
+  parseDesignQaVerdict,
+  parseQaVerdict,
+  parseReviewGateOutcome,
+  parseReviewPassesVerdict,
+};
 import { listKnownPersonaIds, PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 import { configureCursorSdkTransportPrereqs, loadRepoEnv } from "./repo-env.js";
 
@@ -120,6 +137,7 @@ export interface FeatureDeliveryRunnerLedger {
     artifact?: string;
   }>;
   automation?: FeatureDeliveryAutomationState;
+  options?: FeatureDeliveryDesignOptions;
 }
 
 export interface FeatureDeliveryTestHooks {
@@ -288,6 +306,121 @@ export function expectedArtifactForEnteringStage(
 
 export { validateStageCompletionArtifacts, requiredArtifactsAfterStageWork };
 
+async function invokePersonaStageWork(input: {
+  repoRoot: string;
+  state: FeatureDeliveryRunnerLedger;
+  stageId: string;
+  personaId: string;
+  stagePromptPath: string;
+  artifactPath: string;
+  requiredArtifactPaths: readonly string[];
+  runner: CursorRunner;
+  stageInvocationIndex: number;
+  now: Date;
+  progress?: FeatureDeliverySdkProgressReporter;
+  companionLabel?: string;
+}): Promise<RunnerInvocationEnvelope> {
+  const persona = await resolvePersona(input.repoRoot, input.personaId);
+  const stagePromptAbs = resolveRepoPath(input.repoRoot, input.stagePromptPath);
+  const stagePromptContent = existsSync(stagePromptAbs)
+    ? await readFile(stagePromptAbs, "utf8")
+    : "";
+  const samplingConfig = await readSdkSamplingConfig(input.repoRoot);
+  const sampled = shouldSampleSdkInvocation({
+    config: samplingConfig,
+    taskId: input.state.taskId,
+    stageId: input.stageId,
+    persona: input.personaId,
+    model: persona.model,
+    invocationIndex: input.stageInvocationIndex,
+  });
+  const sdkTraceDirRel = path.posix.join(input.state.artifacts.runDir, "sdk-traces");
+  const runLogPath = resolveRepoPath(input.repoRoot, input.state.artifacts.runLogFile);
+
+  let envelope: RunnerInvocationEnvelope | undefined;
+
+  await withFeatureDeliverySdkStageHeartbeat(
+    input.progress,
+    {
+      taskId: input.state.taskId,
+      featureId: input.state.featureId,
+      stageId: input.stageId,
+      persona: input.personaId,
+      now: input.now,
+    },
+    async () => {
+      envelope = await input.runner.invoke({
+        persona,
+        message:
+          input.companionLabel ??
+          `Execute feature-delivery stage ${input.stageId} for task ${input.state.taskId}.`,
+        stagePromptPath: input.stagePromptPath,
+        stagePromptContent,
+        artifactPath: input.artifactPath,
+        requiredArtifactPaths: input.requiredArtifactPaths,
+        stageInvocationIndex: input.stageInvocationIndex,
+        runLogPath,
+        sampled,
+        sdkTrace: sampled
+          ? {
+              traceDirRel: sdkTraceDirRel,
+              stageId: input.stageId,
+              invocationIndex: input.stageInvocationIndex,
+              taskId: input.state.taskId,
+            }
+          : undefined,
+        ledger: {
+          taskId: input.state.taskId,
+          pipelineId: input.state.pipelineId,
+          stageId: input.stageId,
+          featureId: input.state.featureId,
+        },
+        runLogFragment: buildStageRunLogFragment(
+          persona,
+          input.stageId,
+          input.stagePromptPath,
+          input.artifactPath,
+          input.requiredArtifactPaths,
+          input.stageInvocationIndex,
+        ),
+      });
+    },
+  );
+
+  if (envelope === undefined) {
+    throw new Error(`Persona ${input.personaId} did not invoke CursorRunner for stage ${input.stageId}.`);
+  }
+
+  if (envelope.sdkResult?.status === "error") {
+    throw new RunnerTransportError(envelope.sdkResult.errorMessage ?? "Cursor SDK transport failed.");
+  }
+
+  await appendRunLogRecord(runLogPath, runLogRecordFromRunnerEnvelope(envelope, input.state, input.now));
+  return envelope;
+}
+
+function validateUxSpecCompanion(repoRoot: string, featureId: string): void {
+  const uxSpec = uxSpecRel(featureId);
+  const abs = resolveRepoPath(repoRoot, uxSpec);
+  if (!existsSync(abs)) {
+    throw new RunnerTransportError(`Design-plan companion incomplete: missing ${uxSpec}.`);
+  }
+}
+
+async function validateDesignQaCompanion(repoRoot: string, runDir: string): Promise<void> {
+  const designReport = designQaReportRel(runDir);
+  const abs = resolveRepoPath(repoRoot, designReport);
+  if (!existsSync(abs)) {
+    throw new RunnerTransportError(`Design-QA companion incomplete: missing ${designReport}.`);
+  }
+  const content = await readFile(abs, "utf8");
+  if (parseDesignQaVerdict(content).passes === null) {
+    throw new RunnerTransportError(
+      `Design-QA companion incomplete: ${designReport} must contain design_qa_passes: true or false.`,
+    );
+  }
+}
+
 export async function invokeFeatureDeliveryEnteringStage(input: {
   repoRoot: string;
   state: FeatureDeliveryRunnerLedger;
@@ -317,6 +450,98 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const artifactPath = expectedArtifactForEnteringStage(input.state, input.stageId);
   const runner = createCursorRunner(repoRoot, "sdk", input.testHooks);
   const stageInvocationIndex = input.state.automation?.stageInvocationIndex ?? 0;
+  const progress = input.progress ?? input.testHooks?.progress;
+  const runDir = input.state.artifacts.runDir;
+
+  if (designStepsEnabled(input.state.options) && input.stageId === "plan") {
+    const uxSpec = uxSpecRel(input.state.featureId);
+    await invokePersonaStageWork({
+      repoRoot,
+      state: input.state,
+      stageId: input.stageId,
+      personaId: DESIGN_ENGINEER_PERSONA,
+      stagePromptPath: designPlanPromptRel(runDir),
+      artifactPath: uxSpec,
+      requiredArtifactPaths: [uxSpec],
+      runner,
+      stageInvocationIndex,
+      now,
+      progress,
+      companionLabel: `Execute design-plan companion for task ${input.state.taskId}.`,
+    });
+    validateUxSpecCompanion(repoRoot, input.state.featureId);
+  }
+
+  if (designStepsEnabled(input.state.options) && input.stageId === "test") {
+    const testReport = path.posix.join(runDir, "test-report.md");
+    const designReport = designQaReportRel(runDir);
+    const [qaEnvelope] = await Promise.all([
+      invokePersonaStageWork({
+        repoRoot,
+        state: input.state,
+        stageId: input.stageId,
+        personaId: stage.persona,
+        stagePromptPath,
+        artifactPath: testReport,
+        requiredArtifactPaths: [testReport],
+        runner,
+        stageInvocationIndex,
+        now,
+        progress,
+      }),
+      invokePersonaStageWork({
+        repoRoot,
+        state: input.state,
+        stageId: input.stageId,
+        personaId: DESIGN_ENGINEER_PERSONA,
+        stagePromptPath: designQaPromptRel(runDir),
+        artifactPath: designReport,
+        requiredArtifactPaths: [designReport],
+        runner,
+        stageInvocationIndex,
+        now,
+        progress,
+        companionLabel: `Execute design-QA companion for task ${input.state.taskId}.`,
+      }),
+    ]);
+    await validateDesignQaCompanion(repoRoot, runDir);
+    let validation = validateStageCompletionArtifacts(repoRoot, input.state, input.stageId);
+    const remediationEnabled = await readStageRemediationEnabled(repoRoot, {
+      ledgerInvocation: input.state.automation?.runnerInvocation,
+    });
+    if (
+      (!validation.ok || shouldRemediateWarnings(input.stageId, validation.warnings)) &&
+      remediationEnabled
+    ) {
+      validation = await remediateStageArtifacts({
+        repoRoot,
+        state: input.state,
+        stageId: input.stageId,
+        stagePersona: stage.persona,
+        stagePromptPath,
+        stagePromptContent,
+        requiredArtifactPaths,
+        primaryArtifactPath: artifactPath,
+        missing: validation.missing,
+        warnings: validation.warnings,
+        runner,
+        now,
+      });
+    }
+    if (!validation.ok) {
+      throw new RunnerTransportError(
+        `Stage ${input.stageId} incomplete after remediation: ${validation.missing.join(", ")}`,
+      );
+    }
+    if (hasBlockingWarnings(input.stageId, validation.warnings)) {
+      const warningSummary = validation.warnings.map((warning) => `${warning.path} (${warning.code})`).join(", ");
+      throw new RunnerTransportError(
+        `Stage ${input.stageId} has blocking validation warnings: ${warningSummary}`,
+      );
+    }
+    return qaEnvelope;
+  }
+
   const samplingConfig = await readSdkSamplingConfig(repoRoot);
   const effectiveModel = persona.model;
   const sampled = shouldSampleSdkInvocation({
@@ -338,7 +563,6 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
 
   let envelope: RunnerInvocationEnvelope | undefined;
   let runnerInvoked = false;
-  const progress = input.progress ?? input.testHooks?.progress;
 
   await withFeatureDeliverySdkStageHeartbeat(
     progress,
@@ -798,7 +1022,20 @@ export async function trySdkAutoChainAfterStageWork(input: {
       return false;
     }
     const content = await readFile(testAbs, "utf8");
-    const verdict = parseQaVerdict(content);
+    let designContent: string | undefined;
+    if (designStepsEnabled(input.state.options)) {
+      const designRel = designQaReportRel(runDir);
+      const designAbs = path.join(input.repoRoot, designRel);
+      if (!existsSync(designAbs)) {
+        return false;
+      }
+      designContent = await readFile(designAbs, "utf8");
+    }
+    const verdict = mergedTestStageVerdict({
+      qaMarkdown: content,
+      designQaMarkdown: designContent,
+      designSteps: designStepsEnabled(input.state.options),
+    });
     if (verdict.passes === true) {
       return attemptChain("qa_passes", testRel);
     }
@@ -875,7 +1112,19 @@ export async function resolveTestStageAdvanceEvent(
     return event;
   }
   const content = await readFile(testAbs, "utf8");
-  const verdict = parseQaVerdict(content);
+  let designContent: string | undefined;
+  if (designStepsEnabled(state.options)) {
+    const designRel = designQaReportRel(state.artifacts.runDir);
+    const designAbs = resolveRepoPath(repoRoot, designRel);
+    if (existsSync(designAbs)) {
+      designContent = await readFile(designAbs, "utf8");
+    }
+  }
+  const verdict = mergedTestStageVerdict({
+    qaMarkdown: content,
+    designQaMarkdown: designContent,
+    designSteps: designStepsEnabled(state.options),
+  });
   if (verdict.passes === true) {
     return "qa_passes";
   }

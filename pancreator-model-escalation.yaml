@@ -43,6 +43,10 @@ configs:
         4: gpt-5.4[context=272k,reasoning=high,fast=false]
         5: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
+      design-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
       tech-writer:
         default: auto
         1: gpt-5.4-mini
@@ -108,6 +112,10 @@ configs:
       qa-tester:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
         2: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      design-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       tech-writer:
         default: auto
