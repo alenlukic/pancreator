@@ -345,6 +345,21 @@ route through `docs/PRD.summary.md` and `docs/PRD.index.md` before full
 `docs/PRD.md` or `docs/BOOTSTRAP.md`. The entire `docs/` tree, including
 `docs/README.md`, is explicit-read and excluded from default semantic indexing.
 
+## Self-host developer setup
+
+When developing Pancreator in this repository (`project_root: "."`), materialize
+the local Cursor runtime after clone or when persona or rule sources change:
+
+```bash
+pnpm install
+pnpm -w exec pan cursor-sync
+```
+
+The `.cursor/` directory is gitignored. Canonical sources are `lib/personas/`
+(agents and rules). Verify Cursor discovers
+custom agents under `.cursor/agents/` after sync per
+`lib/memory/handbook/context-economy.md`.
+
 ## Embedded install checklist
 
 For adopting Pancreator into an existing repository with `project_root: ".pancreator"`:
@@ -357,7 +372,7 @@ For adopting Pancreator into an existing repository with `project_root: ".pancre
 
 2. Verify `.pancreator/AGENTS.md` and `.pancreator/OPERATION.md` exist.
 3. Verify host `AGENTS.md` contains the Pancreator augment pointer block.
-4. Verify `.cursor/agents/` is populated (for example `.cursor/agents/intake-analyst.md` exists at the harness root).
+4. Verify `.cursor/agents/` is populated (for example `.cursor/agents/intake-analyst.md` exists at the harness root) and `.cursor/rules/` is emitted from seeded `lib/personas/rules/`. These paths are local-only and are not committed to git.
 5. Open the harness root in Cursor.
 6. Run feature delivery in SDK mode (embedded `pancreator.yaml` defaults to `runner.cursor.invocation: sdk`):
 
@@ -367,7 +382,9 @@ For adopting Pancreator into an existing repository with `project_root: ".pancre
 
 ### Manual agent sync
 
-When persona specs change or cursor agents were not emitted during init, regenerate projections manually. When `pancreator-model-escalation.yaml` is present, `cursor-sync` first copies each listed persona's `default` tier model from the active escalation config (resolved like SDK runs: `PAN_MODEL_ESCALATION_CONFIG`, then `runner.cursor.model_escalation.config` in `pancreator.yaml`, then the file-level `active_config`) into `lib/personas/<slug>.md`, then mirrors personas to `.cursor/agents/`. Personas omitted from the active config are left unchanged.
+When persona specs or rule specs under `lib/personas/rules/` change, or
+cursor agents were not emitted during init, regenerate the local `.cursor/` tree.
+When `pancreator-model-escalation.yaml` is present, `cursor-sync` first copies each listed persona's `default` tier model from the active escalation config (resolved like SDK runs: `PAN_MODEL_ESCALATION_CONFIG`, then `runner.cursor.model_escalation.config` in `pancreator.yaml`, then the file-level `active_config`) into `lib/personas/<slug>.md`, then mirrors personas to `.cursor/agents/` and emits rules from `lib/personas/rules/` to `.cursor/rules/`. Personas omitted from the active config are left unchanged.
 
 ```bash
 pnpm -w exec pan cursor-sync [--dry-run] [harnessRoot]
@@ -446,8 +463,13 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 
 - Stage diffs locally; obtain human ratification before commit or push.
 - Pancreator does not enforce commit gates or touch-set parity at commit time.
+- **Agents never open pull requests.** No agent or subagent runs `gh pr create`,
+  `git push`, or otherwise publishes a remote PR; those steps are human-operator
+  actions only.
 - Optional: invoke `/pr-writer` with a feature ID or `work/<day>/<task-id>/` path to
   draft a GitHub PR body from pipeline artifacts and the current git worktree.
+  Output is one fenced Markdown block in chat for operator paste into
+  `gh pr create --body-file`; the agent does not run `gh` on your behalf.
 
 ### Pre-close validation checklist
 

@@ -13,6 +13,22 @@ import {
 } from "../lib/internal/tools/context-budget-report.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
+const PAN_BIN = path.join(ROOT, "lib/internal/packages/@pancreator/cli/bin/pan.js");
+
+function ensureCursorProjections() {
+  const result = spawnSync(process.execPath, [PAN_BIN, "cursor-sync"], {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FORCE_COLOR: "0",
+      PAN_JSON_FORMAT_ABBREV_LEN: process.env.PAN_JSON_FORMAT_ABBREV_LEN ?? "7",
+    },
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+}
+
+ensureCursorProjections();
 
 function eachIndexingPatternLine(cb) {
   const text = fs.readFileSync(path.join(ROOT, ".cursorindexingignore"), "utf8");

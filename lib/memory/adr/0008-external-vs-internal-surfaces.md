@@ -76,8 +76,13 @@ task builds or evolves Pancreator.
 
 ### Excluded from both default sweeps
 
+- `.cursor/**` — local Cursor IDE runtime (gitignored); materialized by `pan cursor-sync` or `pan init --apply` from `lib/personas/`.
 - `lib/memory/checkpoints/`
 - `work/**`, `lib/inbox/**`, generated JSON and manifests per ADR-0006
+
+### Tracked Cursor authoring source (internal)
+
+- `lib/personas/rules/` — tool-agnostic persona rule specs emitted to `.cursor/rules/` at sync time.
 
 ## Consequences
 

@@ -258,7 +258,7 @@ test("active work tree has no feature-delivery runs awaiting close-artifacts", a
 test("live normative surfaces use three-level work placeholders", () => {
   const roots = [
     "AGENTS.md",
-    ".cursor/rules",
+    "lib/personas/rules",
     "docs",
     "lib/internal/packages",
     "lib/memory/handbook",
@@ -286,18 +286,22 @@ test("AGENTS.md documents Build-mode inbox scaffolding contract", () => {
   assert.match(agents, /pan intake from-build-plan/);
 });
 
-test("Cursor hooks do not enforce commit-time policy artifacts", () => {
-  const hooks = JSON.parse(read(".cursor/hooks.json"));
+test("local Cursor hooks do not enforce commit-time policy artifacts", () => {
+  const hooksPath = path.join(ROOT, ".cursor/hooks.json");
+  if (!fs.existsSync(hooksPath)) {
+    return;
+  }
+  const hooks = JSON.parse(fs.readFileSync(hooksPath, "utf8"));
   const beforeShell = hooks.hooks?.beforeShellExecution ?? [];
   assert.equal(beforeShell.length, 0);
 });
 
 test("Cursor implementation rules avoid broad lib-wide activation", () => {
-  const coderRule = read(".cursor/rules/coder.mdc");
-  assert.doesNotMatch(coderRule, /"lib\/\*\*\/\*"|"lib\/\*\*\/\*\*"|"lib\/\*\*\/*"/);
-  assert.doesNotMatch(coderRule, /-\s+"lib\/\*\*\/*"/);
-  assert.match(coderRule, /lib\/internal\/packages\/\*\*\/src\/\*\*\/\*/);
-  assert.match(coderRule, /tests\/\*\*\/\.mjs|tests\/\*\*\/\*\.mjs/);
+  const coderRule = read("lib/personas/rules/coder.yaml");
+  assert.doesNotMatch(coderRule, /-\s+"?lib\/\*\*\/?\*"?/);
+  assert.doesNotMatch(coderRule, /-\s+"?lib\/\*\*\/?\*\*"?/);
+  assert.match(coderRule, /lib\/internal\/packages\/\*\*\/src\/\*\*\//);
+  assert.match(coderRule, /tests\/\*\*\/\*\.mjs/);
 });
 
 test("pan deferral emits JSON envelopes without stub payloads", async () => {

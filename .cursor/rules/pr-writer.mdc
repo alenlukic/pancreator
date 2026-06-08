@@ -1,7 +1,0 @@
----
-description: When the operator invokes `pr-writer`, the `pr-writer` SHALL emit one fenced PR body (high-level Summary, thematic Changelist, optional Delivery Pipeline Manifest) per lib/personas/pr-writer.md, resolving run.log.jsonl from work/ or archive/work/ when needed.
-globs: ["lib/personas/pr-writer.md"]
-alwaysApply: false
----
-
-@lib/personas/pr-writer.md

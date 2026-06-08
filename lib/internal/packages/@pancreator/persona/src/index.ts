@@ -25,5 +25,6 @@ export type {
   PersonaSpec,
 } from "./types.js";
 export { emitCursorAgentsMirror, emitMdcShim, emitPersonaMarkdown, type MdcShimOptions } from "./emit.js";
+export { emitCursorMdcFromPersonaRule, parsePersonaRuleYaml, type PersonaRuleSpec } from "./persona-rule.js";
 export { parsePersonaMarkdown } from "./parse.js";
 export { assertPersonaSpec, isPersonaSpec } from "./validate.js";

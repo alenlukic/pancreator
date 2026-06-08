@@ -1,0 +1,5 @@
+persona: pr-writer
+description: When the operator invokes `pr-writer`, the `pr-writer` SHALL emit one fenced PR body in chat only (high-level Summary, thematic Changelist, optional Delivery Pipeline Manifest) per lib/personas/pr-writer.md; the `pr-writer` MUST NOT run `gh pr create`, `git push`, or open a remote pull request under any circumstance.
+globs:
+  - lib/personas/pr-writer.md
+alwaysApply: false

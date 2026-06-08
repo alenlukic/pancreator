@@ -1,7 +1,9 @@
----
+persona: supervisor
 description: When the operator supplies a `lib/inbox/in/` path, the `supervisor` SHALL oversee a fully automated SDK `feature-delivery` run; when prose is underspecified, the `supervisor` SHALL request follow-ups until an inbox item can be drafted; otherwise the `supervisor` SHALL orchestrate stages and enforce gates.
-globs: ["lib/pipelines/**/*.yaml", "work/**/run.log.jsonl", "work/**/run-summary.md", "lib/memory/checkpoints/**/*.json", "lib/memory/postmortems/**/*.md"]
+globs:
+  - lib/pipelines/**/*.yaml
+  - work/**/run.log.jsonl
+  - work/**/run-summary.md
+  - lib/memory/checkpoints/**/*.json
+  - lib/memory/postmortems/**/*.md
 alwaysApply: false
----
-
-@lib/personas/supervisor.md

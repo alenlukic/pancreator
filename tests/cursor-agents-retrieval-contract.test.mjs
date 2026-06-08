@@ -1,9 +1,27 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
+const PAN_BIN = path.join(ROOT, "lib/internal/packages/@pancreator/cli/bin/pan.js");
+
+function ensureCursorProjections() {
+  const result = spawnSync(process.execPath, [PAN_BIN, "cursor-sync"], {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FORCE_COLOR: "0",
+      PAN_JSON_FORMAT_ABBREV_LEN: process.env.PAN_JSON_FORMAT_ABBREV_LEN ?? "7",
+    },
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+}
+
+ensureCursorProjections();
+
 const AGENTS_DIR = path.join(ROOT, ".cursor", "agents");
 
 /** @param {string} rel */
@@ -50,7 +68,8 @@ export function broadReadsAreConditional(body) {
       /`AGENTS\.md`/u.test(trimmed) ||
       /`README\.md`/u.test(trimmed) ||
       /`\.pancreator\/AGENTS\.md`/u.test(trimmed) ||
-      /`lib\/personas\//u.test(trimmed) ||
+      (/`lib\/personas\//u.test(trimmed) &&
+        !/at the start of every invocation/u.test(trimmed)) ||
       /`lib\/memory\/handbook\/context-economy\.md`/u.test(trimmed);
     if (mentionsBroadDoc && !/\bonly when\b/u.test(trimmed)) {
       offenders.push(trimmed);
@@ -85,12 +104,45 @@ test("general-purpose retains standalone tools, disallowedTools, and metadata YA
   assert.match(frontmatter, /pancreator-model-tier:\s*standalone/u);
 });
 
-test("every Cursor projection names next-prompt or handoff as the first retrieval read", () => {
-  for (const file of fs.readdirSync(AGENTS_DIR).filter((name) => name.endsWith(".md"))) {
-    const { body } = splitAgentProjection(read(path.posix.join(".cursor/agents", file)));
+test("source-backed Cursor projections read persona spec as the first retrieval step", () => {
+  for (const persona of SOURCE_BACKED) {
+    const { body } = splitAgentProjection(read(path.posix.join(".cursor/agents", `${persona}.md`)));
     const first = firstRetrievalStep(body);
-    assert.match(first, /next-prompt\.md/u, file);
-    assert.match(first, /handoff\.md/u, file);
+    assert.match(first, /lib\/personas\//u, persona);
+    assert.match(first, /authoritative over parent Task text/u, persona);
+  }
+});
+
+test("general-purpose names next-prompt or handoff as the first retrieval read", () => {
+  const { body } = splitAgentProjection(read(".cursor/agents/general-purpose.md"));
+  const first = firstRetrievalStep(body);
+  assert.match(first, /next-prompt\.md/u);
+  assert.match(first, /handoff\.md/u);
+});
+
+test("every source-backed projection declares persona supremacy on delegation", () => {
+  for (const persona of SOURCE_BACKED) {
+    const { body } = splitAgentProjection(read(path.posix.join(".cursor/agents", `${persona}.md`)));
+    assert.match(body, /## Persona supremacy on delegation \(normative\)/u, persona);
+    assert.match(body, /sole authoritative operating contract/u, persona);
+    assert.match(body, /ignore the conflicting parent instruction/i, persona);
+  }
+});
+
+test("pr-writer projection forbids opening pull requests and requires fenced chat output", () => {
+  const { frontmatter, body } = splitAgentProjection(read(".cursor/agents/pr-writer.md"));
+  assert.match(frontmatter, /MUST NOT run `gh pr create`/u, "frontmatter description must forbid gh pr create");
+  assert.match(body, /## Role-specific deliverable \(normative\)/u);
+  assert.match(body, /MUST NOT run `gh pr create`/u);
+  assert.match(body, /markdown`-fenced PR description body/u);
+  assert.match(body, /Persona supremacy on delegation/u);
+});
+
+test("every source-backed projection declares operator-only remote PR actions", () => {
+  for (const persona of SOURCE_BACKED) {
+    const { body } = splitAgentProjection(read(path.posix.join(".cursor/agents", `${persona}.md`)));
+    assert.match(body, /## Operator-only remote actions/u, persona);
+    assert.match(body, /No agent SHALL run `gh pr create`/u, persona);
   }
 });
 

@@ -359,7 +359,10 @@ async function seedEmbeddedContent(
   const projectRoot = initProjectRootAbs(harnessRoot, "embedded");
   const personasDir = path.join(projectRoot, "lib", "personas");
   const handbookDir = path.join(projectRoot, "lib", "memory", "handbook");
-  const result: { personaSeed?: PanInitSeedSummary; handbookSeed?: PanInitSeedSummary } = {};
+  const result: {
+    personaSeed?: PanInitSeedSummary;
+    handbookSeed?: PanInitSeedSummary;
+  } = {};
 
   if (directoryNeedsSeeding(personasDir)) {
     const count = await copyPackageSeedTree("lib/personas", personasDir, manifest.deny_prefixes);

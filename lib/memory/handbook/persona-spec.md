@@ -148,25 +148,30 @@ in `/lib/memory/handbook/contract-style.md` Layer 1.
 
 ## 5 — Cursor integration projections
 
+Cursor runtime files under `.cursor/` are **local-only** (gitignored). They are
+materialized by `pnpm -w exec pan cursor-sync` or `pan init --apply` from tracked
+sources under `lib/personas/` (agents and rules).
+
 The primary Cursor analogue of a persona spec is a compact projection family
 under `.cursor/agents/`, projected from `lib/personas/<name>.md`.
 
-When rule-layer context loading requires a rule file, maintain a secondary
-projection at `.cursor/rules/<name>.mdc`.
+When rule-layer context loading requires a rule file, author the tool-agnostic
+spec at `lib/personas/rules/<name>.yaml` and emit it to `.cursor/rules/<name>.mdc`
+via `cursor-sync`.
 
 ### 5.1 — `.cursor/agents` compact projections (primary)
 
 Rules:
 
 - `lib/personas/<name>.md` MUST remain canonical for authoring and review.
-- `.cursor/agents/<name>.md` MUST be the sole canonical Cursor projection for
+- `.cursor/agents/<name>.md` MUST be the sole Cursor agent projection for
   each persona. It SHOULD encode the economical default model policy previously
   carried by retired `-standard` variants unless a human ratifies a change.
 - Cursor projection bodies SHOULD point to `lib/personas/<name>.md` instead of
   duplicating persona prose, PRD references, or handbook excerpts.
-- Until emitter tooling is wired in this repo, maintainers MAY update
-  projections manually, but they MUST preserve canonical persona semantics and
-  tier metadata.
+- Maintainers MUST regenerate agent projections with `pan cursor-sync` after
+  persona spec changes; they MUST NOT edit `.cursor/agents/` in git (it is not
+  tracked).
 
 Model and context escalation guidance lives in
 `/lib/memory/handbook/context-economy.md`. Standalone catch-all agents such
@@ -174,9 +179,22 @@ as `.cursor/agents/general-purpose.md` are allowed when they are explicitly
 documented as non-persona projections and route to canonical personas whenever
 one owns the work.
 
-### 5.2 — `.mdc` rule-layer projection (where required)
+### 5.2 — Persona rule specs and Cursor `.mdc` projection
 
-The `.mdc` projection uses Cursor's per-rule format (`description`, `globs`,
+Author tool-agnostic persona rule specs at `lib/personas/rules/<name>.yaml`.
+`pan cursor-sync` emits Cursor `.cursor/rules/<name>.mdc` from each spec.
+
+Required YAML fields:
+
+```yaml
+persona: <name>           # MUST match lib/personas/<name>.md and the file basename
+description: <string>     # activation description for the rule layer
+globs:                    # non-empty string array of path globs
+  - <glob>
+alwaysApply: false        # true reserved for priority rules only
+```
+
+The Cursor `.mdc` projection uses Cursor's per-rule format (`description`, `globs`,
 `alwaysApply`) and is retained only where rule-layer loading still requires it.
 
 The projection shape is exactly five non-blank lines plus the body include
