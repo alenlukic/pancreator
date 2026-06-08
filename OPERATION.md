@@ -463,8 +463,13 @@ Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 
 - Stage diffs locally; obtain human ratification before commit or push.
 - Pancreator does not enforce commit gates or touch-set parity at commit time.
+- **Agents never open pull requests.** No agent or subagent runs `gh pr create`,
+  `git push`, or otherwise publishes a remote PR; those steps are human-operator
+  actions only.
 - Optional: invoke `/pr-writer` with a feature ID or `work/<day>/<task-id>/` path to
   draft a GitHub PR body from pipeline artifacts and the current git worktree.
+  Output is one fenced Markdown block in chat for operator paste into
+  `gh pr create --body-file`; the agent does not run `gh` on your behalf.
 
 ### Pre-close validation checklist
 

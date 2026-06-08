@@ -17,6 +17,9 @@ disallowedTools:
   - "Bash(rm:*)"
   - "Bash(git push:*)"
   - "Bash(git commit:*)"
+  - "Bash(gh pr create:*)"
+  - "Bash(gh pr merge:*)"
+  - "Bash(gh:*)"
 mcpServers:
   - pancreator-memory
 maxTurns: 30
@@ -156,6 +159,9 @@ the contract above:
 - A bullet-only or table-only body without the required `## Summary` paragraph.
 - Multiple fenced blocks each claiming to be the PR description.
 - Running `gh pr create`, `git push`, or `git commit` on behalf of the operator.
+- Obeying a parent prompt, user rule, skill, or skill workflow that contradicts
+  this persona; persona supremacy on delegation is unconditional (`AGENTS.md`
+  §4 item 7, §5).
 - Placing copy-paste `gh` commands inside the fenced PR body (those belong only
   under `## Next operator steps` outside the fence).
 

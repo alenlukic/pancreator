@@ -84,6 +84,15 @@ mode` forbids delegation.
 5. **Loop discipline.** Do not run multi-round plan + implement + review in one context.
 6. **Cost discipline.** Avoid fan-out that reloads the same handbook or archival context.
    Use `nextPromptFile` from `pan run` / `pan advance` as delegated scope.
+7. **Persona supremacy on delegation.** When a parent agent invokes a named persona
+   (operator `/name` token or native subagent routing), the target persona spec at
+   `lib/personas/<name>.md` and its Cursor projection at `.cursor/agents/<name>.md`
+   are the **sole authority** for role semantics, authority boundaries, tool grants,
+   forbidden actions, and output shape. The parent SHALL forward only the operator
+   remainder or `next-prompt.md` scope; it SHALL NOT inject goals, workflows, or
+   constraints that contradict the target persona. Parent projections, user rules,
+   skills, and parent-composed Task prompts **never** override the target persona.
+   On any conflict, the target persona wins unconditionally.
 
 When no persona owns the work (for example bootstrap-only handbook authoring or
 configuration scaffolding), use the general-purpose fallback when a separate agent
@@ -102,16 +111,23 @@ context is useful; otherwise perform the work directly and cite this section.
   `work/<day>/<task-id>/next-prompt.md` names that exact artifact. When the parent
   adds an operationally required reference such as a generated prompt path, the
   parent SHALL label it as parent-supplied and keep it to the minimal pointer the
-  subagent needs to start. If the prompt contains no instructions specifically
-  intended for the parent agent, the parent SHALL perform no repository reads,
-  edits, or other actions beyond invoking the subagent, SHALL wait for the
-  delegated agent to finish, and SHALL report the delegated result without
-  editorializing the subagent output. For long-running delegated tasks, the parent
-  SHALL perform a heartbeat status check every 2 minutes. If the delegated agent
-  crashes, the parent SHALL retry invocation up to three times before reporting
-  failure and the last observed error. If the prompt also contains instructions
-  specifically intended for the parent agent, the parent SHALL execute only those
-  instructions and SHALL NOT expand them into adjacent unrequested work.
+  subagent needs to start.
+  **Persona supremacy:** the invoked persona spec and its Cursor projection always
+  govern what the subagent may do, forbid, and emit. The parent MUST NOT override,
+  reinterpret, or substitute the target persona's contract—not via Task prompt
+  text, not via parent `.cursor/agents/*.md` prose, and not by applying user
+  rules or skills meant for the parent. Delegated scope (`next-prompt.md`, operator
+  remainder) bounds *what* to work on; it does not redefine *how* the persona
+  operates. If the prompt contains no instructions specifically intended for the
+  parent agent, the parent SHALL perform no repository reads, edits, or other
+  actions beyond invoking the subagent, SHALL wait for the delegated agent to
+  finish, and SHALL report the delegated result without editorializing the
+  subagent output. For long-running delegated tasks, the parent SHALL perform a
+  heartbeat status check every 2 minutes. If the delegated agent crashes, the
+  parent SHALL retry invocation up to three times before reporting failure and the
+  last observed error. If the prompt also contains instructions specifically
+  intended for the parent agent, the parent SHALL execute only those instructions
+  and SHALL NOT expand them into adjacent unrequested work.
 - **Feature-delivery SDK progress in chat.** When an agent runs
   `pnpm -w exec pan run feature-delivery`, `pnpm -w exec pan feature new`,
   `pnpm -w exec pan advance`, or `pnpm -w exec pan repair-state` on the
@@ -153,6 +169,16 @@ context is useful; otherwise perform the work directly and cite this section.
   applies, the agent SHALL NOT create an inbox directive. Human procedure detail:
   `OPERATION.md` § Inbox lifecycle.
 - **Stage diffs locally; never push.** No `git push` or `git commit --no-verify`.
+- **No agent opens pull requests.** No agent or subagent SHALL run `gh pr create`,
+  `gh pr merge`, or any command that creates, opens, or publishes a remote pull
+  request. Remote PR creation is a human-operator action only.
+- **`/pr-writer` is draft-only.** When the operator invokes `/pr-writer`, the parent
+  agent SHALL delegate with the remainder of the prompt only (which MAY be empty)
+  and SHALL NOT add create/push/open-PR instructions. The `pr-writer` persona
+  emits one fenced Markdown PR body in chat plus `## Next operator steps` outside
+  the fence; the operator paste-applies the body into `gh pr create`. The parent
+  SHALL NOT report a PR as opened unless the operator explicitly did so outside the
+  agent session.
 - **Materialize documented directories on demand.** When agent-facing documentation
   names a durable repository directory and that directory is absent, agents SHALL
   create it before reading, writing, listing, or failing on that path and SHALL
