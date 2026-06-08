@@ -20,7 +20,7 @@ references:
   - kind: lines
     path: lib/memory/features/pancreator-cli/spec.md
     range: [1, 23]
-    contentHash: 26b1233
+    contentHash: 13107e2
     note: "Representative package engineering spec after frontmatter addition; sibling pancreator-* folders follow the same layered contract pattern."
   - kind: lines
     path: lib/memory/handbook/subagent-model-tiers.md
@@ -30,7 +30,7 @@ references:
   - kind: lines
     path: lib/memory/features/json-formatting/spec.md
     range: [1, 179]
-    contentHash: 697b305
+    contentHash: 821d09c
     note: "Reference shape for a fully realized M1 feature folder: spec.md, delivery-report.md, index.json, and contract clauses."
 ---
 
@@ -68,15 +68,15 @@ metadata and imposed three-way edits per persona change.
   SHALL bring that folder to the reference shape defined by
   `lib/memory/features/json-formatting/` — `spec.md` meeting Layer-1 lint,
   `delivery-report.md`, and `index.json` — to Phase-2 standard per
-  `docs/BOOTSTRAP.md`.
+  `.docs/BOOTSTRAP.md`.
 
 - When the disposition table classifies a folder as `consolidate`, `tech-lead`
   SHALL fold that folder into a `phase-2-substrate-contracts/` umbrella feature
   folder that cites every consolidated package by name and preserves the
-  Phase-2 dependency order declared in `docs/BOOTSTRAP.md`.
+  Phase-2 dependency order declared in `.docs/BOOTSTRAP.md`.
 
 - When the disposition table classifies a folder as `delete`, `tech-lead`
-  SHALL author a deletion ADR that cites `docs/BOOTSTRAP.md` Phase-2 language
+  SHALL author a deletion ADR that cites `.docs/BOOTSTRAP.md` Phase-2 language
   and confirms that the relevant package `README` owns the residual contract
   surface.
 
@@ -134,7 +134,7 @@ metadata and imposed three-way edits per persona change.
 ## Out of scope
 
 - Authoring contracts beyond the Phase-2 surface enumerated in
-  `docs/BOOTSTRAP.md`.
+  `.docs/BOOTSTRAP.md`.
 - Changing the semantics of `lib/memory/handbook/subagent-model-tiers.md` or
   the persona spec format.
 - Removing `general-purpose.md` from `.cursor/agents/`.
@@ -148,7 +148,7 @@ metadata and imposed three-way edits per persona change.
 - **Disposition table authoring.** The per-folder classification (`author` /
   `consolidate` / `delete`) for each of the 20 `pancreator-*` stub folders is
   deferred to the `tech-lead` plan stage. Intake does not pre-classify; each
-  disposition requires reading `docs/BOOTSTRAP.md` Phase-2 dependency order
+  disposition requires reading `.docs/BOOTSTRAP.md` Phase-2 dependency order
   and the per-package `README` contract surface. Backlog linkage:
   `resolve-package-stub-feature-folders` (work package A).
 

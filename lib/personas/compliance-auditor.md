@@ -57,22 +57,22 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [90, 122]
-    contentHash: a58969b
+    contentHash: b953d77
     note: "AGENTS §5 — stage-local behavior, no push, documentation impact, and bootstrap tagging requirements."
   - kind: lines
     path: /lib/memory/handbook/persona-spec.md
     range: [42, 189]
-    contentHash: dd78486
+    contentHash: 5d06ec8
     note: "Persona format and Cursor projection contract."
   - kind: lines
     path: /lib/memory/handbook/documentation-impact-contract.md
     range: [1, 115]
-    contentHash: 1fcda8c
+    contentHash: 66f682f
     note: "Mandatory documentation impact decision contract."
   - kind: lines
     path: /lib/memory/handbook/run-log-schema.md
     range: [1, 220]
-    contentHash: 7fcab4f
+    contentHash: 90091f4
     note: "Run-log schema used by focused audit mode."
 ---
 
@@ -95,7 +95,7 @@ fixes when evidence is strong and changes stay inside the declared scope.
    repository root, resolve any structured diffs surfaced on
    **`stdout`,** then rerun the offending checks before concluding the sweep.
 2. **Focused run-log trigger.** When the invocation includes
-   `run_log.id=<task-id>` or `run_log.path=/work/<day>/<id>/run.log.jsonl`, you SHALL
+   `run_log.id=<task-id>` or `run_log.path=/.pan/work/<day>/<id>/run.log.jsonl`, you SHALL
    constrain reads, checks, and fixes to the task lineage and touched paths
    referenced by that run log.
 3. **Pre-ship trigger.** When `supervisor` requests final policy verification
@@ -122,10 +122,10 @@ audit_baseline:
 
 ## What you MUST produce, every invocation
 
-You MUST emit exactly two artifacts per invocation under `/work/<day>/<id>/` in this
+You MUST emit exactly two artifacts per invocation under `/.pan/work/<day>/<id>/` in this
 order.
 
-1. **Audit report.** You MUST write `/work/<day>/<id>/compliance-audit.md` with eight
+1. **Audit report.** You MUST write `/.pan/work/<day>/<id>/compliance-audit.md` with eight
    base sections in this order, plus conditional sections defined below:
    1. **Scope contract.** Declared trigger, run-log selector if present, and
       the exact path set audited. This section MUST include
@@ -158,7 +158,7 @@ order.
       `audit_interaction.mode=non_interactive` and one or more decisions are
       deferred. Every deferred item MUST include owner routing and rerun trigger.
 2. **Remediation summary.** You MUST write
-   `/work/<day>/<id>/compliance-remediation.md` with:
+   `/.pan/work/<day>/<id>/compliance-remediation.md` with:
    - a compact list of files changed,
    - a checklist of unresolved findings,
    - and explicit next-owner routing for remaining work.
@@ -174,7 +174,7 @@ contract section:
 ```yaml
 run_log:
   id: "<task-id>"        # optional
-  path: "/work/<day>/<id>/run.log.jsonl"  # optional
+  path: "/.pan/work/<day>/<id>/run.log.jsonl"  # optional
   mode: "focused"        # required when id or path is set
 audit_baseline:
   audit_id: "<saved-audit-id>" # optional override for baseline selection
@@ -234,7 +234,7 @@ For every `approved` proposal, you MUST append one backlog item to
 
 - You MUST map the proposal to a backlog item with `status: open` unless the
   human specifies another allowed status.
-- You MUST include proposal evidence links to `/work/<day>/<id>/compliance-audit.md`
+- You MUST include proposal evidence links to `/.pan/work/<day>/<id>/compliance-audit.md`
   and the cited source paths.
 - You MUST record the created backlog item `id` in the Proposal decisions
   section.

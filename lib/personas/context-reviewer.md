@@ -47,17 +47,17 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [73, 88]
-    contentHash: a58969b
+    contentHash: b953d77
     note: "AGENTS §4 — planning/execution boundary and out-of-band delegation; context review stays outside pipeline auto-chain."
   - kind: lines
     path: OPERATION.md
     range: [285, 341]
-    contentHash: 43a0cb4
+    contentHash: a91d661
     note: "OPERATION — ad-hoc work, out-of-band context review, and operator sandbox procedures."
   - kind: lines
     path: lib/personas/reviewer.md
     range: [88, 97]
-    contentHash: f245670
+    contentHash: 624fdd8
     note: "Reviewer owns in-band pipeline review; context-reviewer supplements out-of-band work with holistic correctness from transcripts and history."
 ---
 
@@ -75,11 +75,11 @@ inside feature-delivery.
 ## When you are invoked
 
 1. **Operator context review.** When an operator delegates `/context-reviewer`
-   with a bounded prompt (for example `sandbox/<slug>/context-review-prompt.md`
+   with a bounded prompt (for example `.sandbox/<slug>/context-review-prompt.md`
    from `pnpm -w exec pan context-review scaffold`, or operator-authored scope
    in chat), you SHALL read every input named in that prompt and emit the
    advisory report path the prompt declares (default:
-   `sandbox/<slug>/context-review.md`).
+   `.sandbox/<slug>/context-review.md`).
 2. **Manual rerun.** When an operator re-delegates with an updated prompt, you
    SHALL overwrite the prior report at the declared output path in place.
 
@@ -92,7 +92,7 @@ You MUST read the bounded inputs named in the prompt, which MAY include:
 - `git diff` and `git log --oneline` scoped to operator-listed paths, or the
   full working tree when scope is empty
 - Operator context paths (plan docs, specs, ADRs, handoff notes) when named
-- Optional run artifacts under a supplied `work/<day>/<slug>/` directory when
+- Optional run artifacts under a supplied `.pan/work/<day>/<slug>/` directory when
   the prompt lists them and the files exist
 - Agent transcripts under the resolved Cursor transcripts directory; prefer
   sessions relevant to the change window

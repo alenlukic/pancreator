@@ -11,9 +11,9 @@ skills, pipelines, contracts). Runtime policy lives in `pancreator.yaml`
 (`project_root`, `runner`, `risk_tier`). Current work routes through inbox,
 `lib/memory/active/current.md`, and feature indexes.
 
-Product requirements for Pancreator self-development live in `docs/PRD.md`.
-Route through `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md`
-before full `docs/PRD.md` or `docs/BOOTSTRAP.md` when the task needs product
+Product requirements for Pancreator self-development live in `.docs/PRD.md`.
+Route through `.docs/PRD.summary.md`, `.docs/PRD.index.md`, and `.docs/M1.index.md`
+before full `.docs/PRD.md` or `.docs/BOOTSTRAP.md` when the task needs product
 authority per `lib/memory/handbook/context-economy.md`.
 
 ## 2 — Routing map
@@ -28,6 +28,7 @@ language → `lib/memory/handbook/glossary.md`; persona spec →
 |---|---|
 | External vs internal surfaces | `lib/memory/adr/0008-external-vs-internal-surfaces.md` |
 | Default AI context and indexing | `lib/memory/handbook/context-economy.md` |
+| Engineering standards (write/review/test code) | `lib/memory/handbook/engineering/index.md` |
 | Memory-tier taxonomy | `lib/memory/handbook/memory-tiers.md` |
 | `simple task mode` | `lib/memory/handbook/context-economy.md` |
 | Human operator procedures | `OPERATION.md` |
@@ -40,9 +41,9 @@ language → `lib/memory/handbook/glossary.md`; persona spec →
 | Operator verification at close | `lib/memory/handbook/contract-templates/operator-verification.template.md` |
 | Layer 1 contract style | `lib/memory/handbook/contract-style.md` |
 | Documentation impact | `lib/memory/handbook/documentation-impact-contract.md` |
-| Compact PRD orientation (self-dev) | `docs/PRD.summary.md` |
-| PRD section triggers (self-dev) | `docs/PRD.index.md` |
-| Full product spec (self-dev) | `docs/PRD.md`, `docs/BOOTSTRAP.md` |
+| Compact PRD orientation (self-dev) | `.docs/PRD.summary.md` |
+| PRD section triggers (self-dev) | `.docs/PRD.index.md` |
+| Full product spec (self-dev) | `.docs/PRD.md`, `.docs/BOOTSTRAP.md` |
 
 ## 3 — Where agents live
 
@@ -71,8 +72,8 @@ When work maps to a persona's `metadata.pancreator-pipeline-stages`, you SHALL
 delegate to that persona rather than perform it directly unless `simple task
 mode` forbids delegation.
 
-1. **Planning/execution boundary.** Handoff at `work/<day>/<task-id>/handoff.md`;
-   delegated prompt at `work/<day>/<task-id>/next-prompt.md`; pointers only in
+1. **Planning/execution boundary.** Handoff at `.pan/work/<day>/<task-id>/handoff.md`;
+   delegated prompt at `.pan/work/<day>/<task-id>/next-prompt.md`; pointers only in
    `lib/memory/active/handoffs.md`. Paste only `next-prompt.md` into subagents.
 2. **Native subagent invocation.** One canonical `.cursor/agents/<name>.md` per persona
    (for example `/coder`, `/tech-lead`). Model escalation:
@@ -108,7 +109,7 @@ context is useful; otherwise perform the work directly and cite this section.
   it. The parent SHALL NOT inject interpretation, inferred intent, assumptions,
   background context, prior-chat history, file contents, or directory listings
   into the delegated prompt unless the operator prompt or a generated
-  `work/<day>/<task-id>/next-prompt.md` names that exact artifact. When the parent
+  `.pan/work/<day>/<task-id>/next-prompt.md` names that exact artifact. When the parent
   adds an operationally required reference such as a generated prompt path, the
   parent SHALL label it as parent-supplied and keep it to the minimal pointer the
   subagent needs to start.
@@ -164,10 +165,15 @@ context is useful; otherwise perform the work directly and cite this section.
   `--operator-prompt`, and `--plan-text` (or `--prompt-file` / `--plan-file`
   when shell-escaping is awkward). The agent SHALL choose `<slug>` as a lowercase
   hyphenated feature id derived from the request title. When the operator named
-  an existing inbox path or an active `work/<day>/<task-id>/` run owns the work,
+  an existing inbox path or an active `.pan/work/<day>/<task-id>/` run owns the work,
   the agent SHALL NOT create a duplicate directive. When `simple task mode`
   applies, the agent SHALL NOT create an inbox directive. Human procedure detail:
   `OPERATION.md` § Inbox lifecycle.
+- **Engineering standards.** Agents that write, review, refactor, debug, or test
+ code SHALL apply `lib/memory/handbook/engineering/software-engineering.md`; agents
+ that author or modify TypeScript, ES2022+, or ESM-aware tooling SHALL also apply
+ `lib/memory/handbook/engineering/typescript.md`. Route through
+ `lib/memory/handbook/engineering/index.md` to select the minimum applicable set.
 - **Stage diffs locally; never push.** No `git push` or `git commit --no-verify`.
 - **No agent opens pull requests.** No agent or subagent SHALL run `gh pr create`,
   `gh pr merge`, or any command that creates, opens, or publishes a remote pull
@@ -183,10 +189,10 @@ context is useful; otherwise perform the work directly and cite this section.
   names a durable repository directory and that directory is absent, agents SHALL
   create it before reading, writing, listing, or failing on that path and SHALL
   add `.gitkeep` when Git tracks the path. This does not apply to generated,
-  local-only, or run-scoped paths such as `lib/inbox/`, `work/<day>/<task-id>/`,
-  archive entries, `.pan/` sandboxes, or `sandbox/`.
+  local-only, or run-scoped paths such as `lib/inbox/`, `.pan/work/<day>/<task-id>/`,
+  archive entries, `.pan/` sandboxes, or `.sandbox/`.
 - **Inbox is local-only** under `lib/inbox/`; never read or modify `lib/inbox/notes/`.
-  Durable archival copies belong under `archive/inbox/`.
+  Durable archival copies belong under `.pan/archive/inbox/`.
 - **Human in-loop** at phase boundaries (`LocalUserAuthorizer`).
 - **Dual-anchor citations** per `lib/memory/handbook/glossary.md` §4. JS-literal
   `{kind: lines, ...}` form is forbidden.
@@ -220,9 +226,9 @@ context is useful; otherwise perform the work directly and cite this section.
 
 ### 6.1 — Pancreator self-development
 
-1. Read `docs/PRD.summary.md` and `docs/PRD.index.md` for product orientation.
+1. Read `.docs/PRD.summary.md` and `.docs/PRD.index.md` for product orientation.
 2. Read `lib/memory/backlog/index.yaml` for ranked work.
-3. Read full `docs/PRD.md` or `docs/BOOTSTRAP.md` only when line-anchored authority
+3. Read full `.docs/PRD.md` or `.docs/BOOTSTRAP.md` only when line-anchored authority
    is required per `lib/memory/handbook/context-economy.md`.
 
 ### 6.2 — Compliance-run trigger guidance
@@ -238,7 +244,7 @@ scheduler wiring lands.
 /AGENTS.md                       this file (internal)
 /README.md                       external landing (high-level)
 /OPERATION.md                    external operator procedures (human)
-/docs/                           internal product documents (local-only; gitignored)
+/.docs/                           internal product documents (local-only; gitignored)
 /lib/personas/rules/             tool-agnostic persona rule specs (emitted to .cursor/rules/)
 /.cursor/agents/                 local Cursor agent projections (gitignored; cursor-sync)
 /.cursor/rules/                  local Cursor rule shims (gitignored; cursor-sync)
@@ -257,12 +263,13 @@ scheduler wiring lands.
 /lib/memory/research/            founding research lineage
 /lib/inbox/{in,out,threads}/     transient comms (gitignored)
 /lib/inbox/notes/                human-only (agents MUST NOT read)
-/archive/inbox/in/               durable archived inbound directives
-/work/<day>/<task-id>/           active pipeline workspace
-/archive/work/                   completed runs (explicit-read)
-/sandbox/                        operator/agent scratch QA (gitignored; copy repo slices freely)
+/.pan/archive/inbox/in/               durable archived inbound directives
+/.pan/work/<day>/<task-id>/           active pipeline workspace
+/.pan/archive/work/                   completed runs (explicit-read)
+/.sandbox/                        operator/agent scratch QA (gitignored; copy repo slices freely)
 /lib/internal/packages/          TypeScript packages
 /lib/internal/tools/             validation scripts
+/client/                         operator cockpit (Next.js; de-indexed)
 /tests/                          repository tests
 /.pan/{worktrees,sandboxes,scheduler}/  control-plane state
 /pancreator.yaml                 live policy and project_root
@@ -277,7 +284,7 @@ do not use bootstrap completion as a primary routing or behavior gate.
 
 Current work routes through inbox directives, `lib/memory/active/current.md`,
 and `lib/memory/features/*/index.json`. Closed bootstrap history lives in
-`docs/BOOTSTRAP.md` and ratification artifacts under
+`.docs/BOOTSTRAP.md` and ratification artifacts under
 `lib/memory/features/bootstrap-phase-*` for explicit replay only.
 
 When `runner.cursor.invocation: sdk` is set, `pnpm -w exec pan run` and

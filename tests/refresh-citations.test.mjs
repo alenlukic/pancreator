@@ -27,7 +27,7 @@ test("classifyPath refuses inbox notes and warns on immutable inbox queues", () 
 
 test("refreshCitationBody patches YAML frontmatter references", () => {
   const root = makeTempRepo();
-  const targetRel = "docs/target.md";
+  const targetRel = ".docs/target.md";
   mkdirSync(path.dirname(path.join(root, targetRel)), { recursive: true });
   writeFileSync(path.join(root, targetRel), "hello\n", "utf8");
   const body = [
@@ -48,7 +48,7 @@ test("refreshCitationBody patches YAML frontmatter references", () => {
 
 test("refreshCitationBody patches Markdown fenced JSON citations", () => {
   const root = makeTempRepo();
-  const targetRel = "docs/json-target.md";
+  const targetRel = ".docs/json-target.md";
   mkdirSync(path.dirname(path.join(root, targetRel)), { recursive: true });
   writeFileSync(path.join(root, targetRel), "payload\n", "utf8");
   const body = [
@@ -71,7 +71,7 @@ test("refreshCitationBody patches Markdown fenced JSON citations", () => {
 
 test("refreshCitationBody patches standalone JSON bodies", () => {
   const root = makeTempRepo();
-  const targetRel = "docs/standalone-target.md";
+  const targetRel = ".docs/standalone-target.md";
   mkdirSync(path.dirname(path.join(root, targetRel)), { recursive: true });
   writeFileSync(path.join(root, targetRel), "json-body\n", "utf8");
   const body = legacyPrettyJson({

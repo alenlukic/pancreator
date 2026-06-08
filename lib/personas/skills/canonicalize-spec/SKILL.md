@@ -17,29 +17,29 @@ metadata:
     - lib/memory/active/current.md
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [505, 505]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — MVP roster: intake-analyst runs the spec-canonicalization sub-pipeline, ingests informal markdown, conducts a clarifying-question dialogue through the inbox at most N rounds, and emits a canonical Engineering Spec."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [113, 121]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-1 — Deliver the backend for feature A: the user story whose intake step this skill owns, with the coordinating agent clearing up ambiguities through the inbox."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [641, 648]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §7 — feature-delivery `intake` stage YAML declaring inputs `[inbox_message]`, outputs `[/lib/memory/features/<id>/spec.md]`, `loop.max_rounds: 5`, and `gate: human_approval`."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [921, 931]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §8 — Memory architecture: per-Feature folder layout where the canonical spec is `spec.md` per Spec Kit v0.8 alignment."
   - kind: lines
     path: AGENTS.md
     range: [212, 212]
-    contentHash: e037427
+    contentHash: b953d77
     note: "AGENTS §6.8 — Active Feature promotion at intake; closure clears on archive."
 ---
 
@@ -89,7 +89,7 @@ emits its own artifact at the path declared in PRD §7 lines 641 through
 696.
 
 When `pan feature new` or `pan run feature-delivery` has already assigned
-a task id, you MUST read `work/<day>/<task-id>/state.json` and use
+a task id, you MUST read `.pan/work/<day>/<task-id>/state.json` and use
 `source.inboxPath` as the canonical inbox source. When no run state exists
 yet, you MUST derive the path from the informal spec file under
 `lib/inbox/in/`.

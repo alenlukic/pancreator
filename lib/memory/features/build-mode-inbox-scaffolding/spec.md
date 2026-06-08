@@ -38,27 +38,27 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [178, 189]
-    contentHash: 48bd3a2
+    contentHash: b953d77
     note: AGENTS Build-mode inbox scaffolding obligation names from-build-plan invocation timing and duplicate-prevention rules.
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [75, 83]
-    contentHash: f732269
+    contentHash: 2762053
     note: Canonical inbox path layout with day-bucket and SID_HHMM_semantic leaf naming.
   - kind: lines
     path: lib/memory/features/timestamp-naming-conventions/spec.md
     range: [54, 59]
-    contentHash: 3e7eee9
+    contentHash: 294422f
     note: SID equals 86400 seconds minus seconds since UTC midnight; HHMM uses zero-padded UTC hour and minute.
   - kind: lines
     path: lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md
     range: [120, 152]
-    contentHash: 7f60993
+    contentHash: 57626d6
     note: Prior art for pan intake new path computation, template contract, and overwrite refusal that from-build-plan MUST reuse.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [641, 648]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: Feature-delivery intake stage declares loop.max_rounds 5 and gate human_approval.
 ---
 
@@ -127,7 +127,7 @@ tests that lock the contract.
   scaffolding clause that requires plan presentation, `pan intake from-build-plan`
   invocation after plan completion and before implementation edits, lowercase
   hyphenated slug selection, duplicate-directive prevention when an existing
-  inbox path or active `work/<day>/<task-id>/` run owns the work, and a
+  inbox path or active `.pan/work/<day>/<task-id>/` run owns the work, and a
   prohibition on inbox creation under `simple task mode`.
 - When an operator reads `OPERATION.md` § Inbox lifecycle, the operator SHALL
   find a documented `pan intake from-build-plan` workflow with copy-paste flags
@@ -140,7 +140,7 @@ tests that lock the contract.
   `pnpm -w exec pan intake from-build-plan <slug>` before the first repository
   edit that implements the plan.
 - When the operator named an existing `lib/inbox/in/` path or an active
-  `work/<day>/<task-id>/` run owns the work, the agent SHALL NOT create a
+  `.pan/work/<day>/<task-id>/` run owns the work, the agent SHALL NOT create a
   duplicate directive.
 
 ### Tests

@@ -1,5 +1,5 @@
 ---
-title: "Bootstrap Phase 5 M1 Exit — close docs/BOOTSTRAP.md"
+title: "Bootstrap Phase 5 M1 Exit — close .docs/BOOTSTRAP.md"
 feature_id: bootstrap-phase-5-m1-exit-close-docs-bootstrap
 status: implement-staged
 intake_round: 0
@@ -46,51 +46,51 @@ references:
     contentHash: 7dafd8f
     note: "Source directive acceptance criteria grouped by R1 (criteria 1-4) and R3-R7 plus overall closure (criteria 5-16)."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [250, 267]
-    contentHash: 0f53881
+    contentHash: b788753
     note: "BOOTSTRAP Phase 5 section lists the three deliverable clusters (US-9 pipelines, knowledge-curation, KPI baseline ADR) and declares the M1 exit criterion: PRD section 11 closed, CI green, KPIs baselined."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [269, 287]
-    contentHash: 0f53881
+    contentHash: b788753
     note: "BOOTSTRAP cross-cutting conventions: non-negotiable phase exit criteria, dual-anchor citations, commit trailers, human in-loop at every phase boundary, BR5 handbook seed stability review."
   - kind: lines
-    path: docs/M1.index.md
+    path: .docs/M1.index.md
     range: [18, 40]
-    contentHash: 2307223
+    contentHash: 7b1e138
     note: "M1 index records bootstrap.phase 5, status phase-5-in-progress, current focus, and the token-economy rule requiring BOOTSTRAP.md only for phase-exit detail."
   - kind: lines
     path: AGENTS.md
     range: [263, 291]
-    contentHash: c8e2c55
+    contentHash: b953d77
     note: "AGENTS bootstrap-status section: Phase 5 in progress, Phase 4 ratified 2026-05-19, Phoenix trace verification deferred under @pancreator/run-logger and pancreator-engineer backlog."
   - kind: lines
     path: AGENTS.md
     range: [141, 148]
-    contentHash: c8e2c55
+    contentHash: b953d77
     note: "AGENTS working-agreement: operator-sandbox exclusion of lib/inbox/notes/, human in-loop at every phase boundary, documentation-impact check mandatory per task."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [207, 224]
-    contentHash: d5ccdbd
+    contentHash: 2eb6aa4
     note: "PRD section 3.5 US-9: two MVP install paths (greenfield and existing-repo), adopter persona, adopt sub-pipeline, non-destructive first-run, and no-conflict guarantees."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1107, 1125]
-    contentHash: d5ccdbd
+    contentHash: 2eb6aa4
     note: "PRD section 11 MVP scope: install-path proof via pan create-pancreator and pan init, knowledge-curation pipeline, KPI baseline, and all package implementations required for M1 closure."
   - kind: symbol
     path: lib/pipelines/init-greenfield.yaml
-    contentHash: a5cfccf
+    contentHash: 29e3bb5
     note: "Greenfield pipeline definition: stages the US-9 kit must support for evidence-gathering."
   - kind: symbol
     path: lib/pipelines/adopt.yaml
-    contentHash: 9523590
+    contentHash: 2d8426b
     note: "Adopt pipeline definition: stages the US-9 kit must support for existing-repo evidence-gathering."
   - kind: symbol
     path: lib/personas/adopter.md
-    contentHash: 14edc96
+    contentHash: 9bf9624
     note: "Adopter persona: owns scan and ratify setup that the US-9 kit must scaffold."
 ---
 
@@ -98,19 +98,19 @@ references:
 
 This Feature SHALL close the Bootstrap Phase 5 gate and prepare the M1
 completion ratification request per the Phase 5 exit criterion at
-`{kind: lines, path: docs/BOOTSTRAP.md, range: [265, 266], contentHash: 0f53881}`.
+`{kind: lines, path: .docs/BOOTSTRAP.md, range: [265, 266], contentHash: b788753}`.
 
 This Feature SHALL deliver six work packages (WP1 through WP6) that
 collectively satisfy the required outcomes R1 and R3-R7 from the source
 directive at
-`{kind: lines, path: lib/inbox/in/172976_05-30-26/60751_0707_bootstrap-phase-5-m1-exit.md, range: [84, 176], contentHash: 7dafd8f}`.
+`{kind: lines, path: lib/inbox/in/172976_05-30-26/60751_0707_bootstrap-phase-5-m1-exit.md, range: [84, 176], contentHash: b788753}`.
 
 This Feature SHALL execute each work package through the `feature-delivery`
 Pipeline with stage-boundary artifacts preserved and indexable.
 
 This Feature SHALL preserve every Persona, Skill, Pipeline, documentation-impact,
 policy-compliance, inbox-lifecycle, and stage-exit obligation cited at
-`{kind: lines, path: AGENTS.md, range: [141, 148], contentHash: c8e2c55}`.
+`{kind: lines, path: AGENTS.md, range: [141, 148], contentHash: b953d77}`.
 
 This Feature SHALL NOT start M2 implementation work, SHALL NOT reopen ratified
 Phase 4 US-1 evidence, SHALL NOT execute greenfield or adopt against the
@@ -183,7 +183,7 @@ Librarian-owned anti-rot loop per
 WP2.1 — When the tech-lead plans WP2.1, the tech-lead SHALL ratify the
 cron-seed trigger cadence, the artifact destinations, and the operator handoff
 expectations for the anti-rot loop. The plan SHALL cite the relevant Pipeline
-definition at `{kind: symbol, path: lib/pipelines/init-greenfield.yaml, contentHash: a5cfccf}`.
+definition at `{kind: symbol, path: lib/pipelines/init-greenfield.yaml, contentHash: 29e3bb5}`.
 
 WP2.2 — When the coder implements WP2.2, the coder SHALL implement or wire the
 cron-seed path so the `knowledge-curation` Pipeline can be triggered by operator
@@ -227,7 +227,7 @@ has been promoted or has a documented rationale and backlog link.
 
 This work package SHALL review all handbook seeds still marked
 `stability: experimental` per the BR5 cross-cutting obligation at
-`{kind: lines, path: docs/BOOTSTRAP.md, range: [307, 311], contentHash: 0f53881}`.
+`{kind: lines, path: .docs/BOOTSTRAP.md, range: [307, 311], contentHash: b788753}`.
 
 WP4.1 — When the tech-lead executes WP4.1, the tech-lead SHALL enumerate every
 handbook seed under `lib/memory/handbook/` that carries `stability: experimental`
@@ -259,7 +259,7 @@ WP5.1 — When the tech-writer executes WP5.1, the tech-writer SHALL update
 post-Phase-5 ratification intent and evidence links.
 
 WP5.2 — When the tech-writer executes WP5.2, the tech-writer SHALL update
-`docs/M1.index.md` state wording if the current wording implies unresolved
+`.docs/M1.index.md` state wording if the current wording implies unresolved
 Phase 5 M1 work.
 
 WP5.3 — When the tech-writer executes WP5.3, the tech-writer SHALL update
@@ -300,7 +300,7 @@ before M1 closure proceeds.
 
 WP6.3 — When the reviewer executes WP6.3, the reviewer SHALL confirm the Phoenix
 trace verification treatment matches the ratified deferral policy at
-`{kind: lines, path: AGENTS.md, range: [263, 291], contentHash: c8e2c55}`.
+`{kind: lines, path: AGENTS.md, range: [263, 291], contentHash: b953d77}`.
 
 ---
 
@@ -348,7 +348,7 @@ trace verification treatment matches the ratified deferral policy at
 
 - When WP5 is delivered, `pancreator.yaml` MUST reflect post-Phase-5 ratification
   intent with evidence links.
-- When WP5 is delivered, `docs/M1.index.md` and `AGENTS.md` MUST NOT imply
+- When WP5 is delivered, `.docs/M1.index.md` and `AGENTS.md` MUST NOT imply
   unresolved Phase 5 M1 bootstrap work.
 - When WP5 is delivered, every operator-facing pointer that previously implied
   open Phase 5 work MUST be updated or MUST carry an explicit deferral note.
@@ -366,7 +366,7 @@ trace verification treatment matches the ratified deferral policy at
 
 - When the final delivery report is produced, the report MUST map every PRD
   section 11 MVP scope item to one of: done, gap with owner, or explicitly
-  deferred per `{kind: lines, path: docs/PRD.md, range: [1107, 1125], contentHash: d5ccdbd}`.
+  deferred per `{kind: lines, path: .docs/PRD.md, range: [1107, 1125], contentHash: 2eb6aa4}`.
 - When the final delivery report is produced, the CI conformance-suite status MUST
   be reported, with any failures tied to specific blockers and owners.
 - When the human ratification request is prepared, the request MUST include a
@@ -377,15 +377,15 @@ trace verification treatment matches the ratified deferral policy at
 
 ### Stage and policy invariants
 
-- When this Feature stages any structural change outside `work/`, the Feature MUST
-  stage one `work/<day>/<task-id>/policy-compliance.json` per the policy-compliance
-  contract cited at `{kind: lines, path: AGENTS.md, range: [178, 184], contentHash: c8e2c55}`.
+- When this Feature stages any structural change outside `.pan/work/`, the Feature MUST
+  stage one `.pan/work/<day>/<task-id>/policy-compliance.json` per the policy-compliance
+  contract cited at `{kind: lines, path: AGENTS.md, range: [178, 184], contentHash: b953d77}`.
 - When this Feature completes any work package, the documentation-impact decision
   MUST be recorded as applied updates or as deferred items with backlog linkage per
-  `{kind: lines, path: AGENTS.md, range: [158, 161], contentHash: c8e2c55}`.
+  `{kind: lines, path: AGENTS.md, range: [158, 161], contentHash: b953d77}`.
 - When this Feature reads, traverses, or cites repository content, the Feature MUST
   NOT touch any path under `lib/inbox/notes/` per the operator-sandbox rule at
-  `{kind: lines, path: AGENTS.md, range: [141, 148], contentHash: c8e2c55}`.
+  `{kind: lines, path: AGENTS.md, range: [141, 148], contentHash: b953d77}`.
 - When this Feature touches Persona specs, Skill packs, Pipeline definitions,
   testing infrastructure, or milestone ratification artifacts, the Feature MUST
   trigger one compliance-run pass per the AGENTS section 6.1 obligation.

@@ -13,7 +13,7 @@
     "open_questions": 0,
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
-    "source_inbox_item": "archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172967_06-08-26/54353_0854_cockpit-v2-ux-spec.md",
@@ -46,7 +46,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+    "artifact": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 3,
@@ -55,7 +55,7 @@
     "spec_contracts_note": "Two embedded llm-judge UX contract blocks in ux-spec.md evaluated manually; no contracts.index.json under feature folder.",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+      "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
       "range": [1, 81],
       "contentHash": "12bb80a"
     }
@@ -63,7 +63,7 @@
   "test": {
     "qa_passes": true,
     "design_qa_passes": true,
-    "artifact": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+    "artifact": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
     "verification_gates": {
       "node_test_suite": "pass (160/160)",
       "check_phase_0a": "pass",
@@ -73,19 +73,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+      "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
       "range": [1, 45],
       "contentHash": "235574e"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-result.json",
+    "artifact": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-result.json",
     "audit_id": "53639_0906_cockpit-v2-ux-spec-and-information-architecture-20260608091900",
     "baseline_audit_id": "24022_1719_broad-sweep-compliance-20260607172342",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-result.json",
+      "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-result.json",
       "range": [1, 291],
       "contentHash": "d5432fe"
     }
@@ -97,13 +97,13 @@
       "kind": "lines",
       "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
       "range": [1, 291],
-      "contentHash": "c5de8cd"
+      "contentHash": "a72057b"
     },
-    "archived_inbox_source": "archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "ship_ratification_artifact": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
     "ratified_paths": [
       "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
       "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
@@ -121,7 +121,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
+      "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
       "range": [1, 43],
       "contentHash": "a024149"
     }
@@ -134,7 +134,7 @@
       "reason": "Two embedded llm-judge blocks in ux-spec.md lack contracts.index.json registration; downstream runners cannot auto-discover clauses until a follow-on task registers them.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
         "range": [17, 26],
         "contentHash": "12bb80a"
       }
@@ -146,7 +146,7 @@
       "reason": "ADR draft records three-module IA as proposed; copy ADR 0009 to lib/memory/adr/ before downstream Cockpit v2 implementation binds to it.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
         "range": [53, 56],
         "contentHash": "849cc6b"
       }
@@ -158,7 +158,7 @@
       "reason": "delivery-report.md and compliance audit-history.json remain untracked; operator must include them at human commit alongside staged touch-set paths.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
         "range": [20, 23],
         "contentHash": "a024149"
       }
@@ -170,7 +170,7 @@
       "reason": "spec.md frontmatter marks status ratified while intake_closure.human_approval_gate was pending at implement; ship ratification reconciles at commit time.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
         "range": [36, 43],
         "contentHash": "12bb80a"
       }
@@ -219,7 +219,7 @@
     "tests": [],
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/touch-set.json",
+      "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/touch-set.json",
       "range": [1, 13],
       "contentHash": "cf254cb"
     }
@@ -241,7 +241,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
           "range": [1, 284],
-          "contentHash": "4ef8200"
+          "contentHash": "96d5a8f"
         }
       },
       "delivery_report": {
@@ -250,7 +250,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
           "range": [1, 291],
-          "contentHash": "c5de8cd"
+          "contentHash": "a72057b"
         }
       },
       "per_feature_index": {
@@ -259,133 +259,133 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/"
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/"
       },
       "plan": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/plan.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/plan.md",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/plan.md",
           "range": [1, 82],
           "contentHash": "8b37287"
         }
       },
       "adr_draft": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
           "range": [1, 82],
           "contentHash": "849cc6b"
         }
       },
       "touch_set": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/touch-set.json",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/touch-set.json",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/touch-set.json",
           "range": [1, 13],
           "contentHash": "cf254cb"
         }
       },
       "implementation_report": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
           "range": [1, 136],
           "contentHash": "3e7a555"
         }
       },
       "review_report": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
           "range": [1, 81],
           "contentHash": "12bb80a"
         }
       },
       "test_report": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
           "range": [1, 45],
           "contentHash": "235574e"
         }
       },
       "design_qa_report": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/design-qa-report.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/design-qa-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/design-qa-report.md",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/design-qa-report.md",
           "range": [1, 35],
           "contentHash": "25f8141"
         }
       },
       "compliance_result": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-result.json",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-result.json",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-result.json",
           "range": [1, 291],
           "contentHash": "d5432fe"
         }
       },
       "compliance_audit": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-audit.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-audit.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-audit.md",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-audit.md",
           "range": [1, 131],
           "contentHash": "f3494b8"
         }
       },
       "compliance_remediation": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-remediation.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/compliance-remediation.md",
         "note": "Compliance-auditor remediation notes for baseline-delta audit."
       },
       "ship_ratification": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/ship-ratification.json",
           "range": [1, 43],
           "contentHash": "a024149"
         }
       },
       "handoff": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/handoff.md",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/handoff.md",
+          "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/handoff.md",
           "range": [1, 55],
           "contentHash": "e2f6067"
         }
       },
       "pipeline_close": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/pipeline-close.md"
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/pipeline-close.md"
       },
       "operator_verification": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/operator-verification.md"
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/operator-verification.md"
       },
       "run_log": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/run.log.jsonl",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/logs/",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/logs/",
         "note": "QA and compliance gate command transcripts."
       },
       "contract_runs": {
-        "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/contract-runs/",
+        "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/contract-runs/",
         "note": "Manual llm-judge evaluation logs for embedded ux-spec contract blocks."
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md",
+        "path": ".pan/archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172967_06-08-26/54353_0854_cockpit-v2-ux-spec.md",
@@ -431,9 +431,9 @@
     "documentation_only": true
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172967_06-08-26/54353_0854_cockpit-v2-ux-spec.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/54353_0854_cockpit-v2-ux-spec.md"
 }

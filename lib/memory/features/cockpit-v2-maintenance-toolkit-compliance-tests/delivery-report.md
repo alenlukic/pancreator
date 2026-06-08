@@ -7,7 +7,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/implementation-report.md",
   "range": [7, 32],
   "contentHash": "bf21b85"
 }
@@ -16,7 +16,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
   "range": [3, 6],
   "contentHash": "885364f"
 }
@@ -25,7 +25,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
   "range": [3, 5],
   "contentHash": "ad9f15d"
 }
@@ -38,7 +38,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/plan.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/plan.md",
   "range": [5, 20],
   "contentHash": "add52c3"
 }
@@ -49,7 +49,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
   "range": [62, 65],
   "contentHash": "f437098"
 }
@@ -60,7 +60,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
   "range": [67, 70],
   "contentHash": "f437098"
 }
@@ -71,7 +71,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
   "range": [72, 76],
   "contentHash": "f437098"
 }
@@ -82,7 +82,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
   "range": [83, 85],
   "contentHash": "f437098"
 }
@@ -97,7 +97,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/services/maintenance-compliance.ts",
   "range": [1, 30],
-  "contentHash": "9ec8262"
+  "contentHash": "226fa3a"
 }
 ```
 
@@ -106,7 +106,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/app/api/compliance-run/route.ts",
   "range": [1, 25],
-  "contentHash": "12f9602"
+  "contentHash": "173d0b4"
 }
 ```
 
@@ -117,7 +117,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/services/maintenance-test-run.ts",
   "range": [1, 40],
-  "contentHash": "5537af1"
+  "contentHash": "87eb379"
 }
 ```
 
@@ -126,7 +126,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/services/maintenance-suite-presets.ts",
   "range": [1, 30],
-  "contentHash": "91a7c28"
+  "contentHash": "0c5fc46"
 }
 ```
 
@@ -137,7 +137,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/app/api/test-run/route.ts",
   "range": [1, 35],
-  "contentHash": "17bb530"
+  "contentHash": "f7f6faa"
 }
 ```
 
@@ -148,7 +148,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/components/cockpit/shared/OutputStream.tsx",
   "range": [1, 70],
-  "contentHash": "6da8dbf"
+  "contentHash": "925adab"
 }
 ```
 
@@ -159,7 +159,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/components/cockpit/maintenance/MaintenanceModule.tsx",
   "range": [1, 25],
-  "contentHash": "0265170"
+  "contentHash": "9caef1d"
 }
 ```
 
@@ -168,7 +168,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/components/cockpit/maintenance/PreCloseValidationPanel.tsx",
   "range": [1, 50],
-  "contentHash": "c4c808e"
+  "contentHash": "0f3f385"
 }
 ```
 
@@ -179,7 +179,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/services/maintenance-runs.ts",
   "range": [1, 25],
-  "contentHash": "6d6936d"
+  "contentHash": "e2a5438"
 }
 ```
 
@@ -190,7 +190,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
   "range": [15, 15],
   "contentHash": "885364f"
 }
@@ -201,7 +201,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
   "range": [17, 17],
   "contentHash": "885364f"
 }
@@ -212,7 +212,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
   "range": [19, 19],
   "contentHash": "885364f"
 }
@@ -223,7 +223,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
   "range": [23, 23],
   "contentHash": "885364f"
 }
@@ -234,7 +234,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
   "range": [27, 27],
   "contentHash": "885364f"
 }
@@ -249,14 +249,14 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [1296, 1307],
-  "contentHash": "5f6f3aa"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
   "range": [40, 41],
   "contentHash": "ad9f15d"
 }
@@ -269,7 +269,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [1310, 1327],
-  "contentHash": "5f6f3aa"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -278,7 +278,7 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/app/api/test-run/route.test.ts",
   "range": [1, 30],
-  "contentHash": "280a1b7"
+  "contentHash": "3a326c8"
 }
 ```
 
@@ -289,14 +289,14 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [1329, 1338],
-  "contentHash": "5f6f3aa"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
   "range": [38, 39],
   "contentHash": "ad9f15d"
 }
@@ -309,14 +309,14 @@ This feature delivery replaces the Cockpit Maintenance placeholder with a full o
   "kind": "lines",
   "path": "client/src/app/api/compliance-run/route.test.ts",
   "range": [1, 40],
-  "contentHash": "4aedb77"
+  "contentHash": "04a4d14"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
   "range": [35, 36],
   "contentHash": "ad9f15d"
 }
@@ -329,7 +329,7 @@ Coverage delta against the Maintenance placeholder baseline adds 53 focused Vite
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
   "range": [3, 5],
   "contentHash": "ad9f15d"
 }
@@ -338,7 +338,7 @@ Coverage delta against the Maintenance placeholder baseline adds 53 focused Vite
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
   "range": [9, 13],
   "contentHash": "ad9f15d"
 }
@@ -347,7 +347,7 @@ Coverage delta against the Maintenance placeholder baseline adds 53 focused Vite
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+  "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
   "range": [43, 45],
   "contentHash": "885364f"
 }

@@ -13,7 +13,7 @@
     "open_questions": 0,
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
-    "source_inbox_item": "archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-live-artifacts.md",
@@ -46,7 +46,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+    "artifact": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 3,
@@ -55,7 +55,7 @@
     "spec_contracts_note": "Three embedded llm-judge UX contract blocks in ux-spec.md; no contracts.index.json sidecar.",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+      "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
       "range": [1, 40],
       "contentHash": "78438f6"
     }
@@ -63,7 +63,7 @@
   "test": {
     "qa_passes": true,
     "design_qa_passes": true,
-    "artifact": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+    "artifact": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
     "verification_gates": {
       "client_lint": "pass",
       "client_typecheck": "pass",
@@ -77,19 +77,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+      "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
       "range": [1, 43],
       "contentHash": "b80c27b"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-result.json",
+    "artifact": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-result.json",
     "audit_id": "51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer-20260608100740",
     "baseline_audit_id": "52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue-20260608094523",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-result.json",
+      "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-result.json",
       "range": [1, 321],
       "contentHash": "430506a"
     }
@@ -101,13 +101,13 @@
       "kind": "lines",
       "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
       "range": [1, 358],
-      "contentHash": "6f98588"
+      "contentHash": "1f50944"
     },
-    "archived_inbox_source": "archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "ship_ratification_artifact": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
     "ratified_paths": [
       "client/src/services/run-state-shared.ts",
       "client/src/services/run-state.ts",
@@ -135,7 +135,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
+      "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
       "range": [1, 45],
       "contentHash": "5c0f103"
     }
@@ -148,7 +148,7 @@
       "reason": "Live refresh indicator renders between NextActionPanel and StageMachineGrid instead of the ux-spec stage grid header row; behavior matches acceptance criteria but layout diverges.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
         "range": [15, 16],
         "contentHash": "78438f6"
       }
@@ -160,7 +160,7 @@
       "reason": "Polling starts when any task has an active stage cell rather than whenever a non-terminal task exists; between-stage gaps would skip polling until the next stage activates.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
         "range": [17, 18],
         "contentHash": "78438f6"
       }
@@ -172,7 +172,7 @@
       "reason": "Three llm-judge blocks in ux-spec.md lack contracts.index.json registration; automated contracts:from_feature discovery cannot run until contract-writer registers them.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
         "range": [19, 20],
         "contentHash": "78438f6"
       }
@@ -184,7 +184,7 @@
       "reason": "ADR draft records client polling and artifact drawer as proposed; copy ADR 0011 to lib/memory/adr/ before downstream features bind to it.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
         "range": [75, 78],
         "contentHash": "09e2eb6"
       }
@@ -196,7 +196,7 @@
       "reason": "delivery-report.md and refreshed index.json may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
         "range": [39, 43],
         "contentHash": "5c0f103"
       }
@@ -220,7 +220,7 @@
     "changed_citations": [
       {
         "citing_path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
         "recorded_content_hash": "fd1c885",
         "live_content_hash": "8029aae",
         "verifier_status": "changed",
@@ -228,7 +228,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+        "cited_path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
         "recorded_content_hash": "1000a8d",
         "live_content_hash": "78438f6",
         "verifier_status": "changed",
@@ -236,7 +236,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
         "recorded_content_hash": "3250220",
         "live_content_hash": "b80c27b",
         "verifier_status": "changed",
@@ -291,7 +291,7 @@
     "tests": [],
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/touch-set.json",
+      "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/touch-set.json",
       "range": [1, 166],
       "contentHash": "8c3143e"
     }
@@ -322,7 +322,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
           "range": [1, 358],
-          "contentHash": "6f98588"
+          "contentHash": "1f50944"
         }
       },
       "per_feature_index": {
@@ -331,129 +331,129 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/"
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/"
       },
       "plan": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
           "range": [1, 145],
           "contentHash": "bdf32ad"
         }
       },
       "adr_draft": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
           "range": [1, 81],
           "contentHash": "09e2eb6"
         }
       },
       "touch_set": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/touch-set.json",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/touch-set.json",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/touch-set.json",
           "range": [1, 166],
           "contentHash": "8c3143e"
         }
       },
       "implementation_report": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
           "range": [1, 57],
           "contentHash": "8029aae"
         }
       },
       "review_report": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
           "range": [1, 40],
           "contentHash": "78438f6"
         }
       },
       "test_report": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
           "range": [1, 43],
           "contentHash": "b80c27b"
         }
       },
       "design_qa_report": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/design-qa-report.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/design-qa-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/design-qa-report.md",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/design-qa-report.md",
           "range": [1, 45],
           "contentHash": "c386f05"
         }
       },
       "compliance_result": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-result.json",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-result.json",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-result.json",
           "range": [1, 321],
           "contentHash": "430506a"
         }
       },
       "compliance_audit": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-audit.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-audit.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-audit.md",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-audit.md",
           "range": [1, 157],
           "contentHash": "90df8e2"
         }
       },
       "compliance_remediation": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-remediation.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/compliance-remediation.md",
         "note": "Compliance-auditor remediation notes for baseline-delta audit."
       },
       "ship_ratification": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/ship-ratification.json",
           "range": [1, 45],
           "contentHash": "5c0f103"
         }
       },
       "handoff": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/handoff.md",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/handoff.md",
+          "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/handoff.md",
           "range": [1, 55],
           "contentHash": "8f70e36"
         }
       },
       "pipeline_close": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/pipeline-close.md"
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/pipeline-close.md"
       },
       "operator_verification": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/operator-verification.md"
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/operator-verification.md"
       },
       "run_log": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/run.log.jsonl",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/logs/",
+        "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/logs/",
         "note": "QA, compliance, and client gate command transcripts."
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md",
+        "path": ".pan/archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-live-artifacts.md",
@@ -511,9 +511,9 @@
     "documentation_only": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-live-artifacts.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpit-v2-pipeline-live-artifacts.md"
 }

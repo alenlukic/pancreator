@@ -82,7 +82,7 @@ function breadcrumbSegments(repoPath: string): string[] {
 }
 
 export function DashboardPage() {
-  const [browsePath, setBrowsePath] = useState("work");
+  const [browsePath, setBrowsePath] = useState(".pan/work");
   const [entries, setEntries] = useState<RepoListEntry[]>([]);
   const [modal, setModal] = useState<FileModalState>({
     path: "",
@@ -221,7 +221,7 @@ export function DashboardPage() {
   function handleOpenInboxEntry(filePath: string) {
     setActiveModule("files");
     const parentPath = filePath.split("/").slice(0, -1).join("/");
-    navigateToPath(parentPath || "work");
+    navigateToPath(parentPath || ".pan/work");
     void openFile(filePath);
   }
 
@@ -269,13 +269,13 @@ export function DashboardPage() {
         <Collapsible.Content>
           {loadingEntries ? <p className="muted">Loading entries…</p> : null}
           <div className="file-list">
-            {browsePath !== "work" ? (
+            {browsePath !== ".pan/work" ? (
               <button
                 type="button"
                 className="file-entry file-entry-dir"
                 onClick={() => {
                   const parent = browsePath.split("/").slice(0, -1).join("/");
-                  navigateToPath(parent || "work");
+                  navigateToPath(parent || ".pan/work");
                 }}
               >
                 <span className="entry-kind">↩</span>

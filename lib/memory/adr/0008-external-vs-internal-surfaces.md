@@ -33,7 +33,7 @@ references:
 
 Pancreator serves two audiences in one repository: operators running
 Pancreator-powered feature delivery on a project, and contributors planning and
-building Pancreator itself. A single root `AGENTS.md` and indexed `docs/PRD*`
+building Pancreator itself. A single root `AGENTS.md` and indexed `.docs/PRD*`
 routes mixed both audiences into the same default Cursor context.
 
 ## Decision
@@ -65,10 +65,10 @@ only.
 Paths used to plan and build Pancreator itself:
 
 - Root `AGENTS.md` — agent operating instructions (explicit-read on self-host)
-- `docs/**` (PRD, bootstrap, M1 route maps, and `docs/README.md` directory guide)
+- `.docs/**` (PRD, bootstrap, M1 route maps, and `.docs/README.md` directory guide)
 - `lib/memory/adr/`, `lib/memory/backlog/`, `lib/memory/research/`
 - `lib/memory/features/bootstrap-phase-*`
-- `archive/**`, `tests/**`, `client/` (monorepo operator cockpit)
+- `.pan/archive/**`, `tests/**`, `client/` (monorepo operator cockpit)
 
 Internal surfaces SHALL be excluded from default Cursor semantic indexing via
 `.cursorindexingignore`. Agents MAY still open them with explicit paths when the
@@ -78,7 +78,7 @@ task builds or evolves Pancreator.
 
 - `.cursor/**` — local Cursor IDE runtime (gitignored); materialized by `pan cursor-sync` or `pan init --apply` from `lib/personas/` and `lib/personas/rules/`.
 - `lib/memory/checkpoints/`
-- `work/**`, `lib/inbox/**`, generated JSON and manifests per ADR-0006
+- `.pan/work/**`, `lib/inbox/**`, generated JSON and manifests per ADR-0006
 
 ### Tracked Cursor authoring source (internal)
 
@@ -90,7 +90,7 @@ task builds or evolves Pancreator.
   `.pancreator/AGENTS.md` (embedded) for agent obligations; humans use
   `OPERATION.md`.
 - Meta-personas (`pancreator-engineer`, `persona-designer`, `contract-writer`,
-  `compliance-auditor`) read `AGENTS.md` and `docs/**` when the task evolves
+  `compliance-auditor`) read `AGENTS.md` and `.docs/**` when the task evolves
   Pancreator.
 - `pan init` seeds `.pancreator/AGENTS.md` and `.pancreator/OPERATION.md` for
   embedded adopt; greenfield installs seed delivery templates at harness root.

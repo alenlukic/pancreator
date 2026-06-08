@@ -6,7 +6,7 @@ This remediation pass implements the missing P1 behavior in code: the `memory://
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
   "range": [12, 41],
   "contentHash": "ad32f69"
 }
@@ -18,7 +18,7 @@ This remediation pass implements the missing P1 behavior in code: the `memory://
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
   "range": [19, 29],
   "contentHash": "ad32f69"
 }
@@ -29,7 +29,7 @@ This remediation pass implements the missing P1 behavior in code: the `memory://
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
   "range": [19, 35],
   "contentHash": "ad32f69"
 }
@@ -40,7 +40,7 @@ This remediation pass implements the missing P1 behavior in code: the `memory://
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
   "range": [36, 41],
   "contentHash": "ad32f69"
 }
@@ -52,7 +52,7 @@ This remediation pass implements the missing P1 behavior in code: the `memory://
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
   "range": [3, 8],
   "contentHash": "5801acd"
 }
@@ -63,7 +63,7 @@ This remediation pass implements the missing P1 behavior in code: the `memory://
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
   "range": [14, 20],
   "contentHash": "efa1463"
 }
@@ -72,7 +72,7 @@ This remediation pass implements the missing P1 behavior in code: the `memory://
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
   "range": [32, 34],
   "contentHash": "efa1463"
 }
@@ -84,7 +84,7 @@ Documentation impact SHALL remain `applies=false` because the change aligns runt
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
   "range": [77, 81],
   "contentHash": "ad32f69"
 }
@@ -96,7 +96,7 @@ P1 is now materially delivered in code and tests, and this report can advance to
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/handoff.md",
+  "path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/handoff.md",
   "range": [15, 17],
   "contentHash": "165bf3b"
 }

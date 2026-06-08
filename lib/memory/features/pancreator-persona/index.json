@@ -36,7 +36,7 @@
       "kind": "lines",
       "path": "lib/memory/features/pancreator-persona/delivery-report.md",
       "range": [1, 35],
-      "contentHash": "eb16fb6"
+      "contentHash": "b934329"
     }
   },
   "artifact_index": {
@@ -47,7 +47,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-persona/spec.md",
           "range": [1, 23],
-          "contentHash": "ce9c94c"
+          "contentHash": "04a5a6f"
         }
       },
       "delivery_report": {
@@ -56,7 +56,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-persona/delivery-report.md",
           "range": [1, 35],
-          "contentHash": "eb16fb6"
+          "contentHash": "b934329"
         }
       },
       "per_feature_index": {

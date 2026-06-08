@@ -12,27 +12,27 @@ metadata:
     - /lib/memory/handbook/contract-style.md
   pancreator-emits:
     - /lib/memory/adr/<seq>-<slug>.md
-    - /work/<day>/<id>/adr-draft.md
+    - /.pan/work/<day>/<id>/adr-draft.md
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [506, 506]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — MVP roster: tech-lead drafts the plan/RFC for any non-trivial change and owns the ADR."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [649, 658]
-    contentHash: 2ce8e5c
-    note: "PRD §7 — feature-delivery `plan` stage YAML declaring `/work/<day>/<id>/adr-draft.md` as a required output of the plan stage."
+    contentHash: 2eb6aa4
+    note: "PRD §7 — feature-delivery `plan` stage YAML declaring `/.pan/work/<day>/<id>/adr-draft.md` as a required output of the plan stage."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [915, 915]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §8 — Memory architecture: `/lib/memory/adr/` holds immutable architecture decision records in Nygard format."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1004, 1010]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §8 — Anti-rot: dual-anchor citations on every ADR/RFC/PRD, ADR immutability, supersession via a new ADR with `supersedes:` link."
 ---
 
@@ -67,7 +67,7 @@ Read `/lib/memory/adr/` and pick `<seq> = max(existing seq) + 1`, zero-padded to
 4 digits. The slug MUST be lowercase-kebab-case at most 6 words, drawn from
 the decision title. The full filename is
 `/lib/memory/adr/<seq>-<slug>.md`. When the ADR drafts under a Feature, the
-`plan` stage MUST also stage `/work/<day>/<id>/adr-draft.md` per PRD §7
+`plan` stage MUST also stage `/.pan/work/<day>/<id>/adr-draft.md` per PRD §7
 lines 655 through 658; the file copies forward into `/lib/memory/adr/` only on
 human ratification.
 
@@ -158,7 +158,7 @@ When all gates are green, you MUST:
 1. Stage the new file at `/lib/memory/adr/<seq>-<slug>.md` with `status:
    proposed`. You MUST NOT commit; you MUST NOT push.
 2. When the ADR drafts under the `feature-delivery` `plan` stage, also stage
-   `/work/<day>/<id>/adr-draft.md` for the downstream `implement` and `review`
+   `/.pan/work/<day>/<id>/adr-draft.md` for the downstream `implement` and `review`
    stages per PRD §7 lines 655 through 658.
 3. Open one inbox item at `lib/inbox/in/<timestamp>-adr-<seq>-ratification.md`
    summarizing the decision, the alternatives rejected, and any open

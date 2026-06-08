@@ -75,47 +75,47 @@ references:
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/pan-init.ts
     range: [1, 33]
-    contentHash: 013f6df
+    contentHash: 65a9346
     note: "Current SCAFFOLD_FILES hardcodes project_root '.' and writes lib/ paths unprefixed at repoRoot; WP1–WP3 fix this."
   - kind: lines
     path: lib/memory/handbook/pancreator-config.md
     range: [1, 45]
-    contentHash: 1749f65
+    contentHash: 3608bf2
     note: "Canonical project_root contract; WP1 adds harness-root vs project-root distinction and resolver documentation."
   - kind: lines
     path: lib/personas/adopter.md
     range: [43, 69]
-    contentHash: 14edc96
+    contentHash: 9bf9624
     note: "Adopter write-surface and project_root proposal obligations; WP6 updates write surface to use <project_root>/…."
   - kind: lines
     path: lib/personas/skills/adopt-existing-repo/SKILL.md
     range: [60, 76]
-    contentHash: 92afa20
+    contentHash: 405d2d6
     note: "Step 1 dry-run and Pancreator-prefixed write surface; WP6 adds manifest deny-list enforcement."
   - kind: lines
     path: lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md
     range: [1, 30]
-    contentHash: 4451e35
+    contentHash: 78de083
     note: "WP1 US-9 kit acceptance criteria and WP5 state-transition gate that this feature's R6 updates unblock."
   - kind: lines
     path: lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.schema.json
     range: [1, 10]
-    contentHash: f117a11
+    contentHash: a1d208c
     note: "Schema to extend with required metadata.project_root field per R6 AC-1."
   - kind: lines
     path: AGENTS.md
     range: [229, 268]
-    contentHash: 6dc38f1
+    contentHash: b953d77
     note: "Workspace map distinguishing self-hosting substrate from operator-facing harness paths."
   - kind: lines
     path: OPERATION.md
     range: [1, 20]
-    contentHash: 2c065a0
+    contentHash: a91d661
     note: "Feature-delivery loop and pan CLI verbs; WP6 adds harness-root vs project-root documentation."
   - kind: lines
     path: pancreator.yaml
     range: [1, 10]
-    contentHash: e9514d8
+    contentHash: a7092be
     note: "Self-hosting reference value project_root '.'; embedded installs MUST NOT copy this bootstrap tracking block."
 ---
 
@@ -141,7 +141,7 @@ callers). The resolver SHALL read `project_root` from harness-root
 project-root distinction with copy-paste examples.
 
 **WP2 (`cli-runtime-path-prefixing`)** SHALL update every `@pancreator/cli`
-code path that today joins `repoRoot` with `lib/`, `work/`, `archive/`, or
+code path that today joins `repoRoot` with `lib/`, `.pan/work/`, `.pan/archive/`, or
 `.pan/` to route through the WP1 resolver instead. `pancreator.yaml` and
 repo-root `.env` SHALL remain at harness root. Feature-delivery `state.json`
 artifact paths SHALL remain project-relative without embedding `.pancreator/`
@@ -222,9 +222,9 @@ adopt into a temp repo with pre-existing `AGENTS.md`.
 - When `project_root: "."` is set, existing daedaline paths SHALL resolve
   identically to the pre-WP2 behavior.
 - `state.json` artifact paths SHALL remain project-relative strings (e.g.,
-  `lib/inbox/in/…`, `work/…`) without `.pancreator/` embedded.
+  `lib/inbox/in/…`, `.pan/work/…`) without `.pancreator/` embedded.
 - Every file in the WP2 touch-set SHALL import the WP1 resolver rather than
-  hand-joining `repoRoot` with `lib/`, `work/`, `archive/`, or `.pan/`.
+  hand-joining `repoRoot` with `lib/`, `.pan/work/`, `.pan/archive/`, or `.pan/`.
 
 ### WP3 — Embedded adopt scaffold
 
@@ -248,10 +248,10 @@ adopt into a temp repo with pre-existing `AGENTS.md`.
 - The manifest SHALL list every allowed scaffold path (project-relative) from R4
   "SHALL scaffold" exactly.
 - The manifest SHALL list every denied path from R4 "SHALL NOT scaffold" exactly,
-  including `archive/`, `lib/memory/backlog/`, `lib/memory/adr/`,
+  including `.pan/archive/`, `lib/memory/backlog/`, `lib/memory/adr/`,
   `lib/memory/rfc/`, `lib/memory/postmortems/`, `lib/memory/research/`,
   `lib/memory/runbooks/`, `lib/memory/smes/`, `lib/internal/`, `tests/`,
-  `docs/PRD.md`, `docs/BOOTSTRAP.md`, `docs/M1.index.md`, and daedaline
+  `.docs/PRD.md`, `.docs/BOOTSTRAP.md`, `.docs/M1.index.md`, and daedaline
   bootstrap evidence bundles.
 - Embedded scaffold output SHALL contain zero paths matching any deny-list entry.
 
@@ -270,7 +270,7 @@ adopt into a temp repo with pre-existing `AGENTS.md`.
   `metadata.project_root: ".pancreator"` and a `target_repo.path` placeholder
   referencing `/Users/alen/Dev/xeremia-sandbox`.
 - The evaluator SHALL exit non-zero when a checklist path matches a deny-listed
-  self-dev tree (`archive/`, `lib/memory/backlog/`, etc.).
+  self-dev tree (`.pan/archive/`, `lib/memory/backlog/`, etc.).
 - `lib/personas/adopter.md` and `lib/personas/skills/adopt-existing-repo/SKILL.md`
   SHALL document the write surface using `<project_root>/…` templating.
 - `lib/personas/skills/adopt-existing-repo/SKILL.md` Step 1 dry-run prose SHALL
@@ -299,7 +299,7 @@ adopt into a temp repo with pre-existing `AGENTS.md`.
 
 - Rewriting `lib/internal/` package implementations beyond the path-resolution
   hooks required for the embedded layout; no unrelated refactors.
-- Migrating historical `archive/work/` or `archive/inbox/` content in this repo.
+- Migrating historical `.pan/archive/work/` or `.pan/archive/inbox/` content in this repo.
 - Copying `lib/memory/backlog/` or any ranked product backlog into embedded installs.
 - Auto-migrating existing self-hosted repos from `project_root: "."` to
   `.pancreator` unless an operator explicitly requests a follow-on feature.

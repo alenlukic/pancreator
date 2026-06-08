@@ -6,7 +6,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
   "range": [10, 18],
   "contentHash": 0
 }
@@ -18,7 +18,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
   "kind": "lines",
   "path": "lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/spec.md",
   "range": [51, 72],
-  "contentHash": "49a3950"
+  "contentHash": "ebe455d"
 }
 ```
  
@@ -26,7 +26,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
   "range": [31, 35],
   "contentHash": 0
 }
@@ -39,7 +39,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
   "range": [10, 17],
   "contentHash": 0
 }
@@ -50,7 +50,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
   "range": [30, 37],
   "contentHash": 0
 }
@@ -61,7 +61,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
   "range": [72, 76],
   "contentHash": 0
 }
@@ -74,7 +74,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
   "range": [31, 35],
   "contentHash": 0
 }
@@ -85,7 +85,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md",
   "range": [1, 15],
   "contentHash": 0
 }
@@ -98,7 +98,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
   "kind": "lines",
   "path": "lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/spec.md",
   "range": [71, 72],
-  "contentHash": "49a3950"
+  "contentHash": "ebe455d"
 }
 ```
 
@@ -109,7 +109,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
   "range": [31, 35],
   "contentHash": 0
 }
@@ -120,7 +120,7 @@ This report SHALL record the delivery state for surface-opt P4. R1-R3 implementa
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md",
   "range": [7, 19],
   "contentHash": 0
 }
@@ -133,7 +133,7 @@ No additional handbook or operator documentation updates are required for this s
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
   "range": [78, 80],
   "contentHash": 0
 }
@@ -148,7 +148,7 @@ No additional handbook or operator documentation updates are required for this s
   "kind": "lines",
   "path": "lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/spec.md",
   "range": [71, 72],
-  "contentHash": "49a3950"
+  "contentHash": "ebe455d"
 }
 ```
 

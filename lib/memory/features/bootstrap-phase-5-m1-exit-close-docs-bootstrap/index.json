@@ -11,7 +11,7 @@
     "xeremia_poc_complete_at_iso": "2026-05-31T04:50:00.000Z"
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-m1-exit.md",
+    "path": ".pan/archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-m1-exit.md",
     "content_hash": "34f39bc",
     "prior_path": "lib/inbox/in/172976_05-30-26/60751_0707_bootstrap-phase-5-m1-exit.md"
   },
@@ -73,37 +73,37 @@
   "accepted_ship_artifacts": [
     {
       "kind": "plan",
-      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/plan.md",
+      "path": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/plan.md",
       "content_hash": "54158f4"
     },
     {
       "kind": "adr-draft",
-      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/adr-draft.md",
+      "path": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/adr-draft.md",
       "content_hash": "403f5c3"
     },
     {
       "kind": "touch-set",
-      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/touch-set.json",
+      "path": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/touch-set.json",
       "content_hash": "c2cf769"
     },
     {
       "kind": "implementation-report",
-      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/implementation-report.md",
+      "path": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/implementation-report.md",
       "content_hash": "41d5721"
     },
     {
       "kind": "review",
-      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/review.md",
+      "path": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/review.md",
       "content_hash": "40e78f2"
     },
     {
       "kind": "test-report",
-      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/test-report.md",
+      "path": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/test-report.md",
       "content_hash": "80c85d3"
     },
     {
       "kind": "policy-compliance",
-      "path": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json",
+      "path": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json",
       "content_hash": "e035840"
     }
   ],
@@ -113,13 +113,13 @@
     "status": "not-present-at-index-time"
   },
   "active_work_artifacts": [
-    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/plan.md",
-    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/adr-draft.md",
-    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/touch-set.json",
-    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/implementation-report.md",
-    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/review.md",
-    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/test-report.md",
-    "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
+    ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/plan.md",
+    ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/adr-draft.md",
+    ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/touch-set.json",
+    ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/implementation-report.md",
+    ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/review.md",
+    ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/test-report.md",
+    ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
   ],
   "archived_work_artifacts": [],
   "implementation_surface": [
@@ -163,7 +163,7 @@
       },
       {
         "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
-        "cited_path": "docs/BOOTSTRAP.md",
+        "cited_path": ".docs/BOOTSTRAP.md",
         "recorded_content_hash": "0f53881",
         "live_content_hash": "a2a5312",
         "verifier_status": "changed",
@@ -171,7 +171,7 @@
       },
       {
         "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
-        "cited_path": "docs/M1.index.md",
+        "cited_path": ".docs/M1.index.md",
         "recorded_content_hash": "2307223",
         "live_content_hash": "64ec3a8",
         "verifier_status": "changed",
@@ -187,7 +187,7 @@
       },
       {
         "citing_path": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md",
-        "cited_path": "docs/PRD.md",
+        "cited_path": ".docs/PRD.md",
         "recorded_content_hash": "d5ccdbd",
         "live_content_hash": "01a7f3a",
         "verifier_status": "changed",
@@ -211,7 +211,7 @@
       "owner": "tech-writer",
       "status": "closed",
       "closed_at_iso": "2026-05-31T04:55:00.000Z",
-      "reason": "WP5.1-WP5.5 delivered: pancreator.yaml, AGENTS.md, docs/M1.index.md, README.md, and pancreator-config.md updated; xeremia AC8 smoke evidence recorded.",
+      "reason": "WP5.1-WP5.5 delivered: pancreator.yaml, AGENTS.md, .docs/M1.index.md, README.md, and pancreator-config.md updated; xeremia AC8 smoke evidence recorded.",
       "source": "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-ac8-smoke-evidence.json",
       "evidence_artifacts": [
         "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/xeremia-greenfield-evidence.json",
@@ -226,14 +226,14 @@
       "owner": "librarian",
       "status": "deferred",
       "reason": "Handbook stability promotions route to tech-lead/reviewer/librarian stages with inventory captured in kpi-baseline-evidence.json.",
-      "source": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
+      "source": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
     },
     {
       "id": "lib/memory/adr/0002-m1-baseline.md",
       "owner": "tech-writer",
       "status": "deferred",
       "reason": "ADR authoring is owned by tech-writer stage; implement stage supplies kpi-baseline-evidence.json input package only.",
-      "source": "work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
+      "source": ".pan/work/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/policy-compliance.json"
     }
   ],
   "operator_setup": {
@@ -252,7 +252,7 @@
       "embedded_adopt_steps": [
         "cd /Users/alen/Dev/xeremia-sandbox",
         "pnpm -w exec pan init --apply",
-        "Confirm scaffold under .pancreator/lib/ only (no archive/, lib/memory/backlog/, or lib/internal/)",
+        "Confirm scaffold under .pancreator/lib/ only (no .pan/archive/, lib/memory/backlog/, or lib/internal/)",
         "pnpm -w exec pan run feature-delivery <day-bucket>/<inbox-entry>.md",
         "node lib/internal/tools/evaluate-greenfield-evidence.mjs --input lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json"
       ]
@@ -288,5 +288,5 @@
       }
     }
   },
-  "archived_inbox_source": "archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-m1-exit.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172976_05-30-26/27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap/60751_0707_bootstrap-phase-5-m1-exit.md"
 }

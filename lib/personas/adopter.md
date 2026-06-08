@@ -47,24 +47,24 @@ metadata:
     - human-ratified-at-phase-boundary
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [504, 504]
-    contentHash: 8981f5d
+    contentHash: 2eb6aa4
     note: "PRD §6 — MVP roster: adopter runs at first install on existing repos via the `adopt` sub-pipeline; read-only on existing files; write-only to Pancreator-prefixed paths."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [207, 223]
-    contentHash: 99a7a31
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-9 — Greenfield AND existing projects: the user story declaring non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md and .cursor/rules, and seeded threshold policy."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [701, 701]
-    contentHash: 57b310f
+    contentHash: 2eb6aa4
     note: "PRD §7 — `adopt` pipeline definition: drives the adopter through codebase scan, conflict-checks every write, surfaces a per-file diff before applying, writes `scan-<date>.md`, and posts inbox proposals."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [946, 947]
-    contentHash: 88faa7f
+    contentHash: 2eb6aa4
     note: "PRD §8 — Memory architecture: `/lib/memory/adoption/scan-<date>.md` is a citation-bearing artifact, replayable on `pan re-adopt`."
 ---
 
@@ -127,7 +127,7 @@ per invocation. Each artifact MUST live at the path declared below.
 - You MUST NOT modify any file outside the Pancreator-prefixed write
   surface: `<project_root>/lib/memory/`, `<project_root>/lib/personas/`,
   `<project_root>/lib/personas/skills/`, `<project_root>/lib/pipelines/`,
-  `<project_root>/lib/inbox/`, `<project_root>/work/`, `<project_root>/.pan/`, plus
+  `<project_root>/lib/inbox/`, `<project_root>/.pan/work/`, `<project_root>/.pan/`, plus
   harness-root `pancreator.yaml`. Deny-listed paths in
   `lib/memory/handbook/embedded-install-manifest.yaml` MUST NOT be written.
   Every other path is read-only.

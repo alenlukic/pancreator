@@ -50,7 +50,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
@@ -83,7 +83,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+    "artifact": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 2,
@@ -92,14 +92,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+      "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
       "range": [1, 43],
       "contentHash": "09d6065"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+    "artifact": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
     "subordinate_qa_context": true,
     "worktree_hygiene_gate": "disabled",
     "verification_gates": {
@@ -113,7 +113,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+      "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
       "range": [1, 45],
       "contentHash": "8a694b2"
     }
@@ -126,14 +126,14 @@
       "kind": "lines",
       "path": "lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md",
       "range": [1, 393],
-      "contentHash": "5cb51d3"
+      "contentHash": "c280138"
     },
     "source_inbox_item": "lib/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
-    "archived_inbox_source": "archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -142,7 +142,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
+      "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
       "range": [1, 33],
       "contentHash": "120b9aa"
     }
@@ -161,7 +161,7 @@
       "reason": "Browser MCP visual verification for navigation, modal read/edit/save, activity ordering, and palette hierarchy deferred to report gate; client-scoped automated validation passes.",
       "citation": {
         "kind": "lines",
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
         "range": [5, 6],
         "contentHash": "8a694b2"
       }
@@ -173,7 +173,7 @@
       "reason": "Root pnpm test and node --test tests/*.test.mjs fail on parent-harness JSON formatting offenders outside this subordinate touch-set; documented in policy-compliance.json deferred_items.",
       "citation": {
         "kind": "lines",
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
         "range": [19, 24],
         "contentHash": "120b9aa"
       }
@@ -187,7 +187,7 @@
           "kind": "lines",
           "path": "lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md",
           "range": [1, 230],
-          "contentHash": "5c4b959"
+          "contentHash": "a8d60e6"
         }
       },
       "delivery_report": {
@@ -196,7 +196,7 @@
           "kind": "lines",
           "path": "lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md",
           "range": [1, 393],
-          "contentHash": "5cb51d3"
+          "contentHash": "c280138"
         }
       },
       "per_feature_index": {
@@ -205,82 +205,82 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/"
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/"
       },
       "plan": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/plan.md",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/plan.md",
+          "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/plan.md",
           "range": [1, 65],
           "contentHash": "72be9f3"
         }
       },
       "adr_draft": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
+          "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
           "range": [1, 46],
           "contentHash": "9a38f62"
         }
       },
       "touch_set": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/touch-set.json",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/touch-set.json",
+          "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/touch-set.json",
           "range": [1, 172],
           "contentHash": "6de6d69"
         }
       },
       "implementation_report": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
+          "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
           "range": [1, 59],
           "contentHash": "b86c3d4"
         }
       },
       "review_report": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+          "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
           "range": [1, 43],
           "contentHash": "09d6065"
         }
       },
       "test_report": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+          "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
           "range": [1, 45],
           "contentHash": "8a694b2"
         }
       },
       "policy_compliance": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
+          "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/policy-compliance.json",
           "range": [1, 33],
           "contentHash": "120b9aa"
         }
       },
       "handoff": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/handoff.md",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/handoff.md",
+          "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/handoff.md",
           "range": [1, 49],
           "contentHash": "f98fa63"
         }
       },
       "run_log": {
-        "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/run.log.jsonl",
+        "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       }
     },
@@ -363,7 +363,7 @@
           "kind": "lines",
           "path": "client/README.md",
           "range": [1, 38],
-          "contentHash": "ae46dcc"
+          "contentHash": "9cc8649"
         }
       },
       "workspace_manifest": {
@@ -372,13 +372,13 @@
           "kind": "lines",
           "path": "pnpm-workspace.yaml",
           "range": [1, 19],
-          "contentHash": "e739f68"
+          "contentHash": "bfd24cc"
         }
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
+        "path": ".pan/archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
@@ -405,8 +405,8 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
+    "path": ".pan/archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md",
     "prior_path": "lib/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md"
 }

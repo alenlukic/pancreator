@@ -14,29 +14,29 @@ metadata:
     - /lib/memory/postmortems/<task-id>-stub.md
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [503, 503]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — MVP roster: supervisor owns the run log and dispatches Intervention actions; the supervisor invokes this skill on every abort per US-10."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [533, 533]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — M4 roster: postmortem-author runs blameless postmortems per Allspaw / Etsy `Debriefing Facilitation Guide`, produces second-story narratives, never points at humans."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [225, 246]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-10 — Intervention spectrum: abort kills the pipeline and disposes the worktree; artifacts and run-log are preserved for postmortem; abort always emits a run-summary artifact for the Librarian."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [858, 892]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §7 — Intervention conventions: state machine, safety invariants, quarantine preserves complete state for postmortem, every intervention dispatch logs the operator identity."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [949, 949]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §8 — Memory architecture: `/lib/memory/postmortems/` holds blameless RCAs, never modified after publication."
 ---
 
@@ -55,10 +55,10 @@ PRD §8 line 949.
 
 ## Prerequisites
 
-- `/work/<day>/<task-id>/run.log.jsonl` SHALL exist and SHALL carry the OpenInference
+- `/.pan/work/<day>/<task-id>/run.log.jsonl` SHALL exist and SHALL carry the OpenInference
   spans plus the OTel GenAI semconv parallel layer declared at PRD §7
   line 838; an empty or truncated run log fails the gate.
-- `/work/<day>/<task-id>/run-summary.md` SHALL exist when the trigger is
+- `/.pan/work/<day>/<task-id>/run-summary.md` SHALL exist when the trigger is
   `pan abort` per PRD §3.5 US-10 line 244; the supervisor emits the
   summary on abort per PRD §7 line 890.
 - `/lib/memory/postmortems/` SHALL exist as a writable directory; the skill
@@ -72,7 +72,7 @@ Execute these steps in order, once per aborted run.
 
 ### Step 1 — Load the run log and reconstruct the timeline
 
-Read `/work/<day>/<task-id>/run.log.jsonl` and parse every span emitted between
+Read `/.pan/work/<day>/<task-id>/run.log.jsonl` and parse every span emitted between
 the run start and the abort. Build a timeline keyed by ISO-8601
 timestamps; each entry MUST list the stage id, the persona id, the tool
 call (when present), the gate state (when the entry crosses a gate), and
@@ -187,10 +187,10 @@ When all gates are green, you MUST:
 
 ## Stop conditions
 
-- Halt when `/work/<day>/<task-id>/run.log.jsonl` is missing or empty; the
+- Halt when `/.pan/work/<day>/<task-id>/run.log.jsonl` is missing or empty; the
   postmortem cannot rest on a synthesized timeline. Route an inbox item
   rather than fabricate spans.
-- Halt when `/work/<day>/<task-id>/run-summary.md` is missing on an abort
+- Halt when `/.pan/work/<day>/<task-id>/run-summary.md` is missing on an abort
   trigger; the supervisor's PRD §7 line 890 invariant is broken and the
   postmortem MUST flag the gap before authoring narrative.
 - Halt when the stub already exists at the target path; the published

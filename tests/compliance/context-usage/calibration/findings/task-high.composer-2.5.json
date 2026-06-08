@@ -27,8 +27,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/work/99999_probe/task/handoff.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/work/99999_probe/task/handoff.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/.work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/.work/99999_probe/task/handoff.md"
         },
         {
           "kind": "duplicate_read",
@@ -37,8 +37,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/docs/PRD.summary.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/docs/PRD.summary.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/.docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/.docs/PRD.summary.md"
         }
       ]
     },
@@ -66,13 +66,13 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-V99Z8h/work/99999_probe/task/handoff.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-V99Z8h/work/99999_probe/task/handoff.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-V99Z8h/.work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-V99Z8h/.work/99999_probe/task/handoff.md"
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-V99Z8h/docs/PRD.summary.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-V99Z8h/docs/PRD.summary.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-V99Z8h/.docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-V99Z8h/.docs/PRD.summary.md"
         },
         {
           "kind": "duplicate_read",
@@ -100,8 +100,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-MiJAjh/work/99999_probe/task/handoff.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-MiJAjh/work/99999_probe/task/handoff.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-MiJAjh/.work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-MiJAjh/.work/99999_probe/task/handoff.md"
         },
         {
           "kind": "duplicate_read",
@@ -110,8 +110,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-MiJAjh/docs/PRD.summary.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-MiJAjh/docs/PRD.summary.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-MiJAjh/.docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-MiJAjh/.docs/PRD.summary.md"
         },
         {
           "kind": "duplicate_read",
@@ -144,8 +144,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-O7xfgD/work/99999_probe/task/handoff.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-O7xfgD/work/99999_probe/task/handoff.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-O7xfgD/.work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-O7xfgD/.work/99999_probe/task/handoff.md"
         },
         {
           "kind": "duplicate_read",
@@ -154,8 +154,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-O7xfgD/docs/PRD.summary.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-O7xfgD/docs/PRD.summary.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-O7xfgD/.docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-O7xfgD/.docs/PRD.summary.md"
         }
       ]
     },
@@ -178,8 +178,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-IwgsPk/docs/PRD.summary.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-IwgsPk/docs/PRD.summary.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-IwgsPk/.docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-IwgsPk/.docs/PRD.summary.md"
         },
         {
           "kind": "duplicate_read",
@@ -188,8 +188,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-IwgsPk/work/99999_probe/task/handoff.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-IwgsPk/work/99999_probe/task/handoff.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-IwgsPk/.work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-IwgsPk/.work/99999_probe/task/handoff.md"
         },
         {
           "kind": "duplicate_read",
@@ -227,13 +227,13 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-B4Ojtj/work/99999_probe/task/handoff.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-B4Ojtj/work/99999_probe/task/handoff.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-B4Ojtj/.work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-B4Ojtj/.work/99999_probe/task/handoff.md"
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-B4Ojtj/docs/PRD.summary.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-B4Ojtj/docs/PRD.summary.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-B4Ojtj/.docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-B4Ojtj/.docs/PRD.summary.md"
         },
         {
           "kind": "duplicate_read",
@@ -266,13 +266,13 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-bnNnWY/work/99999_probe/task/handoff.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-bnNnWY/work/99999_probe/task/handoff.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-bnNnWY/.work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-bnNnWY/.work/99999_probe/task/handoff.md"
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-bnNnWY/docs/PRD.summary.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-bnNnWY/docs/PRD.summary.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-bnNnWY/.docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-bnNnWY/.docs/PRD.summary.md"
         },
         {
           "kind": "duplicate_read",
@@ -310,8 +310,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-ncTId2/work/99999_probe/task/handoff.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-ncTId2/work/99999_probe/task/handoff.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-ncTId2/.work/99999_probe/task/handoff.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-ncTId2/.work/99999_probe/task/handoff.md"
         },
         {
           "kind": "duplicate_read",
@@ -320,8 +320,8 @@
         },
         {
           "kind": "duplicate_read",
-          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-ncTId2/docs/PRD.summary.md",
-          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-ncTId2/docs/PRD.summary.md"
+          "path": "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-ncTId2/.docs/PRD.summary.md",
+          "message": "Duplicate read: var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-ncTId2/.docs/PRD.summary.md"
         }
       ]
     }

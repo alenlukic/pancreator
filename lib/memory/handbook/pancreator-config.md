@@ -24,7 +24,7 @@ The `.` value means the harness root and target project root are the same direct
 
 The **harness root** is the directory that contains harness-owned `pancreator.yaml`
 and (when required) local repo-root `.cursor/` projections. The **project root**
-is where operational trees (`lib/inbox/`, `lib/memory/`, `work/`, `archive/`,
+is where operational trees (`lib/inbox/`, `lib/memory/`, `.pan/work/`, `.pan/archive/`,
 `.pan/`) live. When `project_root` is `.pancreator`, those trees resolve under
 `<harnessRoot>/.pancreator/` while `pancreator.yaml` stays at the harness root.
 
@@ -64,10 +64,10 @@ During adoption, the adopter SHOULD:
 ## Closed bootstrap history
 
 Bootstrap phases −1 through 5 are closed (M1 ratified 2026-05-31). Phase
-sequencing, exit criteria, and ratification evidence live in `docs/BOOTSTRAP.md`
+sequencing, exit criteria, and ratification evidence live in `.docs/BOOTSTRAP.md`
 and `lib/memory/features/bootstrap-phase-*`. `pancreator.yaml` does not carry a
 `bootstrap` tracking block; do not use closed-phase status as a live behavior gate.
-`docs/M1.index.md` is the compact route for M1 scope before loading full PRD sources.
+`.docs/M1.index.md` is the compact route for M1 scope before loading full PRD sources.
 
 When upgrading legacy workspaces that still contain a `bootstrap` block,
 `@pancreator/policy` exports optional `validateBootstrapTracking()` and
@@ -119,7 +119,7 @@ Examples:
 
 ```bash
 pnpm -w exec pan run feature-delivery 172981_05-25-26/71701_0613_ci-best-practices-batch.md
-pnpm -w exec pan advance <task-id> --artifact work/<day>/<task-id>/review.md
+pnpm -w exec pan advance <task-id> --artifact .pan/work/<day>/<task-id>/review.md
 pnpm -w exec pan refresh-active-memory --dry-run
 pnpm -w exec pan status <task-id>
 ```
@@ -163,19 +163,19 @@ for tier resolution, fallback order, and `run.log.jsonl` field names.
 ## Operator documentation (`OPERATION.md`)
 
 When a change affects operator-facing interfaces (CLI flags or subcommands,
-documented paths under `lib/inbox/`, `work/`, or `lib/memory/features/`,
+documented paths under `lib/inbox/`, `.pan/work/`, or `lib/memory/features/`,
 default values, or environment variables), the author SHALL update
 `OPERATION.md` in the same change set. `README.md` SHALL remain a high-level
 external landing page with a pointer to `OPERATION.md`. Agent obligations live
 in `AGENTS.md` (self-host) or `.pancreator/AGENTS.md` (embedded). Product
-spec and bootstrap history: `docs/` (internal).
+spec and bootstrap history: `.docs/` (internal).
 
 ## Editing guidance
 
 When changing `pancreator.yaml`:
 
 - preserve the top-level `project_root` property,
-- update bootstrap phase tracking only after checking `docs/BOOTSTRAP.md`,
+- update bootstrap phase tracking only after checking `.docs/BOOTSTRAP.md`,
 - apply phase ratification as one atomic change across `phase`, `status`, and
   `completed_phases` per the invariants above,
 - keep defaults in `pancreator-defaults.yaml` separate from live tracking,

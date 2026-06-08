@@ -12,7 +12,7 @@ This feature folder captures Phase 2 delivery requirements for `@pancreator/pipe
 ## Requirements
 - The package implementation MUST satisfy contract `pancreator.pipeline.package_shape` for `lib/internal/packages/@pancreator/pipeline/**`.
 - The package README Quickstart section MUST satisfy contract `pancreator.pipeline.readme_ergonomics`.
-- Work sequencing MUST preserve the docs/BOOTSTRAP.md Phase 2 dependency order position 12 of 20.
+- Work sequencing MUST preserve the .docs/BOOTSTRAP.md Phase 2 dependency order position 12 of 20.
 
 ## Non-Goals
 - Defining M2+ scope for new contract kinds.

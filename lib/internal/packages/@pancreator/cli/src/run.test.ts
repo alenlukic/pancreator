@@ -190,7 +190,7 @@ async function completeFeatureDeliveryRunForClose(
   featureId: string,
   dayDir: string,
 ): Promise<{ activeRunDirRel: string; inboxSourceRel: string }> {
-  const activeRunDirRel = `work/${dayDir}/${taskId}`;
+  const activeRunDirRel = `.pan/work/${dayDir}/${taskId}`;
   const activeRunDir = path.join(root, activeRunDirRel);
 
   const spec = path.join(root, "lib", "memory", "features", featureId, "spec.md");
@@ -274,7 +274,7 @@ async function completeFeatureDeliveryRunForClose(
     writeOut: () => undefined,
   });
   expect(existsSync(activeRunDir)).toBe(true);
-  expect(existsSync(path.join(root, "archive", "work", dayDir, taskId))).toBe(false);
+  expect(existsSync(path.join(root, ".pan/archive", "work", dayDir, taskId))).toBe(false);
   return { activeRunDirRel, inboxSourceRel };
 }
 
@@ -393,7 +393,7 @@ describe("parseAndRun", () => {
     });
     const runMsg = JSON.parse(runOut.join("")) as { taskId: string; nextCommand: string };
     const stateBefore = await readFile(
-      path.join(root, "work", "172996_05-10-26", runMsg.taskId, "state.json"),
+      path.join(root, ".pan/work", "172996_05-10-26", runMsg.taskId, "state.json"),
       "utf8",
     );
     const nextOut: string[] = [];
@@ -406,7 +406,7 @@ describe("parseAndRun", () => {
     expect(nextMsg.nextCommand).toBe(runMsg.nextCommand);
     expect(nextMsg.source).toBe("derived");
     const stateAfter = await readFile(
-      path.join(root, "work", "172996_05-10-26", runMsg.taskId, "state.json"),
+      path.join(root, ".pan/work", "172996_05-10-26", runMsg.taskId, "state.json"),
       "utf8",
     );
     expect(stateAfter).toBe(stateBefore);
@@ -518,7 +518,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const { taskId, runLogFile } = JSON.parse(runOut.join("")) as { taskId: string; runLogFile: string };
-    const runDirRel = `work/172996_05-10-26/${taskId}`;
+    const runDirRel = `.pan/work/172996_05-10-26/${taskId}`;
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
@@ -594,7 +594,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const { taskId } = JSON.parse(runOut.join("")) as { taskId: string };
-    const runDirRel = `work/172996_05-10-26/${taskId}`;
+    const runDirRel = `.pan/work/172996_05-10-26/${taskId}`;
 
     const missingOut: string[] = [];
     const missingCode = await parseAndRun(
@@ -678,7 +678,7 @@ describe("parseAndRun", () => {
   it("AC-P5a: resolveNextStep and pan next use review.md after must_fix with review_passes true", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-ac-p5a-reentry-"));
     await seedFeatureDeliveryRepo(root);
-    const runDirRel = "work/172996_05-10-26/38670_1315_demo-feature";
+    const runDirRel = ".pan/work/172996_05-10-26/38670_1315_demo-feature";
     const runDir = path.join(root, runDirRel);
     await mkdir(runDir, { recursive: true });
     await writeFile(
@@ -718,7 +718,7 @@ describe("parseAndRun", () => {
     await writeFile(path.join(root, state.artifacts.stateFile), stringifyCliJson(root, state), "utf8");
 
     const step = resolveNextStep(state, { repoRoot: root });
-    expect(step.nextCommand).toMatch(/--artifact work\/172996_05-10-26\/38670_1315_demo-feature\/review\.md/u);
+    expect(step.nextCommand).toMatch(/--artifact \.pan\/work\/172996_05-10-26\/38670_1315_demo-feature\/review\.md/u);
     expect(step.nextCommand).not.toContain("implementation-report.md");
 
     const nextOut: string[] = [];
@@ -740,7 +740,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const { taskId } = JSON.parse(runOut.join("")) as { taskId: string; nextCommand?: string };
-    const runDirRel = `work/172996_05-10-26/${taskId}`;
+    const runDirRel = `.pan/work/172996_05-10-26/${taskId}`;
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
@@ -844,7 +844,7 @@ describe("parseAndRun", () => {
       "## Most recent shipped Features\n\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
       "utf8",
     );
-    await writeFile(path.join(root, ".cursorindexingignore"), "work/**\n", "utf8");
+    await writeFile(path.join(root, ".cursorindexingignore"), ".pan/work/**\n", "utf8");
     const err: string[] = [];
     const out: string[] = [];
     const code = await parseAndRun(["doctor", "--format", "json"], {
@@ -992,7 +992,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string };
-    const review = path.join(root, "work", "172996_05-10-26", start.taskId, "review.md");
+    const review = path.join(root, ".pan/work", "172996_05-10-26", start.taskId, "review.md");
     await mkdir(path.dirname(review), { recursive: true });
     await writeFile(review, "# Review\n\nManual out-of-band review evidence.", "utf8");
 
@@ -1004,7 +1004,7 @@ describe("parseAndRun", () => {
         "--stage",
         "review",
         "--artifact",
-        `work/172996_05-10-26/${start.taskId}/review.md`,
+        `.pan/work/172996_05-10-26/${start.taskId}/review.md`,
         "--reason",
         "manual Cursor run reached review before ledger advancement existed",
       ],
@@ -1033,7 +1033,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string };
-    const runDirRel = `work/172996_05-10-26/${start.taskId}`;
+    const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     const runDir = path.join(root, runDirRel);
 
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
@@ -1110,7 +1110,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; runLogFile: string };
-    const runDirRel = `work/172996_05-10-26/${start.taskId}`;
+    const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     const runDir = path.join(root, runDirRel);
 
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
@@ -1183,7 +1183,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const start = JSON.parse(out.join("")) as { taskId: string; nextPromptFile: string };
-    const runDir = path.join(root, "work", "172996_05-10-26", start.taskId);
+    const runDir = path.join(root, ".pan/work", "172996_05-10-26", start.taskId);
 
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
@@ -1193,26 +1193,26 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
-    await seedPlanStageAdvanceArtifacts(root, `work/172996_05-10-26/${start.taskId}`);
-    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/touch-set.json`], {
+    await seedPlanStageAdvanceArtifacts(root, `.pan/work/172996_05-10-26/${start.taskId}`);
+    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
     await writeFile(path.join(runDir, "implementation-report.md"), "# Impl", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/implementation-report.md`], {
+    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/implementation-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
     await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/review.md`], {
+    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/review.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
     await writeFile(path.join(runDir, "test-report.md"), "qa_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/test-report.md`], {
+    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/test-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1236,7 +1236,7 @@ describe("parseAndRun", () => {
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/compliance-result.json`], {
+    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/compliance-result.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1249,7 +1249,7 @@ describe("parseAndRun", () => {
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", `work/172996_05-10-26/${start.taskId}/ship-ratification.json`], {
+    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/ship-ratification.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1283,7 +1283,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const start = JSON.parse(out.join("")) as { taskId: string };
-    const activeRunDirRel = `work/172996_05-10-26/${start.taskId}`;
+    const activeRunDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     const activeRunDir = path.join(root, activeRunDirRel);
 
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
@@ -1447,8 +1447,8 @@ describe("parseAndRun", () => {
       stateFile: string;
     };
     expect(closed.pipelineStatus).toBe("closed");
-    expect(closed.archivedRunDir).toBe(`archive/work/172996_05-10-26/${start.taskId}`);
-    expect(closed.archivedInboxPath).toBe(`archive/inbox/in/172996_05-10-26/${start.taskId}/demo-feature.md`);
+    expect(closed.archivedRunDir).toBe(`.pan/archive/work/172996_05-10-26/${start.taskId}`);
+    expect(closed.archivedInboxPath).toBe(`.pan/archive/inbox/in/172996_05-10-26/${start.taskId}/demo-feature.md`);
     expect(closed.activeMemoryPath).toBe("lib/memory/active/current.md");
     expect(closed.activeFeatureCleared).toBe(true);
 
@@ -1467,7 +1467,7 @@ describe("parseAndRun", () => {
 
     expect(existsSync(path.join(root, "lib", "inbox", "in", "demo-feature.md"))).toBe(false);
     expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
-    expect(existsSync(path.join(root, "work", "172996_05-10-26"))).toBe(false);
+    expect(existsSync(path.join(root, ".pan/work", "172996_05-10-26"))).toBe(false);
     expect(existsSync(path.join(root, closed.archivedInboxPath))).toBe(true);
     expect(existsSync(path.join(root, closed.stateFile))).toBe(true);
     const complianceHistoryAfterClose = JSON.parse(
@@ -1476,10 +1476,10 @@ describe("parseAndRun", () => {
       entries: Array<{ artifact_paths?: { compliance_result?: string; run_dir?: string } }>;
     };
     expect(complianceHistoryAfterClose.entries[0]?.artifact_paths?.run_dir).toBe(
-      `archive/work/172996_05-10-26/${start.taskId}`,
+      `.pan/archive/work/172996_05-10-26/${start.taskId}`,
     );
     expect(complianceHistoryAfterClose.entries[0]?.artifact_paths?.compliance_result).toBe(
-      `archive/work/172996_05-10-26/${start.taskId}/compliance-result.json`,
+      `.pan/archive/work/172996_05-10-26/${start.taskId}/compliance-result.json`,
     );
 
     const statusOut: string[] = [];
@@ -1508,7 +1508,7 @@ describe("parseAndRun", () => {
     });
     const start = JSON.parse(out.join("")) as { taskId: string };
     await completeFeatureDeliveryRunForClose(root, start.taskId, "demo-feature", "172996_05-10-26");
-    const activeRunDirRel = `work/172996_05-10-26/${start.taskId}`;
+    const activeRunDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     await (await import("node:fs/promises")).unlink(path.join(root, activeRunDirRel, "operator-verification.md"));
 
     const closeOut: string[] = [];
@@ -1559,9 +1559,9 @@ describe("parseAndRun", () => {
     };
     expect(reopened.pipelineStatus).toBe("reopened");
     expect(reopened.currentStage).toBe("intake");
-    expect(reopened.runDir).toBe(`work/${dayDir}/${start.taskId}`);
+    expect(reopened.runDir).toBe(`.pan/work/${dayDir}/${start.taskId}`);
     expect(existsSync(path.join(root, reopened.runDir, "state.json"))).toBe(true);
-    expect(existsSync(path.join(root, "archive", "work", dayDir, start.taskId))).toBe(false);
+    expect(existsSync(path.join(root, ".pan/archive", "work", dayDir, start.taskId))).toBe(false);
   });
 
   it("report advance rejects JS-literal delivery-report citations", async () => {
@@ -1575,7 +1575,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const start = JSON.parse(out.join("")) as { taskId: string };
-    const activeRunDirRel = `work/172996_05-10-26/${start.taskId}`;
+    const activeRunDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     const activeRunDir = path.join(root, activeRunDirRel);
 
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
@@ -1609,7 +1609,7 @@ describe("parseAndRun", () => {
     const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
     await writeFile(
       report,
-      "# Delivery\n\nBad citation {kind: lines, path: work/example.md, range: [1, 2], contentHash: abc}\n",
+      "# Delivery\n\nBad citation {kind: lines, path: .pan/work/example.md, range: [1, 2], contentHash: abc}\n",
       "utf8",
     );
     const advanceOut: string[] = [];
@@ -1633,7 +1633,7 @@ describe("parseAndRun", () => {
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const start = JSON.parse(out.join("")) as { taskId: string; currentStage: string };
-    const runDirRel = `work/172996_05-10-26/${start.taskId}`;
+    const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     const runDir = path.join(root, runDirRel);
 
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
@@ -1731,7 +1731,7 @@ describe("parseAndRun", () => {
       "demo-feature",
       dayDir,
     );
-    const archiveRunDirRel = `archive/work/${dayDir}/${start.taskId}`;
+    const archiveRunDirRel = `.pan/archive/work/${dayDir}/${start.taskId}`;
     await mkdir(path.dirname(path.join(root, archiveRunDirRel)), { recursive: true });
     await rename(path.join(root, activeRunDirRel), path.join(root, archiveRunDirRel));
 
@@ -1808,8 +1808,8 @@ describe("parseAndRun", () => {
     expect(closeCode).toBe(1);
     const payload = JSON.parse(closeOut.join("")) as { message: string };
     expect(payload.message).toContain("Heading \"## Active Feature\" is missing from current.md");
-    const archivedRunDirRel = `archive/work/${dayDir}/${start.taskId}`;
-    const archivedInboxRel = `archive/inbox/in/${dayDir}/${start.taskId}/demo-feature.md`;
+    const archivedRunDirRel = `.pan/archive/work/${dayDir}/${start.taskId}`;
+    const archivedInboxRel = `.pan/archive/inbox/in/${dayDir}/${start.taskId}/demo-feature.md`;
     expect(existsSync(path.join(root, activeRunDirRel))).toBe(true);
     expect(existsSync(path.join(root, inboxSourceRel))).toBe(true);
     expect(existsSync(path.join(root, archivedRunDirRel))).toBe(false);
@@ -2150,7 +2150,7 @@ describe("operator tooling batch cli wiring", () => {
     await seedMinimalWorkspace(root);
     const bucket = makeUtcDayBucket(new Date(Date.UTC(2026, 1, 2, 9, 0, 0)));
     await mkdir(path.join(root, "lib", "inbox", "in", bucket), { recursive: true });
-    await mkdir(path.join(root, "archive", "inbox", "in", bucket), { recursive: true });
+    await mkdir(path.join(root, ".pan/archive", "inbox", "in", bucket), { recursive: true });
     const out: string[] = [];
     const code = await parseAndRun(
       ["intake", "new", "coexist-slug"],
@@ -2284,7 +2284,7 @@ describe("operator tooling batch cli wiring", () => {
     await seedMinimalWorkspace(root);
     const taskId = "24959_1704_ci-best-practices-batch";
     const archived =
-      "archive/inbox/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md";
+      ".pan/archive/inbox/in/172980_05-26-26/24959_1704_ci-best-practices-batch/71701_0613_ci-best-practices-batch.md";
     const stale = "lib/inbox/in/172981_05-25-26/71701_0613_ci-best-practices-batch.md";
     await mkdir(path.join(root, ...archived.split("/").slice(0, -1)), { recursive: true });
     await writeFile(path.join(root, archived), "# batch\n", "utf8");
@@ -2698,7 +2698,7 @@ stages:
       });
       expect(code).toBe(1);
       expect(out.join("")).toContain("Unknown persona");
-      const workRoot = path.join(root, "work");
+      const workRoot = path.join(root, ".pan/work");
       if (existsSync(workRoot)) {
         const dayDirs = await readdir(workRoot);
         for (const day of dayDirs) {

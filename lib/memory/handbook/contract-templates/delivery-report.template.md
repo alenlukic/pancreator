@@ -11,7 +11,7 @@ references:
   - kind: lines
     path: lib/personas/tech-writer.md
     range: [80, 137]
-    contentHash: TBD-on-commit
+    contentHash: ea46720
     note: "Delivery Report structure and citation conformance gates."
 ---
 
@@ -28,7 +28,7 @@ One paragraph at most 150 words capturing the shipped change.
 ```json
 {
   "kind": "lines",
-  "path": "work/<day>/<task-id>/implementation-report.md",
+  "path": ".pan/work/<day>/<task-id>/implementation-report.md",
   "range": [1, 20],
   "contentHash": "<abbreviated-git-blob-hash>"
 }
@@ -41,7 +41,7 @@ One paragraph at most 150 words capturing the shipped change.
 ```json
 {
   "kind": "lines",
-  "path": "work/<day>/<task-id>/plan.md",
+  "path": ".pan/work/<day>/<task-id>/plan.md",
   "range": [1, 30],
   "contentHash": "<abbreviated-git-blob-hash>"
 }
@@ -54,7 +54,7 @@ One paragraph at most 150 words capturing the shipped change.
 ```json
 {
   "kind": "lines",
-  "path": "work/<day>/<task-id>/implementation-report.md",
+  "path": ".pan/work/<day>/<task-id>/implementation-report.md",
   "range": [21, 40],
   "contentHash": "<abbreviated-git-blob-hash>"
 }
@@ -67,7 +67,7 @@ One paragraph at most 150 words capturing the shipped change.
 ```json
 {
   "kind": "lines",
-  "path": "work/<day>/<task-id>/review.md",
+  "path": ".pan/work/<day>/<task-id>/review.md",
   "range": [1, 20],
   "contentHash": "<abbreviated-git-blob-hash>"
 }
@@ -80,7 +80,7 @@ Example one with passing test citation.
 ```json
 {
   "kind": "lines",
-  "path": "work/<day>/<task-id>/test-report.md",
+  "path": ".pan/work/<day>/<task-id>/test-report.md",
   "range": [1, 15],
   "contentHash": "<abbreviated-git-blob-hash>"
 }
@@ -93,7 +93,7 @@ Coverage delta paragraph.
 ```json
 {
   "kind": "lines",
-  "path": "work/<day>/<task-id>/test-report.md",
+  "path": ".pan/work/<day>/<task-id>/test-report.md",
   "range": [16, 40],
   "contentHash": "<abbreviated-git-blob-hash>"
 }

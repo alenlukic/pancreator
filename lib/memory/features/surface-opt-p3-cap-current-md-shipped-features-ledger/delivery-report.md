@@ -6,7 +6,7 @@ The refresh pipeline now caps the `current.md` shipped-Features ledger at 10 row
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md",
   "range": [11, 15],
   "contentHash": "ad32f69"
 }
@@ -20,7 +20,7 @@ The refresh pipeline now caps the `current.md` shipped-Features ledger at 10 row
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md",
   "range": [18, 40],
   "contentHash": "ad32f69"
 }
@@ -34,7 +34,7 @@ The refresh pipeline now caps the `current.md` shipped-Features ledger at 10 row
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md",
+  "path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md",
   "range": [3, 9],
   "contentHash": "d5991f8"
 }
@@ -43,7 +43,7 @@ The refresh pipeline now caps the `current.md` shipped-Features ledger at 10 row
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
+  "path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
   "range": [16, 29],
   "contentHash": "efa1463"
 }
@@ -52,7 +52,7 @@ The refresh pipeline now caps the `current.md` shipped-Features ledger at 10 row
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
+  "path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
   "range": [37, 39],
   "contentHash": "efa1463"
 }
@@ -64,7 +64,7 @@ No handbook or operator-doc updates are required. The change aligns the active-m
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md",
+  "path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md",
   "range": [89, 92],
   "contentHash": "ad32f69"
 }
@@ -76,7 +76,7 @@ This feature is ready for the human operator to accept the delivery report and a
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md",
+  "path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md",
   "range": [3, 9],
   "contentHash": "d5991f8"
 }
@@ -85,7 +85,7 @@ This feature is ready for the human operator to accept the delivery report and a
 ```json
 {
   "kind": "lines",
-  "path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
+  "path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
   "range": [37, 39],
   "contentHash": "efa1463"
 }

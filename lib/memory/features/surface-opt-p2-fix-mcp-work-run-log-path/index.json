@@ -15,7 +15,7 @@
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
     "clarifying_skip_rationale": "Source directive states R1, R2, and AC1-AC3 with quantified outcomes and an explicit touch set; no intake-blocking ambiguity remains.",
-    "source_inbox_item": "archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p2-mcp-run-log-path.md",
@@ -48,7 +48,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/review.md",
+    "artifact": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 0,
@@ -58,7 +58,7 @@
   },
   "test": {
     "qa_passes": true,
-    "artifact": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/test-report.md",
+    "artifact": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/test-report.md",
     "sdk_automation_qa": false,
     "verification_gates": {
       "pnpm_lint": "pass",
@@ -71,11 +71,11 @@
   "delivery_report": {
     "path": "lib/memory/features/surface-opt-p2-fix-mcp-work-run-log-path/delivery-report.md",
     "staged_to_inbox_out": "lib/inbox/out/172974_06-01-26/68098_0505_surface-opt-p2-fix-mcp-work-run-log-path-report-approval.md",
-    "archived_inbox_source": "archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -89,27 +89,27 @@
     "changed_citations": [
       {
         "citing_path": "lib/memory/features/surface-opt-p2-fix-mcp-work-run-log-path/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/implementation-report.md",
+        "cited_path": ".pan/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/implementation-report.md",
         "recorded_content_hash": "a8f0b7c",
         "live_content_hash": "a8f0b7c",
         "verifier_status": "moved",
-        "note": "Implementation report archived to archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/implementation-report.md."
+        "note": "Implementation report archived to .pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/implementation-report.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p2-fix-mcp-work-run-log-path/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/test-report.md",
+        "cited_path": ".pan/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/test-report.md",
         "recorded_content_hash": "9ed0f93",
         "live_content_hash": "9ed0f93",
         "verifier_status": "moved",
-        "note": "Test report archived to archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/test-report.md."
+        "note": "Test report archived to .pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/test-report.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p2-fix-mcp-work-run-log-path/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/handoff.md",
+        "cited_path": ".pan/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/handoff.md",
         "recorded_content_hash": "165bf3b",
         "live_content_hash": "165bf3b",
         "verifier_status": "moved",
-        "note": "Handoff archived to archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/handoff.md."
+        "note": "Handoff archived to .pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/handoff.md."
       }
     ],
     "repo_wide_followup": "none"
@@ -129,34 +129,34 @@
     },
     "pipeline_artifacts": {
       "archived_work_dir": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/"
       },
       "plan": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/plan.md"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/plan.md"
       },
       "adr_draft": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/adr-draft.md"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/adr-draft.md"
       },
       "touch_set": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/touch-set.json"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/touch-set.json"
       },
       "implementation_report": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/implementation-report.md"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/implementation-report.md"
       },
       "review_report": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/review.md"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/review.md"
       },
       "test_report": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/test-report.md"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/test-report.md"
       },
       "policy_compliance": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/policy-compliance.json"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/policy-compliance.json"
       },
       "handoff": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/handoff.md"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/handoff.md"
       },
       "run_log": {
-        "path": "archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/run.log.jsonl"
+        "path": ".pan/archive/work/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/run.log.jsonl"
       }
     },
     "implementation_surface": {
@@ -175,7 +175,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md"
+        "path": ".pan/archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md"
       },
       "report_approval_outbox": {
         "path": "lib/inbox/out/172974_06-01-26/68098_0505_surface-opt-p2-fix-mcp-work-run-log-path-report-approval.md"
@@ -191,7 +191,7 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md",
+    "path": ".pan/archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md",
     "prior_path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p2-mcp-run-log-path.md"
   },
   "advance_gate": {
@@ -199,5 +199,5 @@
     "advance_command": "pnpm -w exec pan advance 69714_0438_surface-opt-p2-fix-mcp-work-run-log-path --artifact lib/memory/features/surface-opt-p2-fix-mcp-work-run-log-path/index.json",
     "status": "deferred-until-ratified"
   },
-  "archived_inbox_source": "archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172974_06-01-26/69714_0438_surface-opt-p2-fix-mcp-work-run-log-path/75420_0303_surface-opt-p2-mcp-run-log-path.md"
 }

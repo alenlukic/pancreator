@@ -60,9 +60,9 @@ feature id, and create these active-work artifacts.
 `lib/inbox/in/` prefix on the command line; legacy prefixed arguments are
 stripped and normalized in persisted state.
 
-- `work/<day>/<task-id>/state.json`
-- `work/<day>/<task-id>/handoff.md`
-- `work/<day>/<task-id>/run.log.jsonl`
+- `.pan/work/<day>/<task-id>/state.json`
+- `.pan/work/<day>/<task-id>/handoff.md`
+- `.pan/work/<day>/<task-id>/run.log.jsonl`
 
 This is a Phase-4 bootstrap invocation path. It prepares the state machine and
 handoff for the first persona, but it does not call Cursor, a model transport, or

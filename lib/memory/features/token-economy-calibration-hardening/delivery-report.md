@@ -16,7 +16,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
   "range": [9, 55],
   "contentHash": "7e6faf4"
 }
@@ -25,7 +25,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
   "range": [9, 14],
   "contentHash": "cbae4b9"
 }
@@ -34,7 +34,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
   "range": [9, 11],
   "contentHash": "87b487b"
 }
@@ -49,7 +49,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
   "range": [16, 20],
   "contentHash": "351b6df"
 }
@@ -62,7 +62,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
   "range": [20, 20],
   "contentHash": "351b6df"
 }
@@ -75,7 +75,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
   "range": [22, 36],
   "contentHash": "351b6df"
 }
@@ -89,7 +89,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
   "range": [29, 30],
   "contentHash": "ccf54af"
 }
@@ -100,7 +100,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
   "range": [24, 24],
   "contentHash": "ccf54af"
 }
@@ -116,7 +116,7 @@ compliance passes 144 of 144.
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/paths.mjs",
   "range": [26, 33],
-  "contentHash": "64de864"
+  "contentHash": "f74e659"
 }
 ```
 
@@ -141,7 +141,7 @@ compliance passes 144 of 144.
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/analyzer.mjs",
   "range": [194, 207],
-  "contentHash": "274c59f"
+  "contentHash": "0466b0f"
 }
 ```
 
@@ -153,7 +153,7 @@ compliance passes 144 of 144.
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/tasks.mjs",
   "range": [152, 162],
-  "contentHash": "30c49a0"
+  "contentHash": "831b865"
 }
 ```
 
@@ -165,7 +165,7 @@ compliance passes 144 of 144.
   "kind": "lines",
   "path": "tests/compliance/context-usage/calibrate-matrix.mjs",
   "range": [35, 57],
-  "contentHash": "a9cbb02"
+  "contentHash": "1ee6ae6"
 }
 ```
 
@@ -177,7 +177,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
   "range": [54, 57],
   "contentHash": "ccf54af"
 }
@@ -190,7 +190,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
   "range": [24, 24],
   "contentHash": "cbae4b9"
 }
@@ -203,7 +203,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
   "range": [25, 25],
   "contentHash": "cbae4b9"
 }
@@ -215,7 +215,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
   "range": [35, 35],
   "contentHash": "7e6faf4"
 }
@@ -228,7 +228,7 @@ compliance passes 144 of 144.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
   "range": [40, 40],
   "contentHash": "7e6faf4"
 }
@@ -247,14 +247,14 @@ pnpm run context:usage:test
   "kind": "lines",
   "path": "tests/compliance/context-usage/README.md",
   "range": [37, 41],
-  "contentHash": "3c790fe"
+  "contentHash": "eb01f8d"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
   "range": [17, 17],
   "contentHash": "87b487b"
 }
@@ -274,14 +274,14 @@ pnpm run context:usage:analyze
   "kind": "lines",
   "path": "tests/compliance/context-usage/README.md",
   "range": [43, 50],
-  "contentHash": "3c790fe"
+  "contentHash": "eb01f8d"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
   "range": [19, 19],
   "contentHash": "87b487b"
 }
@@ -299,7 +299,7 @@ node tests/compliance/context-usage/calibrate-matrix.mjs --fail-on-exceedance
   "kind": "lines",
   "path": "tests/compliance/context-usage/README.md",
   "range": [58, 67],
-  "contentHash": "3c790fe"
+  "contentHash": "eb01f8d"
 }
 ```
 
@@ -308,7 +308,7 @@ node tests/compliance/context-usage/calibrate-matrix.mjs --fail-on-exceedance
   "kind": "lines",
   "path": "tests/compliance/context-usage/context-usage.unit.test.mjs",
   "range": [246, 268],
-  "contentHash": "858905e"
+  "contentHash": "344eea0"
 }
 ```
 
@@ -324,7 +324,7 @@ pnpm run context:usage:expected -- --raw tests/compliance/context-usage/calibrat
   "kind": "lines",
   "path": "tests/compliance/context-usage/README.md",
   "range": [72, 76],
-  "contentHash": "3c790fe"
+  "contentHash": "eb01f8d"
 }
 ```
 
@@ -333,7 +333,7 @@ pnpm run context:usage:expected -- --raw tests/compliance/context-usage/calibrat
   "kind": "lines",
   "path": "tests/compliance/context-usage/context-usage.unit.test.mjs",
   "range": [317, 327],
-  "contentHash": "858905e"
+  "contentHash": "344eea0"
 }
 ```
 
@@ -351,7 +351,7 @@ rather than re-running calibrate in this slice.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
   "range": [9, 44],
   "contentHash": "87b487b"
 }
@@ -360,7 +360,7 @@ rather than re-running calibrate in this slice.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+  "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
   "range": [64, 79],
   "contentHash": "cbae4b9"
 }

@@ -13,14 +13,14 @@ metadata:
     pan close-artifacts after the operator reviews pipeline-close.md.
   references:
     - kind: lines
-      path: docs/PRD.md
+      path: .docs/PRD.md
       range: [1, 80]
-      contentHash: 2ce8e5c
+      contentHash: 2eb6aa4
       note: Cited for product context; pipeline structure derives from PRD §11.
     - kind: lines
-      path: docs/BOOTSTRAP.md
+      path: .docs/BOOTSTRAP.md
       range: [223, 243]
-      contentHash: 940935e
+      contentHash: b788753
       note: BOOTSTRAP Phase 4 names this pipeline as the US-1 dogfood entry point.
 stages:
   - id: intake
@@ -31,35 +31,35 @@ stages:
     label: Draft plan, ADR, touch-set, and handoff card
     outputs:
       - lib/memory/features/<feature-id>/ux-spec.md
-      - work/<day>/<task-id>/plan.md
-      - work/<day>/<task-id>/adr-draft.md
-      - work/<day>/<task-id>/touch-set.json
-      - work/<day>/<task-id>/handoff.md
-      - work/<day>/<task-id>/next-prompt.md
-      - work/<day>/<task-id>/design-plan-prompt.md
+      - .pan/work/<day>/<task-id>/plan.md
+      - .pan/work/<day>/<task-id>/adr-draft.md
+      - .pan/work/<day>/<task-id>/touch-set.json
+      - .pan/work/<day>/<task-id>/handoff.md
+      - .pan/work/<day>/<task-id>/next-prompt.md
+      - .pan/work/<day>/<task-id>/design-plan-prompt.md
   - id: implement
     persona: coder
     label: Implement against the declared touch-set from the handoff card
     inputs:
-      - work/<day>/<task-id>/next-prompt.md
-      - work/<day>/<task-id>/handoff.md
-      - work/<day>/<task-id>/touch-set.json
+      - .pan/work/<day>/<task-id>/next-prompt.md
+      - .pan/work/<day>/<task-id>/handoff.md
+      - .pan/work/<day>/<task-id>/touch-set.json
   - id: review
     persona: reviewer
     label: Run modern-code-review and contracts pass with compact must-fix output
     outputs:
-      - work/<day>/<task-id>/review.md
+      - .pan/work/<day>/<task-id>/review.md
   - id: test
     persona: qa-tester
     label: Run automated checks and manual verification; emit test-report.md
     inputs:
-      - work/<day>/<task-id>/review.md
-      - work/<day>/<task-id>/touch-set.json
+      - .pan/work/<day>/<task-id>/review.md
+      - .pan/work/<day>/<task-id>/touch-set.json
       - lib/memory/features/<feature-id>/ux-spec.md
     outputs:
-      - work/<day>/<task-id>/test-report.md
-      - work/<day>/<task-id>/design-qa-report.md
-      - work/<day>/<task-id>/design-qa-prompt.md
+      - .pan/work/<day>/<task-id>/test-report.md
+      - .pan/work/<day>/<task-id>/design-qa-report.md
+      - .pan/work/<day>/<task-id>/design-qa-prompt.md
   - id: report
     persona: tech-writer
     label: Author the delivery report
@@ -74,5 +74,5 @@ stages:
     label: Index emitted artifacts and refresh the feature index before librarian artifact closure
     outputs:
       - lib/memory/features/<feature-id>/index.json
-      - work/<day>/<task-id>/pipeline-close.md
-      - work/<day>/<task-id>/operator-verification.md
+      - .pan/work/<day>/<task-id>/pipeline-close.md
+      - .pan/work/<day>/<task-id>/operator-verification.md

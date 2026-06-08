@@ -7,7 +7,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
   "range": [8, 38],
   "contentHash": "fd1c885"
 }
@@ -16,7 +16,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
   "range": [3, 6],
   "contentHash": "1000a8d"
 }
@@ -25,7 +25,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
   "range": [3, 5],
   "contentHash": "3250220"
 }
@@ -38,7 +38,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
   "range": [5, 10],
   "contentHash": "f6b7f3d"
 }
@@ -47,7 +47,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
   "range": [44, 50],
   "contentHash": "2de14bd"
 }
@@ -58,7 +58,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
   "range": [10, 13],
   "contentHash": "f6b7f3d"
 }
@@ -69,7 +69,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
   "range": [45, 50],
   "contentHash": "f6b7f3d"
 }
@@ -78,7 +78,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
   "range": [37, 40],
   "contentHash": "2de14bd"
 }
@@ -89,7 +89,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
   "range": [13, 15],
   "contentHash": "f6b7f3d"
 }
@@ -98,7 +98,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/plan.md",
   "range": [80, 84],
   "contentHash": "f6b7f3d"
 }
@@ -113,7 +113,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/services/run-state-shared.ts",
   "range": [1, 26],
-  "contentHash": "552206b"
+  "contentHash": "4c92fae"
 }
 ```
 
@@ -122,7 +122,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/services/run-state-shared.ts",
   "range": [132, 201],
-  "contentHash": "552206b"
+  "contentHash": "4c92fae"
 }
 ```
 
@@ -133,7 +133,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/services/stage-artifact-contract.ts",
   "range": [6, 29],
-  "contentHash": "ab387fa"
+  "contentHash": "d192752"
 }
 ```
 
@@ -144,7 +144,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/components/cockpit/pipeline/PipelineModule.tsx",
   "range": [161, 192],
-  "contentHash": "668d507"
+  "contentHash": "22bcb53"
 }
 ```
 
@@ -153,7 +153,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/components/cockpit/pipeline/PipelineModule.tsx",
   "range": [244, 271],
-  "contentHash": "668d507"
+  "contentHash": "22bcb53"
 }
 ```
 
@@ -164,7 +164,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/components/cockpit/pipeline/ArtifactDrawer.tsx",
   "range": [1, 30],
-  "contentHash": "4b912e6"
+  "contentHash": "5e5aaac"
 }
 ```
 
@@ -175,7 +175,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
   "range": [15, 16],
   "contentHash": "1000a8d"
 }
@@ -186,7 +186,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
   "range": [17, 18],
   "contentHash": "1000a8d"
 }
@@ -197,7 +197,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
   "range": [54, 54],
   "contentHash": "fd1c885"
 }
@@ -208,7 +208,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
   "range": [70, 73],
   "contentHash": "2de14bd"
 }
@@ -217,7 +217,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/implementation-report.md",
   "range": [55, 56],
   "contentHash": "fd1c885"
 }
@@ -228,7 +228,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/adr-draft.md",
   "range": [35, 37],
   "contentHash": "2de14bd"
 }
@@ -243,14 +243,14 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [507, 553],
-  "contentHash": "de61734"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
   "range": [33, 33],
   "contentHash": "3250220"
 }
@@ -263,14 +263,14 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [555, 607],
-  "contentHash": "de61734"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
   "range": [39, 39],
   "contentHash": "1000a8d"
 }
@@ -283,14 +283,14 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [610, 684],
-  "contentHash": "de61734"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
   "range": [32, 32],
   "contentHash": "1000a8d"
 }
@@ -303,7 +303,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [295, 295],
-  "contentHash": "de61734"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -312,7 +312,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/app/api/run-state/route.test.ts",
   "range": [372, 417],
-  "contentHash": "39f2d5d"
+  "contentHash": "c49d518"
 }
 ```
 
@@ -321,7 +321,7 @@ This feature delivery adds live run observation to the Cockpit v2 Pipeline modul
   "kind": "lines",
   "path": "client/src/app/api/run-state/route.test.ts",
   "range": [439, 466],
-  "contentHash": "39f2d5d"
+  "contentHash": "c49d518"
 }
 ```
 
@@ -332,7 +332,7 @@ Coverage delta against the prior Cockpit v2 Pipeline baseline adds 42 focused cl
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
   "range": [3, 5],
   "contentHash": "3250220"
 }
@@ -341,7 +341,7 @@ Coverage delta against the prior Cockpit v2 Pipeline baseline adds 42 focused cl
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
   "range": [9, 13],
   "contentHash": "3250220"
 }
@@ -350,7 +350,7 @@ Coverage delta against the prior Cockpit v2 Pipeline baseline adds 42 focused cl
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
+  "path": ".pan/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
   "range": [37, 39],
   "contentHash": "1000a8d"
 }

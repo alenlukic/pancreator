@@ -13,7 +13,7 @@ const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
 async function mkRepo(): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "pan-close-oob-"));
   await mkdir(path.join(root, "lib", "inbox", "in"), { recursive: true });
-  await mkdir(path.join(root, "work", "172971_06-04-26"), { recursive: true });
+  await mkdir(path.join(root, ".pan/work", "172971_06-04-26"), { recursive: true });
   return root;
 }
 
@@ -37,7 +37,7 @@ describe("close-out-of-band", () => {
 
   it("archives a work directory with operator verification", async () => {
     const root = await mkRepo();
-    const runDirRel = "work/172971_06-04-26/99999_manual_audit";
+    const runDirRel = ".pan/work/172971_06-04-26/99999_manual_audit";
     const runAbs = path.join(root, runDirRel);
     await mkdir(runAbs, { recursive: true });
     await writeFile(
@@ -62,7 +62,7 @@ describe("close-out-of-band", () => {
       reason: "Ad-hoc workspace complete and ready for archival.",
     });
 
-    expect(result.archivedRunDir).toBe("archive/work/172971_06-04-26/99999_manual_audit");
+    expect(result.archivedRunDir).toBe(".pan/archive/work/172971_06-04-26/99999_manual_audit");
     expect(existsSync(runAbs)).toBe(false);
     expect(existsSync(path.join(root, result.archivedRunDir, "state.json"))).toBe(true);
     const state = JSON.parse(

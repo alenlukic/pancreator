@@ -34,13 +34,13 @@
     },
     {
       "id": "WP5",
-      "label": "WP5 — Embedded SDK default and operator docs",
+      "label": "WP5 — Embedded SDK default and operator .docs",
       "status": "shipped",
       "outcome": "EMBEDDED_PANCREATOR_YAML includes runner.cursor.invocation sdk; OPERATION.md documents embedded checklist and manual cursor-sync."
     },
     {
       "id": "WP6",
-      "label": "WP6 — Regression tests",
+      "label": "WP6 — Regression .tests",
       "status": "shipped",
       "outcome": "cursor-sync, pan-init, and project-root-resolution tests pass per test-report.md focused run (14/14)."
     }
@@ -49,7 +49,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172976_05-30-26/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
@@ -82,7 +82,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
+    "artifact": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 1,
@@ -91,14 +91,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
+      "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
       "range": [1, 34],
       "contentHash": "b98a196"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+    "artifact": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
     "sdk_automation_qa": false,
     "verification_gates": {
       "node_test_suite_focused": "pass (14/14)",
@@ -117,7 +117,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+      "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
       "range": [1, 59],
       "contentHash": "730823d"
     }
@@ -131,11 +131,11 @@
       "range": [1, 37],
       "contentHash": "c9d798e"
     },
-    "archived_inbox_source": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -144,7 +144,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
+      "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
       "range": [1, 25],
       "contentHash": "7411d0e"
     }
@@ -233,7 +233,7 @@
       "reason": "Broad node --test suite fails on archived policy-compliance.json formatting outside this touch-set; routes through json-formatting maintenance path.",
       "citation": {
         "kind": "lines",
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
         "range": [31, 31],
         "contentHash": "730823d"
       }
@@ -272,82 +272,82 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/"
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/"
       },
       "plan": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/plan.md",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/plan.md",
+          "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/plan.md",
           "range": [1, 80],
           "contentHash": "2ab1140"
         }
       },
       "adr_draft": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/adr-draft.md",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/adr-draft.md",
+          "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/adr-draft.md",
           "range": [1, 65],
           "contentHash": "1b840a5"
         }
       },
       "touch_set": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/touch-set.json",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/touch-set.json",
+          "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/touch-set.json",
           "range": [1, 73],
           "contentHash": "b96bb79"
         }
       },
       "implementation_report": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/implementation-report.md",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/implementation-report.md",
+          "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/implementation-report.md",
           "range": [1, 90],
           "contentHash": "2953890"
         }
       },
       "review_report": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
+          "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/review.md",
           "range": [1, 34],
           "contentHash": "b98a196"
         }
       },
       "test_report": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
+          "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/test-report.md",
           "range": [1, 59],
           "contentHash": "730823d"
         }
       },
       "policy_compliance": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
+          "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/policy-compliance.json",
           "range": [1, 25],
           "contentHash": "7411d0e"
         }
       },
       "handoff": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/handoff.md",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/handoff.md",
+          "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/handoff.md",
           "range": [1, 49],
           "contentHash": "70f5cf7"
         }
       },
       "run_log": {
-        "path": "work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/run.log.jsonl",
+        "path": ".pan/work/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       }
     },
@@ -358,7 +358,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/cursor-sync.ts",
           "range": [1, 320],
-          "contentHash": "7e6a083"
+          "contentHash": "5cf0566"
         }
       },
       "cli_pan_init": {
@@ -367,7 +367,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/pan-init.ts",
           "range": [1, 581],
-          "contentHash": "3741365"
+          "contentHash": "65a9346"
         }
       },
       "cli_run": {
@@ -376,7 +376,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
           "range": [1, 686],
-          "contentHash": "64e31c0"
+          "contentHash": "f31b63d"
         }
       },
       "cli_feature_delivery_run": {
@@ -385,7 +385,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
           "range": [1, 2199],
-          "contentHash": "cf9314c"
+          "contentHash": "33de090"
         }
       },
       "sync_cursor_agents_bridge": {
@@ -394,7 +394,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/sync-cursor-agents.mjs",
           "range": [1, 56],
-          "contentHash": "164ca3f"
+          "contentHash": "bfe1dbd"
         }
       },
       "tests_cursor_sync": {
@@ -403,7 +403,7 @@
           "kind": "lines",
           "path": "tests/cursor-sync.test.mjs",
           "range": [1, 131],
-          "contentHash": "2d776a0"
+          "contentHash": "45ef1bc"
         }
       },
       "tests_pan_init": {
@@ -412,7 +412,7 @@
           "kind": "lines",
           "path": "tests/pan-init.test.mjs",
           "range": [1, 84],
-          "contentHash": "086ead6"
+          "contentHash": "e73e32f"
         }
       },
       "tests_project_root": {
@@ -421,7 +421,7 @@
           "kind": "lines",
           "path": "tests/project-root-resolution.test.mjs",
           "range": [1, 79],
-          "contentHash": "f656fab"
+          "contentHash": "5846be6"
         }
       },
       "operator_howto": {
@@ -430,7 +430,7 @@
           "kind": "lines",
           "path": "OPERATION.md",
           "range": [1, 272],
-          "contentHash": "a5c43c2"
+          "contentHash": "a91d661"
         }
       },
       "parent_batch_index_linkage": {
@@ -439,13 +439,13 @@
           "kind": "lines",
           "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json",
           "range": [1, 530],
-          "contentHash": "cdaf9c1"
+          "contentHash": "6997ea9"
         }
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
+        "path": ".pan/archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172976_05-30-26/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
@@ -477,7 +477,7 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
+    "path": ".pan/archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md",
     "prior_path": "lib/inbox/in/172976_05-30-26/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md"
   },
   "advance_gate": {
@@ -485,5 +485,5 @@
     "advance_command": "pnpm -w exec pan advance 72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs --artifact lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json",
     "status": "deferred-until-ratified"
   },
-  "archived_inbox_source": "archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172975_05-31-26/72723_0347_embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/2171_2323_embedded-install-cursor-agent-sync-and-init-gaps.md"
 }

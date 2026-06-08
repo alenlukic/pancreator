@@ -260,7 +260,7 @@ async function resolveInboxInPathToArchive(
   taskId?: string,
 ): Promise<string | null> {
   const basename = path.posix.basename(inboxInRel);
-  const archiveInRoot = resolveProjectPath(repoRoot, "archive", "inbox", "in");
+  const archiveInRoot = resolveProjectPath(repoRoot, ".pan/archive", "inbox", "in");
   if (!existsSync(archiveInRoot)) {
     return null;
   }
@@ -269,7 +269,7 @@ async function resolveInboxInPathToArchive(
     const dayDirs = await readdir(archiveInRoot, { withFileTypes: true });
     for (const day of dayDirs) {
       if (!day.isDirectory()) continue;
-      const candidateRel = path.posix.join("archive", "inbox", "in", day.name, taskId, basename);
+      const candidateRel = path.posix.join(".pan/archive", "inbox", "in", day.name, taskId, basename);
       if (existsSync(resolveRepoPath(repoRoot, candidateRel))) {
         return candidateRel;
       }
@@ -284,11 +284,11 @@ async function resolveInboxInPathToArchive(
     for (const entry of nested) {
       if (!entry.isDirectory()) {
         if (entry.name === basename) {
-          return path.posix.join("archive", "inbox", "in", day.name, basename);
+          return path.posix.join(".pan/archive", "inbox", "in", day.name, basename);
         }
         continue;
       }
-      const candidateRel = path.posix.join("archive", "inbox", "in", day.name, entry.name, basename);
+      const candidateRel = path.posix.join(".pan/archive", "inbox", "in", day.name, entry.name, basename);
       if (existsSync(resolveRepoPath(repoRoot, candidateRel))) {
         return candidateRel;
       }
@@ -319,7 +319,7 @@ export async function resolveArchivedInboxPointer(
         : undefined;
 
   for (const rel of candidates) {
-    if (rel.startsWith("archive/inbox/") && existsSync(resolveRepoPath(repoRoot, rel))) {
+    if (rel.startsWith(".pan/archive/inbox/") && existsSync(resolveRepoPath(repoRoot, rel))) {
       return rel;
     }
   }
@@ -336,7 +336,7 @@ export async function resolveArchivedInboxPointer(
     }
   }
   for (const rel of candidates) {
-    if (rel.startsWith("archive/inbox/")) {
+    if (rel.startsWith(".pan/archive/inbox/")) {
       return rel;
     }
   }

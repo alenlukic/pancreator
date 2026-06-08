@@ -13,12 +13,12 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [203, 208]
-    contentHash: 3dc743c
+    contentHash: b953d77
     note: "AGENTS §6.2 binds agents to compliance-run triggers after structure changes."
   - kind: lines
     path: lib/memory/features/compliance-tests/manual-runbook.md
     range: [1, 52]
-    contentHash: 493084e
+    contentHash: a207354
     note: "Manual runbook defines operator-on-demand and structure-change modes."
 related:
   - /AGENTS.md

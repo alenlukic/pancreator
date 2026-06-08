@@ -458,7 +458,7 @@ function relFromFeatureIndex(indexRel: string, featureId: string, maybeRel: stri
   if (normalized === null) {
     return null;
   }
-  if (normalized.startsWith("work/") || normalized.startsWith("archive/") || normalized.startsWith("lib/")) {
+  if (normalized.startsWith(".pan/work/") || normalized.startsWith(".pan/archive/") || normalized.startsWith("lib/")) {
     return normalized;
   }
   return path.posix.join("lib", "memory", "features", featureId, normalized);

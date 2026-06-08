@@ -332,7 +332,7 @@ async function readPersistedState(stateAbs: string): Promise<PersistedState> {
 }
 
 async function discoverActiveStateFiles(repoRoot: string): Promise<string[]> {
-  const workRoot = path.join(repoRoot, "work");
+  const workRoot = path.join(repoRoot, ".pan/work");
   if (!fs.existsSync(workRoot)) {
     return [];
   }

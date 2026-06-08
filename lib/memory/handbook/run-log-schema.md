@@ -7,39 +7,39 @@ phase: 0b
 owners: [tech-lead, librarian, supervisor]
 purpose: |
   Canonical schema and behavior contract for run-log emission under
-  `/work/<day>/<id>/run.log.jsonl`. This file defines the OpenInference + OpenTelemetry
+  `/.pan/work/<day>/<id>/run.log.jsonl`. This file defines the OpenInference + OpenTelemetry
   GenAI-aligned record shape, identity and correlation fields, outcome
   conventions, integrity constraints, and validation checklist that
   `@pancreator/run-logger` SHALL implement in a later phase.
 references:
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [75, 76]
-    contentHash: 87ba148
+    contentHash: b788753
     note: "Phase 0b requires `/lib/memory/handbook/run-log-schema.md` as the run-logger contract seed."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [181, 183]
-    contentHash: e32bcd2
+    contentHash: b788753
     note: "Bootstrap observability requirement sets OpenInference + OTel GenAI conformance expectation."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [838, 840]
-    contentHash: 9ac3ed1
+    contentHash: 2eb6aa4
     note: "PRD defines run-log path, semantic-convention fields, and checkpoint linkage through run-log offset."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1080, 1084]
-    contentHash: 39fb71b
+    contentHash: 2eb6aa4
     note: "PRD requires OTLP/OpenInference + OTel GenAI compatible spans and JSONL local sink."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1088, 1088]
-    contentHash: 5668957
+    contentHash: 2eb6aa4
     note: "PRD requires stage-boundary checkpoints and LangGraph-compatible saver shape."
 related:
-  - /docs/PRD.md
-  - /docs/BOOTSTRAP.md
+  - /.docs/PRD.md
+  - /.docs/BOOTSTRAP.md
   - /lib/memory/handbook/glossary.md
   - /lib/memory/handbook/contract-format.md
 ---
@@ -66,7 +66,7 @@ The contract scope covers:
 
 The local default run-log sink SHALL be:
 
-- `/work/<day>/<task-id>/run.log.jsonl`
+- `/.pan/work/<day>/<task-id>/run.log.jsonl`
 
 The file SHALL use JSON Lines (`.jsonl`) encoding where each line is one record.
 
@@ -191,7 +191,7 @@ Run-log writers SHALL satisfy all constraints below:
 
 Before a run-log producer is accepted, the implementer SHALL verify:
 
-- [ ] File path is `/work/<day>/<task-id>/run.log.jsonl`.
+- [ ] File path is `/.pan/work/<day>/<task-id>/run.log.jsonl`.
 - [ ] Output is valid JSONL with one record per line.
 - [ ] Required fields in Sections 3-6 are present and typed correctly.
 - [ ] Required OpenInference + OTel fields are emitted when applicable.

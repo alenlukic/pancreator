@@ -7,7 +7,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
   "range": [8, 12],
   "contentHash": "7588d02"
 }
@@ -16,7 +16,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
   "range": [3, 5],
   "contentHash": "ee4ff9b"
 }
@@ -25,7 +25,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
   "range": [3, 5],
   "contentHash": "09445e1"
 }
@@ -38,7 +38,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
   "range": [48, 49],
   "contentHash": "63c3fdc"
 }
@@ -49,7 +49,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
   "range": [51, 54],
   "contentHash": "63c3fdc"
 }
@@ -60,7 +60,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
   "range": [56, 59],
   "contentHash": "63c3fdc"
 }
@@ -71,7 +71,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
   "range": [61, 65],
   "contentHash": "63c3fdc"
 }
@@ -82,7 +82,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/plan.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/plan.md",
   "range": [49, 52],
   "contentHash": "e38ec45"
 }
@@ -93,7 +93,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/plan.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/plan.md",
   "range": [11, 13],
   "contentHash": "e38ec45"
 }
@@ -104,7 +104,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
   "range": [12, 12],
   "contentHash": "7588d02"
 }
@@ -226,7 +226,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/components/cockpit/pipeline/InboxTriagePanel.tsx",
   "range": [13, 17],
-  "contentHash": "688cb86"
+  "contentHash": "2a85c4e"
 }
 ```
 
@@ -244,7 +244,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/components/cockpit/pipeline/PipelineModule.tsx",
   "range": [276, 291],
-  "contentHash": "fbcedc3"
+  "contentHash": "22bcb53"
 }
 ```
 
@@ -255,7 +255,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/components/cockpit/pipeline/NextActionPanel.tsx",
   "range": [25, 34],
-  "contentHash": "d8d6fd4"
+  "contentHash": "db1477d"
 }
 ```
 
@@ -264,7 +264,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/components/DashboardPage.tsx",
   "range": [221, 231],
-  "contentHash": "4d82a7d"
+  "contentHash": "a191b5d"
 }
 ```
 
@@ -275,7 +275,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
   "range": [15, 15],
   "contentHash": "ee4ff9b"
 }
@@ -286,7 +286,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
   "range": [16, 16],
   "contentHash": "ee4ff9b"
 }
@@ -297,7 +297,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
   "range": [17, 17],
   "contentHash": "ee4ff9b"
 }
@@ -308,7 +308,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
   "range": [18, 18],
   "contentHash": "ee4ff9b"
 }
@@ -319,7 +319,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
   "range": [62, 62],
   "contentHash": "7588d02"
 }
@@ -328,7 +328,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
   "range": [72, 74],
   "contentHash": "63c3fdc"
 }
@@ -339,7 +339,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
   "range": [20, 20],
   "contentHash": "ee4ff9b"
 }
@@ -354,14 +354,14 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [885, 895],
-  "contentHash": "d6d9408"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
   "range": [33, 33],
   "contentHash": "09445e1"
 }
@@ -383,7 +383,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [898, 907],
-  "contentHash": "d6d9408"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -394,14 +394,14 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [910, 949],
-  "contentHash": "d6d9408"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
   "range": [27, 27],
   "contentHash": "09445e1"
 }
@@ -414,7 +414,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/app/api/execute/route.test.ts",
   "range": [26, 30],
-  "contentHash": "1cf719d"
+  "contentHash": "ff053ca"
 }
 ```
 
@@ -423,7 +423,7 @@ This feature delivery ships Cockpit v2 Pipeline orientation surfaces: active-mem
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [952, 979],
-  "contentHash": "d6d9408"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -434,7 +434,7 @@ Coverage delta against the prior Cockpit v2 command-center baseline adds 35 focu
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
   "range": [3, 5],
   "contentHash": "09445e1"
 }
@@ -443,7 +443,7 @@ Coverage delta against the prior Cockpit v2 command-center baseline adds 35 focu
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
   "range": [11, 11],
   "contentHash": "09445e1"
 }
@@ -452,7 +452,7 @@ Coverage delta against the prior Cockpit v2 command-center baseline adds 35 focu
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+  "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
   "range": [35, 35],
   "contentHash": "ee4ff9b"
 }

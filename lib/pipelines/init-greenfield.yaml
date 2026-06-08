@@ -8,9 +8,9 @@ metadata:
     author the first plan. Adopter scan is omitted (no prior state).
   references:
     - kind: lines
-      path: docs/PRD.md
+      path: .docs/PRD.md
       range: [1, 80]
-      contentHash: 2ce8e5c
+      contentHash: 2eb6aa4
       note: Cited for product context; pipeline structure derives from PRD §11.
 stages:
   - id: scaffold

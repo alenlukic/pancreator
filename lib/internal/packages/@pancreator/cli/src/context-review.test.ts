@@ -25,8 +25,8 @@ describe("context-review", () => {
   });
 
   it("honors PAN_AGENT_TRANSCRIPTS_DIR override", () => {
-    process.env.PAN_AGENT_TRANSCRIPTS_DIR = "/tmp/custom-transcripts";
-    expect(resolveAgentTranscriptsDir("/any/root")).toBe("/tmp/custom-transcripts");
+    process.env.PAN_AGENT_TRANSCRIPTS_DIR = "/.tmp/custom-transcripts";
+    expect(resolveAgentTranscriptsDir("/any/root")).toBe("/.tmp/custom-transcripts");
     delete process.env.PAN_AGENT_TRANSCRIPTS_DIR;
   });
 
@@ -39,32 +39,32 @@ describe("context-review", () => {
   });
 
   it("renders context review prompt without task id", () => {
-    const workspace = "sandbox/my-pass";
+    const workspace = ".sandbox/my-pass";
     const prompt = renderContextReviewPrompt({
       reviewLabel: "my-pass",
       workspaceDir: workspace,
       scopePaths: ["lib/internal/packages/@pancreator/cli/src/context-review.ts"],
-      contextPaths: ["docs/PRD.summary.md"],
+      contextPaths: [".docs/PRD.summary.md"],
       transcriptsDir: "/home/op/.cursor/projects/demo/agent-transcripts",
     });
     expect(prompt).toContain("context-reviewer");
     expect(prompt).toContain(contextReviewReportRel(workspace));
     expect(prompt).toContain("advisory");
     expect(prompt).toContain("does **not** require a feature-delivery task id");
-    expect(prompt).toContain("docs/PRD.summary.md");
+    expect(prompt).toContain(".docs/PRD.summary.md");
     expect(prompt).toContain("lib/inbox/notes/");
   });
 
   it("renders optional run-dir artifact hints when supplied", () => {
     const prompt = renderContextReviewPrompt({
       reviewLabel: "with-run",
-      workspaceDir: "sandbox/with-run",
+      workspaceDir: ".sandbox/with-run",
       scopePaths: [],
-      runDir: "work/172996_05-10-26/demo-feature",
+      runDir: ".pan/work/172996_05-10-26/demo-feature",
       contextPaths: [],
-      transcriptsDir: "/tmp/transcripts",
+      transcriptsDir: "/.tmp/transcripts",
     });
-    expect(prompt).toContain("work/172996_05-10-26/demo-feature/plan.md");
+    expect(prompt).toContain(".pan/work/172996_05-10-26/demo-feature/plan.md");
     expect(prompt).toContain("touch-set.json");
   });
 });
@@ -110,7 +110,7 @@ describe("scaffoldContextReview integration", () => {
   it("merges touch-set scope when --run-dir is supplied", async () => {
     const { scaffoldContextReview } = await import("./context-review.js");
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-context-review-run-"));
-    const runDirRel = "work/172996_05-10-26/demo-feature";
+    const runDirRel = ".pan/work/172996_05-10-26/demo-feature";
     const runAbs = path.join(root, runDirRel);
     await mkdir(runAbs, { recursive: true });
     await writeFile(
@@ -121,7 +121,7 @@ describe("scaffoldContextReview integration", () => {
 
     const result = await scaffoldContextReview({
       repoRoot: root,
-      workspace: "sandbox/from-run",
+      workspace: ".sandbox/from-run",
       runDir: runDirRel,
     });
     expect(result.runDir).toBe(runDirRel);

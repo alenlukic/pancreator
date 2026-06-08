@@ -9,14 +9,14 @@ description: |
   When the Phase 2 scaffold for `lib/internal/packages/@pancreator/core` is evaluated, the contract-runner SHALL report a block-level failure unless `package.json`, `README.md`, and `lib/index.ts` exist in that package directory.
 references:
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [122, 159]
-    contentHash: f54eb5e
+    contentHash: b788753
     note: "Bootstrap Phase 2 package contract requirement and dependency order."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1116, 1126]
-    contentHash: 6e43642
+    contentHash: 2eb6aa4
     note: "M1 substrate package scope and interfaces."
 spec: /lib/memory/features/pancreator-core/contracts/pancreator.core.package_shape.rego
 runtime:

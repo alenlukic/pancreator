@@ -13,7 +13,7 @@
     "open_questions": 0,
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
-    "source_inbox_item": "archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172967_06-08-26/54350_0854_cockpit-v2-maintenance-toolkit.md",
@@ -46,16 +46,16 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+    "artifact": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 5,
     "nit_count": 3,
     "spec_contracts_executed": 0,
-    "spec_contracts_note": "contracts:from_feature deferred (exit 125); three ux-spec block contracts adjudicated manually with contract run logs under work/contract-runs/.",
+    "spec_contracts_note": "contracts:from_feature deferred (exit 125); three ux-spec block contracts adjudicated manually with contract run logs under .pan/work/contract-runs/.",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+      "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
       "range": [1, 46],
       "contentHash": "d5c6f63"
     }
@@ -63,7 +63,7 @@
   "test": {
     "qa_passes": true,
     "design_qa_passes": true,
-    "artifact": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+    "artifact": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
     "verification_gates": {
       "client_lint": "pass",
       "client_typecheck": "pass",
@@ -77,19 +77,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+      "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
       "range": [1, 53],
       "contentHash": "7cfee52"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
+    "artifact": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
     "audit_id": "27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests-20260608165723",
     "baseline_audit_id": "31248_1519_cockpit-v2-local-scheduler-tick-and-run-history-20260608162153",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
+      "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
       "range": [1, 343],
       "contentHash": "f826ae4"
     }
@@ -101,13 +101,13 @@
       "kind": "lines",
       "path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
       "range": [1, 355],
-      "contentHash": "c6c1043"
+      "contentHash": "0db9ec9"
     },
-    "archived_inbox_source": "archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "ship_ratification_artifact": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
     "ratified_paths": [
       "client/src/services/maintenance-compliance.ts",
       "client/src/services/maintenance-compliance.test.ts",
@@ -145,7 +145,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
+      "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
       "range": [1, 55],
       "contentHash": "1a9da2e"
     }
@@ -158,7 +158,7 @@
       "reason": "Staged diff includes 79 paths outside the declared 19-path maintenance touch-set; reconcile branch scope or amend touch-set before ship.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
         "range": [36, 38],
         "contentHash": "1a9da2e"
       }
@@ -170,7 +170,7 @@
       "reason": "streamSuiteOutput awaits full process completion before yielding stdout/stderr lines; long Vitest runs do not update the browser incrementally.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "range": [15, 15],
         "contentHash": "d5c6f63"
       }
@@ -182,7 +182,7 @@
       "reason": "History list items render without click handlers; operators cannot reload prior logs without re-running the suite.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "range": [17, 17],
         "contentHash": "d5c6f63"
       }
@@ -194,7 +194,7 @@
       "reason": "Pre-close failure navigation opens Maintenance tab without passing failed bundle context for pre-selection.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "range": [19, 19],
         "contentHash": "d5c6f63"
       }
@@ -206,7 +206,7 @@
       "reason": "maintenance-suite-presets.ts shared allowlist module is not listed in touch-set.json creates.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "range": [21, 21],
         "contentHash": "d5c6f63"
       }
@@ -218,7 +218,7 @@
       "reason": "No page test covers compliance findings expand or high-severity non-zero exit scenarios.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "range": [23, 23],
         "contentHash": "d5c6f63"
       }
@@ -230,7 +230,7 @@
       "reason": "output-stream-panel and output-stream-log vs ux-spec output-stream identifier.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "range": [27, 27],
         "contentHash": "d5c6f63"
       }
@@ -242,7 +242,7 @@
       "reason": "GET /api/compliance-run descriptor listing endpoint was not named in plan task 2.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "range": [29, 29],
         "contentHash": "d5c6f63"
       }
@@ -254,7 +254,7 @@
       "reason": "Button copy Audit history vs ux-spec View audit history ledger.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "range": [31, 31],
         "contentHash": "d5c6f63"
       }
@@ -266,7 +266,7 @@
       "reason": "ADR draft records maintenance API decisions as proposed; copy ADR to lib/memory/adr/ before downstream features bind to it.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
         "range": [89, 107],
         "contentHash": "3855d89"
       }
@@ -278,7 +278,7 @@
       "reason": "delivery-report.md, index.json, spec.md, and ux-spec.md may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
         "range": [39, 45],
         "contentHash": "1a9da2e"
       }
@@ -290,7 +290,7 @@
       "reason": "lib/memory/features/compliance-tests/audit-history.json compliance ledger update unstaged at ship; include at human commit.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
         "range": [43, 43],
         "contentHash": "1a9da2e"
       }
@@ -314,7 +314,7 @@
     "changed_citations": [
       {
         "citing_path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/implementation-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/implementation-report.md",
         "recorded_content_hash": "bf21b85",
         "live_content_hash": "cf3c302",
         "verifier_status": "changed",
@@ -322,7 +322,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "recorded_content_hash": "885364f",
         "live_content_hash": "d5c6f63",
         "verifier_status": "changed",
@@ -330,7 +330,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
         "recorded_content_hash": "ad9f15d",
         "live_content_hash": "7cfee52",
         "verifier_status": "changed",
@@ -338,7 +338,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/plan.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/plan.md",
         "recorded_content_hash": "add52c3",
         "live_content_hash": "a4cc7ff",
         "verifier_status": "changed",
@@ -346,7 +346,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
         "recorded_content_hash": "f437098",
         "live_content_hash": "3855d89",
         "verifier_status": "changed",
@@ -476,7 +476,7 @@
     "tests": [],
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json",
+      "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json",
       "range": [1, 199],
       "contentHash": "45aad55"
     }
@@ -507,7 +507,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
           "range": [1, 355],
-          "contentHash": "c6c1043"
+          "contentHash": "0db9ec9"
         }
       },
       "per_feature_index": {
@@ -516,135 +516,135 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/"
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/"
       },
       "plan": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/plan.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/plan.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/plan.md",
           "range": [1, 118],
           "contentHash": "a4cc7ff"
         }
       },
       "adr_draft": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/adr-draft.md",
           "range": [1, 119],
           "contentHash": "3855d89"
         }
       },
       "touch_set": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json",
           "range": [1, 199],
           "contentHash": "45aad55"
         }
       },
       "implementation_report": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/implementation-report.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/implementation-report.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/implementation-report.md",
           "range": [1, 64],
           "contentHash": "cf3c302"
         }
       },
       "review_report": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
           "range": [1, 46],
           "contentHash": "d5c6f63"
         }
       },
       "test_report": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
           "range": [1, 53],
           "contentHash": "7cfee52"
         }
       },
       "design_qa_report": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/design-qa-report.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/design-qa-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/design-qa-report.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/design-qa-report.md",
           "range": [1, 49],
           "contentHash": "5544a7e"
         }
       },
       "compliance_result": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
           "range": [1, 343],
           "contentHash": "f826ae4"
         }
       },
       "compliance_audit": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-audit.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-audit.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-audit.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-audit.md",
           "range": [1, 164],
           "contentHash": "584cf28"
         }
       },
       "compliance_remediation": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-remediation.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-remediation.md",
         "note": "Compliance-auditor remediation notes for scheduler close-artifacts hygiene blocking exit bundle.",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-remediation.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-remediation.md",
           "range": [1, 29],
           "contentHash": "e444984"
         }
       },
       "ship_ratification": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/ship-ratification.json",
           "range": [1, 55],
           "contentHash": "1a9da2e"
         }
       },
       "handoff": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/handoff.md",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/handoff.md",
+          "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/handoff.md",
           "range": [1, 55],
           "contentHash": "4a08546"
         }
       },
       "pipeline_close": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/pipeline-close.md"
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/pipeline-close.md"
       },
       "operator_verification": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/operator-verification.md"
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/operator-verification.md"
       },
       "run_log": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/run.log.jsonl",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/logs/",
+        "path": ".pan/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/logs/",
         "note": "QA, compliance, and client gate command transcripts."
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md",
+        "path": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172967_06-08-26/54350_0854_cockpit-v2-maintenance-toolkit.md",
@@ -677,9 +677,9 @@
     "documentation_only": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172967_06-08-26/54350_0854_cockpit-v2-maintenance-toolkit.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-maintenance-toolkit.md"
 }

@@ -7,7 +7,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
   "range": [9, 18],
   "contentHash": "90832d5"
 }
@@ -16,7 +16,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
   "range": [3, 18],
   "contentHash": "6cdeefa"
 }
@@ -25,7 +25,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
   "range": [1, 6],
   "contentHash": "a96eccf"
 }
@@ -38,7 +38,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/plan.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/plan.md",
   "range": [3, 19],
   "contentHash": "a96eccf"
 }
@@ -47,7 +47,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
   "range": [11, 19],
   "contentHash": "3574b43"
 }
@@ -67,7 +67,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/plan.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/plan.md",
   "range": [15, 19],
   "contentHash": "a96eccf"
 }
@@ -87,7 +87,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
   "range": [5, 19],
   "contentHash": "3574b43"
 }
@@ -182,7 +182,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/adr-draft.md",
   "range": [21, 32],
   "contentHash": "3574b43"
 }
@@ -191,7 +191,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
   "range": [31, 33],
   "contentHash": "6cdeefa"
 }
@@ -202,7 +202,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
   "range": [15, 18],
   "contentHash": "6cdeefa"
 }
@@ -222,7 +222,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md",
   "range": [46, 48],
   "contentHash": "90832d5"
 }
@@ -231,7 +231,7 @@ The subordinate run delivered a complete v0 `client/` dashboard with path-safe f
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
   "range": [5, 6],
   "contentHash": "a96eccf"
 }
@@ -326,7 +326,7 @@ The validation delta covers the new client endpoint suite, the dashboard interac
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md",
   "range": [7, 30],
   "contentHash": "a96eccf"
 }
@@ -335,7 +335,7 @@ The validation delta covers the new client endpoint suite, the dashboard interac
 ```json
 {
   "kind": "lines",
-  "path": "work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
+  "path": ".pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md",
   "range": [3, 18],
   "contentHash": "6cdeefa"
 }
@@ -368,10 +368,10 @@ This subordinate feature is delivered as a QA evidence bundle for the parent `fe
 
 | Work package | Outcome | Evidence |
 |---|---|---|
-| WP-1 — Implementation scope | Pass | `work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md` |
-| WP-2 — Review acceptance | Pass | `work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md` |
-| WP-3 — Re-entry QA validation | Pass | `work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md` |
-| WP-4 — Subordinate hygiene exception | Accepted | `work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/touch-set.json`, `work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md` |
+| WP-1 — Implementation scope | Pass | `.pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/implementation-report.md` |
+| WP-2 — Review acceptance | Pass | `.pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md` |
+| WP-3 — Re-entry QA validation | Pass | `.pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/test-report.md` |
+| WP-4 — Subordinate hygiene exception | Accepted | `.pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/touch-set.json`, `.pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/review.md` |
 
 ## Validation summary
 

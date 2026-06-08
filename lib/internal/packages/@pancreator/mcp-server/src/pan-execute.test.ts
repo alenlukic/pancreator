@@ -75,18 +75,18 @@ describe("pan.pause", () => {
 });
 
 describe("readPancreatorResource work-run-log", () => {
-  it("listResourceDefinitions references work/<day>/<taskId>/run.log.jsonl", () => {
+  it("listResourceDefinitions references .pan/work/<day>/<taskId>/run.log.jsonl", () => {
     const entry = listResourceDefinitions().find((r) => r.name === "pancreator-work-run-log");
     expect(entry?.description).toBe(
-      "Text contents of `work/<day>/<taskId>/run.log.jsonl` when the file exists.",
+      "Text contents of `.pan/work/<day>/<taskId>/run.log.jsonl` when the file exists.",
     );
   });
 
-  it("returns run log file contents from work/<day>/<taskId>/run.log.jsonl", async () => {
+  it("returns run log file contents from .pan/work/<day>/<taskId>/run.log.jsonl", async () => {
     const root = await mktemp("pan-mcp-runlog-");
     const day = "172974_06-01-26";
     const task = "t-99";
-    const p = path.join(root, "work", day, task, "run.log.jsonl");
+    const p = path.join(root, ".pan/work", day, task, "run.log.jsonl");
     await fs.mkdir(path.dirname(p), { recursive: true });
     const body = `{"line":1}\n`;
     await fs.writeFile(p, body, "utf8");
@@ -99,11 +99,11 @@ describe("readPancreatorResource work-run-log", () => {
     expect(text).toBe(body);
   });
 
-  it("resolves work/<day>/<taskId>/run.log.jsonl through day-aware search", async () => {
+  it("resolves .pan/work/<day>/<taskId>/run.log.jsonl through day-aware search", async () => {
     const root = await mktemp("pan-mcp-runlog-day-");
     const day = "172974_06-01-26";
     const task = "69714_0438_surface-opt-p2-fix-mcp-work-run-log-path";
-    const p = path.join(root, "work", day, task, "run.log.jsonl");
+    const p = path.join(root, ".pan/work", day, task, "run.log.jsonl");
     await fs.mkdir(path.dirname(p), { recursive: true });
     const body = `{"event":"stage_start","stage":"implement"}\n`;
     await fs.writeFile(p, body, "utf8");

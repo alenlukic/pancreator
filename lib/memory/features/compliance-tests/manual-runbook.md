@@ -60,7 +60,7 @@ For `feature-delivery` compliance stage runs, maintain the saved-audit ledger:
 2. Keep newest entries first and trim the ledger to at most 5 entries.
 3. Use the previous saved audit by default as the baseline diff focus.
 4. When needed, set `baseline_audit_id` in
-   `work/<day>/<task-id>/compliance-result.json` to one saved audit id from the
+   `.pan/work/<day>/<task-id>/compliance-result.json` to one saved audit id from the
    ledger.
 5. Record effective delta paths in the compliance result artifact so the next
    compliance run can reuse snapshot metadata without git-history reconstruction.

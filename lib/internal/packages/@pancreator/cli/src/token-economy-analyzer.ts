@@ -4,9 +4,9 @@ import path from "node:path";
 import { stringifyRepoJson } from "@pancreator/core";
 
 export const PRODUCTION_FORBIDDEN_READ_PREFIXES = [
-  "docs/PRD.md",
-  "docs/BOOTSTRAP.md",
-  "archive/work/",
+  ".docs/PRD.md",
+  ".docs/BOOTSTRAP.md",
+  ".pan/archive/work/",
   "lib/inbox/notes/",
 ] as const;
 

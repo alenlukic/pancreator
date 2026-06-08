@@ -15,8 +15,8 @@ import {
 const sampleState = {
   featureId: "demo-feature",
   artifacts: {
-    runDir: "work/172996_05-10-26/38670_1315_demo-feature",
-    handoffFile: "work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
+    runDir: ".pan/work/172996_05-10-26/38670_1315_demo-feature",
+    handoffFile: ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
   },
 };
 
@@ -25,15 +25,15 @@ describe("feature-delivery-stage-artifacts", () => {
     const contract = stageArtifactContract(sampleState, "plan");
     expect(contract.primaryArtifact).toMatch(/touch-set\.json$/u);
     expect(contract.requiredAfterStageWork).toEqual([
-      "work/172996_05-10-26/38670_1315_demo-feature/plan.md",
-      "work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
-      "work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
-      "work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/plan.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
     ]);
     expect(contract.acceptedAdvanceArtifacts).toEqual([
-      "work/172996_05-10-26/38670_1315_demo-feature/plan.md",
-      "work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
-      "work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/plan.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
     ]);
   });
 
@@ -57,8 +57,8 @@ describe("feature-delivery-stage-artifacts", () => {
       "test",
     );
     expect(contract.requiredAfterStageWork).toEqual([
-      "work/172996_05-10-26/38670_1315_demo-feature/test-report.md",
-      "work/172996_05-10-26/38670_1315_demo-feature/design-qa-report.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/test-report.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/design-qa-report.md",
     ]);
   });
 
@@ -72,9 +72,9 @@ describe("feature-delivery-stage-artifacts", () => {
     expect(validation.ok).toBe(false);
     expect(validation.warningCount).toBe(0);
     expect(validation.missing).toEqual([
-      "work/172996_05-10-26/38670_1315_demo-feature/plan.md",
-      "work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
-      "work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/plan.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
     ]);
   });
 
@@ -91,7 +91,7 @@ describe("feature-delivery-stage-artifacts", () => {
         root,
         sampleState,
         "plan",
-        "work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+        ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
         "human_approval",
       ),
     ).toThrow(/adr-draft\.md/u);
@@ -109,7 +109,7 @@ describe("feature-delivery-stage-artifacts", () => {
         root,
         sampleState,
         "plan",
-        "work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+        ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
         "human_approval",
       ),
     ).toThrow(/plan\.md/u);

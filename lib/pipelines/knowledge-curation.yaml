@@ -22,7 +22,7 @@ metadata:
     artifact_destinations:
       drift_report: lib/inbox/out/<timestamp>-knowledge-curation-drift-report.md
       feature_citation_scan: lib/memory/features/<feature-id>/citation-rot-scan.md
-      compliance_result: work/<day>/<task-id>/compliance-result.json
+      compliance_result: .pan/work/<day>/<task-id>/compliance-result.json
     anti_rot_loop:
       owner_persona: librarian
       stages: [scan, curate, report]
@@ -37,12 +37,12 @@ metadata:
     - kind: lines
       path: AGENTS.md
       range: [124, 134]
-      contentHash: e037427
+      contentHash: b953d77
       note: §6.1 Compliance-run trigger guidance covers manual on-demand cadence.
     - kind: lines
-      path: docs/BOOTSTRAP.md
+      path: .docs/BOOTSTRAP.md
       range: [256, 263]
-      contentHash: 0f53881
+      contentHash: b788753
       note: Phase 5 deliverable cluster for knowledge-curation cron seed and KPI baseline.
 stages:
   - id: scan

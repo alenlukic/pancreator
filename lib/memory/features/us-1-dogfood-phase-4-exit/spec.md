@@ -30,7 +30,7 @@ intake_notes:
   - The directive uses the phrase "such as Phoenix or Langfuse" for the
     external observability tool. This spec narrows the choice to "either
     Phoenix or Langfuse" to satisfy the Layer 1 atomic-clause rule, because
-    `docs/BOOTSTRAP.md` Phase 4 enumerates exactly those two tools at
+    `.docs/BOOTSTRAP.md` Phase 4 enumerates exactly those two tools at
     lines 241 to 242 and the glossary defines run-log conformance against
     the same pair.
   - The directive references `pan pause`, `pan resume`, and `pan abort`.
@@ -95,35 +95,35 @@ references:
     contentHash: 414a8f4
     note: "Source directive enumerates the five operator manual-validation actions that gate the Phase 4 exit ratification."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [225, 245]
-    contentHash: 940935e
+    contentHash: b788753
     note: "BOOTSTRAP Phase 4 section defines the seven stage outcomes for the US-1 dogfood pipeline run, the pause/resume/abort exercise, the Phoenix-or-Langfuse run-log verification, and the staged-PR plus delivery-report exit criterion."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [248, 267]
-    contentHash: 940935e
+    contentHash: b788753
     note: "BOOTSTRAP Phase 5 section identifies the M1 backlog work the Phase 4 exit unblocks; this slice MUST NOT start that work before the Phase 4 exit ratifies."
   - kind: lines
-    path: docs/M1.index.md
+    path: .docs/M1.index.md
     range: [18, 34]
-    contentHash: 63d0c43
+    contentHash: 7b1e138
     note: "M1 index records `bootstrap.phase: 4`, `status: phase-4-in-progress`, and the open dogfood exit gaps that this Feature closes."
   - kind: lines
     path: AGENTS.md
     range: [241, 259]
-    contentHash: 03ff3cd
+    contentHash: b953d77
     note: "AGENTS bootstrap-status section records that Phase 4 remains open until the US-1 dogfood exit gaps ratify and that `pan run`, `pan advance`, and `pan close-artifacts` orchestrate Phase 4 active-work."
   - kind: lines
     path: AGENTS.md
     range: [141, 148]
-    contentHash: 03ff3cd
+    contentHash: b953d77
     note: "AGENTS working-agreement clauses establish the operator-sandbox exclusion of `/lib/inbox/notes/` and the in-loop reviewer obligation at every phase boundary that this spec preserves."
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [281, 283]
-    contentHash: e5f5ecd
-    note: "Glossary defines Run-log as the append-only OTLP stream under `/work/<day>/<id>/run.log.jsonl` that is the basis for Phoenix and Langfuse import."
+    contentHash: c70da7c
+    note: "Glossary defines Run-log as the append-only OTLP stream under `/.pan/work/<day>/<id>/run.log.jsonl` that is the basis for Phoenix and Langfuse import."
 ---
 
 # Spec
@@ -143,12 +143,12 @@ before any Phase 5 M1 backlog work begins.
 This Feature SHALL preserve every Persona, Skill, Pipeline, Spec Contract,
 documentation-impact, policy-compliance, inbox-lifecycle, and stage-exit
 obligation cited at
-`{kind: lines, path: AGENTS.md, range: [141, 148], contentHash: 03ff3cd}`.
+`{kind: lines, path: AGENTS.md, range: [141, 148], contentHash: b953d77}`.
 
 This Feature SHALL NOT start Phase 5 M1 backlog delivery, SHALL NOT redefine
 the Phase 4 exit criteria, and SHALL NOT treat simulated or partial runs as
 sufficient proof per the non-goals at
-`{kind: lines, path: lib/inbox/in/us-1-dogfood-phase-4-exit.md, range: [44, 51], contentHash: 414a8f4}`.
+`{kind: lines, path: lib/inbox/in/us-1-dogfood-phase-4-exit.md, range: [44, 51], contentHash: b953d77}`.
 
 ## Acceptance criteria
 
@@ -160,13 +160,13 @@ sufficient proof per the non-goals at
 - When the Feature opens the dogfood run, the Feature MUST start the
   `feature-delivery` Pipeline through `pan run feature-delivery
   <inbox-entry>` per the runtime contract at
-  `{kind: lines, path: AGENTS.md, range: [249, 253], contentHash: 03ff3cd}`.
+  `{kind: lines, path: AGENTS.md, range: [249, 253], contentHash: b953d77}`.
 - When the run reaches the intake stage, the `intake-analyst` Persona MUST
   canonicalize the directive into `lib/memory/features/<id>/spec.md` and
   MUST close the clarifying loop within the 5-round cap.
 - When the run reaches the plan stage, the `tech-lead` Persona MUST produce
   the plan, the ADR draft, the touch-set, and the handoff card under
-  `work/<day>/<task-id>/`.
+  `.pan/work/<day>/<task-id>/`.
 - When the run reaches the implement stage, the `coder` Persona MUST
   implement the approved scope inside the declared touch-set without
   exceeding the in-scope path list.
@@ -178,25 +178,25 @@ sufficient proof per the non-goals at
 - When the run reaches the ship stage, the `supervisor` Persona MUST stage
   the local diff and MUST NOT push or open a remote pull request per the
   ship-stage contract at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [236, 240], contentHash: 940935e}`.
+  `{kind: lines, path: .docs/BOOTSTRAP.md, range: [236, 240], contentHash: b788753}`.
 - When the run reaches the index stage, the `librarian` Persona MUST index
   the emitted artifacts, MUST refresh the per-feature `index.json`, and MUST
   execute `pan close-artifacts <task-id>` after human validation per the
   closure contract at
-  `{kind: lines, path: AGENTS.md, range: [254, 259], contentHash: 03ff3cd}`.
+  `{kind: lines, path: AGENTS.md, range: [254, 259], contentHash: b788753}`.
 - When every stage completes, the run MUST preserve the stage-boundary
-  Checkpoint artifacts under `/work/<day>/<task-id>/` so that the path
+  Checkpoint artifacts under `/.pan/work/<day>/<task-id>/` so that the path
   from the inbox item to completion remains auditable.
 
 ### External run-log observability verification
 
 - When the dogfood run emits a Run-log, the Feature MUST capture the
-  `work/<day>/<task-id>/run.log.jsonl` file untouched as the proof input
+  `.pan/work/<day>/<task-id>/run.log.jsonl` file untouched as the proof input
   for external import.
 - When the Feature verifies external observability, the Feature MUST import
   the captured Run-log into either Phoenix or Langfuse per the conformance
   rule at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [241, 242], contentHash: 940935e}`.
+  `{kind: lines, path: .docs/BOOTSTRAP.md, range: [241, 242], contentHash: b788753}`.
 - When the Feature verifies the external trace, the verification record
   MUST show that the trace is readable, that the span hierarchy is
   complete, and that the trace identifier attributes back to the dogfood
@@ -239,7 +239,7 @@ sufficient proof per the non-goals at
 - When the Feature assembles the proof bundle, the bundle MUST include one
   delivery report staged under `lib/inbox/out/` per the
   notifier-to-outbox contract at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [243, 245], contentHash: 940935e}`.
+  `{kind: lines, path: .docs/BOOTSTRAP.md, range: [243, 245], contentHash: b788753}`.
 - When the Feature assembles the proof bundle, the bundle MUST include
   one clean external run trace for the end-to-end dogfood run captured
   under the verification record from the second acceptance group.
@@ -267,21 +267,21 @@ sufficient proof per the non-goals at
   beyond `phase-4-in-progress`.
 - While the ratification record remains unsigned, the Feature SHALL NOT
   start any Phase 5 M1 backlog deliverable enumerated at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [248, 267], contentHash: 940935e}`.
+  `{kind: lines, path: .docs/BOOTSTRAP.md, range: [248, 267], contentHash: b788753}`.
 
 ### Stage and policy invariants
 
-- When the Feature stages any structural change outside `work/`, the
-  Feature MUST stage one `/work/<day>/<task-id>/policy-compliance.json`
+- When the Feature stages any structural change outside `.pan/work/`, the
+  Feature MUST stage one `/.pan/work/<day>/<task-id>/policy-compliance.json`
   per the policy-compliance contract cited in `AGENTS.md` working agreement.
 - When the Feature completes the slice, the Feature MUST record the
-  documentation-impact decision for `AGENTS.md`, `docs/M1.index.md`,
+  documentation-impact decision for `AGENTS.md`, `.docs/M1.index.md`,
   `pancreator.yaml`, and `lib/memory/active/current.md` either as applied
   updates or as deferred items with backlog linkage.
 - When the Feature reads, traverses, or cites repository content, the
   Feature MUST NOT touch any path under `/lib/inbox/notes/` per the
   operator-sandbox rule at
-  `{kind: lines, path: AGENTS.md, range: [141, 145], contentHash: 03ff3cd}`.
+  `{kind: lines, path: AGENTS.md, range: [141, 145], contentHash: b953d77}`.
 - When the Feature edits Persona specs, Persona role boundaries, Persona
   tool grants, or Persona safety constraints, the Feature MUST NOT proceed
   without explicit human ratification recorded in the proof bundle.
@@ -295,14 +295,14 @@ sufficient proof per the non-goals at
 - This Feature SHALL NOT start any Phase 5 M1 backlog deliverable before
   the human ratifies the Phase 4 exit proof bundle.
 - This Feature SHALL NOT redefine the Phase 4 exit criteria enumerated at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [225, 245], contentHash: 940935e}`.
+  `{kind: lines, path: .docs/BOOTSTRAP.md, range: [225, 245], contentHash: b788753}`.
 - This Feature SHALL NOT accept a simulated, partial, or replayed run as
   a substitute for the real end-to-end dogfood run.
 - This Feature SHALL NOT push the staged dogfood pull request to any
   remote and SHALL NOT open a remote pull request before human
   ratification per the ship-stage contract at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [236, 240], contentHash: 940935e}`.
-- This Feature SHALL NOT delete any file under `work/**`,
+  `{kind: lines, path: .docs/BOOTSTRAP.md, range: [236, 240], contentHash: b788753}`.
+- This Feature SHALL NOT delete any file under `.pan/work/**`,
   `lib/memory/**`, `lib/inbox/out/**`, or `lib/inbox/threads/**` while
   assembling the proof bundle.
 - This Feature SHALL NOT read, write, traverse, or cite any path under
@@ -358,11 +358,11 @@ slot the source directive grants the implementation.
 - This Feature targets the bootstrap exit gate tracked by `pancreator.yaml`
   at `bootstrap.phase: 4` and `status: phase-4-in-progress` per the M1
   index at
-  `{kind: lines, path: docs/M1.index.md, range: [18, 34], contentHash: 63d0c43}`.
+  `{kind: lines, path: .docs/M1.index.md, range: [18, 34], contentHash: 7b1e138}`.
 - This Feature drives ratification of the Phase 4 exit declared at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [225, 245], contentHash: 940935e}`,
+  `{kind: lines, path: .docs/BOOTSTRAP.md, range: [225, 245], contentHash: 7b1e138}`,
   which unblocks the Phase 5 M1 backlog work at
-  `{kind: lines, path: docs/BOOTSTRAP.md, range: [248, 267], contentHash: 940935e}`.
+  `{kind: lines, path: .docs/BOOTSTRAP.md, range: [248, 267], contentHash: 7b1e138}`.
 - This Feature SHALL register its delivery report under `lib/inbox/out/`
   and its closed feature index under
   `lib/memory/features/us-1-dogfood-phase-4-exit/index.json` so the

@@ -8,69 +8,69 @@ supersedes: null
 superseded-by: null
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [3, 3]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD overview defines the four-axis architecture: roles, pipelines, memory, and process."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [12, 12]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD scaffold todo defines the canonical repository substrate and top-level directories."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [17, 21]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD MVP scope defines persona and skill inventories."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [26, 30]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD roadmap defines pipelines and control-plane runtime as distinct implementation layers."
   - kind: lines
     path: AGENTS.md
     range: [31, 41]
-    contentHash: e037427
+    contentHash: b953d77
     note: "AGENTS defines current agent and pipeline locations, including bootstrap status for pipeline population."
   - kind: lines
     path: AGENTS.md
     range: [104, 133]
-    contentHash: e037427
+    contentHash: b953d77
     note: "AGENTS workspace map defines canonical memory, inbox, and control-plane paths."
   - kind: lines
     path: AGENTS.md
     range: [138, 141]
-    contentHash: e037427
+    contentHash: b953d77
     note: "AGENTS bootstrap status records the currently active phases."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [49, 53]
-    contentHash: 940935e
+    contentHash: b788753
     note: "Bootstrap Phase 0 scaffolds directories that represent the present implemented repository state."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [57, 61]
-    contentHash: 940935e
+    contentHash: b788753
     note: "Bootstrap Phase 0b defines handbook seeds as canonical authoring substrate."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [273, 275]
-    contentHash: 940935e
+    contentHash: b788753
     note: "Bootstrap conventions require a human-in-the-loop phase-gate reviewer."
   - kind: lines
     path: lib/personas/persona-designer.md
     range: [2, 4]
-    contentHash: 9ac0169
+    contentHash: 8c8ea4b
     note: "Persona Designer scope anchors bootstrap persona authoring ownership."
   - kind: lines
     path: lib/personas/contract-writer.md
     range: [2, 4]
-    contentHash: 5b60a64
+    contentHash: ff1e45d
     note: "Contract Writer scope anchors bootstrap contract-authoring ownership."
   - kind: lines
     path: lib/personas/intake-analyst.md
     range: [2, 4]
-    contentHash: b85829d
+    contentHash: fc03a8e
     note: "Intake Analyst anchors the inbox-driven intake contract in current persona inventory."
 ---
 
@@ -96,7 +96,7 @@ flowchart TB
       COMPLIANCE["lib/personas/compliance-auditor.md\nCURRENT"]
       TENGINEER["lib/personas/pancreator-engineer.md\nCURRENT"]
       SKILLS["lib/personas/skills/*/SKILL.md\nCURRENT"]
-      BOOT["docs/BOOTSTRAP.md + docs/PRD.md\nCURRENT"]
+      BOOT[".docs/BOOTSTRAP.md + .docs/PRD.md\nCURRENT"]
     end
 
     subgraph Runtime["Runtime and Orchestration (FUTURE / NOT YET IMPLEMENTED)"]

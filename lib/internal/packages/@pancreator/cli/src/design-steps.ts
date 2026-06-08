@@ -32,6 +32,7 @@ export function designQaReportRel(runDir: string): string {
 }
 
 export const DESIGN_ENGINEER_PERSONA = "design-engineer" as const;
+export const DESIGN_REVIEWER_PERSONA = "design-reviewer" as const;
 
 function parseYamlFrontmatterBoolean(raw: string, key: string): boolean | undefined {
   const fence = /^---\r?\n([\s\S]*?)\r?\n---/u.exec(raw);
@@ -126,7 +127,7 @@ export function renderDesignQaPrompt(input: {
   const designReport = designQaReportRel(input.runDir);
   return `# Design-QA companion — ${input.taskId}
 
-You are \`design-engineer\` in design-QA companion mode for feature \`${input.featureId}\`.
+You are \`design-reviewer\` in design-QA companion mode for feature \`${input.featureId}\`.
 
 ## Inputs
 
@@ -142,7 +143,7 @@ You are \`design-engineer\` in design-QA companion mode for feature \`${input.fe
 ## Instructions
 
 1. Run Browser MCP inspections against relevant pages and interactions declared in the ux-spec and touch-set.
-2. Emit \`${designReport}\` with \`design_qa_passes: true\` or \`design_qa_passes: false\` per \`lib/personas/design-engineer.md\`.
+2. Emit \`${designReport}\` with \`design_qa_passes: true\` or \`design_qa_passes: false\` and prioritized, typed recommendations per \`lib/personas/design-reviewer.md\`.
 3. Run in parallel with \`qa-tester\`; the test gate requires both functional QA and design QA to pass.
 `;
 }

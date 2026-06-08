@@ -9,12 +9,12 @@ references:
   - kind: lines
     path: lib/memory/handbook/contract-templates/operator-verification.template.md
     range: [1, 40]
-    contentHash: 464c0bb
+    contentHash: 6db2a87
     note: Canonical operator verification pack template.
   - kind: lines
     path: OPERATION.md
     range: [140, 180]
-    contentHash: 90e3bfe
+    contentHash: a91d661
     note: Operator verification pack, ad-hoc close, and reopen commands.
 ---
 
@@ -31,7 +31,7 @@ to `intake` or a named stage.
 - AC1: `operator-verification.md` is scaffolded when feature-delivery reaches `complete`.
 - AC2: `close-artifacts` fails closed when `operator-verification.md` is missing.
 - AC3: `close-out-of-band` archives ad-hoc workspaces with verification pack and minimal state.
-- AC4: `pan reopen` restores `archive/work/` to `work/`, sets `status: reopened`, and defaults to `intake`.
+- AC4: `pan reopen` restores `.pan/archive/work/` to `.pan/work/`, sets `status: reopened`, and defaults to `intake`.
 - AC5: `OPERATION.md` and `AGENTS.md` document verification, ad-hoc close, and reopen.
 
 ## Implementation notes

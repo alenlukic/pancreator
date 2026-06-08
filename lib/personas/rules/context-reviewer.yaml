@@ -1,6 +1,6 @@
 persona: context-reviewer
-description: When an operator delegates `/context-reviewer` for out-of-band work, the `context-reviewer` SHALL read diff plus operator-scoped context and emit advisory `context-review.md` under sandbox/.
+description: When an operator delegates `/context-reviewer` for out-of-band work, the `context-reviewer` SHALL read diff plus operator-scoped context and emit advisory `context-review.md` under .sandbox/.
 globs:
-  - sandbox/**/context-review.md
-  - work/**/context-review.md
+  - .sandbox/**/context-review.md
+  - .pan/work/**/context-review.md
 alwaysApply: false

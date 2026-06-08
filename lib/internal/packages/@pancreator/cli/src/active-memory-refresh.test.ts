@@ -24,16 +24,16 @@ describe("resolveArchivedInboxPointer", () => {
   it("returns explicit delivery_report.archived_inbox_source when present", async () => {
     const rec = {
       delivery_report: {
-        archived_inbox_source: "archive/inbox/in/day/task/item.md",
+        archived_inbox_source: ".pan/archive/inbox/in/day/task/item.md",
       },
     };
-    expect(readExplicitArchivedInboxPointer(rec)).toBe("archive/inbox/in/day/task/item.md");
-    expect(await resolveArchivedInboxPointer(os.tmpdir(), rec)).toBe("archive/inbox/in/day/task/item.md");
+    expect(readExplicitArchivedInboxPointer(rec)).toBe(".pan/archive/inbox/in/day/task/item.md");
+    expect(await resolveArchivedInboxPointer(os.tmpdir(), rec)).toBe(".pan/archive/inbox/in/day/task/item.md");
   });
 
-  it("reads intake.source_inbox_item when it already points at archive", async () => {
+  it("reads intake.source_inbox_item when it already points at .pan/archive", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-archived-intake-"));
-    const archived = "archive/inbox/in/172981_05-25-26/task-id/directive.md";
+    const archived = ".pan/archive/inbox/in/172981_05-25-26/task-id/directive.md";
     await mkdir(path.join(root, ...archived.split("/").slice(0, -1)), { recursive: true });
     await writeFile(path.join(root, archived), "# directive\n", "utf8");
     const rec = {
@@ -42,10 +42,10 @@ describe("resolveArchivedInboxPointer", () => {
     expect(await resolveArchivedInboxPointer(root, rec)).toBe(archived);
   });
 
-  it("resolves stale lib/inbox/in paths via task_id under archive", async () => {
+  it("resolves stale lib/inbox/in paths via task_id under .pan/archive", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-archived-resolve-"));
     const taskId = "966_2343_demo";
-    const archived = `archive/inbox/in/172980_05-26-26/${taskId}/2597_demo.md`;
+    const archived = `.pan/archive/inbox/in/172980_05-26-26/${taskId}/2597_demo.md`;
     const stale = "lib/inbox/in/172980_05-26-26/2597_demo.md";
     await mkdir(path.join(root, ...archived.split("/").slice(0, -1)), { recursive: true });
     await writeFile(path.join(root, archived), "# batch\n", "utf8");
@@ -80,7 +80,7 @@ describe("patchFeatureIndexArchivedInbox", () => {
     const featureId = "demo-feature";
     const indexAbs = path.join(root, "lib", "memory", "features", featureId, "index.json");
     const prior = "lib/inbox/in/demo.md";
-    const archived = "archive/inbox/in/172996_05-10-26/task/demo.md";
+    const archived = ".pan/archive/inbox/in/172996_05-10-26/task/demo.md";
     await mkdir(path.dirname(indexAbs), { recursive: true });
     await writeFile(
       indexAbs,
@@ -105,7 +105,7 @@ describe("patchFeatureIndexArchivedInbox", () => {
     const featureId = "demo-feature";
     const indexAbs = path.join(root, "lib", "memory", "features", featureId, "index.json");
     const prior = "lib/inbox/in/demo.md";
-    const archived = "archive/inbox/in/172996_05-10-26/task/demo.md";
+    const archived = ".pan/archive/inbox/in/172996_05-10-26/task/demo.md";
     await mkdir(path.dirname(indexAbs), { recursive: true });
     await writeFile(
       indexAbs,

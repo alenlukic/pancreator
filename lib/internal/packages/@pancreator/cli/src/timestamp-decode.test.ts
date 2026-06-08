@@ -21,11 +21,11 @@ function encodeId(date: Date, slug: string): { dayBucket: string; taskId: string
 
 describe("parseRunDirParts", () => {
   it("parses active work and archived run directories", () => {
-    expect(parseRunDirParts("work/172996_05-10-26/38670_1315_demo-feature")).toEqual({
+    expect(parseRunDirParts(".pan/work/172996_05-10-26/38670_1315_demo-feature")).toEqual({
       dayBucket: "172996_05-10-26",
       taskId: "38670_1315_demo-feature",
     });
-    expect(parseRunDirParts("archive/work/172996_05-10-26/38670_1315_demo-feature")).toEqual({
+    expect(parseRunDirParts(".pan/archive/work/172996_05-10-26/38670_1315_demo-feature")).toEqual({
       dayBucket: "172996_05-10-26",
       taskId: "38670_1315_demo-feature",
     });

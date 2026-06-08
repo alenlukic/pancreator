@@ -50,7 +50,7 @@ This feature implements the Pipeline module command center so operators see the 
 - **Shell authority** — `CockpitShell` renders the three primary module tabs (`Pipeline` default, `Automations` and Maintenance placeholders) plus the de-emphasized secondary `Files` tab per parent ux-spec. `DashboardPage` delegates to the shell without restoring P9 domain cards on module views.
 - **Pipeline column (≥1024px)** — two-column body: left column (2fr) stacks Human Gate Queue banner, Next Action panel, then 9-stage grid and run-event timeline for the selected run; right column (1fr) holds the read-only config panel. Below 1024px, columns stack: banner → Next Action → config → grid → timeline.
 - **Task selection (interim)** — until the orientation inbox item ships a multi-run table, the selected run SHALL default to the first non-terminal envelope from `GET /api/run-state`, SHALL update when the operator activates a gate-queue row or a task section header in the stage grid, and SHALL expose `aria-selected="true"` on the active task section.
-- **Run directory path** — Next Action displays `work/<day>/<task-id>/` decoded from the selected task id; monospace, truncated with `title` tooltip on overflow.
+- **Run directory path** — Next Action displays `.pan/work/<day>/<task-id>/` decoded from the selected task id; monospace, truncated with `title` tooltip on overflow.
 - **Out of scope in this layout** — inbox triage panel, multi-run table, artifact drawer extraction, and live refresh controls.
 
 ```
@@ -95,7 +95,7 @@ Stage cells SHALL continue pairing color tokens with text labels; after the API 
 ### Next Action panel (`data-testid="next-action-panel"`)
 
 - **Copy command** — `CopyCommandButton` adjacent to `nextCommand`; copies the task-level string to the clipboard; shows a 2-second “Copied” tooltip with `aria-live="polite"`; disabled with muted label when `nextCommand` is empty.
-- **Open next-prompt** — navigates the Files tab and opens `work/<day>/<task-id>/next-prompt.md` in the P10 artifact modal (read-only default).
+- **Open next-prompt** — navigates the Files tab and opens `.pan/work/<day>/<task-id>/next-prompt.md` in the P10 artifact modal (read-only default).
 - **Open run folder** — switches to Files and sets browse path to the task run directory without opening a file.
 - **Loading / empty / error** — skeleton while `GET /api/run-state` is in flight (`aria-busy="true"`); dashed empty state when no active runs; inline error with retry on fetch failure.
 

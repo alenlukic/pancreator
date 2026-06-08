@@ -11,7 +11,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     9,
     50
@@ -23,7 +23,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
   "range": [
     5,
     19
@@ -34,12 +34,12 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 
 ## What shipped
 
-- `OPERATION.md` now holds the canonical operator how-to, and `README.md`, `AGENTS.md`, `docs/M1.index.md`, and `lib/memory/handbook/pancreator-config.md` now route readers there.
+- `OPERATION.md` now holds the canonical operator how-to, and `README.md`, `AGENTS.md`, `.docs/M1.index.md`, and `lib/memory/handbook/pancreator-config.md` now route readers there.
 
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     19,
     24
@@ -53,7 +53,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     25,
     31
@@ -67,7 +67,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     9,
     18
@@ -81,7 +81,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     40,
     45
@@ -95,7 +95,7 @@ This pass centralized operator workflow into `OPERATION.md`, routed the repo's e
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     46,
     50
@@ -111,7 +111,7 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     61,
     71
@@ -123,7 +123,7 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
   "range": [
     5,
     33
@@ -134,14 +134,14 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 
 ## Known gaps and deferrals
 
-- `docs/PRD.summary.md` stayed at `modify-if-needed` because the README and `OPERATION.md` split did not require a summary-route change.
+- `.docs/PRD.summary.md` stayed at `modify-if-needed` because the README and `OPERATION.md` split did not require a summary-route change.
 - `lib/memory/features/index.json` had no `m1-substrate-runtime-batch` row to remove, so no global-index edit was needed.
 - The handbook prose examples that mention deferred verbs were left as non-runnable prose, and the review's only remaining note is operator-noise in `node --test tests/*.test.mjs`, not a functional blocker.
 
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/implementation-report.md",
   "range": [
     73,
     79
@@ -153,7 +153,7 @@ The stage validation commands all exited `0`: `node --test tests/*.test.mjs`, `n
 ```json
 {
   "kind": "lines",
-  "path": "/Users/alen/Dev/pancreator/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
+  "path": "/Users/alen/Dev/pancreator/.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/review.md",
   "range": [
     17,
     33

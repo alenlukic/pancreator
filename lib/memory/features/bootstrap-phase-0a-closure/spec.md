@@ -13,29 +13,29 @@ references:
     contentHash: cdc36ec
     note: Human directive that opens the Phase 0a closure slice and constrains scope.
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [36, 57]
-    contentHash: 0f1088b
+    contentHash: b788753
     note: Bootstrap Phase 0a defines the monorepo scaffold, top-level directories, and root rule shim.
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [95, 97]
-    contentHash: 0f1088b
+    contentHash: b788753
     note: Phase 0 exit criterion ties the scaffold to later bootstrap progression.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [386, 435]
-    contentHash: 6a838ec
+    contentHash: 2eb6aa4
     note: PRD package-layout and tooling-stack requirements define the monorepo baseline.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1114, 1130]
-    contentHash: 6a838ec
+    contentHash: 2eb6aa4
     note: PRD MVP scope names the required M1 package set and the boundary-first expectation.
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [222, 235]
-    contentHash: aae7388
+    contentHash: c70da7c
     note: Glossary defines Feature-folder and Spec Kit alignment conventions.
 ---
 

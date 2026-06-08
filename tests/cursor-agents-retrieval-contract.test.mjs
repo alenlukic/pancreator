@@ -162,7 +162,7 @@ name: sample
 
 ## Retrieval contract
 
-1. Read \`work/<day>/<id>/next-prompt.md\` first.
+1. Read \`.pan/work/<day>/<id>/next-prompt.md\` first.
 2. Read \`AGENTS.md\` for every task.
 
 ## Operating contract

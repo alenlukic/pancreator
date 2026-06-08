@@ -15,32 +15,32 @@ references:
   - kind: lines
     path: pancreator.yaml
     range: [28, 35]
-    contentHash: 0d68373
+    contentHash: a7092be
     note: "Live runner.cursor.invocation sdk block and stage_remediation flag — escalation tiers apply only when sdk mode is active."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts
     range: [45, 56]
-    contentHash: 7c5e4d7
+    contentHash: c0befcf
     note: "FeatureDeliveryAutomationState interface and FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET constant — this Feature adds stageInvocationIndex to the interface."
   - kind: lines
     path: lib/internal/packages/@pancreator/runner-cursor/src/sdk-model.ts
     range: [1, 15]
-    contentHash: 4a8b2c1
+    contentHash: 172ab7a
     note: "resolveSdkModelId strips bracket qualifiers for the SDK call — escalation config stores full strings; stripping continues for the @cursor/sdk call only."
   - kind: lines
     path: lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts
     range: [72, 100]
-    contentHash: 9f3e1a2
+    contentHash: 82c59fb
     note: "createDefaultCursorSdkTransport resolves persona.model once per invocation — this Feature requires a model-override parameter at invoke time."
   - kind: lines
     path: lib/pipelines/feature-delivery.yaml
     range: [25, 66]
-    contentHash: a247fa7
+    contentHash: 3c558e1
     note: "Canonical stage-to-persona map — escalation tier entries are keyed by persona slug, not stage id."
   - kind: lines
     path: OPERATION.md
     range: [109, 126]
-    contentHash: 97a5bee
+    contentHash: a91d661
     note: "SDK mode operator loop documentation — this Feature adds escalation subsections to the SDK mode section."
 ---
 
@@ -208,7 +208,7 @@ The plan-stage executor SHALL refine `changed-surfaces` against the realised tou
 
 - Source directive: `lib/inbox/in/172973_06-02-26/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md`.
 - Upstream Feature: `lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md` (defines the `CursorRunner.invoke` base contract that this Feature extends with escalation).
-- Active task: `24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers` under `work/172973_06-02-26/`.
+- Active task: `24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers` under `.pan/work/172973_06-02-26/`.
 
 ## Open questions
 
@@ -227,4 +227,4 @@ _(none — the directive is sufficiently specified for plan-stage delegation; th
      --artifact lib/memory/features/fd-pipeline-sdk-mode-retry-model-escalation-tiers/spec.md
    ```
 
-   Then confirm `work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/state.json` shows `currentStage: plan` before delegating `tech-lead`.
+   Then confirm `.pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/state.json` shows `currentStage: plan` before delegating `tech-lead`.

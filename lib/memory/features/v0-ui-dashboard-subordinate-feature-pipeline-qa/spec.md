@@ -10,16 +10,16 @@ parent_feature: feature-delivery-harness-wire-cursorrunner-through-run-and-advan
 parent_relationship: subordinate-qa-exercise
 subordinate_qa_context: true
 expected_generated_artifacts:
-  - work/172977_05-29-26/<task-id>/state.json
-  - work/172977_05-29-26/<task-id>/handoff.md
-  - work/172977_05-29-26/<task-id>/next-prompt.md
-  - work/172977_05-29-26/<task-id>/run.log.jsonl
-  - work/172977_05-29-26/<task-id>/plan.md
-  - work/172977_05-29-26/<task-id>/adr-draft.md
-  - work/172977_05-29-26/<task-id>/touch-set.json
-  - work/172977_05-29-26/<task-id>/implementation-report.md
-  - work/172977_05-29-26/<task-id>/review.md
-  - work/172977_05-29-26/<task-id>/test-report.md
+  - .pan/work/172977_05-29-26/<task-id>/state.json
+  - .pan/work/172977_05-29-26/<task-id>/handoff.md
+  - .pan/work/172977_05-29-26/<task-id>/next-prompt.md
+  - .pan/work/172977_05-29-26/<task-id>/run.log.jsonl
+  - .pan/work/172977_05-29-26/<task-id>/plan.md
+  - .pan/work/172977_05-29-26/<task-id>/adr-draft.md
+  - .pan/work/172977_05-29-26/<task-id>/touch-set.json
+  - .pan/work/172977_05-29-26/<task-id>/implementation-report.md
+  - .pan/work/172977_05-29-26/<task-id>/review.md
+  - .pan/work/172977_05-29-26/<task-id>/test-report.md
   - lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md
   - .pan/scheduler/interventions/<task-id>.jsonl
   - client/**
@@ -47,42 +47,42 @@ references:
   - kind: lines
     path: lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md
     range: [97, 99]
-    contentHash: a96eccf
+    contentHash: cf3aad8
     note: "Parent feature spec § Spec — the harness work this subordinate run exercises end-to-end."
   - kind: lines
     path: lib/pipelines/feature-delivery.yaml
     range: [25, 66]
-    contentHash: a247fa7
+    contentHash: 3c558e1
     note: "Canonical feature-delivery stage order and persona ownership consumed by the subordinate run."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [637, 689]
-    contentHash: 6336a5f
+    contentHash: 2eb6aa4
     note: "PRD §7 feature-delivery stage YAML — intake gate, loop cap, plan/implement/review/test/report/ship inputs and outputs."
   - kind: lines
     path: OPERATION.md
     range: [26, 101]
-    contentHash: 1b5fd0a
+    contentHash: a91d661
     note: "Operator feature-delivery loop and post-invocation state machine that the subordinate run follows."
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [67, 156]
-    contentHash: bb23360
+    contentHash: 2762053
     note: "Canonical inbox queue, response, and archive paths; system-produced outbox artifact rules consumed by subordinate-run reports."
   - kind: lines
     path: lib/memory/features/timestamp-naming-conventions/spec.md
     range: [69, 95]
-    contentHash: a759255
+    contentHash: 2355044
     note: "Outbox and work-task basename shape — {SID-prefix}_{HHMM}_{semantic-suffix} — that all subordinate-run system artifacts MUST conform to."
   - kind: lines
     path: lib/personas/qa-tester.md
     range: [89, 180]
-    contentHash: d22b04e
+    contentHash: d07db56
     note: "qa-tester verification contract and severity-based re-entry routing consumed by the test stage of this subordinate run."
   - kind: lines
     path: pancreator.yaml
     range: [1, 40]
-    contentHash: 9101a26
+    contentHash: a7092be
     note: "Live policy file — Phase 5, risk_tier medium, manual runner.cursor.invocation default that frames the subordinate run's automation mode."
 ---
 
@@ -113,7 +113,7 @@ The acceptance criteria split into six work packages. Plan-stage delegation MAY 
 ### WP-1 — Subordinate run lifecycle
 
 - When the operator invokes `pnpm -w exec pan run feature-delivery 172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md` from the repository root, the CLI SHALL emit a JSON envelope carrying `taskId`, `featureId: v0-ui-dashboard-subordinate-feature-pipeline-qa`, `runDir`, `handoffFile`, `nextPromptFile`, and `currentStage: intake`.
-- When the run starts, the runtime SHALL create `work/<day-bucket>/<task-id>/state.json`, `handoff.md`, `next-prompt.md`, and `run.log.jsonl` whose paths follow the seconds-remaining-prefix shape `{SID-prefix}_{HHMM}_{semantic-suffix}` per `lib/memory/features/timestamp-naming-conventions/spec.md` lines 71–76.
+- When the run starts, the runtime SHALL create `.pan/work/<day-bucket>/<task-id>/state.json`, `handoff.md`, `next-prompt.md`, and `run.log.jsonl` whose paths follow the seconds-remaining-prefix shape `{SID-prefix}_{HHMM}_{semantic-suffix}` per `lib/memory/features/timestamp-naming-conventions/spec.md` lines 71–76.
 - When each non-terminal stage completes, the operator SHALL run the matching `pnpm -w exec pan advance <task-id> --artifact <stage-artifact>` command per `OPERATION.md` lines 69–80; the operating agent SHALL stand in for the human ratification step and SHALL document each ratification decision in the corresponding stage artifact.
 - When the run reaches `complete`, the runtime SHALL emit a librarian `next-prompt.md` and the operator SHALL run exactly one `pnpm -w exec pan close-artifacts <task-id>` invocation per `OPERATION.md` lines 72–73.
 
@@ -128,7 +128,7 @@ The acceptance criteria split into six work packages. Plan-stage delegation MAY 
 - When the plan stage produces the touch-set, the touch-set SHALL declare a new top-level `client/` directory plus required workspace-manifest entries (`pnpm-workspace.yaml`, root `package.json`, and `pnpm-lock.yaml`); the touch-set SHALL also enumerate the subordinate-run work-directory paths from `expected_generated_artifacts`.
 - When the implement stage completes, `client/` SHALL contain a Next.js App Router project on a current LTS-compatible Node toolchain, a modern React major (≥ 18), TypeScript, and one modern component library declared as a dependency in `client/package.json`.
 - When the operator runs the documented single startup command from `client/README.md`, the dashboard SHALL launch with hot reload enabled and SHALL be reachable on a local URL printed to stdout.
-- When the operator opens the dashboard, the UI SHALL render navigation for at least the following repo domains: `lib/inbox/`, `lib/memory/`, `lib/personas/`, `work/`, and `lib/internal/packages/`; the navigation surface SHALL visually convey the relationships between these domains.
+- When the operator opens the dashboard, the UI SHALL render navigation for at least the following repo domains: `lib/inbox/`, `lib/memory/`, `lib/personas/`, `.pan/work/`, and `lib/internal/packages/`; the navigation surface SHALL visually convey the relationships between these domains.
 - When the operator selects a file inside a navigated domain, the UI SHALL open a collapsible inline modal panel that displays the file's text content and SHALL provide an explicit edit affordance.
 - When the operator submits an edit, the UI SHALL persist the change through the WP-4 file-write endpoint and SHALL reflect the saved state without a full page reload.
 - When the dashboard renders the activity feed, the feed SHALL list repo events in reverse-chronological order with a human-readable timestamp, an event title, and a short event description per entry.
@@ -155,7 +155,7 @@ The acceptance criteria split into six work packages. Plan-stage delegation MAY 
 ### WP-6 — Subordinate evidence for parent harness QA
 
 - When the report stage completes, the delivery report at `lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/delivery-report.md` SHALL explicitly state pass / fail / deferred outcomes for each work package WP-1 through WP-5, name any blockers encountered, and cite the producing stage artifact for every outcome.
-- When the qa-tester emits `work/<day-bucket>/<task-id>/test-report.md`, the report SHALL record the suite invocations and exit codes from WP-5 verbatim and SHALL classify any failure per the severity rules at `lib/personas/qa-tester.md` lines 89–180.
+- When the qa-tester emits `.pan/work/<day-bucket>/<task-id>/test-report.md`, the report SHALL record the suite invocations and exit codes from WP-5 verbatim and SHALL classify any failure per the severity rules at `lib/personas/qa-tester.md` lines 89–180.
 - When the run completes, the librarian SHALL index the subordinate run under the existing feature folder and SHALL link the delivery report from the feature `index.json`; the indexed artifacts SHALL be sufficient evidence for the parent harness QA stage decision per the directive at `lib/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md` lines 47–55.
 
 ## Out of scope
@@ -211,7 +211,7 @@ The following persona assignments are RECOMMENDED for the plan stage. The tech-l
 
 - Parent Feature: `lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md` (this run produces its WP-7 QA evidence).
 - Source directive: `lib/inbox/in/172977_05-29-26/70345_0427_v0-ui-dashboard-subordinate-feature-pipeline-qa.md`.
-- Completed task: `68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa` archived at `archive/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/`.
+- Completed task: `68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa` archived at `.pan/archive/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/`.
 - Prior sibling tasks (`70319_0428_v0-ui-dashboard-subordinate-feature-pipeline-qa`, `69601_0439_v0-ui-dashboard-subordinate-feature-pipeline-qa`, `69218_0446_v0-ui-dashboard-subordinate-feature-pipeline-qa`) were superseded and removed from active work during librarian cleanup.
 
 ## Next operator steps
@@ -226,4 +226,4 @@ The following persona assignments are RECOMMENDED for the plan stage. The tech-l
      --artifact lib/memory/features/v0-ui-dashboard-subordinate-feature-pipeline-qa/spec.md
    ```
 
-   Then confirm `work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/state.json` shows `currentStage: plan` before delegating `tech-lead`.
+   Then confirm `.pan/work/172977_05-29-26/68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa/state.json` shows `currentStage: plan` before delegating `tech-lead`.

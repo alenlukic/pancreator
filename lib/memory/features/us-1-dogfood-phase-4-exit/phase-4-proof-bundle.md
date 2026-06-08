@@ -2,8 +2,8 @@
 
 This index anchors empirical Phase 4 exit evidence under
 `lib/memory/features/us-1-dogfood-phase-4-exit/`. After `pan close-artifacts`
-relocates a nested run from `work/<day>/<task-id>/` into
-`archive/work/<day>/<task-id>/`, the **librarian** (or other closing
+relocates a nested run from `.pan/work/<day>/<task-id>/` into
+`.pan/archive/work/<day>/<task-id>/`, the **librarian** (or other closing
 persona named on `next-prompt.md`) SHALL refresh the work-directory and
 `run.log.jsonl` cells in this file so canonical paths stay auditable. Operators
 SHALL NOT hand-maintain path bookkeeping for closed nested runs.
@@ -14,8 +14,8 @@ SHALL NOT hand-maintain path bookkeeping for closed nested runs.
 | --- | --- |
 | Directive | `lib/inbox/in/phase-4-dogfood-proof-bundle-index.md` |
 | Nested task id | `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` |
-| Work directory | `archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/` |
-| Run log | `archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl` |
+| Work directory | `.pan/archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/` |
+| Run log | `.pan/archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl` |
 
 ## External observability (Phoenix)
 
@@ -28,17 +28,17 @@ SHALL NOT hand-maintain path bookkeeping for closed nested runs.
 
 | Field | Value |
 | --- | --- |
-| Directive | `archive/inbox/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md` |
+| Directive | `.pan/archive/inbox/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md` |
 | Nested task id | `71096_0415_phase-4-intervention-probe-pause-resume-abort` |
-| Work directory | `archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/` |
-| Run log | `archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/run.log.jsonl` |
+| Work directory | `.pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/` |
+| Run log | `.pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/run.log.jsonl` |
 | Structured evidence (final) | `lib/memory/features/us-1-dogfood-phase-4-exit/pause-resume-abort-evidence.json` |
 
 ## Ship and reporting artifacts
 
 | Field | Value |
 | --- | --- |
-| Staged PR outcome | Supervisor-local dogfood slice (no remote push); tie-break to nested task `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` ledger under `archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/`. |
+| Staged PR outcome | Supervisor-local dogfood slice (no remote push); tie-break to nested task `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` ledger under `.pan/archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/`. |
 | Delivery report (per-feature) | `lib/memory/features/us-1-dogfood-phase-4-exit/delivery-report.md` |
 | Delivery report (outbox copy) | `lib/inbox/out/` copy when parent US-1 run completes ship/index per `phase-4-ratification-request.md`. |
 

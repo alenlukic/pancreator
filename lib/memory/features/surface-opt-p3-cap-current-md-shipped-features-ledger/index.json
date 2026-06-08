@@ -15,7 +15,7 @@
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
     "clarifying_skip_rationale": "Source directive states R1-R3 and AC1-AC3 with quantified outcomes and an explicit touch set; no intake-blocking ambiguity remains.",
-    "source_inbox_item": "archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md",
     "human_approval_gate": "ratified",
     "human_approval_note": "Spec ratified at plan advance per state.json advanceHistory intake→plan event."
   },
@@ -42,7 +42,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md",
+    "artifact": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 0,
@@ -52,7 +52,7 @@
   },
   "test": {
     "qa_passes": true,
-    "artifact": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
+    "artifact": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
     "sdk_automation_qa": false,
     "verification_gates": {
       "pnpm_lint": "pass",
@@ -65,11 +65,11 @@
   "delivery_report": {
     "path": "lib/memory/features/surface-opt-p3-cap-current-md-shipped-features-ledger/delivery-report.md",
     "staged_to_inbox_out": "lib/inbox/out/172974_06-01-26/65992_0540_surface-opt-p3-cap-current-md-shipped-features-ledger-report-approval.md",
-    "archived_inbox_source": "archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -83,27 +83,27 @@
     "changed_citations": [
       {
         "citing_path": "lib/memory/features/surface-opt-p3-cap-current-md-shipped-features-ledger/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md",
+        "cited_path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md",
         "recorded_content_hash": "ad32f69",
         "live_content_hash": "ad32f69",
         "verifier_status": "moved",
-        "note": "Implementation report archived to archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md."
+        "note": "Implementation report archived to .pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p3-cap-current-md-shipped-features-ledger/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md",
+        "cited_path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md",
         "recorded_content_hash": "d5991f8",
         "live_content_hash": "d5991f8",
         "verifier_status": "moved",
-        "note": "Review report archived to archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md."
+        "note": "Review report archived to .pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p3-cap-current-md-shipped-features-ledger/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
+        "cited_path": ".pan/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md",
         "recorded_content_hash": "efa1463",
         "live_content_hash": "efa1463",
         "verifier_status": "moved",
-        "note": "Test report archived to archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md."
+        "note": "Test report archived to .pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md."
       }
     ],
     "repo_wide_followup": "none"
@@ -123,34 +123,34 @@
     },
     "pipeline_artifacts": {
       "archived_work_dir": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/"
       },
       "plan": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/plan.md"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/plan.md"
       },
       "adr_draft": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/adr-draft.md"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/adr-draft.md"
       },
       "touch_set": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/touch-set.json"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/touch-set.json"
       },
       "implementation_report": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/implementation-report.md"
       },
       "review_report": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/review.md"
       },
       "test_report": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/test-report.md"
       },
       "policy_compliance": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/policy-compliance.json"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/policy-compliance.json"
       },
       "handoff": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/handoff.md"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/handoff.md"
       },
       "run_log": {
-        "path": "archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/run.log.jsonl"
+        "path": ".pan/archive/work/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/run.log.jsonl"
       }
     },
     "implementation_surface": {
@@ -166,7 +166,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md"
+        "path": ".pan/archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md"
       },
       "report_approval_outbox": {
         "path": "lib/inbox/out/172974_06-01-26/65992_0540_surface-opt-p3-cap-current-md-shipped-features-ledger-report-approval.md"
@@ -186,9 +186,9 @@
     "advance_command": "pnpm -w exec pan advance 67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger --artifact lib/memory/features/surface-opt-p3-cap-current-md-shipped-features-ledger/index.json",
     "status": "deferred-until-ratified"
   },
-  "archived_inbox_source": "archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md",
+  "archived_inbox_source": ".pan/archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md",
   "source_inbox_item": {
-    "path": "archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md",
+    "path": ".pan/archive/inbox/in/172974_06-01-26/67753_0510_surface-opt-p3-cap-current-md-shipped-features-ledger/75420_0303_surface-opt-p3-current-md-cap.md",
     "prior_path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p3-current-md-cap.md"
   }
 }

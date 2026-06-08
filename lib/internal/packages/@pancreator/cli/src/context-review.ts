@@ -6,7 +6,7 @@ import path from "node:path";
 
 export const CONTEXT_REVIEWER_PERSONA = "context-reviewer" as const;
 
-export const DEFAULT_CONTEXT_REVIEW_WORKSPACE = "sandbox/context-review" as const;
+export const DEFAULT_CONTEXT_REVIEW_WORKSPACE = ".sandbox/context-review" as const;
 
 export function contextReviewPromptRel(workspaceDir: string): string {
   return path.posix.join(workspaceDir, "context-review-prompt.md");
@@ -64,8 +64,8 @@ function normalizeWorkspaceDir(value: string | undefined): string {
     value?.trim() ?? DEFAULT_CONTEXT_REVIEW_WORKSPACE,
     "workspace",
   );
-  if (!workspace.startsWith("sandbox/")) {
-    throw new Error(`workspace MUST be under sandbox/; got ${workspace}.`);
+  if (!workspace.startsWith(".sandbox/")) {
+    throw new Error(`workspace MUST be under .sandbox/; got ${workspace}.`);
   }
   return workspace;
 }
@@ -76,8 +76,8 @@ function normalizeOptionalRunDir(value: string | undefined): string | undefined 
   }
   const runDir = assertSafeRepoRelative(value.trim(), "run-dir");
   const parts = runDir.split("/").filter(Boolean);
-  if (parts.length !== 3 || parts[0] !== "work") {
-    throw new Error(`run-dir MUST be work/<day>/<slug>; got ${runDir}.`);
+  if (parts.length !== 4 || parts[0] !== ".pan" || parts[1] !== "work") {
+    throw new Error(`run-dir MUST be .pan/work/<day>/<slug>; got ${runDir}.`);
   }
   return runDir;
 }

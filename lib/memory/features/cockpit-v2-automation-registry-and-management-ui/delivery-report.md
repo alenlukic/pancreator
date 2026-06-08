@@ -7,7 +7,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
   "range": [8, 12],
   "contentHash": "352ce2b"
 }
@@ -16,7 +16,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
   "range": [8, 13],
   "contentHash": "80a3cf0"
 }
@@ -25,7 +25,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
   "range": [3, 7],
   "contentHash": "5220cf7"
 }
@@ -38,7 +38,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
   "range": [48, 53],
   "contentHash": "afe4368"
 }
@@ -49,7 +49,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
   "range": [60, 63],
   "contentHash": "afe4368"
 }
@@ -60,7 +60,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/plan.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/plan.md",
   "range": [17, 23],
   "contentHash": "c98929a"
 }
@@ -71,7 +71,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/plan.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/plan.md",
   "range": [25, 29],
   "contentHash": "c98929a"
 }
@@ -80,7 +80,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
   "range": [12, 12],
   "contentHash": "352ce2b"
 }
@@ -91,7 +91,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/plan.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/plan.md",
   "range": [9, 13],
   "contentHash": "c98929a"
 }
@@ -100,7 +100,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
   "range": [69, 72],
   "contentHash": "afe4368"
 }
@@ -113,7 +113,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
   "range": [42, 47],
   "contentHash": "352ce2b"
 }
@@ -124,7 +124,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/scheduler/src/registry.ts",
   "range": [57, 74],
-  "contentHash": "61b835e"
+  "contentHash": "ca6a088"
 }
 ```
 
@@ -135,7 +135,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "client/src/services/automations.ts",
   "range": [59, 96],
-  "contentHash": "ac8b7e5"
+  "contentHash": "0ab9173"
 }
 ```
 
@@ -144,7 +144,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
   "range": [55, 58],
   "contentHash": "352ce2b"
 }
@@ -157,14 +157,14 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "client/src/app/api/automations/route.ts",
   "range": [30, 48],
-  "contentHash": "bfb24ac"
+  "contentHash": "22a2c43"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
   "range": [60, 65],
   "contentHash": "352ce2b"
 }
@@ -175,7 +175,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
   "range": [67, 74],
   "contentHash": "352ce2b"
 }
@@ -186,7 +186,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "client/src/components/cockpit/layout/CockpitShell.tsx",
   "range": [80, 84],
-  "contentHash": "4e81d66"
+  "contentHash": "3e2d5b9"
 }
 ```
 
@@ -197,7 +197,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/implementation-report.md",
   "range": [76, 79],
   "contentHash": "352ce2b"
 }
@@ -208,7 +208,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
   "range": [69, 70],
   "contentHash": "afe4368"
 }
@@ -219,7 +219,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/adr-draft.md",
   "range": [89, 90],
   "contentHash": "afe4368"
 }
@@ -230,7 +230,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
   "range": [36, 39],
   "contentHash": "80a3cf0"
 }
@@ -241,7 +241,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
   "range": [40, 43],
   "contentHash": "80a3cf0"
 }
@@ -252,7 +252,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
   "range": [47, 49],
   "contentHash": "80a3cf0"
 }
@@ -267,14 +267,14 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "client/src/app/api/automations/route.test.ts",
   "range": [43, 80],
-  "contentHash": "d166680"
+  "contentHash": "36b97fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
   "range": [50, 52],
   "contentHash": "5220cf7"
 }
@@ -287,14 +287,14 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [1020, 1034],
-  "contentHash": "27ae558"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
   "range": [53, 55],
   "contentHash": "5220cf7"
 }
@@ -307,7 +307,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [1037, 1053],
-  "contentHash": "27ae558"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -318,7 +318,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [1056, 1109],
-  "contentHash": "27ae558"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -327,7 +327,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
   "range": [56, 57],
   "contentHash": "5220cf7"
 }
@@ -338,7 +338,7 @@ This feature delivery ships a Pancreator-native automation registry and Cockpit 
   "kind": "lines",
   "path": "client/src/services/automations-client.test.ts",
   "range": [1, 20],
-  "contentHash": "3ac53ff"
+  "contentHash": "9f30096"
 }
 ```
 
@@ -349,7 +349,7 @@ Coverage delta against the prior Cockpit shell baseline adds 14 scheduler Vitest
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
   "range": [3, 7],
   "contentHash": "5220cf7"
 }
@@ -358,7 +358,7 @@ Coverage delta against the prior Cockpit shell baseline adds 14 scheduler Vitest
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
   "range": [11, 16],
   "contentHash": "5220cf7"
 }
@@ -367,7 +367,7 @@ Coverage delta against the prior Cockpit shell baseline adds 14 scheduler Vitest
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
   "range": [29, 30],
   "contentHash": "5220cf7"
 }
@@ -376,7 +376,7 @@ Coverage delta against the prior Cockpit shell baseline adds 14 scheduler Vitest
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
+  "path": ".pan/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
   "range": [64, 74],
   "contentHash": "80a3cf0"
 }

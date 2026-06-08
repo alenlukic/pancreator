@@ -23,12 +23,12 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
     "source_inbox_item_citation": {
       "kind": "lines",
-      "path": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+      "path": ".pan/archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
       "range": [1, 201],
-      "contentHash": "7f60993"
+      "contentHash": "412390c"
     },
     "human_approval_gate": "pending_operator_acceptance",
     "human_approval_note": "Delivery report status is ready for human acceptance; index links ship artifacts before complete-stage archival."
@@ -57,7 +57,7 @@
     "verdict": "pass",
     "review_passes": true,
     "review_round": 3,
-    "artifact": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+    "artifact": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 1,
@@ -75,9 +75,9 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+      "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
       "range": [1, 88],
-      "contentHash": "f454add"
+      "contentHash": "0f5f86f"
     }
   },
   "delivery_report": {
@@ -88,12 +88,12 @@
       "kind": "lines",
       "path": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md",
       "range": [1, 178],
-      "contentHash": "7ecf456"
+      "contentHash": "1a34b35"
     }
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -102,16 +102,16 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
+      "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
       "range": [1, 34],
-      "contentHash": "5e30111"
+      "contentHash": "33c09d7"
     }
   },
   "operator_contracts": {
     "deferral_protocol": {
       "path": "AGENTS.md",
       "range": [210, 212],
-      "contentHash": "9a5d8c0",
+      "contentHash": "b953d77",
       "note": "AGENTS.md items 6–8 document deferred verb envelopes, pan intake new, and pan refresh-active-memory."
     },
     "cli_deferred_exit_code": 125,
@@ -131,9 +131,9 @@
       "reason": "lib/internal/packages/@pancreator/cli/lib/index.ts export additions are coherent but not listed in touch-set.json; operator SHOULD ratify or record intentional governance drift.",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
         "range": [21, 28],
-        "contentHash": "f454add"
+        "contentHash": "0f5f86f"
       }
     },
     {
@@ -143,9 +143,9 @@
       "reason": "tests/repo-structure.test.mjs smoke still exercises one deferred verb while package vitest covers the full matrix.",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
         "range": [25, 28],
-        "contentHash": "f454add"
+        "contentHash": "0f5f86f"
       }
     }
   ],
@@ -157,7 +157,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
           "range": [1, 224],
-          "contentHash": "1ea815d"
+          "contentHash": "57626d6"
         }
       },
       "delivery_report": {
@@ -166,7 +166,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md",
           "range": [1, 178],
-          "contentHash": "7ecf456"
+          "contentHash": "1a34b35"
         }
       },
       "per_feature_index": {
@@ -175,81 +175,81 @@
           "kind": "lines",
           "path": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json",
           "range": [1, 1],
-          "contentHash": "98ee04b"
+          "contentHash": "a970a9d"
         }
       }
     },
     "pipeline_artifacts": {
       "plan": {
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/plan.md",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/plan.md",
+          "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/plan.md",
           "range": [1, 78],
-          "contentHash": "618967d"
+          "contentHash": "87039be"
         }
       },
       "adr_draft": {
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/adr-draft.md",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/adr-draft.md",
+          "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/adr-draft.md",
           "range": [1, 74],
-          "contentHash": "f3946bb"
+          "contentHash": "b54e037"
         }
       },
       "touch_set": {
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/touch-set.json",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/touch-set.json",
+          "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/touch-set.json",
           "range": [1, 121],
-          "contentHash": "47e1ae8"
+          "contentHash": "3f5f6f2"
         }
       },
       "implementation_report": {
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
+          "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
           "range": [1, 54],
-          "contentHash": "9805683"
+          "contentHash": "4d45ac3"
         }
       },
       "review_report": {
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+          "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
           "range": [1, 88],
-          "contentHash": "f454add"
+          "contentHash": "0f5f86f"
         }
       },
       "policy_compliance": {
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
+          "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/policy-compliance.json",
           "range": [1, 34],
-          "contentHash": "5e30111"
+          "contentHash": "33c09d7"
         }
       },
       "handoff": {
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/handoff.md",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/handoff.md",
+          "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/handoff.md",
           "range": [1, 48],
-          "contentHash": "3193d44"
+          "contentHash": "cb9d47e"
         }
       },
       "run_log": {
-        "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/run.log.jsonl",
+        "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/run.log.jsonl",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/run.log.jsonl",
+          "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/run.log.jsonl",
           "range": [1, 11],
-          "contentHash": "3e772be"
+          "contentHash": "6341359"
         }
       }
     },
@@ -324,7 +324,7 @@
           "kind": "lines",
           "path": "tests/repo-structure.test.mjs",
           "range": [1, 262],
-          "contentHash": "ff512c5"
+          "contentHash": "ac25607"
         }
       },
       "agents_operator_contracts": {
@@ -333,7 +333,7 @@
           "kind": "lines",
           "path": "AGENTS.md",
           "range": [1, 284],
-          "contentHash": "9a5d8c0"
+          "contentHash": "b953d77"
         }
       },
       "active_memory_current": {
@@ -342,7 +342,7 @@
           "kind": "lines",
           "path": "lib/memory/active/current.md",
           "range": [1, 70],
-          "contentHash": "d227372"
+          "contentHash": "d1f6703"
         }
       },
       "compliance_auditor_persona": {
@@ -351,18 +351,18 @@
           "kind": "lines",
           "path": "lib/personas/compliance-auditor.md",
           "range": [1, 301],
-          "contentHash": "229f5cf"
+          "contentHash": "0c01eb2"
         }
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+        "path": ".pan/archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
+          "path": ".pan/archive/inbox/in/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/64488_0605_cli-operator-tooling-batch.md",
           "range": [1, 201],
-          "contentHash": "7f60993"
+          "contentHash": "412390c"
         }
       }
     }

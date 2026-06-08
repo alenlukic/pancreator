@@ -215,10 +215,10 @@ export async function findWorkFile(
   fileName: string,
 ): Promise<{ abs: string; rel: string } | null> {
   const roots = [
-    { abs: path.join(repoRoot, "work"), rel: path.posix.join("work") },
+    { abs: path.join(repoRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
     {
-      abs: path.join(repoRoot, "archive", "work"),
-      rel: path.posix.join("archive", "work"),
+      abs: path.join(repoRoot, ".pan/archive", "work"),
+      rel: path.posix.join(".pan/archive", "work"),
     },
   ];
   for (const root of roots) {
@@ -261,7 +261,7 @@ export async function readWorkspaceStatus(
     config = {};
   }
 
-  const workRoot = path.join(ctx.repoRoot, "work");
+  const workRoot = path.join(ctx.repoRoot, ".pan/work");
   /** @type {string[]} */
   const activeTasks = [];
   for (const day of await safeReaddir(workRoot)) {

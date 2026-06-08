@@ -17,7 +17,7 @@ const sampleClause: ContractClause = {
   references: [
     {
       kind: "lines",
-      path: "docs/BOOTSTRAP.md",
+      path: ".docs/BOOTSTRAP.md",
       range: [1, 10],
       contentHash: H,
       note: "Bootstrap file paths.",
@@ -38,7 +38,7 @@ describe("isReference", () => {
     expect(
       isReference({
         kind: "lines",
-        path: "docs/PRD.md",
+        path: ".docs/PRD.md",
         range: [1, 1],
         contentHash: H,
         note: "note",
@@ -50,7 +50,7 @@ describe("isReference", () => {
     expect(
       isReference({
         kind: "lines",
-        path: "docs/PRD.md",
+        path: ".docs/PRD.md",
         range: [1, 1],
         contentHash: "not-a-hash",
         note: "note",

@@ -23,32 +23,32 @@
   "accepted_ship_artifacts": [
     {
       "kind": "plan",
-      "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md",
+      "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md",
       "content_hash": "95320f1"
     },
     {
       "kind": "adr-draft",
-      "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
+      "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
       "content_hash": "2013a9f"
     },
     {
       "kind": "touch-set",
-      "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/touch-set.json",
+      "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/touch-set.json",
       "content_hash": "661aca1"
     },
     {
       "kind": "implementation-report",
-      "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
+      "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
       "content_hash": "bb8d00a"
     },
     {
       "kind": "review",
-      "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
+      "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
       "content_hash": "9ee99b8"
     },
     {
       "kind": "policy-compliance",
-      "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/policy-compliance.json",
+      "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/policy-compliance.json",
       "content_hash": "c0901a4"
     }
   ],
@@ -58,12 +58,12 @@
     "status": "not-present-at-index-time"
   },
   "active_work_artifacts": [
-    "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md",
-    "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
-    "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/touch-set.json",
-    "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
-    "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
-    "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/policy-compliance.json"
+    ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md",
+    ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
+    ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/touch-set.json",
+    ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
+    ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
+    ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/policy-compliance.json"
   ],
   "archived_work_artifacts": [],
   "advance_gate": {

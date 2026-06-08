@@ -40,19 +40,19 @@ const TASK_SPECS = {
     fixtureRoot: path.join(HARNESS_ROOT, "fixtures", "task-low"),
     readAllowlist: [
       "AGENTS.md",
-      "docs/PRD.summary.md",
+      ".docs/PRD.summary.md",
       "lib/memory/active/current.md",
       "lib/memory/handbook/routing.md",
-      "work/99999_probe/task/handoff.md",
+      ".work/99999_probe/task/handoff.md",
     ],
     requiredReadPaths: [
       "lib/memory/active/current.md",
       "lib/memory/handbook/routing.md",
-      "docs/PRD.summary.md",
-      "work/99999_probe/task/handoff.md",
+      ".docs/PRD.summary.md",
+      ".work/99999_probe/task/handoff.md",
     ],
     forbiddenPathPatterns: COMMON_FORBIDDEN_PATH_PATTERNS,
-    decoyPaths: ["docs/PRD.md", "lib/inbox/notes/private.md"],
+    decoyPaths: [".docs/PRD.md", "lib/inbox/notes/private.md"],
     requiredOutputArtifacts: [],
     requiresWrites: false,
     maxTurns: 6,
@@ -68,22 +68,22 @@ const TASK_SPECS = {
     fixtureRoot: path.join(HARNESS_ROOT, "fixtures", "task-high"),
     readAllowlist: [
       "AGENTS.md",
-      "docs/PRD.summary.md",
+      ".docs/PRD.summary.md",
       "lib/memory/active/current.md",
       "lib/memory/handbook/routing.md",
       "lib/memory/features/token-economy-probe/spec.md",
       "lib/internal/packages/demo-svc/handler.ts",
-      "work/99999_probe/task/handoff.md",
+      ".work/99999_probe/task/handoff.md",
     ],
     requiredReadPaths: [
       "lib/memory/active/current.md",
       "lib/memory/features/token-economy-probe/spec.md",
       "lib/internal/packages/demo-svc/handler.ts",
-      "work/99999_probe/task/handoff.md",
+      ".work/99999_probe/task/handoff.md",
     ],
     forbiddenPathPatterns: COMMON_FORBIDDEN_PATH_PATTERNS,
-    decoyPaths: ["docs/PRD.md", "lib/inbox/notes/private.md"],
-    requiredOutputArtifacts: ["work/99999_probe/task/answer.md"],
+    decoyPaths: [".docs/PRD.md", "lib/inbox/notes/private.md"],
+    requiredOutputArtifacts: [".work/99999_probe/task/answer.md"],
     requiresWrites: true,
     maxTurns: 10,
     expectedAnswers: {
@@ -115,9 +115,9 @@ export function buildTaskPrompt(taskId) {
   const allowlist = spec.readAllowlist.map((p) => `- ${p}`).join("\n");
   const requiredReads = spec.requiredReadPaths.map((p) => `- ${p}`).join("\n");
   const forbidden = [
-    "docs/PRD.md",
-    "docs/BOOTSTRAP.md",
-    "archive/work/",
+    ".docs/PRD.md",
+    ".docs/BOOTSTRAP.md",
+    ".archive/work/",
     "lib/inbox/",
     "lib/inbox/notes/",
   ]
@@ -143,8 +143,8 @@ Reply with a single JSON object (no markdown fence) containing exactly:
 {
   "active_feature": "<from lib/memory/active/current.md>",
   "handbook_anchor": "<anchor string from lib/memory/handbook/routing.md>",
-  "product_route_token": "<from docs/PRD.summary.md>",
-  "handoff_stage": "<HANDOFF_STAGE from work/99999_probe/task/handoff.md>"
+  "product_route_token": "<from .docs/PRD.summary.md>",
+  "handoff_stage": "<HANDOFF_STAGE from .work/99999_probe/task/handoff.md>"
 }
 `.trim();
   }
@@ -163,7 +163,7 @@ ${forbidden}
 
 Do NOT use discovery tools (Glob, Grep, or broad directory listing). Paths above are exhaustive.
 
-You MUST write exactly one file: work/99999_probe/task/answer.md
+You MUST write exactly one file: .work/99999_probe/task/answer.md
 
 The answer file MUST be JSON with:
 {
@@ -171,7 +171,7 @@ The answer file MUST be JSON with:
   "durable_spec_anchor": "<DURABLE_SPEC_ANCHOR from lib/memory/features/token-economy-probe/spec.md>"
 }
 
-Use edit or write tools only for work/99999_probe/task/answer.md.
+Use edit or write tools only for .work/99999_probe/task/answer.md.
 `.trim();
 }
 

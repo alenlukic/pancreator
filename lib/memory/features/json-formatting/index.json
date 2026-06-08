@@ -44,7 +44,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+    "artifact": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "advisory_findings": 2,
@@ -59,7 +59,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+      "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
       "range": [1, 69],
       "contentHash": "32466e3"
     }
@@ -72,12 +72,12 @@
       "kind": "lines",
       "path": "lib/memory/features/json-formatting/delivery-report.md",
       "range": [1, 416],
-      "contentHash": "d57cb17"
+      "contentHash": "aba4f77"
     }
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -86,7 +86,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json",
+      "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json",
       "range": [1, 37],
       "contentHash": "2de87eb"
     }
@@ -109,7 +109,7 @@
     "note": "Repository .json corpus already conformed at Slice B execution time; evidence chain confirms idempotency.",
     "citation": {
       "kind": "lines",
-      "path": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
+      "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
       "range": [40, 65],
       "contentHash": "fbb131c"
     }
@@ -123,7 +123,7 @@
       "kind": "lines",
       "path": "lib/internal/tools/canonical-json-format.mjs",
       "range": [1, 224],
-      "contentHash": "35157ee"
+      "contentHash": "d5221ed"
     }
   },
   "deferred_backlog_ids": ["json-formatting-citation-verifier-prefix", "json-formatting-markdown-corpus-scan"],
@@ -138,7 +138,7 @@
         "kind": "lines",
         "path": "lib/memory/features/json-formatting/spec.md",
         "range": [149, 163],
-        "contentHash": "d22a355"
+        "contentHash": "821d09c"
       }
     },
     {
@@ -151,7 +151,7 @@
         "kind": "lines",
         "path": "lib/memory/features/json-formatting/delivery-report.md",
         "range": [412, 416],
-        "contentHash": "d57cb17"
+        "contentHash": "aba4f77"
       }
     }
   ],
@@ -163,7 +163,7 @@
           "kind": "lines",
           "path": "lib/memory/features/json-formatting/spec.md",
           "range": [1, 179],
-          "contentHash": "d22a355"
+          "contentHash": "821d09c"
         }
       },
       "delivery_report": {
@@ -172,7 +172,7 @@
           "kind": "lines",
           "path": "lib/memory/features/json-formatting/delivery-report.md",
           "range": [1, 416],
-          "contentHash": "d57cb17"
+          "contentHash": "aba4f77"
         }
       },
       "per_feature_index": {
@@ -181,70 +181,70 @@
           "kind": "lines",
           "path": "lib/memory/features/json-formatting/index.json",
           "range": [1, 1],
-          "contentHash": "1ae2560"
+          "contentHash": "6c4143e"
         }
       }
     },
     "pipeline_artifacts": {
       "plan": {
-        "path": "work/172983_05-23-26/67055_0522_json-formatting/plan.md",
+        "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172983_05-23-26/67055_0522_json-formatting/plan.md",
+          "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/plan.md",
           "range": [1, 82],
           "contentHash": "9a20cc5"
         }
       },
       "adr_draft": {
-        "path": "work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
+        "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
+          "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
           "range": [1, 70],
           "contentHash": "3ac0f71"
         }
       },
       "touch_set": {
-        "path": "work/172983_05-23-26/67055_0522_json-formatting/touch-set.json",
+        "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172983_05-23-26/67055_0522_json-formatting/touch-set.json",
+          "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/touch-set.json",
           "range": [1, 107],
           "contentHash": "9be3b58"
         }
       },
       "implementation_report": {
-        "path": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
+        "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
+          "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
           "range": [1, 76],
           "contentHash": "fbb131c"
         }
       },
       "review_report": {
-        "path": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+        "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+          "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
           "range": [1, 69],
           "contentHash": "32466e3"
         }
       },
       "policy_compliance": {
-        "path": "work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json",
+        "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json",
+          "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/policy-compliance.json",
           "range": [1, 37],
           "contentHash": "2de87eb"
         }
       },
       "run_log": {
-        "path": "work/172983_05-23-26/67055_0522_json-formatting/run.log.jsonl",
+        "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/run.log.jsonl",
         "citation": {
           "kind": "lines",
-          "path": "work/172983_05-23-26/67055_0522_json-formatting/run.log.jsonl",
+          "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/run.log.jsonl",
           "range": [1, 14],
           "contentHash": "791bc2a"
         }
@@ -257,7 +257,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/canonical-json-format.mjs",
           "range": [1, 224],
-          "contentHash": "35157ee"
+          "contentHash": "d5221ed"
         }
       },
       "migration_script": {
@@ -266,7 +266,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/migrate-json-formatting.mjs",
           "range": [1, 241],
-          "contentHash": "26b42b6"
+          "contentHash": "e6fe339"
         }
       },
       "markdown_reformat_helper": {
@@ -275,7 +275,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/reformat-markdown-citations.mjs",
           "range": [1, 199],
-          "contentHash": "2eb1847"
+          "contentHash": "5ec870c"
         }
       },
       "compliance_descriptor": {
@@ -284,7 +284,7 @@
           "kind": "lines",
           "path": "tests/compliance/json-formatting.yaml",
           "range": [1, 35],
-          "contentHash": "ea5c533"
+          "contentHash": "9bfc441"
         }
       },
       "migration_tests": {
@@ -293,7 +293,7 @@
           "kind": "lines",
           "path": "tests/migrate-json-formatting.test.mjs",
           "range": [1, 270],
-          "contentHash": "5ee2195"
+          "contentHash": "633b345"
         }
       },
       "repo_structure_test": {
@@ -302,7 +302,7 @@
           "kind": "lines",
           "path": "tests/repo-structure.test.mjs",
           "range": [1, 1],
-          "contentHash": "77ce6f1"
+          "contentHash": "ac25607"
         }
       },
       "cli_canonical_json_io": {
@@ -347,7 +347,7 @@
           "kind": "lines",
           "path": "lib/memory/handbook/glossary.md",
           "range": [1, 332],
-          "contentHash": "4e4626b"
+          "contentHash": "c70da7c"
         }
       }
     },

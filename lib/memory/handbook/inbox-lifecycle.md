@@ -13,37 +13,37 @@ references:
   - kind: lines
     path: lib/memory/adr/0003-inbox-lifecycle-and-archival.md
     range: [74, 95]
-    contentHash: aa84cf1
+    contentHash: 064d359
     note: "ADR-0003 decision defines the required lifecycle states and manual-versus-future automation boundary."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [267, 267]
-    contentHash: e7226f1
+    contentHash: 2eb6aa4
     note: "PRD glossary defines Inbox as a bidirectional queue with in/out/thread locations."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1037, 1037]
-    contentHash: 1b19612
+    contentHash: 2eb6aa4
     note: "PRD CLI surface includes inbox management verbs."
   - kind: lines
     path: AGENTS.md
     range: [101, 103]
-    contentHash: 6fc43bd
+    contentHash: b953d77
     note: "AGENTS defines `/lib/inbox/in/` and `/lib/inbox/out/` as canonical operational queue paths."
   - kind: lines
     path: AGENTS.md
     range: [130, 130]
-    contentHash: 8461591
+    contentHash: b953d77
     note: "AGENTS workspace map defines `lib/inbox/{in,out,threads}/`."
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [49, 53]
-    contentHash: 214aec6
+    contentHash: b788753
     note: "Bootstrap scaffold includes inbox directories in the required repository substrate."
   - kind: lines
     path: lib/memory/handbook/contract-style.md
     range: [60, 65]
-    contentHash: 6ea08ca
+    contentHash: 2d7acae
     note: "Layer 1 requires RFC 2119 keywords in normative prose."
   - kind: lines
     path: lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
@@ -70,7 +70,7 @@ completed inbound requests out of the active queue.
 and tools MUST NOT commit inbox artifacts to version control. Fresh clones and
 new workspaces materialize queue directories on demand (`pnpm -w exec pan init`,
 `pnpm -w exec pan intake new`, or agent/tool writes). Durable copies of completed
-inbound items belong under `/archive/inbox/in/` per Section 3.
+inbound items belong under `/.pan/archive/inbox/in/` per Section 3.
 
 ## 1 - Canonical locations
 
@@ -79,7 +79,7 @@ Operators SHALL use these canonical paths:
 - Active queue: `/lib/inbox/in/` (artifacts nest under `<day>/{SID}_{HHMM}_{semantic}.md` leaves without per-file task subdirectories)
 - Responses: `/lib/inbox/out/` (same day-bucket leaf layout as the active queue)
 - Threads: `/lib/inbox/threads/` (thread artifacts nest under `<day>/<feature-slug>/` with `{SID}_{HHMM}_{semantic}.md` leaves)
-- Archive: `/archive/inbox/in/` (same day-bucket leaf layout as the active queue)
+- Archive: `/.pan/archive/inbox/in/` (same day-bucket leaf layout as the active queue)
 - Operator sandbox: `/lib/inbox/notes/` (human-only; see Section 1a)
 
 Operators MUST NOT treat ad hoc directories as inbox sources of truth.
@@ -114,7 +114,7 @@ Every inbound item SHALL progress through these states:
 - `new`: item is present in `/lib/inbox/in/` and is unclaimed.
 - `in_progress`: item is actively being processed.
 - `responded`: required response artifact exists in `/lib/inbox/out/`.
-- `archived`: inbound item has been moved to `/archive/inbox/in/`.
+- `archived`: inbound item has been moved to `/.pan/archive/inbox/in/`.
 
 State transitions SHOULD be monotonic in this order:
 `new -> in_progress -> responded -> archived`.
@@ -129,10 +129,10 @@ completed inbound item:
 2. Mark the inbound item complete by recording `responded` status in the
    operator handoff context (for example the active work note or run log entry
    that references the response artifact path).
-3. Move the inbound source file from its path under `/lib/inbox/in/` to the matching path under `/archive/inbox/in/`
+3. Move the inbound source file from its path under `/lib/inbox/in/` to the matching path under `/.pan/archive/inbox/in/`
    without changing the file basename (preserve the `<day>/` prefix segment and timestamp-prefixed leaf name when present).
 4. Verify the source file no longer exists under `/lib/inbox/in/` and exists under
-   `/archive/inbox/in/`.
+   `/.pan/archive/inbox/in/`.
 
 Operators SHALL execute archival moves only after the response artifact exists.
 
@@ -160,7 +160,7 @@ These artifacts are system-produced responses; operators MUST NOT move them into
 Operators MUST NOT move outbox artifacts into `/lib/inbox/in/`.
 
 Only inbound source items are archived by moving from `/lib/inbox/in/` to
-`/archive/inbox/in/` after completion criteria are satisfied.
+`/.pan/archive/inbox/in/` after completion criteria are satisfied.
 
 ## 3b - Semantic immutability and correction policy
 
@@ -199,7 +199,7 @@ Citation: `{kind: lines, path: lib/inbox/threads/172996_05-10-26/timestamp-namin
 ## 3d - Empty directory hygiene
 
 Renames and archival moves under `/lib/inbox/in/`, `/lib/inbox/out/`,
-`/lib/inbox/threads/`, and `/archive/inbox/in/` MUST NOT leave orphan empty
+`/lib/inbox/threads/`, and `/.pan/archive/inbox/in/` MUST NOT leave orphan empty
 directories behind (for example empty day buckets or legacy per-file task folders
 after a reshape).
 
@@ -227,7 +227,7 @@ The runtime SHOULD expose an explicit archival operation (`pan inbox archive`
 or equivalent) that:
 
 - validates `responded` preconditions,
-- performs the move from `/lib/inbox/in/` to `/archive/inbox/in/`, and
+- performs the move from `/lib/inbox/in/` to `/.pan/archive/inbox/in/`, and
 - emits a run-log event with source and destination paths.
 
 Until this automation is implemented, manual procedure in Section 3 remains

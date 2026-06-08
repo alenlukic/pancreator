@@ -22,7 +22,7 @@ repository is the harness for running and hardening that loop in real projects.
 
 - `pancreator.yaml` — live policy and `project_root`
 - `lib/memory/active/current.md` — what is active now
-- `work/` — active feature-delivery runs (archived to `archive/work/` after close)
+- `.pan/work/` — active feature-delivery runs (archived to `.pan/archive/work/` after close)
 - `lib/internal/packages/` — TypeScript packages (`pan` CLI and runtime)
 
 ## Internal surfaces (explicit-read)
@@ -31,5 +31,5 @@ These paths are excluded from default semantic indexing. Humans open them when
 needed; agents load them only when the task requires them.
 
 - [`AGENTS.md`](AGENTS.md) — agent operating instructions
-- [`docs/`](docs/) — product requirements and bootstrap history
+- [`.docs/`](.docs/) — product requirements and bootstrap history
 - `.cursor/` — local Cursor IDE runtime (gitignored; run `pan cursor-sync` after clone)

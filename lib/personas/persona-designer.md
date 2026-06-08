@@ -44,14 +44,14 @@ metadata:
     - human-ratified-at-phase-boundary
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [793, 891]
-    contentHash: 4075155
+    contentHash: 2eb6aa4
     note: "PRD §6 — Subagent Persona Roster + Anthropic 16-field example"
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [499, 553]
-    contentHash: 0f5b18e
+    contentHash: 2eb6aa4
     note: "PRD §4.6 Layer 1 lint rules (applied to body prose)"
 ---
 

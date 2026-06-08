@@ -36,7 +36,7 @@
       "kind": "lines",
       "path": "lib/memory/features/pancreator-adopter-scan/delivery-report.md",
       "range": [1, 35],
-      "contentHash": "d558729"
+      "contentHash": "5d82cdd"
     }
   },
   "artifact_index": {
@@ -47,7 +47,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-adopter-scan/spec.md",
           "range": [1, 23],
-          "contentHash": "0273ae8"
+          "contentHash": "d867e1e"
         }
       },
       "delivery_report": {
@@ -56,7 +56,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-adopter-scan/delivery-report.md",
           "range": [1, 35],
-          "contentHash": "d558729"
+          "contentHash": "5d82cdd"
         }
       },
       "per_feature_index": {

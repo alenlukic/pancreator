@@ -55,7 +55,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md",
@@ -88,7 +88,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
+    "artifact": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 2,
@@ -97,14 +97,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
+      "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
       "range": [1, 54],
       "contentHash": "43d2928"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+    "artifact": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
     "subordinate_qa_task": "68034_0506_v0-ui-dashboard-subordinate-feature-pipeline-qa",
     "sdk_automation_qa": true,
     "verification_gates": {
@@ -115,7 +115,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+      "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
       "range": [1, 55],
       "contentHash": "705f4d4"
     }
@@ -128,13 +128,13 @@
       "kind": "lines",
       "path": "lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/delivery-report.md",
       "range": [1, 334],
-      "contentHash": "0565c18"
+      "contentHash": "b6bf645"
     },
-    "archived_inbox_source": "archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -143,7 +143,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/policy-compliance.json",
+      "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/policy-compliance.json",
       "range": [1, 27],
       "contentHash": "45a0f70"
     }
@@ -162,7 +162,7 @@
       "reason": "pancreator.yaml currently sets runner.cursor.invocation: sdk; confirm intentional live repo policy before governed commit.",
       "citation": {
         "kind": "lines",
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
         "range": [16, 20],
         "contentHash": "43d2928"
       }
@@ -174,7 +174,7 @@
       "reason": "Subordinate v0-ui-dashboard QA run remains at implement after qa_fails loopback (client/.next hygiene); non-blocking for parent harness index per test-report.md.",
       "citation": {
         "kind": "lines",
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
         "range": [41, 44],
         "contentHash": "705f4d4"
       }
@@ -188,7 +188,7 @@
           "kind": "lines",
           "path": "lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md",
           "range": [1, 257],
-          "contentHash": "f02809f"
+          "contentHash": "b0ff0a3"
         }
       },
       "delivery_report": {
@@ -197,7 +197,7 @@
           "kind": "lines",
           "path": "lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/delivery-report.md",
           "range": [1, 334],
-          "contentHash": "0565c18"
+          "contentHash": "b6bf645"
         }
       },
       "per_feature_index": {
@@ -206,82 +206,82 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/"
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/"
       },
       "plan": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/plan.md",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/plan.md",
+          "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/plan.md",
           "range": [1, 84],
           "contentHash": "63d91ea"
         }
       },
       "adr_draft": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/adr-draft.md",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/adr-draft.md",
+          "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/adr-draft.md",
           "range": [1, 55],
           "contentHash": "94ccc8f"
         }
       },
       "touch_set": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/touch-set.json",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/touch-set.json",
+          "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/touch-set.json",
           "range": [1, 163],
           "contentHash": "bd50d9a"
         }
       },
       "implementation_report": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/implementation-report.md",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/implementation-report.md",
+          "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/implementation-report.md",
           "range": [1, 86],
           "contentHash": "bfbd3c5"
         }
       },
       "review_report": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
+          "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
           "range": [1, 54],
           "contentHash": "43d2928"
         }
       },
       "test_report": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+          "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
           "range": [1, 55],
           "contentHash": "705f4d4"
         }
       },
       "policy_compliance": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/policy-compliance.json",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/policy-compliance.json",
+          "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/policy-compliance.json",
           "range": [1, 27],
           "contentHash": "45a0f70"
         }
       },
       "handoff": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/handoff.md",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/handoff.md",
+          "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/handoff.md",
           "range": [1, 49],
           "contentHash": "08604fa"
         }
       },
       "run_log": {
-        "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/run.log.jsonl",
+        "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       }
     },
@@ -323,7 +323,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md",
+        "path": ".pan/archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md",
@@ -346,8 +346,8 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md",
+    "path": ".pan/archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md",
     "prior_path": "lib/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/72021_0359_feature-delivery-cursor-runner-harness-wiring.md"
 }

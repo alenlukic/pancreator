@@ -12,12 +12,12 @@ references:
   - kind: lines
     path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [212, 312]
-    contentHash: e6c4fcd
+    contentHash: 9b2ddcc
     note: "Acceptance criteria anchor active-memory and memory-tier handbook obligations."
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
     range: [101, 230]
-    contentHash: fb1ac76
+    contentHash: 188405e
     note: "Directive §1 defines tier purposes, locations, and rules."
 related:
   - /lib/memory/handbook/context-economy.md
@@ -29,7 +29,7 @@ related:
 
 This page defines the six context tiers agents use when they classify default
 versus explicit-read context. The Feature cites this taxonomy at
-`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [212, 312], contentHash: e6c4fcd}`.
+`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [212, 312], contentHash: 9b2ddcc}`.
 
 ## Active memory
 
@@ -46,7 +46,7 @@ When an agent reads active memory, the agent SHALL prefer pointers to durable,
 active-work, and archival artifacts instead of copying bulky sources.
 
 When an operator tracks plan-to-execution state, the operator SHALL keep the
-full handoff card in `work/<day>/<task-id>/handoff.md` and SHALL keep only a
+full handoff card in `.pan/work/<day>/<task-id>/handoff.md` and SHALL keep only a
 pointer in `lib/memory/active/handoffs.md`.
 
 When an agent classifies active memory, the agent SHALL treat active memory as
@@ -69,7 +69,7 @@ feature-delivery context. The **agent operating card** (`AGENTS.md` or
 Human procedures live in `OPERATION.md`.
 
 When an agent names **internal surface**, the agent SHALL treat `AGENTS.md`,
-`docs/**`, ADRs, backlog, bootstrap features, `tests/**`, and `client/` as
+`.docs/**`, ADRs, backlog, bootstrap features, `tests/**`, and `client/` as
 Pancreator self-development context excluded from default semantic indexing.
 
 When `project_root` is `.pancreator`, the agent operating card SHALL resolve
@@ -79,15 +79,15 @@ to `.pancreator/AGENTS.md` via `resolveDeliveryOperatingCard` in
 
 ## Active work
 
-When an agent names **active-work**, the agent SHALL treat `work/**` as the
+When an agent names **active-work**, the agent SHALL treat `.pan/work/**` as the
 short-lived active run workspace, not as long-term memory.
 
 When a run is active, blocked, or awaiting human ratification, the run SHALL
-stay under `work/<day>/<task-id>/` and SHALL remain explicit-read only by
+stay under `.pan/work/<day>/<task-id>/` and SHALL remain explicit-read only by
 default.
 
 When a run reaches `complete` and `pnpm -w exec pan close-artifacts <task-id>`
-succeeds, the run SHALL reside under `archive/work/<day>/<task-id>/`. The CLI
+succeeds, the run SHALL reside under `.pan/archive/work/<day>/<task-id>/`. The CLI
 performs the move; agents MUST NOT manually `mv` active runs during the index
 stage. Update references after closure and leave only a small pointer in
 `lib/memory/active/runs.md` when useful.
@@ -115,7 +115,7 @@ unless the task requires them.
 When an agent names **archival-memory**, the agent SHALL treat the tier as
 historical execution artifacts and completed conversational material.
 
-Expected path prefixes include `archive/work/`, `lib/inbox/out/`, `archive/inbox/`, and `lib/inbox/threads/`.
+Expected path prefixes include `.pan/archive/work/`, `lib/inbox/out/`, `.pan/archive/inbox/`, and `lib/inbox/threads/`.
 
 When an agent loads archival memory by default, the agent SHALL treat archival
 memory as explicit-read only. `lib/inbox/notes/` is not archival memory; it is a

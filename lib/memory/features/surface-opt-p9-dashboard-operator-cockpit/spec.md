@@ -19,12 +19,12 @@ references:
   - kind: lines
     path: client/src/components/DashboardPage.tsx
     range: [26, 80]
-    contentHash: 651c5a3
+    contentHash: a191b5d
     note: "DashboardPage currently renders domain cards plus an mtime-based activity feed; currentStage, humanGate, nextHumanAction, and nextCommand are absent from the rendered surface."
   - kind: lines
     path: client/src/services/activity.ts
     range: [1, 107]
-    contentHash: 651c5a3
+    contentHash: 0250edf
     note: "getActivityFeed produces mtime-based events from domain-path scans plus a write log; P9 replaces this surface on the default view with run-log events."
 ---
 
@@ -35,8 +35,8 @@ references:
 The Pancreator operator dashboard renders domain cards, a file browser, and a
 mtime-based activity feed. Run state for active `feature-delivery` tasks —
 `currentStage`, `humanGate`, `nextHumanAction`, retry budget, and `nextCommand`
-— lives in `work/<day>/<task-id>/state.json` and in the run log at
-`work/<day>/<task-id>/run.log.jsonl`, but the dashboard never surfaces either
+— lives in `.pan/work/<day>/<task-id>/state.json` and in the run log at
+`.pan/work/<day>/<task-id>/run.log.jsonl`, but the dashboard never surfaces either
 artifact. An operator cannot determine pipeline progress without opening
 `state.json` or running `pan status` from a terminal.
 
@@ -59,7 +59,7 @@ both of which the stage cell rendering consumes.
 the default view when the operator opens the dashboard.
 
 **R1.2** The grid SHALL source run state from `pan status --json` for each
-active task located under `work/`. When `pan status --json` is unavailable, the
+active task located under `.pan/work/`. When `pan status --json` is unavailable, the
 grid MAY fall back to reading `state.json` directly and SHALL record a
 structured warning in the API response envelope.
 
@@ -90,7 +90,7 @@ regardless of the active-task count.
 ### R4 — Run-event timeline
 
 **R4.1** The dashboard activity surface SHALL render a run-event timeline
-sourced from `work/<day>/<task-id>/run.log.jsonl` for each active task.
+sourced from `.pan/work/<day>/<task-id>/run.log.jsonl` for each active task.
 
 **R4.2** The dashboard activity surface SHALL NOT render the mtime-based feed
 produced by `getActivityFeed()` in `client/src/services/activity.ts`.
@@ -129,7 +129,7 @@ active-task envelopes. Each envelope SHALL include:
 - `runEvents` — an array of run-log events parsed from `run.log.jsonl`, each
   carrying `timestamp`, `event`, and `message`.
 
-The route SHALL locate active tasks by scanning `work/` for directories that
+The route SHALL locate active tasks by scanning `.pan/work/` for directories that
 contain a `state.json` with a non-terminal status. The route SHALL read run
 state by invoking `pan status --json <taskId>` for each discovered task. When
 that invocation exits non-zero or is unavailable, the route SHALL fall back to

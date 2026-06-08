@@ -41,7 +41,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172973_06-02-26/15509_1941_context-usage-test.md",
@@ -74,7 +74,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+    "artifact": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 4,
@@ -83,14 +83,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+      "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
       "range": [1, 37],
       "contentHash": "1f87eb9"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
+    "artifact": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
     "verification_gates": {
       "context_usage_test": "pass",
       "context_budget_report_test": "pass",
@@ -102,7 +102,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
+      "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
       "range": [1, 37],
       "contentHash": "16ab669"
     }
@@ -114,14 +114,14 @@
       "kind": "lines",
       "path": "lib/memory/features/context-usage-test-harness/delivery-report.md",
       "range": [1, 429],
-      "contentHash": "833f9cb"
+      "contentHash": "c4fd27d"
     },
     "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
-    "archived_inbox_source": "archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172973_06-02-26/15493_1941_context-usage-test-harness/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -130,7 +130,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/policy-compliance.json",
+      "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/policy-compliance.json",
       "range": [1, 36],
       "contentHash": "fe61e0d"
     }
@@ -143,7 +143,7 @@
       "reason": "compareToBaseline uses PROMPT_VERSION constant instead of readPromptVersion; symmetry drift if prompt front matter changes without expected.mjs update.",
       "citation": {
         "kind": "lines",
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
         "range": [15, 15],
         "contentHash": "1f87eb9"
       }
@@ -155,7 +155,7 @@
       "reason": "run-live.mjs exits before writing output/ when baseline comparison fails, complicating post-calibration debugging.",
       "citation": {
         "kind": "lines",
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
         "range": [17, 17],
         "contentHash": "1f87eb9"
       }
@@ -167,7 +167,7 @@
       "reason": "tests/context-usage/baselines/composer-2.5.json is absent (.gitkeep only); operator MUST run context:usage:baseline and ratify before sigma merge gating.",
       "citation": {
         "kind": "lines",
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
         "range": [19, 19],
         "contentHash": "1f87eb9"
       }
@@ -181,7 +181,7 @@
         "kind": "lines",
         "path": "lib/memory/features/context-usage-test-harness/spec.md",
         "range": [266, 270],
-        "contentHash": "263ced0"
+        "contentHash": "582e574"
       }
     }
   ],
@@ -207,7 +207,7 @@
           "kind": "lines",
           "path": "lib/memory/features/context-usage-test-harness/spec.md",
           "range": [1, 278],
-          "contentHash": "263ced0"
+          "contentHash": "582e574"
         }
       },
       "delivery_report": {
@@ -216,7 +216,7 @@
           "kind": "lines",
           "path": "lib/memory/features/context-usage-test-harness/delivery-report.md",
           "range": [1, 429],
-          "contentHash": "833f9cb"
+          "contentHash": "c4fd27d"
         }
       },
       "per_feature_index": {
@@ -225,82 +225,82 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/"
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/"
       },
       "plan": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/plan.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/plan.md",
+          "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/plan.md",
           "range": [1, 128],
           "contentHash": "7f43589"
         }
       },
       "adr_draft": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+          "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
           "range": [1, 97],
           "contentHash": "86749b6"
         }
       },
       "touch_set": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/touch-set.json",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/touch-set.json",
+          "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/touch-set.json",
           "range": [1, 102],
           "contentHash": "c315cc0"
         }
       },
       "implementation_report": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
+          "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
           "range": [1, 123],
           "contentHash": "67bb94c"
         }
       },
       "review_report": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+          "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
           "range": [1, 37],
           "contentHash": "1f87eb9"
         }
       },
       "test_report": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
+          "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
           "range": [1, 37],
           "contentHash": "16ab669"
         }
       },
       "policy_compliance": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/policy-compliance.json",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/policy-compliance.json",
+          "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/policy-compliance.json",
           "range": [1, 36],
           "contentHash": "fe61e0d"
         }
       },
       "handoff": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/handoff.md",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/handoff.md",
+          "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/handoff.md",
           "range": [1, 50],
           "contentHash": "9cd9f79"
         }
       },
       "run_log": {
-        "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/run.log.jsonl",
+        "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "report_approval": {
@@ -309,7 +309,7 @@
           "kind": "lines",
           "path": "lib/inbox/out/172973_06-02-26/13760_2010_context-usage-test-harness-report-approval.md",
           "range": [1, 18],
-          "contentHash": "fb30140"
+          "contentHash": "d0e1814"
         }
       }
     },
@@ -344,7 +344,7 @@
           "kind": "lines",
           "path": "package.json",
           "range": [1, 50],
-          "contentHash": "def1b24"
+          "contentHash": "22317d8"
         }
       },
       "context_budget_report": {
@@ -357,13 +357,13 @@
           "kind": "lines",
           "path": "lib/memory/handbook/context-cost-audit.md",
           "range": [1, 61],
-          "contentHash": "f02fad5"
+          "contentHash": "9fc908b"
         }
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md",
+        "path": ".pan/archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172973_06-02-26/15509_1941_context-usage-test.md",
@@ -386,8 +386,8 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md",
+    "path": ".pan/archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md",
     "prior_path": "lib/inbox/in/172973_06-02-26/15509_1941_context-usage-test.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/15493_1941_context-usage-test-harness/15509_1941_context-usage-test.md"
 }

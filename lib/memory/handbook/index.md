@@ -11,19 +11,19 @@ purpose: |
   question, and SHALL avoid broad handbook loading when a narrow route exists.
 references:
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [63, 77]
-    contentHash: 40b0827
+    contentHash: b788753
     note: "Phase 0b handbook seed list requires `/lib/memory/handbook/index.md` as the MemoryRouter routing table."
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [229, 231]
-    contentHash: f28ca2d
+    contentHash: 762edb4
     note: "Glossary defines MemoryRouter behavior against this file."
   - kind: lines
     path: AGENTS.md
     range: [19, 44]
-    contentHash: 3dc743c
+    contentHash: b953d77
     note: "Canon table declares handbook pages that this index routes by intent."
 related:
   - /lib/memory/handbook/glossary.md
@@ -42,6 +42,10 @@ related:
   - /lib/memory/handbook/context-cost-audit.md
   - /lib/memory/handbook/pancreator-config.md
   - /lib/memory/handbook/compliance-runs.md
+  - /lib/memory/handbook/engineering/index.md
+  - /lib/memory/handbook/engineering/software-engineering.md
+  - /lib/memory/handbook/engineering/typescript.md
+  - /lib/memory/handbook/engineering/design-craft.md
 ---
 
 # Handbook Routing Index
@@ -61,18 +65,21 @@ lands, operators SHOULD apply this table manually.
 | Author or update a persona spec | `/lib/memory/handbook/persona-spec.md` | `/lib/memory/handbook/glossary.md`, `/lib/memory/handbook/persona-colors.md` | Persona fields and metadata contract live in persona-spec; use glossary for noun discipline and persona-colors for `color` selection. |
 | Author or update contract clauses | `/lib/memory/handbook/contract-format.md` | `/lib/memory/handbook/contract-style.md`, `/lib/memory/handbook/contract-templates/` | Wrapper schema and kind registry come from contract-format; style and template constraints gate authoring quality. |
 | Run contract style lint checks | `/lib/memory/handbook/contract-style.md` | `/lib/memory/handbook/glossary.md` | Layer 1/2/3 checks are defined in contract-style; glossary resolves noun validity. |
+| Write, review, refactor, or test code (any language) | `/lib/memory/handbook/engineering/software-engineering.md` | `/lib/memory/handbook/engineering/index.md` | Binding software engineering standard for all code activities; load the index to select language-specific guides. |
+| Author or modify TypeScript / ES2022 / ESM tooling | `/lib/memory/handbook/engineering/typescript.md` | `/lib/memory/handbook/engineering/software-engineering.md` | TypeScript guide layers on top of the general standard; both bind TypeScript work. |
+| Author a UX spec or run design QA | `/lib/memory/handbook/engineering/design-craft.md` | `/lib/personas/design-engineer.md`, `/lib/personas/design-reviewer.md` | Product design and UI craft taste profile shared by the design plan and design QA peers. |
 | Author or update `/AGENTS.md` | `/lib/memory/handbook/agents-md-authoring.md` | `/lib/memory/handbook/constitution.md`, `/lib/memory/handbook/documentation-impact-contract.md` | Follow AGENTS change-control and trigger rules; include governance and documentation-impact checks. |
-| Interpret governance and organizational rules | `/lib/memory/handbook/constitution.md` | `/AGENTS.md`, `/docs/PRD.md` | Use constitution for charter-level governance. Use AGENTS/PRD only as supporting context when needed. |
+| Interpret governance and organizational rules | `/lib/memory/handbook/constitution.md` | `/AGENTS.md`, `/.docs/PRD.md` | Use constitution for charter-level governance. Use AGENTS/PRD only as supporting context when needed. |
 | Decide documentation-impact updates or deferrals | `/lib/memory/handbook/documentation-impact-contract.md` | `/lib/memory/handbook/backlog-format.md`, `/lib/memory/handbook/agents-md-authoring.md` | Required post-task decision flow lives in documentation-impact contract; use backlog-format for deferral recording schema. |
 | Draft optional GitHub PR description from feature-delivery artifacts | `/lib/personas/pr-writer.md` | `/lib/memory/handbook/operator-output-contract.md`, `/lib/memory/handbook/run-log-schema.md` | Invoke `/pr-writer` with feature ID or work directory; output is a fenced PR body for operator paste into `gh pr create`. |
 | Process inbox lifecycle and archival flow | `/lib/memory/handbook/inbox-lifecycle.md` | `/AGENTS.md`, `/OPERATION.md` | Inbox state model and manual archival procedure are defined in inbox-lifecycle. |
 | Format agent completion output for the operator | `/lib/memory/handbook/operator-output-contract.md` | `/AGENTS.md` | Defines the mandatory `## Next operator steps` block (what/how, read-only labels, multi-option when/impact). |
-| Validate run-log schema and observability fields | `/lib/memory/handbook/run-log-schema.md` | `/lib/memory/handbook/glossary.md` | Run-log contract is canonical for `/work/<day>/<id>/run.log.jsonl`; glossary resolves shared telemetry nouns. |
+| Validate run-log schema and observability fields | `/lib/memory/handbook/run-log-schema.md` | `/lib/memory/handbook/glossary.md` | Run-log contract is canonical for `/.pan/work/<day>/<id>/run.log.jsonl`; glossary resolves shared telemetry nouns. |
 | Track backlog items and documentation deferrals | `/lib/memory/handbook/backlog-format.md` | `/lib/memory/handbook/documentation-impact-contract.md` | Backlog index schema is canonical; documentation-impact defines when and why deferrals are allowed. |
 | Choose persona color assignments | `/lib/memory/handbook/persona-colors.md` | `/lib/memory/handbook/persona-spec.md` | Persona-colors is the canonical palette table; persona-spec provides field-level context. |
 | Active-memory pointers and current coordination | `/lib/memory/active/current.md` | `/lib/memory/active/handoffs.md`, `/lib/memory/handbook/context-economy.md`, `/lib/memory/handbook/memory-tiers.md` | Active-memory holds summaries and handoff pointers only; durable, active-work, and archival artifacts stay on their own tiers. |
 | Memory-tier taxonomy and default retrieval classes | `/lib/memory/handbook/memory-tiers.md` | `/lib/memory/handbook/context-economy.md`, `/lib/memory/handbook/glossary.md` | Defines **active-memory**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
-| Reduce default AI context load and decide what to index versus explicit-read | `/lib/memory/handbook/context-economy.md` | `/lib/memory/handbook/index.md`, `/lib/memory/active/current.md`, `/lib/memory/active/handoffs.md`, `/lib/memory/handbook/memory-tiers.md`, `/lib/memory/handbook/context-cost-audit.md`, `/AGENTS.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, and planning/execution handoffs. Internal PRD routing: `/docs/**`. |
+| Reduce default AI context load and decide what to index versus explicit-read | `/lib/memory/handbook/context-economy.md` | `/lib/memory/handbook/index.md`, `/lib/memory/active/current.md`, `/lib/memory/active/handoffs.md`, `/lib/memory/handbook/memory-tiers.md`, `/lib/memory/handbook/context-cost-audit.md`, `/AGENTS.md` | Context-economy defines indexing policy, memory-tier routing, `simple task mode`, and planning/execution handoffs. Internal PRD routing: `/.docs/**`. |
 | Choose Cursor subagent and model escalation | `/lib/memory/handbook/context-economy.md` | `/AGENTS.md`, `/lib/memory/handbook/persona-spec.md` | Run `pan cursor-sync` if `.cursor/agents/` is absent; invoke `.cursor/agents/<name>.md` directly; escalate model class per context-economy triggers. |
 | Audit likely token cost sinks | `/lib/memory/handbook/context-cost-audit.md` | `/lib/memory/handbook/context-economy.md` | Records current cost sinks and practical controls (Pancreator self-dev). |
 | Interpret or update `pancreator.yaml` | `/lib/memory/handbook/pancreator-config.md` | `/pancreator.yaml`, `/pancreator-defaults.yaml`, `/lib/personas/adopter.md` | Defines `project_root`, live runtime policy, and the boundary between live config and defaults. |

@@ -6,7 +6,7 @@ The sampled-token-audit Feature adds phase-1 token observability to feature-deli
 SDK invocations. The implementation SHALL expose `runner.cursor.sdkSampling` in
 `pancreator.yaml`, route roughly 10 percent of stage invocations through a
 deterministic hash gate to a streamed SDK transport, persist redacted traces under
-`work/<day>/<task-id>/sdk-traces/`, emit `gen_ai.usage` and `pancreator.sampling`
+`.pan/work/<day>/<task-id>/sdk-traces/`, emit `gen_ai.usage` and `pancreator.sampling`
 fields in `run.log.jsonl`, and provide `pnpm -w exec pan token-economy sample-audit`
 for watermark-based incremental scans with production heuristics and bounded
 `--repair`. The shared stream collector lives in `@pancreator/runner-cursor` and
@@ -16,7 +16,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
   "range": [9, 20],
   "contentHash": "c397ed4"
 }
@@ -25,7 +25,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
   "range": [9, 16],
   "contentHash": "c9b1631"
 }
@@ -34,7 +34,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
   "range": [9, 11],
   "contentHash": "ee9969d"
 }
@@ -49,7 +49,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
   "range": [60, 63],
   "contentHash": "c07e608"
 }
@@ -62,7 +62,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
   "range": [30, 34],
   "contentHash": "c4c0cc3"
 }
@@ -71,7 +71,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
   "range": [65, 68],
   "contentHash": "c07e608"
 }
@@ -79,12 +79,12 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 
 - Stream handling SHALL live in a shared `@pancreator/runner-cursor` module
   extracted from `collect-usage.mjs`; sampled runs SHALL persist NDJSON traces and
-  summaries under `work/<day>/<task-id>/sdk-traces/`.
+  summaries under `.pan/work/<day>/<task-id>/sdk-traces/`.
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
   "range": [36, 49],
   "contentHash": "c4c0cc3"
 }
@@ -97,7 +97,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
   "range": [76, 80],
   "contentHash": "c07e608"
 }
@@ -109,7 +109,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
   "range": [82, 84],
   "contentHash": "c07e608"
 }
@@ -125,7 +125,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/sdk-sampling.ts",
   "range": [15, 61],
-  "contentHash": "49fc2bc"
+  "contentHash": "e1711e3"
 }
 ```
 
@@ -137,7 +137,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/pan-init.ts",
   "range": [607, 627],
-  "contentHash": "ea06c86"
+  "contentHash": "65a9346"
 }
 ```
 
@@ -149,7 +149,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/runner-cursor/src/sdk-trace-collector.ts",
   "range": [1, 80],
-  "contentHash": "aa03639"
+  "contentHash": "573f8f1"
 }
 ```
 
@@ -161,7 +161,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts",
   "range": [157, 200],
-  "contentHash": "6ea39c1"
+  "contentHash": "82c59fb"
 }
 ```
 
@@ -173,7 +173,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/commands/token-economy-sample-audit.ts",
   "range": [18, 36],
-  "contentHash": "3153a4a"
+  "contentHash": "ca9b859"
 }
 ```
 
@@ -185,7 +185,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/token-economy-analyzer.ts",
   "range": [163, 220],
-  "contentHash": "21d898a"
+  "contentHash": "91838dd"
 }
 ```
 
@@ -197,7 +197,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
   "range": [186, 228],
-  "contentHash": "b5f70be"
+  "contentHash": "c0befcf"
 }
 ```
 
@@ -209,7 +209,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
   "range": [102, 103],
   "contentHash": "c07e608"
 }
@@ -221,7 +221,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
   "range": [27, 27],
   "contentHash": "c9b1631"
 }
@@ -234,7 +234,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
   "range": [26, 26],
   "contentHash": "c9b1631"
 }
@@ -246,7 +246,7 @@ findings; 311 offline tests pass across package, compliance, and repository suit
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
   "range": [28, 28],
   "contentHash": "c9b1631"
 }
@@ -260,14 +260,14 @@ findings; 311 offline tests pass across package, compliance, and repository suit
   "kind": "lines",
   "path": "pancreator-model-escalation.yaml",
   "range": [15, 18],
-  "contentHash": "e27d109"
+  "contentHash": "9c474d2"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
   "range": [32, 32],
   "contentHash": "c9b1631"
 }
@@ -289,7 +289,7 @@ pnpm -w exec pan token-economy sample-audit --sampled-only-task 53589_0906_sampl
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
   "range": [17, 17],
   "contentHash": "c397ed4"
 }
@@ -300,7 +300,7 @@ pnpm -w exec pan token-economy sample-audit --sampled-only-task 53589_0906_sampl
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/commands/token-economy-sample-audit.test.ts",
   "range": [30, 67],
-  "contentHash": "170f811"
+  "contentHash": "e3956ec"
 }
 ```
 
@@ -316,7 +316,7 @@ pnpm -w exec pan token-economy sample-audit --repair
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/commands/token-economy-sample-audit.test.ts",
   "range": [69, 97],
-  "contentHash": "170f811"
+  "contentHash": "e3956ec"
 }
 ```
 
@@ -326,7 +326,7 @@ pnpm -w exec pan token-economy sample-audit --repair
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
   "range": [54, 54],
   "contentHash": "c397ed4"
 }
@@ -337,7 +337,7 @@ pnpm -w exec pan token-economy sample-audit --repair
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/sdk-sampling.test.ts",
   "range": [38, 62],
-  "contentHash": "931e48d"
+  "contentHash": "bc2a24d"
 }
 ```
 
@@ -352,7 +352,7 @@ node --test tests/compliance/context-usage/context-usage.unit.test.mjs
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
   "range": [71, 72],
   "contentHash": "c397ed4"
 }
@@ -361,7 +361,7 @@ node --test tests/compliance/context-usage/context-usage.unit.test.mjs
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
   "range": [20, 20],
   "contentHash": "ee9969d"
 }
@@ -379,7 +379,7 @@ operator-on-demand; QA validates committed behavior via offline suites only.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
   "range": [9, 44],
   "contentHash": "ee9969d"
 }
@@ -388,7 +388,7 @@ operator-on-demand; QA validates committed behavior via offline suites only.
 ```json
 {
   "kind": "lines",
-  "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+  "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
   "range": [46, 80],
   "contentHash": "c9b1631"
 }

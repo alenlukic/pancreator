@@ -4,13 +4,13 @@
   "title": "Timestamp naming conventions",
   "current_stage": "delivered",
   "pipeline_state": "delivery_complete",
-  "pipeline_state_note": "The migration-write task applied the ADR 0005 rename and reference-update manifest at archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/. Stock --write failed after renames when reference updates targeted legacy paths; a one-off post-rename reference apply completed the manifest. Post-write dry-run still plans 17 inbox-file renames (idempotency gap: semantic stem includes prior sid_hm tokens).",
+  "pipeline_state_note": "The migration-write task applied the ADR 0005 rename and reference-update manifest at .pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/. Stock --write failed after renames when reference updates targeted legacy paths; a one-off post-rename reference apply completed the manifest. Post-write dry-run still plans 17 inbox-file renames (idempotency gap: semantic stem includes prior sid_hm tokens).",
   "last_commit": "d472d02",
   "intake": {
     "round": 1,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+    "source_inbox_item": ".pan/archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
     "last_processed_thread_item": "lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md"
   },
   "handoff": {
@@ -45,13 +45,13 @@
         "kind": "lines",
         "path": "lib/memory/handbook/glossary.md",
         "range": [216, 218],
-        "contentHash": "086c42d"
+        "contentHash": "c70da7c"
       },
       {
         "kind": "lines",
         "path": "lib/memory/handbook/run-log-schema.md",
         "range": [83, 162],
-        "contentHash": "7fcab4f"
+        "contentHash": "5c18026"
       }
     ]
   },
@@ -62,7 +62,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/spec.md",
         "range": [1, 133],
-        "contentHash": "0573437"
+        "contentHash": "294422f"
       }
     },
     "adr_0005": {
@@ -71,34 +71,34 @@
         "kind": "lines",
         "path": "lib/memory/adr/0005-timestamp-naming-conventions.md",
         "range": [1, 64],
-        "contentHash": "ff5343e"
+        "contentHash": "c2d9608"
       }
     },
     "plan": {
-      "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+      "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+        "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
         "range": [1, 35],
-        "contentHash": "6f9e0fe"
+        "contentHash": "208ce0c"
       }
     },
     "adr_draft": {
-      "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
+      "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
+        "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/adr-draft.md",
         "range": [1, 40],
-        "contentHash": "c806216"
+        "contentHash": "43d45a4"
       }
     },
     "touch_set": {
-      "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
+      "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
+        "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
         "range": [1, 130],
-        "contentHash": "f69c734"
+        "contentHash": "4f6f495"
       }
     },
     "contract_policy_descriptor": {
@@ -107,7 +107,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
         "range": [1, 27],
-        "contentHash": "2dcfed7"
+        "contentHash": "a51fc53"
       }
     },
     "contract_migration_precedence": {
@@ -116,7 +116,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
         "range": [1, 27],
-        "contentHash": "696363d"
+        "contentHash": "5d5c7cb"
       }
     },
     "contract_reference_update_audit": {
@@ -125,7 +125,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
         "range": [1, 30],
-        "contentHash": "f4e21bd"
+        "contentHash": "24cde01"
       }
     },
     "compliance_descriptor": {
@@ -134,7 +134,7 @@
         "kind": "lines",
         "path": "tests/compliance/timestamp-naming-conventions.yaml",
         "range": [1, 17],
-        "contentHash": "afcf5e2"
+        "contentHash": "54ee352"
       }
     },
     "migration_script": {
@@ -143,7 +143,7 @@
         "kind": "lines",
         "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
         "range": [1, 943],
-        "contentHash": "5fa37a5"
+        "contentHash": "02eadfb"
       }
     },
     "migration_tests": {
@@ -152,25 +152,25 @@
         "kind": "lines",
         "path": "tests/migrate-timestamp-naming.test.mjs",
         "range": [1, 196],
-        "contentHash": "631e1ff"
+        "contentHash": "0b09f53"
       }
     },
     "dry_run_manifest": {
-      "path": "archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+      "path": ".pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+        "path": ".pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
         "range": [1, 1],
-        "contentHash": "0662fb4"
+        "contentHash": "4354863"
       }
     },
     "review_report": {
-      "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+      "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+        "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
         "range": [1, 229],
-        "contentHash": "2464ac9"
+        "contentHash": "9442ef2"
       }
     },
     "delivery_report": {
@@ -179,25 +179,25 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/delivery-report.md",
         "range": [1, 71],
-        "contentHash": "a704fc8"
+        "contentHash": "0ede2f3"
       }
     },
     "pr_draft": {
-      "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
+      "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
+        "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
         "range": [1, 86],
-        "contentHash": "b0f17ef"
+        "contentHash": "f5ff9f9"
       }
     },
     "run_log": {
-      "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
+      "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
+        "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
         "range": [1, 4],
-        "contentHash": "67cd35d"
+        "contentHash": "836d584"
       }
     },
     "outbound_delivery_report": {
@@ -215,7 +215,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/index.json",
         "range": [1, 1],
-        "contentHash": "efbbcc4"
+        "contentHash": "34efe2f"
       }
     },
     "inbox_lifecycle_update": {
@@ -224,7 +224,7 @@
         "kind": "lines",
         "path": "lib/memory/handbook/inbox-lifecycle.md",
         "range": [135, 149],
-        "contentHash": "0b097ca"
+        "contentHash": "2762053"
       }
     },
     "citation_rot_scan": {
@@ -233,7 +233,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
         "range": [1, 1],
-        "contentHash": "8639086"
+        "contentHash": "0556db2"
       }
     },
     "implementation_surface": {
@@ -250,9 +250,9 @@
       "status": "completed",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
+        "path": ".pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.write.json",
         "range": [1, 1],
-        "contentHash": "0662fb4"
+        "contentHash": "4354863"
       },
       "note": "When write-mode runs, the operator MUST set PANCREATOR_MIGRATION_GO=1. This follow-up completed with a post-rename reference-apply recovery after stock --write ordering failed; post-write dry-run residue remains for inbox idempotency."
     },
@@ -265,7 +265,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/delivery-report.md",
         "range": [28, 28],
-        "contentHash": "a704fc8"
+        "contentHash": "0ede2f3"
       },
       "note": "When the dedicated L2 pass runs, the task MUST refresh mixed contentHash values."
     },
@@ -278,7 +278,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/delivery-report.md",
         "range": [29, 29],
-        "contentHash": "a704fc8"
+        "contentHash": "0ede2f3"
       },
       "note": "When Phase 5 runner wiring starts, the task MUST connect Spec Contract execution to the contract-runner panel."
     },
@@ -291,7 +291,7 @@
         "kind": "lines",
         "path": "lib/memory/features/timestamp-naming-conventions/delivery-report.md",
         "range": [30, 30],
-        "contentHash": "a704fc8"
+        "contentHash": "0ede2f3"
       },
       "note": "When rollover policy resumes, the task MUST capture the operator decision before implementation."
     }
@@ -313,7 +313,7 @@
             "kind": "lines",
             "path": "lib/memory/features/timestamp-naming-conventions/spec.md",
             "range": [54, 103],
-            "contentHash": "0573437"
+            "contentHash": "294422f"
           },
           {
             "kind": "lines",
@@ -338,13 +338,13 @@
             "kind": "lines",
             "path": "lib/memory/features/timestamp-naming-conventions/spec.md",
             "range": [123, 129],
-            "contentHash": "0573437"
+            "contentHash": "294422f"
           },
           {
             "kind": "lines",
-            "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+            "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
             "range": [17, 17],
-            "contentHash": "6f9e0fe"
+            "contentHash": "208ce0c"
           }
         ]
       },
@@ -363,13 +363,13 @@
             "kind": "lines",
             "path": "lib/memory/features/timestamp-naming-conventions/spec.md",
             "range": [104, 109],
-            "contentHash": "0573437"
+            "contentHash": "294422f"
           },
           {
             "kind": "lines",
             "path": "lib/memory/adr/0004-documentation-impact-contract.md",
             "range": [67, 75],
-            "contentHash": "002c6fd"
+            "contentHash": "fdfed55"
           }
         ]
       }
@@ -380,14 +380,14 @@
   },
   "ship": {
     "pr_draft": {
-      "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
+      "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/pr-draft.md",
       "title": "[bootstrap-phase-4] timestamp naming conventions: encode policy + tooling (write deferred)",
       "branch": "bootstrap",
       "head_commit": "ff57fb8",
       "lineage_commits": ["1ca2afd", "7d7b62a", "635e5bb", "ff57fb8", "d472d02"]
     },
     "staged_inbox_out": "lib/inbox/out/172991_05-15-26/27250_1625_timestamp-naming-conventions-delivery-report.md",
-    "run_log": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
+    "run_log": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/run.log.jsonl",
     "verification_replay": {
       "command": "pnpm run check:phase0a",
       "result": "pass",
@@ -415,7 +415,7 @@
   },
   "review": {
     "verdict": "pass-with-conditions",
-    "report": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+    "report": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
     "implement_commit": "7d7b62a",
     "block_findings": 0,
     "warn_findings": 2,
@@ -442,9 +442,9 @@
     "citations": [
       {
         "kind": "lines",
-        "path": "archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
+        "path": ".pan/archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md",
         "range": [1, 59],
-        "contentHash": "4c34a77"
+        "contentHash": "3267af9"
       },
       {
         "kind": "lines",

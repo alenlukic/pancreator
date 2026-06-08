@@ -3,5 +3,5 @@ description: When the `feature-delivery` pipeline reaches the `report` stage, th
 globs:
   - lib/inbox/out/**/*.md
   - lib/memory/features/**/delivery-report.md
-  - work/**/delivery-report.md
+  - .pan/work/**/delivery-report.md
 alwaysApply: false

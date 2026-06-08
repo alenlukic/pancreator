@@ -11,19 +11,19 @@ purpose: |
   unresolved noun.
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [250, 289]
-    contentHash: acca2e3
+    contentHash: 2eb6aa4
     note: "PRD §4 — Core Concepts (Glossary). Mirrored and extended here."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [908, 966]
-    contentHash: 0c3ffe7
+    contentHash: 2eb6aa4
     note: "PRD §8 — Memory Architecture (memory-tier nouns)."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [858, 905]
-    contentHash: 30f1a10
+    contentHash: 2eb6aa4
     note: "PRD §7 — Intervention Conventions (lever vocabulary)."
 related:
   - /lib/memory/handbook/persona-spec.md
@@ -84,7 +84,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   verification (lint, typecheck, compliance suite, and tests), performs manual
   verification proportional to the touch-set, applies straightforward fixes
   (typos, lint autofixes, missing citations), and emits
-  `/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict. When
+  `/.pan/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict. When
   `qa_passes: false`, routes re-entry to `implement` with a compact must-fix
   list. Canonical spec: `lib/personas/qa-tester.md`. See PRD §6 line 519 and
   PRD §7 lines 675–678.
@@ -120,7 +120,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   persona stops expanding context, emits a bounded handoff card, and delegates
   execution to the next persona.
 - **Handoff card** — a compact Markdown artifact at
-  `work/<day>/<id>/handoff.md` that names the Feature id, stage, planner,
+  `.pan/work/<day>/<id>/handoff.md` that names the Feature id, stage, planner,
   executor, upstream artifact paths, in-scope paths, explicit non-goals,
   validation commands, known failures, blockers, and re-entry rule.
 - **Conflict Planner** — pre-fan-out planner persona. Builds an interference
@@ -279,14 +279,14 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `/lib/memory/backlog/`, `/lib/inbox/` (episodic), and the codebase itself.
 - **Memory tiers** — *procedural* (`/lib/memory/handbook/`, `/lib/personas/`,
   `/lib/personas/skills/` — the rules), *semantic* (`/lib/memory/adr|rfc|prd|runbooks/` — the
-  facts and decisions), *episodic* (`/lib/inbox/threads/`, `/work/*/*/run.log.jsonl`
+  facts and decisions), *episodic* (`/lib/inbox/threads/`, `/.pan/work/*/*/run.log.jsonl`
   — the experiences).
 - **active-memory** — the short-term operator-facing tier under `lib/memory/active/`
   that holds concise summaries and pointers; canonical policy lives at
   `/lib/memory/handbook/memory-tiers.md`.
 - **durable-memory** — long-term ratified memory under `lib/memory/features/`,
   `lib/memory/adr/`, and `lib/memory/backlog/` loaded by explicit route.
-- **archival-memory** — historical execution artifacts under `work/`,
+- **archival-memory** — historical execution artifacts under `.pan/work/`,
   `lib/inbox/out/`, and `lib/inbox/threads/` treated as explicit-read by default.
 - **internal-operating-content** — handbook pages, persona specs, skills,
   Cursor rules, and Cursor agent mirrors loaded by narrow routes rather than
@@ -298,7 +298,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   live in `AGENTS.md` (self-host, explicit-read) or `.pancreator/AGENTS.md`
   (embedded). Policy: `lib/memory/adr/0008-external-vs-internal-surfaces.md`.
 - **internal surface** — repository paths used to plan and build Pancreator
-  itself, including root `AGENTS.md` (daedaline self-host), `docs/**`,
+  itself, including root `AGENTS.md` (daedaline self-host), `.docs/**`,
   `lib/memory/adr/`, `lib/memory/backlog/`, bootstrap feature specs, `tests/**`,
   and `client/`. Excluded from default semantic indexing; explicit-read when the
   task evolves Pancreator. Policy: `lib/memory/adr/0008-external-vs-internal-surfaces.md`.
@@ -370,7 +370,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   MCP Tools and Resources. Stdio in MVP; HTTP at M5.
 - **A2A (`@pancreator/a2a`)** — Linux-Foundation-hosted Agent-to-Agent v1.x.
   Each Pancreator org serves `/.well-known/agent-card.json`. M5+.
-- **Run-log** — append-only OTLP-encoded stream under `/work/<day>/<id>/run.log.jsonl`
+- **Run-log** — append-only OTLP-encoded stream under `/.pan/work/<day>/<id>/run.log.jsonl`
   carrying OpenInference primary attributes plus an OTel GenAI semconv parallel
   layer. The basis for Phoenix and Langfuse import.
 

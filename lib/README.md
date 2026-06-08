@@ -3,7 +3,7 @@
 `lib/` contains the agentic operating corpus and internal implementation surfaces.
 External operators enter through [`README.md`](../README.md) and
 [`OPERATION.md`](../OPERATION.md). Agent operating instructions live in
-`AGENTS.md` (explicit-read). Pancreator product docs: `docs/`.
+`AGENTS.md` (explicit-read). Pancreator product docs: `.docs/`.
 
 - `ensembles/` — future ensemble configurations.
 - `inbox/` — operator request/response queue and thread history.
@@ -11,5 +11,5 @@ External operators enter through [`README.md`](../README.md) and
 - `personas/` — canonical persona specifications.
 - `pipelines/` — pipeline DAG definitions.
 - `skills/` — reusable skill packs.
-- `work/` — active task workspaces only, including compact `handoff.md` cards for delegated execution.
+- `.pan/work/` — active task workspaces only, including compact `handoff.md` cards for delegated execution.
 - `internal/` — implementation packages, validation tools, and completed work archive.

@@ -1,6 +1,6 @@
 # @pancreator/run-logger
 
-JSONL run-log writing for Pancreator: one record per line under `/work/<day>/<task-id>/run.log.jsonl`, with types aligned to the handbook `run-log-schema` and OpenTelemetry GenAI + OpenInference attribute names.
+JSONL run-log writing for Pancreator: one record per line under `/.pan/work/<day>/<task-id>/run.log.jsonl`, with types aligned to the handbook `run-log-schema` and OpenTelemetry GenAI + OpenInference attribute names.
 
 ## Quickstart
 

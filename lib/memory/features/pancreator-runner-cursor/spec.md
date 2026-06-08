@@ -12,7 +12,7 @@ This feature folder captures Phase 2 delivery requirements for `@pancreator/runn
 ## Requirements
 - The package implementation MUST satisfy contract `pancreator.runner_cursor.package_shape` for `lib/internal/packages/@pancreator/runner-cursor/**`.
 - The package README Quickstart section MUST satisfy contract `pancreator.runner_cursor.readme_ergonomics`.
-- Work sequencing MUST preserve the docs/BOOTSTRAP.md Phase 2 dependency order position 13 of 20.
+- Work sequencing MUST preserve the .docs/BOOTSTRAP.md Phase 2 dependency order position 13 of 20.
 
 ## Non-Goals
 - Defining M2+ scope for new contract kinds.

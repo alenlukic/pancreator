@@ -38,7 +38,7 @@ describe("token-economy sample-audit", () => {
   it("classifyProductionFindings detects forbidden PRD read", () => {
     const findings = classifyProductionFindings({
       task_id: "53589_test",
-      tool_paths: ["docs/PRD.md"],
+      tool_paths: [".docs/PRD.md"],
       trace_records: [],
     });
     expect(findings.some((f) => f.kind === "forbidden_path_read")).toBe(true);
@@ -49,7 +49,7 @@ describe("token-economy sample-audit", () => {
     const root = await import("node:fs/promises").then((fs) =>
       fs.mkdtemp(path.join(os.tmpdir(), "token-audit-")),
     );
-    const traceDir = path.join(root, "work", "172971_06-04-26", "task-a", "sdk-traces");
+    const traceDir = path.join(root, ".pan/work", "172971_06-04-26", "task-a", "sdk-traces");
     await mkdir(traceDir, { recursive: true });
     const summary = {
       schema_version: 1,
@@ -102,7 +102,7 @@ describe("token-economy sample-audit", () => {
           kind: "forbidden_path_read",
           complexity: "high",
           message: "forbidden",
-          path: "docs/PRD.md",
+          path: ".docs/PRD.md",
         },
       ],
       () => new Date("2026-06-04T12:00:00.000Z"),
@@ -124,8 +124,8 @@ describe("token-economy sample-audit", () => {
         {
           kind: "forbidden_path_read",
           complexity: "high",
-          message: "Read forbidden path: docs/PRD.md",
-          path: "docs/PRD.md",
+          message: "Read forbidden path: .docs/PRD.md",
+          path: ".docs/PRD.md",
         },
       ],
       () => new Date("2026-06-04T12:00:00.000Z"),

@@ -14,7 +14,7 @@ describe("readUtf8ForDualAnchor", () => {
   });
 
   it("returns undefined for a path outside the root", async () => {
-    const read = readUtf8ForDualAnchor("/tmp");
+    const read = readUtf8ForDualAnchor("/.tmp");
     expect(await read("/etc/passwd")).toBeUndefined();
   });
 });

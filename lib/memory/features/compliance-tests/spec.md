@@ -4,7 +4,7 @@ feature_id: compliance-tests
 status: delivery-reported
 next_owner: librarian
 next_stage: index
-source_inbox_item: archive/inbox/in/172991_05-15-26/68576_0457_compliance-tests.md
+source_inbox_item: .pan/archive/inbox/in/172991_05-15-26/68576_0457_compliance-tests.md
 intake_round: 6
 approval_artifact: lib/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-06-human-approve.md
 prior_approval_artifact: lib/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-05-human-approve.md
@@ -13,19 +13,19 @@ rejection_artifact: lib/inbox/threads/172991_05-15-26/compliance-tests/68576_045
 delivery_report: lib/memory/features/compliance-tests/delivery-report.md
 references:
   - kind: lines
-    path: archive/inbox/in/172991_05-15-26/68576_0457_compliance-tests.md
+    path: .pan/archive/inbox/in/172991_05-15-26/68576_0457_compliance-tests.md
     range: [1, 10]
-    contentHash: d1c2765
+    contentHash: 043a226
     note: Human directive that defines compliance-test scope and severity routing.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [633, 649]
-    contentHash: 6a838ec
+    contentHash: 2eb6aa4
     note: Intake-stage loop cap and human-approval gate constraints.
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [222, 235]
-    contentHash: aae7388
+    contentHash: c70da7c
     note: Feature-folder and Spec Kit v0.8 path conventions.
   - kind: lines
     path: lib/inbox/threads/172991_05-15-26/compliance-tests/68576_0457_round-01.md
@@ -61,7 +61,7 @@ references:
 
 # Spec
 
-This spec canonicalizes the `archive/inbox/in/172991_05-15-26/68576_0457_compliance-tests.md` directive into a
+This spec canonicalizes the `.pan/archive/inbox/in/172991_05-15-26/68576_0457_compliance-tests.md` directive into a
 governed compliance-test capability for Pancreator. The round-04 rejection
 artifact reopened this feature for plan-stage remediation, the round-05
 approval artifact ratified remediation closure, and the round-06 approval

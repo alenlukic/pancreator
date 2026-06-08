@@ -5,7 +5,7 @@ Feature id: `repository-layout-restructure-and-archive-migration`
 
 ## Delivery summary
 
-This feature completed the repository topology migration to the post-restructure layout. The canonical archive tree now lives under `archive/`, active run workspaces live under `work/`, and the source tree has been consolidated under `lib/`. The delivery also retired the `-standard` and `-complex` agent variants, removed the obsolete subagent tier policy file, and updated the affected runtime, docs, rules, tests, and tooling references to the new paths.
+This feature completed the repository topology migration to the post-restructure layout. The canonical archive tree now lives under `.pan/archive/`, active run workspaces live under `.pan/work/`, and the source tree has been consolidated under `lib/`. The delivery also retired the `-standard` and `-complex` agent variants, removed the obsolete subagent tier policy file, and updated the affected runtime, docs, rules, tests, and tooling references to the new paths.
 
 ## Validation status
 

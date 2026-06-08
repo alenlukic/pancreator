@@ -36,7 +36,7 @@ describe("model escalation resolver", () => {
     const loaded = {
       activeConfigName: "test",
       config: parseModelEscalationFile(TEST_CONFIG).configs.test!,
-      filePath: "/tmp/config.yaml",
+      filePath: "/.tmp/config.yaml",
     };
     expect(resolveEffectiveModel(loaded, "coder", 0).model).toBe("model-default");
     expect(resolveEffectiveModel(loaded, "coder", 1).model).toBe("model-default");
@@ -50,7 +50,7 @@ describe("model escalation resolver", () => {
     const loaded = {
       activeConfigName: "test",
       config: parseModelEscalationFile(TEST_CONFIG).configs.test!,
-      filePath: "/tmp/config.yaml",
+      filePath: "/.tmp/config.yaml",
     };
     const chain = buildFallbackChain(loaded, "coder", 3, "model-tier-3");
     expect(chain).toEqual(["model-default", "model-tier-4", "auto"]);
@@ -84,7 +84,7 @@ describe("isModelIssue", () => {
       isModelIssue({
         status: "error",
         errorMessage: "required artifacts missing",
-        missingArtifacts: ["work/demo/plan.md"],
+        missingArtifacts: [".pan/work/demo/plan.md"],
       }),
     ).toBe(false);
   });

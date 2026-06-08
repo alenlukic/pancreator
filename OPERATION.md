@@ -3,13 +3,13 @@
 Procedure for inbox workflow, feature delivery, the `pan` CLI, and pre-close
 validation. This file is for **human operators** only. Agent operating
 instructions live in `AGENTS.md` (self-host) or `.pancreator/AGENTS.md`
-(embedded). Product spec and bootstrap history: `docs/` (internal; explicit-read).
+(embedded). Product spec and bootstrap history: `.docs/` (internal; explicit-read).
 
 ## Inbox lifecycle
 
 `lib/inbox/` is gitignored local storage for transient operator ↔ org comms.
 Fresh workspaces materialize queue directories on first use (`pan init` or
-`pan intake new`). Archive completed inbound items to `archive/inbox/in/` when
+`pan intake new`). Archive completed inbound items to `.pan/archive/inbox/in/` when
 policy requires a durable copy.
 
 1. Author new directives under `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
@@ -53,7 +53,7 @@ policy requires a durable copy.
 
 4. Archive and thread semantics follow `lib/memory/handbook/inbox-lifecycle.md`.
    Runtime archive automation remains backlog-deferred; move responded items manually
-   to `archive/inbox/in/` when policy requires archival.
+   to `.pan/archive/inbox/in/` when policy requires archival.
 
 ## Feature delivery loop
 
@@ -76,13 +76,14 @@ auto-advances when validation passes—human gates are not paused between stages
 
 When `feature_delivery.design_steps: true` in `pancreator.yaml` (default off),
 or when the feature `spec.md` frontmatter sets `design_steps: true` (overrides
-the repo default), the plan and test stages add companion `design-engineer`
-delegation:
+the repo default), the plan and test stages add companion design delegation.
+`design-engineer` is the plan-stage peer of `tech-lead`; `design-reviewer` is the
+test-stage peer of `qa-tester`:
 
 - **Plan:** delegate `/design-engineer` with `design-plan-prompt.md` first to
   emit `lib/memory/features/<id>/ux-spec.md`, then delegate `/tech-lead` with
   `next-prompt.md` to consolidate the ux-spec into the plan bundle.
-- **Test:** delegate `/qa-tester` and `/design-engineer` in parallel (`next-prompt.md`
+- **Test:** delegate `/qa-tester` and `/design-reviewer` in parallel (`next-prompt.md`
   and `design-qa-prompt.md`). The test gate requires both `qa_passes: true` and
   `design_qa_passes: true` before advance.
 
@@ -134,7 +135,7 @@ after the final `complete` state.
 
 ### Post-invocation state machine
 
-Invocation creates `work/<day>/<task-id>/state.json`, `handoff.md`,
+Invocation creates `.pan/work/<day>/<task-id>/state.json`, `handoff.md`,
 `next-prompt.md`, and `run.log.jsonl`. Initial state is `ready_for_intake_delegation`
 with `currentStage: intake`.
 
@@ -180,7 +181,7 @@ Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
 5. When cumulative `must_fix`, `qa_fails`, and `compliance_fails` retries exceed 5, the run halts with
    `status: halted` and one timestamp-prefixed file under
    `lib/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
-6. When the run reaches `complete`, the runtime writes `work/<day>/<task-id>/pipeline-close.md`
+6. When the run reaches `complete`, the runtime writes `.pan/work/<day>/<task-id>/pipeline-close.md`
    (outcome summary, residual issues, operator next steps) and
    `operator-verification.md` (acceptance criteria and manual test flows scaffold).
    Review both files before archival closure.
@@ -270,7 +271,7 @@ Flags:
 - `--merge-branch <name>` — integration branch (default: `pan/batch-<batchId>/integration`).
 - `--dry-run` — print planned branches, parallelism, and inbox order; exit zero without starting sub-runs.
 
-Batch ledger: `work/<day>/batch-<batchId>/batch.json`. Sub-run branches:
+Batch ledger: `.pan/work/<day>/batch-<batchId>/batch.json`. Sub-run branches:
 `pan/batch-<batchId>/<task-id>`. Worktrees: `.pan/worktrees/<task-id>/`.
 
 When `PAN_FD_PROGRESS=ndjson` is set, batch-level progress events
@@ -288,7 +289,7 @@ For ad-hoc work that does not use the feature-delivery ledger:
 
 1. Check `lib/memory/active/current.md` for active pointers.
 2. Put requests in `lib/inbox/in/` when they need org tracking.
-3. Separate planning from execution: use `work/<day>/<task-id>/handoff.md`,
+3. Separate planning from execution: use `.pan/work/<day>/<task-id>/handoff.md`,
    then delegate to the owning persona (see `AGENTS.md` §4).
 4. Stage local diffs and ratify at phase boundaries before commit.
 
@@ -305,30 +306,30 @@ docs, commit messages, agent transcripts) **outside** feature-delivery gates:
 
    Optional flags:
 
-   - `--workspace sandbox/<slug>` — output directory (default: `sandbox/context-review`)
+   - `--workspace .sandbox/<slug>` — output directory (default: `.sandbox/context-review`)
    - `--scope-path <repo-path>` — repeat for diff scope
    - `--context-path <repo-path>` — repeat for plan/spec/ADR docs to read
-   - `--run-dir work/<day>/<slug>` — optionally pull touch-set and run artifacts when that directory exists
+   - `--run-dir .pan/work/<day>/<slug>` — optionally pull touch-set and run artifacts when that directory exists
 
-2. Delegate `/context-reviewer` with `sandbox/<slug>/context-review-prompt.md`
+2. Delegate `/context-reviewer` with `.sandbox/<slug>/context-review-prompt.md`
    (or operator-authored scope in chat).
-3. Read `sandbox/<slug>/context-review.md` (advisory only).
+3. Read `.sandbox/<slug>/context-review.md` (advisory only).
 
 The SDK and `pan advance` never auto-invoke context review. In-band review and
 QA remain the `reviewer` and `qa-tester` pipeline stages.
 
-### Operator sandbox (`sandbox/`)
+### Operator sandbox (`.sandbox/`)
 
-Top-level `sandbox/` is gitignored scratch space for manual QA, exploratory
+Top-level `.sandbox/` is gitignored scratch space for manual QA, exploratory
 testing, and out-of-band context review. It is distinct from `.pan/sandboxes/`
 (port-registry control plane) and `lib/inbox/notes/` (human-only; agents must
 not read).
 
 Recommended layouts:
 
-- `sandbox/context-review/` — default out-of-band review workspace
-- `sandbox/<slug>/` — ad-hoc QA or review passes
-- `sandbox/<task-id>/` — optional copy of an in-flight run touch-set
+- `.sandbox/context-review/` — default out-of-band review workspace
+- `.sandbox/<slug>/` — ad-hoc QA or review passes
+- `.sandbox/<task-id>/` — optional copy of an in-flight run touch-set
 
 Prepare a sandbox copy from an in-flight run touch-set (optional convenience):
 
@@ -336,14 +337,14 @@ Prepare a sandbox copy from an in-flight run touch-set (optional convenience):
 pnpm -w exec pan sandbox prepare <task-id>
 ```
 
-This writes `sandbox/<task-id>/manifest.json` listing copied paths. Use the
+This writes `.sandbox/<task-id>/manifest.json` listing copied paths. Use the
 sandbox tree for destructive checks, browser flows, or one-off scripts instead
 of mutating the main worktree.
 
 Pancreator self-development (internal surface only): read root `AGENTS.md`, then
-route through `docs/PRD.summary.md` and `docs/PRD.index.md` before full
-`docs/PRD.md` or `docs/BOOTSTRAP.md`. The entire `docs/` tree, including
-`docs/README.md`, is explicit-read and excluded from default semantic indexing.
+route through `.docs/PRD.summary.md` and `.docs/PRD.index.md` before full
+`.docs/PRD.md` or `.docs/BOOTSTRAP.md`. The entire `.docs/` tree, including
+`.docs/README.md`, is explicit-read and excluded from default semantic indexing.
 
 ## Self-host developer setup
 
@@ -420,7 +421,7 @@ Ad-hoc and recovery verbs:
 
 | Verb | When | Command |
 |---|---|---|
-| Ad-hoc close | Build-mode workspace with verification pack | `pnpm -w exec pan close-out-of-band work/<day>/<task-id> --feature <id> --reason "<text>"` |
+| Ad-hoc close | Build-mode workspace with verification pack | `pnpm -w exec pan close-out-of-band .pan/work/<day>/<task-id> --feature <id> --reason "<text>"` |
 | Context review (advisory) | Holistic diff + transcript correctness pass (no task id) | `pnpm -w exec pan context-review scaffold` then delegate `/context-reviewer` |
 | Sandbox prepare | Copy touch-set into isolated QA tree | `pnpm -w exec pan sandbox prepare <task-id>` |
 | Reopen | Post-close verification failed | `pnpm -w exec pan reopen <task-id> --reason "<text>" [--stage <stage>]` |
@@ -443,7 +444,7 @@ pnpm -w exec pan pause <task-id>
 pnpm -w exec pan resume <task-id>
 pnpm -w exec pan abort <task-id> --reason "superseded or unsafe"
 pnpm -w exec pan repair-state <task-id> --stage review \
-  --artifact work/<day>/<task-id>/review.md \
+  --artifact .pan/work/<day>/<task-id>/review.md \
   --reason "out-of-band work reached review before advance"
 pnpm -w exec pan reopen <task-id> --reason "Operator verification failed after close"
 ```
@@ -497,7 +498,7 @@ Cockpit Run now calls the same tick primitive for a single id via
 - **Agents never open pull requests.** No agent or subagent runs `gh pr create`,
   `git push`, or otherwise publishes a remote PR; those steps are human-operator
   actions only.
-- Optional: invoke `/pr-writer` with a feature ID or `work/<day>/<task-id>/` path to
+- Optional: invoke `/pr-writer` with a feature ID or `.pan/work/<day>/<task-id>/` path to
   draft a GitHub PR body from pipeline artifacts and the current git worktree.
   Output is one fenced Markdown block in chat for operator paste into
   `gh pr create --body-file`; the agent does not run `gh` on your behalf.
@@ -542,9 +543,9 @@ local quality gates for this repository.
 | Bare `pan` command fails | CLI not on PATH | Use `pnpm -w exec pan …` per `lib/memory/handbook/pancreator-config.md` |
 | Active memory drift | Skipped refresh | `pnpm -w exec pan refresh-active-memory --dry-run` then apply |
 | Operator-output lint fails | Bare `pan` in runnable block | Run `node lib/internal/tools/check-operator-output.mjs` and fix cited paths |
-| `close-artifacts` fails: missing operator-verification.md | Verification pack not authored at complete | Finalize `work/<day>/<task-id>/operator-verification.md` (scaffold lands at `complete`); then rerun `pnpm -w exec pan close-artifacts <task-id>`. |
-| `close-artifacts` fails: active run directory missing or archive already exists | Librarian archived `work/` during index instead of waiting for `close-artifacts` | Do not manually `mv` work directories; run `pnpm -w exec pan close-artifacts <task-id>` only at `complete`. When work is already under `archive/work/`, closure finalizes state idempotently. |
-| Completed runs still under `work/` while peers are in `archive/work/` | `close-artifacts` skipped after `complete`, or superseded retry task dirs left behind | Run `pnpm -w exec pan check` and resolve `work-archive-hygiene` findings: `close-artifacts` each `complete` run (canonical task first when duplicates share a feature); superseded duplicates MAY close after inbox is already archived. |
+| `close-artifacts` fails: missing operator-verification.md | Verification pack not authored at complete | Finalize `.pan/work/<day>/<task-id>/operator-verification.md` (scaffold lands at `complete`); then rerun `pnpm -w exec pan close-artifacts <task-id>`. |
+| `close-artifacts` fails: active run directory missing or archive already exists | Librarian archived `.pan/work/` during index instead of waiting for `close-artifacts` | Do not manually `mv` work directories; run `pnpm -w exec pan close-artifacts <task-id>` only at `complete`. When work is already under `.pan/archive/work/`, closure finalizes state idempotently. |
+| Completed runs still under `.pan/work/` while peers are in `.pan/archive/work/` | `close-artifacts` skipped after `complete`, or superseded retry task dirs left behind | Run `pnpm -w exec pan check` and resolve `work-archive-hygiene` findings: `close-artifacts` each `complete` run (canonical task first when duplicates share a feature); superseded duplicates MAY close after inbox is already archived. |
 | `advance` rejects delivery-report citation lint | JS-literal or compact inline citations in `delivery-report.md` | Run `node lib/internal/tools/reformat-markdown-citations.mjs` and follow `lib/memory/handbook/contract-templates/delivery-report.template.md` |
 
 For deferred CLI verbs, read the JSON envelope (`milestone`, `tracking_intake`,

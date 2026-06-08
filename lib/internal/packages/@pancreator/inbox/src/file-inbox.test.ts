@@ -29,7 +29,7 @@ describe("FileInbox", () => {
   });
 
   it("rejects path traversal", async () => {
-    const inbox = new FileInbox("/tmp");
+    const inbox = new FileInbox("/.tmp");
     await expect(inbox.writeOutFile("../escape.md", "x")).rejects.toThrow(/dot segments|queue root/u);
   });
 });

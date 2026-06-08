@@ -10,18 +10,18 @@
     {
       "role": "delivery-report",
       "path": "lib/memory/features/inbox-convention-migration/delivery-report.md",
-      "contentHash": "40cc354",
+      "contentHash": "e43d7e8",
       "status": "accepted"
     },
     {
       "role": "implementation-report",
-      "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+      "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
       "contentHash": "c5ca8b5",
       "status": "accepted"
     },
     {
       "role": "review",
-      "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+      "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
       "contentHash": "4d323f2",
       "status": "accepted",
       "verdict": "review_passes: true"

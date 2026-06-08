@@ -62,7 +62,7 @@ export function deferredToolTrackingIntake(name: DdlToolName): string {
 export function ddlToolEnvelope(name: DdlToolName, milestone: DdlDeferredEnvelope["milestone"]): DdlDeferredEnvelope {
   const workaroundByTool: Record<string, string> = {
     "pan.init":
-      "Bootstrap `pan init` remains deferred pending install-path convergence; scaffold the substrate manually via `docs/M1.index.md` and adopt flows until the wired command lands.",
+      "Bootstrap `pan init` remains deferred pending install-path convergence; scaffold the substrate manually via `.docs/M1.index.md` and adopt flows until the wired command lands.",
     "pan.run":
       "Only the `feature-delivery` pipeline is executable in bootstrap Phase 4; start runs with `pan feature new <inbox-path>` followed by persona-driven `pan advance` staging.",
     "pan.feature":
@@ -70,7 +70,7 @@ export function ddlToolEnvelope(name: DdlToolName, milestone: DdlDeferredEnvelop
     "pan.status":
       "Provide a Phase-4 task id to `pan status <task-id>` until aggregate workspace summaries are modeled for the MCP tool.",
     "pan.approve":
-      "`pan approve` stays gated on `LocalUserAuthorizer` wiring in Milestone 3 ratification; approve phase exits manually inside the supervising operator session documented in docs/PRD.md.",
+      "`pan approve` stays gated on `LocalUserAuthorizer` wiring in Milestone 3 ratification; approve phase exits manually inside the supervising operator session documented in .docs/PRD.md.",
     "pan.memory":
       "Prefer reading `lib/memory/handbook/context-economy.md` plus explicit file reads until MemoryRouter/FileMemoryStore CLI bridging is hardened.",
     "pan.contracts":
@@ -84,7 +84,7 @@ export function ddlToolEnvelope(name: DdlToolName, milestone: DdlDeferredEnvelop
     tracking_intake: deferredToolTrackingIntake(name),
     manual_workaround:
       workaroundByTool[name] ??
-      "Follow the workaround text in docs/PRD.md for this MCP tool until parity wiring completes.",
+      "Follow the workaround text in .docs/PRD.md for this MCP tool until parity wiring completes.",
   });
 }
 
@@ -248,7 +248,7 @@ async function listInboxNestedFiles(absRoot: string): Promise<string[]> {
 
 /**
  * `memory://` lists `/lib/memory/<area>/` directory names. `inbox://` lists Inbox queue file names.
- * `work-run-log://<taskId>` returns `work/<day>/<taskId>/run.log.jsonl` as text when present.
+ * `work-run-log://<taskId>` returns `.pan/work/<day>/<taskId>/run.log.jsonl` as text when present.
  */
 export async function readPancreatorResource(
   uri: string,
@@ -292,7 +292,7 @@ export async function readPancreatorResource(
     const resolved = await findWorkFile(root, taskId, "run.log.jsonl");
     if (resolved === null) {
       throw new Error(
-        `Run log not found for task ${taskId} under work/<day>/${taskId}/run.log.jsonl or archive/work/<day>/${taskId}/run.log.jsonl`,
+        `Run log not found for task ${taskId} under .pan/work/<day>/${taskId}/run.log.jsonl or .pan/archive/work/<day>/${taskId}/run.log.jsonl`,
       );
     }
     const text = await readFile(resolved.abs, "utf8");

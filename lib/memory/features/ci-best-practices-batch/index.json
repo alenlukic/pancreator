@@ -65,7 +65,7 @@
     "verdict": "pass",
     "review_passes": true,
     "review_round": 2,
-    "artifact": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
+    "artifact": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 1,
@@ -85,7 +85,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
+      "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
       "range": [1, 32],
       "contentHash": "e7f4e1b"
     }
@@ -98,12 +98,12 @@
       "kind": "lines",
       "path": "lib/memory/features/ci-best-practices-batch/delivery-report.md",
       "range": [1, 239],
-      "contentHash": "f29112a"
+      "contentHash": "1ad4285"
     }
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -112,7 +112,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/policy-compliance.json",
+      "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/policy-compliance.json",
       "range": [1, 27],
       "contentHash": "c1dce47"
     }
@@ -126,7 +126,7 @@
       "kind": "lines",
       "path": "lib/memory/features/ci-best-practices-batch/delivery-report.md",
       "range": [168, 218],
-      "contentHash": "f29112a"
+      "contentHash": "1ad4285"
     }
   },
   "open_followups": [
@@ -137,7 +137,7 @@
       "reason": "refresh-citations.mjs and tests ship ready, but the repo-wide 501-placeholder sweep was not executed in implement; operator or librarian SHOULD run a controlled refresh pass after ratifying inbox immutability constraints.",
       "citation": {
         "kind": "lines",
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
         "range": [138, 141],
         "contentHash": "93d0ded"
       }
@@ -149,7 +149,7 @@
       "reason": "touch-set.json lists create-mcp-server.ts, canonical-json-format.mjs, and index.json with no material diff; future batches SHOULD keep only changed paths to reduce reviewer noise.",
       "citation": {
         "kind": "lines",
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
         "range": [15, 15],
         "contentHash": "e7f4e1b"
       }
@@ -163,7 +163,7 @@
         "kind": "lines",
         "path": "lib/memory/features/ci-best-practices-batch/spec.md",
         "range": [213, 226],
-        "contentHash": "22be0fb"
+        "contentHash": "bd3a193"
       }
     }
   ],
@@ -175,7 +175,7 @@
           "kind": "lines",
           "path": "lib/memory/features/ci-best-practices-batch/spec.md",
           "range": [1, 242],
-          "contentHash": "22be0fb"
+          "contentHash": "bd3a193"
         }
       },
       "delivery_report": {
@@ -184,7 +184,7 @@
           "kind": "lines",
           "path": "lib/memory/features/ci-best-practices-batch/delivery-report.md",
           "range": [1, 239],
-          "contentHash": "f29112a"
+          "contentHash": "1ad4285"
         }
       },
       "per_feature_index": {
@@ -193,88 +193,88 @@
           "kind": "lines",
           "path": "lib/memory/features/ci-best-practices-batch/index.json",
           "range": [1, 430],
-          "contentHash": "698d21d"
+          "contentHash": "322d7fa"
         }
       }
     },
     "pipeline_artifacts": {
       "plan": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/plan.md",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/plan.md",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/plan.md",
           "range": [1, 135],
           "contentHash": "6cf71f7"
         }
       },
       "adr_draft": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
           "range": [1, 71],
           "contentHash": "eeb30c3"
         }
       },
       "touch_set": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/touch-set.json",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/touch-set.json",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/touch-set.json",
           "range": [1, 104],
           "contentHash": "6b2384d"
         }
       },
       "implementation_report": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
           "range": [1, 172],
           "contentHash": "93d0ded"
         }
       },
       "review_report": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
           "range": [1, 32],
           "contentHash": "e7f4e1b"
         }
       },
       "policy_compliance": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/policy-compliance.json",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/policy-compliance.json",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/policy-compliance.json",
           "range": [1, 27],
           "contentHash": "c1dce47"
         }
       },
       "compliance_result": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/compliance-result.json",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/compliance-result.json",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/compliance-result.json",
           "range": [1, 50],
           "contentHash": "7639621"
         }
       },
       "handoff": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/handoff.md",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/handoff.md",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/handoff.md",
           "range": [1, 47],
           "contentHash": "19da64c"
         }
       },
       "run_log": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/run.log.jsonl",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/run.log.jsonl",
         "citation": {
           "kind": "lines",
-          "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/run.log.jsonl",
+          "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/run.log.jsonl",
           "range": [1, 9],
           "contentHash": "ba330a3"
         }
@@ -287,7 +287,7 @@
           "kind": "lines",
           "path": "package.json",
           "range": [1, 33],
-          "contentHash": "31789e8"
+          "contentHash": "22317d8"
         }
       },
       "ci_posture": {
@@ -300,7 +300,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/run-compliance.mjs",
           "range": [1, 330],
-          "contentHash": "42b2bac"
+          "contentHash": "0f247f2"
         }
       },
       "refresh_citations_tool": {
@@ -309,7 +309,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/refresh-citations.mjs",
           "range": [1, 371],
-          "contentHash": "eefffc5"
+          "contentHash": "ef8ac97"
         }
       },
       "mcp_read_handlers": {
@@ -354,7 +354,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/mcp-server/README.md",
           "range": [1, 65],
-          "contentHash": "178ab3e"
+          "contentHash": "41f0e19"
         }
       },
       "run_compliance_tests": {
@@ -363,7 +363,7 @@
           "kind": "lines",
           "path": "tests/run-compliance.test.mjs",
           "range": [1, 98],
-          "contentHash": "f65b545"
+          "contentHash": "9207935"
         }
       },
       "refresh_citations_tests": {
@@ -372,7 +372,7 @@
           "kind": "lines",
           "path": "tests/refresh-citations.test.mjs",
           "range": [1, 150],
-          "contentHash": "54b361c"
+          "contentHash": "e86f9f5"
         }
       },
       "repo_structure_smoke": {
@@ -381,7 +381,7 @@
           "kind": "lines",
           "path": "tests/repo-structure.test.mjs",
           "range": [1, 282],
-          "contentHash": "310eae3"
+          "contentHash": "ac25607"
         }
       },
       "compliance_auditor_persona": {
@@ -390,7 +390,7 @@
           "kind": "lines",
           "path": "lib/personas/compliance-auditor.md",
           "range": [1, 302],
-          "contentHash": "0544460"
+          "contentHash": "0c01eb2"
         }
       }
     },
@@ -405,9 +405,9 @@
         }
       },
       "active_work_dir": {
-        "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch",
+        "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch",
         "task_id": "24959_1704_ci-best-practices-batch",
-        "note": "Work remains under work/ until complete-stage pan close-artifacts archival."
+        "note": "Work remains under .pan/work/ until complete-stage pan close-artifacts archival."
       }
     }
   },

@@ -15,7 +15,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172971_06-04-26/19570_1833_build-mode-inbox-scaffolding.md",
@@ -48,7 +48,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+    "artifact": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 3,
@@ -57,14 +57,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+      "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
       "range": [1, 31],
       "contentHash": "ffd1366"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+    "artifact": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
     "verification_gates": {
       "intake_scaffold_vitest": "pass (8/8)",
       "intake_cli_filtered_vitest": "pass (6/6)",
@@ -76,19 +76,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+      "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
       "range": [1, 41],
       "contentHash": "78043df"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
+    "artifact": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
     "audit_id": "73472_0335_build-mode-inbox-scaffolding-20260605034700",
     "baseline_audit_id": "80200_1640_retire-governed-commit-20260604204500",
     "citation": {
       "kind": "lines",
-      "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
+      "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
       "range": [1, 161],
       "contentHash": "18d869d"
     }
@@ -100,13 +100,13 @@
       "kind": "lines",
       "path": "lib/memory/features/build-mode-inbox-scaffolding/delivery-report.md",
       "range": [1, 344],
-      "contentHash": "9cf2dfc"
+      "contentHash": "b0de635"
     },
-    "archived_inbox_source": "archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "ship_ratification_artifact": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
+    "ship_ratification_artifact": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
     "ratified_paths": [
       "OPERATION.md",
       "lib/internal/packages/@pancreator/cli/src/intake-scaffold.test.ts",
@@ -120,7 +120,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
+      "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
       "range": [1, 22],
       "contentHash": "e5130c1"
     }
@@ -133,7 +133,7 @@
       "reason": "Unstaged edits to lib/personas/supervisor.md, .cursor/rules/supervisor.mdc, .gitignore, and lib/memory/active/current.md sit outside touch-set.json; keep them out of the feature commit or ratify separately.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
         "range": [13, 13],
         "contentHash": "ffd1366"
       }
@@ -145,7 +145,7 @@
       "reason": "Branch build-mode-inbox-scaffolding has staged touch-set paths only; operator must commit ratified diff and push before opening a pull request.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
         "range": [9, 13],
         "contentHash": "e5130c1"
       }
@@ -157,7 +157,7 @@
       "reason": "intake-scaffold.ts and run.ts from-build-plan wiring verified without new production diff; only OPERATION.md and six vitest cases shipped in this run.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
         "range": [106, 109],
         "contentHash": "18d869d"
       }
@@ -169,7 +169,7 @@
       "reason": "Compliance exit bundle applied canonical JSON formatting to .vscode/settings.json to unblock pnpm test and node --test; confirm whether to commit or revert that local editor config.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
         "range": [101, 104],
         "contentHash": "18d869d"
       }
@@ -213,7 +213,7 @@
           "kind": "lines",
           "path": "lib/memory/features/build-mode-inbox-scaffolding/spec.md",
           "range": [1, 177],
-          "contentHash": "8820b46"
+          "contentHash": "d9cbd5e"
         }
       },
       "delivery_report": {
@@ -222,7 +222,7 @@
           "kind": "lines",
           "path": "lib/memory/features/build-mode-inbox-scaffolding/delivery-report.md",
           "range": [1, 344],
-          "contentHash": "9cf2dfc"
+          "contentHash": "b0de635"
         }
       },
       "per_feature_index": {
@@ -231,105 +231,105 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/"
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/"
       },
       "plan": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/plan.md",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/plan.md",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/plan.md",
           "range": [1, 21],
           "contentHash": "90d2a0f"
         }
       },
       "adr_draft": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
           "range": [1, 37],
           "contentHash": "18a396a"
         }
       },
       "touch_set": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/touch-set.json",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/touch-set.json",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/touch-set.json",
           "range": [1, 115],
           "contentHash": "bd1c1d8"
         }
       },
       "implementation_report": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/implementation-report.md",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/implementation-report.md",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/implementation-report.md",
           "range": [1, 90],
           "contentHash": "2ed6b7e"
         }
       },
       "review_report": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
           "range": [1, 31],
           "contentHash": "ffd1366"
         }
       },
       "test_report": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
           "range": [1, 41],
           "contentHash": "78043df"
         }
       },
       "compliance_result": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-result.json",
           "range": [1, 161],
           "contentHash": "18d869d"
         }
       },
       "compliance_audit": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-audit.md",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/compliance-audit.md",
         "note": "Compliance-auditor baseline-delta audit transcript."
       },
       "ship_ratification": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/ship-ratification.json",
           "range": [1, 22],
           "contentHash": "e5130c1"
         }
       },
       "handoff": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/handoff.md",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/handoff.md",
+          "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/handoff.md",
           "range": [1, 54],
           "contentHash": "5f7d929"
         }
       },
       "pipeline_close": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/pipeline-close.md"
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/pipeline-close.md"
       },
       "operator_verification": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/operator-verification.md"
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/operator-verification.md"
       },
       "run_log": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/run.log.jsonl",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/logs/",
+        "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/logs/",
         "note": "QA and compliance gate command transcripts."
       }
     },
@@ -350,7 +350,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/intake-scaffold.test.ts",
           "range": [1, 149],
-          "contentHash": "c504bcb"
+          "contentHash": "6514731"
         }
       },
       "cli_run_module": {
@@ -359,7 +359,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
           "range": [768, 829],
-          "contentHash": "b79761b"
+          "contentHash": "f31b63d"
         },
         "note": "from-build-plan subcommand wiring verified pre-existing."
       },
@@ -369,7 +369,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/run.test.ts",
           "range": [2220, 2274],
-          "contentHash": "2ddce8c"
+          "contentHash": "dd9e48d"
         }
       },
       "agents_obligation": {
@@ -378,7 +378,7 @@
           "kind": "lines",
           "path": "AGENTS.md",
           "range": [178, 189],
-          "contentHash": "9a785bd"
+          "contentHash": "b953d77"
         },
         "note": "Build-mode inbox scaffolding clause verified accurate; no diff in this run."
       },
@@ -388,7 +388,7 @@
           "kind": "lines",
           "path": "OPERATION.md",
           "range": [21, 45],
-          "contentHash": "1f5330b"
+          "contentHash": "a91d661"
         }
       },
       "repo_structure_test": {
@@ -398,7 +398,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md",
+        "path": ".pan/archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172971_06-04-26/19570_1833_build-mode-inbox-scaffolding.md",
@@ -417,9 +417,9 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172971_06-04-26/19570_1833_build-mode-inbox-scaffolding.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/19570_1833_build-mode-inbox-scaffolding.md"
 }

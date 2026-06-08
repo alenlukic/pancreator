@@ -34,7 +34,7 @@ and Slice B.
 ```json
 {
   "kind": "lines",
-  "path": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
+  "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
   "range": [13, 16],
   "contentHash": "514098b"
 }
@@ -43,7 +43,7 @@ and Slice B.
 ```json
 {
   "kind": "lines",
-  "path": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+  "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
   "range": [3, 4],
   "contentHash": "bd00fb1"
 }
@@ -59,13 +59,13 @@ Markdown/terminal/agent-chat surfaces beyond the prior repo-file-only scope.
     "kind": "lines",
     "path": "tests/compliance/json-formatting.yaml",
     "range": [1, 35],
-    "contentHash": "c2a76e8"
+    "contentHash": "9bfc441"
   }
   ```
   ```json
   {
     "kind": "lines",
-    "path": "work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
+    "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
     "range": [47, 58],
     "contentHash": "61ffd6b"
   }
@@ -77,7 +77,7 @@ extension, test and fixture additions.
   ```json
   {
     "kind": "lines",
-    "path": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
+    "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
     "range": [18, 35],
     "contentHash": "514098b"
   }
@@ -88,7 +88,7 @@ passes each reported zero rewrites, confirming idempotency without side effects.
   ```json
   {
     "kind": "lines",
-    "path": "work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
+    "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/implementation-report.md",
     "range": [40, 65],
     "contentHash": "514098b"
   }
@@ -96,7 +96,7 @@ passes each reported zero rewrites, confirming idempotency without side effects.
   ```json
   {
     "kind": "lines",
-    "path": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+    "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
     "range": [38, 52],
     "contentHash": "bd00fb1"
   }
@@ -107,7 +107,7 @@ glossary and writers normalize stored abbreviated `contentHash` per operator dir
   ```json
   {
     "kind": "lines",
-    "path": "work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
+    "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
     "range": [55, 57],
     "contentHash": "61ffd6b"
   }
@@ -117,7 +117,7 @@ glossary and writers normalize stored abbreviated `contentHash` per operator dir
     "kind": "lines",
     "path": "lib/memory/features/json-formatting/spec.md",
     "range": [149, 163],
-    "contentHash": "224781e"
+    "contentHash": "821d09c"
   }
   ```
 
@@ -132,7 +132,7 @@ abbreviation length decisions.
     "kind": "lines",
     "path": "lib/internal/tools/canonical-json-format.mjs",
     "range": [25, 55],
-    "contentHash": "5c12707"
+    "contentHash": "d5221ed"
   }
   ```
 - `abbreviateHashes(root, abbrevLen)` deep-clones the value tree and shortens `contentHash`
@@ -143,7 +143,7 @@ fields accept SHA-256 or SHA-1 lengths; other fields accept any full-length hex 
     "kind": "lines",
     "path": "lib/internal/tools/canonical-json-format.mjs",
     "range": [99, 127],
-    "contentHash": "5c12707"
+    "contentHash": "d5221ed"
   }
   ```
 - `formatCanonicalJson(value, depth)` emits canonical pretty-print: 2-space indent, one object
@@ -154,7 +154,7 @@ expanded to multiline form.
     "kind": "lines",
     "path": "lib/internal/tools/canonical-json-format.mjs",
     "range": [134, 152],
-    "contentHash": "5c12707"
+    "contentHash": "d5221ed"
   }
   ```
 - `rewriteJsonText(text, abbrevLen)` composes parse → `abbreviateHashes` → `formatCanonicalJson`
@@ -165,7 +165,7 @@ second pass on already-canonical output returns `changed: false`.
     "kind": "lines",
     "path": "lib/internal/tools/canonical-json-format.mjs",
     "range": [218, 224],
-    "contentHash": "5c12707"
+    "contentHash": "d5221ed"
   }
   ```
 - CLI `stringifyCliJson(repoRoot, value)` in `@pancreator/cli/lib/canonical-json-io.ts` is the
@@ -188,7 +188,7 @@ serialize all `pan` terminal output and `state.json` writes.
     "kind": "lines",
     "path": "lib/internal/tools/migrate-json-formatting.mjs",
     "range": [126, 153],
-    "contentHash": "081c2c1"
+    "contentHash": "e6fe339"
   }
   ```
   ```json
@@ -196,7 +196,7 @@ serialize all `pan` terminal output and `state.json` writes.
     "kind": "lines",
     "path": "lib/internal/tools/migrate-json-formatting.mjs",
     "range": [214, 226],
-    "contentHash": "081c2c1"
+    "contentHash": "e6fe339"
   }
   ```
 
@@ -210,13 +210,13 @@ complexity.
     "kind": "lines",
     "path": "lib/memory/features/json-formatting/spec.md",
     "range": [140, 144],
-    "contentHash": "224781e"
+    "contentHash": "821d09c"
   }
   ```
   ```json
   {
     "kind": "lines",
-    "path": "work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
+    "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
     "range": [54, 55],
     "contentHash": "61ffd6b"
   }
@@ -229,13 +229,13 @@ stays bounded while a follow-on feature remains queued.
     "kind": "lines",
     "path": "lib/memory/features/json-formatting/spec.md",
     "range": [149, 163],
-    "contentHash": "224781e"
+    "contentHash": "821d09c"
   }
   ```
   ```json
   {
     "kind": "lines",
-    "path": "work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
+    "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/adr-draft.md",
     "range": [64, 70],
     "contentHash": "61ffd6b"
   }
@@ -247,7 +247,7 @@ sandboxed or CI runs at the cost of one explicit operator action per write execu
     "kind": "lines",
     "path": "lib/internal/tools/migrate-json-formatting.mjs",
     "range": [178, 186],
-    "contentHash": "081c2c1"
+    "contentHash": "e6fe339"
   }
   ```
 - The write-loop acceptance is technically vacuous for this run because Slice A normalization
@@ -257,7 +257,7 @@ for future runs.
   ```json
   {
     "kind": "lines",
-    "path": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+    "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
     "range": [64, 68],
     "contentHash": "bd00fb1"
   }
@@ -291,7 +291,7 @@ independent write passes.
 ```json
 {
   "kind": "lines",
-  "path": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+  "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
   "range": [19, 29],
   "contentHash": "bd00fb1"
 }
@@ -332,7 +332,7 @@ independent write passes.
 ```json
 {
   "kind": "lines",
-  "path": "work/172983_05-23-26/67055_0522_json-formatting/review.md",
+  "path": ".pan/work/172983_05-23-26/67055_0522_json-formatting/review.md",
   "range": [7, 17],
   "contentHash": "bd00fb1"
 }

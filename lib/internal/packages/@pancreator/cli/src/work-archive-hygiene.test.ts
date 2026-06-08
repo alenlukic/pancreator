@@ -33,8 +33,8 @@ afterEach(async () => {
 async function mkRepo(): Promise<string> {
   const root = await fsMkdtemp();
   tempRoots.push(root);
-  await mkdir(path.join(root, "work"), { recursive: true });
-  await mkdir(path.join(root, "archive", "work"), { recursive: true });
+  await mkdir(path.join(root, ".pan/work"), { recursive: true });
+  await mkdir(path.join(root, ".pan/archive", "work"), { recursive: true });
   await mkdir(path.join(root, "lib", "inbox", "in"), { recursive: true });
   return root;
 }
@@ -51,7 +51,7 @@ async function writeCompleteRun(
   featureId: string,
   inboxRel: string,
 ): Promise<void> {
-  const runDir = path.join(root, "work", dayDir, taskId);
+  const runDir = path.join(root, ".pan/work", dayDir, taskId);
   await mkdir(runDir, { recursive: true });
   await writeFile(
     path.join(runDir, "state.json"),
@@ -62,7 +62,7 @@ async function writeCompleteRun(
       currentStage: "complete",
       status: "complete",
       source: { inboxPath: inboxRel },
-      artifacts: { runDir: path.posix.join("work", dayDir, taskId) },
+      artifacts: { runDir: path.posix.join(".pan/work", dayDir, taskId) },
     }),
     "utf8",
   );
@@ -72,7 +72,7 @@ async function writeCompleteRun(
 }
 
 describe("scanWorkArchiveHygiene", () => {
-  it("flags complete runs that remain under work/", async () => {
+  it("flags complete runs that remain under .pan/work/", async () => {
     const root = await mkRepo();
     const dayDir = "172971_06-04-26";
     const taskId = "10000_1200_demo-feature";
@@ -108,7 +108,7 @@ describe("scanWorkArchiveHygiene", () => {
 
   it("accepts compliance-audit workspaces without state.json", async () => {
     const root = await mkRepo();
-    const taskDir = path.join(root, "work", "172971_06-04-26", "80200_1640_retire-governed-commit");
+    const taskDir = path.join(root, ".pan/work", "172971_06-04-26", "80200_1640_retire-governed-commit");
     await mkdir(taskDir, { recursive: true });
     await writeFile(path.join(taskDir, "compliance-audit.md"), "# Audit\n", "utf8");
     await writeFile(
@@ -123,7 +123,7 @@ describe("scanWorkArchiveHygiene", () => {
 
   it("accepts out-of-band work directories without state.json", async () => {
     const root = await mkRepo();
-    const taskDir = path.join(root, "work", "172971_06-04-26", "99999_manual_audit");
+    const taskDir = path.join(root, ".pan/work", "172971_06-04-26", "99999_manual_audit");
     await mkdir(taskDir, { recursive: true });
     await writeFile(
       path.join(taskDir, "out-of-band.manifest.json"),

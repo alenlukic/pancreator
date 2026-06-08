@@ -13,19 +13,19 @@ purpose: |
   `author-contract` skill and for `reviewer`'s Phase 4 contract pass.
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [260, 260]
-    contentHash: cabf0e8
+    contentHash: 2eb6aa4
     note: "PRD §4 glossary — Spec Contract definition."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [839, 839]
-    contentHash: 7a4bcdb
+    contentHash: 2eb6aa4
     note: "PRD §7 — `Spec contracts are gates, not suggestions` paragraph."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1190, 1190]
-    contentHash: d8c1899
+    contentHash: 2eb6aa4
     note: "PRD §13 R11 — spec-contract over-fitting risk."
 related:
   - /lib/memory/handbook/glossary.md
@@ -330,7 +330,7 @@ Refusal opens a kind-promotion ADR.
 
 A clause MUST NOT gate the file it is authored in. A clause MUST NOT gate
 its own owner persona's spec file. Both rules mitigate the BR1 / BR2 risks
-in `docs/BOOTSTRAP.md`.
+in `.docs/BOOTSTRAP.md`.
 
 ## 5 — Layer 5: repo-level governance
 

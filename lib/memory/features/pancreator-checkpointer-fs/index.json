@@ -36,7 +36,7 @@
       "kind": "lines",
       "path": "lib/memory/features/pancreator-checkpointer-fs/delivery-report.md",
       "range": [1, 35],
-      "contentHash": "96fd541"
+      "contentHash": "a72e752"
     }
   },
   "artifact_index": {
@@ -47,7 +47,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-checkpointer-fs/spec.md",
           "range": [1, 23],
-          "contentHash": "dc3ae13"
+          "contentHash": "645b2b5"
         }
       },
       "delivery_report": {
@@ -56,7 +56,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-checkpointer-fs/delivery-report.md",
           "range": [1, 35],
-          "contentHash": "96fd541"
+          "contentHash": "a72e752"
         }
       },
       "per_feature_index": {

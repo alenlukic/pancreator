@@ -3,20 +3,18 @@
 # Explicit @-mentions and intentional reads still reach excluded paths.
 
 # Active and archived run artifacts
-work/**
-archive/work/**
+.pan/work/**
+.pan/archive/work/**
 lib/inbox/**
-archive/inbox/**
+.pan/archive/inbox/**
 
-# Internal product and self-development surfaces (entire docs/ tree, including docs/README.md)
-docs/**
-docs/README.md
+# Internal product and self-development surfaces (entire .docs/ tree, including .docs/README.md)
+.docs/**
+.docs/README.md
 AGENTS.md
 lib/memory/adr/**
 lib/memory/backlog/**
 lib/memory/research/**
-client/**
-tests/**
 
 # Generated manifests / bulky machine outputs
 **/migration-manifest*.json

@@ -3,7 +3,7 @@ declare const featureIdBrand: unique symbol;
 declare const contentHashBrand: unique symbol;
 
 /**
- * Opaque string for a pipeline workspace path segment under `work/`.
+ * Opaque string for a pipeline workspace path segment under `.pan/work/`.
  */
 export type TaskId = string & { readonly [taskIdBrand]: true };
 

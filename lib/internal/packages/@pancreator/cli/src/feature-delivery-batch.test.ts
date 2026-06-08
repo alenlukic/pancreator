@@ -55,7 +55,7 @@ function mockStartResult(
   status: FeatureDeliveryState["status"],
 ): { result: StartFeatureDeliveryResult; state: FeatureDeliveryState } {
   const dayDir = "172970_06-05-26";
-  const runDir = path.posix.join("work", dayDir, taskId);
+  const runDir = path.posix.join(".pan/work", dayDir, taskId);
   const state: FeatureDeliveryState = {
     schemaVersion: "1",
     pipelineId: "feature-delivery",
@@ -250,7 +250,7 @@ describe("feature-delivery-batch", () => {
     });
     expect(code).toBe(1);
 
-    const batchDir = path.join(root, "work", "172970_06-05-26");
+    const batchDir = path.join(root, ".pan/work", "172970_06-05-26");
     const batchFolders = (await import("node:fs/promises").then((m) => m.readdir(batchDir))).filter((name) =>
       name.startsWith("batch-"),
     );

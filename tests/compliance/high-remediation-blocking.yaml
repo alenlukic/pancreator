@@ -7,7 +7,7 @@ trigger_modes:
 scope:
   surface: "review-and-approval-gates"
   artifacts:
-    - "work/<day>/<id>/review.md"
+    - ".pan/work/<day>/<id>/review.md"
     - "lib/inbox/out/"
 assertion:
   statement: "High findings block review_passes and human_approval."

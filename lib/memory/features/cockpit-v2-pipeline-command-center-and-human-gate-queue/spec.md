@@ -126,7 +126,7 @@ behavior.
   `nextCommand` string to the clipboard and SHALL display a 2-second Copied
   tooltip with `aria-live="polite"` per the ux-spec copy-command pattern.
 - When the operator activates Open next-prompt, the UI SHALL open
-  `work/<day>/<task-id>/next-prompt.md` in the Files tab artifact modal.
+  `.pan/work/<day>/<task-id>/next-prompt.md` in the Files tab artifact modal.
 - When the operator activates Open run folder, the UI SHALL navigate the Files
   tab to the task run directory.
 

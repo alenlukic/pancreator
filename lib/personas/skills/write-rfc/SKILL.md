@@ -14,29 +14,29 @@ metadata:
     - /lib/memory/rfc/draft/<slug>.md
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [506, 506]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — MVP roster: tech-lead drafts the plan/RFC for any non-trivial change."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [154, 167]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-5 — Scouts emit RFC drafts under `/lib/memory/rfc/draft/`; ensembles + SMEs deliberate; PM folds accepted RFCs into the backlog."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [708, 715]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §7 — `rfc-debate`, `proactive-research-scan`, and `debt-grooming` pipelines all emit or consume RFCs under `/lib/memory/rfc/draft/`."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [916, 919]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §8 — Memory architecture: `/lib/memory/rfc/{draft,accepted,rejected}/` directory layout for in-flight, accepted, and rejected RFCs."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1004, 1010]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §8 — Anti-rot: dual-anchor citations on every RFC; rejected RFCs kept for legislative history."
 ---
 

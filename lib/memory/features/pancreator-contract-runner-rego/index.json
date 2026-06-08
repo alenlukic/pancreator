@@ -36,7 +36,7 @@
       "kind": "lines",
       "path": "lib/memory/features/pancreator-contract-runner-rego/delivery-report.md",
       "range": [1, 35],
-      "contentHash": "c93939c"
+      "contentHash": "9685e1b"
     }
   },
   "artifact_index": {
@@ -47,7 +47,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-contract-runner-rego/spec.md",
           "range": [1, 23],
-          "contentHash": "a39f981"
+          "contentHash": "4d830cd"
         }
       },
       "delivery_report": {
@@ -56,7 +56,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-contract-runner-rego/delivery-report.md",
           "range": [1, 35],
-          "contentHash": "c93939c"
+          "contentHash": "9685e1b"
         }
       },
       "per_feature_index": {

@@ -1,0 +1,5 @@
+persona: design-reviewer
+description: When the `feature-delivery` pipeline has design steps enabled and reaches the `test` stage, the `design-reviewer` SHALL inspect the running UI as a companion to `qa-tester` and emit `/.pan/work/<day>/<id>/design-qa-report.md` with a `design_qa_passes` gate verdict.
+globs:
+  - .pan/work/**/design-qa-report.md
+alwaysApply: false

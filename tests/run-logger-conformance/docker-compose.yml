@@ -5,7 +5,7 @@ services:
       - "6006:6006"
       - "4317:4317"
     environment:
-      PHOENIX_WORKING_DIR: /tmp/phoenix
+      PHOENIX_WORKING_DIR: /.tmp/phoenix
     healthcheck:
       test:
         [

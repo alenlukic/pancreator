@@ -38,22 +38,22 @@ references:
   - kind: lines
     path: tests/compliance/context-usage/README.md
     range: [1, 75]
-    contentHash: 5aa9d74
+    contentHash: eb01f8d
     note: Canonical harness root, prototype matrix, expected-consumption formula, and iterative calibration loop.
   - kind: lines
     path: lib/memory/features/token-economy-prototype/spec.md
     range: [194, 212]
-    contentHash: 83ede19
+    contentHash: fd3d370
     note: WP-6 matrix runner and iterative calibrate→analyze→fix loop inherited from the shipped prototype.
   - kind: lines
     path: lib/memory/features/token-economy-prototype/delivery-report.md
     range: [1, 12]
-    contentHash: 332c30e
+    contentHash: 348aea4
     note: Shipped prototype matrix and established the hardening pass as a follow-on to the prototype harness delivery.
   - kind: lines
     path: tests/compliance/context-usage/calibration/findings/task-high.composer-2.5.json
     range: [1, 40]
-    contentHash: e1a2c8b
+    contentHash: 77ab463
     note: Findings artifacts anchor the machine-readable output shape and demonstrate duplicate-read inefficiency reporting for the calibration loop.
 ---
 
@@ -177,7 +177,7 @@ documentation_impact:
     - tests/compliance/context-usage/baselines/expected.task-low.gpt-5.5.json
     - tests/compliance/context-usage/baselines/expected.task-high.composer-2.5.json
     - tests/compliance/context-usage/baselines/expected.task-high.gpt-5.5.json
-    - work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/touch-set.json
+    - .pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/touch-set.json
   deferred-items: []
 ```
 
@@ -222,7 +222,7 @@ ratified intake artifact for task
 
 - Source directive: `lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md`.
 - Active task: `60274_0715_token-economy-calibration-hardening` under
-  `work/172971_06-04-26/`.
+  `.pan/work/172971_06-04-26/`.
 - Output artifact: `lib/memory/features/token-economy-calibration-hardening/spec.md`.
 - Prior art: `lib/memory/features/token-economy-prototype/spec.md` and
   `lib/memory/features/token-economy-prototype/delivery-report.md`.

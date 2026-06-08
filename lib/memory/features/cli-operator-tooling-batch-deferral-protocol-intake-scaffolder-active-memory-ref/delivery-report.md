@@ -25,9 +25,9 @@ The implementation report records the last remediation pass that closed the live
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
+  "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
   "range": [8, 24],
-  "contentHash": "851d64e"
+  "contentHash": "4d45ac3"
 }
 ```
 
@@ -39,9 +39,9 @@ The reviewer accepted the remediation pass and marked the stage green: `review_p
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+  "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
   "range": [9, 19],
-  "contentHash": "ae2a310"
+  "contentHash": "0f5f86f"
 }
 ```
 
@@ -58,9 +58,9 @@ The review also confirms that the changed-surface tests now cover the prior gaps
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+  "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
   "range": [38, 50],
-  "contentHash": "ae2a310"
+  "contentHash": "0f5f86f"
 }
 ```
 
@@ -72,9 +72,9 @@ The review left one non-blocking governance note open: `lib/internal/packages/@p
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+  "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
   "range": [21, 28],
-  "contentHash": "ae2a310"
+  "contentHash": "0f5f86f"
 }
 ```
 
@@ -84,9 +84,9 @@ The smoke coverage note is also non-blocking: `tests/repo-structure.test.mjs` st
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+  "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
   "range": [25, 28],
-  "contentHash": "ae2a310"
+  "contentHash": "0f5f86f"
 }
 ```
 
@@ -107,7 +107,7 @@ The original feature spec still defines the batch boundary and the three work pa
   "kind": "lines",
   "path": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
   "range": [66, 85],
-  "contentHash": "51caaf0"
+  "contentHash": "57626d6"
 }
 ```
 
@@ -118,7 +118,7 @@ The original feature spec still defines the batch boundary and the three work pa
   "kind": "lines",
   "path": "AGENTS.md",
   "range": [210, 212],
-  "contentHash": "c42962c"
+  "contentHash": "b953d77"
 }
 ```
 
@@ -133,27 +133,27 @@ The original feature spec still defines the batch boundary and the three work pa
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
+  "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
   "range": [8, 24],
-  "contentHash": "851d64e"
+  "contentHash": "4d45ac3"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
+  "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/implementation-report.md",
   "range": [25, 38],
-  "contentHash": "851d64e"
+  "contentHash": "4d45ac3"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
+  "path": ".pan/archive/work/172981_05-25-26/22411_1746_cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/review.md",
   "range": [9, 28],
-  "contentHash": "ae2a310"
+  "contentHash": "0f5f86f"
 }
 ```
 
@@ -162,7 +162,7 @@ The original feature spec still defines the batch boundary and the three work pa
   "kind": "lines",
   "path": "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/spec.md",
   "range": [66, 85],
-  "contentHash": "51caaf0"
+  "contentHash": "57626d6"
 }
 ```
 
@@ -171,7 +171,7 @@ The original feature spec still defines the batch boundary and the three work pa
   "kind": "lines",
   "path": "AGENTS.md",
   "range": [161, 168],
-  "contentHash": "c42962c"
+  "contentHash": "b953d77"
 }
 ```
 

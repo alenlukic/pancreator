@@ -20,19 +20,19 @@ metadata:
     - /lib/memory/features/<id>/contracts.index.json entry
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [317, 480]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §4.5 — wrapper schema, closed-core kind registry, ContractRunner adapter, ContractFailure, quorum policy"
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [483, 610]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §4.6 — Layers 1-5 + worked example"
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [967, 980]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — meta-skill spec this file implements"
 ---
 
@@ -40,8 +40,8 @@ references:
 
 A reusable 6-step procedure for authoring one contract clause. The canonical caller
 is `lib/personas/contract-writer.md`; `intake-analyst`, `tech-lead`, `reviewer`,
-`appsec`, `sdet`, `design-engineer`, and `groomer` MAY invoke it directly when their
-own work product needs a contract gate.
+`appsec`, `sdet`, `design-engineer`, `design-reviewer`, and `groomer` MAY invoke it
+directly when their own work product needs a contract gate.
 
 ## Prerequisites
 

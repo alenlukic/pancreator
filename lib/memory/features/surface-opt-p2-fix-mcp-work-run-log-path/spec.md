@@ -19,18 +19,18 @@ references:
   - kind: lines
     path: lib/internal/packages/@pancreator/mcp-server/src/pan-execute.ts
     range: [290, 308]
-    contentHash: ab080b6
+    contentHash: 3619b63
     note: "work-run-log:// handler joins path.join(root, 'work', taskId, 'run.log.jsonl'), omitting the <day> bucket."
   - kind: lines
     path: lib/internal/packages/@pancreator/mcp-server/src/pan-read-handlers.ts
     range: [212, 239]
-    contentHash: ce3c34a
-    note: "findStateFile performs the day-aware search across work/<day>/<taskId>/ and archive/work/<day>/<taskId>/."
+    contentHash: 8f2b9f0
+    note: "findStateFile performs the day-aware search across .pan/work/<day>/<taskId>/ and .pan/archive/work/<day>/<taskId>/."
   - kind: lines
     path: lib/internal/packages/@pancreator/mcp-server/src/definitions.ts
     range: [197, 202]
-    contentHash: e77abb1
-    note: "pancreator-work-run-log resource description references work/<taskId>/run.log.jsonl, not the work/<day>/<taskId>/ path shape."
+    contentHash: 516c83e
+    note: "pancreator-work-run-log resource description references .pan/work/<taskId>/run.log.jsonl, not the .pan/work/<day>/<taskId>/ path shape."
 ---
 
 # Spec — fix MCP `work-run-log://` path
@@ -38,11 +38,11 @@ references:
 ## 1 — Context and motivation
 
 The MCP `work-run-log://<taskId>` resource handler joins
-`path.join(root, "work", taskId, "run.log.jsonl")`, so a read resolves to
-`work/<taskId>/run.log.jsonl`. The runtime writes the run log to
-`work/<day>/<taskId>/run.log.jsonl`, so the handler misses the file and an MCP
+`path.join(root, ".pan/work", taskId, "run.log.jsonl")`, so a read resolves to
+`.pan/work/<taskId>/run.log.jsonl`. The runtime writes the run log to
+`.pan/work/<day>/<taskId>/run.log.jsonl`, so the handler misses the file and an MCP
 run-log read fails. The `findStateFile` helper in `pan-read-handlers.ts` already
-searches `work/<day>/<taskId>/` and `archive/work/<day>/<taskId>/` day-aware. This
+searches `.pan/work/<day>/<taskId>/` and `.pan/archive/work/<day>/<taskId>/` day-aware. This
 feature redirects the `work-run-log://` handler through an equivalent day-aware
 search and adds 1 regression test so the MCP run-log read returns the real run
 log. The fix carries zero state-fidelity risk and ships in Track D step 1 per the
@@ -54,28 +54,28 @@ source directive (`75420_0303_surface-opt-p2-mcp-run-log-path.md`).
 day-aware search equivalent to `findStateFile`.
 
 **R2** The `work-run-log://<taskId>` resource description SHALL reference the
-`work/<day>/<taskId>/run.log.jsonl` path shape.
+`.pan/work/<day>/<taskId>/run.log.jsonl` path shape.
 
 **R3** The MCP server test suite SHALL include 1 regression test that asserts the
-handler resolves a run log placed under `work/<day>/<taskId>/run.log.jsonl`.
+handler resolves a run log placed under `.pan/work/<day>/<taskId>/run.log.jsonl`.
 
 ## 3 — Acceptance criteria
 
 - AC1: When an agent reads `work-run-log://<taskId>` for a run whose log lives
-  under `work/<day>/<taskId>/run.log.jsonl`, the handler SHALL return that file.
+  under `.pan/work/<day>/<taskId>/run.log.jsonl`, the handler SHALL return that file.
 - AC2: When a maintainer reads the `work-run-log://` resource description, the
-  description text SHALL reference the `work/<day>/<taskId>/` path shape.
+  description text SHALL reference the `.pan/work/<day>/<taskId>/` path shape.
 - AC3: When the MCP server test suite runs, the regression test SHALL assert run-log
-  resolution for a log placed under `work/<day>/<taskId>/run.log.jsonl`.
+  resolution for a log placed under `.pan/work/<day>/<taskId>/run.log.jsonl`.
 
 ## 4 — Touch set (projected)
 
 | Path | Change type | Rationale |
 |------|-------------|-----------|
-| `lib/internal/packages/@pancreator/mcp-server/src/pan-execute.ts` | modify | Resolve the `work-run-log://` run log through a day-aware search instead of `path.join(root, "work", taskId, "run.log.jsonl")` (R1, AC1). |
-| `lib/internal/packages/@pancreator/mcp-server/src/pan-read-handlers.ts` | modify | Reuse or export the `findStateFile`-style day-aware search so the handler resolves `work/<day>/<taskId>/run.log.jsonl` (R1, AC1). |
-| `lib/internal/packages/@pancreator/mcp-server/src/definitions.ts` | modify | Update the `pancreator-work-run-log` description to reference the `work/<day>/<taskId>/run.log.jsonl` path shape (R2, AC2). |
-| MCP server regression test under `lib/internal/packages/@pancreator/mcp-server` | create/modify | Assert run-log resolution for a log placed under `work/<day>/<taskId>/` (R3, AC3). |
+| `lib/internal/packages/@pancreator/mcp-server/src/pan-execute.ts` | modify | Resolve the `work-run-log://` run log through a day-aware search instead of `path.join(root, ".pan/work", taskId, "run.log.jsonl")` (R1, AC1). |
+| `lib/internal/packages/@pancreator/mcp-server/src/pan-read-handlers.ts` | modify | Reuse or export the `findStateFile`-style day-aware search so the handler resolves `.pan/work/<day>/<taskId>/run.log.jsonl` (R1, AC1). |
+| `lib/internal/packages/@pancreator/mcp-server/src/definitions.ts` | modify | Update the `pancreator-work-run-log` description to reference the `.pan/work/<day>/<taskId>/run.log.jsonl` path shape (R2, AC2). |
+| MCP server regression test under `lib/internal/packages/@pancreator/mcp-server` | create/modify | Assert run-log resolution for a log placed under `.pan/work/<day>/<taskId>/` (R3, AC3). |
 
 ## 5 — Out of scope
 

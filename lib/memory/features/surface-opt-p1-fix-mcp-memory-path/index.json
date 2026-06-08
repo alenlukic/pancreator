@@ -15,7 +15,7 @@
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
     "clarifying_skip_rationale": "Source directive states R1, R2, and AC1-AC3 with quantified outcomes and an explicit touch set; no intake-blocking ambiguity remains.",
-    "source_inbox_item": "archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p1-mcp-memory-path.md",
@@ -48,7 +48,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
+    "artifact": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 1,
@@ -57,14 +57,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
+      "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
       "range": [1, 37],
-      "contentHash": "5801acd"
+      "contentHash": "62d5605"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
+    "artifact": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
     "sdk_automation_qa": false,
     "verification_gates": {
       "pnpm_lint": "pass",
@@ -75,7 +75,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
+      "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
       "range": [1, 35],
       "contentHash": "efa1463"
     }
@@ -87,13 +87,13 @@
       "kind": "lines",
       "path": "lib/memory/features/surface-opt-p1-fix-mcp-memory-path/delivery-report.md",
       "range": [1, 104],
-      "contentHash": "46aa2e3"
+      "contentHash": "522b852"
     },
-    "archived_inbox_source": "archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -102,9 +102,9 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/policy-compliance.json",
+      "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/policy-compliance.json",
       "range": [1, 21],
-      "contentHash": "df670d5"
+      "contentHash": "afcbb69"
     }
   },
   "stale_citations_flagged": {
@@ -137,27 +137,27 @@
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p1-fix-mcp-memory-path/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
+        "cited_path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
         "recorded_content_hash": "ad32f69",
         "live_content_hash": "ad32f69",
         "verifier_status": "moved",
-        "note": "Implementation report archived to archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md."
+        "note": "Implementation report archived to .pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p1-fix-mcp-memory-path/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
+        "cited_path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
         "recorded_content_hash": "5801acd",
         "live_content_hash": "5801acd",
         "verifier_status": "moved",
-        "note": "Review report archived to archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md."
+        "note": "Review report archived to .pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p1-fix-mcp-memory-path/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
+        "cited_path": ".pan/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
         "recorded_content_hash": "efa1463",
         "live_content_hash": "efa1463",
         "verifier_status": "moved",
-        "note": "Test report archived to archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md."
+        "note": "Test report archived to .pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md."
       }
     ],
     "repo_wide_followup": "none"
@@ -180,7 +180,7 @@
           "kind": "lines",
           "path": "lib/memory/features/surface-opt-p1-fix-mcp-memory-path/delivery-report.md",
           "range": [1, 104],
-          "contentHash": "46aa2e3"
+          "contentHash": "522b852"
         }
       },
       "per_feature_index": {
@@ -189,87 +189,87 @@
     },
     "pipeline_artifacts": {
       "archived_work_dir": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/"
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/"
       },
       "plan": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/plan.md",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/plan.md",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/plan.md",
           "range": [1, 89],
-          "contentHash": "52379fc"
+          "contentHash": "4d7d548"
         }
       },
       "adr_draft": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/adr-draft.md",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/adr-draft.md",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/adr-draft.md",
           "range": [1, 94],
-          "contentHash": "dc102dd"
+          "contentHash": "12b8a90"
         }
       },
       "touch_set": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/touch-set.json",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/touch-set.json",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/touch-set.json",
           "range": [1, 64],
-          "contentHash": "f3fb0ac"
+          "contentHash": "92d98c1"
         }
       },
       "implementation_report": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/implementation-report.md",
           "range": [1, 89],
-          "contentHash": "ad32f69"
+          "contentHash": "666d19b"
         }
       },
       "review_report": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/review.md",
           "range": [1, 37],
-          "contentHash": "5801acd"
+          "contentHash": "62d5605"
         }
       },
       "test_report": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/test-report.md",
           "range": [1, 35],
           "contentHash": "efa1463"
         }
       },
       "policy_compliance": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/policy-compliance.json",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/policy-compliance.json",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/policy-compliance.json",
           "range": [1, 21],
-          "contentHash": "df670d5"
+          "contentHash": "afcbb69"
         }
       },
       "handoff": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/handoff.md",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/handoff.md",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/handoff.md",
           "range": [1, 49],
-          "contentHash": "0be7d4b"
+          "contentHash": "b8586d8"
         }
       },
       "run_log": {
-        "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/run.log.jsonl",
+        "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/run.log.jsonl",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/run.log.jsonl",
+          "path": ".pan/archive/work/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/run.log.jsonl",
           "range": [1, 22],
-          "contentHash": "729e126"
+          "contentHash": "b256732"
         }
       }
     },
@@ -280,7 +280,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/mcp-server/src/pan-execute.ts",
           "range": [1, 312],
-          "contentHash": "4c928c3"
+          "contentHash": "3619b63"
         }
       },
       "mcp_definitions": {
@@ -289,7 +289,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/mcp-server/src/definitions.ts",
           "range": [1, 205],
-          "contentHash": "fd40361"
+          "contentHash": "516c83e"
         }
       },
       "mcp_pan_execute_test": {
@@ -298,13 +298,13 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts",
           "range": [1, 219],
-          "contentHash": "4584cb3"
+          "contentHash": "8b985d1"
         }
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md",
+        "path": ".pan/archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p1-mcp-memory-path.md",
@@ -332,7 +332,7 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md",
+    "path": ".pan/archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md",
     "prior_path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p1-mcp-memory-path.md"
   },
   "advance_gate": {
@@ -340,5 +340,5 @@
     "advance_command": "pnpm -w exec pan advance 71390_0410_surface-opt-p1-fix-mcp-memory-path --artifact lib/memory/features/surface-opt-p1-fix-mcp-memory-path/index.json",
     "status": "deferred-until-ratified"
   },
-  "archived_inbox_source": "archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172974_06-01-26/71390_0410_surface-opt-p1-fix-mcp-memory-path/75420_0303_surface-opt-p1-mcp-memory-path.md"
 }

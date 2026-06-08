@@ -1,6 +1,6 @@
 ---
 name: modern-code-review
-description: Runs Modern Code Review per Bacchelli/Bird and Google `eng-practices` against one Feature touch-set. Loads the Engineering Spec, plan, and ADR draft; classifies every finding under `must fix`, `consider`, or `nit`; runs every Spec Contract pulled in by `contracts:from_feature`; emits one `/work/<day>/<id>/review.md` for the `review_passes` gate.
+description: Runs Modern Code Review per Bacchelli/Bird and Google `eng-practices` against one Feature touch-set. Loads the Engineering Spec, plan, and ADR draft; classifies every finding under `must fix`, `consider`, or `nit`; runs every Spec Contract pulled in by `contracts:from_feature`; emits one `/.pan/work/<day>/<id>/review.md` for the `review_passes` gate.
 license: Apache-2.0
 metadata:
   pancreator-stability: experimental
@@ -12,27 +12,27 @@ metadata:
     - /lib/memory/handbook/contract-style.md
     - /lib/memory/handbook/contract-format.md
   pancreator-emits:
-    - /work/<day>/<id>/review.md
+    - /.pan/work/<day>/<id>/review.md
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [508, 508]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — MVP roster: reviewer runs Modern Code Review per Google's `eng-practices`, classifies must fix / consider / nit, verifies test coverage, checks ADR/PRD alignment, and runs declared Spec Contracts."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [669, 678]
-    contentHash: 2ce8e5c
-    note: "PRD §7 — feature-delivery `review` stage YAML declaring inputs `[code, tests, plan, adr-draft, contracts:from_feature]`, output `/work/<day>/<id>/review.md`, and `gate: review_passes`."
+    contentHash: 2eb6aa4
+    note: "PRD §7 — feature-delivery `review` stage YAML declaring inputs `[code, tests, plan, adr-draft, contracts:from_feature]`, output `/.pan/work/<day>/<id>/review.md`, and `gate: review_passes`."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [113, 121]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-1 — Multi-cycle implement → review → fix → review → ship loop the reviewer gates with bounded loop count."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [1255, 1255]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §17 — Reading list cite for Modern Code Review (Bacchelli/Bird, Bosu/Greiler/Bird) the procedure draws from."
 ---
 
@@ -48,11 +48,11 @@ skill's classification rubric and adds its own contract bundle.
 ## Prerequisites
 
 - The `review` stage's inputs MUST be present at the paths declared in PRD
-  §7 lines 671 through 676: code, tests, `/work/<day>/<id>/plan.md`,
-  `/work/<day>/<id>/adr-draft.md`, and the contracts pulled in by
+  §7 lines 671 through 676: code, tests, `/.pan/work/<day>/<id>/plan.md`,
+  `/.pan/work/<day>/<id>/adr-draft.md`, and the contracts pulled in by
   `contracts:from_feature`.
 - Coverage figures SHALL be derived from the touch-set diff and test files
-  directly; `/work/<day>/<id>/test-report.md` is an output of the
+  directly; `/.pan/work/<day>/<id>/test-report.md` is an output of the
   downstream `test` stage and is NOT a review prerequisite.
 - `/lib/memory/handbook/glossary.md`, `/lib/memory/handbook/contract-style.md`, and
   `/lib/memory/handbook/contract-format.md` SHALL exist; the review body
@@ -65,8 +65,8 @@ Execute these steps in order, once per Feature review.
 
 ### Step 1 — Load the design artifacts before reading the code
 
-Read `/lib/memory/features/<id>/spec.md`, `/work/<day>/<id>/plan.md`, and
-`/work/<day>/<id>/adr-draft.md` first; do NOT open the diff until the design
+Read `/lib/memory/features/<id>/spec.md`, `/.pan/work/<day>/<id>/plan.md`, and
+`/.pan/work/<day>/<id>/adr-draft.md` first; do NOT open the diff until the design
 context is loaded. The design-first ordering follows the Bacchelli/Bird
 finding cited at PRD §17 line 1255 that reviewers who skip the design
 artifacts file disproportionately many `nit`-class comments and miss the
@@ -78,7 +78,7 @@ inbox item per the Failure-handling section below.
 ### Step 2 — Walk the diff and classify every finding
 
 Open `git diff` against the touch-set declared at
-`/work/<day>/<id>/touch-set.json`. For each defect, classify under exactly one
+`/.pan/work/<day>/<id>/touch-set.json`. For each defect, classify under exactly one
 heading per the rubric below.
 
 - **`must fix`.** A defect that violates a Spec Contract clause, a `plan.md`
@@ -110,7 +110,7 @@ review's Spec Contract results table.
 | `kind` | from the clause's `kind` field |
 | `severity` | from the clause's `severity` field |
 | `result` | runner output: `pass` \| `fail` \| `timeout` \| `error` |
-| `runner output path` | dual-anchor citation to the runner's stdout/stderr capture under `/work/<day>/<id>/contract-runs/<clause.id>.log` |
+| `runner output path` | dual-anchor citation to the runner's stdout/stderr capture under `/.pan/work/<day>/<id>/contract-runs/<clause.id>.log` |
 
 Every `severity: block` clause whose `result` is `fail` MUST also appear in
 the `must fix` section under Findings. An omitted clause fails the gate.
@@ -118,13 +118,13 @@ the `must fix` section under Findings. An omitted clause fails the gate.
 ### Step 4 — Verify the coverage delta and the test plan
 
 Derive statement and branch coverage on the changed lines from the touch-set
-diff and the test files declared in the touch-set (`/work/<day>/<id>/touch-set.json`).
+diff and the test files declared in the touch-set (`/.pan/work/<day>/<id>/touch-set.json`).
 The reviewer MUST verify each public symbol the diff adds or modifies carries at
 least one test under the touch-set's declared test paths per
 `lib/personas/coder.md`. A missing test routes a `must fix` finding citing the
-symbol. When `/work/<day>/<id>/implementation-report.md` contains coverage
+symbol. When `/.pan/work/<day>/<id>/implementation-report.md` contains coverage
 figures the coder captured, the reviewer MAY cite those figures and MUST record
-the source path. (`/work/<day>/<id>/test-report.md` is emitted by the
+the source path. (`/.pan/work/<day>/<id>/test-report.md` is emitted by the
 downstream `test` stage and is NOT available at review time.)
 
 When the threshold policy in `pancreator.yaml: gates.coverage` declares
@@ -133,7 +133,7 @@ figure rather than the global coverage figure.
 
 ### Step 5 — Author the four-section review body
 
-Write `/work/<day>/<id>/review.md` with exactly four `##` sections in the order
+Write `/.pan/work/<day>/<id>/review.md` with exactly four `##` sections in the order
 declared in `lib/personas/reviewer.md`:
 
 1. **Verdict.** One paragraph at most 80 words declaring `review_passes:
@@ -144,7 +144,7 @@ declared in `lib/personas/reviewer.md`:
 3. **Spec Contract results.** The table built in Step 3.
 4. **Coverage delta.** The figures captured in Step 4 plus a dual-anchor
    citation into the source (diff, touch-set test paths, or
-   `/work/<day>/<id>/implementation-report.md`) from which the
+   `/.pan/work/<day>/<id>/implementation-report.md`) from which the
    coverage figures were derived.
 
 The full body MUST stay at most 1500 words across the four sections.
@@ -187,11 +187,11 @@ The MVP loop cap declared in PRD §3.5 US-1 line 120 MUST hold.
 
 ## Failure-handling
 
-- If `/work/<day>/<id>/plan.md` or `/work/<day>/<id>/adr-draft.md` is
+- If `/.pan/work/<day>/<id>/plan.md` or `/.pan/work/<day>/<id>/adr-draft.md` is
   missing, the review MUST halt and open one inbox item at
   `lib/inbox/in/<timestamp>-reviewer-missing-input.md` naming the Feature id
   and the missing upstream artifact. The reviewer MUST NOT guess the missing
-  content. (`/work/<day>/<id>/test-report.md` is an output of the downstream
+  content. (`/.pan/work/<day>/<id>/test-report.md` is an output of the downstream
   `test` stage and is NOT a review prerequisite.)
 - If the implement → review loop has run 5 times without a green
   `review_passes` gate, the reviewer MUST halt and escalate via inbox per

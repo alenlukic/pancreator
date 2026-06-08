@@ -16,14 +16,14 @@ metadata:
     - .cursor/rules/<name>.mdc
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [793, 950]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — Subagent Persona Roster + reviewer.md exemplar + ensemble pattern"
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [302, 305]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §4 glossary — Persona Spec Format definition"
 ---
 
@@ -40,7 +40,7 @@ directly when proposing an SME draft (M4+).
 - `/lib/memory/handbook/glossary.md` SHALL exist; the persona's `description:` and body
   prose draw every domain noun from this file or a code-symbol citation.
 - The proposed persona's scope SHALL be captured in an inbox item or in the
-  `docs/BOOTSTRAP.md` Phase 1 roster.
+  `.docs/BOOTSTRAP.md` Phase 1 roster.
 
 ## The 7-step authoring loop
 

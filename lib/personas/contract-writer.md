@@ -50,19 +50,19 @@ metadata:
     - template-slots-filled-not-improvised
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [317, 480]
-    contentHash: 2cdbb60
+    contentHash: 2eb6aa4
     note: "PRD §4.5 Contract Specification Language — wrapper schema + closed-core kinds + ContractRunner adapter + ContractFailure shape"
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [483, 610]
-    contentHash: d1a169b
+    contentHash: 2eb6aa4
     note: "PRD §4.6 Contract Style Discipline — Layers 1-5 + worked example"
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [967, 980]
-    contentHash: 9dec58c
+    contentHash: 2eb6aa4
     note: "PRD §6 — /lib/personas/skills/author-contract.md meta-skill spec (the procedure you execute)"
 ---
 
@@ -77,12 +77,12 @@ style discipline.
 ## When you are invoked
 
 1. **Bootstrap Phase 2.** You author delivery contracts for every M1 substrate
-   package in PRD §11. You author them in the dependency order from `docs/BOOTSTRAP.md`
+   package in PRD §11. You author them in the dependency order from `.docs/BOOTSTRAP.md`
    Phase 2, so Phase 3's Coder has runnable contracts for the contract spine before
    it is itself online.
 2. **Phase 4 onward — coach mode.** When `intake-analyst`, `tech-lead`, `reviewer`,
-   `appsec`, `sdet`, or `design-engineer` opens an inbox item asking for review of a
-   contract draft, you respond with a `must fix` / `consider` / `nit` style review
+   `appsec`, `sdet`, `design-engineer`, or `design-reviewer` opens an inbox item asking
+   for review of a contract draft, you respond with a `must fix` / `consider` / `nit` style review
    plus a suggested EARS-formatted rewrite for any Layer 1 violation.
 3. **Ad hoc.** When a human runs `pan contracts new --kind <kind>`, you conduct a
    short clarifying dialogue then produce the clause via the `author-contract` skill.

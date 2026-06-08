@@ -438,7 +438,7 @@ export async function parseAndRun(
           verb: "pan run",
           milestone: "M2",
           manual_workaround:
-            "Bootstrap Phase 4 exposes only `pan feature new`/`pan run feature-delivery <inbox-entry>` orchestration until additional pipelines compile end-to-end per docs/PRD.md.",
+            "Bootstrap Phase 4 exposes only `pan feature new`/`pan run feature-delivery <inbox-entry>` orchestration until additional pipelines compile end-to-end per .docs/PRD.md.",
         });
         exit.code = PAN_DEFERRED_EXIT_CODE;
         return;
@@ -514,9 +514,9 @@ export async function parseAndRun(
 
   contextReview
     .command("scaffold")
-    .description("Write context-review-prompt.md under sandbox/ for operator delegation to context-reviewer")
-    .option("--workspace <path>", "Repo-relative workspace under sandbox/ (default: sandbox/context-review)")
-    .option("--run-dir <path>", "Optional work/<day>/<slug> to pull artifact and touch-set paths from")
+    .description("Write context-review-prompt.md under .sandbox/ for operator delegation to context-reviewer")
+    .option("--workspace <path>", "Repo-relative workspace under .sandbox/ (default: .sandbox/context-review)")
+    .option("--run-dir <path>", "Optional .pan/work/<day>/<slug> to pull artifact and touch-set paths from")
     .option("--scope-path <path>", "Repeatable explicit diff scope path", collectRepeatableOption, [])
     .option(
       "--context-path <path>",
@@ -544,7 +544,7 @@ export async function parseAndRun(
   program
     .command("status")
     .description("Show pipeline and workspace status [deferred: M2 when task id omitted]")
-    .argument("[taskId]", "Task id under work/")
+    .argument("[taskId]", "Task id under .pan/work/")
     .option("--format <format>", "Output format: json (default) or text")
     .action(async (taskId: string | undefined, opts: { format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
@@ -572,7 +572,7 @@ export async function parseAndRun(
   program
     .command("next")
     .description("Resolve the next feature-delivery advance command without mutating state")
-    .argument("<taskId>", "Task id under work/")
+    .argument("<taskId>", "Task id under .pan/work/")
     .option("--format <format>", "Output format: json (default) or text")
     .action(async (taskId: string, opts: { format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
@@ -582,7 +582,7 @@ export async function parseAndRun(
   program
     .command("advance")
     .description("Advance a feature-delivery task by one validated stage transition")
-    .argument("<taskId>", "Task id under work/")
+    .argument("<taskId>", "Task id under .pan/work/")
     .requiredOption("--artifact <path>", "Repo-relative artifact proving the current stage completed")
     .option("--event <event>", "Transition event override, for example must_fix during review")
     .option("--format <format>", "Output format: json (default) or text")
@@ -605,7 +605,7 @@ export async function parseAndRun(
   artifacts
     .command("validate")
     .description("Read-only warn-first content validation for a stage")
-    .argument("<taskId>", "Task id under work/")
+    .argument("<taskId>", "Task id under .pan/work/")
     .requiredOption("--stage <stage>", "Pipeline stage id")
     .option("--format <format>", "Output format: json (default) or text")
     .action(async (taskId: string, opts: { stage: string; format?: string }, _cmd) => {
@@ -654,8 +654,8 @@ export async function parseAndRun(
 
   program
     .command("repair-state")
-    .description("Explicitly repair a feature-delivery ledger after out-of-band manual work")
-    .argument("<taskId>", "Task id under work/")
+    .description("Explicitly repair a feature-delivery ledger after out-of-band manual .pan/work")
+    .argument("<taskId>", "Task id under .pan/work/")
     .requiredOption("--stage <stage>", "Stage the ledger should reflect")
     .requiredOption("--artifact <path>", "Repo-relative evidence artifact justifying the repair")
     .requiredOption("--reason <text>", "Human-readable reason for the repair")
@@ -679,7 +679,7 @@ export async function parseAndRun(
   program
     .command("refresh-prompt")
     .description("Regenerate feature-delivery handoff.md and next-prompt.md from the current ledger state")
-    .argument("<taskId>", "Task id under work/")
+    .argument("<taskId>", "Task id under .pan/work/")
     .action(async (taskId: string) => {
       emit(
         writeOut,
@@ -691,12 +691,12 @@ export async function parseAndRun(
       );
     });
 
-  const sandbox = program.command("sandbox").description("Operator scratch QA workspaces");
+  const sandbox = program.command(".sandbox").description("Operator scratch QA workspaces");
 
   sandbox
     .command("prepare")
-    .description("Copy touch-set paths into sandbox/<task-id>/ for isolated manual QA")
-    .argument("<taskId>", "Task id under work/")
+    .description("Copy touch-set paths into .sandbox/<task-id>/ for isolated manual QA")
+    .argument("<taskId>", "Task id under .pan/work/")
     .option("--format <format>", "Output format: json (default) or text")
     .action(async (taskId: string, opts: { format?: string }) => {
       const format = resolveOutputFormat(opts.format, options?.format);
@@ -711,7 +711,7 @@ export async function parseAndRun(
   program
     .command("close-artifacts")
     .description("Archive a completed feature-delivery run and its source inbox directive")
-    .argument("<taskId>", "Task id under work/")
+    .argument("<taskId>", "Task id under .pan/work/")
     .action(async (taskId: string) => {
       emit(
         writeOut,
@@ -727,7 +727,7 @@ export async function parseAndRun(
   program
     .command("close-out-of-band")
     .description("Archive an ad-hoc work directory after operator verification is authored")
-    .argument("<runDir>", "Repo-relative run directory work/<day>/<task-id>")
+    .argument("<runDir>", "Repo-relative run directory .pan/work/<day>/<task-id>")
     .requiredOption("--feature <featureId>", "Feature id for the ad-hoc workspace")
     .requiredOption("--reason <text>", "Human-readable reason for closing the workspace")
     .option("--inbox-source <path>", "Repo-relative source inbox path under lib/inbox/in/")
@@ -756,7 +756,7 @@ export async function parseAndRun(
   program
     .command("reopen")
     .description("Unarchive a closed task and restore it to intake or a specific pipeline stage")
-    .argument("<taskId>", "Task id under archive/work/")
+    .argument("<taskId>", "Task id under .pan/archive/work/")
     .requiredOption("--reason <text>", "Human-readable reason for reopening")
     .option("--stage <stage>", "Pipeline stage to restore (default: intake)")
     .action(async (taskId: string, opts: { reason: string; stage?: string }) => {
@@ -783,7 +783,7 @@ export async function parseAndRun(
         verb: "pan approve",
         milestone: "M3",
         manual_workaround:
-          "Approve human gates through the supervising operator workflow until `LocalUserAuthorizer` automation lands under docs/PRD.md §10.",
+          "Approve human gates through the supervising operator workflow until `LocalUserAuthorizer` automation lands under .docs/PRD.md §10.",
       }),
     );
 
@@ -1035,7 +1035,7 @@ export async function parseAndRun(
   program
     .command("pause")
     .description("Append a pause intervention for a task")
-    .argument("<taskId>", "Task id under work/")
+    .argument("<taskId>", "Task id under .pan/work/")
     .action(async (taskId: string) => {
       const mgr = interventionManager(repoRoot);
       await mgr.pause(asTaskId(taskId));
@@ -1051,7 +1051,7 @@ export async function parseAndRun(
   program
     .command("resume")
     .description("Append a resume intervention for a task")
-    .argument("<taskId>", "Task id under work/")
+    .argument("<taskId>", "Task id under .pan/work/")
     .option(
       "--checkpoint <checkpointId>",
       "Optional checkpoint id for time-travel resume",
@@ -1077,7 +1077,7 @@ export async function parseAndRun(
   program
     .command("abort")
     .description("Append an abort intervention for a task")
-    .argument("<taskId>", "Task id under work/")
+    .argument("<taskId>", "Task id under .pan/work/")
     .option("--reason <text>", "Optional abort reason")
     .action(async (taskId: string, opts: { reason?: string }) => {
       const mgr = interventionManager(repoRoot);

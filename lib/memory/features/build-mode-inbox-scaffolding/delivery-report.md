@@ -16,7 +16,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/implementation-report.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/implementation-report.md",
   "range": [3, 6],
   "contentHash": "2ed6b7e"
 }
@@ -25,7 +25,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
   "range": [3, 3],
   "contentHash": "ffd1366"
 }
@@ -34,7 +34,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
   "range": [3, 3],
   "contentHash": "78043df"
 }
@@ -49,7 +49,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/plan.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/plan.md",
   "range": [5, 5],
   "contentHash": "90d2a0f"
 }
@@ -62,7 +62,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/plan.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/plan.md",
   "range": [5, 5],
   "contentHash": "90d2a0f"
 }
@@ -75,7 +75,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
   "range": [21, 21],
   "contentHash": "18a396a"
 }
@@ -87,7 +87,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
   "range": [19, 19],
   "contentHash": "18a396a"
 }
@@ -100,7 +100,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
   "range": [25, 25],
   "contentHash": "18a396a"
 }
@@ -178,7 +178,7 @@ touch-set gate commands.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
   "range": [768, 829],
-  "contentHash": "b79761b"
+  "contentHash": "f31b63d"
 }
 ```
 
@@ -191,7 +191,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
   "range": [13, 13],
   "contentHash": "ffd1366"
 }
@@ -204,7 +204,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
   "range": [14, 14],
   "contentHash": "ffd1366"
 }
@@ -216,7 +216,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
   "range": [15, 15],
   "contentHash": "ffd1366"
 }
@@ -228,7 +228,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
   "range": [32, 32],
   "contentHash": "18a396a"
 }
@@ -240,7 +240,7 @@ touch-set gate commands.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/adr-draft.md",
   "range": [33, 33],
   "contentHash": "18a396a"
 }
@@ -267,7 +267,7 @@ touch-set gate commands.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/run.test.ts",
   "range": [2220, 2248],
-  "contentHash": "2ddce8c"
+  "contentHash": "dd9e48d"
 }
 ```
 
@@ -288,7 +288,7 @@ touch-set gate commands.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/run.test.ts",
   "range": [2251, 2274],
-  "contentHash": "2ddce8c"
+  "contentHash": "dd9e48d"
 }
 ```
 
@@ -301,7 +301,7 @@ touch-set gate commands.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/intake-scaffold.test.ts",
   "range": [87, 113],
-  "contentHash": "c504bcb"
+  "contentHash": "6514731"
 }
 ```
 
@@ -313,7 +313,7 @@ touch-set gate commands.
   "kind": "lines",
   "path": "OPERATION.md",
   "range": [21, 45],
-  "contentHash": "1f5330b"
+  "contentHash": "a91d661"
 }
 ```
 
@@ -328,7 +328,7 @@ checks exit 0. QA declares `qa_passes: true` after correcting the Vitest filter 
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/test-report.md",
   "range": [3, 13],
   "contentHash": "78043df"
 }
@@ -337,7 +337,7 @@ checks exit 0. QA declares `qa_passes: true` after correcting the Vitest filter 
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
+  "path": ".pan/work/172970_06-05-26/73472_0335_build-mode-inbox-scaffolding/review.md",
   "range": [29, 31],
   "contentHash": "ffd1366"
 }

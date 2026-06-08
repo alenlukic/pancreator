@@ -4,24 +4,24 @@ feature_id: timestamp-naming-conventions
 status: intake-closed
 next_owner: tech-lead
 next_stage: plan
-source_inbox_item: archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
+source_inbox_item: .pan/archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
 intake_round: 1
 closure_artifact: lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
 references:
   - kind: lines
-    path: archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
+    path: .pan/archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
     range: [11, 18]
-    contentHash: 4c34a77
+    contentHash: 3267af9
     note: Directive goals and scope define the feature intent and defer the broader organization philosophy.
   - kind: lines
-    path: archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
+    path: .pan/archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
     range: [19, 31]
-    contentHash: 4c34a77
+    contentHash: 3267af9
     note: Directive operator user stories define the navigability outcomes and the explicit out-of-scope boundary.
   - kind: lines
-    path: archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
+    path: .pan/archive/inbox/in/173009_04-27-26/50991_0950_timestamp-naming-conventions/50991_0950_timestamp_naming_conventions.md
     range: [33, 59]
-    contentHash: 4c34a77
+    contentHash: 3267af9
     note: Directive naming and implementation sections define the sentinel values, path patterns, and migration intent.
   - kind: lines
     path: lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
@@ -29,25 +29,25 @@ references:
     contentHash: fa0e81b
     note: Operator answers resolve scope, collision, tie-break, migration, start-day, and inbox-owner questions, and defer the post-2500 rollover rule.
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [223, 243]
-    contentHash: 940935e
+    contentHash: b788753
     note: Bootstrap Phase 4 requires the intake-analyst dogfood path to emit a canonical feature spec for downstream planning.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [641, 648]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: Intake-stage loop control caps the clarifying dialogue at 5 rounds and requires the human-approval gate.
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [219, 235]
-    contentHash: 086c42d
+    contentHash: c70da7c
     note: Glossary entries define Artifact, Feature, Inbox, and Spec Kit alignment for the feature folder.
 ---
 
 # Spec
 
-This Feature SHALL define one UTC-based naming convention for in-scope temporal artifacts in `work/` and `lib/inbox/`, SHALL migrate existing in-scope artifacts to that convention, and SHALL improve reverse-chronological navigability without changing the broader repository organization philosophy that the directive defers to a future run.
+This Feature SHALL define one UTC-based naming convention for in-scope temporal artifacts in `.pan/work/` and `lib/inbox/`, SHALL migrate existing in-scope artifacts to that convention, and SHALL improve reverse-chronological navigability without changing the broader repository organization philosophy that the directive defers to a future run.
 
 ## Acceptance criteria
 
@@ -58,21 +58,21 @@ This Feature SHALL define one UTC-based naming convention for in-scope temporal 
 - When the Feature derives the seconds-in-day sentinel, the Feature MUST
   define `SID` as `86400 s`.
 - When the Feature evaluates naming-policy scope, the Feature MUST include day
-  directories and task subdirectories under `work/`.
+  directories and task subdirectories under `.pan/work/`.
 - When the Feature evaluates naming-policy scope, the Feature MUST include
   artifacts under `lib/inbox/in/`, `lib/inbox/out/`, `lib/inbox/threads/`, and
-  `archive/inbox/in/`.
-- When the Feature evaluates `work/*/*/run.log.jsonl`, the Feature MUST treat
+  `.pan/archive/inbox/in/`.
+- When the Feature evaluates `.pan/work/*/*/run.log.jsonl`, the Feature MUST treat
   that file path as out of naming-policy scope.
-- When the Feature creates a day directory under `work/`, the Feature MUST
+- When the Feature creates a day directory under `.pan/work/`, the Feature MUST
   prefix the basename with a 6-digit days-to-`FDS` value.
-- When the Feature creates a day directory under `work/`, the Feature MUST
+- When the Feature creates a day directory under `.pan/work/`, the Feature MUST
   suffix the basename with the creation date in `MM-DD-YY`.
-- When the Feature creates a task subdirectory under `work/`, the Feature MUST
+- When the Feature creates a task subdirectory under `.pan/work/`, the Feature MUST
   prefix the basename with the seconds remaining until the end of that UTC day.
-- When the Feature creates a task subdirectory under `work/`, the Feature MUST
+- When the Feature creates a task subdirectory under `.pan/work/`, the Feature MUST
   place the `HHMM` creation token after the seconds-remaining prefix.
-- When the Feature creates a task subdirectory under `work/`, the Feature MUST
+- When the Feature creates a task subdirectory under `.pan/work/`, the Feature MUST
   place the high-signal feature slug in the semantic-suffix position.
 - When the Feature creates a system-produced artifact under `lib/inbox/out/`, the
   Feature MUST use `{SID-prefix}_{HHMM}_{semantic-suffix}` as the basename
@@ -123,7 +123,7 @@ This Feature SHALL define one UTC-based naming convention for in-scope temporal 
 - This Feature does not solve operator focus management for agent-only content.
 - This Feature does not rename the intake directive or operator response files
   during intake-stage canonicalization.
-- This Feature does not rename `work/*/*/run.log.jsonl`.
+- This Feature does not rename `.pan/work/*/*/run.log.jsonl`.
 - This Feature does not apply work-style day-directory or task-subdirectory
   nesting under `lib/inbox/` subtrees.
 

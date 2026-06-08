@@ -18,7 +18,7 @@
       "id": "WP2",
       "label": "WP2 — CLI and runtime path prefixing",
       "status": "shipped",
-      "outcome": "Feature-delivery CLI flows route lib/, work/, archive/, and .pan/ paths through the resolver while ledger strings stay project-relative."
+      "outcome": "Feature-delivery CLI flows route lib/, .pan/work/, .pan/archive/, and .pan/ paths through the resolver while ledger strings stay project-relative."
     },
     {
       "id": "WP3",
@@ -55,7 +55,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172976_05-30-26/13329_2017_embedded-harness-project-root-install.md",
@@ -88,7 +88,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
+    "artifact": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 0,
@@ -97,14 +97,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
+      "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
       "range": [1, 22],
       "contentHash": "0ee914e"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
+    "artifact": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
     "sdk_automation_qa": false,
     "verification_gates": {
       "node_test_suite": "pass",
@@ -117,7 +117,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
+      "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
       "range": [1, 35],
       "contentHash": "5f95c5f"
     }
@@ -131,11 +131,11 @@
       "range": [1, 43],
       "contentHash": "079b23c"
     },
-    "archived_inbox_source": "archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -144,7 +144,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
+      "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
       "range": [1, 29],
       "contentHash": "5899b6e"
     }
@@ -285,7 +285,7 @@
           "kind": "lines",
           "path": "lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/spec.md",
           "range": [1, 333],
-          "contentHash": "8fe082e"
+          "contentHash": "72f4913"
         }
       },
       "delivery_report": {
@@ -303,82 +303,82 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/"
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/"
       },
       "plan": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/plan.md",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/plan.md",
+          "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/plan.md",
           "range": [1, 67],
           "contentHash": "b94c1ea"
         }
       },
       "adr_draft": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/adr-draft.md",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/adr-draft.md",
+          "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/adr-draft.md",
           "range": [1, 51],
           "contentHash": "f780674"
         }
       },
       "touch_set": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/touch-set.json",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/touch-set.json",
+          "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/touch-set.json",
           "range": [1, 65],
           "contentHash": "2a5c032"
         }
       },
       "implementation_report": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/implementation-report.md",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/implementation-report.md",
+          "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/implementation-report.md",
           "range": [1, 76],
           "contentHash": "777dc2a"
         }
       },
       "review_report": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
+          "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/review.md",
           "range": [1, 22],
           "contentHash": "0ee914e"
         }
       },
       "test_report": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
+          "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/test-report.md",
           "range": [1, 35],
           "contentHash": "5f95c5f"
         }
       },
       "policy_compliance": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
+          "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/policy-compliance.json",
           "range": [1, 29],
           "contentHash": "5899b6e"
         }
       },
       "handoff": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/handoff.md",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/handoff.md",
+          "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/handoff.md",
           "range": [1, 49],
           "contentHash": "fdf19d2"
         }
       },
       "run_log": {
-        "path": "work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/run.log.jsonl",
+        "path": ".pan/work/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       }
     },
@@ -389,7 +389,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/core/src/project-root.ts",
           "range": [1, 46],
-          "contentHash": "64b7ceb"
+          "contentHash": "dfac2c1"
         }
       },
       "cli_pan_init": {
@@ -398,7 +398,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/pan-init.ts",
           "range": [1, 431],
-          "contentHash": "3dba204"
+          "contentHash": "65a9346"
         }
       },
       "embedded_install_manifest": {
@@ -407,7 +407,7 @@
           "kind": "lines",
           "path": "lib/memory/handbook/embedded-install-manifest.yaml",
           "range": [1, 40],
-          "contentHash": "a376066"
+          "contentHash": "0fc7a41"
         }
       },
       "greenfield_evidence_evaluator": {
@@ -416,7 +416,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/evaluate-greenfield-evidence.mjs",
           "range": [1, 382],
-          "contentHash": "7edec15"
+          "contentHash": "98f8551"
         }
       },
       "handbook_pancreator_config": {
@@ -425,7 +425,7 @@
           "kind": "lines",
           "path": "lib/memory/handbook/pancreator-config.md",
           "range": [1, 185],
-          "contentHash": "ad15306"
+          "contentHash": "3608bf2"
         }
       },
       "operator_howto": {
@@ -434,7 +434,7 @@
           "kind": "lines",
           "path": "OPERATION.md",
           "range": [1, 240],
-          "contentHash": "e5293f7"
+          "contentHash": "a91d661"
         }
       },
       "adopter_persona": {
@@ -443,7 +443,7 @@
           "kind": "lines",
           "path": "lib/personas/adopter.md",
           "range": [1, 186],
-          "contentHash": "7cf7d4c"
+          "contentHash": "9bf9624"
         }
       },
       "adopt_existing_repo_skill": {
@@ -452,7 +452,7 @@
           "kind": "lines",
           "path": "lib/personas/skills/adopt-existing-repo/SKILL.md",
           "range": [1, 228],
-          "contentHash": "190b09a"
+          "contentHash": "405d2d6"
         }
       },
       "tests_project_root": {
@@ -461,7 +461,7 @@
           "kind": "lines",
           "path": "tests/project-root-resolution.test.mjs",
           "range": [1, 46],
-          "contentHash": "dcafb92"
+          "contentHash": "5846be6"
         }
       },
       "tests_pan_init": {
@@ -470,7 +470,7 @@
           "kind": "lines",
           "path": "tests/pan-init.test.mjs",
           "range": [1, 55],
-          "contentHash": "da4c063"
+          "contentHash": "e73e32f"
         }
       },
       "tests_greenfield_evidence": {
@@ -479,13 +479,13 @@
           "kind": "lines",
           "path": "tests/evaluate-greenfield-evidence.test.mjs",
           "range": [1, 144],
-          "contentHash": "3779cf7"
+          "contentHash": "f478453"
         }
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md",
+        "path": ".pan/archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172976_05-30-26/13329_2017_embedded-harness-project-root-install.md",
@@ -517,7 +517,7 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md",
+    "path": ".pan/archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md",
     "prior_path": "lib/inbox/in/172976_05-30-26/13329_2017_embedded-harness-project-root-install.md"
   },
   "advance_gate": {
@@ -525,5 +525,5 @@
     "advance_command": "pnpm -w exec pan advance 13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest --artifact lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json",
     "status": "deferred-until-ratified"
   },
-  "archived_inbox_source": "archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172976_05-30-26/13143_2020_embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/13329_2017_embedded-harness-project-root-install.md"
 }

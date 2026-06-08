@@ -21,7 +21,7 @@ function writeState(
   taskId: string,
   overrides: Record<string, unknown> = {},
 ): void {
-  const runDir = path.join(root, "work", dayBucket, taskId);
+  const runDir = path.join(root, ".pan/work", dayBucket, taskId);
   fs.mkdirSync(runDir, { recursive: true });
   const state = {
     schemaVersion: "1",
@@ -33,10 +33,10 @@ function writeState(
     createdAtIso: "2026-06-02T10:00:00.000Z",
     source: { inboxEntry: "demo.md", inboxPath: "lib/inbox/in/demo.md" },
     artifacts: {
-      runDir: `work/${dayBucket}/${taskId}`,
-      stateFile: `work/${dayBucket}/${taskId}/state.json`,
-      handoffFile: `work/${dayBucket}/${taskId}/handoff.md`,
-      runLogFile: `work/${dayBucket}/${taskId}/run.log.jsonl`,
+      runDir: `.pan/work/${dayBucket}/${taskId}`,
+      stateFile: `.pan/work/${dayBucket}/${taskId}/state.json`,
+      handoffFile: `.pan/work/${dayBucket}/${taskId}/handoff.md`,
+      runLogFile: `.pan/work/${dayBucket}/${taskId}/run.log.jsonl`,
     },
     stages: [
       { id: "intake", persona: "intake-analyst", label: "Intake", status: "complete", humanGate: "human_approval" },
@@ -62,7 +62,7 @@ describe("GET /api/run-state", () => {
   beforeEach(() => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-run-state-"));
     fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
-    fs.mkdirSync(path.join(tempRoot, "work"), { recursive: true });
+    fs.mkdirSync(path.join(tempRoot, ".pan/work"), { recursive: true });
   });
 
   afterEach(() => {
@@ -127,8 +127,8 @@ describe("GET /api/run-state", () => {
       currentStage: "plan",
       nextHumanAction: "Stale plan action",
       artifacts: {
-        runDir: "work/172973_06-02-26/65766_0543_pan-stage-feature",
-        runLogFile: "work/172973_06-02-26/65766_0543_pan-stage-feature/run.log.jsonl",
+        runDir: ".pan/work/172973_06-02-26/65766_0543_pan-stage-feature",
+        runLogFile: ".pan/work/172973_06-02-26/65766_0543_pan-stage-feature/run.log.jsonl",
       },
       stages: [
         { id: "intake", persona: "intake-analyst", status: "complete", humanGate: "human_approval" },
@@ -146,7 +146,7 @@ describe("GET /api/run-state", () => {
       currentStage: "implement",
       nextHumanAction: "Resume implement fixes.",
       nextCommand:
-        "pnpm -w exec pan advance 65766_0543_pan-stage-feature --event must_fix --artifact work/demo/review.md",
+        "pnpm -w exec pan advance 65766_0543_pan-stage-feature --event must_fix --artifact .pan/work/demo/review.md",
     });
     const implement = cells.find((stage) => stage.name === "implement");
     const plan = cells.find((stage) => stage.name === "plan");
@@ -167,8 +167,8 @@ describe("GET /api/run-state", () => {
         currentStage: "plan",
         nextHumanAction: "Plan action",
         artifacts: {
-          runDir: "work/demo",
-          runLogFile: "work/demo/run.log.jsonl",
+          runDir: ".pan/work/demo",
+          runLogFile: ".pan/work/demo/run.log.jsonl",
         },
         stages: [
           {
@@ -202,8 +202,8 @@ describe("GET /api/run-state", () => {
         currentStage: "plan",
         nextHumanAction: "Ratify the plan.",
         artifacts: {
-          runDir: "work/demo",
-          runLogFile: "work/demo/run.log.jsonl",
+          runDir: ".pan/work/demo",
+          runLogFile: ".pan/work/demo/run.log.jsonl",
         },
         stages: [
           { id: "intake", persona: "intake-analyst", status: "complete" },
@@ -246,8 +246,8 @@ describe("GET /api/run-state", () => {
         currentStage: "review",
         nextHumanAction: "Review blocked",
         artifacts: {
-          runDir: "work/demo",
-          runLogFile: "work/demo/run.log.jsonl",
+          runDir: ".pan/work/demo",
+          runLogFile: ".pan/work/demo/run.log.jsonl",
         },
         stages: [
           { id: "intake", persona: "intake-analyst", status: "complete" },
@@ -287,11 +287,11 @@ describe("GET /api/run-state", () => {
       const envelopes = await getActiveRunState(tempRoot);
       expect(envelopes[0]).toMatchObject({
         taskId: "65766_0543_metadata-feature",
-        runDir: "work/172973_06-02-26/65766_0543_metadata-feature",
+        runDir: ".pan/work/172973_06-02-26/65766_0543_metadata-feature",
         inboxSource: "lib/inbox/in/demo.md",
       });
       expect(deriveRunDirFromTaskId("65766_0543_metadata-feature", envelopes)).toBe(
-        "work/172973_06-02-26/65766_0543_metadata-feature",
+        ".pan/work/172973_06-02-26/65766_0543_metadata-feature",
       );
     } finally {
       process.chdir(originalRoot);
@@ -302,7 +302,7 @@ describe("GET /api/run-state", () => {
     const queue = collectHumanGateQueue([
       {
         taskId: "task-a",
-        runDir: "work/day-a/task-a",
+        runDir: ".pan/work/day-a/task-a",
         stages: [
           {
             name: "plan",
@@ -318,7 +318,7 @@ describe("GET /api/run-state", () => {
       },
       {
         taskId: "task-b",
-        runDir: "work/day-b/task-b",
+        runDir: ".pan/work/day-b/task-b",
         stages: [
           {
             name: "review",
@@ -370,7 +370,7 @@ describe("GET /api/run-state", () => {
   });
 
   it("parses escalation, retry, and deferral telemetry from run.log.jsonl", async () => {
-    const runDir = path.join(tempRoot, "work", "172973_06-02-26", "65766_0543_telemetry-feature");
+    const runDir = path.join(tempRoot, ".pan/work", "172973_06-02-26", "65766_0543_telemetry-feature");
     fs.mkdirSync(runDir, { recursive: true });
     writeState(tempRoot, "172973_06-02-26", "65766_0543_telemetry-feature");
     const logPath = path.join(runDir, "run.log.jsonl");
@@ -420,16 +420,16 @@ describe("GET /api/run-state", () => {
   it("resolves stage artifact paths for plan and implement stages", () => {
     const input = {
       featureId: "demo-feature",
-      runDir: "work/day/task",
+      runDir: ".pan/work/day/task",
     };
     expect(stageArtifactPathsForStage(input, "plan")).toEqual([
-      "work/day/task/plan.md",
-      "work/day/task/adr-draft.md",
-      "work/day/task/touch-set.json",
-      "work/day/task/handoff.md",
+      ".pan/work/day/task/plan.md",
+      ".pan/work/day/task/adr-draft.md",
+      ".pan/work/day/task/touch-set.json",
+      ".pan/work/day/task/handoff.md",
     ]);
     expect(stageArtifactPathsForStage(input, "implement")).toEqual([
-      "work/day/task/implementation-report.md",
+      ".pan/work/day/task/implementation-report.md",
     ]);
     expect(stageArtifactPathsForStage({ ...input, designSteps: true }, "plan")).toContain(
       "lib/memory/features/demo-feature/ux-spec.md",
@@ -444,8 +444,8 @@ describe("GET /api/run-state", () => {
         currentStage: "report",
         nextHumanAction: "Write delivery report",
         artifacts: {
-          runDir: "work/demo",
-          runLogFile: "work/demo/run.log.jsonl",
+          runDir: ".pan/work/demo",
+          runLogFile: ".pan/work/demo/run.log.jsonl",
         },
         stages: [
           { id: "intake", persona: "intake-analyst", status: "complete" },
@@ -467,7 +467,7 @@ describe("GET /api/run-state", () => {
   });
 
   it("parses run.log.jsonl in reverse-chronological order", async () => {
-    const runDir = path.join(tempRoot, "work", "172973_06-02-26", "65766_0543_log-feature");
+    const runDir = path.join(tempRoot, ".pan/work", "172973_06-02-26", "65766_0543_log-feature");
     fs.mkdirSync(runDir, { recursive: true });
     writeState(tempRoot, "172973_06-02-26", "65766_0543_log-feature");
     const logPath = path.join(runDir, "run.log.jsonl");
@@ -494,7 +494,7 @@ describe("GET /api/run-state", () => {
 
   it("returns an explicit empty run-log entry when run.log.jsonl is missing", async () => {
     writeState(tempRoot, "172973_06-02-26", "65766_0543_no-log-feature");
-    const runDir = path.join(tempRoot, "work", "172973_06-02-26", "65766_0543_no-log-feature");
+    const runDir = path.join(tempRoot, ".pan/work", "172973_06-02-26", "65766_0543_no-log-feature");
     fs.rmSync(path.join(runDir, "run.log.jsonl"), { force: true });
 
     const originalRoot = process.cwd();
@@ -512,7 +512,7 @@ describe("GET /api/run-state", () => {
       pipelineId: "other-pipeline",
     });
     writeState(tempRoot, "172973_06-02-26", "65766_0543_active-feature");
-    const badDir = path.join(tempRoot, "work", "172973_06-02-26", "65766_0543_bad-json");
+    const badDir = path.join(tempRoot, ".pan/work", "172973_06-02-26", "65766_0543_bad-json");
     fs.mkdirSync(badDir, { recursive: true });
     fs.writeFileSync(path.join(badDir, "state.json"), "{not-json");
 

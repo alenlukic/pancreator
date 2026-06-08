@@ -17,7 +17,7 @@ removed from this tree.
 | **task-low** (routing, no writes) | ✓ | ✓ |
 | **task-high** (multi-read + one artifact write) | ✓ | ✓ |
 
-Fixtures: `fixtures/task-low/`, `fixtures/task-high/` (each includes decoy `docs/PRD.md`).
+Fixtures: `fixtures/task-low/`, `fixtures/task-high/` (each includes decoy `.docs/PRD.md`).
 
 ## Expected consumption formula
 

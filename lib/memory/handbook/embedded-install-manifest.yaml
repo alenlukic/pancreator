@@ -18,7 +18,7 @@ allow:
   - lib/inbox/out/
   - lib/inbox/threads/
   - lib/inbox/notes/
-  - work/
+  - .pan/work/
   - .pan/worktrees/
   - .pan/sandboxes/
   - .pan/scheduler/
@@ -27,7 +27,7 @@ harness_root_allow:
   - .cursor/agents/
 
 deny_prefixes:
-  - archive/
+  - .pan/archive/
   - lib/memory/backlog/
   - lib/memory/adr/
   - lib/memory/rfc/
@@ -37,4 +37,4 @@ deny_prefixes:
   - lib/memory/smes/
   - lib/internal/
   - tests/
-  - docs/
+  - .docs/

@@ -32,7 +32,7 @@
     },
     {
       "id": "A4",
-      "label": "DORA lead time <24h for low-risk work",
+      "label": "DORA lead time <24h for low-risk .pan/work",
       "outcome": "unknown",
       "evidence": "No DORA instrumentation in pan status yet.",
       "owner": "pancreator-engineer",

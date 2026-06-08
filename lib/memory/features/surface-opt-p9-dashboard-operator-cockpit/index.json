@@ -15,7 +15,7 @@
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
     "clarifying_skip_rationale": "Source directive states R1–R4 and AC1–AC5 with quantified outcomes and an explicit touch set; no intake-blocking ambiguity remains.",
-    "source_inbox_item": "archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p9-dashboard-cockpit.md",
@@ -48,7 +48,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
+    "artifact": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 0,
@@ -57,14 +57,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
+      "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
       "range": [1, 23],
       "contentHash": "9f86726"
     }
   },
   "test": {
     "qa_passes": false,
-    "artifact": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
+    "artifact": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
     "sdk_automation_qa": false,
     "verification_gates": {
       "client_lint": "pass",
@@ -78,7 +78,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
+      "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
       "range": [1, 55],
       "contentHash": "500a487"
     }
@@ -90,13 +90,13 @@
       "kind": "lines",
       "path": "lib/memory/features/surface-opt-p9-dashboard-operator-cockpit/delivery-report.md",
       "range": [1, 213],
-      "contentHash": "6696ac7"
+      "contentHash": "4ac773e"
     },
-    "archived_inbox_source": "archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -105,7 +105,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/policy-compliance.json",
+      "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/policy-compliance.json",
       "range": [1, 31],
       "contentHash": "60da359"
     }
@@ -124,7 +124,7 @@
       "reason": "Browser MCP visual verification blocked at test stage; client-scoped automated validation passes per test-report.md.",
       "citation": {
         "kind": "lines",
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
         "range": [1, 38],
         "contentHash": "500a487"
       }
@@ -138,7 +138,7 @@
           "kind": "lines",
           "path": "lib/memory/features/surface-opt-p9-dashboard-operator-cockpit/spec.md",
           "range": [1, 206],
-          "contentHash": "7cc5d52"
+          "contentHash": "c56afc5"
         }
       },
       "delivery_report": {
@@ -147,7 +147,7 @@
           "kind": "lines",
           "path": "lib/memory/features/surface-opt-p9-dashboard-operator-cockpit/delivery-report.md",
           "range": [1, 213],
-          "contentHash": "6696ac7"
+          "contentHash": "4ac773e"
         }
       },
       "per_feature_index": {
@@ -156,82 +156,82 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/"
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/"
       },
       "plan": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/plan.md",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/plan.md",
+          "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/plan.md",
           "range": [1, 123],
           "contentHash": "a8436ee"
         }
       },
       "adr_draft": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
+          "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
           "range": [1, 124],
           "contentHash": "579bc45"
         }
       },
       "touch_set": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/touch-set.json",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/touch-set.json",
+          "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/touch-set.json",
           "range": [1, 76],
           "contentHash": "d3a2fde"
         }
       },
       "implementation_report": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/implementation-report.md",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/implementation-report.md",
+          "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/implementation-report.md",
           "range": [1, 69],
           "contentHash": "13c7eb5"
         }
       },
       "review_report": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
+          "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
           "range": [1, 23],
           "contentHash": "9f86726"
         }
       },
       "test_report": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
+          "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
           "range": [1, 55],
           "contentHash": "500a487"
         }
       },
       "policy_compliance": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/policy-compliance.json",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/policy-compliance.json",
+          "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/policy-compliance.json",
           "range": [1, 31],
           "contentHash": "60da359"
         }
       },
       "handoff": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/handoff.md",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/handoff.md",
+          "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/handoff.md",
           "range": [1, 49],
           "contentHash": "3fbba8c"
         }
       },
       "run_log": {
-        "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/run.log.jsonl",
+        "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       }
     },
@@ -242,7 +242,7 @@
           "kind": "lines",
           "path": "client/src/components/DashboardPage.tsx",
           "range": [1, 431],
-          "contentHash": "0a7e757"
+          "contentHash": "a191b5d"
         }
       },
       "globals_css": {
@@ -251,7 +251,7 @@
           "kind": "lines",
           "path": "client/src/app/globals.css",
           "range": [1, 481],
-          "contentHash": "a2f9f2c"
+          "contentHash": "ffa40be"
         }
       },
       "run_state_service": {
@@ -260,7 +260,7 @@
           "kind": "lines",
           "path": "client/src/services/run-state.ts",
           "range": [1, 353],
-          "contentHash": "594bf09"
+          "contentHash": "365c850"
         }
       },
       "run_state_route": {
@@ -278,7 +278,7 @@
           "kind": "lines",
           "path": "client/src/app/api/run-state/route.test.ts",
           "range": [1, 305],
-          "contentHash": "e1ef130"
+          "contentHash": "c49d518"
         }
       },
       "page_test": {
@@ -287,13 +287,13 @@
           "kind": "lines",
           "path": "client/src/app/page.test.tsx",
           "range": [1, 268],
-          "contentHash": "678a3b1"
+          "contentHash": "adbb9fe"
         }
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md",
+        "path": ".pan/archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p9-dashboard-cockpit.md",
@@ -326,8 +326,8 @@
     "status": "deferred-until-ratified"
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md",
+    "path": ".pan/archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md",
     "prior_path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p9-dashboard-cockpit.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/75420_0303_surface-opt-p9-dashboard-cockpit.md"
 }

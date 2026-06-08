@@ -62,4 +62,4 @@ pnpm --filter @pancreator/mcp-server run typecheck
 ## See also
 
 - `@pancreator/cli` for the matching `pan` CLI verbs.
-- `docs/BOOTSTRAP.md` Phase 3 step 9 for the bootstrap scope statement.
+- `.docs/BOOTSTRAP.md` Phase 3 step 9 for the bootstrap scope statement.
