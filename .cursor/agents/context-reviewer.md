@@ -21,9 +21,7 @@ small.
 
 ## Retrieval contract
 
-1. Read the bounded prompt path the operator names (for example
-   `sandbox/<slug>/context-review-prompt.md`) or follow operator-authored scope
-   in the delegation message when no scaffold file exists.
+1. Read the bounded prompt path the operator names (for example `sandbox/<slug>/context-review-prompt.md`); when the prompt lists a feature-delivery run, read `work/<day>/<id>/next-prompt.md` for the bounded stage scope or `work/<day>/<id>/handoff.md` when no `next-prompt.md` exists.
 2. Read `AGENTS.md` (self-host) or `.pancreator/AGENTS.md` (embedded) only when
    the bounded prompt omits the live agent operating contract the task needs.
 3. Read `lib/personas/context-reviewer.md` only when the bounded prompt omits
