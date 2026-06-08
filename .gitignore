@@ -46,7 +46,10 @@ out/
 
 # --- Cursor ---
 
-# Local-only; repo policy lives in .cursorindexingignore (tracked).
+# Runtime IDE surface; regenerated via `pan cursor-sync` or `pan init --apply`.
+.cursor/
+
+# Local-only operator overrides; indexing policy lives in .cursorindexingignore (tracked).
 .cursorignore
 
 # --- Local control plane ---

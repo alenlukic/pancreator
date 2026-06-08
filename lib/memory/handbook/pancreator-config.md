@@ -23,10 +23,14 @@ The `.` value means the harness root and target project root are the same direct
 ## Harness root vs project root
 
 The **harness root** is the directory that contains harness-owned `pancreator.yaml`
-and (when required) repo-root `.cursor/agents/` projections. The **project root**
+and (when required) local repo-root `.cursor/` projections. The **project root**
 is where operational trees (`lib/inbox/`, `lib/memory/`, `work/`, `archive/`,
 `.pan/`) live. When `project_root` is `.pancreator`, those trees resolve under
 `<harnessRoot>/.pancreator/` while `pancreator.yaml` stays at the harness root.
+
+Canonical Cursor sources live under `<project_root>/lib/personas/` (agents and
+rules). Materialize the runtime tree
+with `pnpm -w exec pan cursor-sync` or `pan init --apply` (embedded).
 
 Self-hosting (daedaline):
 

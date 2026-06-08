@@ -1,5 +1,6 @@
 import { stringify as stringifyYaml } from "yaml";
 import type { PersonaSpec } from "./types.js";
+import { emitCursorMdcFromPersonaRule } from "./persona-rule.js";
 
 const YAML_OPT = { lineWidth: 0, defaultKeyType: "PLAIN" as const, indent: 2 };
 
@@ -34,11 +35,13 @@ export interface MdcShimOptions {
 export function emitMdcShim(spec: PersonaSpec, options: MdcShimOptions = {}): string {
   const globs = options.globs ?? [`lib/personas/${spec.name}.md`];
   const alwaysApply = options.alwaysApply ?? false;
-  const header = {
-    description: spec.description,
-    globs,
-    alwaysApply,
-  };
-  const yamlText = stringifyYaml(header, YAML_OPT).replace(/\n$/, "");
-  return `---\n${yamlText}\n---\n\n@lib/personas/${spec.name}.md\n`;
+  return emitCursorMdcFromPersonaRule(
+    {
+      persona: spec.name,
+      description: spec.description,
+      globs,
+      alwaysApply,
+    },
+    ".",
+  );
 }

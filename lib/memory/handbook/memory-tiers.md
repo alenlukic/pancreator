@@ -134,9 +134,11 @@ When an agent names **internal-operating-content**, the agent SHALL treat the
 tier as system machinery and operating doctrine distinct from **active-memory**.
 
 Expected path prefixes include `lib/memory/handbook/`, `lib/personas/`, `lib/personas/skills/`,
-`.cursor/rules/`, `.cursor/agents/`, and the implementation corpus under
-`lib/internal/packages/`, `tests/`, and `lib/internal/tools/`. Cursor agent projections SHALL stay
-compact and route to canonical personas rather than duplicate persona bodies.
+`lib/personas/rules/`, and the implementation corpus under
+`lib/internal/packages/`, `tests/`, and `lib/internal/tools/`. Local runtime
+mirrors under `.cursor/agents/` and `.cursor/rules/` are gitignored; regenerate
+them with `pan cursor-sync`. Cursor agent projections SHOULD stay compact and
+route to canonical personas rather than duplicate persona bodies.
 
 When an agent retrieves internal operating content, the agent SHALL load only
 the handbook route, persona spec, skill, or rule the task names.

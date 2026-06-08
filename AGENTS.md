@@ -46,9 +46,10 @@ language → `lib/memory/handbook/glossary.md`; persona spec →
 
 ## 3 — Where agents live
 
-- `lib/personas/<name>.md` — Anthropic 16-field persona specs.
-- `.cursor/agents/<name>.md` — canonical Cursor projection (one file per persona).
-- `.cursor/rules/<name>.mdc` — Rule-layer projection where Cursor still requires it.
+- `lib/personas/<name>.md` — Anthropic 16-field persona specs (canonical source).
+- `lib/personas/rules/<name>.yaml` — tool-agnostic persona rule specs; emitted to `.cursor/rules/` by `pan cursor-sync`.
+- `.cursor/agents/<name>.md` — local Cursor agent projection (gitignored); emitted from personas by `pan cursor-sync` or `pan init --apply`.
+- `.cursor/rules/<name>.mdc` — local Cursor rule projection (gitignored); emitted from `lib/personas/rules/`.
 - `lib/personas/skills/<name>/SKILL.md` — Agent Skills open-spec packs.
 - `lib/pipelines/<name>.yaml` — pipeline DAGs (YAML).
 - `lib/ensembles/<name>.yaml` — M4+ ensembles (no executable definitions yet).
@@ -211,9 +212,10 @@ scheduler wiring lands.
 /AGENTS.md                       this file (internal)
 /README.md                       external landing (high-level)
 /OPERATION.md                    external operator procedures (human)
-/docs/                           internal product documents
-/.cursor/agents/                 Cursor persona projections
-/.cursor/rules/                  Cursor rule shims (per-persona where required)
+/docs/                           internal product documents (local-only; gitignored)
+/lib/personas/rules/             tool-agnostic persona rule specs (emitted to .cursor/rules/)
+/.cursor/agents/                 local Cursor agent projections (gitignored; cursor-sync)
+/.cursor/rules/                  local Cursor rule shims (gitignored; cursor-sync)
 /lib/personas/                   persona specs
 /lib/personas/skills/            skill packs (Agent Skills open spec)
 /lib/pipelines/                  pipeline DAGs (YAML)

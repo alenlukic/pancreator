@@ -57,8 +57,9 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   `background`). Two lifecycles: *ephemeral* (spawned per task) and *long-lived*
   (SMEs). See `/lib/memory/handbook/persona-spec.md`.
 - **Persona Spec Format** — the 16-field YAML frontmatter plus a Pancreator
-  `metadata` map. Authored once at `lib/personas/<name>.md`; a build step emits a
-  Cursor `.cursor/rules/<name>.mdc` shim from the same source.
+  `metadata` map. Authored once at `lib/personas/<name>.md`; `pan cursor-sync`
+  emits `.cursor/agents/<name>.md` and `.cursor/rules/<name>.mdc` from
+  `lib/personas/rules/<name>.yaml`.
 - **Subagent** — a runtime instance of a persona. The persona is the spec; the
   subagent is the running invocation.
 - **SME (Subject-Matter Expert)** — a long-lived persona that owns a knowledge

@@ -271,6 +271,11 @@ for human decisions unless debugging a specific generator.
 
 ## Operator maintenance
 
-When `.cursorindexingignore` changes, the operator SHOULD restart or reindex Cursor and SHOULD verify custom agent discovery if `.cursor/agents/**` remains excluded. The operator SHOULD also verify each persona's canonical `.cursor/agents/<name>.md` appears in Cursor.
+After clone, embedded init, or edits to `lib/personas/` (including
+`lib/personas/rules/`), the
+operator SHOULD run `pnpm -w exec pan cursor-sync` to materialize the local
+`.cursor/` tree before invoking subagents.
+
+When `.cursorindexingignore` changes, the operator SHOULD restart or reindex Cursor and SHOULD verify custom agent discovery if `.cursor/agents/**` remains excluded. The operator SHOULD also verify each persona's `.cursor/agents/<name>.md` appears in Cursor after sync.
 
 The operator SHOULD run `pnpm run context:budget` (or `node lib/internal/tools/context-budget-report.mjs`) before and after policy changes to capture directional corpus size estimates.

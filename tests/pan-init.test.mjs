@@ -61,7 +61,9 @@ test("pan init embedded apply scaffolds under .pancreator and preserves host AGE
   assert.match(harnessYaml, /invocation:\s*sdk/);
   assert.doesNotMatch(harnessYaml, /completed_phases/);
   assert.ok(existsSync(path.join(root, ".cursor/agents/intake-analyst.md")));
+  assert.ok(existsSync(path.join(root, ".cursor/rules/coder.mdc")));
   assert.ok(existsSync(path.join(root, ".pancreator/lib/personas/intake-analyst.md")));
+  assert.ok(existsSync(path.join(root, ".pancreator/lib/personas/rules/coder.yaml")));
   assert.ok(existsSync(path.join(root, ".pancreator/lib/memory/handbook/context-economy.md")));
   assert.ok(payload.personaSeed?.source === "package");
   assert.ok(payload.handbookSeed?.source === "package");

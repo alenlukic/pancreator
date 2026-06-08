@@ -1,0 +1,13 @@
+persona: coder
+description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL implement one task within the touch-set declared at `/work/<day>/<id>/touch-set.json`, write tests for every public symbol it adds or modifies, and stage the diff for the `review` stage.
+globs:
+  - lib/internal/packages/**/src/**/*
+  - lib/internal/packages/**/test/**/*
+  - lib/internal/packages/**/__tests__/**/*
+  - lib/internal/packages/**/package.json
+  - lib/internal/packages/**/tsconfig.json
+  - tests/**/*.mjs
+  - tests/**/*.ts
+  - lib/internal/tools/**/*.mjs
+  - work/**/touch-set.json
+alwaysApply: false

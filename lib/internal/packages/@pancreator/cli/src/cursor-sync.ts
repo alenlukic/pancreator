@@ -1,4 +1,5 @@
 import { projectRootAbs, quoteJsonString, readProjectRoot } from "@pancreator/core";
+import { emitCursorMdcFromPersonaRule, parsePersonaRuleYaml } from "@pancreator/persona";
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { loadEmbeddedInstallManifestFromRepo } from "./pan-init.js";
@@ -273,6 +274,56 @@ function assertAgentsDirAllowed(harnessRoot: string): void {
   }
 }
 
+function emitCursorRules(
+  harnessRoot: string,
+  projectRoot: string,
+  projectRootRel: string,
+  dryRun: boolean,
+): CursorSyncWrittenEntry[] {
+  const written: CursorSyncWrittenEntry[] = [];
+  const rulesSourceDir = path.join(projectRoot, "lib", "personas", "rules");
+  const rulesTargetDir = path.join(harnessRoot, ".cursor", "rules");
+
+  if (!existsSync(rulesSourceDir)) {
+    return written;
+  }
+
+  const sourceFiles = readdirSync(rulesSourceDir)
+    .filter((name) => name.endsWith(".yaml"))
+    .sort();
+  const sourceSet = new Set(sourceFiles.map((file) => file.replace(/\.yaml$/u, ".mdc")));
+
+  if (!dryRun && sourceFiles.length > 0) {
+    mkdirSync(rulesTargetDir, { recursive: true });
+  }
+
+  for (const file of sourceFiles) {
+    const personaName = file.replace(/\.yaml$/u, "");
+    const ruleRaw = readFileSync(path.join(rulesSourceDir, file), "utf8");
+    const rule = parsePersonaRuleYaml(ruleRaw, personaName);
+    const mdc = emitCursorMdcFromPersonaRule(rule, projectRootRel);
+    const outRel = path.posix.join(".cursor/rules", `${personaName}.mdc`);
+    if (!dryRun) {
+      writeFileSync(path.join(rulesTargetDir, `${personaName}.mdc`), mdc, "utf8");
+    }
+    written.push({ path: outRel, action: dryRun ? "would_write" : "write" });
+  }
+
+  if (existsSync(rulesTargetDir)) {
+    for (const existing of readdirSync(rulesTargetDir).filter((name) => name.endsWith(".mdc"))) {
+      if (!sourceSet.has(existing)) {
+        const outRel = path.posix.join(".cursor/rules", existing);
+        if (!dryRun) {
+          unlinkSync(path.join(rulesTargetDir, existing));
+        }
+        written.push({ path: outRel, action: dryRun ? "would_remove" : "remove" });
+      }
+    }
+  }
+
+  return written;
+}
+
 export function runCursorSync(harnessRootInput: string, options: CursorSyncOptions = {}): CursorSyncResult {
   const dryRun = options.dryRun ?? false;
   const harnessRoot = path.resolve(harnessRootInput);
@@ -330,6 +381,8 @@ export function runCursorSync(harnessRootInput: string, options: CursorSyncOptio
     }
     written.push({ path: ".cursor/agents/.gitkeep", action: dryRun ? "would_remove" : "remove" });
   }
+
+  written.push(...emitCursorRules(harnessRoot, projectRoot, projectRootRel, dryRun));
 
   return {
     command: "cursor-sync",
