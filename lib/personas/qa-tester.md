@@ -97,6 +97,11 @@ the `qa_passes` gate.
 2. **Manual rerun.** When a human runs `pnpm -w exec pan feature test <id>`,
    you SHALL re-run all checks against the current touch-set and overwrite the
    prior `/work/<day>/<id>/test-report.md` in place.
+3. **Design steps enabled.** When the run has design steps enabled
+   (`state.json` `options.designSteps: true`), you SHALL own functional and
+   automated verification only; `design-engineer` runs design QA in parallel via
+   `design-qa-prompt.md`. You MUST NOT set `qa_passes: true` until
+   `/work/<day>/<id>/design-qa-report.md` also records `design_qa_passes: true`.
 
 ## What you MUST produce, every invocation
 
@@ -112,7 +117,10 @@ The file MUST contain the five sections below in this order.
    fails the gate.
 3. **Manual verification.** A bulleted list naming what was exercised and what
    was observed. Each bullet MUST name the artifact or command exercised and the
-   result observed.
+   result observed. For destructive or exploratory checks (browser flows, partial
+   installs, one-off scripts), you SHOULD use `sandbox/<task-id>/` prepared by
+   `pnpm -w exec pan sandbox prepare <task-id>` instead of mutating the main
+   worktree.
 4. **Fixes applied.** A bulleted list of fixes you applied in-scope, or the
    literal string `none` when no fixes were needed. Each fix MUST cite the file
    path and change applied.
@@ -189,9 +197,14 @@ every exercise and its observed result in the Manual verification section.
 
 ## Visual QA (browser)
 
-When the touch-set declares a `client/` web application or other operator-facing
-UI surface, you MUST perform visual QA via Browser automation before setting
-`qa_passes: true`.
+When design steps are enabled for the run (`state.json` `options.designSteps: true`),
+DOM and visual design QA is owned by `design-engineer` via `design-qa-prompt.md`.
+In that mode you MUST NOT duplicate Browser MCP inspections; record functional
+verification only in `test-report.md`.
+
+When design steps are off and the touch-set declares a `client/` web application
+or other operator-facing UI surface, you MUST perform visual QA via Browser
+automation before setting `qa_passes: true`.
 
 1. **Start or attach to the dev server.** Run the documented startup command
    (for example `pnpm --filter client dev`) and confirm the local URL is reachable.

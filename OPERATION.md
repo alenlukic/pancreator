@@ -72,6 +72,22 @@ outbox artifacts apply only in SDK mode; manual mode preserves the handoff-and-p
 In SDK mode the handing-off persona validates stage artifacts and the runtime
 auto-advances when validation passes—human gates are not paused between stages.
 
+### Optional design steps
+
+When `feature_delivery.design_steps: true` in `pancreator.yaml` (default off),
+or when the feature `spec.md` frontmatter sets `design_steps: true` (overrides
+the repo default), the plan and test stages add companion `design-engineer`
+delegation:
+
+- **Plan:** delegate `/design-engineer` with `design-plan-prompt.md` first to
+  emit `lib/memory/features/<id>/ux-spec.md`, then delegate `/tech-lead` with
+  `next-prompt.md` to consolidate the ux-spec into the plan bundle.
+- **Test:** delegate `/qa-tester` and `/design-engineer` in parallel (`next-prompt.md`
+  and `design-qa-prompt.md`). The test gate requires both `qa_passes: true` and
+  `design_qa_passes: true` before advance.
+
+SDK mode runs these companions automatically when design steps are on.
+
 Use this loop exactly:
 
 1. Put the request in `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
@@ -276,6 +292,54 @@ For ad-hoc work that does not use the feature-delivery ledger:
    then delegate to the owning persona (see `AGENTS.md` §4).
 4. Stage local diffs and ratify at phase boundaries before commit.
 
+### Out-of-band context review
+
+When you want a holistic correctness pass over diff plus operator context (plan
+docs, commit messages, agent transcripts) **outside** feature-delivery gates:
+
+1. Scaffold the bounded prompt (no task id required):
+
+   ```bash
+   pnpm -w exec pan context-review scaffold
+   ```
+
+   Optional flags:
+
+   - `--workspace sandbox/<slug>` — output directory (default: `sandbox/context-review`)
+   - `--scope-path <repo-path>` — repeat for diff scope
+   - `--context-path <repo-path>` — repeat for plan/spec/ADR docs to read
+   - `--run-dir work/<day>/<slug>` — optionally pull touch-set and run artifacts when that directory exists
+
+2. Delegate `/context-reviewer` with `sandbox/<slug>/context-review-prompt.md`
+   (or operator-authored scope in chat).
+3. Read `sandbox/<slug>/context-review.md` (advisory only).
+
+The SDK and `pan advance` never auto-invoke context review. In-band review and
+QA remain the `reviewer` and `qa-tester` pipeline stages.
+
+### Operator sandbox (`sandbox/`)
+
+Top-level `sandbox/` is gitignored scratch space for manual QA, exploratory
+testing, and out-of-band context review. It is distinct from `.pan/sandboxes/`
+(port-registry control plane) and `lib/inbox/notes/` (human-only; agents must
+not read).
+
+Recommended layouts:
+
+- `sandbox/context-review/` — default out-of-band review workspace
+- `sandbox/<slug>/` — ad-hoc QA or review passes
+- `sandbox/<task-id>/` — optional copy of an in-flight run touch-set
+
+Prepare a sandbox copy from an in-flight run touch-set (optional convenience):
+
+```bash
+pnpm -w exec pan sandbox prepare <task-id>
+```
+
+This writes `sandbox/<task-id>/manifest.json` listing copied paths. Use the
+sandbox tree for destructive checks, browser flows, or one-off scripts instead
+of mutating the main worktree.
+
 Pancreator self-development (internal surface only): read root `AGENTS.md`, then
 route through `docs/PRD.summary.md` and `docs/PRD.index.md` before full
 `docs/PRD.md` or `docs/BOOTSTRAP.md`. The entire `docs/` tree, including
@@ -340,6 +404,8 @@ Ad-hoc and recovery verbs:
 | Verb | When | Command |
 |---|---|---|
 | Ad-hoc close | Build-mode workspace with verification pack | `pnpm -w exec pan close-out-of-band work/<day>/<task-id> --feature <id> --reason "<text>"` |
+| Context review (advisory) | Holistic diff + transcript correctness pass (no task id) | `pnpm -w exec pan context-review scaffold` then delegate `/context-reviewer` |
+| Sandbox prepare | Copy touch-set into isolated QA tree | `pnpm -w exec pan sandbox prepare <task-id>` |
 | Reopen | Post-close verification failed | `pnpm -w exec pan reopen <task-id> --reason "<text>" [--stage <stage>]` |
 
 Compliance audit history contract (feature-delivery compliance stage):

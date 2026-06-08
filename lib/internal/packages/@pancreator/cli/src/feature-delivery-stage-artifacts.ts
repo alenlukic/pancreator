@@ -5,6 +5,9 @@ import { existsSync } from "node:fs";
 
 import { OPERATOR_VERIFICATION_FILENAME, validateOperatorVerificationMarkdown } from "./operator-verification.js";
 
+import { designQaReportRel, designStepsEnabled, uxSpecRel } from "./design-steps.js";
+import type { FeatureDeliveryDesignOptions } from "./design-steps.js";
+
 /** Minimal state slice for artifact path resolution without importing feature-delivery-run. */
 export interface FeatureDeliveryArtifactState {
   featureId: string;
@@ -12,6 +15,7 @@ export interface FeatureDeliveryArtifactState {
     runDir: string;
     handoffFile?: string;
   };
+  options?: FeatureDeliveryDesignOptions;
 }
 
 function handoffPath(state: FeatureDeliveryArtifactState): string {
@@ -106,6 +110,67 @@ export function parseQaVerdict(testMarkdown: string): {
     spotFixable: /spot_fixable:\s*true/iu.test(testMarkdown),
     excludedFromGate: /excluded_from_gate:\s*true/iu.test(testMarkdown),
   };
+}
+
+export function parseDesignQaVerdict(designQaMarkdown: string): {
+  passes: boolean | null;
+  planInvalidating: boolean;
+  coreReentryRequired: boolean;
+  spotFixable: boolean;
+  excludedFromGate: boolean;
+} {
+  const passMatch = designQaMarkdown.match(/design_qa_passes:\s*(true|false)/iu);
+  const planMatch = designQaMarkdown.match(/plan_invalidating:\s*(true|false)/iu);
+  return {
+    passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
+    planInvalidating: planMatch !== null && planMatch[1].toLowerCase() === "true",
+    coreReentryRequired: /core_reentry_required:\s*true/iu.test(designQaMarkdown),
+    spotFixable: /spot_fixable:\s*true/iu.test(designQaMarkdown),
+    excludedFromGate: /excluded_from_gate:\s*true/iu.test(designQaMarkdown),
+  };
+}
+
+export function mergedTestStageVerdict(input: {
+  qaMarkdown: string;
+  designQaMarkdown?: string;
+  designSteps: boolean;
+}): {
+  passes: boolean | null;
+  planInvalidating: boolean;
+  coreReentryRequired: boolean;
+  spotFixable: boolean;
+  excludedFromGate: boolean;
+} {
+  const qa = parseQaVerdict(input.qaMarkdown);
+  if (!input.designSteps) {
+    return qa;
+  }
+  if (input.designQaMarkdown === undefined) {
+    return { ...qa, passes: qa.passes === true ? null : qa.passes };
+  }
+  const design = parseDesignQaVerdict(input.designQaMarkdown);
+  if (qa.passes === false) {
+    return qa;
+  }
+  if (design.passes === false) {
+    return {
+      passes: false,
+      planInvalidating: design.planInvalidating,
+      coreReentryRequired: design.coreReentryRequired,
+      spotFixable: design.spotFixable,
+      excludedFromGate: design.excludedFromGate,
+    };
+  }
+  if (qa.passes === true && design.passes === true) {
+    return {
+      passes: true,
+      planInvalidating: false,
+      coreReentryRequired: false,
+      spotFixable: false,
+      excludedFromGate: false,
+    };
+  }
+  return { ...qa, passes: null };
 }
 
 function readBool(record: Record<string, unknown>, key: string): boolean | null {
@@ -290,6 +355,21 @@ function validateArtifactContent(
     return null;
   }
 
+  if (base === "design-qa-report.md") {
+    if (parseDesignQaVerdict(content).passes === null) {
+      return {
+        path: rel,
+        code: "design_qa_passes_unparseable",
+        message: "design-qa-report.md must contain design_qa_passes: true or design_qa_passes: false",
+      };
+    }
+    return null;
+  }
+
+  if (base === "ux-spec.md") {
+    return validateMarkdownBody(rel, content);
+  }
+
   if (base === "ship-ratification.json") {
     try {
       const parsed = JSON.parse(content) as Record<string, unknown>;
@@ -350,7 +430,7 @@ function validateArtifactContent(
     return null;
   }
 
-  if (base === "plan.md" || base === "implementation-report.md") {
+  if (base === "plan.md" || base === "implementation-report.md" || base === "ux-spec.md") {
     return validateMarkdownBody(rel, content);
   }
 
@@ -377,7 +457,9 @@ export function stageArtifactContract(
       const adr = path.posix.join(run, "adr-draft.md");
       const touchSet = path.posix.join(run, "touch-set.json");
       const handoff = handoffPath(state);
-      const requiredAfterStageWork = [plan, adr, touchSet, handoff];
+      const requiredAfterStageWork = designStepsEnabled(state.options)
+        ? [uxSpecRel(state.featureId), plan, adr, touchSet, handoff]
+        : [plan, adr, touchSet, handoff];
       const acceptedAdvanceArtifacts = [plan, touchSet, handoff];
       return {
         primaryArtifact: touchSet,
@@ -406,6 +488,7 @@ export function stageArtifactContract(
     }
     case "test": {
       const testReport = path.posix.join(run, "test-report.md");
+      const designReport = designQaReportRel(run);
       if (
         event !== "qa_passes" &&
         event !== "qa_fails" &&
@@ -416,9 +499,12 @@ export function stageArtifactContract(
           `Test stage only supports qa_passes, qa_fails, qa_fails_plan_invalidating, or qa_spot_fix, got ${event}.`,
         );
       }
+      const requiredAfterStageWork = designStepsEnabled(state.options)
+        ? [testReport, designReport]
+        : [testReport];
       return {
         primaryArtifact: testReport,
-        requiredAfterStageWork: [testReport],
+        requiredAfterStageWork,
         acceptedAdvanceArtifacts: [testReport],
       };
     }
@@ -495,6 +581,8 @@ const CONTENT_VALIDATED_BASENAMES = new Set([
   "implementation-report.md",
   "review.md",
   "test-report.md",
+  "design-qa-report.md",
+  "ux-spec.md",
   "compliance-result.json",
   "ship-ratification.json",
   OPERATOR_VERIFICATION_FILENAME,

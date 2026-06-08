@@ -30,6 +30,15 @@ import {
 } from "./compliance-audit-history.js";
 import { readCursorInvocationMode } from "./pan-init.js";
 import {
+  designPlanPromptRel,
+  designQaPromptRel,
+  designStepsEnabled,
+  renderDesignPlanPrompt,
+  renderDesignQaPrompt,
+  resolveDesignStepsConfig,
+  type FeatureDeliveryDesignOptions,
+} from "./design-steps.js";
+import {
   applySdkRetrySideEffects,
   compileFeatureDeliveryPipeline,
   ensureAutomationState,
@@ -164,6 +173,8 @@ export interface FeatureDeliveryState {
   automation?: FeatureDeliveryAutomationState;
   /** Runtime-generated exact resume command (report approval gate, etc.). */
   nextCommand?: string;
+  /** Optional feature-delivery toggles resolved at run start and refreshed at plan/test entry. */
+  options?: FeatureDeliveryDesignOptions;
 }
 
 export type NextStep = {
@@ -390,6 +401,7 @@ export async function startFeatureDelivery(
   const runLogFile = path.join(runDir, "run.log.jsonl");
   const nextPromptFile = path.join(runDir, "next-prompt.md");
   const invocation = await readCursorInvocationMode(repoRoot);
+  const designConfig = await resolveDesignStepsConfig(repoRoot, featureId);
 
   const state: FeatureDeliveryState = {
     schemaVersion: FEATURE_DELIVERY_STATE_SCHEMA_VERSION,
@@ -414,6 +426,10 @@ export async function startFeatureDelivery(
     transitions: featureDeliveryTransitions(pipeline),
     nextHumanAction:
       "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan.",
+    options: {
+      designSteps: designConfig.designSteps,
+      designStepsSource: designConfig.designStepsSource,
+    },
   };
 
   ensureAutomationState(state, invocation);
@@ -874,6 +890,15 @@ export async function refreshFeatureDeliveryPrompt(
     nextPersona: personaForStage(pipeline, state.currentStage),
     nextHumanAction: state.nextHumanAction,
   };
+}
+
+export async function loadFeatureDeliveryStateForTask(
+  repoRoot: string,
+  taskId: string,
+): Promise<{ state: FeatureDeliveryState; stateFile: { abs: string; rel: string } }> {
+  const stateFile = await findStateFile(repoRoot, sanitizeTaskId(taskId));
+  const state = await readFeatureDeliveryState(stateFile.abs);
+  return { state, stateFile };
 }
 
 export async function closeFeatureDeliveryArtifacts(
@@ -1907,10 +1932,16 @@ function renderNextPrompt(
   const persona = personaForStage(pipeline, state.currentStage) ?? "human";
   const stage = state.currentStage;
   const sdkMode = state.automation?.runnerInvocation === "sdk";
+  const designCompanionNote =
+    designStepsEnabled(state.options) && stage === "plan"
+      ? `\nDesign steps are ON. Manual mode: delegate \`/design-engineer\` with \`${designPlanPromptRel(state.artifacts.runDir)}\` first, then \`${persona}\` with this prompt.\n`
+      : designStepsEnabled(state.options) && stage === "test"
+        ? `\nDesign steps are ON. Manual mode: delegate \`/qa-tester\` with this prompt AND \`/design-engineer\` with \`${designQaPromptRel(state.artifacts.runDir)}\` in parallel. The test gate requires both \`qa_passes\` and \`design_qa_passes\`.\n`
+        : "";
   return `You are executing the ${stage} stage for feature-delivery task ${state.taskId}.
 
 Use subagent/persona: ${persona}
-
+${designCompanionNote}
 Read first, in this order:
 1. AGENTS.md
 2. ${state.artifacts.handoffFile}
@@ -1946,9 +1977,13 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
         state.automation?.runnerInvocation === "sdk" ? "agent validates spec" : "human ratification"
       }: ${advanceLine("intake")}`;
     case "plan":
-      return `Input: lib/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after ${
-        state.automation?.runnerInvocation === "sdk" ? "agent validates plan artifacts" : "human ratification"
-      }: ${advanceLine("plan")}`;
+      return designStepsEnabled(state.options)
+        ? `Input: lib/memory/features/${state.featureId}/spec.md\nDesign companion (when design steps on): ${designPlanPromptRel(state.artifacts.runDir)} → lib/memory/features/${state.featureId}/ux-spec.md, then tech-lead consolidates\nOutputs: lib/memory/features/${state.featureId}/ux-spec.md, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/handoffFile}\nAdvance after ${
+            state.automation?.runnerInvocation === "sdk" ? "agent validates plan artifacts" : "human ratification"
+          }: ${advanceLine("plan")}`
+        : `Input: lib/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nAdvance after ${
+            state.automation?.runnerInvocation === "sdk" ? "agent validates plan artifacts" : "human ratification"
+          }: ${advanceLine("plan")}`;
     case "implement": {
       const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
       const reentry = resolveImplementMustFixReentry(state, repoRoot);
@@ -1960,7 +1995,9 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
     case "review":
       return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: ${advanceLine("review", "review_passes")}\nReturn to implement on must-fix: pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
-      return `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`;
+      return designStepsEnabled(state.options)
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, lib/memory/features/${state.featureId}/ux-spec.md, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester (${state.artifacts.runDir}/next-prompt.md) + design-engineer (${designQaPromptRel(state.artifacts.runDir)})\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`
+        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
@@ -2688,6 +2725,51 @@ function loadFeatureDeliveryPipeline(repoRoot: string): PipelineDefinition {
   return pipeline;
 }
 
+async function refreshDesignStepsOptions(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+): Promise<void> {
+  const designConfig = await resolveDesignStepsConfig(repoRoot, state.featureId);
+  state.options = {
+    designSteps: designConfig.designSteps,
+    designStepsSource: designConfig.designStepsSource,
+  };
+}
+
+async function persistDesignCompanionPrompts(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+): Promise<void> {
+  if (!designStepsEnabled(state.options)) {
+    return;
+  }
+  const runDir = state.artifacts.runDir;
+  const specPath = path.posix.join("lib", "memory", "features", state.featureId, "spec.md");
+  if (state.currentStage === "plan") {
+    await writeFile(
+      resolveRepoPath(repoRoot, designPlanPromptRel(runDir)),
+      renderDesignPlanPrompt({
+        featureId: state.featureId,
+        taskId: state.taskId,
+        runDir,
+        specPath,
+      }),
+      "utf8",
+    );
+  }
+  if (state.currentStage === "test") {
+    await writeFile(
+      resolveRepoPath(repoRoot, designQaPromptRel(runDir)),
+      renderDesignQaPrompt({
+        featureId: state.featureId,
+        taskId: state.taskId,
+        runDir,
+      }),
+      "utf8",
+    );
+  }
+}
+
 async function persistStateAndPrompts(
   repoRoot: string,
   state: FeatureDeliveryState,
@@ -2709,6 +2791,9 @@ async function persistStateAndPrompts(
   if (state.nextCommand === undefined || state.nextCommand.trim().length === 0) {
     delete merged.nextCommand;
   }
+  if (state.currentStage === "plan" || state.currentStage === "test") {
+    await refreshDesignStepsOptions(repoRoot, state);
+  }
   await writeFile(statePath, stringifyCliJson(repoRoot, merged), "utf8");
   await writeFile(
     resolveRepoPath(repoRoot, state.artifacts.handoffFile),
@@ -2720,6 +2805,7 @@ async function persistStateAndPrompts(
     `# Generated by pan ${mode}\n\n${renderNextPrompt(repoRoot, state, pipeline)}`,
     "utf8",
   );
+  await persistDesignCompanionPrompts(repoRoot, state);
 }
 
 interface AppliedFeatureDeliveryTransition {

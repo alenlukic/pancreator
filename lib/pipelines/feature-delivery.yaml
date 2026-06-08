@@ -30,11 +30,13 @@ stages:
     persona: tech-lead
     label: Draft plan, ADR, touch-set, and handoff card
     outputs:
+      - lib/memory/features/<feature-id>/ux-spec.md
       - work/<day>/<task-id>/plan.md
       - work/<day>/<task-id>/adr-draft.md
       - work/<day>/<task-id>/touch-set.json
       - work/<day>/<task-id>/handoff.md
       - work/<day>/<task-id>/next-prompt.md
+      - work/<day>/<task-id>/design-plan-prompt.md
   - id: implement
     persona: coder
     label: Implement against the declared touch-set from the handoff card
@@ -53,8 +55,11 @@ stages:
     inputs:
       - work/<day>/<task-id>/review.md
       - work/<day>/<task-id>/touch-set.json
+      - lib/memory/features/<feature-id>/ux-spec.md
     outputs:
       - work/<day>/<task-id>/test-report.md
+      - work/<day>/<task-id>/design-qa-report.md
+      - work/<day>/<task-id>/design-qa-prompt.md
   - id: report
     persona: tech-writer
     label: Author the delivery report

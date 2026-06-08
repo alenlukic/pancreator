@@ -1,0 +1,7 @@
+---
+description: When an operator delegates `/context-reviewer` for out-of-band work, the `context-reviewer` SHALL read diff plus operator-scoped context and emit advisory `context-review.md` under sandbox/.
+globs: ["sandbox/**/context-review.md", "work/**/context-review.md"]
+alwaysApply: false
+---
+
+@lib/personas/context-reviewer.md

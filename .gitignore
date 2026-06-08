@@ -66,6 +66,7 @@ docs/
 tmp/
 work/
 archive/
+sandbox/
 lib/memory/checkpoints/
 
 # Operator-local calibration traces (CI uses baselines/findings/raw only)

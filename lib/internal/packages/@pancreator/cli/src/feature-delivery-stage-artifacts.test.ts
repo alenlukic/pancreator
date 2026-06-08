@@ -37,6 +37,31 @@ describe("feature-delivery-stage-artifacts", () => {
     ]);
   });
 
+  it("plan stage requires ux-spec when design steps are on", () => {
+    const contract = stageArtifactContract(
+      {
+        ...sampleState,
+        options: { designSteps: true, designStepsSource: "pancreator_yaml" },
+      },
+      "plan",
+    );
+    expect(contract.requiredAfterStageWork[0]).toBe("lib/memory/features/demo-feature/ux-spec.md");
+  });
+
+  it("test stage requires design-qa-report when design steps are on", () => {
+    const contract = stageArtifactContract(
+      {
+        ...sampleState,
+        options: { designSteps: true, designStepsSource: "spec_frontmatter" },
+      },
+      "test",
+    );
+    expect(contract.requiredAfterStageWork).toEqual([
+      "work/172996_05-10-26/38670_1315_demo-feature/test-report.md",
+      "work/172996_05-10-26/38670_1315_demo-feature/design-qa-report.md",
+    ]);
+  });
+
   it("validateStageCompletionArtifacts detects partial plan output", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-artifacts-"));
     const runAbs = path.join(root, sampleState.artifacts.runDir);

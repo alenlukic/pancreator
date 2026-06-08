@@ -23,7 +23,9 @@ import {
   validateArtifactsForTask,
   type PanCheckResult,
 } from "./feature-delivery-run.js";
+import { scaffoldContextReview } from "./context-review.js";
 import { closeOutOfBandWorkspace } from "./close-out-of-band.js";
+import { prepareSandbox } from "./sandbox-prepare.js";
 import { reopenFeatureDelivery } from "./reopen-feature-delivery.js";
 import {
   formatCountdownIdLine,
@@ -501,6 +503,42 @@ export async function parseAndRun(
       );
     });
 
+  const contextReview = program
+    .command("context-review")
+    .description("Out-of-band context review scaffolding (no feature-delivery task id required)");
+
+  const collectRepeatableOption = (value: string, previous: string[] = []): string[] =>
+    previous.concat([value]);
+
+  contextReview
+    .command("scaffold")
+    .description("Write context-review-prompt.md under sandbox/ for operator delegation to context-reviewer")
+    .option("--workspace <path>", "Repo-relative workspace under sandbox/ (default: sandbox/context-review)")
+    .option("--run-dir <path>", "Optional work/<day>/<slug> to pull artifact and touch-set paths from")
+    .option("--scope-path <path>", "Repeatable explicit diff scope path", collectRepeatableOption, [])
+    .option(
+      "--context-path <path>",
+      "Repeatable operator context doc to read (plan, spec, ADR, etc.)",
+      collectRepeatableOption,
+      [],
+    )
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (opts: { workspace?: string; runDir?: string; scopePath?: string[]; contextPath?: string[]; format?: string }) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
+      emitPayload(
+        writeOut,
+        repoRoot,
+        await scaffoldContextReview({
+          repoRoot,
+          workspace: opts.workspace,
+          runDir: opts.runDir,
+          scopePaths: opts.scopePath,
+          contextPaths: opts.contextPath,
+        }),
+        format,
+      );
+    });
+
   program
     .command("status")
     .description("Show pipeline and workspace status [deferred: M2 when task id omitted]")
@@ -648,6 +686,23 @@ export async function parseAndRun(
           repoRoot,
           taskId,
         }),
+      );
+    });
+
+  const sandbox = program.command("sandbox").description("Operator scratch QA workspaces");
+
+  sandbox
+    .command("prepare")
+    .description("Copy touch-set paths into sandbox/<task-id>/ for isolated manual QA")
+    .argument("<taskId>", "Task id under work/")
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (taskId: string, opts: { format?: string }) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
+      emitPayload(
+        writeOut,
+        repoRoot,
+        await prepareSandbox({ repoRoot, taskId, clock: options?.clock }),
+        format,
       );
     });
 
