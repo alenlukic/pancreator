@@ -5,9 +5,9 @@
 External Phoenix (or Langfuse) import is **not** an operator-led bookkeeping step
 in this repository slice. Run logs are preserved as JSONL under the nested task
 work directory (and, after `pan close-artifacts`, under
-`archive/work/<day>/<task-id>/`). Filling a live trace screenshot or
+`.pan/archive/work/<day>/<task-id>/`). Filling a live trace screenshot or
 export is **blocked on product implementation**: `@pancreator/run-logger` OTLP
-exporters and a documented importer path per `docs/PRD.md` / README Phase 4 exit
+exporters and a documented importer path per `.docs/PRD.md` / README Phase 4 exit
 notes. **pancreator-engineer** owns that wiring; until it lands, Phase 4 exit
 remains open on trace verification even when pause/resume/abort and nested
 pipelines are complete.
@@ -34,7 +34,7 @@ pipelines are complete.
 | Field | Value |
 | --- | --- |
 | Nested dogfood task id | `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` |
-| Run log path | `archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl` |
+| Run log path | `.pan/archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl` |
 | Phoenix session or export reference | _Deferred — no Phoenix importer in repo bootstrap; engineering-owned._ |
 | Screenshot or export filename under proof bundle | _Deferred — same._ |
 | Verification notes | _N/A until importer exists._ |

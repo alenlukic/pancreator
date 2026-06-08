@@ -14,7 +14,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
   "range": [12, 16],
   "contentHash": "b8cece4"
 }
@@ -23,7 +23,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
   "range": [3, 5],
   "contentHash": "cd8ba0f"
 }
@@ -32,7 +32,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
   "range": [3, 5],
   "contentHash": "e01caf2"
 }
@@ -47,21 +47,21 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
   "range": [54, 56],
   "contentHash": "ee97627"
 }
 ```
 
 - Layer A verification compares structured answers and observed read paths against
-  `expected.mjs`, fails on forbidden paths (including full `docs/PRD.md`), and
+  `expected.mjs`, fails on forbidden paths (including full `.docs/PRD.md`), and
   classifies paths with production `classifyExclusiveTier()` imported from
   `context-budget-report.mjs`.
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
   "range": [61, 64],
   "contentHash": "ee97627"
 }
@@ -70,7 +70,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/plan.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/plan.md",
   "range": [71, 79],
   "contentHash": "1f986ab"
 }
@@ -82,7 +82,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
   "range": [66, 68],
   "contentHash": "ee97627"
 }
@@ -95,7 +95,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/plan.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/plan.md",
   "range": [28, 35],
   "contentHash": "1f986ab"
 }
@@ -104,7 +104,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
   "range": [58, 59],
   "contentHash": "ee97627"
 }
@@ -117,7 +117,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
   "range": [70, 74],
   "contentHash": "ee97627"
 }
@@ -244,7 +244,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
   "kind": "lines",
   "path": "package.json",
   "range": [17, 19],
-  "contentHash": "a488976"
+  "contentHash": "22317d8"
 }
 ```
 
@@ -253,7 +253,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
   "kind": "lines",
   "path": "package.json",
   "range": [37, 37],
-  "contentHash": "a488976"
+  "contentHash": "22317d8"
 }
 ```
 
@@ -266,7 +266,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
   "range": [19, 19],
   "contentHash": "cd8ba0f"
 }
@@ -278,7 +278,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
   "range": [94, 95],
   "contentHash": "ee97627"
 }
@@ -290,7 +290,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/adr-draft.md",
   "range": [76, 78],
   "contentHash": "ee97627"
 }
@@ -302,7 +302,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
   "range": [15, 15],
   "contentHash": "cd8ba0f"
 }
@@ -315,7 +315,7 @@ and QA gates pass with zero `must fix` findings on 2026-06-02.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/review.md",
   "range": [17, 17],
   "contentHash": "cd8ba0f"
 }
@@ -336,7 +336,7 @@ forbidden-path failure, missing required-read failure, and prompt regression.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
   "range": [11, 11],
   "contentHash": "e01caf2"
 }
@@ -366,7 +366,7 @@ gating relies on sigma comparison.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
   "range": [91, 98],
   "contentHash": "b8cece4"
 }
@@ -394,7 +394,7 @@ root `pnpm test` free of live harness entry points.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/implementation-report.md",
   "range": [61, 61],
   "contentHash": "b8cece4"
 }
@@ -422,7 +422,7 @@ QA gate per `qa-tester` Gate scope.
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
+  "path": ".pan/work/172973_06-02-26/15493_1941_context-usage-test-harness/test-report.md",
   "range": [7, 20],
   "contentHash": "e01caf2"
 }

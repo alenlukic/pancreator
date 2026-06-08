@@ -134,64 +134,64 @@ references:
   - kind: lines
     path: lib/memory/features/cursor-token-economy/spec.md
     range: [121, 224]
-    contentHash: f44cc8e
+    contentHash: 3349717
     note: "Pass-1 spec defines the .cursorindexingignore policy, summary-first PRD reads, the context-budget tool, and the documentation-impact obligations that pass 2 extends."
   - kind: lines
     path: AGENTS.md
     range: [157, 189]
-    contentHash: a29b04a
+    contentHash: b953d77
     note: "AGENTS workspace map block whose memory and work entries pass 2 extends with the new active-memory tier and tier classification annotations."
   - kind: lines
     path: AGENTS.md
     range: [92, 130]
-    contentHash: a29b04a
+    contentHash: b953d77
     note: "AGENTS working-agreement block whose protected semantics pass 2 preserves through routing pointers when the directive slims AGENTS further."
   - kind: lines
     path: lib/memory/handbook/context-economy.md
     range: [29, 73]
-    contentHash: d890e2c
+    contentHash: 4e3313a
     note: "Existing context-economy policy that pass 2 extends with memory-tier routing, the `simple task mode` definition, and escalation guidance."
   - kind: lines
     path: lib/memory/handbook/index.md
     range: [53, 70]
-    contentHash: 3130f78
+    contentHash: 5c703c0
     note: "Handbook routing table whose row set pass 2 extends with active-memory and memory-tier intents."
   - kind: lines
     path: lib/internal/tools/context-budget-report.mjs
     range: [1, 1]
-    contentHash: 108ed9f
+    contentHash: 6cc94bb
     note: "Existing context-budget reporter pass 2 extends with seven memory-tier groups."
   - kind: lines
     path: .cursorindexingignore
     range: [1, 1]
-    contentHash: bdb0a62
+    contentHash: 89096be
     note: "Existing Cursor indexing-ignore file pass 2 audits and extends to align with the new memory-tier taxonomy."
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [79, 100]
-    contentHash: bb2a660
+    contentHash: 2762053
     note: "Operator-sandbox immunity rule excludes /lib/inbox/notes/ from agent traversal across every pass 2 edit."
   - kind: lines
     path: lib/memory/handbook/policy-compliance-contract.md
     range: [47, 98]
     contentHash: 971f594
-    note: "Policy-compliance contract requires `/work/<day>/<task-id>/policy-compliance.json` for non-`work/` structural changes."
+    note: "Policy-compliance contract requires `/.pan/work/<day>/<task-id>/policy-compliance.json` for non-`.pan/work/` structural changes."
   - kind: lines
     path: lib/memory/handbook/documentation-impact-contract.md
     range: [42, 102]
-    contentHash: 38ed821
+    contentHash: a4138fb
     note: "Documentation-impact contract requires the post-task decision record this Feature satisfies."
   - kind: lines
     path: lib/memory/handbook/contract-style.md
     range: [50, 158]
-    contentHash: 7c6ace0
+    contentHash: d521e35
     note: "Layer 1 style discipline (RFC 2119, EARS, atomic, active voice, quantification, weasel-word ban, glossary, sentence-length cap, dual-anchor citations) governs every clause in this spec."
 ---
 
 # Spec
 
 This Feature SHALL extend the pass-1 Cursor token-economy controls cited at
-`{kind: lines, path: lib/memory/features/cursor-token-economy/spec.md, range: [121, 224], contentHash: f44cc8e}`
+`{kind: lines, path: lib/memory/features/cursor-token-economy/spec.md, range: [121, 224], contentHash: 3349717}`
 with an explicit memory-tier taxonomy, a new `lib/memory/active/` operator surface,
 a `simple task mode`, narrower always-loaded context, narrower remaining
 Cursor rule triggers, per-tier context-budget reporting, an updated
@@ -204,10 +204,10 @@ documentation-impact, policy-compliance, and inbox-lifecycle obligation cited
 at
 `{kind: lines, path: AGENTS.md, range: [92, 130], contentHash: a29b04a}`.
 
-This Feature SHALL keep `docs/PRD.md`, `docs/BOOTSTRAP.md`, the `lib/memory/` tree, the
-`work/` tree, the `lib/personas/` tree, and the `.cursor/agents/` tree reachable
+This Feature SHALL keep `.docs/PRD.md`, `.docs/BOOTSTRAP.md`, the `lib/memory/` tree, the
+`.pan/work/` tree, the `lib/personas/` tree, and the `.cursor/agents/` tree reachable
 for explicit human and agent reads per the non-goals at
-`{kind: lines, path: lib/inbox/in/token-economy-enhanced.md, range: [89, 97], contentHash: fb1ac76}`.
+`{kind: lines, path: lib/inbox/in/token-economy-enhanced.md, range: [89, 97], contentHash: b953d77}`.
 
 ## Acceptance criteria
 
@@ -223,7 +223,7 @@ for explicit human and agent reads per the non-goals at
 - When the Feature authors the memory-tier page, the page MUST list the
   current expected location for each tier.
 - When the Feature authors the memory-tier page, the page MUST state that
-  `work/**` is archival memory.
+  `.pan/work/**` is archival memory.
 - When the Feature authors the memory-tier page, the page MUST state that
   archival memory is explicit-read by default.
 - When the Feature authors the memory-tier page, the page MUST state that
@@ -253,7 +253,7 @@ for explicit human and agent reads per the non-goals at
 ### Path classification without unsafe migration
 
 - When the Feature classifies existing paths, the Feature MUST classify
-  `work/**`, `lib/inbox/out/**`, and `lib/inbox/threads/**` as archival memory.
+  `.pan/work/**`, `lib/inbox/out/**`, and `lib/inbox/threads/**` as archival memory.
 - When the Feature classifies existing paths, the Feature MUST classify
   `lib/memory/features/**`, `lib/memory/adr/**`, and `lib/memory/backlog/**` as durable
   memory.
@@ -279,7 +279,7 @@ for explicit human and agent reads per the non-goals at
   `lib/memory/adr/000X-active-vs-archival-memory.md` where `X` is the next
   available ADR sequence number after the current highest seed.
 - When the Feature authors the new ADR, the ADR MUST record the problem
-  statement, the selected memory-tier model, the reason `work/**` is archival
+  statement, the selected memory-tier model, the reason `.pan/work/**` is archival
   by default, the reason `lib/memory/active/**` exists, the active-to-durable
   promotion rule, the archival accessibility rule, and the deferred migrations
   per the directive at
@@ -298,11 +298,11 @@ for explicit human and agent reads per the non-goals at
   `lib/memory/active/**` is the only memory tier intended for routine default
   orientation.
 - When the Feature updates the context-economy page, the page MUST state that
-  `work/**` is archival memory and explicit-read only.
+  `.pan/work/**` is archival memory and explicit-read only.
 - When the Feature updates the context-economy page, the page MUST state that
   internal operating content loads by route rather than by wholesale sweep.
 - When the Feature updates the context-economy page, the page MUST state that
-  full `docs/PRD.md`, `docs/BOOTSTRAP.md`, durable feature memory, and archival run
+  full `.docs/PRD.md`, `.docs/BOOTSTRAP.md`, durable feature memory, and archival run
   artifacts require task-specific justification.
 - When the Feature updates the handbook routing index, the Feature MUST add
   one row to `lib/memory/handbook/index.md` that routes active-memory questions
@@ -323,14 +323,14 @@ for explicit human and agent reads per the non-goals at
   inspection, file lookup, mechanical refactor, formatting fix, and
   maintenance task classes that `simple task mode` applies to.
 - When the Feature defines `simple task mode` default behavior, the page MUST
-  instruct agents not to read `docs/PRD.md` while `simple task mode` applies.
+  instruct agents not to read `.docs/PRD.md` while `simple task mode` applies.
 - When the Feature defines `simple task mode` default behavior, the page MUST
-  instruct agents not to read `docs/BOOTSTRAP.md` while `simple task mode` applies.
+  instruct agents not to read `.docs/BOOTSTRAP.md` while `simple task mode` applies.
 - When the Feature defines `simple task mode` default behavior, the page MUST
   instruct agents not to traverse `lib/memory/**` while `simple task mode`
   applies.
 - When the Feature defines `simple task mode` default behavior, the page MUST
-  instruct agents not to traverse `work/**` while `simple task mode` applies.
+  instruct agents not to traverse `.pan/work/**` while `simple task mode` applies.
 - When the Feature defines `simple task mode` default behavior, the page MUST
   instruct agents not to load Persona specs beyond the currently invoked
   Persona while `simple task mode` applies.
@@ -358,7 +358,7 @@ for explicit human and agent reads per the non-goals at
   map rather than as a briefing.
 - When the Feature reduces `AGENTS.md` prose, the Feature MUST preserve every
   normative semantic cited at
-  `{kind: lines, path: AGENTS.md, range: [92, 130], contentHash: a29b04a}`.
+  `{kind: lines, path: AGENTS.md, range: [92, 130], contentHash: b953d77}`.
 - When the Feature reduces `AGENTS.md` prose, the Feature MUST preserve
   explicit route pointers for the policy-compliance contract, the
   documentation-impact contract, the inbox lifecycle, and the new
@@ -383,7 +383,7 @@ for explicit human and agent reads per the non-goals at
 - When the Feature audits the rule files, the Feature MUST avoid broad
   `lib/memory/handbook/**/*.md` triggers when a narrower route resolves the rule
   intent.
-- When the Feature audits the rule files, the Feature MUST keep `work/**`
+- When the Feature audits the rule files, the Feature MUST keep `.pan/work/**`
   outside the default activation set unless the rule body specifically
   operates on run-log artifacts, plans, reviews, or delivery reports.
 - When the Feature audits the rule files, the Feature MUST keep generated
@@ -402,15 +402,15 @@ for explicit human and agent reads per the non-goals at
   per-tier footprint group for durable memory covering `lib/memory/features/**`,
   `lib/memory/adr/**`, and `lib/memory/backlog/**`.
 - When the Feature extends the context-budget report, the report MUST emit a
-  per-tier footprint group for archival memory covering `work/**`,
+  per-tier footprint group for archival memory covering `.pan/work/**`,
   `lib/inbox/out/**`, and `lib/inbox/threads/**`.
 - When the Feature extends the context-budget report, the report MUST emit a
   per-tier footprint group for internal operating content covering
   `lib/memory/handbook/**`, `lib/personas/**`, `lib/personas/skills/**`, `.cursor/rules/**`, and
   `.cursor/agents/**`.
 - When the Feature extends the context-budget report, the report MUST emit a
-  per-tier footprint group for product context covering `docs/PRD.md`,
-  `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/BOOTSTRAP.md`.
+  per-tier footprint group for product context covering `.docs/PRD.md`,
+  `.docs/PRD.summary.md`, `.docs/PRD.index.md`, and `.docs/BOOTSTRAP.md`.
 - When the Feature extends the context-budget report, the report MUST emit a
   per-tier footprint group for source code covering `packages/**`,
   `tools/**`, and the test suites named under those trees.
@@ -430,7 +430,7 @@ for explicit human and agent reads per the non-goals at
 ### `.cursorindexingignore` alignment
 
 - When the Feature audits `.cursorindexingignore`, the policy MUST keep
-  `work/**`, `lib/inbox/out/**`, and `lib/inbox/threads/**` excluded from default
+  `.pan/work/**`, `lib/inbox/out/**`, and `lib/inbox/threads/**` excluded from default
   Cursor semantic indexing.
 - When the Feature audits `.cursorindexingignore`, the policy MUST keep
   generated manifests excluded from default Cursor semantic indexing.
@@ -481,27 +481,27 @@ for explicit human and agent reads per the non-goals at
 - When the Feature defers a documentation-impact update, the Feature MUST
   record the deferral rationale and one backlog linkage per the
   documentation-impact contract cited at
-  `{kind: lines, path: lib/memory/handbook/documentation-impact-contract.md, range: [42, 102], contentHash: 38ed821}`.
+  `{kind: lines, path: lib/memory/handbook/documentation-impact-contract.md, range: [42, 102], contentHash: a4138fb}`.
 - When the Feature stages every governed change, the Feature MUST stage one
-  policy-compliance artifact at `/work/<day>/<task-id>/policy-compliance.json` per
+  policy-compliance artifact at `/.pan/work/<day>/<task-id>/policy-compliance.json` per
   the policy-compliance contract cited at
   `{kind: lines, path: lib/memory/handbook/policy-compliance-contract.md, range: [47, 98], contentHash: 971f594}`.
 
 ### Preservation invariants
 
 - When the Feature processes historical artifacts, the Feature MUST NOT
-  delete any file under `work/**`.
+  delete any file under `.pan/work/**`.
 - When the Feature processes historical artifacts, the Feature MUST NOT
   delete any file under `lib/memory/**`.
 - When the Feature processes historical artifacts, the Feature MUST NOT
-  delete any generated manifest under `lib/memory/**` or `work/**`.
+  delete any generated manifest under `lib/memory/**` or `.pan/work/**`.
 - When the Feature edits Cursor rule projections mirrored from a Persona
   spec, the human operator MUST ratify the diff because mirror parity binds
   the Persona spec to the Cursor projection.
 - When the Feature reads, traverses, or cites repository content, the
   Feature MUST NOT touch any path under `/lib/inbox/notes/` per the operator
   sandbox rule cited at
-  `{kind: lines, path: lib/memory/handbook/inbox-lifecycle.md, range: [79, 100], contentHash: bb2a660}`.
+  `{kind: lines, path: lib/memory/handbook/inbox-lifecycle.md, range: [79, 100], contentHash: 2762053}`.
 
 ### Delivery report and operator validation
 
@@ -518,12 +518,12 @@ for explicit human and agent reads per the non-goals at
 
 ## Out of scope
 
-- This Feature SHALL NOT delete historical artifacts under `work/**`,
+- This Feature SHALL NOT delete historical artifacts under `.pan/work/**`,
   `lib/memory/**`, `lib/inbox/out/**`, or `lib/inbox/threads/**`.
 - This Feature SHALL NOT weaken policy-compliance, documentation-impact,
   inbox-lifecycle, or human-ratification requirements.
-- This Feature SHALL NOT hide `docs/PRD.md`, `docs/BOOTSTRAP.md`, the `lib/memory/` tree,
-  the `work/` tree, the `lib/personas/` tree, or the `.cursor/agents/` tree from
+- This Feature SHALL NOT hide `.docs/PRD.md`, `.docs/BOOTSTRAP.md`, the `lib/memory/` tree,
+  the `.pan/work/` tree, the `lib/personas/` tree, or the `.cursor/agents/` tree from
   explicit human or agent reads.
 - This Feature SHALL NOT modify Persona spec semantics, Persona role
   boundaries, Persona tool grants, or Persona safety constraints.
@@ -536,7 +536,7 @@ for explicit human and agent reads per the non-goals at
   shims, tests, a migration manifest, and rollback notes.
 - This Feature SHALL NOT redesign the canonical inbox lifecycle states
   defined at
-  `{kind: lines, path: lib/memory/handbook/inbox-lifecycle.md, range: [102, 113], contentHash: bb2a660}`.
+  `{kind: lines, path: lib/memory/handbook/inbox-lifecycle.md, range: [102, 113], contentHash: 2762053}`.
 
 ## Human ratification required
 
@@ -546,7 +546,7 @@ because each change touches a protected surface.
 - When the Feature edits `AGENTS.md` to slim verbose operational detail, the
   human MUST ratify the diff before merge per the AGENTS self-protection rule
   at
-  `{kind: lines, path: AGENTS.md, range: [203, 207], contentHash: a29b04a}`.
+  `{kind: lines, path: AGENTS.md, range: [203, 207], contentHash: b953d77}`.
 - When the Feature narrows the `globs` field on any `.cursor/rules/*.mdc`
   file mirrored from a Persona spec, the human MUST ratify the diff because
   the mirror parity rule binds the Persona spec and the Cursor projection
@@ -605,7 +605,7 @@ slot the directive grants the implementation.
 - The `lib/inbox/in/token-economy-enhanced.md` directive cites
   `lib/internal/tools/context-budget-report.mjs`, `AGENTS.md`,
   `.cursor/rules/pancreator-engineer.mdc`,
-  `lib/memory/handbook/context-economy.md`, `.cursorindexingignore`, the `work/`
+  `lib/memory/handbook/context-economy.md`, `.cursorindexingignore`, the `.pan/work/`
   tree, and the `lib/memory/` tree as the surfaces this Feature edits or
   classifies; intake-stage produces this spec only and routes downstream
   execution after the `human_approval` gate clears.

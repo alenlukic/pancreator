@@ -257,12 +257,12 @@ test("listInboxArtifactRows: includes wrongly nested task subtrees", () => {
 test("planInboxConventionMigration: archive flat leaf has no task subdirectory", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "icm-dedupe-"));
   try {
-    const archiveIn = path.join(tmp, "archive", "inbox", "in");
+    const archiveIn = path.join(tmp, ".pan/archive", "inbox", "in");
     fs.mkdirSync(archiveIn, { recursive: true });
     fs.writeFileSync(path.join(archiveIn, "68576_0457_compliance-tests.md"), "body", "utf8");
     const plan = planInboxConventionMigration(tmp, {
       operatorIsoByRel: {
-        "archive/inbox/in/68576_0457_compliance-tests.md": "2024-04-27T00:57:04.000Z",
+        ".pan/archive/inbox/in/68576_0457_compliance-tests.md": "2024-04-27T00:57:04.000Z",
       },
     });
     const step = plan.renames.find(
@@ -271,9 +271,9 @@ test("planInboxConventionMigration: archive flat leaf has no task subdirectory",
     assert.ok(step);
     assert.match(
       step.targetRel,
-      /^archive\/inbox\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_\d{4}_compliance-tests\.md$/,
+      /^\.pan\/archive\/inbox\/in\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_\d{4}_compliance-tests\.md$/,
     );
-    assert.equal(step.targetRel.split("/").length, 5);
+    assert.equal(step.targetRel.split("/").length, 6);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -314,7 +314,7 @@ test("listLegacyInboxArtifactRows: real repo returns sorted rows", () => {
   const rows = listLegacyInboxArtifactRows(repoRoot);
   assert.ok(Array.isArray(rows));
   for (const r of rows) {
-    assert.ok(r.rel.startsWith("lib/inbox/") || r.rel.startsWith("archive/inbox/"));
+    assert.ok(r.rel.startsWith("lib/inbox/") || r.rel.startsWith(".pan/archive/inbox/"));
     assert.ok(!r.rel.includes("/notes/"));
   }
 });

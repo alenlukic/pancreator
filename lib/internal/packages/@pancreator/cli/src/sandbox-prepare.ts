@@ -8,7 +8,7 @@ import { loadFeatureDeliveryStateForTask } from "./feature-delivery-run.js";
 import { stringifyCliJson } from "./canonical-json-io.js";
 
 export function sandboxDirRel(taskId: string): string {
-  return path.posix.join("sandbox", taskId);
+  return path.posix.join(".sandbox", taskId);
 }
 
 export function sandboxManifestRel(taskId: string): string {

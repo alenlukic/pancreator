@@ -49,7 +49,7 @@ describe("intake-scaffold", () => {
   it("readOptionalTextFile reads repo-relative paths", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-build-intake-read-"));
     const { mkdir, writeFile } = await import("node:fs/promises");
-    const rel = "tmp/prompt.txt";
+    const rel = ".tmp/prompt.txt";
     const abs = path.join(root, rel);
     await mkdir(path.dirname(abs), { recursive: true });
     await writeFile(abs, "operator prompt body\n", "utf8");
@@ -130,7 +130,7 @@ describe("intake-scaffold", () => {
     const bucket = makeUtcDayBucket(stamp);
     const { mkdir } = await import("node:fs/promises");
     await mkdir(path.join(root, "lib", "inbox", "in", bucket), { recursive: true });
-    await mkdir(path.join(root, "archive", "inbox", "in", bucket), { recursive: true });
+    await mkdir(path.join(root, ".pan/archive", "inbox", "in", bucket), { recursive: true });
     const created = await createIntakeDirective({
       repoRoot: root,
       slug: "coexist-slug",

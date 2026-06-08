@@ -54,7 +54,7 @@ references:
   - kind: lines
     path: package.json
     range: [1, 20]
-    contentHash: ef10f9f
+    contentHash: 22317d8
     note: Root package.json carries no top-level test script; WP-A adds the missing "test" entry running turbo run test plus named node-test suites.
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/lib/run.ts
@@ -69,17 +69,17 @@ references:
   - kind: lines
     path: lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md
     range: [1, 20]
-    contentHash: d8c670e
-    note: Documents 501 TBD-on-commit contentHash placeholders; WP-C refresh-citations.mjs targets this documented debt; WP-B compliance runner closes finding m-02 after the refresh.
+    contentHash: f9ef587
+    note: Documents 501 f9ef587 contentHash placeholders; WP-C refresh-citations.mjs targets this documented debt; WP-B compliance runner closes finding m-02 after the refresh.
   - kind: lines
     path: lib/internal/tools/canonical-json-format.mjs
     range: [1, 30]
-    contentHash: 5c12707
+    contentHash: d5221ed
     note: Hash abbreviation utilities that WP-C must reuse for abbreviated contentHash computation across Markdown, JSON, and YAML surfaces.
   - kind: lines
     path: tests/compliance/schemas/latest.yaml
     range: [1, 20]
-    contentHash: 43bdbf6
+    contentHash: 8bbb8a7
     note: Schema against which WP-B validates each descriptor before executing assertions; changes to this schema are in-scope for WP-B adapter conformance.
 ---
 
@@ -151,7 +151,7 @@ test harness.
   descriptor surface via `node lib/internal/tools/run-compliance.mjs` after
   `pnpm test` succeeds, and SHALL fail the PR when the runner exits non-zero.
 - When an operator supplies `--run-id <id>`, the runner SHALL emit a JSON result
-  file at `work/<day>/<run-id>/compliance-result.json` for dual-anchor audit
+  file at `.pan/work/<day>/<run-id>/compliance-result.json` for dual-anchor audit
   evidence.
 - When a new `*.yaml` descriptor is added under `tests/compliance/`, the runner
   SHALL pick it up without runner code changes.

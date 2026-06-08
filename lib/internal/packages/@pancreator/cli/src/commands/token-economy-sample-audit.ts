@@ -64,7 +64,7 @@ async function collectSummaryPaths(
   repoRoot: string,
   options: SampleAuditOptions,
 ): Promise<string[]> {
-  const workRoot = path.join(repoRoot, "work");
+  const workRoot = path.join(repoRoot, ".pan/work");
   if (!existsSync(workRoot)) {
     return [];
   }
@@ -113,7 +113,7 @@ async function collectSummaryPaths(
 }
 
 async function handoffEnumeratesPathsAsync(repoRoot: string, taskId: string): Promise<boolean> {
-  const workRoot = path.join(repoRoot, "work");
+  const workRoot = path.join(repoRoot, ".pan/work");
   if (!existsSync(workRoot)) {
     return false;
   }

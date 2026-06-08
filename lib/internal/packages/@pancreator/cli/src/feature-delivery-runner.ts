@@ -26,6 +26,7 @@ import {
 } from "./feature-delivery-sdk-progress.js";
 import {
   DESIGN_ENGINEER_PERSONA,
+  DESIGN_REVIEWER_PERSONA,
   designPlanPromptRel,
   designQaPromptRel,
   designQaReportRel,
@@ -493,7 +494,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
         repoRoot,
         state: input.state,
         stageId: input.stageId,
-        personaId: DESIGN_ENGINEER_PERSONA,
+        personaId: DESIGN_REVIEWER_PERSONA,
         stagePromptPath: designQaPromptRel(runDir),
         artifactPath: designReport,
         requiredArtifactPaths: [designReport],

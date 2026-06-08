@@ -144,10 +144,10 @@ function sampleLedger(overrides: Partial<FeatureDeliveryRunnerLedger> = {}): Fea
     status: "ready_for_stage_delegation",
     nextHumanAction: "test",
     artifacts: {
-      runDir: "work/172996_05-10-26/38670_1315_demo-feature",
-      stateFile: "work/172996_05-10-26/38670_1315_demo-feature/state.json",
-      runLogFile: "work/172996_05-10-26/38670_1315_demo-feature/run.log.jsonl",
-      nextPromptFile: "work/172996_05-10-26/38670_1315_demo-feature/next-prompt.md",
+      runDir: ".pan/work/172996_05-10-26/38670_1315_demo-feature",
+      stateFile: ".pan/work/172996_05-10-26/38670_1315_demo-feature/state.json",
+      runLogFile: ".pan/work/172996_05-10-26/38670_1315_demo-feature/run.log.jsonl",
+      nextPromptFile: ".pan/work/172996_05-10-26/38670_1315_demo-feature/next-prompt.md",
     },
     automation: { runnerInvocation: "sdk", cumulativeRetryCount: 0 },
     ...overrides,
@@ -235,10 +235,10 @@ describe("feature-delivery-runner automation", () => {
     const state = sampleLedger({
       currentStage: "implement",
       artifacts: {
-        runDir: "work/demo/run",
-        stateFile: "work/demo/run/state.json",
-        runLogFile: "work/demo/run/run.log.jsonl",
-        nextPromptFile: "work/demo/run/next-prompt.md",
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
       },
     });
     const runDir = path.join(root, state.artifacts.runDir);
@@ -408,10 +408,10 @@ configs:
         stageInvocationIndexByStage: { implement: 1 },
       },
       artifacts: {
-        runDir: "work/demo/run",
-        stateFile: "work/demo/run/state.json",
-        runLogFile: "work/demo/run/run.log.jsonl",
-        nextPromptFile: "work/demo/run/next-prompt.md",
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
       },
     });
     const runDir = path.join(root, state.artifacts.runDir);
@@ -480,10 +480,10 @@ configs:
     const state = sampleLedger({
       currentStage: "review",
       artifacts: {
-        runDir: "work/demo/run",
-        stateFile: "work/demo/run/state.json",
-        runLogFile: "work/demo/run/run.log.jsonl",
-        nextPromptFile: "work/demo/run/next-prompt.md",
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
       },
       automation: {
         runnerInvocation: "sdk",
@@ -539,7 +539,7 @@ configs:
 
   it("preserves per-stage counts after successful implement advance to review", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-reset-success-"));
-    const runDirRel = "work/172996_05-10-26/38670_1315_demo-feature";
+    const runDirRel = ".pan/work/172996_05-10-26/38670_1315_demo-feature";
     await seedSdkAdvanceRepo(root, runDirRel);
     const stateFileRel = `${runDirRel}/state.json`;
     const implementationReportRel = `${runDirRel}/implementation-report.md`;
@@ -649,8 +649,8 @@ configs:
         usage: {
           input_tokens: 1200,
           output_tokens: 400,
-          trace_path: "work/day/t1/sdk-traces/implement-0-stamp.ndjson",
-          summary_path: "work/day/t1/sdk-traces/implement-0-stamp.summary.json",
+          trace_path: ".pan/work/day/t1/sdk-traces/implement-0-stamp.ndjson",
+          summary_path: ".pan/work/day/t1/sdk-traces/implement-0-stamp.summary.json",
         },
       },
     } as RunnerInvocationEnvelope;
@@ -662,9 +662,9 @@ configs:
       status: "running",
       nextHumanAction: "",
       artifacts: {
-        runDir: "work/day/t1",
-        stateFile: "work/day/t1/state.json",
-        runLogFile: "work/day/t1/run.log.jsonl",
+        runDir: ".pan/work/day/t1",
+        stateFile: ".pan/work/day/t1/state.json",
+        runLogFile: ".pan/work/day/t1/run.log.jsonl",
       },
     };
     const record = runLogRecordFromRunnerEnvelope(envelope, state, new Date());

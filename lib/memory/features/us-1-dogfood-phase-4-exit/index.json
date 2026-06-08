@@ -43,27 +43,27 @@
   "accepted_ship_artifacts": [
     {
       "kind": "plan",
-      "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/plan.md",
+      "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/plan.md",
       "content_hash": "d210e4a"
     },
     {
       "kind": "adr-draft",
-      "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/adr-draft.md",
+      "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/adr-draft.md",
       "content_hash": "f7a69b7"
     },
     {
       "kind": "touch-set",
-      "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/touch-set.json",
+      "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/touch-set.json",
       "content_hash": "669a0ff"
     },
     {
       "kind": "implementation-report",
-      "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+      "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
       "content_hash": "f60f453"
     },
     {
       "kind": "review",
-      "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+      "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
       "content_hash": "f66f572"
     }
   ],
@@ -73,11 +73,11 @@
     "status": "not-present-at-index-time"
   },
   "active_work_artifacts": [
-    "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/plan.md",
-    "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/adr-draft.md",
-    "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/touch-set.json",
-    "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
-    "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md"
+    ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/plan.md",
+    ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/adr-draft.md",
+    ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/touch-set.json",
+    ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+    ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md"
   ],
   "archived_work_artifacts": [],
   "advance_gate": {

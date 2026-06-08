@@ -10,9 +10,9 @@ metadata:
     compile the shape; operators MUST NOT treat M1 as blocked on executing this pipeline.
   references:
     - kind: lines
-      path: docs/PRD.md
+      path: .docs/PRD.md
       range: [1, 80]
-      contentHash: 2ce8e5c
+      contentHash: 2eb6aa4
       note: Cited for product context; pipeline structure derives from PRD §11.
 stages:
   - id: dispatch

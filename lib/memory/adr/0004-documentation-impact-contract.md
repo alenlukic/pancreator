@@ -10,27 +10,27 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [18, 29]
-    contentHash: e037427
+    contentHash: b953d77
     note: "AGENTS canon table defines handbook seeds as authoritative references."
   - kind: lines
     path: AGENTS.md
     range: [74, 95]
-    contentHash: e037427
+    contentHash: b953d77
     note: "AGENTS working agreement defines global norms that apply to every task."
   - kind: lines
     path: lib/memory/handbook/contract-style.md
     range: [60, 65]
-    contentHash: afdc2a6
+    contentHash: 2d7acae
     note: "Layer 1 style requires RFC 2119 keywords in normative clauses."
   - kind: lines
     path: lib/memory/handbook/contract-style.md
     range: [114, 124]
-    contentHash: afdc2a6
+    contentHash: 2d7acae
     note: "Layer 1 style forbids weasel words and requires atomic language."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [839, 839]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD contract discipline requires gates to be enforceable and explicit."
 ---
 

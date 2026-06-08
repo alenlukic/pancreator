@@ -40,57 +40,57 @@ references:
   - kind: lines
     path: lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md
     range: [85, 91]
-    contentHash: c549713
+    contentHash: 8d420ce
     note: "WP-B Cursor SDK runner invocation acceptance — end-to-end smoke test SHALL complete one feature-delivery stage via the SDK runner without a manual paste step."
   - kind: lines
     path: lib/pipelines/feature-delivery.yaml
     range: [25, 67]
-    contentHash: a247fa7
+    contentHash: 3c558e1
     note: "Canonical feature-delivery stage order, persona ownership, and stage I/O. Stage inventory remains authoritative; this Feature only adds runtime automation deltas."
   - kind: lines
     path: OPERATION.md
     range: [26, 94]
-    contentHash: 97a5bee
+    contentHash: a91d661
     note: "Already-specified manual feature-delivery loop and post-invocation state machine semantics that this Feature extends rather than redefines."
   - kind: lines
     path: lib/personas/coder.md
     range: [81, 167]
-    contentHash: 1db3997
+    contentHash: 07a3684
     note: "Implement-stage re-entry contract and test obligations governing the auto-advance loopback target for must_fix and qa_fails."
   - kind: lines
     path: lib/personas/reviewer.md
     range: [90, 145]
-    contentHash: 4b5ea80
+    contentHash: 624fdd8
     note: "Review-stage gate semantics and must-fix re-entry behavior consumed by automation rule 3."
   - kind: lines
     path: lib/personas/qa-tester.md
     range: [89, 180]
-    contentHash: d22b04e
+    contentHash: d07db56
     note: "Test-stage verification contract and severity-based re-entry routing expectations consumed by automation rule 3 and the logic-change quality gate."
   - kind: lines
     path: lib/memory/features/timestamp-naming-conventions/spec.md
     range: [77, 82]
-    contentHash: a759255
+    contentHash: 294422f
     note: "Outbox filename timestamp-prefix requirement — system-produced lib/inbox/out/ artifacts MUST use {SID-prefix}_{HHMM}_{semantic-suffix}."
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [69, 75]
-    contentHash: 41ad365
+    contentHash: 2762053
     note: "Canonical inbox queue, response, archive, and operator-sandbox path layout consumed by the retry-limit halt and report-stage gate outbox writes."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [641, 648]
-    contentHash: 6336a5f
+    contentHash: 2eb6aa4
     note: "PRD §7 feature-delivery intake-stage YAML declaring loop.max_rounds: 5 and gate: human_approval; this intake holds the human_approval gate before plan."
   - kind: lines
     path: pancreator.yaml
     range: [1, 40]
-    contentHash: 0d68373
+    contentHash: a7092be
     note: "Live policy file — Phase 5 status, risk_tier medium, and the absence of a runner.cursor.invocation block, demonstrating manual default behavior today."
   - kind: lines
     path: pancreator-defaults.yaml
     range: [30, 53]
-    contentHash: 665ad46
+    contentHash: 6c83ef0
     note: "Risk-tier medium defaults that govern coverage, bundle, and gate severities applied by the runtime when auto-advance is enabled."
 ---
 
@@ -125,7 +125,7 @@ The acceptance criteria below split into six work packages. Plan-stage delegatio
 - When `runner.cursor.invocation` is `sdk` and the operator runs `pnpm -w exec pan advance <task-id> --artifact <stage-artifact>` after a stage completes, `advanceFeatureDelivery` SHALL invoke `CursorRunner.invoke` for the entering stage and SHALL pass the regenerated `next-prompt.md` path, the expected artifact path, the resolved persona record, and a ledger context carrying `taskId`, `pipelineId`, `stageId`, and `featureId`.
 - When `advanceFeatureDelivery` invokes `CursorRunner.invoke`, it SHALL resolve the persona by reading `lib/personas/<name>.md` and SHALL NOT use `stubPersonaForStage`.
 - When `runner.cursor.invocation` is `manual`, `advanceFeatureDelivery` SHALL skip the SDK transport and SHALL preserve today's handoff-and-paste flow.
-- When the runner returns a typed result, the run SHALL append one record to `work/<day>/<task-id>/run.log.jsonl` containing the OpenInference and OTel GenAI attributes already specified in `@pancreator/runner-cursor`.
+- When the runner returns a typed result, the run SHALL append one record to `.pan/work/<day>/<task-id>/run.log.jsonl` containing the OpenInference and OTel GenAI attributes already specified in `@pancreator/runner-cursor`.
 
 ### WP-2 — Runner on run (configurable, no stub-only path)
 
@@ -144,7 +144,7 @@ The acceptance criteria below split into six work packages. Plan-stage delegatio
 
 - When `pnpm -w exec pan <subcommand>` runs from the repository root and a repo-root `.env` file exists, the CLI SHALL load that file before constructing `CursorRunner` and SHALL NOT log secret values to stdout, stderr, or `run.log.jsonl`.
 - When `.env` is absent, the CLI SHALL fall back to the existing process environment without error.
-- When the CLI loads `.env`, it SHALL NOT commit, write, or echo `.env` content into any file under `work/`, `lib/memory/`, or `lib/inbox/`.
+- When the CLI loads `.env`, it SHALL NOT commit, write, or echo `.env` content into any file under `.pan/work/`, `lib/memory/`, or `lib/inbox/`.
 
 ### WP-5 — Configuration surface
 
@@ -235,7 +235,7 @@ The following persona assignments are RECOMMENDED for the plan stage. The tech-l
 - Parent batch Feature: `lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md` (WP-B residual gap).
 - Backlog linkage: closes BR4 harness-loop runner stub residual after WP-B SDK transport landed.
 - Source directive: `lib/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md`.
-- Active task: `24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance` under `work/172978_05-28-26/`.
+- Active task: `24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance` under `.pan/work/172978_05-28-26/`.
 
 ## Open questions
 
@@ -253,4 +253,4 @@ _(none — directive is sufficiently specified for plan-stage delegation; docume
      --artifact lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md
    ```
 
-   Then confirm `work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/state.json` shows `currentStage: plan` before delegating `tech-lead`.
+   Then confirm `.pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/state.json` shows `currentStage: plan` before delegating `tech-lead`.

@@ -11,7 +11,7 @@ Work package A normalized 20 `pancreator-*` feature folders by prepending YAML f
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
   "range": [6, 35],
   "contentHash": "851d64e"
 }
@@ -20,7 +20,7 @@ Work package A normalized 20 `pancreator-*` feature folders by prepending YAML f
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [21, 25],
   "contentHash": "26b1233"
 }
@@ -34,7 +34,7 @@ Twenty `pancreator-*` folders now carry the normalized stub shape: YAML frontmat
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
   "range": [8, 35],
   "contentHash": "851d64e"
 }
@@ -43,7 +43,7 @@ Twenty `pancreator-*` folders now carry the normalized stub shape: YAML frontmat
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [23, 24],
   "contentHash": "b9b306e"
 }
@@ -55,7 +55,7 @@ This package is corrected and reverted. The suffix mirrors were restored after o
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
   "range": [131, 152],
   "contentHash": "851d64e"
 }
@@ -64,7 +64,7 @@ This package is corrected and reverted. The suffix mirrors were restored after o
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [46, 50],
   "contentHash": "94471db"
 }
@@ -77,7 +77,7 @@ The reviewer marked the feature `pass` with `review_passes: true`, and all requi
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [3, 5],
   "contentHash": "26b1233"
 }
@@ -86,7 +86,7 @@ The reviewer marked the feature `pass` with `review_passes: true`, and all requi
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [60, 67],
   "contentHash": "26b1233"
 }
@@ -106,7 +106,7 @@ The four validation commands were:
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [15, 19],
   "contentHash": "26b1233"
 }
@@ -115,7 +115,7 @@ The four validation commands were:
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
   "range": [123, 129],
   "contentHash": "851d64e"
 }
@@ -126,7 +126,7 @@ Optional librarian follow-up remains open for the `artifact_index.feature_folder
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
   "range": [33, 35],
   "contentHash": "851d64e"
 }
@@ -137,7 +137,7 @@ The `node --test tests/*.test.mjs` run also prints repeated `fatal: not a git re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [17, 19],
   "contentHash": "26b1233"
 }
@@ -150,7 +150,7 @@ The `node --test tests/*.test.mjs` run also prints repeated `fatal: not a git re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [23, 24],
   "contentHash": "b9b306e"
 }
@@ -161,7 +161,7 @@ The `node --test tests/*.test.mjs` run also prints repeated `fatal: not a git re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
   "range": [34, 35],
   "contentHash": "851d64e"
 }
@@ -172,7 +172,7 @@ The `node --test tests/*.test.mjs` run also prints repeated `fatal: not a git re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [48, 50],
   "contentHash": "94471db"
 }
@@ -183,7 +183,7 @@ The `node --test tests/*.test.mjs` run also prints repeated `fatal: not a git re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [60, 67],
   "contentHash": "26b1233"
 }
@@ -196,7 +196,7 @@ The final tree actually changes the 20 `pancreator-*` feature folders and `lib/m
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
   "range": [100, 104],
   "contentHash": "851d64e"
 }
@@ -205,7 +205,7 @@ The final tree actually changes the 20 `pancreator-*` feature folders and `lib/m
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/implementation-report.md",
   "range": [131, 152],
   "contentHash": "851d64e"
 }
@@ -214,7 +214,7 @@ The final tree actually changes the 20 `pancreator-*` feature folders and `lib/m
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
+  "path": ".pan/work/172980_05-26-26/54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/review.md",
   "range": [71, 73],
   "contentHash": "26b1233"
 }

@@ -49,15 +49,15 @@ references:
   - kind: lines
     path: lib/memory/features/us-1-dogfood-phase-4-exit/spec.md
     range: [131, 151]
-    contentHash: 8796dd7
+    contentHash: 555e5d5
     note: "Parent feature spec Spec section declares the Phase 4 exit gate obligations this nested run satisfies as empirical proof."
   - kind: lines
     path: lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md
     range: [11, 18]
-    contentHash: 1801f6f
+    contentHash: 418eccf
     note: "Proof-bundle nested-dogfood table lists task id, work directory, and immutable run.log.jsonl path; librarian SHALL refresh paths after close-artifacts."
   - kind: lines
-    path: work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/plan.md
+    path: .pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/plan.md
     range: [1, 10]
     contentHash: d210e4a
     note: "Parent plan decision D1 scopes this nested directive as the empirical proof-bundle slice and declares the proof-bundle root."
@@ -67,7 +67,7 @@ references:
 
 This Feature SHALL produce the nested empirical proof that satisfies the Phase 4
 bootstrap exit gate for US-1 per the parent spec at
-`{kind: lines, path: lib/memory/features/us-1-dogfood-phase-4-exit/spec.md, range: [131, 151], contentHash: 8796dd7}`.
+`{kind: lines, path: lib/memory/features/us-1-dogfood-phase-4-exit/spec.md, range: [131, 151], contentHash: 555e5d5}`.
 
 This Feature SHALL run one real `feature-delivery` Pipeline from intake to index
 closure, driven by the `phase-4-dogfood-proof-bundle-index.md` source directive.
@@ -76,9 +76,9 @@ The nested pipeline's auditable artifacts SHALL populate
 `lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md` with
 task id `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` and the
 immutable path
-`archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl`
+`.pan/archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl`
 per the proof-bundle skeleton at
-`{kind: lines, path: lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md, range: [11, 18], contentHash: 1801f6f}`.
+`{kind: lines, path: lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md, range: [11, 18], contentHash: 418eccf}`.
 
 The parent Phase 4 exit gate still requires external trace verification when
 tooling exists. This nested run SHALL preserve the immutable `run.log.jsonl`
@@ -98,7 +98,7 @@ SHALL follow `phase-4-ratification-request.md` and the parent US-1 spec.
 - When each stage closes, the Pipeline MUST produce at least 1 auditable artifact
   per stage under the nested task work directory (canonical path after librarian
   closure:
-  `archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/`)
+  `.pan/archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/`)
   per the source directive at
   `{kind: lines, path: lib/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [48, 48], contentHash: ccf9748}`.
 
@@ -106,7 +106,7 @@ SHALL follow `phase-4-ratification-request.md` and the parent US-1 spec.
   `lib/memory/features/us-1-dogfood-phase-4-exit/phase-4-proof-bundle.md` to
   replace every `_pending_` placeholder with the task id
   `77373_0230_phase-4-dogfood-proof-bundle-evidence-index` and the run-log path
-  `archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl`
+  `.pan/archive/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/run.log.jsonl`
   per the source directive at
   `{kind: lines, path: lib/inbox/in/phase-4-dogfood-proof-bundle-index.md, range: [43, 43], contentHash: ccf9748}`.
 

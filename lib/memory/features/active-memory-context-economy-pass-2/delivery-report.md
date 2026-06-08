@@ -7,19 +7,19 @@ references:
   - kind: lines
     path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [193, 519]
-    contentHash: e6c4fcd
+    contentHash: 2426d72
   - kind: lines
-    path: archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
+    path: .pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
     range: [30, 63]
-    contentHash: 58bbab6
+    contentHash: d0e8d06
   - kind: lines
-    path: archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md
+    path: .pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md
     range: [40, 173]
-    contentHash: ec47371
+    contentHash: 8bcc7f6
   - kind: lines
-    path: archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/adr-draft.md
+    path: .pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/adr-draft.md
     range: [39, 75]
-    contentHash: a001200
+    contentHash: 82d2102
 ---
 
 # Active Memory Context Economy Pass 2
@@ -33,7 +33,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/spec.md",
   "range": [193, 210],
-  "contentHash": "15ae7dd"
+  "contentHash": "2426d72"
 }
 ```
  
@@ -41,9 +41,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [42, 47],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
 
@@ -59,7 +59,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/handbook/memory-tiers.md",
   "range": [28, 132],
-  "contentHash": "c745f2d"
+  "contentHash": "b71368a"
 }
 ```
  |
@@ -70,7 +70,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/active/README.md",
   "range": [29, 68],
-  "contentHash": "9b951c3"
+  "contentHash": "ece0606"
 }
 ```
  |
@@ -81,7 +81,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/active/current.md",
   "range": [24, 44],
-  "contentHash": "e44dbb9"
+  "contentHash": "d1f6703"
 }
 ```
  |
@@ -92,7 +92,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/active/runs.md",
   "range": [22, 35],
-  "contentHash": "e98031e"
+  "contentHash": "7c38e88"
 }
 ```
  |
@@ -103,18 +103,18 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/adr/0006-active-vs-archival-memory.md",
   "range": [45, 74],
-  "contentHash": "4828d9d"
+  "contentHash": "1e1534c"
 }
 ```
  |
-| 6 | pass | `lib/memory/handbook/context-economy.md` classifies `work/**` as archival and explicit-read only. 
+| 6 | pass | `lib/memory/handbook/context-economy.md` classifies `.pan/work/**` as archival and explicit-read only. 
 
 ```json
 {
   "kind": "lines",
   "path": "lib/memory/handbook/context-economy.md",
   "range": [64, 91],
-  "contentHash": "8640ae6"
+  "contentHash": "4e3313a"
 }
 ```
  |
@@ -125,7 +125,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/handbook/memory-tiers.md",
   "range": [92, 104],
-  "contentHash": "c745f2d"
+  "contentHash": "b71368a"
 }
 ```
  |
@@ -136,7 +136,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/handbook/context-economy.md",
   "range": [64, 87],
-  "contentHash": "8640ae6"
+  "contentHash": "4e3313a"
 }
 ```
  |
@@ -147,7 +147,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/handbook/index.md",
   "range": [70, 72],
-  "contentHash": "bc5cff7"
+  "contentHash": "5c703c0"
 }
 ```
  |
@@ -158,7 +158,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/handbook/context-economy.md",
   "range": [110, 159],
-  "contentHash": "8640ae6"
+  "contentHash": "4e3313a"
 }
 ```
  |
@@ -169,7 +169,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "AGENTS.md",
   "range": [1, 192],
-  "contentHash": "f2d87ec"
+  "contentHash": "b953d77"
 }
 ```
  |
@@ -178,9 +178,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
   "range": [52, 121],
-  "contentHash": "bb8b476"
+  "contentHash": "ad94dac"
 }
 ```
  |
@@ -191,7 +191,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": ".cursor/rules/pancreator-engineer.mdc",
   "range": [3, 27],
-  "contentHash": "5f448a1"
+  "contentHash": "e48cab3"
 }
 ```
  |
@@ -202,7 +202,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/internal/tools/context-budget-report.mjs",
   "range": [216, 360],
-  "contentHash": "453d708"
+  "contentHash": "6cc94bb"
 }
 ```
  |
@@ -213,7 +213,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "tests/context-budget-report.test.mjs",
   "range": [26, 79],
-  "contentHash": "37d1b64"
+  "contentHash": "5aec998"
 }
 ```
  |
@@ -224,7 +224,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": ".cursorindexingignore",
   "range": [1, 38],
-  "contentHash": "3ef42bf"
+  "contentHash": "89096be"
 }
 ```
  |
@@ -233,9 +233,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [118, 120],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
  |
@@ -246,7 +246,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/backlog/index.yaml",
   "range": [383, 396],
-  "contentHash": "8157e17"
+  "contentHash": "c7bae7d"
 }
 ```
  |
@@ -255,9 +255,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md",
   "range": [35, 45],
-  "contentHash": "eb3d8c1"
+  "contentHash": "b7b17e7"
 }
 ```
  |
@@ -266,9 +266,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
   "range": [1, 61],
-  "contentHash": "66bb47e"
+  "contentHash": "bbf83ad"
 }
 ```
  
@@ -276,9 +276,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
   "range": [1, 60],
-  "contentHash": "e44c117"
+  "contentHash": "79be138"
 }
 ```
  |
@@ -292,7 +292,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [37, 56],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
 
@@ -303,7 +303,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [49, 56],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
 
@@ -314,7 +314,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [57, 61],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
 
@@ -325,7 +325,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [63, 66],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
 
@@ -336,7 +336,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [68, 78],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
 
@@ -347,7 +347,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [81, 87],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
 
@@ -358,7 +358,7 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [90, 98],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
 
@@ -370,9 +370,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
   "range": [38, 38],
-  "contentHash": "d696d0b"
+  "contentHash": "d0e8d06"
 }
 ```
 
@@ -381,9 +381,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
   "range": [39, 39],
-  "contentHash": "d696d0b"
+  "contentHash": "d0e8d06"
 }
 ```
 
@@ -392,9 +392,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
   "range": [40, 40],
-  "contentHash": "d696d0b"
+  "contentHash": "d0e8d06"
 }
 ```
 
@@ -403,9 +403,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
   "range": [41, 41],
-  "contentHash": "d696d0b"
+  "contentHash": "d0e8d06"
 }
 ```
 
@@ -414,9 +414,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
   "range": [42, 42],
-  "contentHash": "d696d0b"
+  "contentHash": "d0e8d06"
 }
 ```
  
@@ -424,9 +424,9 @@ This Feature shipped a five-tier memory model, an `lib/memory/active/` operator 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [57, 65],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
 
@@ -438,9 +438,9 @@ The glossary deferral closed in plan stage, so only three backlog items remain o
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
   "range": [47, 49],
-  "contentHash": "d696d0b"
+  "contentHash": "d0e8d06"
 }
 ```
 
@@ -452,7 +452,7 @@ The glossary deferral closed in plan stage, so only three backlog items remain o
   "kind": "lines",
   "path": "lib/memory/backlog/index.yaml",
   "range": [383, 396],
-  "contentHash": "8157e17"
+  "contentHash": "c7bae7d"
 }
 ```
 
@@ -463,7 +463,7 @@ The glossary deferral closed in plan stage, so only three backlog items remain o
   "kind": "lines",
   "path": "lib/memory/backlog/index.yaml",
   "range": [398, 411],
-  "contentHash": "8157e17"
+  "contentHash": "c7bae7d"
 }
 ```
 
@@ -474,7 +474,7 @@ The glossary deferral closed in plan stage, so only three backlog items remain o
   "kind": "lines",
   "path": "lib/memory/backlog/index.yaml",
   "range": [413, 428],
-  "contentHash": "8157e17"
+  "contentHash": "c7bae7d"
 }
 ```
 
@@ -488,7 +488,7 @@ The implement stage recorded six passing gates: `pnpm lint`, `pnpm typecheck`, `
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [102, 109],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
 
@@ -505,9 +505,9 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [153, 172],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
  
@@ -517,7 +517,7 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
   "kind": "lines",
   "path": "lib/internal/tools/context-budget-report.mjs",
   "range": [313, 360],
-  "contentHash": "453d708"
+  "contentHash": "6cc94bb"
 }
 ```
 
@@ -529,9 +529,9 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [57, 65],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
 
@@ -540,9 +540,9 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [66, 73],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
 
@@ -551,9 +551,9 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [74, 78],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
 
@@ -562,9 +562,9 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [82, 85],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
 
@@ -576,7 +576,7 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 3. Run `pnpm run context:budget`.
 4. Run 3–5 comparable simple Cursor tasks and record cache-read totals.
 5. Compare against the previous post-pass-1 result of approximately 770K cache-read tokens.
-6. Confirm explicit references to `@docs/PRD.md`, `@docs/BOOTSTRAP.md`, selected `work/**` artifacts, and selected durable memory files still work when intentionally requested.
+6. Confirm explicit references to `@.docs/PRD.md`, `@.docs/BOOTSTRAP.md`, selected `.pan/work/**` artifacts, and selected durable memory files still work when intentionally requested.
 7. Confirm `lib/memory/active/current.md` gives a clear operator-facing picture of active context without requiring traversal of archival memory.
 
 ## Risks / rollback notes
@@ -586,9 +586,9 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
   "range": [46, 46],
-  "contentHash": "d696d0b"
+  "contentHash": "d0e8d06"
 }
 ```
 
@@ -599,7 +599,7 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
   "kind": "lines",
   "path": "lib/memory/handbook/context-economy.md",
   "range": [209, 214],
-  "contentHash": "8640ae6"
+  "contentHash": "4e3313a"
 }
 ```
 
@@ -608,9 +608,9 @@ The directional delta is a small indexable increase versus the pass-1 baseline, 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
   "range": [49, 49],
-  "contentHash": "d696d0b"
+  "contentHash": "d0e8d06"
 }
 ```
 
@@ -624,7 +624,7 @@ Current stage: `report`. Proposed next stage: `notifier`, which stages this deli
   "kind": "lines",
   "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
   "range": [5, 8],
-  "contentHash": "c19097d"
+  "contentHash": "c9bbc00"
 }
 ```
  
@@ -632,9 +632,9 @@ Current stage: `report`. Proposed next stage: `notifier`, which stages this deli
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+  "path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
   "range": [8, 10],
-  "contentHash": "6b25ee7"
+  "contentHash": "8bcc7f6"
 }
 ```
 

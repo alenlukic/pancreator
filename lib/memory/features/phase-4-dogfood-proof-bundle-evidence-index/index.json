@@ -23,27 +23,27 @@
   "accepted_ship_artifacts": [
     {
       "kind": "plan",
-      "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/plan.md",
+      "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/plan.md",
       "content_hash": "84f8784"
     },
     {
       "kind": "adr-draft",
-      "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/adr-draft.md",
+      "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/adr-draft.md",
       "content_hash": "ee0b966"
     },
     {
       "kind": "touch-set",
-      "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/touch-set.json",
+      "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/touch-set.json",
       "content_hash": "4d602cb"
     },
     {
       "kind": "implementation-report",
-      "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/implementation-report.md",
+      "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/implementation-report.md",
       "content_hash": "9d3d382"
     },
     {
       "kind": "review",
-      "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
+      "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
       "content_hash": "2da9043"
     }
   ],
@@ -53,11 +53,11 @@
     "status": "not-present-at-index-time"
   },
   "active_work_artifacts": [
-    "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/plan.md",
-    "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/adr-draft.md",
-    "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/touch-set.json",
-    "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/implementation-report.md",
-    "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md"
+    ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/plan.md",
+    ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/adr-draft.md",
+    ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/touch-set.json",
+    ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/implementation-report.md",
+    ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md"
   ],
   "archived_work_artifacts": [],
   "advance_gate": {

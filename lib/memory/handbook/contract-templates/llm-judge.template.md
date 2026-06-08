@@ -12,12 +12,12 @@ references:
   - kind: lines
     path: /lib/memory/handbook/contract-format.md
     range: [1, 1]
-    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
+    contentHash: 10d2b8f
     note: "Wrapper schema reference."
   - kind: lines
     path: /lib/memory/handbook/contract-style.md
     range: [1, 1]
-    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
+    contentHash: 2d7acae
     note: "Layer 2 (LLM-judge) requirements."
 ---
 
@@ -102,7 +102,7 @@ applies_to:
   kind: artifact-symbol
   path: README.md
   symbol: "# Quickstart"
-  contentHash: TBD-on-commit
+  contentHash: c32e865
 owner: contract-writer
 description: |
   When the `# Quickstart` section of `README.md` is rendered, the adopter
@@ -112,7 +112,7 @@ references:
   - kind: lines
     path: /lib/memory/handbook/contract-format.md
     range: [283, 283]
-    contentHash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    contentHash: 10d2b8f
     note: "README discipline anchor."
 runtime:
   rubric:

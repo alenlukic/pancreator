@@ -23,7 +23,7 @@ alwaysApply: false
         `persona: reviewer
 description: Review.
 globs:
-  - work/**/review.md
+  - .pan/work/**/review.md
 `,
         "coder",
       ),

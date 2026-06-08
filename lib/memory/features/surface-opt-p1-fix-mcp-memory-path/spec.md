@@ -19,12 +19,12 @@ references:
   - kind: lines
     path: lib/internal/packages/@pancreator/mcp-server/src/pan-execute.ts
     range: [258, 270]
-    contentHash: 89255e3
+    contentHash: 3619b63
     note: "`memory://` handler joins path.join(root, 'memory'); memoryRoot feeds listDirNames and FileMemoryStore at lines 260-261."
   - kind: lines
     path: lib/internal/packages/@pancreator/mcp-server/src/definitions.ts
     range: [183, 189]
-    contentHash: e93abf8
+    contentHash: 516c83e
     note: "`pancreator-memory-areas` resource description references `/lib/memory/` but not `/lib/memory/<area>/`."
 ---
 

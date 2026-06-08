@@ -13,7 +13,7 @@
     "open_questions": 0,
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
-    "source_inbox_item": "archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172967_06-08-26/54351_0854_cockpit-v2-automations-scheduler.md",
@@ -46,7 +46,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+    "artifact": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 6,
@@ -55,7 +55,7 @@
     "spec_contracts_note": "contracts:from_feature deferred (exit 125); no lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/contracts/ wrapper.",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+      "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
       "range": [1, 42],
       "contentHash": "5d812a6"
     }
@@ -63,7 +63,7 @@
   "test": {
     "qa_passes": true,
     "design_qa_passes": true,
-    "artifact": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+    "artifact": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
     "verification_gates": {
       "scheduler_tests": "pass (28/28)",
       "cli_scheduler_tick_tests": "pass (3/3)",
@@ -79,19 +79,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+      "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
       "range": [1, 47],
       "contentHash": "75ac832"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
+    "artifact": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
     "audit_id": "31248_1519_cockpit-v2-local-scheduler-tick-and-run-history-20260608162153",
     "baseline_audit_id": "47315_1051_cockpit-v2-automation-registry-and-management-ui-20260608151126",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
+      "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
       "range": [1, 334],
       "contentHash": "dbf1e28"
     }
@@ -103,13 +103,13 @@
       "kind": "lines",
       "path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
       "range": [1, 392],
-      "contentHash": "85d7255"
+      "contentHash": "836e9d2"
     },
-    "archived_inbox_source": "archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "ship_ratification_artifact": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
     "ratified_paths": [
       "OPERATION.md",
       "client/src/app/api/automations/[id]/run/route.test.ts",
@@ -160,7 +160,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
+      "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
       "range": [1, 47],
       "contentHash": "b7c5f8c"
     }
@@ -173,7 +173,7 @@
       "reason": "Staged diff includes ~49 paths outside the declared touch-set (registry CRUD, pipeline command center, active-memory APIs); reconcile branch scope or amend touch-set before ship.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "range": [23, 23],
         "contentHash": "5d812a6"
       }
@@ -185,7 +185,7 @@
       "reason": "finishedAt reuses tick-entry now; run-history duration may show 0s for fast completions.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "range": [15, 15],
         "contentHash": "5d812a6"
       }
@@ -197,7 +197,7 @@
       "reason": "Post-dispatch pause journal entry may reduce intervention state to paused after scheduler runs end.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "range": [17, 17],
         "contentHash": "5d812a6"
       }
@@ -209,7 +209,7 @@
       "reason": "Review noted selected-only badge population; design QA verified list prefetch after supervisor fixes—confirm on operator verification.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "range": [19, 19],
         "contentHash": "5d812a6"
       }
@@ -221,7 +221,7 @@
       "reason": "TickExecutors wiring duplicated between CLI scheduler-tick and client scheduler-runs service.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "range": [21, 21],
         "contentHash": "5d812a6"
       }
@@ -233,7 +233,7 @@
       "reason": "Due evaluation matches UTC cron fields; OPERATION.md does not state timezone assumption for non-UTC operators.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "range": [25, 25],
         "contentHash": "5d812a6"
       }
@@ -245,7 +245,7 @@
       "reason": "scheduler-runs.ts node: imports follow @pancreator packages; align with repo import/order on style pass.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "range": [29, 29],
         "contentHash": "5d812a6"
       }
@@ -257,7 +257,7 @@
       "reason": "ADR draft records scheduler primitive decisions as proposed; copy ADR to lib/memory/adr/ before downstream features bind to it.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
         "range": [89, 107],
         "contentHash": "5eace72"
       }
@@ -269,7 +269,7 @@
       "reason": "delivery-report.md, index.json, spec.md, and ux-spec.md may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
         "range": [38, 43],
         "contentHash": "b7c5f8c"
       }
@@ -293,7 +293,7 @@
       "reason": "scheduler-runs-read.ts split, next.config.ts serverExternalPackages, and import-order fix remain unstaged at ship; include at human commit.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
         "range": [20, 25],
         "contentHash": "b7c5f8c"
       }
@@ -305,7 +305,7 @@
     "changed_citations": [
       {
         "citing_path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
         "recorded_content_hash": "fa780c7",
         "live_content_hash": "58f160a",
         "verifier_status": "changed",
@@ -313,7 +313,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "cited_path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "recorded_content_hash": "6208bd7",
         "live_content_hash": "5d812a6",
         "verifier_status": "changed",
@@ -321,7 +321,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
         "recorded_content_hash": "dc3dfbd",
         "live_content_hash": "75ac832",
         "verifier_status": "changed",
@@ -329,7 +329,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+        "cited_path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
         "recorded_content_hash": "04c00ca",
         "live_content_hash": "5eace72",
         "verifier_status": "changed",
@@ -337,7 +337,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/plan.md",
+        "cited_path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/plan.md",
         "recorded_content_hash": "11a8613",
         "live_content_hash": "010ce4e",
         "verifier_status": "changed",
@@ -436,7 +436,7 @@
     "tests": [],
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json",
+      "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json",
       "range": [1, 204],
       "contentHash": "a88473c"
     }
@@ -467,7 +467,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
           "range": [1, 392],
-          "contentHash": "85d7255"
+          "contentHash": "836e9d2"
         }
       },
       "per_feature_index": {
@@ -476,129 +476,129 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/"
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/"
       },
       "plan": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/plan.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/plan.md",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/plan.md",
           "range": [1, 104],
           "contentHash": "010ce4e"
         }
       },
       "adr_draft": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
           "range": [1, 107],
           "contentHash": "5eace72"
         }
       },
       "touch_set": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json",
           "range": [1, 204],
           "contentHash": "a88473c"
         }
       },
       "implementation_report": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
           "range": [1, 86],
           "contentHash": "58f160a"
         }
       },
       "review_report": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
           "range": [1, 42],
           "contentHash": "5d812a6"
         }
       },
       "test_report": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
           "range": [1, 47],
           "contentHash": "75ac832"
         }
       },
       "design_qa_report": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/design-qa-report.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/design-qa-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/design-qa-report.md",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/design-qa-report.md",
           "range": [1, 37],
           "contentHash": "1494556"
         }
       },
       "compliance_result": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
           "range": [1, 334],
           "contentHash": "dbf1e28"
         }
       },
       "compliance_audit": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-audit.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-audit.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-audit.md",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-audit.md",
           "range": [1, 152],
           "contentHash": "21c8139"
         }
       },
       "compliance_remediation": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-remediation.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-remediation.md",
         "note": "Compliance-auditor remediation notes for read-facade split and next.config serverExternalPackages."
       },
       "ship_ratification": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/ship-ratification.json",
           "range": [1, 47],
           "contentHash": "b7c5f8c"
         }
       },
       "handoff": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/handoff.md",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/handoff.md",
+          "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/handoff.md",
           "range": [1, 55],
           "contentHash": "b9085d2"
         }
       },
       "pipeline_close": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/pipeline-close.md"
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/pipeline-close.md"
       },
       "operator_verification": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/operator-verification.md"
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/operator-verification.md"
       },
       "run_log": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/run.log.jsonl",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/logs/",
+        "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/logs/",
         "note": "QA, compliance, and client gate command transcripts."
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md",
+        "path": ".pan/archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172967_06-08-26/54351_0854_cockpit-v2-automations-scheduler.md",
@@ -631,9 +631,9 @@
     "documentation_only": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172967_06-08-26/54351_0854_cockpit-v2-automations-scheduler.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/54351_0854_cockpit-v2-automations-scheduler.md"
 }

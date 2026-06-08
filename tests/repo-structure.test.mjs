@@ -94,18 +94,18 @@ test("repository JSON files use two-space formatting", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("operator-facing root keeps implementation under internal while tests and docs stay at root", () => {
+test("operator-facing root keeps implementation under internal while de-indexed dirs use dot prefix at root", () => {
   assert.ok(exists("lib/internal/packages"));
   assert.ok(exists("lib/internal/tools"));
-  assert.ok(exists("archive/work"));
+  assert.ok(exists(".pan/archive/work"));
   assert.ok(exists("tests/compliance/schemas/latest.yaml"));
-  assert.ok(exists("docs/PRD.md"));
-  assert.ok(exists("docs/BOOTSTRAP.md"));
-  assert.ok(exists("docs/M1.index.md"));
-  assert.ok(exists("docs/README.md"));
-  assert.ok(exists("work/README.md"));
+  assert.ok(exists(".docs/PRD.md"));
+  assert.ok(exists(".docs/BOOTSTRAP.md"));
+  assert.ok(exists(".docs/M1.index.md"));
+  assert.ok(exists(".docs/README.md"));
+  assert.ok(exists(".pan/work/README.md"));
   assert.equal(exists("packages"), false);
-  assert.equal(exists("lib/internal/tests"), false);
+  assert.equal(exists("lib/internal/.tests"), false);
   assert.equal(exists("tools"), false);
   assert.equal(exists("PRD.md"), false);
   assert.equal(exists("BOOTSTRAP.md"), false);
@@ -135,7 +135,7 @@ test("configuration docs route project_root through adopter and handbook", () =>
 });
 
 test("archived work day-directory prefixes match days from UTC day to Jan 1 2500", () => {
-  const archiveRoot = path.join(ROOT, "archive", "work");
+  const archiveRoot = path.join(ROOT, ".pan/archive", "work");
   const names = fs.readdirSync(archiveRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
@@ -148,7 +148,7 @@ test("archived work day-directory prefixes match days from UTC day to Jan 1 2500
 });
 
 test("active work day directories use canonical days-to-FDS prefixes", () => {
-  const activeWorkRoot = path.join(ROOT, "work");
+  const activeWorkRoot = path.join(ROOT, ".pan/work");
   const dayDirs = fs.readdirSync(activeWorkRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
@@ -162,7 +162,7 @@ test("active work day directories use canonical days-to-FDS prefixes", () => {
 
 test("active work task directories without feature-delivery state are absent", () => {
   const allowlist = new Set(["99999_test_fixture"]);
-  const activeWorkRoot = path.join(ROOT, "work");
+  const activeWorkRoot = path.join(ROOT, ".pan/work");
   const offenders = [];
   for (const dayEntry of fs.readdirSync(activeWorkRoot, { withFileTypes: true })) {
     if (!dayEntry.isDirectory() || !/^\d{6}_\d{2}-\d{2}-\d{2}$/.test(dayEntry.name)) {
@@ -177,7 +177,7 @@ test("active work task directories without feature-delivery state are absent", (
         continue;
       }
       const taskAbs = path.join(dayAbs, taskEntry.name);
-      const taskRel = path.posix.join("work", dayEntry.name, taskEntry.name);
+      const taskRel = path.posix.join(".pan/work", dayEntry.name, taskEntry.name);
       const statePath = path.join(taskAbs, "state.json");
       if (!fs.existsSync(statePath) && !isExemptActiveWorkTaskWithoutState(taskAbs)) {
         offenders.push(taskRel);
@@ -187,7 +187,7 @@ test("active work task directories without feature-delivery state are absent", (
   assert.deepEqual(
     offenders,
     [],
-    "work/<day>/<task-id>/ without state.json is orphan residue; archive via librarian, add out-of-band.manifest.json, or retain compliance-audit.md plus compliance-result.json from /compliance-auditor",
+    ".pan/work/<day>/<task-id>/ without state.json is orphan residue; archive via librarian, add out-of-band.manifest.json, or retain compliance-audit.md plus compliance-result.json from /compliance-auditor",
   );
 });
 test("planning/execution handoff contract is represented across active memory, pipeline, and personas", () => {
@@ -195,14 +195,14 @@ test("planning/execution handoff contract is represented across active memory, p
 
   const activeReadme = read("lib/memory/active/README.md");
   assert.match(activeReadme, /lib\/memory\/active\/handoffs\.md/);
-  assert.match(activeReadme, /work\/<day>\/<task-id>\/handoff\.md/);
+  assert.match(activeReadme, /\.pan\/work\/<day>\/<task-id>\/handoff\.md/);
 
   const contextEconomy = read("lib/memory/handbook/context-economy.md");
   assert.match(contextEconomy, /Planning\/execution handoff discipline/);
   assert.match(contextEconomy, /lib\/memory\/active\/handoffs\.md/);
 
   const pipeline = read("lib/pipelines/feature-delivery.yaml");
-  assert.match(pipeline, /work\/<day>\/<task-id>\/handoff\.md/);
+  assert.match(pipeline, /\.pan\/work\/<day>\/<task-id>\/handoff\.md/);
 
   const techLead = read("lib/personas/tech-lead.md");
   const coder = read("lib/personas/coder.md");
@@ -214,10 +214,11 @@ test("planning/execution handoff contract is represented across active memory, p
   assert.match(supervisor, /lib\/memory\/active\/handoffs\.md/);
 });
 
-test("workspace and scripts use conventional test and docs paths", () => {
+test("workspace and scripts use conventional client and tests paths", () => {
   const workspace = read("pnpm-workspace.yaml");
   assert.match(workspace, /lib\/internal\/packages\/\*/);
   assert.match(workspace, /lib\/internal\/packages\/@pancreator\/\*/);
+  assert.match(workspace, /"client"/);
 
   const pkg = JSON.parse(read("package.json"));
   assert.match(pkg.scripts["check:phase0a"], /^node lib\/internal\/tools\//);
@@ -228,17 +229,20 @@ test("workspace and scripts use conventional test and docs paths", () => {
   assert.match(pkg.scripts["test:run-logger-conformance"], /tests\/run-logger-conformance/);
 });
 
-test("Cursor indexing excludes active and archived work by default", () => {
+test("Cursor indexing excludes dot-prefixed de-indexed run and docs paths", () => {
   const ignore = read(".cursorindexingignore");
-  assert.match(ignore, /^work\/\*\*$/m);
-  assert.match(ignore, /^archive\/work\/\*\*$/m);
+  assert.match(ignore, /^\.pan\/work\/\*\*$/m);
+  assert.match(ignore, /^\.pan\/archive\/work\/\*\*$/m);
+  assert.match(ignore, /^\.docs\/\*\*$/m);
+  assert.doesNotMatch(ignore, /^client\/\*\*$/m);
+  assert.doesNotMatch(ignore, /^tests\/\*\*$/m);
 });
 
 test("librarian owns close-artifacts archival contract", () => {
   const librarian = read("lib/personas/librarian.md");
   assert.match(librarian, /close-artifacts/);
   assert.match(librarian, /work-remains-active-until-close-artifacts/);
-  assert.match(librarian, /MUST NOT manually move run artifacts from `\/work\/` to `\/archive\/work\/`/);
+  assert.match(librarian, /MUST NOT manually move run artifacts from `\/\.pan\/work\/` to `\/\.pan\/archive\/work\/`/);
   assert.doesNotMatch(librarian, /archive_completed_work/);
 });
 
@@ -251,7 +255,7 @@ test("active work tree has no feature-delivery runs awaiting close-artifacts", a
   assert.deepEqual(
     offenders,
     [],
-    "work/archive hygiene issues detected; run pnpm -w exec pan check and close-artifacts per remediation",
+    ".pan/work/archive hygiene issues detected; run pnpm -w exec pan check and close-artifacts per remediation",
   );
 });
 
@@ -259,7 +263,7 @@ test("live normative surfaces use three-level work placeholders", () => {
   const roots = [
     "AGENTS.md",
     "lib/personas/rules",
-    "docs",
+    ".docs",
     "lib/internal/packages",
     "lib/memory/handbook",
     "lib/personas/skills",

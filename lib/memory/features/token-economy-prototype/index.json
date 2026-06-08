@@ -7,12 +7,12 @@
   "intake": {
     "round": 0,
     "open_questions": 0,
-    "source_inbox_item": "archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md",
     "human_approval_gate": "ratified"
   },
   "delivery_report": {
     "path": "lib/memory/features/token-economy-prototype/delivery-report.md",
-    "archived_inbox_source": "archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md"
   },
   "artifact_index": {
     "spec": {
@@ -23,16 +23,16 @@
     },
     "pipeline_artifacts": {
       "work_dir": {
-        "path": "archive/work/172972_06-03-26/18834_1846_token-economy-prototype"
+        "path": ".pan/archive/work/172972_06-03-26/18834_1846_token-economy-prototype"
       },
       "touch_set": {
-        "path": "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/touch-set.json"
+        "path": ".pan/archive/work/172972_06-03-26/18834_1846_token-economy-prototype/touch-set.json"
       },
       "compliance_result": {
-        "path": "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/compliance-result.json"
+        "path": ".pan/archive/work/172972_06-03-26/18834_1846_token-economy-prototype/compliance-result.json"
       },
       "policy_compliance": {
-        "path": "archive/work/172972_06-03-26/18834_1846_token-economy-prototype/policy-compliance.json"
+        "path": ".pan/archive/work/172972_06-03-26/18834_1846_token-economy-prototype/policy-compliance.json"
       }
     },
     "baselines": {
@@ -59,9 +59,9 @@
   "metadata": {
     "pancreator-bootstrap-only": true
   },
-  "archived_inbox_source": "archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md",
+  "archived_inbox_source": ".pan/archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md",
   "source_inbox_item": {
-    "path": "archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md",
+    "path": ".pan/archive/inbox/in/172972_06-03-26/18834_1846_token-economy-prototype/18847_1845_token-economy-prototype.md",
     "prior_path": "lib/inbox/in/172972_06-03-26/18847_1845_token-economy-prototype.md"
   }
 }

@@ -14,12 +14,12 @@ references:
   - kind: lines
     path: /lib/memory/handbook/contract-format.md
     range: [1, 1]
-    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
+    contentHash: 10d2b8f
     note: "Wrapper schema reference."
   - kind: lines
     path: /lib/memory/handbook/contract-style.md
     range: [1, 1]
-    contentHash: cb3f91d54eee30e53e35b2b99905f70f169ed549fd78909d3dac2defc9ed8d3b
+    contentHash: 2d7acae
     note: "Layer 2 (security) requirements: STRIDE + ASVS + EARS + score."
 external:
   - https://owasp.org/www-project-application-security-verification-standard/

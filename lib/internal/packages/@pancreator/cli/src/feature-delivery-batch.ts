@@ -339,7 +339,7 @@ export async function runFeatureDeliveryBatch(
 
   const batchId = makeBatchId(now);
   const dayDir = makeUtcDayBucket(now);
-  const ledgerRel = path.posix.join("work", dayDir, `batch-${batchId}`, "batch.json");
+  const ledgerRel = path.posix.join(".pan/work", dayDir, `batch-${batchId}`, "batch.json");
   const gitOps = input.testHooks?.batchGitOps ?? createNodeBatchGitOps();
   const mergeBranch = args.mergeBranch ?? defaultMergeBranch(batchId);
   const branches = await Promise.all(

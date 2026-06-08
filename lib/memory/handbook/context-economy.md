@@ -13,22 +13,22 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [1, 36]
-    contentHash: a29b04a
+    contentHash: b953d77
     note: AGENTS defines the primary entry contract and canon table including PRD routing.
   - kind: lines
     path: lib/memory/handbook/index.md
     range: [53, 72]
-    contentHash: 9c48244
+    contentHash: a4563dc
     note: Handbook index defines retrieval policy and routing table maintenance rules.
   - kind: lines
     path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [288, 352]
-    contentHash: e6c4fcd
+    contentHash: 9b2ddcc
     note: Context-economy acceptance criteria include tier routing and simple task mode.
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [205, 226]
-    contentHash: 31546d1
+    contentHash: 762edb4
     note: Glossary defines active-memory and related tier nouns used here.
 related:
   - /lib/memory/handbook/index.md
@@ -36,9 +36,9 @@ related:
   - /lib/memory/handbook/glossary.md
   - /lib/memory/active/current.md
   - /lib/memory/active/handoffs.md
-  - /docs/PRD.summary.md
-  - /docs/PRD.index.md
-  - /docs/M1.index.md
+  - /.docs/PRD.summary.md
+  - /.docs/PRD.index.md
+  - /.docs/M1.index.md
   - /lib/memory/handbook/context-cost-audit.md
 ---
 
@@ -56,10 +56,10 @@ Agents and operators SHOULD load the smallest surface that resolves the task:
 4. Read `lib/memory/handbook/index.md` and follow at most one primary route plus
    stated secondaries.
 
-**Internal product docs** (`docs/**`): read only for Pancreator self-development
-or meta-persona tasks. Route through `docs/PRD.summary.md` and `docs/PRD.index.md`
-before full `docs/PRD.md` or `docs/BOOTSTRAP.md`. Feature-delivery stage personas
-MUST NOT load `docs/**` unless the bounded prompt names an internal task.
+**Internal product docs** (`.docs/**`): read only for Pancreator self-development
+or meta-persona tasks. Route through `.docs/PRD.summary.md` and `.docs/PRD.index.md`
+before full `.docs/PRD.md` or `.docs/BOOTSTRAP.md`. Feature-delivery stage personas
+MUST NOT load `.docs/**` unless the bounded prompt names an internal task.
 
 Agents MUST NOT read, traverse, ingest, cite, or modify files under
 `/lib/inbox/notes/` per inbox lifecycle.
@@ -67,7 +67,7 @@ Agents MUST NOT read, traverse, ingest, cite, or modify files under
 ## Memory-tier routing
 
 This section states canonical routing cited at
-`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [288, 312], contentHash: e6c4fcd}`.
+`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [288, 312], contentHash: 9b2ddcc}`.
 
 When an agent asks what the memory tiers mean, the agent SHALL open
 `lib/memory/handbook/memory-tiers.md` before loading broader `lib/memory/` trees.
@@ -79,11 +79,11 @@ When an agent selects default memory orientation, the agent SHALL treat
 `lib/memory/active/**` as the only **active-memory** tier intended for routine
 default orientation among Memory paths.
 
-When an agent selects **active-work**, the agent SHALL treat `work/**` as
+When an agent selects **active-work**, the agent SHALL treat `.pan/work/**` as
 active run workspace and explicit-read only by default.
 
 When an agent selects **archival-memory**, the agent SHALL treat
-`archive/work/**`, `lib/inbox/out/**`, `archive/inbox/**`, and
+`.pan/archive/work/**`, `lib/inbox/out/**`, `.pan/archive/inbox/**`, and
 `lib/inbox/threads/**` as archival memory and explicit-read only.
 
 When an agent loads **internal-operating-content**, the agent SHALL load named
@@ -93,7 +93,7 @@ trees without justification.
 When an agent expands context into **durable-memory** Feature specs, the agent
 SHALL record task-specific justification in the operator thread or run log.
 
-When an agent reads full `docs/PRD.md`, `docs/BOOTSTRAP.md`, or archival run artifacts,
+When an agent reads full `.docs/PRD.md`, `.docs/BOOTSTRAP.md`, or archival run artifacts,
 the agent SHALL record task-specific justification in the operator thread or
 run log.
 
@@ -108,12 +108,12 @@ attachments when the task requires them.
 
 Typical explicit-read surfaces include:
 
-- Internal `AGENTS.md` and entire `docs/**` tree, including `docs/README.md`
+- Internal `AGENTS.md` and entire `.docs/**` tree, including `.docs/README.md`
   (Pancreator product development; explicit-read only).
 - `lib/memory/adr/`, `lib/memory/backlog/`, `lib/memory/research/`, `tests/**`.
-- Full `docs/PRD.md` and `docs/BOOTSTRAP.md` after compact internal routes.
-- Selected `work/**` artifacts for active-run handling.
-- Selected `archive/work/**`, `lib/inbox/out/**`, `archive/inbox/**`,
+- Full `.docs/PRD.md` and `.docs/BOOTSTRAP.md` after compact internal routes.
+- Selected `.pan/work/**` artifacts for active-run handling.
+- Selected `.pan/archive/work/**`, `lib/inbox/out/**`, `.pan/archive/inbox/**`,
   and `lib/inbox/threads/**` artifacts for historical reconstruction.
 - `lib/memory/features/**` for Feature specs, contracts, and delivery reports when
   the named Feature is in scope.
@@ -122,7 +122,7 @@ Typical explicit-read surfaces include:
 
 This subsection is the canonical definition for `simple task mode` per plan
 decision D1 at
-`{kind: lines, path: archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6}`.
+`{kind: lines, path: .pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: d0e8d06}`.
 
 When a task executes under `simple task mode`, agents SHALL treat the posture as
 the default for low-risk mechanical work.
@@ -134,14 +134,14 @@ repository maintenance that requires no product reasoning.
 
 While `simple task mode` applies, an agent MUST NOT read internal `AGENTS.md`.
 
-While `simple task mode` applies, an agent MUST NOT read `docs/PRD.md`.
+While `simple task mode` applies, an agent MUST NOT read `.docs/PRD.md`.
 
-While `simple task mode` applies, an agent MUST NOT read `docs/BOOTSTRAP.md`.
+While `simple task mode` applies, an agent MUST NOT read `.docs/BOOTSTRAP.md`.
 
 While `simple task mode` applies, an agent MUST NOT traverse `lib/memory/**`.
 
-While `simple task mode` applies, an agent MUST NOT traverse `work/**` or
-`archive/work/**`.
+While `simple task mode` applies, an agent MUST NOT traverse `.pan/work/**` or
+`.pan/archive/work/**`.
 
 While `simple task mode` applies, an agent MUST NOT load persona specs beyond
 the persona the operator invoked.
@@ -179,8 +179,8 @@ the operator-visible response body.
 
 When a task requires both planning and execution, the planning agent SHALL
 produce a bounded handoff card before execution starts. The handoff card SHALL
-live at `work/<day>/<task-id>/handoff.md` for active runs, the generated
-subagent prompt SHALL live at `work/<day>/<task-id>/next-prompt.md`, and
+live at `.pan/work/<day>/<task-id>/handoff.md` for active runs, the generated
+subagent prompt SHALL live at `.pan/work/<day>/<task-id>/next-prompt.md`, and
 active memory SHALL store only a pointer in `lib/memory/active/handoffs.md`.
 
 A handoff card SHOULD include the Feature id, current stage, planner persona,
@@ -218,7 +218,7 @@ context after equivalent failures.
 ## Model and context escalation guidance
 
 This subsection is the canonical escalation guidance per plan decision D4 at
-`{kind: lines, path: archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: 58bbab6}`.
+`{kind: lines, path: .pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md, range: [36, 42], contentHash: d0e8d06}`.
 
 When an agent selects models for routine mechanical work, the agent MUST NOT
 treat Opus-class models as the default.
@@ -258,15 +258,15 @@ for human decisions unless debugging a specific generator.
 | Routing handbook pages | `lib/memory/handbook/index.md` | Avoid loading the full handbook tree by default. |
 | Memory-tier taxonomy | `lib/memory/handbook/memory-tiers.md` | Defines **active-memory**, **active-work**, **durable-memory**, **archival-memory**, **internal-operating-content**, and **generated-machine-artifact**. |
 | Active-memory pointers | `lib/memory/active/current.md` | Summaries only; follow links into durable or archival tiers. |
-| Planning/execution handoffs | `lib/memory/active/handoffs.md` | Pointer-only map for active handoff cards under `work/<day>/<task-id>/handoff.md`. |
+| Planning/execution handoffs | `lib/memory/active/handoffs.md` | Pointer-only map for active handoff cards under `.pan/work/<day>/<task-id>/handoff.md`. |
 | Agent operating card | `AGENTS.md` (self-host) or `.pancreator/AGENTS.md` (embedded) | Cross-tool agent contract; explicit-read on self-host. |
 | Human operator procedures | `OPERATION.md` | Human-only; indexed external surface. |
-| Product intent (internal) | `docs/PRD.summary.md` | Pancreator self-dev only; explicit-read by default indexing policy. |
-| Section-level PRD routing (internal) | `docs/PRD.index.md` | Pancreator self-dev only. |
-| M1 and bootstrap routing (internal) | `docs/M1.index.md` | Pancreator self-dev only. |
+| Product intent (internal) | `.docs/PRD.summary.md` | Pancreator self-dev only; explicit-read by default indexing policy. |
+| Section-level PRD routing (internal) | `.docs/PRD.index.md` | Pancreator self-dev only. |
+| M1 and bootstrap routing (internal) | `.docs/M1.index.md` | Pancreator self-dev only. |
 | Subagent invocation and model escalation | `lib/memory/handbook/context-economy.md` §“Model and context escalation guidance” | One canonical `.cursor/agents/<name>.md` per persona; escalate model class per documented triggers. |
 | Feature implementation | `lib/memory/features/<id>/spec.md` | Canonical Engineering Spec for that Feature. |
-| Bootstrap phase authority | `docs/BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |
+| Bootstrap phase authority | `.docs/BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |
 | Governance and documentation-impact | `lib/memory/handbook/documentation-impact-contract.md`, `lib/memory/handbook/constitution.md` | Required for post-task documentation decisions; optional `/pr-writer` for PR bodies. |
 
 ## Operator maintenance

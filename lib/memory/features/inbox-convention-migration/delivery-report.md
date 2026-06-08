@@ -10,7 +10,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [1, 8],
   "contentHash": "1076c2b"
 }
@@ -20,7 +20,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [1, 6],
   "contentHash": "40488da"
 }
@@ -34,7 +34,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [9, 23],
   "contentHash": "4f7b470"
 }
@@ -44,7 +44,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [13, 17],
   "contentHash": "dfa7d86"
 }
@@ -55,7 +55,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [24, 29],
   "contentHash": "805b288"
 }
@@ -65,7 +65,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [15, 16],
   "contentHash": "9d2b768"
 }
@@ -76,7 +76,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [31, 33],
   "contentHash": "6de1a36"
 }
@@ -86,7 +86,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [15, 16],
   "contentHash": "9d2b768"
 }
@@ -100,7 +100,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [9, 22],
   "contentHash": "ee1ad58"
 }
@@ -110,7 +110,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [13, 17],
   "contentHash": "dfa7d86"
 }
@@ -121,7 +121,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [22, 23],
   "contentHash": "9dbc616"
 }
@@ -131,7 +131,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [1, 6],
   "contentHash": "40488da"
 }
@@ -145,7 +145,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [46, 46],
   "contentHash": "d68c587"
 }
@@ -155,7 +155,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [1, 6],
   "contentHash": "40488da"
 }
@@ -166,7 +166,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [47, 47],
   "contentHash": "4141359"
 }
@@ -176,7 +176,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [1, 6],
   "contentHash": "40488da"
 }
@@ -187,7 +187,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [35, 42],
   "contentHash": "2fb411c"
 }
@@ -197,7 +197,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [18, 20],
   "contentHash": "d1cf127"
 }
@@ -211,7 +211,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/implementation-report.md",
   "range": [35, 42],
   "contentHash": "2fb411c"
 }
@@ -221,7 +221,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [29, 34],
   "contentHash": "47b6be9"
 }
@@ -232,7 +232,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [29, 38],
   "contentHash": "fe56520"
 }
@@ -242,7 +242,7 @@ This re-entry slice hardens the standalone inbox convention migration tool and e
 ```json
 {
   "kind": "lines",
-  "path": "work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
+  "path": ".pan/work/172995_05-11-26/60722_0707_inbox-convention-migration/review.md",
   "range": [36, 38],
   "contentHash": "44ee2d3"
 }

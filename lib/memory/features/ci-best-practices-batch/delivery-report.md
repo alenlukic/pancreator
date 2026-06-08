@@ -6,7 +6,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
   "range": [12, 143],
   "contentHash": "6c5431b"
 }
@@ -15,7 +15,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
   "range": [1, 33],
   "contentHash": "98d9b2a"
 }
@@ -27,7 +27,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/plan.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/plan.md",
   "range": [47, 55],
   "contentHash": "5cb5270"
 }
@@ -38,7 +38,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
   "range": [41, 54],
   "contentHash": "ec6767d"
 }
@@ -49,7 +49,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
   "range": [61, 72],
   "contentHash": "ec6767d"
 }
@@ -63,7 +63,7 @@
   "kind": "lines",
   "path": "package.json",
   "range": [1, 33],
-  "contentHash": "31789e8"
+  "contentHash": "22317d8"
 }
 ```
 
@@ -85,7 +85,7 @@
   "kind": "lines",
   "path": "lib/internal/tools/run-compliance.mjs",
   "range": [1, 330],
-  "contentHash": "42b2bac"
+  "contentHash": "0f247f2"
 }
 ```
 
@@ -96,7 +96,7 @@
   "kind": "lines",
   "path": "lib/internal/tools/refresh-citations.mjs",
   "range": [1, 371],
-  "contentHash": "eefffc5"
+  "contentHash": "ef8ac97"
 }
 ```
 
@@ -137,7 +137,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
   "range": [13, 15],
   "contentHash": "98d9b2a"
 }
@@ -148,7 +148,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
   "range": [61, 70],
   "contentHash": "ec6767d"
 }
@@ -159,7 +159,7 @@
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/adr-draft.md",
   "range": [69, 72],
   "contentHash": "ec6767d"
 }
@@ -173,7 +173,7 @@
   "kind": "lines",
   "path": "tests/run-compliance.test.mjs",
   "range": [45, 84],
-  "contentHash": "2562228"
+  "contentHash": "9207935"
 }
 ```
 
@@ -184,7 +184,7 @@
   "kind": "lines",
   "path": "tests/refresh-citations.test.mjs",
   "range": [27, 45],
-  "contentHash": "877b08c"
+  "contentHash": "e86f9f5"
 }
 ```
 
@@ -193,7 +193,7 @@
   "kind": "lines",
   "path": "tests/refresh-citations.test.mjs",
   "range": [91, 129],
-  "contentHash": "877b08c"
+  "contentHash": "e86f9f5"
 }
 ```
 
@@ -223,7 +223,7 @@ The validation delta is command-level rather than numeric: the implementation re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/implementation-report.md",
   "range": [108, 124],
   "contentHash": "6c5431b"
 }
@@ -232,7 +232,7 @@ The validation delta is command-level rather than numeric: the implementation re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
+  "path": ".pan/work/172980_05-26-26/24959_1704_ci-best-practices-batch/review.md",
   "range": [21, 33],
   "contentHash": "98d9b2a"
 }

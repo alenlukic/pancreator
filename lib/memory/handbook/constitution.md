@@ -11,33 +11,33 @@ purpose: |
   rules that apply across personas, skills, pipelines, and handbook contracts.
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [83, 89]
-    contentHash: 6a838ec
+    contentHash: 2eb6aa4
     note: "PRD goals G1-G7 define Pancreator's intended operating outcomes."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [378, 380]
-    contentHash: 6a838ec
+    contentHash: 2eb6aa4
     note: "PRD memory and inbox architecture define organizational operating surfaces."
   - kind: lines
     path: AGENTS.md
     range: [73, 100]
-    contentHash: 3dd1213
+    contentHash: b953d77
     note: "AGENTS working agreement defines bootstrap-era operating discipline."
   - kind: lines
     path: lib/memory/adr/0004-documentation-impact-contract.md
     range: [51, 75]
-    contentHash: d77cc5c
+    contentHash: a4dd126
     note: "ADR-0004 ratifies mandatory per-task documentation-impact decisions."
   - kind: lines
     path: lib/memory/handbook/documentation-impact-contract.md
     range: [46, 101]
-    contentHash: 38ed821
+    contentHash: 1916c90
     note: "Handbook contract defines trigger conditions and decision record shape."
 related:
   - /AGENTS.md
-  - /docs/PRD.md
+  - /.docs/PRD.md
   - /lib/memory/handbook/glossary.md
   - /lib/memory/handbook/documentation-impact-contract.md
   - /lib/memory/handbook/inbox-lifecycle.md
@@ -57,12 +57,12 @@ contracts.
 
 ## 2 - Authority model
 
-The constitution and `docs/PRD.md` are peer authorities. They SHALL be read
+The constitution and `.docs/PRD.md` are peer authorities. They SHALL be read
 together.
 
 When they conflict, operators SHALL temporarily follow this constitution and
 MUST open an ADR plus human ratification workflow to resolve the conflict. The
-resolution change set MUST update any affected policy surfaces (`docs/PRD.md`,
+resolution change set MUST update any affected policy surfaces (`.docs/PRD.md`,
 `AGENTS.md`, and impacted handbook pages).
 
 ## 3 - Foundational principles
@@ -101,7 +101,7 @@ At minimum, a constitutional change MUST include:
 1. A proposed ADR stating what changes and why.
 2. Human ratification before the new rule is treated as active.
 3. Policy-surface synchronization when affected (`AGENTS.md`, relevant
-   handbook files, and `docs/PRD.md` where normative alignment is required).
+   handbook files, and `.docs/PRD.md` where normative alignment is required).
 
 ## 6 - Documentation and reference stewardship
 
@@ -109,7 +109,7 @@ The documentation-impact contract is constitutional policy.
 
 After each completed task, every agent SHALL evaluate documentation/reference
 impact and SHALL decide whether updates apply. When updates apply, the agent
-MUST update affected docs/indexes/references or record an explicit, linked
+MUST update affected .docs/indexes/references or record an explicit, linked
 deferral in `/lib/memory/backlog/index.yaml`.
 
 Details of triggers and decision-record format live in

@@ -151,8 +151,8 @@ test("rewriteJsonText keeps compact primitive arrays on one line", () => {
   assert.match(formatted, /"tags": \[1, 2, 3]/);
 });
 
-test("isGitignoredRelPath skips transient work/ JSON from repo scans", () => {
-  assert.equal(isGitignoredRelPath(ROOT, "work/example/ship-ratification.json"), true);
+test("isGitignoredRelPath skips transient .pan/work/ JSON from repo scans", () => {
+  assert.equal(isGitignoredRelPath(ROOT, ".pan/work/example/ship-ratification.json"), true);
   assert.equal(isGitignoredRelPath(ROOT, "lib/memory/active/current.md"), false);
 });
 
@@ -171,7 +171,7 @@ test("formatJsonFileInPlace canonicalizes JSON.stringify-style policy artifacts"
         governing_sources_checked: [
           "AGENTS.md",
           "lib/memory/handbook/constitution.md",
-          "docs/PRD.md",
+          ".docs/PRD.md",
         ],
       }),
       "utf8",

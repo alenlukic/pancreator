@@ -41,8 +41,8 @@ export interface CloseOutOfBandResult {
 function normalizeRunDirRel(value: string): string {
   const norm = value.replace(/\\/gu, "/").replace(/^\/+/, "");
   const parts = norm.split("/").filter(Boolean);
-  if (parts.length !== 3 || parts[0] !== "work") {
-    throw new Error(`run directory MUST be work/<day>/<task-id>; got ${value}.`);
+  if (parts.length !== 4 || parts[0] !== ".pan" || parts[1] !== "work") {
+    throw new Error(`run directory MUST be .pan/work/<day>/<task-id>; got ${value}.`);
   }
   for (const segment of parts) {
     if (segment === "." || segment === "..") {
@@ -53,7 +53,7 @@ function normalizeRunDirRel(value: string): string {
 }
 
 function parseRunDir(runDirRel: string): { dayDir: string; taskId: string } {
-  const [, dayDir, taskId] = runDirRel.split("/");
+  const [, , dayDir, taskId] = runDirRel.split("/");
   return { dayDir: dayDir!, taskId: taskId! };
 }
 
@@ -64,7 +64,7 @@ function archiveInboxPathForSource(sourceRel: string, dayDir: string, taskId: st
   }
   const tail = sourceRel.slice(prefix.length);
   const basename = path.posix.basename(tail);
-  return path.posix.join("archive", "inbox", "in", dayDir, taskId, basename);
+  return path.posix.join(".pan/archive", "inbox", "in", dayDir, taskId, basename);
 }
 
 async function assertExistingDirectory(abs: string, rel: string): Promise<void> {
@@ -144,7 +144,7 @@ export async function closeOutOfBandWorkspace(input: CloseOutOfBandInput): Promi
   }
 
   const activeRunAbs = resolveRepoPath(repoRoot, runDirRel);
-  const archiveRunRel = path.posix.join("archive", "work", dayDir, taskId);
+  const archiveRunRel = path.posix.join(".pan/archive", "work", dayDir, taskId);
   const archiveRunAbs = resolveRepoPath(repoRoot, archiveRunRel);
 
   await assertExistingDirectory(activeRunAbs, runDirRel);

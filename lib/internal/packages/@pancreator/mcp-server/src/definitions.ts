@@ -8,7 +8,7 @@ const TASK_ID_ARG = {
   type: "object" as const,
   additionalProperties: false as const,
   properties: {
-    taskId: { type: "string" as const, description: "Task id under work/" },
+    taskId: { type: "string" as const, description: "Task id under .pan/work/" },
   },
   required: ["taskId"] as const,
 };
@@ -56,7 +56,7 @@ const RESUME_ARG = {
   type: "object" as const,
   additionalProperties: false as const,
   properties: {
-    taskId: { type: "string" as const, description: "Task id under work/" },
+    taskId: { type: "string" as const, description: "Task id under .pan/work/" },
     checkpoint: {
       type: "string" as const,
       description: "Optional checkpoint id for time-travel resume",
@@ -69,7 +69,7 @@ const ABORT_ARG = {
   type: "object" as const,
   additionalProperties: false as const,
   properties: {
-    taskId: { type: "string" as const, description: "Task id under work/" },
+    taskId: { type: "string" as const, description: "Task id under .pan/work/" },
     reason: { type: "string" as const, description: "Optional abort reason" },
   },
   required: ["taskId"] as const,
@@ -169,7 +169,7 @@ export function listToolDefinitions(): readonly ToolDefinition[] {
 }
 
 /**
- * The resource templates SHALL cover `/lib/memory/`, Inbox, and `work/<taskId>/run.log.jsonl` reads.
+ * The resource templates SHALL cover `/lib/memory/`, Inbox, and `.pan/work/<taskId>/run.log.jsonl` reads.
  */
 export interface ResourceDefinitionEntry {
   readonly name: string;
@@ -197,7 +197,7 @@ export function listResourceDefinitions(): readonly ResourceDefinitionEntry[] {
     {
       name: "pancreator-work-run-log",
       uriTemplate: "work-run-log://{taskId}",
-      description: "Text contents of `work/<day>/<taskId>/run.log.jsonl` when the file exists.",
+      description: "Text contents of `.pan/work/<day>/<taskId>/run.log.jsonl` when the file exists.",
       mimeType: "application/x-ndjson",
     },
   ];

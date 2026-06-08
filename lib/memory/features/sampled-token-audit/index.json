@@ -47,7 +47,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
@@ -80,7 +80,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+    "artifact": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 3,
@@ -89,14 +89,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+      "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
       "range": [1, 107],
       "contentHash": "db3270f"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+    "artifact": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
     "verification_gates": {
       "runner_cursor_build": "pass",
       "runner_cursor_test": "pass (25/25)",
@@ -110,19 +110,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+      "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
       "range": [1, 67],
       "contentHash": "6cc059b"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+    "artifact": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
     "audit_id": "53589_0906_sampled-token-audit-20260604000000",
     "baseline_audit_id": "18834_1846_token-economy-prototype-20260603000000",
     "citation": {
       "kind": "lines",
-      "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+      "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
       "range": [1, 269],
       "contentHash": "9415a21"
     }
@@ -134,14 +134,14 @@
       "kind": "lines",
       "path": "lib/memory/features/sampled-token-audit/delivery-report.md",
       "range": [1, 396],
-      "contentHash": "edd5c25"
+      "contentHash": "2835fee"
     },
-    "archived_inbox_source": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
-    "pr_draft": "work/172971_06-04-26/53589_0906_sampled-token-audit/pr-draft.md",
+    "policy_compliance_artifact": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+    "pr_draft": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/pr-draft.md",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -150,7 +150,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+      "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
       "range": [1, 116],
       "contentHash": "4d424ae"
     }
@@ -163,7 +163,7 @@
       "reason": "Branch token-economy-calibration-pass has zero commits ahead of main; operator must commit staged touch-set paths and push before gh pr create.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
         "range": [94, 109],
         "contentHash": "4d424ae"
       }
@@ -175,7 +175,7 @@
       "reason": "Staged edits to paths.mjs and tasks.mjs sit outside allowed_paths; consider amending touch-set via tech-lead for alignment.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
         "range": [26, 26],
         "contentHash": "db3270f"
       }
@@ -187,7 +187,7 @@
       "reason": "Spec WP-4 live repair-agent invocation defers to operator dogfood; offline tests satisfy defer-and-apply acceptance.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
         "range": [27, 27],
         "contentHash": "db3270f"
       }
@@ -199,7 +199,7 @@
       "reason": "Compliance harness imports @pancreator/runner-cursor dist; operators MUST build runner-cursor before context-usage unit tests.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
         "range": [28, 28],
         "contentHash": "db3270f"
       }
@@ -211,7 +211,7 @@
       "reason": "pancreator-model-escalation.yaml sets active_config: auto for SDK dogfood; revert to default when dogfood sampling is complete.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
         "range": [32, 32],
         "contentHash": "db3270f"
       }
@@ -223,7 +223,7 @@
       "reason": "Untracked tests/compliance/context-usage/calibration/traces/** files remain local evidence only and are outside the touch-set for commit.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
         "range": [72, 75],
         "contentHash": "4d424ae"
       }
@@ -235,7 +235,7 @@
       "reason": "Unstaged lib/memory/features/token-economy-calibration-hardening/** artifacts from a parallel follow-on run remain outside this feature commit scope.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
         "range": [38, 44],
         "contentHash": "9415a21"
       }
@@ -255,7 +255,7 @@
       },
       {
         "citing_path": "lib/memory/features/sampled-token-audit/delivery-report.md",
-        "cited_path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+        "cited_path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
         "recorded_content_hash": "c397ed4",
         "live_content_hash": "0e224cb",
         "verifier_status": "changed",
@@ -263,7 +263,7 @@
       },
       {
         "citing_path": "lib/memory/features/sampled-token-audit/delivery-report.md",
-        "cited_path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "cited_path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
         "recorded_content_hash": "c9b1631",
         "live_content_hash": "db3270f",
         "verifier_status": "changed",
@@ -287,7 +287,7 @@
           "kind": "lines",
           "path": "lib/memory/features/sampled-token-audit/spec.md",
           "range": [1, 270],
-          "contentHash": "1525419"
+          "contentHash": "e6bb81b"
         }
       },
       "delivery_report": {
@@ -296,7 +296,7 @@
           "kind": "lines",
           "path": "lib/memory/features/sampled-token-audit/delivery-report.md",
           "range": [1, 396],
-          "contentHash": "edd5c25"
+          "contentHash": "2835fee"
         }
       },
       "per_feature_index": {
@@ -305,106 +305,106 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/"
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/"
       },
       "plan": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/plan.md",
           "range": [1, 120],
           "contentHash": "65e22bd"
         }
       },
       "adr_draft": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/adr-draft.md",
           "range": [1, 113],
           "contentHash": "95d8fdc"
         }
       },
       "touch_set": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json",
           "range": [1, 213],
           "contentHash": "695727e"
         }
       },
       "implementation_report": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/implementation-report.md",
           "range": [1, 91],
           "contentHash": "0e224cb"
         }
       },
       "review_report": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/review.md",
           "range": [1, 107],
           "contentHash": "db3270f"
         }
       },
       "test_report": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/test-report.md",
           "range": [1, 67],
           "contentHash": "6cc059b"
         }
       },
       "compliance_result": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/compliance-result.json",
           "range": [1, 269],
           "contentHash": "9415a21"
         }
       },
       "policy_compliance": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/policy-compliance.json",
           "range": [1, 116],
           "contentHash": "4d424ae"
         }
       },
       "pr_draft": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/pr-draft.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/pr-draft.md",
         "note": "Supervisor-authored PR body draft; gh pr create deferred until operator commits and pushes."
       },
       "handoff": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
+          "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/handoff.md",
           "range": [1, 55],
           "contentHash": "2a35fc0"
         }
       },
       "pipeline_close": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/pipeline-close.md"
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/pipeline-close.md"
       },
       "run_log": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/run.log.jsonl",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/qa-logs/",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/qa-logs/",
         "note": "QA and compliance gate command transcripts."
       },
       "sdk_traces": {
-        "path": "work/172971_06-04-26/53589_0906_sampled-token-audit/sdk-traces/",
+        "path": ".pan/work/172971_06-04-26/53589_0906_sampled-token-audit/sdk-traces/",
         "note": "Sampled SDK trace NDJSON and summary artifacts from QA dogfood runs."
       }
     },
@@ -453,7 +453,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
+        "path": ".pan/archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md",
@@ -476,9 +476,9 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172971_06-04-26/53589_0906_sampled-token-audit/53607_0906_sampled-token-audit.md"
 }

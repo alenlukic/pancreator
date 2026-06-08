@@ -25,7 +25,7 @@ const PASSING_ARTIFACT = {
   metadata: {
     feature_id: "sample-feature",
     task_id: "12345_0000_sample",
-    target_repo: { path: "/tmp/sample-repo" },
+    target_repo: { path: "/.tmp/sample-repo" },
     pipeline_id: "init-greenfield",
     captured_at_iso: "2026-05-30T12:00:00.000Z",
     project_root: ".",
@@ -127,7 +127,7 @@ test("validateEvidenceStructure requires metadata.project_root", () => {
 
 test("validateDenyListedEvidencePaths rejects archive paths", () => {
   const artifact = deepCloneJson(PASSING_ARTIFACT);
-  artifact.provenance.cli_commands = ["rsync archive/inbox/in/"];
+  artifact.provenance.cli_commands = ["rsync .pan/archive/inbox/in/"];
   const errors = validateDenyListedEvidencePaths(artifact);
   assert.ok(errors.length > 0);
 });

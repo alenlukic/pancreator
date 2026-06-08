@@ -77,7 +77,7 @@ test("tasks: getTaskSpec and buildTaskPrompt for both tasks", () => {
   assert.match(buildTaskPrompt("task-low"), /task-low/);
   const high = getTaskSpec("task-high");
   assert.equal(high.requiresWrites, true);
-  assert.ok(high.requiredOutputArtifacts.includes("work/99999_probe/task/answer.md"));
+  assert.ok(high.requiredOutputArtifacts.includes(".work/99999_probe/task/answer.md"));
   assert.match(buildTaskPrompt("task-high"), /answer\.md/);
 });
 
@@ -144,12 +144,12 @@ test("collect-usage: trace sink writes ndjson and summary", () => {
   sink.onEvent({
     type: "tool_call",
     name: "read",
-    args: { path: "docs/PRD.summary.md" },
+    args: { path: ".docs/PRD.summary.md" },
   });
   const metrics = createEmptyMetrics();
   metrics.turn_count = 1;
   metrics.total_tokens = 120;
-  const summary = sink.finish(metrics, ["docs/PRD.summary.md"]);
+  const summary = sink.finish(metrics, [".docs/PRD.summary.md"]);
   assert.ok(fs.existsSync(sink.tracePath));
   assert.ok(fs.existsSync(sink.summaryPath));
   assert.equal(summary.trace_path, repoRelativePath(sink.tracePath));
@@ -162,21 +162,21 @@ test("analyzer: policy violations for forbidden and inbox notes", () => {
   const violations = classifyPolicyViolations({
     taskId: "task-low",
     summary: {
-      tool_paths: ["docs/PRD.md", "lib/inbox/notes/private.md"],
+      tool_paths: [".docs/PRD.md", "lib/inbox/notes/private.md"],
       turn_count: 2,
       trace_records: [],
     },
   });
   assert.ok(violations.some((v) => v.kind === "forbidden_path_read"));
   assert.ok(violations.some((v) => v.kind === "inbox_notes_read"));
-  assert.ok(spec.decoyPaths.includes("docs/PRD.md"));
+  assert.ok(spec.decoyPaths.includes(".docs/PRD.md"));
 });
 
 test("analyzer: inefficiencies for duplicate, decoy, and excess turns", () => {
   const ineff = classifyInefficiencies({
     taskId: "task-low",
     summary: {
-      tool_paths: ["docs/PRD.summary.md", "docs/PRD.summary.md", "docs/PRD.md"],
+      tool_paths: [".docs/PRD.summary.md", ".docs/PRD.summary.md", ".docs/PRD.md"],
       turn_count: 99,
     },
   });
@@ -196,7 +196,7 @@ test("analyzer: duplicate_read from createTraceSink summary with deduped tool_pa
     taskId: "task-low",
     model: "composer-2.5",
   });
-  const dupPath = "docs/PRD.summary.md";
+  const dupPath = ".docs/PRD.summary.md";
   sink.onEvent({ type: "tool_call", name: "read", args: { path: dupPath } });
   sink.onEvent({ type: "tool_call", name: "read", args: { path: dupPath } });
   const metrics = createEmptyMetrics();
@@ -240,7 +240,7 @@ test("paths: stripTempSandboxPrefix reports fixture-relative paths", () => {
   const tempPath =
     "var/folders/_m/bnsbbl5s4bl8t0hrt3p5k3kc0000gn/T/context-usage-task-high-FFXHkK/lib/memory/handbook/routing.md";
   assert.equal(stripTempSandboxPrefix(tempPath), "lib/memory/handbook/routing.md");
-  assert.equal(normalizePath("docs/PRD.summary.md"), "docs/PRD.summary.md");
+  assert.equal(normalizePath(".docs/PRD.summary.md"), ".docs/PRD.summary.md");
 });
 
 test("expected: compareObservedToExpectedUpper pass and exceedance", () => {
@@ -328,7 +328,7 @@ test("establishExpectedFromRaw: committed expected baselines match formula", () 
 });
 
 test("paths: normalizePath", () => {
-  assert.equal(normalizePath(".\\docs\\PRD.summary.md"), "docs/PRD.summary.md");
+  assert.equal(normalizePath(".\\docs\\PRD.summary.md"), ".docs/PRD.summary.md");
 });
 
 test("baselines: committed prototype baseline files exist", () => {

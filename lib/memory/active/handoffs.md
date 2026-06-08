@@ -23,7 +23,7 @@ MUST NOT embed plan bodies, review bodies, generated manifests, or run logs.
 
 ## Handoff card shape
 
-Each active run handoff card SHOULD live at `work/<day>/<task-id>/handoff.md`
+Each active run handoff card SHOULD live at `.pan/work/<day>/<task-id>/handoff.md`
 and SHOULD contain only these fields:
 
 1. Feature id and current stage.

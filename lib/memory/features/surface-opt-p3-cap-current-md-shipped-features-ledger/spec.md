@@ -20,17 +20,17 @@ references:
   - kind: lines
     path: lib/memory/active/current.md
     range: [40, 79]
-    contentHash: 1402eee
+    contentHash: d1f6703
     note: "Shipped-Features ledger renders 36 rows on every orientation read; current.md is declared as compact pointers."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/active-memory-refresh.ts
     range: [449, 464]
-    contentHash: 1669d66
+    contentHash: 1a92027
     note: "deriveShippedMarkdownTable sorts and emits every indexed row with no row cap."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/active-memory-refresh.ts
     range: [600, 665]
-    contentHash: 1669d66
+    contentHash: 1a92027
     note: "rewriteActiveMemoryFile assembles and writes current.md with no whole-file trailing-blank-line trim."
 ---
 

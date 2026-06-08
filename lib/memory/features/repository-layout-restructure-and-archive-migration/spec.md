@@ -10,55 +10,55 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [231, 269]
-    contentHash: b8b1d4a
+    contentHash: b953d77
     note: Workspace map lists current canonical path contracts for every durable and transient surface targeted by this migration.
   - kind: lines
     path: AGENTS.md
     range: [139, 148]
-    contentHash: b8b1d4a
+    contentHash: b953d77
     note: Documented durable directories are materialized on demand; governs directory-creation obligations during migration.
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [67, 77]
-    contentHash: 80c7e67
-    note: Canonical inbox path contracts including archive/in/ location and operator-sandbox exclusion rule.
+    contentHash: 2762053
+    note: Canonical inbox path contracts including .pan/archive/in/ location and operator-sandbox exclusion rule.
   - kind: lines
     path: lib/memory/features/timestamp-naming-conventions/spec.md
     range: [54, 76]
-    contentHash: 94a67b5
+    contentHash: 294422f
     note: Ratified UTC, FDS, SID, and day-bucket naming tokens used by inbox/work paths being migrated.
   - kind: lines
     path: lib/memory/handbook/contract-style.md
     range: [60, 76]
-    contentHash: afdc2a6
+    contentHash: d521e35
     note: Layer 1 requires one RFC 2119 keyword and one EARS form per normative clause.
 ---
 
 # Spec
 
-This Feature SHALL execute a one-shot, auditable repository layout restructure that consolidates archives under a top-level `archive/` directory, relocates transient active work to a top-level `work/` directory, colocates skill packs under `lib/personas/skills/`, renames the entire `lib/` tree to `lib/`, simplifies `.cursor/agents/` to one file per persona, retires standard/complex tier policy, and performs a repository-wide reference sweep. The Feature covers seven work packages (WP-1 through WP-7). All operator decisions recorded in the source directive are ratified; there are no open clarifying questions.
+This Feature SHALL execute a one-shot, auditable repository layout restructure that consolidates archives under a top-level `.pan/archive/` directory, relocates transient active work to a top-level `.pan/work/` directory, colocates skill packs under `lib/personas/skills/`, renames the entire `lib/` tree to `lib/`, simplifies `.cursor/agents/` to one file per persona, retires standard/complex tier policy, and performs a repository-wide reference sweep. The Feature covers seven work packages (WP-1 through WP-7). All operator decisions recorded in the source directive are ratified; there are no open clarifying questions.
 
-## WP-1 — Top-level `archive/` and archive migrations
+## WP-1 — Top-level `.pan/archive/` and archive migrations
 
-The Feature SHALL create a top-level `archive/` directory as the canonical home for archived operational artifacts.
+The Feature SHALL create a top-level `.pan/archive/` directory as the canonical home for archived operational artifacts.
 
-When the Feature migrates inbox archive artifacts, the Feature SHALL relocate all contents of `archive/inbox/` to `archive/inbox/` while preserving every day-bucket directory and every leaf file at its relative sub-path.
+When the Feature migrates inbox archive artifacts, the Feature SHALL relocate all contents of `.pan/archive/inbox/` to `.pan/archive/inbox/` while preserving every day-bucket directory and every leaf file at its relative sub-path.
 
-When the Feature migrates work archive artifacts, the Feature SHALL relocate all contents of `archive/work/` to `archive/work/` while preserving every task-bucket directory and every artifact at its relative sub-path.
+When the Feature migrates work archive artifacts, the Feature SHALL relocate all contents of `.pan/archive/work/` to `.pan/archive/work/` while preserving every task-bucket directory and every artifact at its relative sub-path.
 
-The Feature SHALL update every runtime reference and every documented reference that points to `archive/inbox/` or `archive/work/` to point to the corresponding new canonical path.
+The Feature SHALL update every runtime reference and every documented reference that points to `.pan/archive/inbox/` or `.pan/archive/work/` to point to the corresponding new canonical path.
 
 The Feature SHALL NOT create transitional compatibility aliases, symlinks, or fallback path resolvers for any archived path.
 
-## WP-2 — Move transient work root to top-level `work/`
+## WP-2 — Move transient work root to top-level `.pan/work/`
 
-The Feature SHALL move `work/` to top-level `work/` as the canonical root for active run state.
+The Feature SHALL move `.pan/work/` to top-level `.pan/work/` as the canonical root for active run state.
 
-The Feature SHALL update every script, documentation page, CLI help text, and policy contract that references `work/**` to reference `work/**` instead.
+The Feature SHALL update every script, documentation page, CLI help text, and policy contract that references `.pan/work/**` to reference `.pan/work/**` instead.
 
-The Feature SHALL preserve every active-work discoverability guarantee currently provided by `pan run`, `pan advance`, and closure tooling after relocating `work/` to `work/`.
+The Feature SHALL preserve every active-work discoverability guarantee currently provided by `pan run`, `pan advance`, and closure tooling after relocating `.pan/work/` to `.pan/work/`.
 
-When archival or closure handoff paths are evaluated after migration, the Feature SHALL ensure active-work artifacts reside under `work/<day>/<task-id>/` and closed-run artifacts reside under `archive/work/<day>/<task-id>/`.
+When archival or closure handoff paths are evaluated after migration, the Feature SHALL ensure active-work artifacts reside under `.pan/work/<day>/<task-id>/` and closed-run artifacts reside under `.pan/archive/work/<day>/<task-id>/`.
 
 ## WP-3 — Relocate skills under personas namespace
 
@@ -80,9 +80,9 @@ The canonical path mapping SHALL be:
 | `lib/inbox/out/` | `lib/inbox/out/` |
 | `lib/inbox/threads/` | `lib/inbox/threads/` |
 | `lib/inbox/notes/` | `lib/inbox/notes/` |
-| `archive/inbox/` | `archive/inbox/` |
-| `archive/work/` | `archive/work/` |
-| `work/` | `work/` |
+| `.pan/archive/inbox/` | `.pan/archive/inbox/` |
+| `.pan/archive/work/` | `.pan/archive/work/` |
+| `.pan/work/` | `.pan/work/` |
 | `lib/personas/skills/` | `lib/personas/skills/` |
 | All other `lib/**` | `lib/**` (same relative path) |
 
@@ -112,7 +112,7 @@ When the Feature verifies persona invocation after migration, every persona invo
 
 The Feature SHALL perform a full documentation and reference sweep for every path and policy change introduced by WP-1 through WP-5.
 
-The sweep SHALL cover: AGENTS.md, all handbook pages under `lib/memory/handbook/`, all memory feature specs under `lib/memory/features/`, all ADRs under `lib/memory/adr/`, CLI path help text, compliance fixtures under `tests/compliance/`, all `.cursor/rules/` glob patterns, `client/` path consumers, `docs/`, and `tests/`.
+The sweep SHALL cover: AGENTS.md, all handbook pages under `lib/memory/handbook/`, all memory feature specs under `lib/memory/features/`, all ADRs under `lib/memory/adr/`, CLI path help text, compliance fixtures under `tests/compliance/`, all `.cursor/rules/` glob patterns, `client/` path consumers, `.docs/`, and `tests/`.
 
 The Feature SHALL apply the documentation-impact contract and record explicit deferral rationale with backlog linkage for every intentionally postponed reference update.
 
@@ -136,15 +136,15 @@ Migration scripts SHALL use `git mv` for all tree relocations where Git history 
 
 ### WP-1
 
-- When migration completes, `archive/inbox/` MUST contain all artifacts formerly under `archive/inbox/` with preserved day-bucket and leaf naming.
-- When migration completes, `archive/work/` MUST contain all artifacts formerly under `archive/work/` with preserved task-bucket organization.
-- The Feature MUST NOT retain any operational command, handbook contract, or spec that references `archive/inbox/` or `archive/work/` as a canonical path.
+- When migration completes, `.pan/archive/inbox/` MUST contain all artifacts formerly under `.pan/archive/inbox/` with preserved day-bucket and leaf naming.
+- When migration completes, `.pan/archive/work/` MUST contain all artifacts formerly under `.pan/archive/work/` with preserved task-bucket organization.
+- The Feature MUST NOT retain any operational command, handbook contract, or spec that references `.pan/archive/inbox/` or `.pan/archive/work/` as a canonical path.
 - The Feature MUST NOT create any compatibility shim, symlink, or alias for old archive paths.
 
 ### WP-2
 
-- When migration completes, top-level `work/` MUST be the sole active-work canonical root; `work/` MUST NOT exist.
-- Every CLI help string, documentation page, and policy contract that references active-work paths MUST resolve to `work/**`.
+- When migration completes, top-level `.pan/work/` MUST be the sole active-work canonical root; `.pan/work/` MUST NOT exist.
+- Every CLI help string, documentation page, and policy contract that references active-work paths MUST resolve to `.pan/work/**`.
 - The `pan run`, `pan advance`, and `pan close-artifacts` commands MUST remain functional against the new root without manual path overrides.
 
 ### WP-3

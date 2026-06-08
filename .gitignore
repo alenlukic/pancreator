@@ -62,21 +62,17 @@ lib/inbox/
 
 # --- Internal product docs (local-only; explicit-read; not in git index) ---
 
-docs/
+.docs/
 
 # --- Ephemeral runtime workspaces ---
 
-tmp/
-work/
-archive/
-sandbox/
 lib/memory/checkpoints/
 
 # Operator-local calibration traces (CI uses baselines/findings/raw only)
 tests/compliance/context-usage/calibration/traces/**
 !tests/compliance/context-usage/calibration/traces/.gitkeep
 
-# Committed prototype fixtures (negate global work/archive ignores)
+# Committed prototype fixtures (negate global .work/archive ignores)
 !tests/compliance/context-usage/fixtures/task-low/work/
 !tests/compliance/context-usage/fixtures/task-low/work/**
 !tests/compliance/context-usage/fixtures/task-high/work/

@@ -24,14 +24,14 @@ references:
     contentHash: 7770f73
     note: Round-2 operator ratification corrects scope to all R1 surfaces (repo .json artifacts, markdown-embedded JSON, terminal/CLI, agent chat). Supersedes narrowed-scope portions of the prior spec. Authoritative for R1–R5 requirements.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [641, 648]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: PRD §7 feature-delivery intake stage declares inputs, outputs, loop.max_rounds 5, and gate human_approval.
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [199, 206]
-    contentHash: 0d536c5
+    contentHash: c70da7c
     note: Glossary Dual-anchor citation and Content hash entries; the Content hash entry SHALL be updated so its normative definition specifies the abbreviated form as the canonical stored value.
 ---
 
@@ -164,7 +164,7 @@ or reads structured JSON anywhere in the repository or its output channels.
 
 ## Superseded work
 
-Artifacts under `work/172983_05-23-26/67055_0522_json-formatting/` —
+Artifacts under `.pan/work/172983_05-23-26/67055_0522_json-formatting/` —
 including `plan.md`, `adr-draft.md`, `touch-set.json`, `implementation-report.md`,
 `review.md`, and the delivery report at
 `lib/memory/features/json-formatting/delivery-report.md` — were produced against

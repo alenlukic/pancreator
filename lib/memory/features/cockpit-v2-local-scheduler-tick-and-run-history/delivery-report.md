@@ -7,7 +7,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
   "range": [5, 12],
   "contentHash": "fa780c7"
 }
@@ -16,7 +16,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
   "range": [5, 5],
   "contentHash": "6208bd7"
 }
@@ -25,7 +25,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
   "range": [5, 5],
   "contentHash": "dc3dfbd"
 }
@@ -38,7 +38,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
   "range": [58, 61],
   "contentHash": "04c00ca"
 }
@@ -49,7 +49,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
   "range": [63, 65],
   "contentHash": "04c00ca"
 }
@@ -60,7 +60,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
   "range": [67, 71],
   "contentHash": "04c00ca"
 }
@@ -71,7 +71,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
   "range": [73, 76],
   "contentHash": "04c00ca"
 }
@@ -82,7 +82,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
   "range": [78, 80],
   "contentHash": "04c00ca"
 }
@@ -93,7 +93,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/plan.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/plan.md",
   "range": [21, 37],
   "contentHash": "11a8613"
 }
@@ -108,7 +108,7 @@ This feature delivery ships local automation execution and append-only JSONL run
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/scheduler/src/tick.ts",
   "range": [36, 52],
-  "contentHash": "5453f14"
+  "contentHash": "ec1bc9f"
 }
 ```
 
@@ -119,7 +119,7 @@ This feature delivery ships local automation execution and append-only JSONL run
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/scheduler/src/run-log.ts",
   "range": [10, 23],
-  "contentHash": "5c288e6"
+  "contentHash": "068acdc"
 }
 ```
 
@@ -128,7 +128,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
   "range": [37, 37],
   "contentHash": "fa780c7"
 }
@@ -139,7 +139,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
   "range": [38, 38],
   "contentHash": "fa780c7"
 }
@@ -150,7 +150,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
   "range": [39, 39],
   "contentHash": "fa780c7"
 }
@@ -161,7 +161,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
   "range": [42, 43],
   "contentHash": "fa780c7"
 }
@@ -174,7 +174,7 @@ This feature delivery ships local automation execution and append-only JSONL run
   "kind": "lines",
   "path": "client/src/app/api/automations/[id]/run/route.ts",
   "range": [1, 20],
-  "contentHash": "dab5501"
+  "contentHash": "2e54e0f"
 }
 ```
 
@@ -183,7 +183,7 @@ This feature delivery ships local automation execution and append-only JSONL run
   "kind": "lines",
   "path": "client/src/app/api/automations/[id]/runs/route.ts",
   "range": [1, 20],
-  "contentHash": "f257f30"
+  "contentHash": "e644c27"
 }
 ```
 
@@ -192,7 +192,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
   "range": [44, 45],
   "contentHash": "fa780c7"
 }
@@ -205,7 +205,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/implementation-report.md",
   "range": [77, 79],
   "contentHash": "fa780c7"
 }
@@ -216,7 +216,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/adr-draft.md",
   "range": [98, 99],
   "contentHash": "04c00ca"
 }
@@ -227,7 +227,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
   "range": [15, 15],
   "contentHash": "6208bd7"
 }
@@ -238,7 +238,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
   "range": [17, 17],
   "contentHash": "6208bd7"
 }
@@ -249,7 +249,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
   "range": [19, 19],
   "contentHash": "6208bd7"
 }
@@ -260,7 +260,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
   "range": [25, 25],
   "contentHash": "6208bd7"
 }
@@ -271,7 +271,7 @@ This feature delivery ships local automation execution and append-only JSONL run
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
   "range": [21, 21],
   "contentHash": "6208bd7"
 }
@@ -286,14 +286,14 @@ This feature delivery ships local automation execution and append-only JSONL run
   "kind": "lines",
   "path": "OPERATION.md",
   "range": [453, 463],
-  "contentHash": "aa04b26"
+  "contentHash": "a91d661"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
   "range": [31, 31],
   "contentHash": "dc3dfbd"
 }
@@ -306,14 +306,14 @@ This feature delivery ships local automation execution and append-only JSONL run
   "kind": "lines",
   "path": "client/src/app/api/automations/[id]/run/route.test.ts",
   "range": [43, 51],
-  "contentHash": "491eeb3"
+  "contentHash": "8f33d2e"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
   "range": [34, 34],
   "contentHash": "dc3dfbd"
 }
@@ -326,14 +326,14 @@ This feature delivery ships local automation execution and append-only JSONL run
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [1037, 1103],
-  "contentHash": "5818402"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
   "range": [35, 35],
   "contentHash": "dc3dfbd"
 }
@@ -346,7 +346,7 @@ This feature delivery ships local automation execution and append-only JSONL run
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [1106, 1135],
-  "contentHash": "5818402"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -357,7 +357,7 @@ Coverage delta against the prior registry-only Automations baseline adds 28 sche
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
   "range": [5, 5],
   "contentHash": "dc3dfbd"
 }
@@ -366,7 +366,7 @@ Coverage delta against the prior registry-only Automations baseline adds 28 sche
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
   "range": [11, 15],
   "contentHash": "dc3dfbd"
 }
@@ -375,7 +375,7 @@ Coverage delta against the prior registry-only Automations baseline adds 28 sche
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
   "range": [38, 38],
   "contentHash": "dc3dfbd"
 }
@@ -384,7 +384,7 @@ Coverage delta against the prior registry-only Automations baseline adds 28 sche
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
+  "path": ".pan/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
   "range": [41, 41],
   "contentHash": "6208bd7"
 }

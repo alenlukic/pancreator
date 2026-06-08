@@ -15,12 +15,12 @@
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
     "clarifying_skip_rationale": "Source directive states R1–R3 and AC1–AC3 with quantified outcomes and an explicit touch set; no intake-blocking ambiguity remains.",
-    "source_inbox_item": "archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
     "source_inbox_item_citation": {
       "kind": "lines",
-      "path": "archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
+      "path": ".pan/archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
       "range": [1, 86],
-      "contentHash": "dace68a"
+      "contentHash": "d30293d"
     },
     "human_approval_gate": "ratified",
     "human_approval_note": "Spec ratified at plan advance per state.json advanceHistory intake→plan event."
@@ -48,7 +48,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
+    "artifact": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 1,
@@ -57,14 +57,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
+      "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
       "range": [1, 66],
       "contentHash": "dbd802b"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
+    "artifact": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
     "sdk_automation_qa": false,
     "verification_gates": {
       "client_lint": "pass",
@@ -77,7 +77,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
+      "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
       "range": [1, 77],
       "contentHash": "e984324"
     }
@@ -89,13 +89,13 @@
       "kind": "lines",
       "path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
       "range": [1, 223],
-      "contentHash": "a92ef80"
+      "contentHash": "73a3b41"
     },
-    "archived_inbox_source": "archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -104,7 +104,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/policy-compliance.json",
+      "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/policy-compliance.json",
       "range": [1, 29],
       "contentHash": "2dee226"
     }
@@ -115,35 +115,35 @@
     "changed_citations": [
       {
         "citing_path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
-        "cited_path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
+        "cited_path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
         "recorded_content_hash": "aa18279",
         "live_content_hash": "7381737",
         "verifier_status": "moved",
-        "note": "Implementation report archived to archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md."
+        "note": "Implementation report archived to .pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
-        "cited_path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
+        "cited_path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
         "recorded_content_hash": "1cb366b",
         "live_content_hash": "dbd802b",
         "verifier_status": "moved",
-        "note": "Review report archived to archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md."
+        "note": "Review report archived to .pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
-        "cited_path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md",
+        "cited_path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md",
         "recorded_content_hash": "17312a2",
         "live_content_hash": "a2179a1",
         "verifier_status": "moved",
-        "note": "Plan archived to archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md."
+        "note": "Plan archived to .pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
-        "cited_path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
+        "cited_path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
         "recorded_content_hash": "d6dc865",
         "live_content_hash": "5fd63b4",
         "verifier_status": "moved",
-        "note": "ADR draft archived to archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md."
+        "note": "ADR draft archived to .pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
@@ -163,11 +163,11 @@
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
-        "cited_path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
+        "cited_path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
         "recorded_content_hash": "71da9bd",
         "live_content_hash": "e984324",
         "verifier_status": "moved",
-        "note": "Test report archived to archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md."
+        "note": "Test report archived to .pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/spec.md",
@@ -175,7 +175,7 @@
         "recorded_content_hash": "p10-source-2026-06-01",
         "live_content_hash": "dace68a",
         "verifier_status": "moved",
-        "note": "Source directive archived to archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md."
+        "note": "Source directive archived to .pan/archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md."
       }
     ],
     "repo_wide_followup": "refresh delivery-report.md embedded citations after close-artifacts"
@@ -188,7 +188,7 @@
       "reason": "Browser MCP visual verification blocked at test stage; client-scoped automated validation passes per archived test-report.md.",
       "citation": {
         "kind": "lines",
-        "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
+        "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
         "range": [27, 29],
         "contentHash": "e984324"
       }
@@ -202,7 +202,7 @@
         "kind": "lines",
         "path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
         "range": [1, 223],
-        "contentHash": "a92ef80"
+        "contentHash": "73a3b41"
       }
     }
   ],
@@ -223,7 +223,7 @@
           "kind": "lines",
           "path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
           "range": [1, 223],
-          "contentHash": "a92ef80"
+          "contentHash": "73a3b41"
         }
       },
       "per_feature_index": {
@@ -232,101 +232,101 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/"
+        "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/"
       },
       "handoff": {
-        "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/handoff.md",
+        "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/handoff.md",
+          "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/handoff.md",
           "range": [1, 48],
           "contentHash": "8d087b6"
         }
       },
       "next_prompt": {
-        "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/next-prompt.md",
+        "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/next-prompt.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/next-prompt.md",
+          "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/next-prompt.md",
           "range": [1, 18],
           "contentHash": "d27242c"
         }
       },
       "policy_compliance": {
-        "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/policy-compliance.json",
+        "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/policy-compliance.json",
+          "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/policy-compliance.json",
           "range": [1, 29],
           "contentHash": "2dee226"
         }
       },
       "state": {
-        "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/state.json",
+        "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/state.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/state.json",
+          "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/state.json",
           "range": [1, 329],
           "contentHash": "2b24d40"
         }
       },
       "run_log": {
-        "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/run.log.jsonl",
+        "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/run.log.jsonl",
         "note": "Active run log is a stage-delegation stub; full run log retained under archived_work_dir until close-artifacts."
       },
       "archived_work_dir": {
-        "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/"
+        "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/"
       },
       "plan": {
-        "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md",
+        "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md",
+          "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md",
           "range": [1, 141],
           "contentHash": "a2179a1"
         }
       },
       "adr_draft": {
-        "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
+        "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
+          "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
           "range": [1, 58],
           "contentHash": "5fd63b4"
         }
       },
       "touch_set": {
-        "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/touch-set.json",
+        "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/touch-set.json",
+          "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/touch-set.json",
           "range": [1, 59],
           "contentHash": "d22035e"
         }
       },
       "implementation_report": {
-        "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
+        "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
+          "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
           "range": [1, 70],
           "contentHash": "7381737"
         }
       },
       "review_report": {
-        "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
+        "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
+          "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
           "range": [1, 66],
           "contentHash": "dbd802b"
         }
       },
       "test_report": {
-        "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
+        "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
+          "path": ".pan/archive/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
           "range": [1, 77],
           "contentHash": "e984324"
         }
@@ -339,7 +339,7 @@
           "kind": "lines",
           "path": "client/src/components/DashboardPage.tsx",
           "range": [1, 567],
-          "contentHash": "8b6b40b"
+          "contentHash": "a191b5d"
         }
       },
       "page_test": {
@@ -348,18 +348,18 @@
           "kind": "lines",
           "path": "client/src/app/page.test.tsx",
           "range": [1, 412],
-          "contentHash": "db2ce0e"
+          "contentHash": "adbb9fe"
         }
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
+        "path": ".pan/archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
         "citation": {
           "kind": "lines",
-          "path": "archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
+          "path": ".pan/archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
           "range": [1, 86],
-          "contentHash": "dace68a"
+          "contentHash": "d30293d"
         }
       },
       "report_approval_outbox": {
@@ -387,8 +387,8 @@
     "status": "deferred-until-ratified"
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
+    "path": ".pan/archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md",
     "prior_path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p10-dashboard-safe-editing.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/75420_0303_surface-opt-p10-dashboard-safe-editing.md"
 }

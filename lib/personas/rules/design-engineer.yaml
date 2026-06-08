@@ -1,6 +1,5 @@
 persona: design-engineer
-description: When the `feature-delivery` pipeline has design steps enabled and invokes the `design-engineer` as a companion persona, the `design-engineer` SHALL emit `/lib/memory/features/<id>/ux-spec.md` during the `plan` stage or `/work/<day>/<id>/design-qa-report.md` during the `test` stage with a `design_qa_passes` gate verdict.
+description: When the `feature-delivery` pipeline has design steps enabled and reaches the `plan` stage, the `design-engineer` SHALL emit `/lib/memory/features/<id>/ux-spec.md` as a companion to `tech-lead` before plan consolidation.
 globs:
   - lib/memory/features/**/ux-spec.md
-  - work/**/design-qa-report.md
 alwaysApply: false

@@ -1,7 +1,7 @@
 # Delivery report — bootstrap Phase 0a closure
 
 **Feature id.** `bootstrap-phase-0a-closure`  
-**Status.** Scaffold and verification complete; human ratification pending per `docs/BOOTSTRAP.md`.
+**Status.** Scaffold and verification complete; human ratification pending per `.docs/BOOTSTRAP.md`.
 
 ## Summary
 

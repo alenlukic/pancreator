@@ -9,7 +9,7 @@ describe("operator-verification", () => {
   const sampleState = {
     taskId: "1000_1200_demo-feature",
     featureId: "demo-feature",
-    artifacts: { runDir: "work/172996_05-10-26/1000_1200_demo-feature" },
+    artifacts: { runDir: ".pan/work/172996_05-10-26/1000_1200_demo-feature" },
   };
 
   it("renderOperatorVerificationScaffold includes required sections", () => {

@@ -107,7 +107,7 @@ the SDK.
   documentation.
 - When the Feature creates `tests/context-usage/prompt.md`, the file MUST
   contain the five frozen read instructions and the write instruction for
-  `work/99999_sandbox/task/context-usage-report.json` exactly as enumerated in
+  `.pan/work/99999_sandbox/task/context-usage-report.json` exactly as enumerated in
   the Directive Bounded agent task section.
 - When the Feature creates `tests/context-usage/baselines/`, the Feature MUST
   create the directory with a placeholder or gitkeep; no committed baseline
@@ -163,8 +163,8 @@ the SDK.
   defined in `tests/context-usage/lib/expected.mjs`.
 - When `verify-run.mjs` evaluates tool call paths, it MUST fail the run if any
   observed read path matches one of the three forbidden patterns:
-  `docs/PRD.md`, `docs/BOOTSTRAP.md`, or any path under `archive/work/**` or
-  `archive/inbox/**`.
+  `.docs/PRD.md`, `.docs/BOOTSTRAP.md`, or any path under `.pan/archive/work/**` or
+  `.pan/archive/inbox/**`.
 - When `verify-run.mjs` evaluates tool call paths, it MUST fail the run if any
   observed read path matches any path under `lib/inbox/**`.
 - When `verify-run.mjs` evaluates required reads, it MUST fail the run if the
@@ -220,7 +220,7 @@ the SDK.
   `verify-run.mjs` with a mock tool log that does not include a required-read
   path and MUST assert that verification fails.
 - When the unit test suite runs under `node --test`, it MUST test that a
-  simulated regression where `prompt.md` instructs reading `docs/PRD.md`
+  simulated regression where `prompt.md` instructs reading `.docs/PRD.md`
   causes `verify-run.mjs` to fail before any token comparison occurs.
 - When the unit test suite runs under `node --test`, it MUST NOT invoke the
   `@cursor/sdk` or any network-bound API.

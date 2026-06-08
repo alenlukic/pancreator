@@ -110,14 +110,14 @@ export function decodeCountdownTimestamp(dayBucket: string, taskId: string): Cou
   return { ok: true, utcLabel, instantMs };
 }
 
-/** Parses `work/<day>/<taskId>` or `archive/work/<day>/<taskId>` run directories. */
+/** Parses `.pan/work/<day>/<taskId>` or `.pan/archive/work/<day>/<taskId>` run directories. */
 export function parseRunDirParts(runDirRel: string): { dayBucket: string; taskId: string } | null {
   const parts = runDirRel.replace(/\\/gu, "/").split("/").filter((p) => p.length > 0);
-  if (parts.length === 3 && parts[0] === "work") {
-    return { dayBucket: parts[1]!, taskId: parts[2]! };
-  }
-  if (parts.length === 4 && parts[0] === "archive" && parts[1] === "work") {
+  if (parts.length === 4 && parts[0] === ".pan" && parts[1] === "work") {
     return { dayBucket: parts[2]!, taskId: parts[3]! };
+  }
+  if (parts.length === 5 && parts[0] === ".pan" && parts[1] === "archive" && parts[2] === "work") {
+    return { dayBucket: parts[3]!, taskId: parts[4]! };
   }
   return null;
 }

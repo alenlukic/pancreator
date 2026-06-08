@@ -4,7 +4,7 @@ feature_id: cursor-token-economy
 status: intake-closed
 intake_round: 0
 clarifying_rounds_posted: 0
-source_inbox_item: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+source_inbox_item: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
 next_owner: supervisor
 next_stage: ship
 intake_closure:
@@ -17,104 +17,104 @@ intake_notes:
   - The intake-analyst opted out of the clarifying-question loop because no material ambiguity exists for the canonical spec; the human_approval gate is satisfied by an empty `## Open questions` section plus an explicit `## Human ratification required` block for downstream protected-surface edits.
 references:
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [29, 49]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive Problem section motivates the cache-read-volume reduction goal.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [51, 61]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive Goal section names the optimization targets and preservation constraints.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [63, 69]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive Non-goals section bounds the feature scope.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [73, 110]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive §1 specifies the .cursorindexingignore file content and the .gitignore reversal.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [112, 149]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive §2 specifies the Cursor rule audit and the pancreator-engineer glob narrowing example.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [151, 177]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive §3 specifies the new context-economy handbook page and the index.md routing entry.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [179, 194]
-    contentHash: 5efe3cc
-    note: Directive §4 specifies docs/PRD.summary.md and docs/PRD.index.md as summary-first retrieval surfaces.
+    contentHash: 5a59ec4
+    note: Directive §4 specifies .docs/PRD.summary.md and .docs/PRD.index.md as summary-first retrieval surfaces.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [196, 214]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive §5 names AGENTS.md slimming as a ratification-bound activity that preserves protected semantics.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [216, 226]
-    contentHash: 5efe3cc
-    note: Directive §6 forbids deletion of work/** and routes future bulk artifacts toward .local/ or ignored subpaths.
+    contentHash: 5a59ec4
+    note: Directive §6 forbids deletion of .pan/work/** and routes future bulk artifacts toward .local/ or ignored subpaths.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [228, 253]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive §7 specifies the lib/internal/tools/context-budget-report.mjs estimator scope and the chars-over-4 labeling rule.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [255, 268]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive §8 lists the documentation-impact updates the delivery slice MUST evaluate.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [270, 287]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive Acceptance criteria items 1-14 anchor the gate semantics this spec mirrors.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [289, 297]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive Manual validation section enumerates the post-implementation operator checks.
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     range: [299, 305]
-    contentHash: 5efe3cc
+    contentHash: 5a59ec4
     note: Directive Implementation guidance authorizes the no-clarifying-questions intake path the analyst followed.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [641, 648]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: PRD §7 declares loop.max_rounds 5 and gate human_approval for the feature-delivery intake stage.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [921, 931]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: PRD §8 declares the per-Feature folder layout aligned with Spec Kit v0.8 (spec.md, plan.md, tasks.md).
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [222, 235]
-    contentHash: 086c42d
+    contentHash: c70da7c
     note: Glossary §5 defines Artifact, Feature, Inbox, and Spec Kit alignment as the per-feature folder convention.
   - kind: lines
     path: lib/memory/handbook/glossary.md
     range: [252, 256]
-    contentHash: 086c42d
+    contentHash: c70da7c
     note: Glossary §6 defines AGENTS.md as the primary cross-tool contract per the LF Agentic AI Foundation standard.
   - kind: lines
     path: AGENTS.md
     range: [78, 95]
-    contentHash: e037427
+    contentHash: b953d77
     note: AGENTS.md §5 declares the working agreement constraints the spec preserves through every change.
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [79, 100]
-    contentHash: 0b097ca
+    contentHash: 2762053
     note: Inbox-lifecycle §1a confirms /lib/inbox/notes/ is operator-only and out of scope for any Cursor indexing change.
 ---
 
@@ -124,11 +124,11 @@ This Feature SHALL reduce default Cursor cache-read token volume on routine
 repository invocations through five staged changes: a root
 `.cursorindexingignore` file, narrower `.cursor/rules/*.mdc` glob surfaces,
 a new `lib/memory/handbook/context-economy.md` page, summary-first PRD retrieval
-surfaces (`docs/PRD.summary.md` and `docs/PRD.index.md`), and a
+surfaces (`.docs/PRD.summary.md` and `.docs/PRD.index.md`), and a
 `lib/internal/tools/context-budget-report.mjs` estimator. The Feature SHALL preserve
 every Persona, Skill, Pipeline, Spec Contract, documentation-impact,
 policy-compliance, and inbox-lifecycle obligation. The Feature SHALL keep
-`docs/PRD.md`, `docs/BOOTSTRAP.md`, the `lib/memory/` tree, and the `work/` tree
+`.docs/PRD.md`, `.docs/BOOTSTRAP.md`, the `lib/memory/` tree, and the `.pan/work/` tree
 reachable for explicit human and agent reads.
 
 ## Acceptance criteria
@@ -136,7 +136,7 @@ reachable for explicit human and agent reads.
 - When the Feature stages the indexing policy, the Feature MUST add one
   `.cursorindexingignore` file at the repository root.
 - When the Feature stages the indexing policy, the Feature MUST exclude
-  `work/**`, `lib/inbox/out/**`, and `lib/inbox/threads/**` from default Cursor
+  `.pan/work/**`, `lib/inbox/out/**`, and `lib/inbox/threads/**` from default Cursor
   semantic indexing through the `.cursorindexingignore` file.
 - When the Feature stages the indexing policy, the Feature MUST exclude
   `**/migration-manifest*.json`, `**/*.dry-run.json`,
@@ -160,9 +160,9 @@ reachable for explicit human and agent reads.
   root `.cursorignore` file in this delivery slice.
 - When the Feature audits Cursor rule files, the Feature MUST evaluate
   the five rule files the directive enumerates at lines 117 to 122 of
-  `archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md` for over-broad `globs` activation.
+  `.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md` for over-broad `globs` activation.
 - When the Feature narrows the `.cursor/rules/pancreator-engineer.mdc`
-  glob surface, the Feature MUST exclude `work/**/*` from the default
+  glob surface, the Feature MUST exclude `.pan/work/**/*` from the default
   activation set unless the rule specifically targets run logs, plans,
   reviews, or delivery reports.
 - When the Feature stages the rule audit, the Feature MUST emit one
@@ -175,18 +175,18 @@ reachable for explicit human and agent reads.
   page MUST define default retrieval discipline, per-document read
   triggers, generated-manifest handling, and the
   indexed-versus-explicit-read split per the directive enumeration at
-  lines 159 to 169 of `archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md`.
+  lines 159 to 169 of `.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md`.
 - When the Feature routes the new handbook page, the Feature MUST add
   one routing entry for context-budgeting decisions in
   `lib/memory/handbook/index.md`.
 - When the Feature splits PRD access, the Feature MUST create one
-  `docs/PRD.summary.md` file as a compact orientation document for routine
+  `.docs/PRD.summary.md` file as a compact orientation document for routine
   agent reads.
 - When the Feature splits PRD access, the Feature MUST create one
-  `docs/PRD.index.md` file as a section-to-trigger routing map for full
-  `docs/PRD.md` reads.
+  `.docs/PRD.index.md` file as a section-to-trigger routing map for full
+  `.docs/PRD.md` reads.
 - When the Feature updates retrieval guidance, the Feature MUST instruct
-  agents to read `docs/PRD.summary.md` first and to read `docs/PRD.md` only when
+  agents to read `.docs/PRD.summary.md` first and to read `.docs/PRD.md` only when
   the task requires product-spec detail, citation repair, or
   line-anchored requirements.
 - When the Feature ships the context-budget tool, the Feature MUST add
@@ -194,14 +194,14 @@ reachable for explicit human and agent reads.
 - While the `lib/internal/tools/context-budget-report.mjs` command runs, the command
   MUST emit character counts and `chars / 4` token estimates for the
   ten path scopes the directive enumerates at lines 240 to 249 of
-  `archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md`.
+  `.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md`.
 - When the `lib/internal/tools/context-budget-report.mjs` command emits the token
   estimate, the report MUST label the `chars / 4` value as a rough
   estimate.
 - When the Feature applies the documentation-impact contract, the
   Feature MUST evaluate updates to the six documentation surfaces the
   directive enumerates at lines 261 to 266 of
-  `archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md`.
+  `.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md`.
 - When the Feature defers a documentation-impact update, the Feature
   MUST record the deferral rationale and one backlog linkage per the
   documentation-impact contract.
@@ -210,26 +210,26 @@ reachable for explicit human and agent reads.
   verification step Cursor requires before merge.
 - When the Feature stages the delivery report, the report MUST request
   the five operator post-implementation actions the directive
-  enumerates at lines 293 to 297 of `archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md`.
+  enumerates at lines 293 to 297 of `.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md`.
 - When the Feature processes historical artifacts, the Feature MUST NOT
-  delete any file under `work/**`.
+  delete any file under `.pan/work/**`.
 - When the Feature processes historical artifacts, the Feature MUST NOT
-  delete any generated manifest under `lib/memory/**` or `work/**`.
+  delete any generated manifest under `lib/memory/**` or `.pan/work/**`.
 - When the Feature stages every governed change, the Feature MUST stage
   one policy-compliance artifact at
-  `/work/<day>/<task-id>/policy-compliance.json` per the policy-compliance
+  `/.pan/work/<day>/<task-id>/policy-compliance.json` per the policy-compliance
   contract.
 
 ## Out of scope
 
-- This Feature SHALL NOT delete historical artifacts under `work/**`.
+- This Feature SHALL NOT delete historical artifacts under `.pan/work/**`.
 - This Feature SHALL NOT weaken policy-compliance, documentation-impact,
   inbox-lifecycle, or human-ratification requirements.
-- This Feature SHALL NOT hide `docs/PRD.md`, `docs/BOOTSTRAP.md`, the `lib/memory/`
-  tree, or the `work/` tree from explicit human or agent reads.
+- This Feature SHALL NOT hide `.docs/PRD.md`, `.docs/BOOTSTRAP.md`, the `lib/memory/`
+  tree, or the `.pan/work/` tree from explicit human or agent reads.
 - This Feature SHALL NOT add a root `.cursorignore` file in this
   delivery slice.
-- This Feature SHALL NOT delete or rewrite the full `docs/PRD.md` body
+- This Feature SHALL NOT delete or rewrite the full `.docs/PRD.md` body
   except for references this Feature edits.
 - This Feature SHALL NOT modify Persona spec semantics, role
   boundaries, tool grants, or safety constraints.

@@ -6,9 +6,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
   "range": [59, 70],
-  "contentHash": "d44e1d0"
+  "contentHash": "e9ac00a"
 }
 ```
  
@@ -16,9 +16,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
   "range": [1, 10],
-  "contentHash": "6e4a90a"
+  "contentHash": "2145916"
 }
 ```
 
@@ -29,9 +29,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
   "range": [59, 66],
-  "contentHash": "d44e1d0"
+  "contentHash": "e9ac00a"
 }
 ```
  
@@ -39,9 +39,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
   "range": [64, 80],
-  "contentHash": "886e735"
+  "contentHash": "81a42b8"
 }
 ```
 
@@ -50,9 +50,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
   "range": [59, 70],
-  "contentHash": "d44e1d0"
+  "contentHash": "e9ac00a"
 }
 ```
  
@@ -60,9 +60,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
   "range": [70, 80],
-  "contentHash": "886e735"
+  "contentHash": "81a42b8"
 }
 ```
 
@@ -71,9 +71,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
   "range": [67, 70],
-  "contentHash": "d44e1d0"
+  "contentHash": "e9ac00a"
 }
 ```
  
@@ -81,9 +81,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
   "range": [74, 80],
-  "contentHash": "886e735"
+  "contentHash": "81a42b8"
 }
 ```
 
@@ -92,9 +92,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
   "range": [69, 70],
-  "contentHash": "d44e1d0"
+  "contentHash": "e9ac00a"
 }
 ```
  
@@ -102,9 +102,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
   "range": [80, 92],
-  "contentHash": "886e735"
+  "contentHash": "81a42b8"
 }
 ```
 
@@ -117,7 +117,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "tests/compliance/schemas/latest.yaml",
   "range": [1, 13],
-  "contentHash": "43bdbf6"
+  "contentHash": "8bbb8a7"
 }
 ```
  
@@ -127,7 +127,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "tests/compliance/schemas/v1.yaml",
   "range": [1, 13],
-  "contentHash": "5bb7003"
+  "contentHash": "1f05abc"
 }
 ```
 
@@ -138,7 +138,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "tests/compliance/high-remediation-blocking.yaml",
   "range": [1, 14],
-  "contentHash": "d5b4d95"
+  "contentHash": "2310e04"
 }
 ```
  
@@ -146,9 +146,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [26, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -159,7 +159,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "tests/compliance/medium-backlog-default-off.yaml",
   "range": [1, 14],
-  "contentHash": "2812f02"
+  "contentHash": "68dd46e"
 }
 ```
  
@@ -167,9 +167,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [26, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -180,7 +180,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "tests/compliance/low-warning-emission.yaml",
   "range": [1, 14],
-  "contentHash": "7e20ef3"
+  "contentHash": "f217f89"
 }
 ```
  
@@ -188,9 +188,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [26, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -201,7 +201,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "lib/memory/features/compliance-tests/manual-runbook.md",
   "range": [8, 53],
-  "contentHash": "1a93c2a"
+  "contentHash": "a207354"
 }
 ```
  
@@ -209,9 +209,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [17, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -222,7 +222,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "lib/memory/features/compliance-tests/severity-routing.md",
   "range": [1, 26],
-  "contentHash": "83240f9"
+  "contentHash": "091eb1f"
 }
 ```
  
@@ -230,9 +230,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [17, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -243,7 +243,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "lib/memory/features/compliance-tests/run-template.json",
   "range": [1, 54],
-  "contentHash": "defffd1"
+  "contentHash": "dd3e9e3"
 }
 ```
  
@@ -251,9 +251,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [10, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -264,7 +264,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "AGENTS.md",
   "range": [130, 141],
-  "contentHash": "f2d87ec"
+  "contentHash": "b953d77"
 }
 ```
  
@@ -272,9 +272,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
   "range": [5, 10],
-  "contentHash": "6e4a90a"
+  "contentHash": "2145916"
 }
 ```
 
@@ -285,9 +285,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/adr-draft.md",
   "range": [80, 92],
-  "contentHash": "886e735"
+  "contentHash": "81a42b8"
 }
 ```
  
@@ -295,9 +295,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
   "range": [82, 92],
-  "contentHash": "6e4a90a"
+  "contentHash": "2145916"
 }
 ```
 
@@ -306,9 +306,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md",
   "range": [61, 66],
-  "contentHash": "d44e1d0"
+  "contentHash": "e9ac00a"
 }
 ```
  
@@ -316,20 +316,20 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
   "range": [20, 38],
-  "contentHash": "6e4a90a"
+  "contentHash": "2145916"
 }
 ```
 
-- The slice defers non-blocking citation refresh work, including `TBD-on-commit` content hashes, to the backlog instead of blocking delivery. 
+- The slice defers non-blocking citation refresh work, including `2145916` content hashes, to the backlog instead of blocking delivery. 
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
   "range": [50, 58],
-  "contentHash": "6e4a90a"
+  "contentHash": "2145916"
 }
 ```
  
@@ -337,9 +337,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/compliance-remediation.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/compliance-remediation.md",
   "range": [21, 26],
-  "contentHash": "e2e40fb"
+  "contentHash": "88ef806"
 }
 ```
 
@@ -352,7 +352,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "tests/compliance/high-remediation-blocking.yaml",
   "range": [1, 14],
-  "contentHash": "d5b4d95"
+  "contentHash": "2310e04"
 }
 ```
  
@@ -360,9 +360,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [26, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -373,7 +373,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "tests/compliance/medium-backlog-default-off.yaml",
   "range": [1, 14],
-  "contentHash": "2812f02"
+  "contentHash": "68dd46e"
 }
 ```
  
@@ -381,9 +381,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [26, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -394,7 +394,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "tests/compliance/low-warning-emission.yaml",
   "range": [1, 14],
-  "contentHash": "7e20ef3"
+  "contentHash": "f217f89"
 }
 ```
  
@@ -402,9 +402,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [26, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -415,7 +415,7 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
   "kind": "lines",
   "path": "lib/memory/features/compliance-tests/manual-runbook.md",
   "range": [41, 61],
-  "contentHash": "1a93c2a"
+  "contentHash": "a207354"
 }
 ```
  
@@ -423,9 +423,9 @@ This slice ships the canonical compliance-test surface under `tests/compliance/`
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [10, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
 
@@ -436,9 +436,9 @@ The coverage delta is artifact-only: no executable source lines changed, so chan
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/test-report.md",
   "range": [8, 30],
-  "contentHash": "5f703e8"
+  "contentHash": "deb40c4"
 }
 ```
  
@@ -446,9 +446,9 @@ The coverage delta is artifact-only: no executable source lines changed, so chan
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/review.md",
   "range": [82, 92],
-  "contentHash": "6e4a90a"
+  "contentHash": "2145916"
 }
 ```
 

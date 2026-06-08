@@ -13,4 +13,4 @@ reconstruction.
 - `packages/` — TypeScript workspace packages.
 - `tests/` — repository-level compliance and contract fixtures.
 - `tools/` — maintenance and validation scripts.
-- `work_archive/` — completed run artifacts moved out of active `work/`.
+- `work_archive/` — completed run artifacts moved out of active `.pan/work/`.

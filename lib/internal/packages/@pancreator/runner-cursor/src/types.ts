@@ -43,7 +43,7 @@ export interface RunnerRunLogFragment {
 }
 
 export interface SdkTraceContext {
-  /** Repo-relative directory for sdk-traces (e.g. work/<day>/<task>/sdk-traces). */
+  /** Repo-relative directory for sdk-traces (e.g. .pan/work/<day>/<task>/sdk-traces). */
   traceDirRel: string;
   stageId: string;
   invocationIndex: number;

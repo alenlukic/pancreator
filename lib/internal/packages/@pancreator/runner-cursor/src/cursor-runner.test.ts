@@ -47,8 +47,8 @@ describe("CursorRunner", () => {
       persona: samplePersona,
       message: "Draft the report for feature-1",
       requestId: "req-fixed",
-      stagePromptPath: "work/demo/next-prompt.md",
-      artifactPath: "work/demo/report.md",
+      stagePromptPath: ".pan/work/demo/next-prompt.md",
+      artifactPath: ".pan/work/demo/report.md",
       ledger: { taskId: "t1", pipelineId: "feature-delivery", stageId: "report" },
     });
     expect(env.dryRun).toBe(true);
@@ -57,8 +57,8 @@ describe("CursorRunner", () => {
     expect(env.schemaVersion).toBe("1");
     expect(env.requestId).toBe("req-fixed");
     expect(env.personaName).toBe("tech-writer");
-    expect(env.resolved.stagePromptPath).toBe("work/demo/next-prompt.md");
-    expect(env.resolved.artifactPath).toBe("work/demo/report.md");
+    expect(env.resolved.stagePromptPath).toBe(".pan/work/demo/next-prompt.md");
+    expect(env.resolved.artifactPath).toBe(".pan/work/demo/report.md");
     expect(env.resolved.maxTurns).toBe(30);
     expect(env.resolved.toolAllowlist).toEqual(["Read", "Write"]);
     expect(env.resolved.toolDenylist).toEqual(["Bash(git push:*)"]);
@@ -75,12 +75,12 @@ describe("CursorRunner", () => {
     const env = await runner.invoke({
       persona: samplePersona,
       message: "Implement stage",
-      artifactPath: "work/demo/implementation-report.md",
+      artifactPath: ".pan/work/demo/implementation-report.md",
     });
     expect(env.dryRun).toBe(false);
     expect(env.invocation).toBe("sdk");
     expect(env.sdkResult?.status).toBe("ok");
-    expect(env.sdkResult?.artifactPath).toBe("work/demo/implementation-report.md");
+    expect(env.sdkResult?.artifactPath).toBe(".pan/work/demo/implementation-report.md");
     expect(env.sdkResult?.resultText).toContain("tech-writer");
     expect(env.sdkResult?.resultText).toContain("gpt-5.4-mini");
   });

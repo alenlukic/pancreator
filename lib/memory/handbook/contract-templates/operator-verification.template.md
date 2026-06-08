@@ -12,14 +12,14 @@ references:
   - kind: lines
     path: lib/personas/librarian.md
     range: [114, 133]
-    contentHash: TBD-on-commit
+    contentHash: 3f338c1
     note: "Librarian complete-stage duty to finalize operator-verification.md before close-artifacts."
 ---
 
 # Template — Operator verification
 
-Use this template when authoring `work/<day>/<task-id>/operator-verification.md`
-(or the same path under `archive/work/` after closure). Replace placeholders with
+Use this template when authoring `.pan/work/<day>/<task-id>/operator-verification.md`
+(or the same path under `.pan/archive/work/` after closure). Replace placeholders with
 run-specific content synthesized from the feature spec, delivery report,
 test-report manual verification section, and touch-set.
 

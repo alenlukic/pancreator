@@ -8,7 +8,7 @@ const mockRunState = [
     taskId: "65766_0543_demo-feature",
     featureId: "demo-feature",
     decodedTimestamp: "2026-06-02 05:43 UTC",
-    runDir: "work/172973_06-02-26/65766_0543_demo-feature",
+    runDir: ".pan/work/172973_06-02-26/65766_0543_demo-feature",
     inboxSource: "lib/inbox/in/demo.md",
     sourceWarning: "pan status unavailable",
     stages: [
@@ -147,7 +147,7 @@ const mockRunStateSecondTask = {
   taskId: "88888_1200_other-feature",
   featureId: "other-feature",
   decodedTimestamp: "2026-06-02 12:00 UTC",
-  runDir: "work/172973_06-02-26/88888_1200_other-feature",
+  runDir: ".pan/work/172973_06-02-26/88888_1200_other-feature",
   inboxSource: "lib/inbox/in/other.md",
   stages: mockRunState[0].stages.map((stage) =>
     stage.name === "plan"
@@ -421,7 +421,7 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       const panel = screen.getByTestId("next-action-panel");
       expect(panel).toHaveTextContent("65766_0543_demo-feature (2026-06-02 05:43 UTC)");
-      expect(panel).toHaveTextContent("work/172973_06-02-26/65766_0543_demo-feature/");
+      expect(panel).toHaveTextContent(".pan/work/172973_06-02-26/65766_0543_demo-feature/");
       expect(panel).toHaveTextContent("Ratify the plan before advancing.");
       expect(panel).toHaveTextContent("pnpm -w exec pan advance");
       expect(within(panel).getByTestId("copy-command-button")).toBeEnabled();
@@ -540,7 +540,7 @@ describe("DashboardPage", () => {
   it("shows the file browser only on the files module tab", async () => {
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: ".pan/work/sample.md", name: "sample.md", kind: "file" }],
     });
 
     render(<DashboardPage />);
@@ -578,7 +578,7 @@ describe("DashboardPage", () => {
   it("opens the inline modal with file content from the files tab", async () => {
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: ".pan/work/sample.md", name: "sample.md", kind: "file" }],
     });
 
     render(<DashboardPage />);
@@ -590,7 +590,7 @@ describe("DashboardPage", () => {
   it("opens the file modal in read-only mode with an edit affordance", async () => {
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: ".pan/work/sample.md", name: "sample.md", kind: "file" }],
     });
 
     render(<DashboardPage />);
@@ -607,7 +607,7 @@ describe("DashboardPage", () => {
     const postCalls: { path: string; content: string }[] = [];
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: ".pan/work/sample.md", name: "sample.md", kind: "file" }],
       fileContent: "unchanged content",
       postCalls,
     });
@@ -631,7 +631,7 @@ describe("DashboardPage", () => {
     const postCalls: { path: string; content: string }[] = [];
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: ".pan/work/sample.md", name: "sample.md", kind: "file" }],
       fileContent: "original line",
       postCalls,
     });
@@ -658,7 +658,7 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(postCalls).toHaveLength(1);
       expect(postCalls[0]).toEqual({
-        path: "work/sample.md",
+        path: ".pan/work/sample.md",
         content: "modified line",
       });
     });
@@ -700,7 +700,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(within(modal).getByTestId("write-guard-error")).toHaveTextContent(
-        "Write blocked: work/172973_06-02-26/65766_0543_demo-feature/next-prompt.md is a pipeline-owned file.",
+        "Write blocked: .pan/work/172973_06-02-26/65766_0543_demo-feature/next-prompt.md is a pipeline-owned file.",
       );
     });
 
@@ -828,7 +828,7 @@ describe("DashboardPage", () => {
       if (url.includes("/api/config")) {
         return new Response(stringifyCompactJson(mockConfig), { status: 200 });
       }
-      if (url.includes("/api/file?path=work%2F172973_06-02-26%2F65766_0543_demo-feature%2Fplan.md")) {
+      if (url.includes("/api/file?path=%2Ework%2F172973_06-02-26%2F65766_0543_demo-feature%2Fplan.md")) {
         return new Response(stringifyCompactJson({ content: "plan body" }), { status: 200 });
       }
       if (url.includes("/api/file")) {
@@ -867,7 +867,7 @@ describe("DashboardPage", () => {
       if (url.includes("/api/config")) {
         return new Response(stringifyCompactJson(mockConfig), { status: 200 });
       }
-      if (url.includes("/api/file?path=work%2F172973_06-02-26%2F65766_0543_demo-feature%2Fplan.md")) {
+      if (url.includes("/api/file") && url.includes("65766_0543_demo-feature")) {
         return new Response(stringifyCompactJson({ content: "plan from drawer" }), { status: 200 });
       }
       if (url.includes("/api/file")) {
@@ -889,6 +889,11 @@ describe("DashboardPage", () => {
     });
 
     const drawer = screen.getByTestId("artifact-drawer");
+    await waitFor(() => {
+      const planButton = within(drawer).getByText("plan.md").closest("button");
+      expect(planButton).not.toBeNull();
+      expect(planButton).not.toBeDisabled();
+    });
     fireEvent.click(within(drawer).getByText("plan.md"));
 
     await waitFor(() => {
@@ -966,27 +971,32 @@ describe("DashboardPage", () => {
       if (url.includes("/api/config")) {
         return new Response(stringifyCompactJson(mockConfig), { status: 200 });
       }
-      if (url.includes("/api/list?path=work%2F172973_06-02-26")) {
-        return new Response(
-          stringifyCompactJson({
-            entries: [
-              {
-                path: "work/172973_06-02-26/65766_0543_demo-feature",
-                name: "65766_0543_demo-feature",
-                kind: "directory",
-              },
-            ],
-          }),
-          { status: 200 },
-        );
-      }
-      if (url.includes("/api/list?path=work")) {
-        return new Response(
-          stringifyCompactJson({
-            entries: [{ path: "work/172973_06-02-26", name: "172973_06-02-26", kind: "directory" }],
-          }),
-          { status: 200 },
-        );
+      if (url.includes("/api/list")) {
+        if (url.includes("172973_06-02-26") && url.includes("65766_0543_demo-feature")) {
+          return new Response(stringifyCompactJson({ entries: [] }), { status: 200 });
+        }
+        if (url.includes("172973_06-02-26")) {
+          return new Response(
+            stringifyCompactJson({
+              entries: [
+                {
+                  path: ".pan/work/172973_06-02-26/65766_0543_demo-feature",
+                  name: "65766_0543_demo-feature",
+                  kind: "directory",
+                },
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        if (url.includes(".pan%2Fwork") || url.includes("path=.pan/work")) {
+          return new Response(
+            stringifyCompactJson({
+              entries: [{ path: ".pan/work/172973_06-02-26", name: "172973_06-02-26", kind: "directory" }],
+            }),
+            { status: 200 },
+          );
+        }
       }
       return new Response(stringifyCompactJson({ entries: [] }), { status: 200 });
     });
@@ -1001,7 +1011,9 @@ describe("DashboardPage", () => {
     fireEvent.click(screen.getByText("172973_06-02-26"));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/list?path=work%2F172973_06-02-26"));
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/list\?path=.*172973_06-02-26/),
+      );
       expect(screen.getByText("65766_0543_demo-feature")).toBeInTheDocument();
     });
   });

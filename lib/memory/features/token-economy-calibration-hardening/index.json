@@ -41,7 +41,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
@@ -74,7 +74,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+    "artifact": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 2,
@@ -83,14 +83,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+      "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
       "range": [1, 93],
       "contentHash": "cbae4b9"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+    "artifact": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
     "verification_gates": {
       "context_usage_test": "pass (28/28)",
       "context_usage_calibrate": "skipped (operator-on-demand)",
@@ -102,19 +102,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+      "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
       "range": [1, 64],
       "contentHash": "87b487b"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+    "artifact": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
     "audit_id": "60274_0715_token-economy-calibration-hardening-20260604000000",
     "baseline_audit_id": "65782_0543_token-economy-calibration-hardening-20260604000000",
     "citation": {
       "kind": "lines",
-      "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+      "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
       "range": [1, 225],
       "contentHash": "53aeec3"
     }
@@ -126,14 +126,14 @@
       "kind": "lines",
       "path": "lib/memory/features/token-economy-calibration-hardening/delivery-report.md",
       "range": [1, 367],
-      "contentHash": "820026c"
+      "contentHash": "a7b48d8"
     },
-    "archived_inbox_source": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
-    "pr_draft": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pr-draft.md",
+    "policy_compliance_artifact": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+    "pr_draft": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pr-draft.md",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -142,7 +142,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+      "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
       "range": [1, 119],
       "contentHash": "655a70a"
     }
@@ -155,7 +155,7 @@
       "reason": "Untracked calibration/traces/** files from the 2026-06-04 live run remain local evidence only and are outside the touch-set for commit.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
         "range": [35, 35],
         "contentHash": "7e6faf4"
       }
@@ -167,7 +167,7 @@
       "reason": "Unstaged lib/memory/features/compliance-tests/audit-history.json should stay outside the bounded review diff per touch-set preservation guidance.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
         "range": [83, 86],
         "contentHash": "cbae4b9"
       }
@@ -179,7 +179,7 @@
       "reason": "README provenance uses matrix-samples generated_at 2026-06-04T07:04:46Z while individual overhead and findings files carry earlier or later per-artifact stamps; consider one reconciled delivery note.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
         "range": [24, 25],
         "contentHash": "cbae4b9"
       }
@@ -191,7 +191,7 @@
       "reason": "Branch token-economy-calibration-pass has zero commits ahead of main; operator must commit unstaged touch-set paths and push before gh pr create.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
         "range": [98, 113],
         "contentHash": "655a70a"
       }
@@ -200,10 +200,10 @@
       "id": "orphaned-prior-work-dirs",
       "owner": "operator",
       "status": "consider",
-      "reason": "Duplicate work/172971_06-04-26/63626_0619_token-economy-calibration-hardening/ and work/172971_06-04-26/65782_0543_token-economy-calibration-hardening/ artifacts from earlier task-id copies remain on disk; close-artifacts archives only the active 60274 run directory.",
+      "reason": "Duplicate .pan/work/172971_06-04-26/63626_0619_token-economy-calibration-hardening/ and .pan/work/172971_06-04-26/65782_0543_token-economy-calibration-hardening/ artifacts from earlier task-id copies remain on disk; close-artifacts archives only the active 60274 run directory.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
         "range": [9, 9],
         "contentHash": "53aeec3"
       }
@@ -215,7 +215,7 @@
       "reason": "selectLatestSummariesByRunIndex is exported with unit-test coverage only; production consumer analyze-calibration.mjs stays unstaged and outside touch-set.",
       "citation": {
         "kind": "lines",
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
         "range": [24, 24],
         "contentHash": "cbae4b9"
       }
@@ -251,7 +251,7 @@
           "kind": "lines",
           "path": "lib/memory/features/token-economy-calibration-hardening/spec.md",
           "range": [1, 232],
-          "contentHash": "3963e87"
+          "contentHash": "fc638df"
         }
       },
       "delivery_report": {
@@ -260,7 +260,7 @@
           "kind": "lines",
           "path": "lib/memory/features/token-economy-calibration-hardening/delivery-report.md",
           "range": [1, 367],
-          "contentHash": "820026c"
+          "contentHash": "a7b48d8"
         }
       },
       "per_feature_index": {
@@ -269,102 +269,102 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/"
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/"
       },
       "plan": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/plan.md",
           "range": [1, 105],
           "contentHash": "351b6df"
         }
       },
       "adr_draft": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/adr-draft.md",
           "range": [1, 81],
           "contentHash": "ccf54af"
         }
       },
       "touch_set": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/touch-set.json",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/touch-set.json",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/touch-set.json",
           "range": [1, 140],
           "contentHash": "6ed3829"
         }
       },
       "implementation_report": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/implementation-report.md",
           "range": [1, 118],
           "contentHash": "7e6faf4"
         }
       },
       "review_report": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/review.md",
           "range": [1, 93],
           "contentHash": "cbae4b9"
         }
       },
       "test_report": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/test-report.md",
           "range": [1, 64],
           "contentHash": "87b487b"
         }
       },
       "compliance_result": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/compliance-result.json",
           "range": [1, 225],
           "contentHash": "53aeec3"
         }
       },
       "policy_compliance": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/policy-compliance.json",
           "range": [1, 119],
           "contentHash": "655a70a"
         }
       },
       "pr_draft": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pr-draft.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pr-draft.md",
         "note": "Supervisor-authored PR body draft; gh pr create deferred until operator commits and pushes."
       },
       "handoff": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/handoff.md",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/handoff.md",
+          "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/handoff.md",
           "range": [1, 54],
           "contentHash": "80eda40"
         }
       },
       "pipeline_close": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pipeline-close.md"
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/pipeline-close.md"
       },
       "run_log": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/run.log.jsonl",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/qa-logs/",
+        "path": ".pan/work/172971_06-04-26/60274_0715_token-economy-calibration-hardening/qa-logs/",
         "note": "QA and compliance gate command transcripts including context-usage:test and analyze."
       }
     },
@@ -378,7 +378,7 @@
           "kind": "lines",
           "path": "tests/compliance/context-usage/README.md",
           "range": [1, 101],
-          "contentHash": "3c790fe"
+          "contentHash": "eb01f8d"
         }
       },
       "unit_tests": {
@@ -387,7 +387,7 @@
           "kind": "lines",
           "path": "tests/compliance/context-usage/context-usage.unit.test.mjs",
           "range": [1, 344],
-          "contentHash": "858905e"
+          "contentHash": "344eea0"
         }
       },
       "tasks_module": {
@@ -423,7 +423,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
+        "path": ".pan/archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md",
@@ -446,9 +446,9 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172971_06-04-26/74107_0324_token-economy-calibration-hardening.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172971_06-04-26/60274_0715_token-economy-calibration-hardening/74107_0324_token-economy-calibration-hardening.md"
 }

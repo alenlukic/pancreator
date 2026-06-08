@@ -65,7 +65,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172973_06-02-26/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md",
@@ -98,7 +98,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+    "artifact": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 5,
@@ -107,14 +107,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+      "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
       "range": [1, 40],
       "contentHash": "89d7551"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+    "artifact": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
     "sdk_automation_qa": true,
     "verification_gates": {
       "pnpm_lint": "pass",
@@ -131,7 +131,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+      "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
       "range": [1, 42],
       "contentHash": "b0079a6"
     }
@@ -143,14 +143,14 @@
       "kind": "lines",
       "path": "lib/memory/features/fd-pipeline-sdk-mode-retry-model-escalation-tiers/delivery-report.md",
       "range": [1, 306],
-      "contentHash": "36097f3"
+      "contentHash": "cf6b982"
     },
     "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
-    "archived_inbox_source": "archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -159,7 +159,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
+      "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
       "range": [1, 99],
       "contentHash": "e9d476b"
     }
@@ -172,7 +172,7 @@
       "reason": "Loader uses inline structural validation; wiring ajv against tests/compliance/schemas/model-escalation-config.schema.json at load time remains a follow-up.",
       "citation": {
         "kind": "lines",
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
         "range": [17, 18],
         "contentHash": "89d7551"
       }
@@ -184,7 +184,7 @@
       "reason": "resolveActiveConfigName lacks a fixture-backed pancreator.yaml override test case.",
       "citation": {
         "kind": "lines",
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
         "range": [19, 19],
         "contentHash": "89d7551"
       }
@@ -196,7 +196,7 @@
       "reason": "Stage unstaged @types/node on @pancreator/core, model-escalation.test.ts lint fix, pnpm-lock.yaml, and delivery-report.md before governed commit.",
       "citation": {
         "kind": "lines",
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
         "range": [54, 59],
         "contentHash": "e9d476b"
       }
@@ -208,7 +208,7 @@
       "reason": "Branch model-escalations is staged-only with zero commits ahead of main; operator must commit, push, authenticate gh, and open PR per policy-compliance.json.",
       "citation": {
         "kind": "lines",
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
         "range": [76, 93],
         "contentHash": "e9d476b"
       }
@@ -260,7 +260,7 @@
           "kind": "lines",
           "path": "lib/memory/features/fd-pipeline-sdk-mode-retry-model-escalation-tiers/spec.md",
           "range": [1, 231],
-          "contentHash": "e863818"
+          "contentHash": "9655168"
         }
       },
       "delivery_report": {
@@ -269,7 +269,7 @@
           "kind": "lines",
           "path": "lib/memory/features/fd-pipeline-sdk-mode-retry-model-escalation-tiers/delivery-report.md",
           "range": [1, 306],
-          "contentHash": "36097f3"
+          "contentHash": "cf6b982"
         }
       },
       "per_feature_index": {
@@ -278,82 +278,82 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/"
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/"
       },
       "plan": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/plan.md",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/plan.md",
+          "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/plan.md",
           "range": [1, 57],
           "contentHash": "c73a433"
         }
       },
       "adr_draft": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
+          "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
           "range": [1, 99],
           "contentHash": "ce3449d"
         }
       },
       "touch_set": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/touch-set.json",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/touch-set.json",
+          "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/touch-set.json",
           "range": [1, 257],
           "contentHash": "011c0ae"
         }
       },
       "implementation_report": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/implementation-report.md",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/implementation-report.md",
+          "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/implementation-report.md",
           "range": [1, 54],
           "contentHash": "f8bcc46"
         }
       },
       "review_report": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+          "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
           "range": [1, 40],
           "contentHash": "89d7551"
         }
       },
       "test_report": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+          "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
           "range": [1, 42],
           "contentHash": "b0079a6"
         }
       },
       "policy_compliance": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
+          "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/policy-compliance.json",
           "range": [1, 99],
           "contentHash": "e9d476b"
         }
       },
       "handoff": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/handoff.md",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/handoff.md",
+          "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/handoff.md",
           "range": [1, 51],
           "contentHash": "603d7a3"
         }
       },
       "run_log": {
-        "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/run.log.jsonl",
+        "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "report_approval": {
@@ -373,7 +373,7 @@
           "kind": "lines",
           "path": "pancreator-model-escalation.yaml",
           "range": [1, 15],
-          "contentHash": "bb2a5b0"
+          "contentHash": "9c474d2"
         }
       },
       "model_escalation_module": {
@@ -412,7 +412,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md",
+        "path": ".pan/archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172973_06-02-26/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md",
@@ -435,8 +435,8 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md",
+    "path": ".pan/archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md",
     "prior_path": "lib/inbox/in/172973_06-02-26/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/24815_1706_fd-pipeline-sdk-model-escalation-tiers.md"
 }

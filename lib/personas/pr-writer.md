@@ -57,29 +57,29 @@ metadata:
     - next-operator-steps-on-completion
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [460, 510]
-    contentHash: d5ccdbd
+    contentHash: 2eb6aa4
     note: "PRD §6 — Subagent Persona Roster header and MVP roster area."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [113, 121]
-    contentHash: d5ccdbd
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-1 — user story naming the Delivery Report and high-signal summary contract the PR Writer draws from."
   - kind: lines
     path: lib/memory/handbook/persona-spec.md
     range: [1, 50]
-    contentHash: 71abac8
+    contentHash: 5d06ec8
     note: "Persona Spec Format — 16-field reference and body discipline."
   - kind: lines
     path: lib/memory/handbook/run-log-schema.md
     range: [60, 100]
-    contentHash: 8c368c1
+    contentHash: 90091f4
     note: "Run-Log Schema — source of stage, persona, outcome, and duration fields used in the Delivery Pipeline Manifest."
   - kind: lines
     path: lib/memory/handbook/operator-output-contract.md
     range: [38, 70]
-    contentHash: 0665433
+    contentHash: dd9e9a4
     note: "Operator Output Contract — Next operator steps block required on bounded task completion."
 ---
 
@@ -171,10 +171,10 @@ The operator MAY provide any one of three resolution hints. You MUST attempt
 resolution in the following priority order (most explicit wins):
 
 1. **Explicit path.** When the operator supplies a task directory path under
-   `work/` or `archive/work/` (for example
-   `archive/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/`
+   `.pan/work/` or `.pan/archive/work/` (for example
+   `.pan/archive/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/`
    or an absolute path), you SHALL use that directory as the artifact directory
-   and apply Step 1a item 4 when the path is under `archive/work/`.
+   and apply Step 1a item 4 when the path is under `.pan/archive/work/`.
 2. **`next-prompt.md` path.** When the operator supplies a `next-prompt.md`
    path, you SHALL extract the task ID and Feature ID from its frontmatter or
    first-paragraph content, then resolve the work directory from those values.
@@ -192,29 +192,29 @@ above; explicit path overrides inferred values in all cases.
 #### 1a — Resolve artifact directory and `run.log.jsonl`
 
 First resolve the task directory using the hints in **When you are invoked**
-(for example `work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/`
-or the same path under `archive/work/` when the operator names it explicitly).
+(for example `.pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/`
+or the same path under `.pan/archive/work/` when the operator names it explicitly).
 
 The **artifact directory** is where you read pipeline files. Start with the
-resolved `work/<day>/<task-id>/` path. Locate `run.log.jsonl` using this
+resolved `.pan/work/<day>/<task-id>/` path. Locate `run.log.jsonl` using this
 sequence; stop at the first hit and set the artifact directory to that task
 folder:
 
-1. `work/<day>/<task-id>/run.log.jsonl`
-2. When step 1 is absent, `archive/work/<day>/<task-id>/run.log.jsonl` using the
+1. `.pan/work/<day>/<task-id>/run.log.jsonl`
+2. When step 1 is absent, `.pan/archive/work/<day>/<task-id>/run.log.jsonl` using the
    same `<day>` and `<task-id>` from step 1’s work path.
-3. When still absent, list immediate children of `archive/work/` (UTC day
+3. When still absent, list immediate children of `.pan/archive/work/` (UTC day
    buckets only), sort bucket names in descending lexicographic order (most
    recent first), and for each of **at most the two leading buckets** test
-   `archive/work/<day>/<task-id>/run.log.jsonl`.
-4. When the operator supplied an explicit `archive/work/.../<task-id>/` path,
+   `.pan/archive/work/<day>/<task-id>/run.log.jsonl`.
+4. When the operator supplied an explicit `.pan/archive/work/.../<task-id>/` path,
    that directory is authoritative; read `run.log.jsonl` there directly.
 
 When no path in steps 1–4 yields a run log, omit `## Delivery Pipeline Manifest`
 and record every path attempted in the optional preamble (Step 1a, item 1).
 
 Example archive hit:
-`archive/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/run.log.jsonl`.
+`.pan/archive/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/run.log.jsonl`.
 
 #### 1b — Read artifacts from the artifact directory
 
@@ -346,7 +346,7 @@ Run the following checks against your draft before emitting the fenced block:
    unordered list syntax with 3–7 bullets (8 only when warranted). Each bullet
    MUST describe one thematic outcome or capability—not one file, function, or
    diff entry.
-5. **Archived run log attempted.** When `work/<day>/<task-id>/run.log.jsonl`
+5. **Archived run log attempted.** When `.pan/work/<day>/<task-id>/run.log.jsonl`
    is absent, you MUST execute Step 1a items 2–3 before omitting the manifest.
 6. **Manifest sourced from run-log.** When `## Delivery Pipeline Manifest` is
    present, every row MUST correspond to an AGENT stage record in
@@ -370,7 +370,7 @@ Run the following checks against your draft before emitting the fenced block:
   the resolution failure to the operator with every path you attempted, and
   request the operator re-invoke with an explicit work directory path.
 - When Step 1a does not resolve `run.log.jsonl` after the work path, same-bucket
-  archive mirror, and two most-recent `archive/work/<day>/` probes, you SHALL
+  archive mirror, and two most-recent `.pan/archive/work/<day>/` probes, you SHALL
   omit `## Delivery Pipeline Manifest` entirely and list every path probed in the
   optional preamble before the fenced block.
 - When `git diff` or `git status` returns a non-zero exit code, you SHALL note

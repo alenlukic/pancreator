@@ -25,10 +25,10 @@ function sampleState(overrides: Partial<FeatureDeliveryState> = {}): FeatureDeli
       inboxPath: "lib/inbox/in/demo-feature.md",
     },
     artifacts: {
-      runDir: "work/172996_05-10-26/38670_1315_demo-feature",
-      stateFile: "work/172996_05-10-26/38670_1315_demo-feature/state.json",
-      handoffFile: "work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
-      runLogFile: "work/172996_05-10-26/38670_1315_demo-feature/run.log.jsonl",
+      runDir: ".pan/work/172996_05-10-26/38670_1315_demo-feature",
+      stateFile: ".pan/work/172996_05-10-26/38670_1315_demo-feature/state.json",
+      handoffFile: ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
+      runLogFile: ".pan/work/172996_05-10-26/38670_1315_demo-feature/run.log.jsonl",
     },
     stages: [],
     transitions: [],
@@ -50,7 +50,7 @@ function sampleState(overrides: Partial<FeatureDeliveryState> = {}): FeatureDeli
 describe("feature-delivery-pipeline-close", () => {
   it("renderPipelineCloseDoc includes outcome, history, and close-artifacts command", () => {
     const state = sampleState();
-    const doc = renderPipelineCloseDoc(state, "/tmp/repo", new Date("2026-05-10T14:00:00.000Z"));
+    const doc = renderPipelineCloseDoc(state, "/.tmp/repo", new Date("2026-05-10T14:00:00.000Z"));
     expect(doc).toContain("# Pipeline close — demo-feature");
     expect(doc).toContain("index → complete");
     expect(doc).toContain("artifacts_indexed");

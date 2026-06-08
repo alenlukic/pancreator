@@ -44,7 +44,7 @@ test("resolveRepoPath keeps harness-root pancreator.yaml", async () => {
   const harness = await mkdtemp(path.join(os.tmpdir(), "harness-yaml-"));
   await writeFile(path.join(harness, "pancreator.yaml"), "project_root: .\n", "utf8");
   assert.equal(resolveRepoPath(harness, "pancreator.yaml"), path.join(harness, "pancreator.yaml"));
-  assert.equal(resolveRepoPath(harness, "work/day/task/state.json"), path.join(harness, "work", "day", "task", "state.json"));
+  assert.equal(resolveRepoPath(harness, ".pan/work/day/task/state.json"), path.join(harness, ".pan/work", "day", "task", "state.json"));
 });
 
 test("resolveDeliveryOperatingCardRel returns AGENTS.md on self-host", () => {

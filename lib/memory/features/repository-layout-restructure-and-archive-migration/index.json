@@ -8,15 +8,15 @@
   "work_packages": [
     {
       "id": "wp-1-archive-migrations",
-      "label": "WP-1 — Top-level archive/ and archive migrations",
+      "label": "WP-1 — Top-level .pan/archive/ and archive migrations",
       "status": "shipped",
-      "outcome": "Consolidated archive/inbox and archive/work under top-level archive/ with no compatibility shims."
+      "outcome": "Consolidated .pan/archive/inbox and .pan/archive/work under top-level .pan/archive/ with no compatibility shims."
     },
     {
       "id": "wp-2-work-root",
-      "label": "WP-2 — Move transient work root to top-level work/",
+      "label": "WP-2 — Move transient work root to top-level .pan/work/",
       "status": "shipped",
-      "outcome": "Active run workspaces now resolve under work/<day>/<task-id>/; CLI and docs reference the new root."
+      "outcome": "Active run workspaces now resolve under .pan/work/<day>/<task-id>/; CLI and docs reference the new root."
     },
     {
       "id": "wp-3-skills-relocation",
@@ -53,7 +53,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172976_05-30-26/65996_0540_repo-layout-restructure.md",
@@ -86,7 +86,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
+    "artifact": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 1,
@@ -99,14 +99,14 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
+      "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
       "range": [1, 30],
       "contentHash": "889e2c1"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
+    "artifact": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
     "verification_gates": {
       "node_test_suite": "pass (102/102)",
       "check_phase0a": "pass",
@@ -120,7 +120,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
+      "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
       "range": [1, 58],
       "contentHash": "d73559f"
     }
@@ -132,7 +132,7 @@
       "kind": "lines",
       "path": "lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md",
       "range": [1, 41],
-      "contentHash": "f9551b4"
+      "contentHash": "f9fc974"
     },
     "report_approval_citation": {
       "kind": "lines",
@@ -140,11 +140,11 @@
       "range": [1, 18],
       "contentHash": "3f2871f"
     },
-    "archived_inbox_source": "archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -153,7 +153,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
+      "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
       "range": [1, 74],
       "contentHash": "76bd7f1"
     }
@@ -166,7 +166,7 @@
       "reason": "pnpm -w exec pan lint contracts remains deferred (exit 125); contract-lint evidence relies on fallback checks until wrapper support lands.",
       "citation": {
         "kind": "lines",
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
         "range": [1, 30],
         "contentHash": "889e2c1"
       }
@@ -178,7 +178,7 @@
       "reason": "pan run/advance --dry-run is not supported by the current CLI; smoke coverage used pan status and repo-structure tests instead.",
       "citation": {
         "kind": "lines",
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
         "range": [1, 106],
         "contentHash": "21b1ca7"
       }
@@ -190,7 +190,7 @@
       "reason": "migrate-inbox-convention.mjs retains regex matching historical src/ strings for pre-migration artifact parsing; intentional, not runtime path resolution.",
       "citation": {
         "kind": "lines",
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
         "range": [1, 106],
         "contentHash": "21b1ca7"
       }
@@ -202,7 +202,7 @@
       "reason": "Pre-existing branch changes outside the touch-set remain in the working tree; review full git status before commit.",
       "citation": {
         "kind": "lines",
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
         "range": [1, 106],
         "contentHash": "21b1ca7"
       }
@@ -216,7 +216,7 @@
           "kind": "lines",
           "path": "lib/memory/features/repository-layout-restructure-and-archive-migration/spec.md",
           "range": [1, 206],
-          "contentHash": "9dccd53"
+          "contentHash": "d44a87f"
         }
       },
       "delivery_report": {
@@ -225,7 +225,7 @@
           "kind": "lines",
           "path": "lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md",
           "range": [1, 41],
-          "contentHash": "f9551b4"
+          "contentHash": "f9fc974"
         }
       },
       "per_feature_index": {
@@ -234,82 +234,82 @@
     },
     "pipeline_artifacts": {
       "plan": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/plan.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/plan.md",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/plan.md",
           "range": [1, 87],
           "contentHash": "79b4ed3"
         }
       },
       "adr_draft": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/adr-draft.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/adr-draft.md",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/adr-draft.md",
           "range": [1, 50],
           "contentHash": "a658ffd"
         }
       },
       "touch_set": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/touch-set.json",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/touch-set.json",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/touch-set.json",
           "range": [1, 407],
           "contentHash": "7d8adff"
         }
       },
       "implementation_report": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/implementation-report.md",
           "range": [1, 106],
           "contentHash": "21b1ca7"
         }
       },
       "review_report": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/review.md",
           "range": [1, 30],
           "contentHash": "889e2c1"
         }
       },
       "test_report": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/test-report.md",
           "range": [1, 58],
           "contentHash": "d73559f"
         }
       },
       "policy_compliance": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/policy-compliance.json",
           "range": [1, 74],
           "contentHash": "76bd7f1"
         }
       },
       "handoff": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/handoff.md",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/handoff.md",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/handoff.md",
           "range": [1, 48],
           "contentHash": "1313ba2"
         }
       },
       "run_log": {
-        "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/run.log.jsonl",
+        "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/run.log.jsonl",
         "citation": {
           "kind": "lines",
-          "path": "work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/run.log.jsonl",
+          "path": ".pan/work/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/run.log.jsonl",
           "range": [1, 27],
           "contentHash": "85b2295"
         }
@@ -322,7 +322,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/migrate-repository-layout.mjs",
           "range": [1, 413],
-          "contentHash": "b40f2dc"
+          "contentHash": "b93d319"
         }
       },
       "validate_repository_layout": {
@@ -331,7 +331,7 @@
           "kind": "lines",
           "path": "lib/internal/tools/validate-repository-layout.mjs",
           "range": [1, 158],
-          "contentHash": "a08ba45"
+          "contentHash": "362b01c"
         }
       },
       "migrate_repository_layout_tests": {
@@ -349,7 +349,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
           "range": [1, 2236],
-          "contentHash": "4a54d43"
+          "contentHash": "33de090"
         }
       },
       "cli_run": {
@@ -358,7 +358,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
           "range": [1, 667],
-          "contentHash": "27234e4"
+          "contentHash": "f31b63d"
         }
       },
       "repo_structure_tests": {
@@ -367,7 +367,7 @@
           "kind": "lines",
           "path": "tests/repo-structure.test.mjs",
           "range": [1, 321],
-          "contentHash": "39c08e5"
+          "contentHash": "ac25607"
         }
       },
       "agents_workspace_map": {
@@ -376,9 +376,9 @@
           "kind": "lines",
           "path": "AGENTS.md",
           "range": [1, 296],
-          "contentHash": "cbf75dc"
+          "contentHash": "b953d77"
         },
-        "note": "Workspace map and routing contracts updated to archive/, work/, and lib/ roots."
+        "note": "Workspace map and routing contracts updated to .pan/archive/, .pan/work/, and lib/ roots."
       },
       "operator_howto": {
         "path": "OPERATION.md",
@@ -386,14 +386,14 @@
           "kind": "lines",
           "path": "OPERATION.md",
           "range": [1, 233],
-          "contentHash": "0688845"
+          "contentHash": "a91d661"
         },
         "note": "Operator how-to paths updated for post-migration layout."
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md",
+        "path": ".pan/archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172976_05-30-26/65996_0540_repo-layout-restructure.md",
@@ -421,8 +421,8 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md",
+    "path": ".pan/archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md",
     "prior_path": "lib/inbox/in/172976_05-30-26/65996_0540_repo-layout-restructure.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172976_05-30-26/65447_0549_repository-layout-restructure-and-archive-migration/65996_0540_repo-layout-restructure.md"
 }

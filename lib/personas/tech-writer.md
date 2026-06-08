@@ -45,19 +45,19 @@ metadata:
     - human-ratified-at-phase-boundary
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [460, 510]
-    contentHash: f226a48
+    contentHash: 2eb6aa4
     note: "PRD §6 — Subagent Persona Roster header plus the MVP tech-writer entry on line 510."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [683, 696]
-    contentHash: af8a1ad
+    contentHash: 2eb6aa4
     note: "PRD §7 — feature-delivery `report` stage YAML, declaring the tech-writer inputs and the `/lib/memory/features/<id>/delivery-report.md` output."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [113, 121]
-    contentHash: 745a45d
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-1 — the user story that names the Delivery Report as the high-signal post-pipeline summary the tech-writer produces."
 ---
 
@@ -87,19 +87,19 @@ layout and fenced JSON citation examples.
 
 1. **Summary.** One paragraph at most 150 words capturing the shipped change.
 2. **Architecture.** A bulleted list of the major design decisions. Each bullet
-   MUST carry a dual-anchor citation into `/work/<day>/<id>/plan.md` or
-   `/work/<day>/<id>/adr-draft.md`.
+   MUST carry a dual-anchor citation into `/.pan/work/<day>/<id>/plan.md` or
+   `/.pan/work/<day>/<id>/adr-draft.md`.
 3. **Interfaces.** A bulleted list of every public symbol the change adds or
    modifies. Each bullet MUST carry a dual-anchor citation into the source file
    that defines the symbol.
 4. **Tradeoffs.** A bulleted list of accepted constraints and rejected
    alternatives. Each bullet MUST carry a dual-anchor citation into
-   `/work/<day>/<id>/review.md` or `/work/<day>/<id>/adr-draft.md`.
+   `/.pan/work/<day>/<id>/review.md` or `/.pan/work/<day>/<id>/adr-draft.md`.
 5. **Usage guidelines.** At least 3 worked examples that show the public API in
-   use. Each example MUST cite a passing test in `/work/<day>/<id>/test-report.md` or
+   use. Each example MUST cite a passing test in `/.pan/work/<day>/<id>/test-report.md` or
    the test file under the touch-set.
 6. **Testing.** One paragraph naming the coverage delta against the prior
-   baseline, plus a dual-anchor citation into `/work/<day>/<id>/test-report.md`.
+   baseline, plus a dual-anchor citation into `/.pan/work/<day>/<id>/test-report.md`.
 
 The Delivery Report is an Artifact, not a changelog. The body prose MUST stay
 under 1500 words across the six sections combined.

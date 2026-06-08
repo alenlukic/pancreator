@@ -48,34 +48,34 @@ metadata:
     - human-ratified-at-phase-boundary
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [505, 505]
-    contentHash: f8cc1d7
+    contentHash: 2eb6aa4
     note: "PRD §6 — MVP roster: intake-analyst runs the spec-canonicalization sub-pipeline, ingests informal markdown, conducts a clarifying-question dialogue through the inbox at most N rounds, and emits a canonical Engineering Spec."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [113, 121]
-    contentHash: 745a45d
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-1 — Deliver the backend for feature A: the user story whose intake step the intake-analyst owns, with the coordinating agent clearing up ambiguities through the inbox."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [641, 648]
-    contentHash: ca791c9
+    contentHash: 2eb6aa4
     note: "PRD §7 — feature-delivery `intake` stage YAML declaring inputs `[inbox_message]`, outputs `[/lib/memory/features/<id>/spec.md]`, `loop.max_rounds: 5`, and `gate: human_approval`."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [921, 931]
-    contentHash: d255910
+    contentHash: 2eb6aa4
     note: "PRD §8 — Memory architecture: per-Feature folder layout where the canonical spec is `spec.md` per Spec Kit v0.8 alignment."
   - kind: lines
     path: lib/memory/active/current.md
     range: [36, 38]
-    contentHash: 300177f
+    contentHash: d1f6703
     note: "Active Feature pointer format; intake promotes the source inbox path when a run starts."
   - kind: lines
     path: AGENTS.md
     range: [212, 212]
-    contentHash: e037427
+    contentHash: b953d77
     note: "AGENTS §6.8 — Active Feature is explicit; intake-analyst sets it at run start; close-artifacts clears on archive."
 ---
 
@@ -93,7 +93,7 @@ inbox-borne clarifying dialogue capped at 5 rounds.
    you SHALL allocate a Feature id, scaffold `/lib/memory/features/<id>/`, and
    begin the `canonicalize-spec` clarifying dialogue.
 2. **Active-memory promotion.** When a Feature id and task id are assigned for
-   the current intake (from `work/<day>/<task-id>/state.json` or from Step 1
+   the current intake (from `.pan/work/<day>/<task-id>/state.json` or from Step 1
    allocation in `canonicalize-spec`), you SHALL update
    `lib/memory/active/current.md` § **Active Feature** before any clarifying
    dialogue. You MUST set exactly one bullet to the canonical source inbox path

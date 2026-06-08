@@ -12,12 +12,12 @@ references:
   - kind: lines
     path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
     range: [235, 251]
-    contentHash: e6c4fcd
+    contentHash: 9b2ddcc
     note: "Spec acceptance criteria require README scope and soft budgets."
   - kind: lines
-    path: archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
+    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
     range: [231, 251]
-    contentHash: fb1ac76
+    contentHash: 188405e
     note: "Directive §2 defines README behavior and soft budgets. Source archived from lib/inbox/in/ per inbox-lifecycle handbook §3."
 related:
   - /lib/memory/handbook/memory-tiers.md
@@ -30,7 +30,7 @@ related:
 # Active memory tier
 
 This directory holds **active-memory** only. The Feature cites scope rules at
-`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [235, 251], contentHash: e6c4fcd}`.
+`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [235, 251], contentHash: 9b2ddcc}`.
 
 ## What belongs here
 
@@ -43,15 +43,15 @@ and **archival-memory** paths instead of embedding full specs or run logs.
 
 When an operator tracks planning/execution handoffs, the operator SHALL store
 only handoff pointers and status in `lib/memory/active/handoffs.md`. The full
-handoff card SHALL live under `work/<day>/<task-id>/handoff.md` while the run
-is active and under `archive/work/<day>/<task-id>/handoff.md` after
+handoff card SHALL live under `.pan/work/<day>/<task-id>/handoff.md` while the run
+is active and under `.pan/archive/work/<day>/<task-id>/handoff.md` after
 archival.
 
 ## What does not belong here
 
 When an operator classifies bulky artifacts, the operator SHALL keep Feature
 specs under `lib/memory/features/`, ADRs under `lib/memory/adr/`, backlog records under
-`lib/memory/backlog/`, and active pipeline outputs under `work/`, and completed historical pipeline outputs under `archive/work/`.
+`lib/memory/backlog/`, and active pipeline outputs under `.pan/work/`, and completed historical pipeline outputs under `.pan/archive/work/`.
 
 When an operator handles generated indexes, manifests, or compliance JSON, the
 operator SHALL treat those objects as **generated-machine-artifact** surfaces

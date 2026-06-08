@@ -41,44 +41,44 @@ references:
     contentHash: 3e650e3
     note: Source directive Out of scope — conflict-planner, merge-resolver, EnvIsolation, cohort planning, auto-push, resume, and skip-preclose.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [165, 173]
-    contentHash: b18dc8f
+    contentHash: 2eb6aa4
     note: PRD US-6 Worktree Pool — batch orchestration is a sequential, operator-capped subset of parallel pipeline execution on worktrees.
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts
     range: [360, 481]
-    contentHash: 8255324
+    contentHash: 33de090
     note: startFeatureDelivery SDK auto-chain — each batch sub-run reuses this entry with repoRoot set to an isolated worktree checkout.
   - kind: lines
     path: lib/internal/packages/@pancreator/worktree/src/git-worktree-pool.ts
     range: [50, 86]
-    contentHash: d46f25c
+    contentHash: ccc032f
     note: GitWorktreePool Q7 single-lease guard — MUST extend for --parallel N greater than 1 via pool-state v2 and maxConcurrent.
   - kind: lines
     path: AGENTS.md
     range: [147, 177]
-    contentHash: 88ab69d
+    contentHash: b953d77
     note: Feature-delivery SDK progress NDJSON contract — batch progress events extend the PAN_FD_PROGRESS=ndjson surface.
   - kind: lines
     path: AGENTS.md
     range: [248, 272]
-    contentHash: 28515c0
+    contentHash: b953d77
     note: Librarian pre-close validation checklist — successful sub-runs MUST pass this bundle before close-artifacts.
   - kind: lines
     path: lib/memory/features/timestamp-naming-conventions/spec.md
     range: [77, 82]
-    contentHash: b385652
+    contentHash: 294422f
     note: Outbox filename timestamp-prefix requirement for merge-conflict artifacts under lib/inbox/out/.
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [69, 75]
-    contentHash: c36ec4b
+    contentHash: 2762053
     note: Canonical inbox queue path layout — batch copies gitignored directives from main checkout into each worktree before startFeatureDelivery.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [641, 648]
-    contentHash: 11f6887
+    contentHash: 2eb6aa4
     note: Feature-delivery intake stage declares loop.max_rounds 5 and gate human_approval.
 ---
 
@@ -115,7 +115,7 @@ This Feature SHALL ship `pnpm -w exec pan batch run` so operators MAY pass multi
 
 ### WP-4 — Batch ledger and progress (R4)
 
-- When a batch starts, the orchestrator SHALL persist `work/<day>/batch-<batchId>/batch.json` recording `parallelism`, `baseRef`, `mergeBranch`, per-run outcomes, and merge status.
+- When a batch starts, the orchestrator SHALL persist `.pan/work/<day>/batch-<batchId>/batch.json` recording `parallelism`, `baseRef`, `mergeBranch`, per-run outcomes, and merge status.
 - When `PAN_FD_PROGRESS=ndjson` is set, the orchestrator SHALL emit batch-level NDJSON progress events with kinds `batch_enter`, `batch_run_start`, `batch_run_complete`, `batch_run_failed`, `batch_slot_free`, `batch_merge_start`, and `batch_complete` on stderr.
 - When a batch progress event is emitted, the event SHALL include `batchId`, the affected `taskId` when applicable, and an RFC3339 `atIso` timestamp consistent with existing feature-delivery progress events.
 

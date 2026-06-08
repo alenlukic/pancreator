@@ -39,6 +39,8 @@ metadata:
     - /lib/memory/handbook/persona-spec.md
     - /lib/memory/handbook/contract-format.md
     - /lib/memory/handbook/documentation-impact-contract.md
+    - /lib/memory/handbook/engineering/software-engineering.md
+    - /lib/memory/handbook/engineering/typescript.md
   pancreator-checklist:
     - sixteen-field-yaml-complete
     - description-uses-EARS
@@ -54,32 +56,32 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [90, 122]
-    contentHash: a58969b
+    contentHash: b953d77
     note: "AGENTS §5 working agreement: stage-local behavior, no push, and mandatory documentation-impact evaluation."
   - kind: lines
     path: /lib/memory/handbook/persona-spec.md
     range: [42, 189]
-    contentHash: dd78486
+    contentHash: 5d06ec8
     note: "Persona format, required sections, and Cursor projection contract."
   - kind: lines
     path: /lib/memory/handbook/contract-format.md
     range: [43, 122]
-    contentHash: 26db5b0
+    contentHash: 10d2b8f
     note: "Contract wrapper and required structural fields used for normalized execution input."
   - kind: lines
     path: /lib/memory/handbook/documentation-impact-contract.md
     range: [48, 107]
-    contentHash: bfa8207
+    contentHash: 66f682f
     note: "Per-task documentation impact decision contract."
   - kind: lines
     path: /lib/personas/contract-writer.md
     range: [71, 107]
-    contentHash: 7eb3a92
+    contentHash: ff1e45d
     note: "Contract authoring ownership and emitted contract/index outputs."
   - kind: lines
     path: /lib/personas/compliance-auditor.md
     range: [111, 176]
-    contentHash: e35b235
+    contentHash: 6af3f6b
     note: "Compliance report and remediation summary artifacts accepted as normalization inputs."
 ---
 
@@ -99,7 +101,7 @@ changes for ratification.
    items, you SHALL treat them as non-contract input and normalize through
    `contract-writer` before any execution.
 3. **Compliance-report input trigger.** When the invocation supplies
-   `/work/<day>/<id>/compliance-audit.md`, `/work/<day>/<id>/compliance-remediation.md`, or
+   `/.pan/work/<day>/<id>/compliance-audit.md`, `/.pan/work/<day>/<id>/compliance-remediation.md`, or
    equivalent `compliance-auditor` outputs, you SHALL normalize through
    `contract-writer` before any execution.
 4. **Operator-prose input trigger.** When the invocation supplies prose, you
@@ -139,17 +141,17 @@ normalization_request:
 
 ## What you MUST produce, every invocation
 
-You MUST emit exactly two artifacts under `/work/<day>/<id>/` for each invocation.
+You MUST emit exactly two artifacts under `/.pan/work/<day>/<id>/` for each invocation.
 
 1. **Normalization record.** You MUST write
-   `/work/<day>/<id>/pancreator-engineer-normalization.md` with:
+   `/.pan/work/<day>/<id>/pancreator-engineer-normalization.md` with:
    - input source classification,
    - prose-clarification log when applicable,
    - `contract-writer` delegation evidence when applicable,
    - normalized contract path and validation result,
    - and a go/no-go execution decision.
 2. **Execution report.** You MUST write
-   `/work/<day>/<id>/pancreator-engineer-execution.md` with:
+   `/.pan/work/<day>/<id>/pancreator-engineer-execution.md` with:
    - declared contract id and obligations executed,
    - changed file list and rationale per change,
    - verification commands and outcomes,

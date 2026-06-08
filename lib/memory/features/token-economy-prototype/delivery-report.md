@@ -14,7 +14,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
   "range": [14, 20],
   "contentHash": "7658f2f"
 }
@@ -23,7 +23,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/review.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/review.md",
   "range": [16, 18],
   "contentHash": "061cda2"
 }
@@ -32,7 +32,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/test-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/test-report.md",
   "range": [15, 15],
   "contentHash": "d5783eb"
 }
@@ -46,7 +46,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/plan.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/plan.md",
   "range": [5, 5],
   "contentHash": "5b7385c"
 }
@@ -59,7 +59,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/plan.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/plan.md",
   "range": [5, 5],
   "contentHash": "5b7385c"
 }
@@ -68,7 +68,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
   "range": [17, 25],
   "contentHash": "e658c71"
 }
@@ -81,7 +81,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/plan.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/plan.md",
   "range": [5, 5],
   "contentHash": "5b7385c"
 }
@@ -93,7 +93,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
   "range": [14, 18],
   "contentHash": "7658f2f"
 }
@@ -102,7 +102,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
   "range": [9, 11],
   "contentHash": "e658c71"
 }
@@ -118,7 +118,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/tasks.mjs",
   "range": [8, 9],
-  "contentHash": "16ea9fd"
+  "contentHash": "831b865"
 }
 ```
 
@@ -127,7 +127,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/tasks.mjs",
   "range": [98, 111],
-  "contentHash": "16ea9fd"
+  "contentHash": "831b865"
 }
 ```
 
@@ -136,7 +136,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/tasks.mjs",
   "range": [179, 179],
-  "contentHash": "16ea9fd"
+  "contentHash": "831b865"
 }
 ```
 
@@ -148,7 +148,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/expected.mjs",
   "range": [7, 52],
-  "contentHash": "3d3fef1"
+  "contentHash": "bdd6d24"
 }
 ```
 
@@ -160,7 +160,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/collect-usage.mjs",
   "range": [47, 94],
-  "contentHash": "f15ea58"
+  "contentHash": "267e609"
 }
 ```
 
@@ -169,7 +169,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/collect-usage.mjs",
   "range": [195, 195],
-  "contentHash": "f15ea58"
+  "contentHash": "267e609"
 }
 ```
 
@@ -182,7 +182,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/analyzer.mjs",
   "range": [30, 30],
-  "contentHash": "b5e9df5"
+  "contentHash": "0466b0f"
 }
 ```
 
@@ -191,7 +191,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/analyzer.mjs",
   "range": [133, 133],
-  "contentHash": "b5e9df5"
+  "contentHash": "0466b0f"
 }
 ```
 
@@ -200,7 +200,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/analyzer.mjs",
   "range": [180, 206],
-  "contentHash": "b5e9df5"
+  "contentHash": "0466b0f"
 }
 ```
 
@@ -212,7 +212,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/model.mjs",
   "range": [13, 56],
-  "contentHash": "ed90d88"
+  "contentHash": "99330b1"
 }
 ```
 
@@ -224,7 +224,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/paths.mjs",
   "range": [17, 53],
-  "contentHash": "3f7a4f6"
+  "contentHash": "f74e659"
 }
 ```
 
@@ -236,7 +236,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "tests/compliance/context-usage/lib/copy-sandbox.mjs",
   "range": [48, 48],
-  "contentHash": "75c96e3"
+  "contentHash": "763f512"
 }
 ```
 
@@ -248,7 +248,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
   "kind": "lines",
   "path": "package.json",
   "range": [17, 20],
-  "contentHash": "3f0fad2"
+  "contentHash": "22317d8"
 }
 ```
 
@@ -260,7 +260,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
   "range": [102, 103],
   "contentHash": "7658f2f"
 }
@@ -272,7 +272,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
   "range": [35, 35],
   "contentHash": "e658c71"
 }
@@ -281,7 +281,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
   "range": [73, 73],
   "contentHash": "7658f2f"
 }
@@ -294,7 +294,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
   "range": [34, 34],
   "contentHash": "e658c71"
 }
@@ -307,7 +307,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/review.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/review.md",
   "range": [31, 38],
   "contentHash": "061cda2"
 }
@@ -319,7 +319,7 @@ points; live calibration remains operator-only. Review and QA gates pass on
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/adr-draft.md",
   "range": [25, 25],
   "contentHash": "e658c71"
 }
@@ -340,7 +340,7 @@ analyzer inefficiencies, and task-contract parsing.
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/test-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/test-report.md",
   "range": [21, 21],
   "contentHash": "d5783eb"
 }
@@ -351,7 +351,7 @@ analyzer inefficiencies, and task-contract parsing.
   "kind": "lines",
   "path": "tests/compliance/context-usage/context-usage.unit.test.mjs",
   "range": [88, 91],
-  "contentHash": "4b95f51"
+  "contentHash": "344eea0"
 }
 ```
 
@@ -372,7 +372,7 @@ combinations (~34 API calls). Operators MAY lower cost with `--runs 3`.
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
   "range": [86, 94],
   "contentHash": "7658f2f"
 }
@@ -383,7 +383,7 @@ combinations (~34 API calls). Operators MAY lower cost with `--runs 3`.
   "kind": "lines",
   "path": "tests/compliance/context-usage/README.md",
   "range": [44, 58],
-  "contentHash": "3228110"
+  "contentHash": "eb01f8d"
 }
 ```
 
@@ -395,17 +395,17 @@ prompt builders, and temp fixture copies for `task-low` and `task-high`:
   "kind": "lines",
   "path": "tests/compliance/context-usage/context-usage.unit.test.mjs",
   "range": [69, 86],
-  "contentHash": "4b95f51"
+  "contentHash": "344eea0"
 }
 ```
 
-`task-high` requires a runtime artifact at `work/99999_probe/task/answer.md` in the
+`task-high` requires a runtime artifact at `.pan/work/99999_probe/task/answer.md` in the
 temp sandbox, not in the committed fixture tree.
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/implementation-report.md",
   "range": [104, 105],
   "contentHash": "7658f2f"
 }
@@ -425,7 +425,7 @@ conflict and is excluded from the QA gate.
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/test-report.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/test-report.md",
   "range": [15, 25],
   "contentHash": "d5783eb"
 }
@@ -434,7 +434,7 @@ conflict and is excluded from the QA gate.
 ```json
 {
   "kind": "lines",
-  "path": "work/172972_06-03-26/18834_1846_token-economy-prototype/review.md",
+  "path": ".pan/work/172972_06-03-26/18834_1846_token-economy-prototype/review.md",
   "range": [69, 76],
   "contentHash": "061cda2"
 }

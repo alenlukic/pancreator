@@ -5,7 +5,7 @@
 This feature ships `pnpm -w exec pan batch run` as a batch orchestrator over existing
 `startFeatureDelivery` SDK sub-runs on isolated worktree branches. `@pancreator/worktree`
 gains pool-state v2 with `maxConcurrent` leases, named branch creation, and mutex-protected
-parallel acquire. The CLI adds batch ledger persistence at `work/<day>/batch-<batchId>/batch.json`,
+parallel acquire. The CLI adds batch ledger persistence at `.pan/work/<day>/batch-<batchId>/batch.json`,
 NDJSON progress events, merge phase with conflict outbox artifacts, and documentation in
 `OPERATION.md` and package READMEs. Review declares `review_passes: true` with zero must-fix
 findings; QA declares `qa_passes: true` on 18 touch-set tests across worktree pool, batch
@@ -14,7 +14,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/implementation-report.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/implementation-report.md",
   "range": [3, 10],
   "contentHash": "fbead17"
 }
@@ -23,7 +23,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
   "range": [5, 6],
   "contentHash": "50170cd"
 }
@@ -32,7 +32,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
   "range": [5, 5],
   "contentHash": "032fd7b"
 }
@@ -47,7 +47,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
   "range": [3, 13],
   "contentHash": "03ea2b5"
 }
@@ -59,7 +59,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
   "range": [17, 23],
   "contentHash": "1594263"
 }
@@ -71,7 +71,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
   "range": [35, 39],
   "contentHash": "9a91371"
 }
@@ -84,7 +84,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
   "range": [41, 46],
   "contentHash": "4860399"
 }
@@ -97,7 +97,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
   "range": [48, 53],
   "contentHash": "c6bfb55"
 }
@@ -110,7 +110,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
   "range": [56, 81],
   "contentHash": "c94a331"
 }
@@ -126,7 +126,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.ts",
   "range": [319, 330],
-  "contentHash": "3a60b9e"
+  "contentHash": "1f24a5f"
 }
 ```
 
@@ -138,7 +138,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.ts",
   "range": [28, 65],
-  "contentHash": "256d065"
+  "contentHash": "1f24a5f"
 }
 ```
 
@@ -150,7 +150,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
   "range": [363, 419],
-  "contentHash": "71e6fae"
+  "contentHash": "f31b63d"
 }
 ```
 
@@ -162,7 +162,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-sdk-progress.ts",
   "range": [14, 20],
-  "contentHash": "458747c"
+  "contentHash": "2dae1f2"
 }
 ```
 
@@ -171,7 +171,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-sdk-progress.ts",
   "range": [164, 177],
-  "contentHash": "391a7a3"
+  "contentHash": "2dae1f2"
 }
 ```
 
@@ -183,7 +183,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/worktree/src/git-worktree-pool.ts",
   "range": [26, 37],
-  "contentHash": "b8e7a46"
+  "contentHash": "ccc032f"
 }
 ```
 
@@ -195,7 +195,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/worktree/src/git-ops.ts",
   "range": [7, 31],
-  "contentHash": "353e827"
+  "contentHash": "7080741"
 }
 ```
 
@@ -207,7 +207,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/worktree/src/pool-state.ts",
   "range": [8, 23],
-  "contentHash": "a86152e"
+  "contentHash": "18f3a21"
 }
 ```
 
@@ -219,7 +219,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
   "range": [15, 17],
   "contentHash": "d739f3c"
 }
@@ -231,7 +231,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
   "range": [17, 17],
   "contentHash": "d739f3c"
 }
@@ -243,7 +243,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
   "range": [21, 21],
   "contentHash": "a08c1c6"
 }
@@ -255,7 +255,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
   "range": [90, 94],
   "contentHash": "c35fae2"
 }
@@ -267,7 +267,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
   "range": [93, 94],
   "contentHash": "c35fae2"
 }
@@ -279,7 +279,7 @@ orchestrator, and SDK progress suites.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
   "range": [72, 74],
   "contentHash": "b48c7ef"
 }
@@ -304,7 +304,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.test.ts",
   "range": [119, 137],
-  "contentHash": "05f30b1"
+  "contentHash": "e416036"
 }
 ```
 
@@ -327,7 +327,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.test.ts",
   "range": [139, 177],
-  "contentHash": "26f840b"
+  "contentHash": "e416036"
 }
 ```
 
@@ -348,7 +348,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.test.ts",
   "range": [179, 220],
-  "contentHash": "83481bf"
+  "contentHash": "e416036"
 }
 ```
 
@@ -362,7 +362,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.test.ts",
   "range": [221, 267],
-  "contentHash": "1fbcc7b"
+  "contentHash": "e416036"
 }
 ```
 
@@ -375,7 +375,7 @@ orchestrator, and SDK progress suites.
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.test.ts",
   "range": [269, 290],
-  "contentHash": "acf6e1d"
+  "contentHash": "e416036"
 }
 ```
 
@@ -392,7 +392,7 @@ review and QA scope.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
   "range": [3, 6],
   "contentHash": "e38f647"
 }
@@ -401,7 +401,7 @@ review and QA scope.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
   "range": [9, 13],
   "contentHash": "c956fa2"
 }
@@ -410,7 +410,7 @@ review and QA scope.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
   "range": [37, 41],
   "contentHash": "9a01334"
 }
@@ -419,7 +419,7 @@ review and QA scope.
 ```json
 {
   "kind": "lines",
-  "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/implementation-report.md",
+  "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/implementation-report.md",
   "range": [44, 51],
   "contentHash": "a12f04d"
 }

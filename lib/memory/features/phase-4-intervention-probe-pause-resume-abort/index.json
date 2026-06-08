@@ -5,7 +5,7 @@
   "indexed_at": "2026-05-18T16:57:02Z",
   "status": "pending-human-ratification",
   "source_inbox_item": {
-    "path": "archive/inbox/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md",
+    "path": ".pan/archive/inbox/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md",
     "content_hash": "970e45f"
   },
   "feature_artifacts": [
@@ -23,27 +23,27 @@
   "accepted_ship_artifacts": [
     {
       "kind": "plan",
-      "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
+      "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
       "content_hash": "16c2f21"
     },
     {
       "kind": "adr-draft",
-      "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+      "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
       "content_hash": "d82f01c"
     },
     {
       "kind": "touch-set",
-      "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/touch-set.json",
+      "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/touch-set.json",
       "content_hash": "0831d31"
     },
     {
       "kind": "implementation-report",
-      "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+      "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
       "content_hash": "935825e"
     },
     {
       "kind": "review",
-      "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+      "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
       "content_hash": "8b9b536"
     }
   ],
@@ -53,11 +53,11 @@
     "status": "present"
   },
   "active_work_artifacts": [
-    "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
-    "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
-    "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/touch-set.json",
-    "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
-    "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md"
+    ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
+    ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+    ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/touch-set.json",
+    ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+    ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md"
   ],
   "archived_work_artifacts": [],
   "advance_gate": {

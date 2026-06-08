@@ -12,7 +12,7 @@ This feature folder captures Phase 2 delivery requirements for `@pancreator/work
 ## Requirements
 - The package implementation MUST satisfy contract `pancreator.worktree.package_shape` for `lib/internal/packages/@pancreator/worktree/**`.
 - The package README Quickstart section MUST satisfy contract `pancreator.worktree.readme_ergonomics`.
-- Work sequencing MUST preserve the docs/BOOTSTRAP.md Phase 2 dependency order position 14 of 20.
+- Work sequencing MUST preserve the .docs/BOOTSTRAP.md Phase 2 dependency order position 14 of 20.
 
 ## Non-Goals
 - Defining M2+ scope for new contract kinds.

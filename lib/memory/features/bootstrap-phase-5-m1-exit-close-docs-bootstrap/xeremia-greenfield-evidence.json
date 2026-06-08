@@ -17,7 +17,7 @@
       "$PAN_BIN init --apply",
       "$PAN_BIN run feature-delivery 172975_05-31-26/79332_0157_xeremia-us9-inaugural.md",
       "$PAN_BIN advance 79330_0157_xeremia-us9-inaugural --artifact lib/memory/features/xeremia-us9-inaugural/spec.md",
-      "$PAN_BIN advance 79330_0157_xeremia-us9-inaugural --artifact work/172975_05-31-26/79330_0157_xeremia-us9-inaugural/touch-set.json"
+      "$PAN_BIN advance 79330_0157_xeremia-us9-inaugural --artifact .pan/work/172975_05-31-26/79330_0157_xeremia-us9-inaugural/touch-set.json"
     ],
     "pipeline_stages_completed": ["scaffold", "spec", "plan"],
     "operator_personas": ["intake-analyst", "tech-lead"]

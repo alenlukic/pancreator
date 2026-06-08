@@ -7,7 +7,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
   "range": [3, 5],
   "contentHash": "aa18279"
 }
@@ -16,7 +16,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
   "range": [1, 6],
   "contentHash": "1cb366b"
 }
@@ -29,7 +29,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/plan.md",
   "range": [3, 4],
   "contentHash": "17312a2"
 }
@@ -40,7 +40,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
   "range": [29, 30],
   "contentHash": "d6dc865"
 }
@@ -51,7 +51,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
   "range": [41, 41],
   "contentHash": "d6dc865"
 }
@@ -66,7 +66,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/components/DashboardPage.tsx",
   "range": [59, 64],
-  "contentHash": "bdb474a"
+  "contentHash": "a191b5d"
 }
 ```
 
@@ -77,7 +77,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/components/DashboardPage.tsx",
   "range": [66, 74],
-  "contentHash": "bdb474a"
+  "contentHash": "a191b5d"
 }
 ```
 
@@ -88,7 +88,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/components/DashboardPage.tsx",
   "range": [76, 76],
-  "contentHash": "bdb474a"
+  "contentHash": "a191b5d"
 }
 ```
 
@@ -97,7 +97,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/components/DashboardPage.tsx",
   "range": [314, 314],
-  "contentHash": "bdb474a"
+  "contentHash": "a191b5d"
 }
 ```
 
@@ -106,7 +106,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/components/DashboardPage.tsx",
   "range": [321, 321],
-  "contentHash": "bdb474a"
+  "contentHash": "a191b5d"
 }
 ```
 
@@ -115,7 +115,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/components/DashboardPage.tsx",
   "range": [333, 334],
-  "contentHash": "bdb474a"
+  "contentHash": "a191b5d"
 }
 ```
 
@@ -126,7 +126,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
   "range": [57, 57],
   "contentHash": "d6dc865"
 }
@@ -137,7 +137,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/adr-draft.md",
   "range": [58, 58],
   "contentHash": "d6dc865"
 }
@@ -148,7 +148,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/review.md",
   "range": [8, 9],
   "contentHash": "1cb366b"
 }
@@ -163,7 +163,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [243, 257],
-  "contentHash": "74835a0"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -174,7 +174,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [283, 318],
-  "contentHash": "74835a0"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -185,7 +185,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [259, 281],
-  "contentHash": "74835a0"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -196,7 +196,7 @@ This feature delivery hardens the dashboard file-editor modal inside `DashboardP
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [320, 370],
-  "contentHash": "74835a0"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -207,7 +207,7 @@ Focused client validation ran lint, typecheck, and 12 tests in `client/src/app/p
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/test-report.md",
   "range": [43, 45],
   "contentHash": "71da9bd"
 }
@@ -216,7 +216,7 @@ Focused client validation ran lint, typecheck, and 12 tests in `client/src/app/p
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/57500_0801_surface-opt-p10-dashboard-safe-editing/implementation-report.md",
   "range": [41, 47],
   "contentHash": "aa18279"
 }

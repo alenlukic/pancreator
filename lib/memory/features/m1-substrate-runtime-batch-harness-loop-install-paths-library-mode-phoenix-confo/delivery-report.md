@@ -6,21 +6,21 @@ references:
   - kind: lines
     path: lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md
     range: [56, 75]
-    contentHash: "1423c7f"
+    contentHash: "8d420ce"
   - kind: lines
-    path: work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md
+    path: .pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md
     range: [3, 16]
     contentHash: "b6f7653"
   - kind: lines
-    path: work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md
+    path: .pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md
     range: [12, 31]
     contentHash: "cca921b"
   - kind: lines
-    path: work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md
+    path: .pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md
     range: [8, 109]
     contentHash: "0adaa4a"
   - kind: lines
-    path: work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md
+    path: .pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md
     range: [5, 34]
     contentHash: "721e067"
 ---
@@ -34,14 +34,14 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
   "kind": "lines",
   "path": "lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md",
   "range": [56, 75],
-  "contentHash": "1423c7f"
+  "contentHash": "8d420ce"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
   "range": [8, 20],
   "contentHash": "dc676b0"
 }
@@ -54,7 +54,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/plan.md",
   "range": [3, 16],
   "contentHash": "b6f7653"
 }
@@ -76,7 +76,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
   "range": [12, 31],
   "contentHash": "cca921b"
 }
@@ -182,7 +182,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
   "range": [12, 31],
   "contentHash": "cca921b"
 }
@@ -195,7 +195,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
   "kind": "lines",
   "path": "lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md",
   "range": [56, 75],
-  "contentHash": "1423c7f"
+  "contentHash": "8d420ce"
 }
 ```
 
@@ -204,18 +204,18 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
   "range": [5, 34],
   "contentHash": "721e067"
 }
 ```
 
-- Documentation impact stayed bounded in the implement pass: the prior re-entry already covered `docs/PRD.summary.md`, the conformance docs, and the run-logger README, so the report stage needed no extra spec edits.
+- Documentation impact stayed bounded in the implement pass: the prior re-entry already covered `.docs/PRD.summary.md`, the conformance docs, and the run-logger README, so the report stage needed no extra spec edits.
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
   "range": [106, 109],
   "contentHash": "a2934a1"
 }
@@ -226,7 +226,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
   "range": [5, 34],
   "contentHash": "721e067"
 }
@@ -237,7 +237,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/adr-draft.md",
   "range": [12, 31],
   "contentHash": "cca921b"
 }
@@ -292,7 +292,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
   "kind": "lines",
   "path": "tests/run-logger-conformance/phoenix-smoke.test.mjs",
   "range": [12, 89],
-  "contentHash": "3e9ecff"
+  "contentHash": "ed52cde"
 }
 ```
 
@@ -301,7 +301,7 @@ This batch shipped the harness-loop core and the operator surfaces around it: a 
   "kind": "lines",
   "path": "tests/run-logger-conformance/README.md",
   "range": [3, 27],
-  "contentHash": "76c3a37"
+  "contentHash": "8a5fb38"
 }
 ```
 
@@ -332,7 +332,7 @@ The validation delta is command-level, not numeric: the implementation report re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/implementation-report.md",
   "range": [48, 69],
   "contentHash": "3844cc0"
 }
@@ -341,7 +341,7 @@ The validation delta is command-level, not numeric: the implementation report re
 ```json
 {
   "kind": "lines",
-  "path": "work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
+  "path": ".pan/work/172980_05-26-26/966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/review.md",
   "range": [5, 34],
   "contentHash": "721e067"
 }

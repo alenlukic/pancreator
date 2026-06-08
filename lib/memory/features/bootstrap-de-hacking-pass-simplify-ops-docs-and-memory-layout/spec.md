@@ -46,27 +46,27 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [1, 296]
-    contentHash: b0cad5d
+    contentHash: b953d77
     note: "Operating card — workspace map, delegation rules, working agreement, copy-paste command policy, and bootstrap status that this pass aligns the repository against."
   - kind: lines
     path: README.md
     range: [1, 250]
-    contentHash: 8967cc0
+    contentHash: c32e865
     note: "Operator entry point — currently embeds the feature-delivery loop, advance-command table, manual workflow, and key-paths map that WP-2 extracts into OPERATION.md."
   - kind: lines
     path: lib/memory/handbook/operator-output-contract.md
     range: [1, 315]
-    contentHash: f4541d7
+    contentHash: 6ac0e9a
     note: "Next operator steps schema — §3.1 pan prefix, §3.4 fully formed copy-paste commands, and §7 prohibited content that WP-3 audits and enforces."
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [1, 217]
-    contentHash: 666d97a
+    contentHash: 2762053
     note: "Canonical inbox paths — §1 active queue, §1a operator sandbox exclusion, §3 minimum archival procedure that govern this directive's source path."
   - kind: lines
     path: lib/memory/backlog/index.yaml
     range: [1, 587]
-    contentHash: 04957f6
+    contentHash: c7bae7d
     note: "Backlog index — current ranked items and schema target for WP-1 relocated skeletons and WP-4 debt rollup."
   - kind: lines
     path: OPERATION.md
@@ -76,27 +76,27 @@ references:
   - kind: lines
     path: lib/personas/librarian.md
     range: [1, 185]
-    contentHash: 8838056
+    contentHash: 3f338c1
     note: "Librarian persona — close-artifacts duty and pipeline-stage metadata that WP-5 extends with a pre-close test/fix obligation."
   - kind: lines
-    path: docs/PRD.summary.md
+    path: .docs/PRD.summary.md
     range: [1, 54]
-    contentHash: 26d11fa
+    contentHash: 35226da
     note: "Strategic context — compact PRD orientation that WP-2 may need to update when the operator doc layout changes."
   - kind: lines
     path: lib/memory/active/current.md
     range: [1, 97]
-    contentHash: 44c42d2
+    contentHash: d1f6703
     note: "Active-memory current — shipped-feature roster used by WP-1 to discriminate implemented features from skeletons."
   - kind: lines
     path: lib/memory/handbook/context-economy.md
     range: [1, 260]
-    contentHash: 00f24c5
+    contentHash: 4e3313a
     note: "Context economy contract — single-canonical-source policy underlying R1 duplication reduction."
   - kind: lines
     path: lib/memory/handbook/documentation-impact-contract.md
     range: [1, 115]
-    contentHash: f0e22de
+    contentHash: a4138fb
     note: "Documentation impact contract — mandatory per-task check that R7 invokes across every touched surface."
   - kind: lines
     path: lib/memory/handbook/subagent-model-tiers.md
@@ -106,7 +106,7 @@ references:
   - kind: lines
     path: pancreator.yaml
     range: [1, 39]
-    contentHash: afe74d1
+    contentHash: a7092be
     note: "Live phase tracking — Bootstrap Phase 5 in progress; this pass ships inside Phase 5 without changing phase exit semantics."
 ---
 
@@ -132,7 +132,7 @@ The source directive frontmatter records `feature_id: bootstrap-de-hacking-pass`
 at `lib/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md` line 3.
 The active feature-delivery run records
 `featureId: bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout` at
-`work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/state.json`.
+`.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/state.json`.
 The canonical Feature id for downstream tracking SHALL be
 `bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout` because that
 slug matches both the active task id and the canonical Feature folder path. The
@@ -197,7 +197,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
 
 - When WP-2 ships, `README.md` SHALL be a short entry point that contains
   status, system overview, key paths map, and pointers to `OPERATION.md`,
-  `AGENTS.md`, `docs/M1.index.md`, and `docs/PRD.summary.md`.
+  `AGENTS.md`, `.docs/M1.index.md`, and `.docs/PRD.summary.md`.
 
 - When WP-2 ships, `README.md` SHALL NOT contain the feature-delivery loop
   procedure, the `pan advance` command table, the post-invocation state
@@ -212,12 +212,12 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
   updated handbook page that obligates agents to update `OPERATION.md`
   whenever operator-facing interfaces change. Operator-facing interfaces
   include CLI flag changes, CLI subcommand additions or removals,
-  documented file-path changes under `lib/inbox/`, `work/`, or
+  documented file-path changes under `lib/inbox/`, `.pan/work/`, or
   `lib/memory/features/`, default-value changes, and environment variable
   additions or removals.
 
 - When WP-2 ships, `AGENTS.md` § 6 "What to do next" SHALL reference
-  `OPERATION.md` as the canonical operator how-to, and `docs/M1.index.md`
+  `OPERATION.md` as the canonical operator how-to, and `.docs/M1.index.md`
   SHALL link to `OPERATION.md` from its operator-routing section.
 
 ### WP-3 — Operator-output conformance enforcement
@@ -227,7 +227,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
   `.cursor/agents/`, every Cursor rule under `.cursor/rules/`, and every
   handbook page that includes operator-visible example output, and SHALL
   emit one audit report under
-  `work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md`.
+  `.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md`.
 
 - When the audit report cites a violation, the implementor SHALL classify
   the violation as one of three labels: `bare-pan-invocation`,
@@ -269,7 +269,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
   handbook page to record the chosen encoding.
 
 - When WP-4 ships, every prior reference to `lib/memory/debt/` across
-  `docs/`, `lib/memory/handbook/`, `lib/personas/`, `.cursor/agents/`,
+  `.docs/`, `lib/memory/handbook/`, `lib/personas/`, `.cursor/agents/`,
   `.cursor/rules/`, and `lib/internal/packages/@pancreator/mcp-server/`
   SHALL redirect to `lib/memory/backlog/index.yaml` or SHALL be removed.
 
@@ -313,7 +313,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
   bounded list (a substantive test failure, an unexpected schema change, a
   contract regression), the librarian SHALL halt the close-artifacts run
   and SHALL escalate to the operator with a written failure summary at
-  `work/<day>/<task-id>/librarian-pre-close-failure.md` instead of
+  `.pan/work/<day>/<task-id>/librarian-pre-close-failure.md` instead of
   invoking `close-artifacts`.
 
 - When WP-5 ships, `OPERATION.md` SHALL document the pre-close validation
@@ -330,7 +330,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
 
 - When the implementor opens the duplication inventory, the inventory SHALL
   emit one report under
-  `work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md`
+  `.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md`
   that lists every detected duplication finding under one of four
   categories: `docs-vs-handbook`, `cli-help-vs-handbook`,
   `parallel-agent-projections`, or `overlapping-feature-specs`.
@@ -359,7 +359,7 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
   at `lib/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md`.
 
 - When the run reaches the ship stage, the policy-compliance artifact at
-  `work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/policy-compliance.json`
+  `.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/policy-compliance.json`
   SHALL exist and SHALL satisfy
   `lib/memory/handbook/policy-compliance-contract.md`.
 
@@ -371,8 +371,8 @@ SHALL ratify a single phasing choice and SHALL record it in `plan.md`.
 - When the run completes, the documentation-impact decision per
   `lib/memory/handbook/documentation-impact-contract.md` SHALL record
   `applies: true` and SHALL enumerate every touched documentation surface
-  (at minimum `AGENTS.md`, `README.md`, `OPERATION.md`, `docs/M1.index.md`,
-  `docs/PRD.summary.md`, the librarian persona, and the handbook pages
+  (at minimum `AGENTS.md`, `README.md`, `OPERATION.md`, `.docs/M1.index.md`,
+  `.docs/PRD.summary.md`, the librarian persona, and the handbook pages
   touched by WP-4 and WP-5).
 
 - When the run completes, the validation gate SHALL pass each of:
@@ -390,11 +390,11 @@ treated as non-exhaustive starting candidates.
 | Work package | Likely touched surfaces |
 |---|---|
 | WP-1 | `lib/memory/features/<each-audited-folder>/`, `lib/memory/backlog/index.yaml`, `lib/memory/backlog/drafts/`, `lib/memory/features/index.json`, `lib/memory/active/current.md`, `lib/memory/adr/<new-archival-or-deletion-adr>.md` |
-| WP-2 | `OPERATION.md` (new), `README.md`, `AGENTS.md` § 6, `docs/M1.index.md`, at least one page under `lib/memory/handbook/` recording the OPERATION-update obligation |
-| WP-3 | `work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md`, `lib/personas/*.md`, `.cursor/agents/*.md`, `.cursor/rules/*.mdc`, `lib/memory/handbook/operator-output-contract.md`, the new lint or compliance descriptor under `lib/internal/tools/` or `tests/compliance/` |
-| WP-4 | `AGENTS.md` § 7, `lib/memory/handbook/backlog-format.md`, `lib/memory/handbook/memory-tiers.md`, `lib/internal/packages/@pancreator/mcp-server/`, `docs/PRD.index.md`, `lib/memory/backlog/index.yaml` |
+| WP-2 | `OPERATION.md` (new), `README.md`, `AGENTS.md` § 6, `.docs/M1.index.md`, at least one page under `lib/memory/handbook/` recording the OPERATION-update obligation |
+| WP-3 | `.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/operator-output-audit.md`, `lib/personas/*.md`, `.cursor/agents/*.md`, `.cursor/rules/*.mdc`, `lib/memory/handbook/operator-output-contract.md`, the new lint or compliance descriptor under `lib/internal/tools/` or `tests/compliance/` |
+| WP-4 | `AGENTS.md` § 7, `lib/memory/handbook/backlog-format.md`, `lib/memory/handbook/memory-tiers.md`, `lib/internal/packages/@pancreator/mcp-server/`, `.docs/PRD.index.md`, `lib/memory/backlog/index.yaml` |
 | WP-5 | `lib/personas/librarian.md`, `lib/personas/qa-tester.md`, `lib/personas/skills/<librarian-skill-if-needed>/SKILL.md`, `OPERATION.md`, `lib/memory/backlog/index.yaml` |
-| WP-6 | `work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md`, paths cited by the inventory, `lib/memory/adr/<new-intentional-dual-location-adr>.md` if any |
+| WP-6 | `.pan/work/172979_05-27-26/16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/duplication-inventory.md`, paths cited by the inventory, `lib/memory/adr/<new-intentional-dual-location-adr>.md` if any |
 
 ## Validation expectations
 
@@ -427,8 +427,8 @@ surfaces SHALL include:
 - `AGENTS.md` § 6 "What to do next" and § 7 "Workspace map".
 - `README.md` (slimmed to entry-point only).
 - `OPERATION.md` (new canonical operator how-to).
-- `docs/M1.index.md` (operator-routing link to `OPERATION.md`).
-- `docs/PRD.summary.md` (cross-reference update only if the operator doc
+- `.docs/M1.index.md` (operator-routing link to `OPERATION.md`).
+- `.docs/PRD.summary.md` (cross-reference update only if the operator doc
   layout changes the PRD-summary pointers).
 - `lib/personas/librarian.md` (pre-close validation duty).
 - `lib/memory/handbook/backlog-format.md` (debt categorization).
@@ -462,16 +462,16 @@ gates are non-negotiable and SHALL fire in this order:
 
 - Implementing full unattended `feature-delivery` automation. The separate
   inbox item at
-  `archive/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md`
+  `.pan/archive/inbox/in/172979_05-27-26/72021_0359_feature-delivery-cursor-runner-harness-wiring/72021_0359_feature-delivery-cursor-runner-harness-wiring.md`
   owns that work.
 - Building the v0 operator dashboard UI. This pass MAY record API or CLI
   hooks the dashboard will consume, but SHALL NOT add dashboard surfaces.
-- Large rewrites of `docs/PRD.md` or `docs/BOOTSTRAP.md`. Surgical updates
+- Large rewrites of `.docs/PRD.md` or `.docs/BOOTSTRAP.md`. Surgical updates
   to PRD-summary, PRD-index, or M1-index pointers are permitted when WP-2
   changes the operator doc layout.
 - Phase exit ratification or any change to bootstrap phase semantics in
   `pancreator.yaml`. Phase 5 stays Phase 5.
-- Rewriting historical artifacts under `archive/work/`.
+- Rewriting historical artifacts under `.pan/archive/work/`.
 - Reading, citing, ingesting, or modifying any file under
   `lib/inbox/notes/` per AGENTS § 5 and inbox-lifecycle § 1a.
 - Renaming `@pancreator/*` packages or changing CLI subcommand grammar

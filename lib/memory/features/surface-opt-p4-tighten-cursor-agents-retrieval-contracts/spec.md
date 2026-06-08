@@ -20,12 +20,12 @@ references:
   - kind: lines
     path: .cursor/agents/coder.md
     range: [6, 66]
-    contentHash: e0e4bb3
+    contentHash: 61d635a
     note: "Representative projection that duplicates persona tool/disallowedTools/metadata YAML and cold-reads AGENTS plus full persona plus context-economy."
   - kind: lines
     path: AGENTS.md
     range: [90, 99]
-    contentHash: e037427
+    contentHash: b953d77
     note: "AGENTS §4.2 — each persona has exactly one canonical Cursor projection at .cursor/agents/<name>.md; persona files remain canonical source."
 ---
 
@@ -76,7 +76,7 @@ already owns.
 | Path | Change type | Rationale |
 |------|-------------|-----------|
 | `.cursor/agents/*.md` | modify | Name `next-prompt.md` or `handoff.md` as the first read, gate broad-document reads behind named explicit-escalation conditions, and drop duplicated persona YAML (R1, R2, R3, AC1, AC2, AC3). |
-| `work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/handoff.md` | modify | Record 1 persona-designer review note before advance (AC4). |
+| `.pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/handoff.md` | modify | Record 1 persona-designer review note before advance (AC4). |
 
 ## 5 — Out of scope
 

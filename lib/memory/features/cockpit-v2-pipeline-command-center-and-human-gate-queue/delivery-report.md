@@ -7,7 +7,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/implementation-report.md",
   "range": [3, 16],
   "contentHash": "382f480"
 }
@@ -16,7 +16,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
   "range": [3, 6],
   "contentHash": "17ed879"
 }
@@ -25,7 +25,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
   "range": [3, 5],
   "contentHash": "4cd3d45"
 }
@@ -38,7 +38,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
   "range": [45, 49],
   "contentHash": "badc10c"
 }
@@ -49,7 +49,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/plan.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/plan.md",
   "range": [5, 16],
   "contentHash": "315a764"
 }
@@ -60,7 +60,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/plan.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/plan.md",
   "range": [63, 80],
   "contentHash": "315a764"
 }
@@ -71,7 +71,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/implementation-report.md",
   "range": [18, 20],
   "contentHash": "382f480"
 }
@@ -86,7 +86,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/services/run-state-shared.ts",
   "range": [15, 40],
-  "contentHash": "8415728"
+  "contentHash": "4c92fae"
 }
 ```
 
@@ -95,7 +95,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/services/run-state-shared.ts",
   "range": [49, 110],
-  "contentHash": "8415728"
+  "contentHash": "4c92fae"
 }
 ```
 
@@ -106,7 +106,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/services/config.ts",
   "range": [6, 11],
-  "contentHash": "3dfb1a6"
+  "contentHash": "beb5a36"
 }
 ```
 
@@ -126,7 +126,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/components/cockpit/layout/CockpitShell.tsx",
   "range": [7, 9],
-  "contentHash": "cf830da"
+  "contentHash": "3e2d5b9"
 }
 ```
 
@@ -135,7 +135,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/components/cockpit/pipeline/NextActionPanel.tsx",
   "range": [15, 15],
-  "contentHash": "81232a9"
+  "contentHash": "db1477d"
 }
 ```
 
@@ -164,7 +164,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
   "range": [15, 19],
   "contentHash": "17ed879"
 }
@@ -175,7 +175,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
   "range": [21, 25],
   "contentHash": "17ed879"
 }
@@ -186,7 +186,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
   "range": [69, 71],
   "contentHash": "badc10c"
 }
@@ -195,7 +195,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
   "range": [33, 37],
   "contentHash": "17ed879"
 }
@@ -206,7 +206,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
   "range": [47, 51],
   "contentHash": "17ed879"
 }
@@ -221,14 +221,14 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [185, 195],
-  "contentHash": "533a4a8"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
   "range": [11, 13],
   "contentHash": "4cd3d45"
 }
@@ -241,14 +241,14 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [197, 230],
-  "contentHash": "533a4a8"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
   "range": [57, 57],
   "contentHash": "17ed879"
 }
@@ -261,14 +261,14 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [233, 248],
-  "contentHash": "533a4a8"
+  "contentHash": "adbb9fe"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
   "range": [33, 34],
   "contentHash": "4cd3d45"
 }
@@ -281,7 +281,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [251, 263],
-  "contentHash": "533a4a8"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -290,7 +290,7 @@ This feature delivery ships the Cockpit v2 Pipeline command center: run-state fi
   "kind": "lines",
   "path": "client/src/app/api/config/route.test.ts",
   "range": [1, 20],
-  "contentHash": "da84d27"
+  "contentHash": "18fb298"
 }
 ```
 
@@ -301,7 +301,7 @@ Coverage delta against the P9 dashboard baseline adds 33 focused client tests ac
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
   "range": [3, 5],
   "contentHash": "4cd3d45"
 }
@@ -310,7 +310,7 @@ Coverage delta against the P9 dashboard baseline adds 33 focused client tests ac
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
   "range": [9, 13],
   "contentHash": "4cd3d45"
 }
@@ -319,7 +319,7 @@ Coverage delta against the P9 dashboard baseline adds 33 focused client tests ac
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+  "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
   "range": [61, 63],
   "contentHash": "17ed879"
 }

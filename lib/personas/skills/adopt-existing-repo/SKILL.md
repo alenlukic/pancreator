@@ -16,24 +16,24 @@ metadata:
     - lib/inbox/in/<timestamp>-adopter-thresholds.md
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [504, 504]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §6 — MVP roster: adopter runs at first install on existing repos via the `adopt` sub-pipeline; read-only on existing files; write-only to Pancreator-prefixed paths."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [207, 223]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §3.5 US-9 — Greenfield AND existing projects: non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md and .cursor/rules, and seeded threshold policy."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [701, 701]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §7 — `adopt` pipeline definition: drives the adopter through codebase scan, conflict-checks every write, surfaces a per-file diff before applying, writes `scan-<date>.md`, and posts inbox proposals."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [946, 947]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: "PRD §8 — Memory architecture: `/lib/memory/adoption/scan-<date>.md` is a citation-bearing artifact, replayable on `pan re-adopt`."
 ---
 
@@ -66,11 +66,11 @@ Execute these steps in order, once per `pancreator init` invocation.
 Walk every Pancreator-prefixed write target the scan would emit and verify
 no existing file occupies the path. The write surface is under
 `<project_root>/` for operational trees (`lib/memory/`, `lib/personas/`,
-`lib/personas/skills/`, `lib/pipelines/`, `lib/inbox/`, `work/`, `.pan/`) plus
+`lib/personas/skills/`, `lib/pipelines/`, `lib/inbox/`, `.pan/work/`, `.pan/`) plus
 harness-root `pancreator.yaml`. Default embedded adopt sets
 `project_root: ".pancreator"`. Reject any planned write matching
 `lib/memory/handbook/embedded-install-manifest.yaml` `deny_prefixes` (for example
-`archive/`, `lib/memory/backlog/`, `lib/internal/`, `tests/`).
+`.pan/archive/`, `lib/memory/backlog/`, `lib/internal/`, `tests/`).
 
 When any target path conflicts with an existing file, the skill MUST exit
 non-zero and post one inbox item at

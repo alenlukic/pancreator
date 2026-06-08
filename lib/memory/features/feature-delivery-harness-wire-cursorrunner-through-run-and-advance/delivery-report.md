@@ -9,14 +9,14 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
   "kind": "lines",
   "path": "lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/spec.md",
   "range": [97, 103],
-  "contentHash": "a96eccf"
+  "contentHash": "b0ff0a3"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
   "range": [12, 24],
   "contentHash": "a96eccf"
 }
@@ -29,7 +29,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/plan.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/plan.md",
   "range": [1, 15],
   "contentHash": "a96eccf"
 }
@@ -49,7 +49,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/plan.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/plan.md",
   "range": [12, 25],
   "contentHash": "a96eccf"
 }
@@ -69,7 +69,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/adr-draft.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/adr-draft.md",
   "range": [15, 38],
   "contentHash": "3574b43"
 }
@@ -173,7 +173,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/adr-draft.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/adr-draft.md",
   "range": [17, 24],
   "contentHash": "3574b43"
 }
@@ -182,7 +182,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
   "range": [16, 20],
   "contentHash": "6cdeefa"
 }
@@ -193,7 +193,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/implementation-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/implementation-report.md",
   "range": [8, 24],
   "contentHash": "90832d5"
 }
@@ -213,7 +213,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/review.md",
   "range": [33, 35],
   "contentHash": "6cdeefa"
 }
@@ -222,7 +222,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
   "range": [12, 24],
   "contentHash": "a96eccf"
 }
@@ -244,7 +244,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
   "range": [14, 24],
   "contentHash": "a96eccf"
 }
@@ -264,7 +264,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
   "range": [16, 24],
   "contentHash": "a96eccf"
 }
@@ -284,7 +284,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/implementation-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/implementation-report.md",
   "range": [12, 24],
   "contentHash": "90832d5"
 }
@@ -304,7 +304,7 @@ This delivery wires `feature-delivery` to an opt-in Cursor SDK path shared by `r
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
   "range": [20, 24],
   "contentHash": "a96eccf"
 }
@@ -317,7 +317,7 @@ The coverage delta adds SDK `run` and `advance`, manual no-SDK, persona-resoluti
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
   "range": [12, 24],
   "contentHash": "a96eccf"
 }
@@ -326,7 +326,7 @@ The coverage delta adds SDK `run` and `advance`, manual no-SDK, persona-resoluti
 ```json
 {
   "kind": "lines",
-  "path": "work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
+  "path": ".pan/work/172978_05-28-26/24456_1712_feature-delivery-harness-wire-cursorrunner-through-run-and-advance/test-report.md",
   "range": [32, 47],
   "contentHash": "a96eccf"
 }

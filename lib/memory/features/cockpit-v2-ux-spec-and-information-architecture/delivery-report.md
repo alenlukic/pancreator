@@ -7,7 +7,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
   "range": [3, 12],
   "contentHash": "2d11112"
 }
@@ -16,7 +16,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
   "range": [3, 9],
   "contentHash": "0b1b33b"
 }
@@ -25,7 +25,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
   "range": [3, 5],
   "contentHash": "31dcbaf"
 }
@@ -38,7 +38,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
   "range": [46, 51],
   "contentHash": "f2a43c1"
 }
@@ -49,7 +49,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/plan.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/plan.md",
   "range": [5, 13],
   "contentHash": "034366d"
 }
@@ -60,7 +60,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/plan.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/plan.md",
   "range": [68, 74],
   "contentHash": "034366d"
 }
@@ -75,7 +75,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
   "kind": "lines",
   "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
   "range": [87, 168],
-  "contentHash": "c779b23"
+  "contentHash": "8502a88"
 }
 ```
 
@@ -86,7 +86,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
   "kind": "lines",
   "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
   "range": [46, 55],
-  "contentHash": "e268479"
+  "contentHash": "96d5a8f"
 }
 ```
 
@@ -95,7 +95,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
   "kind": "lines",
   "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
   "range": [202, 241],
-  "contentHash": "e268479"
+  "contentHash": "96d5a8f"
 }
 ```
 
@@ -106,7 +106,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
   "kind": "lines",
   "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
   "range": [45, 62],
-  "contentHash": "d0adff1"
+  "contentHash": "561d497"
 }
 ```
 
@@ -115,7 +115,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
   "kind": "lines",
   "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
   "range": [120, 125],
-  "contentHash": "d0adff1"
+  "contentHash": "561d497"
 }
 ```
 
@@ -124,7 +124,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
   "range": [116, 118],
   "contentHash": "2d11112"
 }
@@ -137,7 +137,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
   "range": [53, 56],
   "contentHash": "f2a43c1"
 }
@@ -148,7 +148,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md",
   "range": [71, 74],
   "contentHash": "f2a43c1"
 }
@@ -159,7 +159,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
   "range": [17, 26],
   "contentHash": "0b1b33b"
 }
@@ -170,7 +170,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
   "range": [36, 43],
   "contentHash": "0b1b33b"
 }
@@ -185,14 +185,14 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
   "kind": "lines",
   "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
   "range": [50, 55],
-  "contentHash": "e268479"
+  "contentHash": "96d5a8f"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
   "range": [31, 32],
   "contentHash": "31dcbaf"
 }
@@ -205,14 +205,14 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
   "kind": "lines",
   "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
   "range": [124, 136],
-  "contentHash": "e268479"
+  "contentHash": "96d5a8f"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
   "range": [28, 29],
   "contentHash": "31dcbaf"
 }
@@ -223,7 +223,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
   "range": [60, 67],
   "contentHash": "0b1b33b"
 }
@@ -232,7 +232,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
   "range": [27, 28],
   "contentHash": "31dcbaf"
 }
@@ -243,7 +243,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
   "range": [29, 30],
   "contentHash": "31dcbaf"
 }
@@ -254,7 +254,7 @@ This feature delivery ratifies documentation-only UX authority for Cockpit v2 be
   "kind": "lines",
   "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
   "range": [161, 165],
-  "contentHash": "c779b23"
+  "contentHash": "8502a88"
 }
 ```
 
@@ -265,7 +265,7 @@ Coverage delta against the prior baseline is not applicable because this pass ch
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/test-report.md",
   "range": [3, 5],
   "contentHash": "31dcbaf"
 }
@@ -274,7 +274,7 @@ Coverage delta against the prior baseline is not applicable because this pass ch
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/review.md",
   "range": [69, 76],
   "contentHash": "0b1b33b"
 }
@@ -283,7 +283,7 @@ Coverage delta against the prior baseline is not applicable because this pass ch
 ```json
 {
   "kind": "lines",
-  "path": "work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
+  "path": ".pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/implementation-report.md",
   "range": [120, 126],
   "contentHash": "2d11112"
 }

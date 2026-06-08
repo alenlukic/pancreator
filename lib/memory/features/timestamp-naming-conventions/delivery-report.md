@@ -2,14 +2,14 @@
 The Feature defines a UTC-only naming policy for in-scope temporal artifacts, migrates existing paths with a dry-run-first workflow, and rewrites references that name migrated paths. It also updates `lib/memory/handbook/inbox-lifecycle.md` so human-generated inbox artifacts use the same two time-prefix segments before downstream processing continues. The shipped slice keeps write-mode gated and leaves the actual rename pass for a later, auditable commit.
 
 ## Architecture
-- The policy encodes UTC as the only time zone, fixes `FDS` at `2500-01-01T00:00:00Z`, and uses a reverse-chronological day/task naming scheme so `work/` and `lib/inbox/` paths stay machine-checkable. 
+- The policy encodes UTC as the only time zone, fixes `FDS` at `2500-01-01T00:00:00Z`, and uses a reverse-chronological day/task naming scheme so `.pan/work/` and `lib/inbox/` paths stay machine-checkable. 
 
 ```json
 {
   "kind": "lines",
   "path": "lib/memory/features/timestamp-naming-conventions/spec.md",
   "range": [54, 90],
-  "contentHash": "a382c9a"
+  "contentHash": "294422f"
 }
 ```
 
@@ -18,7 +18,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/adr/0005-timestamp-naming-conventions.md",
   "range": [35, 47],
-  "contentHash": "17e2aca"
+  "contentHash": "c2d9608"
 }
 ```
 
@@ -27,9 +27,9 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
   "range": [11, 21],
-  "contentHash": "36142f7"
+  "contentHash": "208ce0c"
 }
 ```
 
@@ -38,7 +38,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/adr/0005-timestamp-naming-conventions.md",
   "range": [47, 59],
-  "contentHash": "17e2aca"
+  "contentHash": "c2d9608"
 }
 ```
 
@@ -49,7 +49,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/handbook/inbox-lifecycle.md",
   "range": [135, 147],
-  "contentHash": "fd768c3"
+  "contentHash": "2762053"
 }
 ```
 
@@ -58,7 +58,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/adr/0005-timestamp-naming-conventions.md",
   "range": [29, 33],
-  "contentHash": "17e2aca"
+  "contentHash": "c2d9608"
 }
 ```
 
@@ -89,18 +89,18 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
   "range": [1, 36],
-  "contentHash": "36142f7"
+  "contentHash": "208ce0c"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/touch-set.json",
   "range": [1, 130],
-  "contentHash": "a24e217"
+  "contentHash": "4f6f495"
 }
 ```
 
@@ -109,18 +109,18 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [40, 46],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+  "path": ".pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "0662fb4"
+  "contentHash": "4354863"
 }
 ```
 
@@ -129,9 +129,9 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [182, 199],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -140,7 +140,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/features/timestamp-naming-conventions/index.json",
   "range": [13, 37],
-  "contentHash": "46db8c4"
+  "contentHash": "34efe2f"
 }
 ```
 
@@ -153,7 +153,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [36, 129],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
@@ -162,7 +162,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "tests/migrate-timestamp-naming.test.mjs",
   "range": [20, 39],
-  "contentHash": "19066a3"
+  "contentHash": "0b09f53"
 }
 ```
 
@@ -173,7 +173,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [164, 184],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
@@ -182,7 +182,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "tests/migrate-timestamp-naming.test.mjs",
   "range": [115, 152],
-  "contentHash": "19066a3"
+  "contentHash": "0b09f53"
 }
 ```
 
@@ -193,7 +193,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [248, 303],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
@@ -202,7 +202,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "tests/migrate-timestamp-naming.test.mjs",
   "range": [154, 185],
-  "contentHash": "19066a3"
+  "contentHash": "0b09f53"
 }
 ```
 
@@ -213,7 +213,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [305, 347],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
@@ -222,29 +222,29 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [825, 854],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
 
 ## Tradeoffs
-- The implement slice accepts a high-touch migration because the feature spans `work/`, `lib/inbox/`, and reference artifacts, and the manifest must remain the rollback source of truth. 
+- The implement slice accepts a high-touch migration because the feature spans `.pan/work/`, `lib/inbox/`, and reference artifacts, and the manifest must remain the rollback source of truth. 
 
 ```json
 {
   "kind": "lines",
   "path": "lib/memory/adr/0005-timestamp-naming-conventions.md",
   "range": [55, 59],
-  "contentHash": "17e2aca"
+  "contentHash": "c2d9608"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
   "range": [30, 35],
-  "contentHash": "36142f7"
+  "contentHash": "208ce0c"
 }
 ```
 
@@ -255,16 +255,16 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [896, 921],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [213, 229],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -273,9 +273,9 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [124, 136],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -284,7 +284,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/features/timestamp-naming-conventions/index.json",
   "range": [21, 37],
-  "contentHash": "46db8c4"
+  "contentHash": "34efe2f"
 }
 ```
 
@@ -297,16 +297,16 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [876, 921],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [213, 229],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -315,9 +315,9 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [109, 116],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -326,7 +326,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/handbook/inbox-lifecycle.md",
   "range": [135, 147],
-  "contentHash": "fd768c3"
+  "contentHash": "2762053"
 }
 ```
 
@@ -335,9 +335,9 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [124, 136],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -346,7 +346,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/features/timestamp-naming-conventions/index.json",
   "range": [28, 37],
-  "contentHash": "46db8c4"
+  "contentHash": "34efe2f"
 }
 ```
 
@@ -357,7 +357,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/features/timestamp-naming-conventions/spec.md",
   "range": [123, 129],
-  "contentHash": "a382c9a"
+  "contentHash": "294422f"
 }
 ```
 
@@ -366,29 +366,29 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/features/timestamp-naming-conventions/index.json",
   "range": [171, 176],
-  "contentHash": "46db8c4"
+  "contentHash": "34efe2f"
 }
 ```
 
 
 ### Risks and rollback
-- The migration remains high-touch because it rewrites many `work/` and `lib/inbox/` paths, so the team MUST keep the write pass separate from the review pass. 
+- The migration remains high-touch because it rewrites many `.pan/work/` and `lib/inbox/` paths, so the team MUST keep the write pass separate from the review pass. 
 
 ```json
 {
   "kind": "lines",
   "path": "lib/memory/adr/0005-timestamp-naming-conventions.md",
   "range": [53, 60],
-  "contentHash": "17e2aca"
+  "contentHash": "c2d9608"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/plan.md",
   "range": [30, 35],
-  "contentHash": "36142f7"
+  "contentHash": "208ce0c"
 }
 ```
 
@@ -399,7 +399,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [876, 921],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
@@ -408,7 +408,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [789, 818],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
@@ -417,18 +417,18 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+  "path": ".pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "0662fb4"
+  "contentHash": "4354863"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [148, 180],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -439,9 +439,9 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [223, 229],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -450,7 +450,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/memory/features/timestamp-naming-conventions/index.json",
   "range": [13, 19],
-  "contentHash": "46db8c4"
+  "contentHash": "34efe2f"
 }
 ```
 
@@ -461,16 +461,16 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [896, 921],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [172, 180],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -483,18 +483,18 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "tests/migrate-timestamp-naming.test.mjs",
   "range": [115, 133],
-  "contentHash": "19066a3"
+  "contentHash": "0b09f53"
 }
 ```
 
-2. `migrateTargetForWorkPath()` MUST derive the `work/<days-to-FDS>_<MM-DD-YY>/<SID>_<HHMM>_<slug>/` shape for flat work tasks. 
+2. `migrateTargetForWorkPath()` MUST derive the `.pan/work/<days-to-FDS>_<MM-DD-YY>/<SID>_<HHMM>_<slug>/` shape for flat work tasks. 
 
 ```json
 {
   "kind": "lines",
   "path": "tests/migrate-timestamp-naming.test.mjs",
   "range": [154, 164],
-  "contentHash": "19066a3"
+  "contentHash": "0b09f53"
 }
 ```
 
@@ -505,7 +505,7 @@ The Feature defines a UTC-only naming policy for in-scope temporal artifacts, mi
   "kind": "lines",
   "path": "tests/migrate-timestamp-naming.test.mjs",
   "range": [166, 185],
-  "contentHash": "19066a3"
+  "contentHash": "0b09f53"
 }
 ```
 
@@ -516,9 +516,9 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [184, 199],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -527,7 +527,7 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
   "kind": "lines",
   "path": "lib/internal/tools/migrate-timestamp-naming.mjs",
   "range": [774, 818],
-  "contentHash": "14c5ec3"
+  "contentHash": "02eadfb"
 }
 ```
 
@@ -540,7 +540,7 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 | SID = 86400 | `secondsRemainingInDay()` boundary tests |
 | Work day + task scope | `migrateTargetForWorkPath()` snapshot test |
 | Inbox in/out/threads/archive | `migrateTargetForInboxPath()` and inventory scope |
-| `work/*/*/run.log.jsonl` excluded | migration exclusion guard |
+| `.pan/work/*/*/run.log.jsonl` excluded | migration exclusion guard |
 | Day directory prefix/suffix | `daysToFds()` and `mmDdYySuffix()` helpers |
 | Task subdir SID / HHMM / semantic suffix | `secondsRemainingInDay()`, `hhmm()`, and basename builder |
 | Inbox parent preserved | thread-path snapshot test |
@@ -554,9 +554,9 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [184, 191],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -565,9 +565,9 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [184, 191],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -576,9 +576,9 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [184, 191],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -587,9 +587,9 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [184, 191],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -598,9 +598,9 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [184, 191],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 
@@ -609,18 +609,18 @@ The delivered slice adds boundary coverage for timestamp precedence, day rollove
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
+  "path": ".pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.dry-run.json",
   "range": [1, 11],
-  "contentHash": "0662fb4"
+  "contentHash": "4354863"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
+  "path": ".pan/archive/work/173009_04-27-26/50991_0950_timestamp-naming-conventions/review.md",
   "range": [128, 130],
-  "contentHash": "aa3c087"
+  "contentHash": "9442ef2"
 }
 ```
 

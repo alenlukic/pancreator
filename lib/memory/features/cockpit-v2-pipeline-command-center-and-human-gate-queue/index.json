@@ -13,7 +13,7 @@
     "open_questions": 0,
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
-    "source_inbox_item": "archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172967_06-08-26/54353_0854_cockpit-v2-pipeline-command-center.md",
@@ -46,16 +46,16 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+    "artifact": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 4,
     "nit_count": 2,
     "spec_contracts_executed": 3,
-    "spec_contracts_note": "Three embedded llm-judge UX contract blocks in ux-spec dependency; contract run logs under work/contract-runs/.",
+    "spec_contracts_note": "Three embedded llm-judge UX contract blocks in ux-spec dependency; contract run logs under .pan/work/contract-runs/.",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+      "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
       "range": [1, 71],
       "contentHash": "17ed879"
     }
@@ -63,7 +63,7 @@
   "test": {
     "qa_passes": true,
     "design_qa_passes": true,
-    "artifact": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+    "artifact": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
     "verification_gates": {
       "client_lint": "pass",
       "client_typecheck": "pass",
@@ -77,19 +77,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+      "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
       "range": [1, 46],
       "contentHash": "4cd3d45"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-result.json",
+    "artifact": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-result.json",
     "audit_id": "52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue-20260608094523",
     "baseline_audit_id": "53639_0906_cockpit-v2-ux-spec-and-information-architecture-20260608091900",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-result.json",
+      "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-result.json",
       "range": [1, 304],
       "contentHash": "bc182db"
     }
@@ -101,13 +101,13 @@
       "kind": "lines",
       "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
       "range": [1, 326],
-      "contentHash": "733bd18"
+      "contentHash": "a68b889"
     },
-    "archived_inbox_source": "archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "ship_ratification_artifact": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
     "ratified_paths": [
       "client/src/services/run-state-shared.ts",
       "client/src/services/run-state.ts",
@@ -143,7 +143,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+      "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
       "range": [1, 25],
       "contentHash": "4a8f2d8"
     }
@@ -156,7 +156,7 @@
       "reason": "HumanGateBanner artifact links use /api/file GET hrefs instead of Files-tab modal navigation; operators may leave cockpit shell context.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
         "range": [15, 19],
         "contentHash": "17ed879"
       }
@@ -168,7 +168,7 @@
       "reason": "collectHumanGateQueue includes synthesized active cell status only; non-current ready stages are omitted from the queue.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
         "range": [21, 25],
         "contentHash": "17ed879"
       }
@@ -180,7 +180,7 @@
       "reason": "loadRuntimeConfig re-reads disk on each GET but no test mutates pancreator.yaml between fetches to lock refresh contract.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
         "range": [27, 31],
         "contentHash": "17ed879"
       }
@@ -192,7 +192,7 @@
       "reason": "ADR draft records run-state field split as proposed; copy ADR 0010 to lib/memory/adr/ before downstream features bind to it.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
         "range": [53, 56],
         "contentHash": "badc10c"
       }
@@ -204,7 +204,7 @@
       "reason": "delivery-report.md and refreshed index.json may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
         "range": [13, 18],
         "contentHash": "4a8f2d8"
       }
@@ -218,7 +218,7 @@
         "kind": "lines",
         "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/spec.md",
         "range": [1, 22],
-        "contentHash": "94405c0"
+        "contentHash": "8b23a71"
       }
     }
   ],
@@ -258,7 +258,7 @@
     "tests": [],
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/touch-set.json",
+      "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/touch-set.json",
       "range": [1, 177],
       "contentHash": "cea1e3a"
     }
@@ -271,7 +271,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/spec.md",
           "range": [1, 197],
-          "contentHash": "94405c0"
+          "contentHash": "8b23a71"
         }
       },
       "delivery_report": {
@@ -280,7 +280,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
           "range": [1, 326],
-          "contentHash": "733bd18"
+          "contentHash": "a68b889"
         }
       },
       "per_feature_index": {
@@ -289,133 +289,133 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/"
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/"
       },
       "plan": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/plan.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/plan.md",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/plan.md",
           "range": [1, 122],
           "contentHash": "315a764"
         }
       },
       "adr_draft": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/adr-draft.md",
           "range": [1, 78],
           "contentHash": "badc10c"
         }
       },
       "touch_set": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/touch-set.json",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/touch-set.json",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/touch-set.json",
           "range": [1, 177],
           "contentHash": "cea1e3a"
         }
       },
       "implementation_report": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/implementation-report.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/implementation-report.md",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/implementation-report.md",
           "range": [1, 64],
           "contentHash": "382f480"
         }
       },
       "review_report": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/review.md",
           "range": [1, 71],
           "contentHash": "17ed879"
         }
       },
       "test_report": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/test-report.md",
           "range": [1, 46],
           "contentHash": "4cd3d45"
         }
       },
       "design_qa_report": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/design-qa-report.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/design-qa-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/design-qa-report.md",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/design-qa-report.md",
           "range": [1, 41],
           "contentHash": "2392668"
         }
       },
       "compliance_result": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-result.json",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-result.json",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-result.json",
           "range": [1, 304],
           "contentHash": "bc182db"
         }
       },
       "compliance_audit": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-audit.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-audit.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-audit.md",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-audit.md",
           "range": [1, 140],
           "contentHash": "fa859e7"
         }
       },
       "compliance_remediation": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-remediation.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/compliance-remediation.md",
         "note": "Compliance-auditor remediation notes for baseline-delta audit."
       },
       "ship_ratification": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
           "range": [1, 25],
           "contentHash": "4a8f2d8"
         }
       },
       "handoff": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/handoff.md",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/handoff.md",
+          "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/handoff.md",
           "range": [1, 54],
           "contentHash": "dd27a08"
         }
       },
       "pipeline_close": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/pipeline-close.md"
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/pipeline-close.md"
       },
       "operator_verification": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/operator-verification.md"
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/operator-verification.md"
       },
       "run_log": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/run.log.jsonl",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/logs/",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/logs/",
         "note": "QA, compliance, and client gate command transcripts."
       },
       "contract_runs": {
-        "path": "work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/contract-runs/",
+        "path": ".pan/work/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/contract-runs/",
         "note": "Manual llm-judge evaluation logs for embedded ux-spec contract blocks."
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md",
+        "path": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172967_06-08-26/54353_0854_cockpit-v2-pipeline-command-center.md",
@@ -445,7 +445,7 @@
         "severity": "block",
         "result": "pass",
         "artifact": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-        "note": "Contract run log under work/contract-runs/."
+        "note": "Contract run log under .pan/work/contract-runs/."
       },
       {
         "id": "cockpit-v2-pipeline-command-center-and-human-gate-queue.ux.human-gate-banner",
@@ -453,7 +453,7 @@
         "severity": "block",
         "result": "pass",
         "artifact": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-        "note": "Contract run log under work/contract-runs/."
+        "note": "Contract run log under .pan/work/contract-runs/."
       },
       {
         "id": "cockpit-v2-pipeline-command-center-and-human-gate-queue.ux.config-readonly",
@@ -461,7 +461,7 @@
         "severity": "warn",
         "result": "pass",
         "artifact": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-        "note": "Contract run log under work/contract-runs/."
+        "note": "Contract run log under .pan/work/contract-runs/."
       }
     ]
   },
@@ -473,9 +473,9 @@
     "documentation_only": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172967_06-08-26/54353_0854_cockpit-v2-pipeline-command-center.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cockpit-v2-pipeline-command-center.md"
 }

@@ -13,17 +13,17 @@ references:
   - kind: lines
     path: AGENTS.md
     range: [91, 174]
-    contentHash: 3dc743c
+    contentHash: b953d77
     note: "AGENTS §5 working agreement binds all agents to this contract at task completion."
   - kind: lines
     path: lib/memory/handbook/persona-spec.md
     range: [124, 140]
-    contentHash: 45e27d0
+    contentHash: 2a072e0
     note: "Persona body discipline extends to operator-visible completion output."
   - kind: lines
     path: lib/memory/handbook/inbox-lifecycle.md
     range: [114, 128]
-    contentHash: 50ba88e
+    contentHash: 29f20be
     note: "Manual inbox archival and ratification are common next-step targets."
 related:
   - /AGENTS.md
@@ -114,7 +114,7 @@ When a step invokes the CLI, the **How** clause MUST state the full invocation,
 for example:
 
 ```bash
-pnpm -w exec pan advance 67055_0522_json-formatting --artifact work/172983_05-23-26/67055_0522_json-formatting/review.md
+pnpm -w exec pan advance 67055_0522_json-formatting --artifact .pan/work/172983_05-23-26/67055_0522_json-formatting/review.md
 ```
 
 When a step edits files, the **How** clause MUST list every path the operator
@@ -122,7 +122,7 @@ or agent may touch.
 
 When a step delegates to a persona, the **How** clause MUST state the Cursor
 invocation (`/reviewer`, `/tech-lead`, etc.) and the file the
-operator pastes (`work/<day>/<task-id>/next-prompt.md` only per AGENTS §4).
+operator pastes (`.pan/work/<day>/<task-id>/next-prompt.md` only per AGENTS §4).
 
 ### 3.2a — `feature-delivery` inbox entry paths
 
@@ -164,7 +164,7 @@ Rules:
    line MUST list explicit paths and arguments. The operator MUST NOT need to
    infer "and the other touched files" or "etc."
 3. **No manual assembly steps.** Phrases such as "stage the changed files",
-   "commit the updates", or "run the usual tests" are **disallowed** when the
+   "commit the updates", or "run the usual .tests" are **disallowed** when the
    agent can enumerate the exact paths from the task diff or touch-set.
 4. **Do the work in-task when policy allows.** If the completing agent has
    authority and tooling to run an action (write files, run `pnpm test`, run
@@ -231,7 +231,7 @@ If the step is read-only, prefix **How** with `Read-only:`.
 ## Next operator steps
 
 1. **What:** Record the accepted review artifact and advance the feature-delivery run to the report stage.
-   **How:** Run `pnpm -w exec pan advance 67055_0522_json-formatting --artifact work/172983_05-23-26/67055_0522_json-formatting/review.md`. Confirm `work/172983_05-23-26/67055_0522_json-formatting/state.json` shows `current_stage: report` before delegating `tech-writer`.
+   **How:** Run `pnpm -w exec pan advance 67055_0522_json-formatting --artifact .pan/work/172983_05-23-26/67055_0522_json-formatting/review.md`. Confirm `.pan/work/172983_05-23-26/67055_0522_json-formatting/state.json` shows `current_stage: report` before delegating `tech-writer`.
 ```
 
 **Example (single read-only step):**
@@ -240,7 +240,7 @@ If the step is read-only, prefix **How** with `Read-only:`.
 ## Next operator steps
 
 1. **What:** Confirm the compliance audit gate recommendation before merging.
-   **How:** Read-only: open `archive/work/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md` section 7 and verify `compliance_passes: true`.
+   **How:** Read-only: open `.pan/archive/work/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md` section 7 and verify `compliance_passes: true`.
 ```
 
 ## 5 — Multi-option layout
@@ -275,7 +275,7 @@ requires a strict sequence; when sequence matters, state that in option 1
 ## Next operator steps
 
 1. **What:** Ratify the plan and delegate implementation to the coder persona.
-   **How:** Reply on the inbox thread with approval, then paste `work/172983_05-23-26/67055_0522_json-formatting/next-prompt.md` into `/coder`.
+   **How:** Reply on the inbox thread with approval, then paste `.pan/work/172983_05-23-26/67055_0522_json-formatting/next-prompt.md` into `/coder`.
    **When to choose:** Scope, touch-set, and ADR draft match your intent.
    **Impact:** The run advances to `implement`; the coder may modify paths listed in `touch-set.json` only.
 
@@ -294,11 +294,11 @@ active task.
 |---|---|---|
 | Pipeline stage complete | Advance to next stage | `pnpm -w exec pan advance <task-id> --artifact <path>` |
 | Human gate | Ratify or reject | Read-only: inspect artifact; mutating: reply in inbox thread or run `pnpm -w exec pan approve <task-id>` when wired |
-| Delegate next persona | Hand off execution | Paste `work/<day>/<task-id>/next-prompt.md` into `/<persona>` |
+| Delegate next persona | Hand off execution | Paste `.pan/work/<day>/<task-id>/next-prompt.md` into `/<persona>` |
 | Pick up inbox work | Start next feature | Read-only: `ls lib/inbox/in/`; mutating: `pnpm -w exec pan run feature-delivery <day-bucket>/<file>.md` |
 | Verify only | Confirm artifact | Read-only: open cited path(s) and check acceptance criteria |
 | Local commit | Stage and commit (operator) | Full `git add <every-path>` then `git commit -m "$(cat <<'EOF' … EOF)"` |
-| Optional PR body | Draft description before `gh pr create` | Invoke `/pr-writer` with feature ID or `work/<day>/<task-id>/` path; paste fenced output into `gh pr create --body-file` |
+| Optional PR body | Draft description before `gh pr create` | Invoke `/pr-writer` with feature ID or `.pan/work/<day>/<task-id>/` path; paste fenced output into `gh pr create --body-file` |
 | Run tests before commit | Verify green | `pnpm test` (or the exact `pnpm` script named in `package.json`) |
 | Close run | Archive after acceptance | `pnpm -w exec pan close-artifacts <task-id>` after human validates index |
 | Blocked task | Unblock or escalate | State owner persona and the file the operator must edit or the ratification required |

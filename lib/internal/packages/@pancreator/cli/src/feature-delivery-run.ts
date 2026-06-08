@@ -364,7 +364,7 @@ export interface CloseFeatureDeliveryArtifactsResult {
   nextPromptFile: string;
   nextHumanAction: string;
   operatorVerificationFile: string;
-  /** True when the run was already under archive/work/ and closure finalized state only. */
+  /** True when the run was already under .pan/archive/work/ and closure finalized state only. */
   alreadyArchived?: boolean;
 }
 
@@ -390,8 +390,8 @@ export async function startFeatureDelivery(
   const dayDir = makeDayDir(now);
   const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
 
-  const runDirRel = path.posix.join("work", dayDir, taskId);
-  const runDir = resolveProjectPath(repoRoot, "work", dayDir, taskId);
+  const runDirRel = path.posix.join(".pan/work", dayDir, taskId);
+  const runDir = resolveProjectPath(repoRoot, ".pan/work", dayDir, taskId);
   const stateFileRel = path.posix.join(runDirRel, "state.json");
   const handoffFileRel = path.posix.join(runDirRel, "handoff.md");
   const runLogFileRel = path.posix.join(runDirRel, "run.log.jsonl");
@@ -1485,8 +1485,8 @@ async function suggestTaskIdFromSlug(repoRoot: string, rawTaskId: string): Promi
     return null;
   }
   const roots = [
-    resolveProjectPath(repoRoot, "work"),
-    resolveProjectPath(repoRoot, "archive", "work"),
+    resolveProjectPath(repoRoot, ".pan/work"),
+    resolveProjectPath(repoRoot, ".pan/archive", "work"),
   ];
   const suffix = `_${slug}`;
   const matches: Array<{ taskId: string; mtimeMs: number }> = [];
@@ -1824,7 +1824,7 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
       from: "index",
       on: "artifacts_indexed",
       to: "complete",
-      humanAttention: "Confirm archive/index state and outbox report.",
+      humanAttention: "Confirm .pan/archive/index state and outbox report.",
     },
   ];
   if (includeCompliance) {
@@ -1936,7 +1936,7 @@ function renderNextPrompt(
     designStepsEnabled(state.options) && stage === "plan"
       ? `\nDesign steps are ON. Manual mode: delegate \`/design-engineer\` with \`${designPlanPromptRel(state.artifacts.runDir)}\` first, then \`${persona}\` with this prompt.\n`
       : designStepsEnabled(state.options) && stage === "test"
-        ? `\nDesign steps are ON. Manual mode: delegate \`/qa-tester\` with this prompt AND \`/design-engineer\` with \`${designQaPromptRel(state.artifacts.runDir)}\` in parallel. The test gate requires both \`qa_passes\` and \`design_qa_passes\`.\n`
+        ? `\nDesign steps are ON. Manual mode: delegate \`/qa-tester\` with this prompt AND \`/design-reviewer\` with \`${designQaPromptRel(state.artifacts.runDir)}\` in parallel. The test gate requires both \`qa_passes\` and \`design_qa_passes\`.\n`
         : "";
   return `You are executing the ${stage} stage for feature-delivery task ${state.taskId}.
 
@@ -1947,7 +1947,7 @@ Read first, in this order:
 2. ${state.artifacts.handoffFile}
 3. The stage input paths listed below
 
-Do not read broad archives, full PRD/bootstrap docs, lib/inbox/notes/**, or unrelated work/** paths unless the handoff explicitly requires it.
+Do not read broad archives, full PRD/bootstrap docs, lib/inbox/notes/**, or unrelated .pan/work/** paths unless the handoff explicitly requires it.
 
 ${stageContractMarkdown(repoRoot, state, stage)}
 
@@ -1996,7 +1996,7 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
       return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: ${advanceLine("review", "review_passes")}\nReturn to implement on must-fix: pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
-        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, lib/memory/features/${state.featureId}/ux-spec.md, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester (${state.artifacts.runDir}/next-prompt.md) + design-engineer (${designQaPromptRel(state.artifacts.runDir)})\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, lib/memory/features/${state.featureId}/ux-spec.md, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester (${state.artifacts.runDir}/next-prompt.md) + design-reviewer (${designQaPromptRel(state.artifacts.runDir)})\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`
         : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
@@ -2009,7 +2009,7 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
       return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/ship-ratification.json (human_ratified_diff: true)\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
     }
     case "index":
-      return `Inputs: delivery report and accepted ship artifacts\nOutputs: lib/memory/features/${state.featureId}/index.json, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\nDo NOT mv work/ to archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
+      return `Inputs: delivery report and accepted ship artifacts\nOutputs: lib/memory/features/${state.featureId}/index.json, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not .pan/archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\nDo NOT mv .pan/work/ to .pan/archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
       return state.status === "closed" ? closedContractMarkdown(state) : finalClosureContractMarkdown(state);
     default:
@@ -2331,7 +2331,7 @@ pnpm -w exec pan close-artifacts ${state.taskId}
 4. Run \`pnpm -w exec pan status ${state.taskId}\` and confirm the status resolves from the archive.
 5. Report the resulting \`git status --short\`.
 
-Do not manually move files from work/ to archive/work/. When closure fails, report the error to the operator.`;
+Do not manually move files from .pan/work/ to .pan/archive/work/. When closure fails, report the error to the operator.`;
 }
 
 function renderClosedPrompt(state: FeatureDeliveryState): string {
@@ -2363,8 +2363,8 @@ function finalClosurePaths(state: FeatureDeliveryState): {
   inboxArchiveRel: string;
 } {
   const run = parseWorkRunDir(state.artifacts.runDir, state.taskId);
-  const activeRunDirRel = path.posix.join("work", run.dayDir, run.taskId);
-  const workArchiveRel = path.posix.join("archive", "work", run.dayDir, run.taskId);
+  const activeRunDirRel = path.posix.join(".pan/work", run.dayDir, run.taskId);
+  const workArchiveRel = path.posix.join(".pan/archive", "work", run.dayDir, run.taskId);
   const inboxSourceRel = state.source.inboxPath.replace(/\\/gu, "/").replace(/^\/+/, "");
   return {
     runDirRel: activeRunDirRel,
@@ -2376,14 +2376,14 @@ function finalClosurePaths(state: FeatureDeliveryState): {
 
 function parseWorkRunDir(runDirRel: string, expectedTaskId: string): { dayDir: string; taskId: string } {
   let norm = runDirRel.replace(/\\/gu, "/").replace(/^\/+/, "");
-  if (norm.startsWith("archive/work/")) {
-    norm = norm.slice("archive/".length);
+  if (norm.startsWith(".pan/archive/work/")) {
+    norm = `.pan/work/${norm.slice(".pan/archive/work/".length)}`;
   }
   const parts = norm.split("/");
-  if (parts.length !== 3 || parts[0] !== "work") {
-    throw new Error(`feature-delivery runDir must be work/<day>/<task-id> or archive/work/<day>/<task-id>; got ${runDirRel}.`);
+  if (parts.length !== 4 || parts[0] !== ".pan" || parts[1] !== "work") {
+    throw new Error(`feature-delivery runDir must be .pan/work/<day>/<task-id> or .pan/archive/work/<day>/<task-id>; got ${runDirRel}.`);
   }
-  const [, dayDir, taskId] = parts;
+  const [, , dayDir, taskId] = parts;
   if (taskId !== expectedTaskId) {
     throw new Error(`feature-delivery runDir task id ${taskId} does not match state task id ${expectedTaskId}.`);
   }
@@ -2402,12 +2402,12 @@ function archiveInboxPathForSource(sourceRel: string, dayDir: string, taskId: st
   const parts = tail.split("/");
   const alreadyNested = parts.length >= 3 && isWorkStyleDayDir(parts[0]) && parts[1] === taskId;
   const archiveTail = alreadyNested ? tail : path.posix.join(dayDir, taskId, path.posix.basename(tail));
-  return path.posix.join("archive", "inbox", "in", archiveTail);
+  return path.posix.join(".pan/archive", "inbox", "in", archiveTail);
 }
 
 /**
  * When a superseded run shares an inbox directive archived under a sibling task id,
- * locate the existing archive/inbox/in/<day>/<peer-task>/<basename> path.
+ * locate the existing .pan/archive/inbox/in/<day>/<peer-task>/<basename> path.
  */
 async function findSiblingArchivedInboxPath(
   repoRoot: string,
@@ -2415,7 +2415,7 @@ async function findSiblingArchivedInboxPath(
   dayDir: string,
 ): Promise<{ rel: string; abs: string } | null> {
   const basename = path.posix.basename(inboxSourceRel);
-  const dayArchiveRoot = resolveProjectPath(repoRoot, "archive", "inbox", "in", dayDir);
+  const dayArchiveRoot = resolveProjectPath(repoRoot, ".pan/archive", "inbox", "in", dayDir);
   if (!existsSync(dayArchiveRoot)) {
     return null;
   }
@@ -2425,7 +2425,7 @@ async function findSiblingArchivedInboxPath(
       continue;
     }
     return {
-      rel: path.posix.join("archive", "inbox", "in", dayDir, peerTaskId, basename),
+      rel: path.posix.join(".pan/archive", "inbox", "in", dayDir, peerTaskId, basename),
       abs: candidateAbs,
     };
   }
@@ -2662,11 +2662,11 @@ function makeStateRecord(
 
 async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: string; rel: string }> {
   const roots = [
-    { abs: resolveProjectPath(repoRoot, "work"), rel: path.posix.join("work") },
-    { abs: resolveProjectPath(repoRoot, "archive", "work"), rel: path.posix.join("archive", "work") },
+    { abs: resolveProjectPath(repoRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
+    { abs: resolveProjectPath(repoRoot, ".pan/archive", "work"), rel: path.posix.join(".pan/archive", "work") },
   ];
 
-  const matches: Array<{ abs: string; rel: string; rootKind: "work" | "archive" }> = [];
+  const matches: Array<{ abs: string; rel: string; rootKind: ".pan/work" | ".pan/archive" }> = [];
 
   for (const root of roots) {
     const dayDirs = await safeReaddir(root.abs);
@@ -2677,7 +2677,7 @@ async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: s
         matches.push({
           abs: candidate,
           rel: path.posix.join(root.rel, day, taskId, "state.json"),
-          rootKind: root.rel === "work" ? "work" : "archive",
+          rootKind: root.rel === ".pan/work" ? ".pan/work" : ".pan/archive",
         });
       } catch (error) {
         const err = error as NodeJS.ErrnoException;
@@ -2692,8 +2692,8 @@ async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: s
     throw new Error(`No feature-delivery state.json found for task ${taskId}.`);
   }
 
-  const workMatch = matches.find((match) => match.rootKind === "work");
-  const archiveMatch = matches.find((match) => match.rootKind === "archive");
+  const workMatch = matches.find((match) => match.rootKind === ".pan/work");
+  const archiveMatch = matches.find((match) => match.rootKind === ".pan/archive");
 
   if (workMatch !== undefined && archiveMatch !== undefined) {
     const workState = await readFeatureDeliveryState(workMatch.abs);
@@ -3659,7 +3659,7 @@ function countShippedLedgerDataRows(currentMd: string): number {
 async function listActiveFeatureDeliveryStates(
   repoRoot: string,
 ): Promise<Array<{ taskId: string; stage: string; state: FeatureDeliveryState }>> {
-  const workRoot = resolveProjectPath(repoRoot, "work");
+  const workRoot = resolveProjectPath(repoRoot, ".pan/work");
   const active: Array<{ taskId: string; stage: string; state: FeatureDeliveryState }> = [];
   const dayDirs = await listCanonicalWorkDayDirs(workRoot);
   for (const dayDir of dayDirs) {
@@ -3694,7 +3694,7 @@ export async function runPanCheck(repoRootInput: string): Promise<PanCheckResult
       label: "Active feature-delivery artifact content validation",
       command: "(no active runs)",
       status: "skip",
-      remediation: "No active feature-delivery state under work/",
+      remediation: "No active feature-delivery state under .pan/work/",
     });
   } else {
     const artifactIssues: string[] = [];
@@ -3733,7 +3733,7 @@ export async function runPanCheck(repoRootInput: string): Promise<PanCheckResult
   if (hygiene.issues.length === 0) {
     checks.push({
       id: "work-archive-hygiene",
-      label: "work/ vs archive/work/ feature-delivery hygiene",
+      label: ".pan/work/ vs .pan/archive/work/ feature-delivery hygiene",
       command: "scanWorkArchiveHygiene (read-only)",
       status: "pass",
       exitCode: 0,
@@ -3741,7 +3741,7 @@ export async function runPanCheck(repoRootInput: string): Promise<PanCheckResult
   } else {
     checks.push({
       id: "work-archive-hygiene",
-      label: "work/ vs archive/work/ feature-delivery hygiene",
+      label: ".pan/work/ vs .pan/archive/work/ feature-delivery hygiene",
       command: `issues=${hygiene.issues.length} pending_close=${hygiene.pendingCloseCount}`,
       status: "fail",
       exitCode: 1,

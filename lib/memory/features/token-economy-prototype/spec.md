@@ -35,17 +35,17 @@ references:
   - kind: lines
     path: tests/compliance/context-usage/README.md
     range: [1, 15]
-    contentHash: 976d202
+    contentHash: eb01f8d
     note: Current README confirms `tests/compliance/context-usage/` is the canonical harness root and that legacy `tests/context-usage/` references are historical.
   - kind: lines
     path: lib/memory/handbook/context-economy.md
     range: [66, 67]
-    contentHash: 112228b
+    contentHash: 4e3313a
     note: Context-economy policy prohibits reads under `lib/inbox/notes/`; the analyzer in this prototype must continue to detect that violation class.
   - kind: lines
     path: pancreator-model-escalation.yaml
     range: [17, 31]
-    contentHash: d2ec525
+    contentHash: 9c474d2
     note: Active config is `complex`; the prototype matrix is intentionally narrowed to `composer-2.5` and `gpt-5.5` for medium-power and high-power calibration coverage.
 ---
 
@@ -119,7 +119,7 @@ and writes a required artifact.
 - Each fixture SHALL be a minimal synthetic Pancreator-style repository slice
   with enough realistic structure to exercise agent retrieval behavior.
 - Each fixture SHALL include at least one decoy file whose content is plausible
-  but unnecessary for success, including a full `docs/PRD.md`-style decoy or an
+  but unnecessary for success, including a full `.docs/PRD.md`-style decoy or an
   equivalent large-context distraction.
 - The harness SHALL ship one module at
   `tests/compliance/context-usage/lib/tasks.mjs`.
@@ -251,7 +251,7 @@ documentation_impact:
     - tests/compliance/context-usage/establish-expected.mjs
     - tests/compliance/context-usage/calibrate-matrix.mjs
     - package.json
-    - work/172972_06-03-26/18834_1846_token-economy-prototype/touch-set.json
+    - .pan/work/172972_06-03-26/18834_1846_token-economy-prototype/touch-set.json
   deferred-items: []
 ```
 
@@ -299,7 +299,7 @@ pnpm -w exec pan advance 18834_1846_token-economy-prototype --artifact lib/memor
 
 - Source directive: `lib/inbox/in/172972_06-03-26/18847_1845_token-economy-prototype.md`.
 - Active task: `18834_1846_token-economy-prototype` under
-  `work/172972_06-03-26/`.
+  `.pan/work/172972_06-03-26/`.
 - Output artifact: `lib/memory/features/token-economy-prototype/spec.md`.
 
 ## Open questions

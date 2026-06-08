@@ -64,7 +64,7 @@
         "id": "wave-5",
         "description": "Cursor rule audit artifact and six narrowed rule projections (supervisor kept as audited).",
         "paths": [
-          "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
+          ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md",
           ".cursor/rules/pancreator-engineer.mdc",
           ".cursor/rules/persona-designer.mdc",
           ".cursor/rules/intake-analyst.mdc",
@@ -88,9 +88,9 @@
           "lib/memory/backlog/index.yaml",
           "lib/memory/features/active-memory-context-economy-pass-2/index.json",
           "README.md",
-          "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
-          "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
-          "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md"
+          ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+          ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+          ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/delivery-report-scaffold.md"
         ]
       }
     ],
@@ -100,7 +100,7 @@
       "pnpm_check_phase0a": "pass",
       "pnpm_context_budget_test": "pass (6 tests)",
       "node_context_budget_report": "pass (exit 0; headline numbers in delivery summary)",
-      "no_historical_deletions": "pass (git status short list contains no D entries for work/**, lib/memory/**, lib/inbox/out/**, lib/inbox/threads/**)"
+      "no_historical_deletions": "pass (git status short list contains no D entries for .pan/work/**, lib/memory/**, lib/inbox/out/**, lib/inbox/threads/**)"
     },
     "operator_manual_validation_requests": [
       "Restart or reindex Cursor.",
@@ -108,7 +108,7 @@
       "Run `pnpm run context:budget`.",
       "Run 3–5 comparable simple Cursor tasks and record cache-read totals.",
       "Compare against the previous post-pass-1 result of approximately 770K cache-read tokens.",
-      "Confirm explicit references to `@docs/PRD.md`, `@docs/BOOTSTRAP.md`, selected `work/**` artifacts, and selected durable memory files still work when intentionally requested.",
+      "Confirm explicit references to `@.docs/PRD.md`, `@.docs/BOOTSTRAP.md`, selected `.pan/work/**` artifacts, and selected durable memory files still work when intentionally requested.",
       "Confirm `lib/memory/active/current.md` gives a clear operator-facing picture of active context without requiring traversal of archival memory."
     ],
     "deferred_backlog_ids": [
@@ -124,7 +124,7 @@
         "kind": "lines",
         "path": "lib/memory/features/active-memory-context-economy-pass-2/spec.md",
         "range": [1, 1],
-        "contentHash": "e6c4fcd"
+        "contentHash": "2426d72"
       }
     },
     "per_feature_index": {
@@ -133,13 +133,13 @@
         "kind": "lines",
         "path": "lib/memory/features/active-memory-context-economy-pass-2/index.json",
         "range": [1, 1],
-        "contentHash": "2bb1fde"
+        "contentHash": "c9bbc00"
       }
     },
     "intake_governance": {
       "task_id": "173009_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2",
-      "policy_compliance": "archive/work/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/policy-compliance.json",
-      "documentation_impact": "archive/work/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/documentation-impact.json"
+      "policy_compliance": ".pan/archive/work/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/policy-compliance.json",
+      "documentation_impact": ".pan/archive/work/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/documentation-impact.json"
     },
     "implementation_surface": {
       "active_memory": {
@@ -152,12 +152,12 @@
   },
   "plan": {
     "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
-    "work_path": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
-    "plan_artifact": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
-    "adr_draft": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/adr-draft.md",
-    "touch_set": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/touch-set.json",
-    "policy_compliance": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
-    "documentation_impact": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
+    "work_path": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
+    "plan_artifact": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md",
+    "adr_draft": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/adr-draft.md",
+    "touch_set": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/touch-set.json",
+    "policy_compliance": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/policy-compliance.json",
+    "documentation_impact": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/documentation-impact.json",
     "adr_number": "0006",
     "pipeline_state": "ready_for_review",
     "decisions": {
@@ -170,7 +170,7 @@
   },
   "review": {
     "task_id": "173009_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2",
-    "review_artifact": "archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
+    "review_artifact": ".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/review.md",
     "reviewed_at_utc": "2026-05-10T01:00:00Z",
     "verdict": "approve",
     "review_passes": true,
@@ -191,7 +191,7 @@
   },
   "delivery_report": {
     "path": "lib/memory/features/active-memory-context-economy-pass-2/delivery-report.md",
-    "contentHash": "942ceb3"
+    "contentHash": "d18eff8"
   },
   "notifier": {
     "staged_at_utc": "2026-05-10T01:26:00Z",
@@ -200,7 +200,7 @@
     "manual_step_executed_by": "operator_cursor_chat",
     "inbox_lifecycle_state": "archived",
     "inbox_source_archived_at_utc": "2026-05-10T03:02:00Z",
-    "inbox_source_archived_to": "archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md",
+    "inbox_source_archived_to": ".pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md",
     "inbox_source_archive_method": "git mv (rename detected; history preserved)",
     "inbox_source_rename_rule": "lib/memory/handbook/inbox-lifecycle.md §3c (timestamp prefix ownership: agent performing migration appends two time prefixes derived from archive-time UTC under operator override per ADR-0005 §47)",
     "stale_citation_followup": "lib/memory/features/active-memory-context-economy-pass-2/spec.md retains point-in-time citations to the original lib/inbox/in/ path; contentHash still verifies; librarian knowledge-curation sweep SHOULD flag and propose updates per lib/personas/librarian.md §\"What you MUST produce\" item 3"
@@ -210,7 +210,7 @@
     "shipped_by": "operator_cursor_chat",
     "ship_authority": "operator_override (runtime ship stage and notifier post_run not wired in this repo per AGENTS.md §8)",
     "outbox_artifact": "lib/inbox/out/172991_05-15-26/81300_0125_active-memory-context-economy-pass-2-delivery-report.md",
-    "archived_inbox_source": "archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md",
+    "archived_inbox_source": ".pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md",
     "backlog_shipped_entry_id": "active-memory-context-economy-pass-2-shipped",
     "active_memory_rotated": true,
     "active_memory_rotation_authority": "operator_override (no persona currently owns lib/memory/active/** post-ship rotation; gap noted in delivery report follow-ups)",

@@ -14,7 +14,7 @@ describe("sandbox-prepare", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-sandbox-prepare-"));
     const taskId = "38670_1315_demo-feature";
     const dayDir = "172996_05-10-26";
-    const runDirRel = `work/${dayDir}/${taskId}`;
+    const runDirRel = `.pan/work/${dayDir}/${taskId}`;
     const runAbs = path.join(root, runDirRel);
     const sourceRel = "lib/personas/context-reviewer.md";
     await mkdir(path.dirname(path.join(root, sourceRel)), { recursive: true });

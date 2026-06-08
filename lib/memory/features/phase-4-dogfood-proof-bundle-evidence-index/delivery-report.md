@@ -9,7 +9,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [25, 63],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
  
@@ -17,7 +17,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
 ```json
 {
   "kind": "lines",
-  "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
+  "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
   "range": [1, 9],
   "contentHash": "db3a241"
 }
@@ -33,7 +33,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [68, 85],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
  
@@ -43,7 +43,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [125, 137],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
 
@@ -54,7 +54,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [87, 123],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
 
@@ -68,7 +68,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [68, 85],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
  
@@ -78,7 +78,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [125, 137],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
 
@@ -89,7 +89,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [75, 85],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
  
@@ -99,7 +99,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [100, 111],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
 
@@ -114,7 +114,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [83, 85],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
  
@@ -124,7 +124,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [119, 123],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
 
@@ -135,7 +135,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [125, 137],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
 
@@ -144,7 +144,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
 ```json
 {
   "kind": "lines",
-  "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
+  "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
   "range": [1, 17],
   "contentHash": "db3a241"
 }
@@ -160,7 +160,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [89, 98],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
 
@@ -171,7 +171,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
   "kind": "lines",
   "path": "lib/memory/features/phase-4-dogfood-proof-bundle-evidence-index/spec.md",
   "range": [100, 111],
-  "contentHash": "c7bc815"
+  "contentHash": "7e67d8b"
 }
 ```
 
@@ -180,7 +180,7 @@ This slice ships the Phase 4 dogfood proof-bundle evidence index as a documentat
 ```json
 {
   "kind": "lines",
-  "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/test-report.md",
+  "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/test-report.md",
   "range": [3, 5],
   "contentHash": "54f334f"
 }
@@ -194,7 +194,7 @@ Coverage delta against the prior baseline is not applicable because this pass ch
 ```json
 {
   "kind": "lines",
-  "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/test-report.md",
+  "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/test-report.md",
   "range": [3, 5],
   "contentHash": "54f334f"
 }
@@ -204,7 +204,7 @@ Coverage delta against the prior baseline is not applicable because this pass ch
 ```json
 {
   "kind": "lines",
-  "path": "work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
+  "path": ".pan/work/172988_05-18-26/77373_0230_phase-4-dogfood-proof-bundle-evidence-index/review.md",
   "range": [21, 26],
   "contentHash": "f4c6865"
 }

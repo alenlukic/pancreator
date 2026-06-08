@@ -14,7 +14,7 @@ const DOMAIN_PATHS = [
   "lib/inbox",
   "lib/memory",
   "lib/personas",
-  "work",
+  ".pan/work",
   "lib/internal/packages",
 ] as const;
 

@@ -2,12 +2,12 @@
 
 ## Summary
 
-This feature delivery ships a read-only dashboard operator cockpit. The default view renders one 9-stage grid and a run-event timeline per active `feature-delivery` task. A server-side aggregation layer at `GET /api/run-state` discovers non-terminal runs under `work/`, prefers `pnpm -w exec pan status <taskId> --format json` over persisted `state.json`, and parses `run.log.jsonl` into timeline entries. The file browser remains on a secondary tab. Review passed with zero must-fix findings; focused client tests and coverage thresholds passed on 2026-06-02.
+This feature delivery ships a read-only dashboard operator cockpit. The default view renders one 9-stage grid and a run-event timeline per active `feature-delivery` task. A server-side aggregation layer at `GET /api/run-state` discovers non-terminal runs under `.pan/work/`, prefers `pnpm -w exec pan status <taskId> --format json` over persisted `state.json`, and parses `run.log.jsonl` into timeline entries. The file browser remains on a secondary tab. Review passed with zero must-fix findings; focused client tests and coverage thresholds passed on 2026-06-02.
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/implementation-report.md",
   "range": [3, 26],
   "contentHash": "d4a9356"
 }
@@ -16,7 +16,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
   "range": [1, 8],
   "contentHash": "496e84f"
 }
@@ -29,18 +29,18 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
   "range": [78, 90],
   "contentHash": "5d661df"
 }
 ```
 
-- The service SHALL discover active runs from `work/<day>/<task-id>/state.json`, invoke `pnpm -w exec pan status <taskId> --format json`, and fall back to persisted state with a `sourceWarning` when the CLI path fails.
+- The service SHALL discover active runs from `.pan/work/<day>/<task-id>/state.json`, invoke `pnpm -w exec pan status <taskId> --format json`, and fall back to persisted state with a `sourceWarning` when the CLI path fails.
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/plan.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/plan.md",
   "range": [5, 6],
   "contentHash": "3af0386"
 }
@@ -51,7 +51,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/plan.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/plan.md",
   "range": [57, 57],
   "contentHash": "3af0386"
 }
@@ -66,7 +66,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/app/api/run-state/route.ts",
   "range": [1, 6],
-  "contentHash": "a80a06a"
+  "contentHash": "bbc0a81"
 }
 ```
 
@@ -77,7 +77,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/services/run-state.ts",
   "range": [131, 131],
-  "contentHash": "2344bf5"
+  "contentHash": "365c850"
 }
 ```
 
@@ -86,7 +86,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/services/run-state.ts",
   "range": [218, 218],
-  "contentHash": "2344bf5"
+  "contentHash": "365c850"
 }
 ```
 
@@ -95,7 +95,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/services/run-state.ts",
   "range": [341, 341],
-  "contentHash": "2344bf5"
+  "contentHash": "365c850"
 }
 ```
 
@@ -106,7 +106,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/services/run-state.ts",
   "range": [24, 44],
-  "contentHash": "2344bf5"
+  "contentHash": "365c850"
 }
 ```
 
@@ -117,7 +117,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
   "range": [121, 121],
   "contentHash": "5d661df"
 }
@@ -128,7 +128,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/adr-draft.md",
   "range": [122, 122],
   "contentHash": "5d661df"
 }
@@ -139,7 +139,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/review.md",
   "range": [4, 12],
   "contentHash": "496e84f"
 }
@@ -154,7 +154,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/app/api/run-state/route.test.ts",
   "range": [62, 73],
-  "contentHash": "9948ae8"
+  "contentHash": "c49d518"
 }
 ```
 
@@ -163,7 +163,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [153, 160],
-  "contentHash": "51fc6c3"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -174,7 +174,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [136, 151],
-  "contentHash": "51fc6c3"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -185,7 +185,7 @@ This feature delivery ships a read-only dashboard operator cockpit. The default 
   "kind": "lines",
   "path": "client/src/app/page.test.tsx",
   "range": [175, 189],
-  "contentHash": "51fc6c3"
+  "contentHash": "adbb9fe"
 }
 ```
 
@@ -196,7 +196,7 @@ Focused client validation ran lint, typecheck, 19 tests across `page.test.tsx` a
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/test-report.md",
   "range": [14, 27],
   "contentHash": "7f56c6d"
 }
@@ -205,7 +205,7 @@ Focused client validation ran lint, typecheck, 19 tests across `page.test.tsx` a
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/65766_0543_surface-opt-p9-dashboard-operator-cockpit/implementation-report.md",
   "range": [48, 58],
   "contentHash": "d4a9356"
 }

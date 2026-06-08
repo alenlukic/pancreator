@@ -38,27 +38,27 @@ references:
   - kind: lines
     path: tests/compliance/context-usage/README.md
     range: [1, 95]
-    contentHash: 5aa9d74
+    contentHash: eb01f8d
     note: Prototype harness trace, summary, findings contracts, and calibrate loop patterns to reuse in production sampling.
   - kind: lines
     path: tests/compliance/context-usage/lib/collect-usage.mjs
     range: [1, 280]
-    contentHash: f15ea58
+    contentHash: 267e609
     note: Streamed SDK usage capture via processStreamEvent, createTraceSink, and assertUsageCaptured.
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts
     range: [181, 320]
-    contentHash: 2a0a648
+    contentHash: c0befcf
     note: runLogRecordFromRunnerEnvelope token_usage_unavailable default and invokeFeatureDeliveryEnteringStage SDK choke point.
   - kind: lines
     path: lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts
     range: [74, 135]
-    contentHash: e94c6ad
+    contentHash: 82c59fb
     note: Current Agent.prompt fast path; sampled path adds streaming capture without changing unsampled behavior.
   - kind: lines
     path: lib/memory/handbook/context-economy.md
     range: [176, 214]
-    contentHash: d890e2c
+    contentHash: 4e3313a
     note: Handoff discipline; handbook edits remain deferred unless audit proves a narrow mismatch.
   - kind: lines
     path: lib/memory/handbook/run-log-schema.md
@@ -130,7 +130,7 @@ or move live calibration into CI.
   collector module extracted from the prototype harness.
 - When a sampled invocation completes, the runner SHALL persist redacted
   artifacts under
-  `work/<day>/<task-id>/sdk-traces/<stage>-<invocation>-<stamp>.ndjson` and
+  `.pan/work/<day>/<task-id>/sdk-traces/<stage>-<invocation>-<stamp>.ndjson` and
   `.summary.json` following run-log-schema redaction rules with no plaintext
   secrets.
 - When usage is captured on a sampled invocation, `run.log.jsonl` SHALL emit
@@ -141,7 +141,7 @@ or move live calibration into CI.
 ### WP-2 — Incremental audit command
 
 - When an operator runs `pnpm -w exec pan token-economy sample-audit`, the CLI
-  SHALL scan `work/**/sdk-traces/*.summary.json` newer than the watermark at
+  SHALL scan `.pan/work/**/sdk-traces/*.summary.json` newer than the watermark at
   `.pan/token-economy/last-audit.json` and SHALL write a report under
   `.pan/token-economy/reports/<timestamp>.json`.
 - When the audit command completes report generation, the CLI SHALL advance the
@@ -149,7 +149,7 @@ or move live calibration into CI.
 - When an operator passes `--since <iso>`, the audit command SHALL restrict the
   scan to summaries at or after the supplied timestamp.
 - When an operator passes `--sampled-only-task <task-id>`, the audit command
-  SHALL restrict analysis to summaries under that task's `work/` directory.
+  SHALL restrict analysis to summaries under that task's `.pan/work/` directory.
 - When an operator passes `--repair`, the audit command SHALL invoke a repair
   agent with grouped findings only and SHALL NOT pass full trace payloads to
   the repair agent prompt.
@@ -157,7 +157,7 @@ or move live calibration into CI.
 ### WP-3 — Analysis heuristics
 
 - When the audit command analyzes a summary, the analyzer SHALL detect forbidden
-  path reads including `docs/PRD.md`, `docs/BOOTSTRAP.md`, `archive/work/`,
+  path reads including `.docs/PRD.md`, `.docs/BOOTSTRAP.md`, `.pan/archive/work/`,
   `lib/inbox/`, and `lib/inbox/notes/`.
 - When the audit command analyzes a summary, the analyzer SHALL detect duplicate
   reads of the same path within one invocation.
@@ -213,7 +213,7 @@ documentation_impact:
     - lib/internal/packages/@pancreator/cli/src/commands/token-economy-sample-audit.ts
     - tests/compliance/context-usage/lib/collect-usage.mjs
     - tests/compliance/context-usage/lib/analyzer.mjs
-    - work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json
+    - .pan/work/172971_06-04-26/53589_0906_sampled-token-audit/touch-set.json
   deferred-items: []
 ```
 
@@ -259,7 +259,7 @@ artifact for task `53589_0906_sampled-token-audit`.
 - Source directive:
   `lib/inbox/in/172971_06-04-26/53607_0906_sampled-token-audit.md`.
 - Active task: `53589_0906_sampled-token-audit` under
-  `work/172971_06-04-26/`.
+  `.pan/work/172971_06-04-26/`.
 - Output artifact: `lib/memory/features/sampled-token-audit/spec.md`.
 - Prior art: `tests/compliance/context-usage/` prototype harness and
   `lib/memory/features/token-economy-calibration-hardening/delivery-report.md`.

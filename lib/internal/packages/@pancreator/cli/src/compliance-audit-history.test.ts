@@ -35,7 +35,7 @@ describe("compliance-audit-history", () => {
 
   it("backfills history from indexed compliance artifacts", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-audit-history-backfill-"));
-    const resultRel = "archive/work/172996_05-10-26/38670_1315_demo-feature/compliance-result.json";
+    const resultRel = ".pan/archive/work/172996_05-10-26/38670_1315_demo-feature/compliance-result.json";
     await writeJson(root, path.join(root, resultRel), {
       taskId: "38670_1315_demo-feature",
       featureId: "demo-feature",
@@ -44,7 +44,7 @@ describe("compliance-audit-history", () => {
       findings: [{ severity: "minor" }],
       scope: {
         inputsAudited: [
-          "work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+          ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
           "lib/memory/features/demo-feature/delivery-report.md",
         ],
       },
@@ -56,7 +56,7 @@ describe("compliance-audit-history", () => {
       artifact_index: {
         pipeline_artifacts: {
           compliance_result: { path: resultRel },
-          work_dir: { path: "archive/work/172996_05-10-26/38670_1315_demo-feature" },
+          work_dir: { path: ".pan/archive/work/172996_05-10-26/38670_1315_demo-feature" },
         },
       },
     });
@@ -72,7 +72,7 @@ describe("compliance-audit-history", () => {
 
   it("persists compliance result metadata and computes baseline delta", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-audit-history-persist-"));
-    const baselineResultRel = "archive/work/172995_05-11-26/40000_1200_old/compliance-result.json";
+    const baselineResultRel = ".pan/archive/work/172995_05-11-26/40000_1200_old/compliance-result.json";
     await writeJson(root, path.join(root, baselineResultRel), {
       taskId: "40000_1200_old",
       featureId: "old",
@@ -87,13 +87,13 @@ describe("compliance-audit-history", () => {
       artifact_index: {
         pipeline_artifacts: {
           compliance_result: { path: baselineResultRel },
-          work_dir: { path: "archive/work/172995_05-11-26/40000_1200_old" },
+          work_dir: { path: ".pan/archive/work/172995_05-11-26/40000_1200_old" },
         },
       },
     });
     await ensureComplianceAuditHistoryBackfilled(root);
 
-    const runDirRel = "work/172994_05-12-26/39999_1210_new";
+    const runDirRel = ".pan/work/172994_05-12-26/39999_1210_new";
     await writeJson(root, path.join(root, `${runDirRel}/touch-set.json`), { touched: ["x"] });
     await writeJson(root, path.join(root, `${runDirRel}/review.md`), { review: true });
     await writeJson(root, path.join(root, `${runDirRel}/test-report.md`), { qa: true });
@@ -136,7 +136,7 @@ describe("compliance-audit-history", () => {
 
   it("rewrites run-scoped paths after close-artifacts archive move", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-audit-history-normalize-"));
-    const runDirRel = "work/172994_05-12-26/39999_1210_new";
+    const runDirRel = ".pan/work/172994_05-12-26/39999_1210_new";
     await writeJson(root, path.join(root, COMPLIANCE_AUDIT_HISTORY_REL), {
       schema_version: "1",
       max_entries: 5,
@@ -182,11 +182,11 @@ describe("compliance-audit-history", () => {
       repoRoot: root,
       taskId: "39999_1210_new",
       fromRunDir: runDirRel,
-      toRunDir: "archive/work/172994_05-12-26/39999_1210_new",
+      toRunDir: ".pan/archive/work/172994_05-12-26/39999_1210_new",
     });
 
     const text = await readFile(path.join(root, COMPLIANCE_AUDIT_HISTORY_REL), "utf8");
-    expect(text).toContain("archive/work/172994_05-12-26/39999_1210_new/compliance-result.json");
+    expect(text).toContain(".pan/archive/work/172994_05-12-26/39999_1210_new/compliance-result.json");
     expect(text).not.toContain(`"${runDirRel}/compliance-result.json"`);
   });
 });

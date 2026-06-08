@@ -7,7 +7,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/handoff.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/handoff.md",
   "range": [13, 18],
   "contentHash": "355e475"
 }
@@ -17,7 +17,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [3, 9],
   "contentHash": "6cdeefa"
 }
@@ -31,7 +31,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [3, 6],
   "contentHash": "90832d5"
 }
@@ -41,7 +41,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [3, 9],
   "contentHash": "6cdeefa"
 }
@@ -52,7 +52,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [11, 17],
   "contentHash": "ab74d0b"
 }
@@ -62,7 +62,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [19, 33],
   "contentHash": "32dd064"
 }
@@ -73,7 +73,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [18, 20],
   "contentHash": "d7c9b4e"
 }
@@ -83,7 +83,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [26, 33],
   "contentHash": "8fb5099"
 }
@@ -97,7 +97,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [7, 20],
   "contentHash": "cb3cedd"
 }
@@ -107,7 +107,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [49, 52],
   "contentHash": "c5e0242"
 }
@@ -121,7 +121,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [22, 25],
   "contentHash": "7994302"
 }
@@ -131,7 +131,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [3, 9],
   "contentHash": "6cdeefa"
 }
@@ -142,7 +142,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [22, 25],
   "contentHash": "7994302"
 }
@@ -152,7 +152,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [19, 25],
   "contentHash": "5bdd895"
 }
@@ -163,7 +163,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [33, 35],
   "contentHash": "7a31e2c"
 }
@@ -173,7 +173,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [26, 33],
   "contentHash": "8fb5099"
 }
@@ -187,7 +187,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [28, 31],
   "contentHash": "af7f89b"
 }
@@ -197,18 +197,18 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [54, 65],
   "contentHash": "a714f41"
 }
 ```
 
-- To capture intervention evidence, run `archive/inbox/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md`, then populate `pause-resume-abort-evidence.json` with timestamps, state diffs, and run-log event ids. 
+- To capture intervention evidence, run `.pan/archive/inbox/in/172990_05-16-26/86400_0000_phase-4-intervention-probe.md`, then populate `pause-resume-abort-evidence.json` with timestamps, state diffs, and run-log event ids. 
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [30, 31],
   "contentHash": "2f3492d"
 }
@@ -218,7 +218,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [54, 65],
   "contentHash": "a714f41"
 }
@@ -229,7 +229,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/handoff.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/handoff.md",
   "range": [15, 17],
   "contentHash": "592c0fc"
 }
@@ -239,7 +239,7 @@ This phase-4 exit slice ships the scaffold for the dogfood proof bundle, not the
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [60, 63],
   "contentHash": "1caf82e"
 }
@@ -253,7 +253,7 @@ Coverage delta against the prior baseline is not applicable, because the slice c
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/review.md",
   "range": [56, 65],
   "contentHash": "e3a0030"
 }
@@ -263,7 +263,7 @@ Coverage delta against the prior baseline is not applicable, because the slice c
 ```json
 {
   "kind": "lines",
-  "path": "work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
+  "path": ".pan/work/172990_05-16-26/20004_1826_us-1-dogfood-phase-4-exit/implementation-report.md",
   "range": [37, 48],
   "contentHash": "bdc87f2"
 }

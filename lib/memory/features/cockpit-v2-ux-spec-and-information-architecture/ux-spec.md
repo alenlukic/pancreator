@@ -11,7 +11,7 @@ references:
   - kind: lines
     path: lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md
     range: [87, 169]
-    contentHash: 4cacd6d
+    contentHash: 8f1cff5
     note: Engineering spec acceptance criteria and module scope ratified at implement stage.
   - kind: lines
     path: lib/memory/features/surface-opt-p9-dashboard-operator-cockpit/delivery-report.md
@@ -30,12 +30,12 @@ references:
     range: [474, 495]
     note: Pre-close validation checklist for Maintenance module entry point.
   - kind: lines
-    path: work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md
+    path: .pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/adr-draft.md
     range: [46, 51]
     contentHash: fb430ce
     note: ADR 0009 three-module IA decision ratified at implement stage.
   - kind: lines
-    path: work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/touch-set.json
+    path: .pan/work/172967_06-08-26/53639_0906_cockpit-v2-ux-spec-and-information-architecture/touch-set.json
     range: [1, 12]
     contentHash: cf254cb
     note: Implement-stage touch-set limits writes to spec, ux-spec, and index.json.

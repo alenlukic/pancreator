@@ -59,7 +59,7 @@
     "round": 0,
     "open_questions": 0,
     "pending_questions": [],
-    "source_inbox_item": "archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md",
@@ -92,7 +92,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+    "artifact": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 4,
@@ -101,14 +101,14 @@
     "spec_contracts_note": "No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "citation": {
       "kind": "lines",
-      "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+      "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
       "range": [1, 41],
       "contentHash": "9308acf"
     }
   },
   "test": {
     "qa_passes": true,
-    "artifact": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+    "artifact": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
     "verification_gates": {
       "worktree_pool_vitest": "pass (9/9)",
       "batch_orchestrator_vitest": "pass (feature-delivery-batch.test.ts)",
@@ -123,19 +123,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+      "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
       "range": [1, 48],
       "contentHash": "2cd1512"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
+    "artifact": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
     "audit_id": "69803_0436_batch-feature-delivery-runs-sequential-parallel-20260605045100",
     "baseline_audit_id": "73472_0335_build-mode-inbox-scaffolding-20260605034700",
     "citation": {
       "kind": "lines",
-      "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
+      "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
       "range": [1, 171],
       "contentHash": "caa2327"
     }
@@ -147,13 +147,13 @@
       "kind": "lines",
       "path": "lib/memory/features/batch-feature-delivery-runs-sequential-parallel/delivery-report.md",
       "range": [1, 427],
-      "contentHash": "97fd113"
+      "contentHash": "114a69b"
     },
-    "archived_inbox_source": "archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "ship_ratification_artifact": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
+    "ship_ratification_artifact": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
     "ratified_paths": [
       "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.ts",
       "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.test.ts",
@@ -180,7 +180,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
+      "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
       "range": [1, 56],
       "contentHash": "58f2f15"
     }
@@ -193,7 +193,7 @@
       "reason": "Unstaged JSON.stringify confinement fixes on feature-delivery-batch.ts and git-worktree-pool.test.ts SHOULD be included when the operator commits.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
         "range": [31, 34],
         "contentHash": "58f2f15"
       }
@@ -205,7 +205,7 @@
       "reason": "Supervisor persona, active-memory, build-mode companion test edits, and .gitignore drift remain outside touch-set.json.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
         "range": [35, 43],
         "contentHash": "58f2f15"
       }
@@ -217,7 +217,7 @@
       "reason": "Branch has staged touch-set paths only; operator must commit ratified diff before opening a pull request.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
         "range": [44, 44],
         "contentHash": "58f2f15"
       }
@@ -229,7 +229,7 @@
       "reason": "OPERATION.md includes build-mode from-build-plan section above batch docs; split on commit when build-mode-inbox-scaffolding ships.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
         "range": [19, 19],
         "contentHash": "9308acf"
       }
@@ -241,7 +241,7 @@
       "reason": "Batch tests mock gitCommit but do not assert branch naming on successful sub-run close-artifacts chain.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
         "range": [17, 17],
         "contentHash": "9308acf"
       }
@@ -253,7 +253,7 @@
       "reason": "Pre-close and close-artifacts failure branches in runOne lack dedicated test coverage.",
       "citation": {
         "kind": "lines",
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
         "range": [21, 21],
         "contentHash": "9308acf"
       }
@@ -273,7 +273,7 @@
       },
       {
         "citing_path": "lib/memory/features/batch-feature-delivery-runs-sequential-parallel/spec.md",
-        "cited_path": "docs/PRD.md",
+        "cited_path": ".docs/PRD.md",
         "recorded_content_hash": "b18dc8f",
         "live_content_hash": "01a7f3a",
         "verifier_status": "changed",
@@ -313,7 +313,7 @@
           "kind": "lines",
           "path": "lib/memory/features/batch-feature-delivery-runs-sequential-parallel/spec.md",
           "range": [1, 157],
-          "contentHash": "91cc5f5"
+          "contentHash": "b7bedb0"
         }
       },
       "delivery_report": {
@@ -322,7 +322,7 @@
           "kind": "lines",
           "path": "lib/memory/features/batch-feature-delivery-runs-sequential-parallel/delivery-report.md",
           "range": [1, 427],
-          "contentHash": "97fd113"
+          "contentHash": "114a69b"
         }
       },
       "per_feature_index": {
@@ -331,109 +331,109 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/"
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/"
       },
       "plan": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/plan.md",
           "range": [1, 82],
           "contentHash": "5b5853c"
         }
       },
       "adr_draft": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/adr-draft.md",
           "range": [1, 103],
           "contentHash": "f1fb120"
         }
       },
       "touch_set": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/touch-set.json",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/touch-set.json",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/touch-set.json",
           "range": [1, 94],
           "contentHash": "5612470"
         }
       },
       "implementation_report": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/implementation-report.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/implementation-report.md",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/implementation-report.md",
           "range": [1, 80],
           "contentHash": "0bf7026"
         }
       },
       "review_report": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/review.md",
           "range": [1, 41],
           "contentHash": "9308acf"
         }
       },
       "test_report": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/test-report.md",
           "range": [1, 48],
           "contentHash": "2cd1512"
         }
       },
       "compliance_result": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-result.json",
           "range": [1, 171],
           "contentHash": "caa2327"
         }
       },
       "compliance_audit": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-audit.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-audit.md",
         "note": "Compliance-auditor baseline-delta audit transcript."
       },
       "compliance_remediation": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-remediation.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/compliance-remediation.md",
         "note": "JSON.stringify confinement spot-fix remediation log."
       },
       "ship_ratification": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/ship-ratification.json",
           "range": [1, 56],
           "contentHash": "58f2f15"
         }
       },
       "handoff": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/handoff.md",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/handoff.md",
+          "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/handoff.md",
           "range": [1, 54],
           "contentHash": "bbab2dc"
         }
       },
       "pipeline_close": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/pipeline-close.md"
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/pipeline-close.md"
       },
       "operator_verification": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/operator-verification.md"
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/operator-verification.md"
       },
       "run_log": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/run.log.jsonl",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/qa-logs/",
+        "path": ".pan/work/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/qa-logs/",
         "note": "QA and compliance gate command transcripts."
       }
     },
@@ -444,7 +444,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.ts",
           "range": [1, 681],
-          "contentHash": "7d8f0f7"
+          "contentHash": "1f24a5f"
         }
       },
       "batch_orchestrator_tests": {
@@ -453,7 +453,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-batch.test.ts",
           "range": [1, 292],
-          "contentHash": "e241c23"
+          "contentHash": "e416036"
         }
       },
       "cli_run_module": {
@@ -462,7 +462,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/run.ts",
           "range": [363, 419],
-          "contentHash": "3befe5e"
+          "contentHash": "f31b63d"
         },
         "note": "pan batch run subcommand wiring."
       },
@@ -526,7 +526,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
           "range": [360, 481],
-          "contentHash": "6a47945"
+          "contentHash": "33de090"
         },
         "note": "startFeatureDelivery SDK auto-chain reused by batch sub-runs."
       },
@@ -536,7 +536,7 @@
           "kind": "lines",
           "path": "OPERATION.md",
           "range": [217, 266],
-          "contentHash": "b2fad46"
+          "contentHash": "a91d661"
         }
       },
       "cli_readme": {
@@ -545,7 +545,7 @@
           "kind": "lines",
           "path": "lib/internal/packages/@pancreator/cli/README.md",
           "range": [1, 87],
-          "contentHash": "82c728f"
+          "contentHash": "ab014f1"
         }
       },
       "worktree_readme": {
@@ -560,7 +560,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md",
+        "path": ".pan/archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md",
@@ -579,9 +579,9 @@
     "placeholder": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172970_06-05-26/69803_0436_batch-feature-delivery-runs-sequential-parallel/71489_0408_batch-feature-delivery-sequential-parallel.md"
 }

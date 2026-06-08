@@ -159,13 +159,13 @@ test("chooseTimestamp: operator override replaces mtime (last precedence rung)",
 test("migrateTargetForWorkPath: snapshot shape for flat work task", () => {
   const repoRoot = "/repo";
   const chosenDate = new Date(Date.UTC(2024, 5, 15, 14, 30, 0));
-  const abs = path.join(repoRoot, "work", "compliance-tests");
+  const abs = path.join(repoRoot, ".pan/work", "compliance-tests");
   const out = migrateTargetForWorkPath(abs, { repoRoot, chosenDate });
   assert.match(
     out.targetRel,
-    /^work\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_1430_compliance-tests\/$/,
+    /^\.pan\/work\/\d{6}_\d{2}-\d{2}-\d{2}\/\d+_1430_compliance-tests\/$/,
   );
-  assert.equal(out.sourceRel, "work/compliance-tests/");
+  assert.equal(out.sourceRel, ".pan/work/compliance-tests/");
 });
 
 test("migrateTargetForInboxPath: snapshot for thread round file", () => {
@@ -192,9 +192,9 @@ test("migrateTargetForInboxPath: snapshot for thread round file", () => {
 
 test("inventoryReferences: finds a known path string in repo", () => {
   const repoRoot = path.resolve(__dirname, "..");
-  const hits = inventoryReferences("archive/work/173009_04-27-26/68576_0457_compliance-tests", repoRoot, [
+  const hits = inventoryReferences(".pan/archive/work/173009_04-27-26/68576_0457_compliance-tests", repoRoot, [
     "lib/memory",
-    "lib/work",
+    ".pan/work",
     "lib/inbox",
   ]);
   assert.ok(hits.length > 0);
@@ -209,7 +209,7 @@ test("defaultManifestPath prefers archived inbox convention run when indexed", (
     const taskId = "60722_0707_inbox-convention-migration";
     const archiveRun = path.join(
       repoRoot,
-      "archive",
+      ".pan/archive",
       "work",
       "172995_05-11-26",
       taskId,
@@ -235,7 +235,7 @@ test("defaultManifestPath prefers archived inbox convention run when indexed", (
 test("writeManifest creates missing parent directories", () => {
   const repoRoot = mkdtempSync(path.join(tmpdir(), "pan-manifest-write-"));
   try {
-    const out = path.join(repoRoot, "archive", "work", "day", "task", "manifest.json");
+    const out = path.join(repoRoot, ".pan/archive", "work", "day", "task", "manifest.json");
     writeManifest({ schema: "test" }, out);
     assert.equal(existsSync(out), true);
     assert.deepEqual(JSON.parse(readFileSync(out, "utf8")), { schema: "test" });

@@ -66,7 +66,7 @@ references:
   - kind: lines
     path: lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md
     range: [43, 283]
-    contentHash: 08b0dd0
+    contentHash: 96d5a8f
     note: Ratified ux-spec covering three-module IA, module UX, accessibility contracts, and component inventory.
 ---
 

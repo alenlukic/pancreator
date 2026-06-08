@@ -49,11 +49,11 @@ test("classifyExclusiveTier separates handbook, active work, archival, durable J
   assert.equal(classifyExclusiveTier("lib/memory/handbook/glossary.md"), "internal_operating");
   assert.equal(classifyExclusiveTier("lib/memory/active/current.md"), "active_memory");
   assert.equal(classifyExclusiveTier("lib/memory/features/foo/index.json"), "generated_machine");
-  assert.equal(classifyExclusiveTier("work/README.md"), "active_work");
-  assert.equal(classifyExclusiveTier("archive/work/172997_05-09-26/example/plan.md"), "archival_memory");
+  assert.equal(classifyExclusiveTier(".pan/work/README.md"), "active_work");
+  assert.equal(classifyExclusiveTier(".pan/archive/work/172997_05-09-26/example/plan.md"), "archival_memory");
   assert.equal(classifyExclusiveTier("lib/internal/packages/@pancreator/core/src/index.ts"), "source_code");
-  assert.equal(classifyExclusiveTier("docs/PRD.summary.md"), "internal_product");
-  assert.equal(classifyExclusiveTier("docs/README.md"), "internal_product");
+  assert.equal(classifyExclusiveTier(".docs/PRD.summary.md"), "internal_product");
+  assert.equal(classifyExclusiveTier(".docs/README.md"), "internal_product");
   assert.equal(classifyExclusiveTier("AGENTS.md"), "internal_product");
   assert.equal(classifyExclusiveTier("lib/memory/adr/0001-backlog-tracking.md"), "internal_build");
   assert.equal(
@@ -84,15 +84,15 @@ test("tier char sums reconcile with total corpus and indexable partitioning", ()
 test("indexing policy excludes internal product, archival, and agent projections while keeping external routes", () => {
   const matchers = indexingMatchersFromRoot(ROOT);
   assert.ok(isIndexingExcluded(".cursor/agents/tech-lead.md", matchers));
-  assert.ok(isIndexingExcluded("archive/inbox/in/example.md", matchers));
-  assert.ok(isIndexingExcluded("work/active-run/plan.md", matchers));
-  assert.ok(isIndexingExcluded("archive/work/172997_05-09-26/run/plan.md", matchers));
+  assert.ok(isIndexingExcluded(".pan/archive/inbox/in/example.md", matchers));
+  assert.ok(isIndexingExcluded(".pan/work/active-run/plan.md", matchers));
+  assert.ok(isIndexingExcluded(".pan/archive/work/172997_05-09-26/run/plan.md", matchers));
   assert.ok(isIndexingExcluded("lib/inbox/notes/private.md", matchers));
-  assert.ok(isIndexingExcluded("docs/PRD.md", matchers));
-  assert.ok(isIndexingExcluded("docs/BOOTSTRAP.md", matchers));
-  assert.ok(isIndexingExcluded("docs/README.md", matchers));
-  assert.ok(isIndexingExcluded("docs/PRD.summary.md", matchers));
-  assert.ok(isIndexingExcluded("docs/M1.index.md", matchers));
+  assert.ok(isIndexingExcluded(".docs/PRD.md", matchers));
+  assert.ok(isIndexingExcluded(".docs/BOOTSTRAP.md", matchers));
+  assert.ok(isIndexingExcluded(".docs/README.md", matchers));
+  assert.ok(isIndexingExcluded(".docs/PRD.summary.md", matchers));
+  assert.ok(isIndexingExcluded(".docs/M1.index.md", matchers));
   assert.ok(isIndexingExcluded("AGENTS.md", matchers));
   assert.ok(!isIndexingExcluded("lib/memory/active/README.md", matchers));
   assert.ok(!isIndexingExcluded("README.md", matchers));

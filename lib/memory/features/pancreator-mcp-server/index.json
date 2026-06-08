@@ -36,7 +36,7 @@
       "kind": "lines",
       "path": "lib/memory/features/pancreator-mcp-server/delivery-report.md",
       "range": [1, 35],
-      "contentHash": "9acd457"
+      "contentHash": "587c4ff"
     }
   },
   "artifact_index": {
@@ -47,7 +47,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-mcp-server/spec.md",
           "range": [1, 23],
-          "contentHash": "1e55bd7"
+          "contentHash": "4f08028"
         }
       },
       "delivery_report": {
@@ -56,7 +56,7 @@
           "kind": "lines",
           "path": "lib/memory/features/pancreator-mcp-server/delivery-report.md",
           "range": [1, 35],
-          "contentHash": "9acd457"
+          "contentHash": "587c4ff"
         }
       },
       "per_feature_index": {

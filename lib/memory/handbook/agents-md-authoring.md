@@ -12,38 +12,38 @@ purpose: |
   quality checks for AGENTS changes.
 references:
   - kind: lines
-    path: docs/BOOTSTRAP.md
+    path: .docs/BOOTSTRAP.md
     range: [57, 71]
-    contentHash: 40b0827
+    contentHash: b788753
     note: "Phase 0b requires `/lib/memory/handbook/agents-md-authoring.md` as a handbook seed."
   - kind: lines
     path: AGENTS.md
     range: [3, 5]
-    contentHash: 3dc743c
+    contentHash: b953d77
     note: "AGENTS defines itself as the internal agent operating card and external surface split."
   - kind: lines
     path: AGENTS.md
     range: [19, 44]
-    contentHash: 3dc743c
+    contentHash: b953d77
     note: "AGENTS canon table defines mandatory handbook references."
   - kind: lines
     path: AGENTS.md
     range: [67, 89]
-    contentHash: 3dc743c
+    contentHash: b953d77
     note: "AGENTS delegation rule defines when work is delegated versus performed directly."
   - kind: lines
     path: AGENTS.md
     range: [91, 174]
-    contentHash: 3dc743c
+    contentHash: b953d77
     note: "AGENTS working agreement defines non-negotiable operating constraints."
   - kind: lines
     path: AGENTS.md
     range: [265, 269]
-    contentHash: 3dc743c
+    contentHash: b953d77
     note: "AGENTS changes require inbox item plus explicit human ratification."
 related:
   - /AGENTS.md
-  - /docs/BOOTSTRAP.md
+  - /.docs/BOOTSTRAP.md
   - /lib/memory/handbook/glossary.md
   - /lib/memory/handbook/constitution.md
   - /lib/memory/handbook/documentation-impact-contract.md
@@ -94,8 +94,8 @@ Authors SHALL update `/AGENTS.md` when any trigger below occurs:
    ownership boundaries change.
 5. **Bootstrap-state drift.** The live status no longer matches repository
    reality.
-6. **Cross-file contradiction.** AGENTS text conflicts with `docs/PRD.md`,
-   `docs/BOOTSTRAP.md`, or handbook canon.
+6. **Cross-file contradiction.** AGENTS text conflicts with `.docs/PRD.md`,
+   `.docs/BOOTSTRAP.md`, or handbook canon.
 
 When a trigger fires, the author SHALL update AGENTS in the same change set as
 the source change, or SHALL record a deferral with backlog linkage.
@@ -137,8 +137,8 @@ Before merge, the author SHALL verify:
    precise and current.
 3. **Reference integrity.** Frontmatter references use dual-anchor shape with
    `contentHash` populated or explicitly `TBD-on-commit`.
-4. **Policy coherence.** AGENTS introduces no contradiction with `docs/PRD.md`,
-   `docs/BOOTSTRAP.md`, constitution, glossary, and handbook contracts.
+4. **Policy coherence.** AGENTS introduces no contradiction with `.docs/PRD.md`,
+   `.docs/BOOTSTRAP.md`, constitution, glossary, and handbook contracts.
 5. **Delegation coherence.** Delegation rules in AGENTS remain consistent with
    persona metadata ownership boundaries.
 6. **Entrypoint integrity.** The repository root exposes only `/AGENTS.md` as
@@ -152,7 +152,7 @@ Before merge, the author SHALL verify:
 - [ ] Required AGENTS sections preserved and coherent.
 - [ ] Canon table updated for any handbook/spec drift.
 - [ ] Entrypoint policy validated (`AGENTS.md` only at repo root for the operating card).
-- [ ] Cross-file contradiction check passed (`docs/PRD.md`, `docs/BOOTSTRAP.md`, handbook).
+- [ ] Cross-file contradiction check passed (`.docs/PRD.md`, `.docs/BOOTSTRAP.md`, handbook).
 - [ ] Deferrals, if any, recorded with backlog linkage.
 - [ ] Human ratification requested before policy activation.
 

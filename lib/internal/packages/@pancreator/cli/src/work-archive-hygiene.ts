@@ -133,7 +133,7 @@ function isValidComplianceAuditWorkspace(taskAbs: string): boolean {
   );
 }
 
-/** Active work/<day>/<task-id>/ without feature-delivery state.json may still be intentional. */
+/** Active .pan/work/<day>/<task-id>/ without feature-delivery state.json may still be intentional. */
 export function isExemptOrphanWorkDirectory(taskDirAbs: string): boolean {
   return isValidOutOfBandManifest(taskDirAbs) || isValidComplianceAuditWorkspace(taskDirAbs);
 }
@@ -158,8 +158,8 @@ async function resolveCanonicalTaskId(
   return [...candidates].sort((a, b) => b.localeCompare(a))[0]!;
 }
 
-async function listWorkRunRecords(repoRoot: string, rootKind: "work" | "archive"): Promise<WorkRunRecord[]> {
-  const rootRel = rootKind === "work" ? "work" : path.posix.join("archive", "work");
+async function listWorkRunRecords(repoRoot: string, rootKind: ".pan/work" | ".pan/archive"): Promise<WorkRunRecord[]> {
+  const rootRel = rootKind === ".pan/work" ? ".pan/work" : path.posix.join(".pan/archive", "work");
   const rootAbs = resolveProjectPath(repoRoot, rootRel);
   const records: WorkRunRecord[] = [];
   const dayDirs = await listCanonicalWorkDayDirs(rootAbs);
@@ -189,9 +189,9 @@ async function listWorkRunRecords(repoRoot: string, rootKind: "work" | "archive"
 export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<WorkArchiveHygieneScanResult> {
   const repoRoot = path.resolve(repoRootInput);
   const issues: WorkArchiveHygieneIssue[] = [];
-  const workRootAbs = resolveProjectPath(repoRoot, "work");
-  const workRuns = await listWorkRunRecords(repoRoot, "work");
-  const archiveRuns = await listWorkRunRecords(repoRoot, "archive");
+  const workRootAbs = resolveProjectPath(repoRoot, ".pan/work");
+  const workRuns = await listWorkRunRecords(repoRoot, ".pan/work");
+  const archiveRuns = await listWorkRunRecords(repoRoot, ".pan/archive");
   const archiveByTaskId = new Map(archiveRuns.map((record) => [record.taskId, record]));
 
   for (const record of workRuns) {
@@ -210,13 +210,13 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
       });
     }
 
-    if (state.status === "closed" && state.artifacts.runDir.startsWith("work/")) {
+    if (state.status === "closed" && state.artifacts.runDir.startsWith(".pan/work/")) {
       issues.push({
         code: "closed_run_still_active",
         path: runDirRel,
         taskId,
         featureId: state.featureId,
-        detail: `Ledger is closed but runDir still points at active work/: ${state.artifacts.runDir}.`,
+        detail: `Ledger is closed but runDir still points at active .pan/work/: ${state.artifacts.runDir}.`,
         remediation: `pnpm -w exec pan close-artifacts ${taskId}`,
       });
     }
@@ -224,7 +224,7 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
     if (
       state.currentStage === TERMINAL_STAGE &&
       state.status === "complete" &&
-      state.artifacts.runDir.startsWith("work/")
+      state.artifacts.runDir.startsWith(".pan/work/")
     ) {
       issues.push({
         code: "pending_close_artifacts",
@@ -253,7 +253,7 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
     (record) =>
       record.state.currentStage === TERMINAL_STAGE &&
       record.state.status === "complete" &&
-      record.state.artifacts.runDir.startsWith("work/"),
+      record.state.artifacts.runDir.startsWith(".pan/work/"),
   );
   const byFeatureDay = new Map<string, WorkRunRecord[]>();
   for (const record of completeInWork) {
@@ -286,7 +286,7 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
     const taskDirs = await listTaskDirNames(dayAbs);
     for (const taskId of taskDirs) {
       const taskAbs = path.join(workRootAbs, dayDir, taskId);
-      const taskRel = path.posix.join("work", dayDir, taskId);
+      const taskRel = path.posix.join(".pan/work", dayDir, taskId);
       const stateAbs = path.join(taskAbs, "state.json");
       if (existsSync(stateAbs)) {
         continue;
@@ -299,9 +299,9 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
         path: taskRel,
         taskId,
         detail:
-          "work/<day>/<task-id>/ lacks state.json and is not an exempt manual workspace (out-of-band.manifest.json or compliance-audit artifacts).",
+          ".pan/work/<day>/<task-id>/ lacks state.json and is not an exempt manual workspace (out-of-band.manifest.json or compliance-audit artifacts).",
         remediation:
-          "Archive under archive/work, add out-of-band.manifest.json (reason >= 12 characters), or retain a completed compliance-audit.md plus compliance-result.json pair from /compliance-auditor.",
+          "Archive under .pan/archive/work, add out-of-band.manifest.json (reason >= 12 characters), or retain a completed compliance-audit.md plus compliance-result.json pair from /compliance-auditor.",
       });
     }
   }
@@ -312,7 +312,7 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
 
 export function formatWorkArchiveHygieneRemediation(issues: WorkArchiveHygieneIssue[]): string {
   if (issues.length === 0) {
-    return "No work/archive hygiene issues detected.";
+    return "No .pan/work/archive hygiene issues detected.";
   }
   return issues.map((issue) => `${issue.code} @ ${issue.path}: ${issue.remediation}`).join("; ");
 }

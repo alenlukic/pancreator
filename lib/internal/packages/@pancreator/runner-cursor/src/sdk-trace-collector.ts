@@ -354,7 +354,7 @@ export function createTraceSink(config: TraceSinkConfig) {
   };
 }
 
-/** Production layout: `work/<day>/<task>/sdk-traces/<stage>-<invocation>-<stamp>.*` */
+/** Production layout: `.pan/work/<day>/<task>/sdk-traces/<stage>-<invocation>-<stamp>.*` */
 export function createProductionTraceSink(config: ProductionTraceSinkConfig) {
   mkdirSync(config.traceDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/gu, "-");

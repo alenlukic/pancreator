@@ -13,19 +13,19 @@ purpose: |
   `author-persona` skill.
 references:
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [460, 500]
-    contentHash: 6fb6f2f
+    contentHash: 2eb6aa4
     note: "PRD §6 — Subagent Persona Roster: header + 16-field example."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [278, 278]
-    contentHash: 4640a5a
+    contentHash: 2eb6aa4
     note: "PRD §4 glossary — Persona Spec Format definition."
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [462, 462]
-    contentHash: de82bd2
+    contentHash: 2eb6aa4
     note: "PRD §6 — Anthropic Claude Agent SDK subagents reference URL."
 related:
   - /lib/memory/handbook/glossary.md
@@ -274,7 +274,7 @@ field. Use it as a copy-paste starting point.
 ```yaml
 ---
 name: example-persona
-description: When the human runs `pan persona example`, the example-persona SHALL emit a stub artifact under `/work/<day>/<id>/example.md` and stage it for review.
+description: When the human runs `pan persona example`, the example-persona SHALL emit a stub artifact under `/.pan/work/<day>/<id>/example.md` and stage it for review.
 model: inherit
 permissionMode: default
 tools:
@@ -309,7 +309,7 @@ references:
   - kind: lines
     path: /lib/memory/handbook/persona-spec.md
     range: [1, 1]
-    contentHash: cb3f91d
+    contentHash: 2a072e0
     note: "Persona Spec Format reference."
 ---
 
@@ -320,11 +320,11 @@ You author a stub artifact whenever the human invokes the example pipeline.
 ## When you are invoked
 
 1. **Manual.** When a human runs `pan persona example`, you produce one stub
-   artifact under `/work/<day>/<id>/example.md`.
+   artifact under `/.pan/work/<day>/<id>/example.md`.
 
 ## What you MUST produce, every invocation
 
-You MUST emit a one-paragraph Markdown stub at `/work/<day>/<id>/example.md` that
+You MUST emit a one-paragraph Markdown stub at `/.pan/work/<day>/<id>/example.md` that
 cites this Persona Spec Format reference and stages the file for human review.
 
 ## What you MUST NOT do

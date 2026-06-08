@@ -12,7 +12,7 @@ This feature folder captures Phase 2 delivery requirements for `@pancreator/inte
 ## Requirements
 - The package implementation MUST satisfy contract `pancreator.intervention.package_shape` for `lib/internal/packages/@pancreator/intervention/**`.
 - The package README Quickstart section MUST satisfy contract `pancreator.intervention.readme_ergonomics`.
-- Work sequencing MUST preserve the docs/BOOTSTRAP.md Phase 2 dependency order position 16 of 20.
+- Work sequencing MUST preserve the .docs/BOOTSTRAP.md Phase 2 dependency order position 16 of 20.
 
 ## Non-Goals
 - Defining M2+ scope for new contract kinds.

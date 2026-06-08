@@ -7,7 +7,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/implementation-report.md",
   "range": [3, 15],
   "contentHash": "82dad73"
 }
@@ -16,7 +16,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
   "range": [3, 6],
   "contentHash": "0290c5b"
 }
@@ -29,7 +29,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/plan.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/plan.md",
   "range": [10, 13],
   "contentHash": "0b6e127"
 }
@@ -40,7 +40,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
   "range": [48, 65],
   "contentHash": "8c5c061"
 }
@@ -51,7 +51,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
   "range": [61, 76],
   "contentHash": "8c5c061"
 }
@@ -62,7 +62,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
   "range": [67, 76],
   "contentHash": "8c5c061"
 }
@@ -77,7 +77,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/runner-cursor/src/model-escalation.ts",
   "range": [143, 256],
-  "contentHash": "e0aeaef"
+  "contentHash": "3960d82"
 }
 ```
 
@@ -88,7 +88,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/runner-cursor/src/model-escalation.ts",
   "range": [8, 30],
-  "contentHash": "e0aeaef"
+  "contentHash": "3960d82"
 }
 ```
 
@@ -99,7 +99,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/runner-cursor/src/cursor-runner.ts",
   "range": [37, 80],
-  "contentHash": "9625301"
+  "contentHash": "ee2b179"
 }
 ```
 
@@ -110,7 +110,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts",
   "range": [74, 103],
-  "contentHash": "e94c6ad"
+  "contentHash": "82c59fb"
 }
 ```
 
@@ -121,7 +121,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
   "range": [130, 151],
-  "contentHash": "2a0a648"
+  "contentHash": "c0befcf"
 }
 ```
 
@@ -132,7 +132,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "pancreator-model-escalation.yaml",
   "range": [1, 14],
-  "contentHash": "60a1dd9"
+  "contentHash": "9c474d2"
 }
 ```
 
@@ -143,7 +143,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/adr-draft.md",
   "range": [97, 98],
   "contentHash": "8c5c061"
 }
@@ -152,7 +152,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
   "range": [3, 6],
   "contentHash": "0cf734a"
 }
@@ -163,7 +163,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/implementation-report.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/implementation-report.md",
   "range": [12, 13],
   "contentHash": "82dad73"
 }
@@ -172,7 +172,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
   "range": [13, 15],
   "contentHash": "0cf734a"
 }
@@ -183,7 +183,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
   "range": [17, 18],
   "contentHash": "0cf734a"
 }
@@ -194,7 +194,7 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
   "range": [21, 22],
   "contentHash": "0cf734a"
 }
@@ -209,14 +209,14 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/runner-cursor/src/model-escalation.test.ts",
   "range": [35, 45],
-  "contentHash": "cbf46b3"
+  "contentHash": "6790a69"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
   "range": [16, 17],
   "contentHash": "0290c5b"
 }
@@ -229,14 +229,14 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/runner-cursor/src/model-escalation.test.ts",
   "range": [57, 76],
-  "contentHash": "cbf46b3"
+  "contentHash": "6790a69"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
   "range": [29, 30],
   "contentHash": "0290c5b"
 }
@@ -249,14 +249,14 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.test.ts",
   "range": [264, 291],
-  "contentHash": "f6e38c9"
+  "contentHash": "e72b535"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
   "range": [26, 27],
   "contentHash": "0290c5b"
 }
@@ -269,14 +269,14 @@ This delivery adds declarative SDK model escalation tiers for feature-delivery r
   "kind": "lines",
   "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.test.ts",
   "range": [293, 377],
-  "contentHash": "f6e38c9"
+  "contentHash": "e72b535"
 }
 ```
 
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
   "range": [7, 8],
   "contentHash": "0290c5b"
 }
@@ -289,7 +289,7 @@ The coverage delta adds tier resolution, fallback ordering, environment override
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/test-report.md",
   "range": [7, 21],
   "contentHash": "0290c5b"
 }
@@ -298,7 +298,7 @@ The coverage delta adds tier resolution, fallback ordering, environment override
 ```json
 {
   "kind": "lines",
-  "path": "work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
+  "path": ".pan/work/172973_06-02-26/24065_1718_fd-pipeline-sdk-mode-retry-model-escalation-tiers/review.md",
   "range": [37, 39],
   "contentHash": "0cf734a"
 }

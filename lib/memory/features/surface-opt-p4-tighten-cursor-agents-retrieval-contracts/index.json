@@ -15,7 +15,7 @@
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
     "clarifying_skip_rationale": "Source directive states R1–R3 and AC1–AC4 with quantified outcomes and an explicit touch set; no intake-blocking ambiguity remains.",
-    "source_inbox_item": "archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md",
     "human_approval_gate": "ratified",
     "human_approval_note": "Spec ratified at plan advance per state.json advanceHistory intake→plan event."
   },
@@ -42,7 +42,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
+    "artifact": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 0,
@@ -52,7 +52,7 @@
   },
   "test": {
     "qa_passes": true,
-    "artifact": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md",
+    "artifact": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md",
     "sdk_automation_qa": false,
     "verification_gates": {
       "pnpm_lint": "pass",
@@ -67,11 +67,11 @@
   "delivery_report": {
     "path": "lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/delivery-report.md",
     "staged_to_inbox_out": "lib/inbox/out/172974_06-01-26/64308_0608_surface-opt-p4-tighten-cursor-agents-retrieval-contracts-report-approval.md",
-    "archived_inbox_source": "archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "policy_compliance_artifact": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/policy-compliance.json",
+    "policy_compliance_artifact": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/policy-compliance.json",
     "supervisor_invariants": {
       "git_push_executed": false,
       "gh_pr_create_executed": false,
@@ -85,27 +85,27 @@
     "changed_citations": [
       {
         "citing_path": "lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
+        "cited_path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md",
         "recorded_content_hash": "0000000",
         "live_content_hash": "0000000",
         "verifier_status": "moved",
-        "note": "Implementation report archived to archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md."
+        "note": "Implementation report archived to .pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
+        "cited_path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md",
         "recorded_content_hash": "0000000",
         "live_content_hash": "0000000",
         "verifier_status": "moved",
-        "note": "Review report archived to archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md."
+        "note": "Review report archived to .pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md."
       },
       {
         "citing_path": "lib/memory/features/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/delivery-report.md",
-        "cited_path": "work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md",
+        "cited_path": ".pan/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md",
         "recorded_content_hash": "0000000",
         "live_content_hash": "0000000",
         "verifier_status": "moved",
-        "note": "Test report archived to archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md."
+        "note": "Test report archived to .pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md."
       }
     ],
     "repo_wide_followup": "none"
@@ -125,34 +125,34 @@
     },
     "pipeline_artifacts": {
       "archived_work_dir": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/"
       },
       "plan": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/plan.md"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/plan.md"
       },
       "adr_draft": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/adr-draft.md"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/adr-draft.md"
       },
       "touch_set": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/touch-set.json"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/touch-set.json"
       },
       "implementation_report": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/implementation-report.md"
       },
       "review_report": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/review.md"
       },
       "test_report": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/test-report.md"
       },
       "policy_compliance": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/policy-compliance.json"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/policy-compliance.json"
       },
       "handoff": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/handoff.md"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/handoff.md"
       },
       "run_log": {
-        "path": "archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/run.log.jsonl"
+        "path": ".pan/archive/work/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/run.log.jsonl"
       }
     },
     "implementation_surface": {
@@ -210,7 +210,7 @@
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md"
+        "path": ".pan/archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md"
       },
       "report_approval_outbox": {
         "path": "lib/inbox/out/172974_06-01-26/64308_0608_surface-opt-p4-tighten-cursor-agents-retrieval-contracts-report-approval.md"
@@ -231,8 +231,8 @@
     "status": "deferred-until-ratified"
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md",
+    "path": ".pan/archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md",
     "prior_path": "lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-p4-agent-retrieval-contracts.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172974_06-01-26/65645_0545_surface-opt-p4-tighten-cursor-agents-retrieval-contracts/75420_0303_surface-opt-p4-agent-retrieval-contracts.md"
 }

@@ -6,8 +6,8 @@ risk_tier: medium
 threshold_policy: defaults.medium  # from pancreator-defaults.yaml
 
 # Optional design steps for feature-delivery (default off). When true, plan delegates
-# to design-engineer before tech-lead consolidation; test runs design QA in parallel
-# with qa-tester. Per-feature spec.md frontmatter `design_steps:` overrides this default.
+# to design-engineer before tech-lead consolidation; test runs design-reviewer design QA
+# in parallel with qa-tester. Per-feature spec.md frontmatter `design_steps:` overrides this default.
 # feature_delivery:
 #   design_steps: false
 

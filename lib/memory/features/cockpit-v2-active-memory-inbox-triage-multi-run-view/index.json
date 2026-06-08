@@ -13,7 +13,7 @@
     "open_questions": 0,
     "pending_questions": [],
     "clarifying_rounds_posted": 0,
-    "source_inbox_item": "archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md",
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md",
     "source_inbox_item_citation": {
       "kind": "lines",
       "path": "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md",
@@ -46,7 +46,7 @@
   "review": {
     "verdict": "pass",
     "review_passes": true,
-    "artifact": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+    "artifact": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
     "block_findings": 0,
     "must_fix_count": 0,
     "consider_count": 6,
@@ -55,7 +55,7 @@
     "spec_contracts_note": "No contracts.index.json sidecar; three embedded llm-judge UX contract blocks in ux-spec.md evaluated via design-qa and RTL evidence.",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+      "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
       "range": [1, 36],
       "contentHash": "ee4ff9b"
     }
@@ -63,7 +63,7 @@
   "test": {
     "qa_passes": true,
     "design_qa_passes": true,
-    "artifact": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+    "artifact": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
     "verification_gates": {
       "client_lint": "pass",
       "client_typecheck": "pass",
@@ -77,19 +77,19 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+      "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
       "range": [1, 43],
       "contentHash": "13c9f13"
     }
   },
   "compliance": {
     "compliance_passes": true,
-    "artifact": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
+    "artifact": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
     "audit_id": "49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view-20260608103000",
     "baseline_audit_id": "51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer-20260608100740",
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
+      "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
       "range": [1, 336],
       "contentHash": "8fc73e6"
     }
@@ -101,13 +101,13 @@
       "kind": "lines",
       "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
       "range": [1, 460],
-      "contentHash": "79f8a7f"
+      "contentHash": "97abded"
     },
-    "archived_inbox_source": "archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md"
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md"
   },
   "ship": {
     "ship_authority": "human_ratifies_local_diff",
-    "ship_ratification_artifact": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
     "ratified_paths": [
       "client/src/services/active-memory.ts",
       "client/src/services/inbox.ts",
@@ -144,7 +144,7 @@
     },
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
+      "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
       "range": [1, 25],
       "contentHash": "eb52919"
     }
@@ -157,7 +157,7 @@
       "reason": "Sixteen staged files sit outside the declared 21-path touch-set (config route, stage grid, stage-artifact-contract); widen touch-set.json or split delivery commits so review scope matches the gate boundary.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
         "range": [15, 15],
         "contentHash": "ee4ff9b"
       }
@@ -169,7 +169,7 @@
       "reason": "Engineering Spec places multi-run table above stage grid; implementation follows ux-spec sidebar stack. Ratify spec wording or record explicit deferral.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
         "range": [16, 16],
         "contentHash": "ee4ff9b"
       }
@@ -181,7 +181,7 @@
       "reason": "MultiRunTable expand renders preview grid without calling onSelectTask per ux-spec, but page.test.tsx lacks assertion that expand leaves selectedTaskId unchanged.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
         "range": [17, 17],
         "contentHash": "ee4ff9b"
       }
@@ -193,7 +193,7 @@
       "reason": "DashboardPage wires Files-tab deep links from orientation panels; page tests stop at panel render without asserting Files-tab navigation or P10 read-only modal behavior.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
         "range": [18, 18],
         "contentHash": "ee4ff9b"
       }
@@ -205,7 +205,7 @@
       "reason": "Touch-set symbol collectHumanGateQueue is exercised in run-state/route.test.ts outside the four declared touch-set test paths.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
         "range": [19, 19],
         "contentHash": "ee4ff9b"
       }
@@ -217,7 +217,7 @@
       "reason": "ADR draft records orientation APIs and guarded execute as proposed; copy ADR to lib/memory/adr/ before downstream features bind to it.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
         "range": [95, 102],
         "contentHash": "63c3fdc"
       }
@@ -229,7 +229,7 @@
       "reason": "delivery-report.md and refreshed index.json may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
       "citation": {
         "kind": "lines",
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
         "range": [1, 25],
         "contentHash": "eb52919"
       }
@@ -253,7 +253,7 @@
     "changed_citations": [
       {
         "citing_path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
         "recorded_content_hash": "7588d02",
         "live_content_hash": "7588d02",
         "verifier_status": "changed",
@@ -261,7 +261,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+        "cited_path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
         "recorded_content_hash": "ee4ff9b",
         "live_content_hash": "ee4ff9b",
         "verifier_status": "changed",
@@ -269,7 +269,7 @@
       },
       {
         "citing_path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-        "cited_path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
         "recorded_content_hash": "09445e1",
         "live_content_hash": "13c9f13",
         "verifier_status": "changed",
@@ -332,7 +332,7 @@
     "tests": [],
     "citation": {
       "kind": "lines",
-      "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json",
+      "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json",
       "range": [1, 63],
       "contentHash": "4b3e990"
     }
@@ -363,7 +363,7 @@
           "kind": "lines",
           "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
           "range": [1, 460],
-          "contentHash": "79f8a7f"
+          "contentHash": "97abded"
         }
       },
       "per_feature_index": {
@@ -372,129 +372,129 @@
     },
     "pipeline_artifacts": {
       "active_work_dir": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/"
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/"
       },
       "plan": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/plan.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/plan.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/plan.md",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/plan.md",
           "range": [1, 103],
           "contentHash": "e38ec45"
         }
       },
       "adr_draft": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/adr-draft.md",
           "range": [1, 102],
           "contentHash": "63c3fdc"
         }
       },
       "touch_set": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json",
           "range": [1, 63],
           "contentHash": "4b3e990"
         }
       },
       "implementation_report": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/implementation-report.md",
           "range": [1, 102],
           "contentHash": "7588d02"
         }
       },
       "review_report": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
           "range": [1, 36],
           "contentHash": "ee4ff9b"
         }
       },
       "test_report": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
           "range": [1, 43],
           "contentHash": "13c9f13"
         }
       },
       "design_qa_report": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/design-qa-report.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/design-qa-report.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/design-qa-report.md",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/design-qa-report.md",
           "range": [1, 46],
           "contentHash": "7b7e17f"
         }
       },
       "compliance_result": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
           "range": [1, 336],
           "contentHash": "8fc73e6"
         }
       },
       "compliance_audit": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-audit.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-audit.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-audit.md",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-audit.md",
           "range": [1, 176],
           "contentHash": "53a843a"
         }
       },
       "compliance_remediation": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-remediation.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-remediation.md",
         "note": "Compliance-auditor remediation notes for baseline-delta audit."
       },
       "ship_ratification": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/ship-ratification.json",
           "range": [1, 25],
           "contentHash": "eb52919"
         }
       },
       "handoff": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/handoff.md",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/handoff.md",
         "citation": {
           "kind": "lines",
-          "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/handoff.md",
+          "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/handoff.md",
           "range": [1, 55],
           "contentHash": "b30cd8f"
         }
       },
       "pipeline_close": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/pipeline-close.md"
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/pipeline-close.md"
       },
       "operator_verification": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/operator-verification.md"
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/operator-verification.md"
       },
       "run_log": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/run.log.jsonl",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/run.log.jsonl",
         "note": "Run log present; line-range hash deferred until close-artifacts archival."
       },
       "gate_logs": {
-        "path": "work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/logs/",
+        "path": ".pan/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/logs/",
         "note": "QA, compliance, and client gate command transcripts."
       }
     },
     "lineage": {
       "source_inbox_item": {
-        "path": "archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md",
+        "path": ".pan/archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md",
         "citation": {
           "kind": "lines",
           "path": "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md",
@@ -552,9 +552,9 @@
     "documentation_only": false
   },
   "source_inbox_item": {
-    "path": "archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md",
-    "note": "Active inbox path at index time; close-artifacts moves to archive/inbox/in/.",
+    "path": ".pan/archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
     "prior_path": "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md"
   },
-  "archived_inbox_source": "archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md"
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit-v2-pipeline-orientation.md"
 }

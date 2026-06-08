@@ -15,47 +15,47 @@ references:
   - kind: lines
     path: lib/inbox/in/172974_06-01-26/75420_0303_surface-opt-track-o-cli-engine.md
     range: [31, 188]
-    contentHash: 3146eed
+    contentHash: eb3ea57
     note: "Source directive defines the Track O problem, single-window implementation order, validation flow, and AC-P5 through AC-P8."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/run.ts
     range: [270, 389]
-    contentHash: 64e31c0
+    contentHash: f31b63d
     note: "CLI currently wires run, inbox, status, and advance as JSON-only commands and has no pan next or pan doctor surface."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts
     range: [1302, 1325]
-    contentHash: 0139e6d
+    contentHash: 33de090
     note: "stageContractMarkdown hardcodes copy-paste advance commands in prompt text instead of exposing a reusable next-command derivation surface."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts
     range: [1645, 1670]
-    contentHash: 0139e6d
+    contentHash: 33de090
     note: "State load/write currently parses into FeatureDeliveryState and rewrites from the typed shape, so additive fields require explicit passthrough."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts
     range: [1739, 1779]
-    contentHash: 0139e6d
+    contentHash: 33de090
     note: "Implement-after-must_fix already supports a review.md reentry fast path that the new next-command surface SHALL preserve."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.ts
     range: [159, 194]
-    contentHash: 8f289a2
+    contentHash: 0a453d8
     note: "Artifact validation is existence-only today; warn-first content validation extends this surface."
   - kind: lines
     path: lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts
     range: [444, 460]
-    contentHash: 9ea1635
+    contentHash: c0befcf
     note: "Review and test artifacts already expose minimal machine-readable verdict fields that can anchor warn-first validators."
   - kind: lines
     path: lib/internal/tools/migrate-timestamp-naming.mjs
     range: [59, 109]
-    contentHash: 6d240f3
+    contentHash: 02eadfb
     note: "daysToFds, secondsRemainingInDay, and hhmm encode the countdown naming scheme that Track O MUST decode for text output."
   - kind: lines
     path: lib/internal/tools/context-budget-report.mjs
     range: [149, 156]
-    contentHash: 413ee01
+    contentHash: 6cc94bb
     note: "The report currently reads .cursorindexingignore unconditionally, so a missing file throws instead of returning a structured diagnostic."
 ---
 
@@ -342,7 +342,7 @@ node lib/internal/tools/check-operator-output.mjs
 The registry SHALL then add read-only engine checks:
 
 - one P7 artifact validation pass for each active feature-delivery state under
-  `work/<day>/<taskId>/state.json`,
+  `.pan/work/<day>/<taskId>/state.json`,
 - one shipped-ledger cap check against `lib/memory/active/current.md`,
 - one explicit `.cursorindexingignore` health check that turns a missing file
   into a normal failed check instead of an exception.
@@ -394,7 +394,7 @@ crash.
 - This pass depends on the internal P7 validator work because P8 consumes the
   same read-only validator surface.
 - The pass SHALL run after every Track D run through P4 reaches archival close
-  and `work/` is clear, and SHALL land before P9/P10 consume the surfaced
+  and `.pan/work/` is clear, and SHALL land before P9/P10 consume the surfaced
   `nextCommand` and decoded timestamp shape.
 
 ## 8 — Open questions

@@ -11,7 +11,7 @@ purpose: |
 related:
   - /lib/memory/handbook/context-economy.md
   - /lib/memory/handbook/memory-tiers.md
-  - /docs/M1.index.md
+  - /.docs/M1.index.md
 ---
 
 # Context cost audit
@@ -23,8 +23,8 @@ controls used to reduce default load.
 
 | Cost sink | Control |
 |---|---|
-| Full `docs/PRD.md` and full `docs/BOOTSTRAP.md` loaded for routing questions | Keep full files explicit-read by default; route through `docs/PRD.summary.md`, `docs/PRD.index.md`, and `docs/M1.index.md`. |
-| Active and archival execution artifacts under `work/**`, `archive/work/**`, `lib/inbox/out/**`, `archive/inbox/**`, and `lib/inbox/threads/**` | Track `.cursorindexingignore`; exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
+| Full `.docs/PRD.md` and full `.docs/BOOTSTRAP.md` loaded for routing questions | Keep full files explicit-read by default; route through `.docs/PRD.summary.md`, `.docs/PRD.index.md`, and `.docs/M1.index.md`. |
+| Active and archival execution artifacts under `.pan/work/**`, `.pan/archive/work/**`, `lib/inbox/out/**`, `.pan/archive/inbox/**`, and `lib/inbox/threads/**` | Track `.cursorindexingignore`; exclude from Cursor semantic indexing; require explicit active-run handling or historical-reconstruction trigger. |
 | Human-only operator notes | Exclude `lib/inbox/notes/**` from Cursor indexing and preserve AGENTS prohibition on agent traversal. |
 | Cursor subagent projections duplicating canonical persona prose and PRD citations | Keep `.cursor/agents/**` compact and point to `lib/personas/<name>.md` as canonical source. |
 | Expensive fixed models used for every subagent invocation | One canonical `.cursor/agents/<name>.md` per persona with economical default model policy; escalate model class per `context-economy.md` triggers. |
@@ -32,7 +32,7 @@ controls used to reduce default load.
 | Generated machine artifacts | Exclude generated JSON, manifests, dry-run/write outputs, and lockfiles from default semantic indexing. |
 | Broad handbook/persona sweeps | Treat internal operating content as routeable by handbook index, not default-loaded. |
 | Broad implementation rule triggers | Keep `coder.mdc` scoped to implementation packages, tests, tools, and explicit touch-set files instead of broad `lib/**/*` activation. |
-| Operator-facing root clutter from implementation, tests, tools, and completed work | Move implementation surfaces to `lib/internal/packages/` and `lib/internal/tools/`, keep repository tests at root `tests/`, and move completed runs to `archive/work/`; keep `work/` for active runs only. Split `AGENTS.md` and `docs/**` (internal) from external `README.md` and `OPERATION.md`. |
+| Operator-facing root clutter from implementation, tests, tools, and completed work | Move implementation surfaces to `lib/internal/packages/` and `lib/internal/tools/`, keep repository tests at root `tests/`, and move completed runs to `.pan/archive/work/`; keep `.pan/work/` for active runs only. Split `AGENTS.md` and `.docs/**` (internal) from external `README.md` and `OPERATION.md`. |
 
 ## Known risks
 
@@ -40,7 +40,7 @@ controls used to reduce default load.
   files outside this repository's direct control.
 - `.cursor/agents/**` remains excluded from semantic indexing. Operators MUST
   verify custom agent discovery after changes.
-- Full `docs/PRD.md` and `docs/BOOTSTRAP.md` remain explicitly readable. Agents MUST cite
+- Full `.docs/PRD.md` and `.docs/BOOTSTRAP.md` remain explicitly readable. Agents MUST cite
   exact ranges when they rely on authoritative source wording.
 
 ## Manual validation

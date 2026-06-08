@@ -7,9 +7,9 @@ This feature ships a bounded Phase 4 intervention probe that captures empirical 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [10, 29],
-  "contentHash": "935825e"
+  "contentHash": "176aac7"
 }
 ```
  
@@ -17,9 +17,9 @@ This feature ships a bounded Phase 4 intervention probe that captures empirical 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [1, 3],
-  "contentHash": "8b9b536"
+  "contentHash": "90a6d61"
 }
 ```
 
@@ -49,9 +49,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [1, 18],
-  "contentHash": "8b9b536"
+  "contentHash": "90a6d61"
 }
 ```
  
@@ -59,9 +59,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [49, 58],
-  "contentHash": "935825e"
+  "contentHash": "176aac7"
 }
 ```
 
@@ -73,9 +73,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
   "range": [5, 12],
-  "contentHash": "16c2f21"
+  "contentHash": "21212aa"
 }
 ```
  
@@ -83,9 +83,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
   "range": [24, 37],
-  "contentHash": "d82f01c"
+  "contentHash": "6fb4189"
 }
 ```
 
@@ -94,9 +94,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
   "range": [9, 10],
-  "contentHash": "16c2f21"
+  "contentHash": "21212aa"
 }
 ```
  
@@ -104,9 +104,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
   "range": [32, 41],
-  "contentHash": "d82f01c"
+  "contentHash": "6fb4189"
 }
 ```
 
@@ -115,9 +115,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/plan.md",
   "range": [11, 12],
-  "contentHash": "16c2f21"
+  "contentHash": "21212aa"
 }
 ```
  
@@ -125,9 +125,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
   "range": [15, 17],
-  "contentHash": "d82f01c"
+  "contentHash": "6fb4189"
 }
 ```
 
@@ -170,9 +170,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [10, 29],
-  "contentHash": "935825e"
+  "contentHash": "176aac7"
 }
 ```
 
@@ -205,9 +205,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [1, 3],
-  "contentHash": "8b9b536"
+  "contentHash": "90a6d61"
 }
 ```
  
@@ -215,9 +215,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/adr-draft.md",
   "range": [15, 17],
-  "contentHash": "d82f01c"
+  "contentHash": "6fb4189"
 }
 ```
 
@@ -226,9 +226,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [11, 17],
-  "contentHash": "8b9b536"
+  "contentHash": "90a6d61"
 }
 ```
  
@@ -236,9 +236,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [27, 29],
-  "contentHash": "8b9b536"
+  "contentHash": "90a6d61"
 }
 ```
 
@@ -247,9 +247,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/review.md",
   "range": [15, 17],
-  "contentHash": "8b9b536"
+  "contentHash": "90a6d61"
 }
 ```
  
@@ -257,9 +257,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "2f37868"
+  "contentHash": "126621c"
 }
 ```
 
@@ -281,9 +281,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "2f37868"
+  "contentHash": "126621c"
 }
 ```
 
@@ -302,9 +302,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "2f37868"
+  "contentHash": "126621c"
 }
 ```
 
@@ -323,9 +323,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "2f37868"
+  "contentHash": "126621c"
 }
 ```
 
@@ -344,9 +344,9 @@ The review gate passes with no must-fix items, and validation completed with 55 
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 25],
-  "contentHash": "2f37868"
+  "contentHash": "126621c"
 }
 ```
 
@@ -358,9 +358,9 @@ Coverage delta against the prior baseline is not expressed as changed-line state
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [10, 14],
-  "contentHash": "2f37868"
+  "contentHash": "126621c"
 }
 ```
  
@@ -368,9 +368,9 @@ Coverage delta against the prior baseline is not expressed as changed-line state
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [49, 58],
-  "contentHash": "935825e"
+  "contentHash": "176aac7"
 }
 ```
 
@@ -379,9 +379,9 @@ Confidence comes from the required validation set: `node --test tests/*.test.mjs
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/test-report.md",
   "range": [16, 29],
-  "contentHash": "2f37868"
+  "contentHash": "126621c"
 }
 ```
  
@@ -389,9 +389,9 @@ Confidence comes from the required validation set: `node --test tests/*.test.mjs
 ```json
 {
   "kind": "lines",
-  "path": "archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
+  "path": ".pan/archive/work/172988_05-18-26/71096_0415_phase-4-intervention-probe-pause-resume-abort/implementation-report.md",
   "range": [53, 58],
-  "contentHash": "935825e"
+  "contentHash": "176aac7"
 }
 ```
 

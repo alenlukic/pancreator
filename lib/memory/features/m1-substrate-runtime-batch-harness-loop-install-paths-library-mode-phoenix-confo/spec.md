@@ -40,20 +40,20 @@ references:
     contentHash: b8cf506
     note: WP-D option A (Phoenix/Langfuse smoke tests) and option B (formal deferral ADR) definitions and acceptance criteria.
   - kind: lines
-    path: docs/PRD.md
+    path: .docs/PRD.md
     range: [113, 121]
-    contentHash: 2ce8e5c
+    contentHash: 2eb6aa4
     note: PRD §3.5 US-8 (library mode) and US-9 (install paths) — M1 MVP promises that WP-E and WP-F close.
   - kind: lines
     path: lib/memory/handbook/run-log-schema.md
     range: [1, 10]
-    contentHash: a2b339d
+    contentHash: 5c18026
     note: Run-log schema defining OpenInference primary attributes and OTel GenAI semconv parallel layer; referenced by WP-A and WP-B acceptance criteria.
 ---
 
 # Spec
 
-This Feature SHALL close six M1 substrate and runtime gaps — LangGraph checkpointer conformance (WP-A), Cursor SDK runner invocation (WP-B), pipeline StateGraph compiler (WP-C), run-logger Phoenix conformance (WP-D), library-mode script example (WP-E), and install paths (WP-F) — so that the `feature-delivery` harness loop reaches a runnable end-to-end state with checkpoint resume, run-log observability conformance is either proven or formally deferred, and library-mode adoption and both install paths are demonstrable without hand-authored scaffold. The batch closes PRD US-8 (library mode) and US-9 (install paths) and unblocks the runner-cursor substrate gap BR4 documented in `docs/BOOTSTRAP.md` Phase 3.
+This Feature SHALL close six M1 substrate and runtime gaps — LangGraph checkpointer conformance (WP-A), Cursor SDK runner invocation (WP-B), pipeline StateGraph compiler (WP-C), run-logger Phoenix conformance (WP-D), library-mode script example (WP-E), and install paths (WP-F) — so that the `feature-delivery` harness loop reaches a runnable end-to-end state with checkpoint resume, run-log observability conformance is either proven or formally deferred, and library-mode adoption and both install paths are demonstrable without hand-authored scaffold. The batch closes PRD US-8 (library mode) and US-9 (install paths) and unblocks the runner-cursor substrate gap BR4 documented in `.docs/BOOTSTRAP.md` Phase 3.
 
 ## Delivery phasing
 
@@ -113,7 +113,7 @@ The intake-analyst ratifies Option A as the delivery default for this intake. Op
 - When the script runs, it SHALL NOT read any path under `lib/memory/`, `lib/inbox/`, or `pancreator.yaml`.
 - When the script resolves its imports, it SHALL import only `@pancreator/persona` and declared external peers.
 - When CI builds the library-mode example, the build and smoke test SHALL complete without touching the host repository.
-- When `examples/library-script/` is referenced in `docs/PRD.summary.md`, it SHALL serve as the authoritative library-mode proof for PRD US-8.
+- When `examples/library-script/` is referenced in `.docs/PRD.summary.md`, it SHALL serve as the authoritative library-mode proof for PRD US-8.
 
 ### WP-F — Install paths
 

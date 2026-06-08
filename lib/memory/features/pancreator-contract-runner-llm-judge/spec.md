@@ -12,7 +12,7 @@ This feature folder captures Phase 2 delivery requirements for `@pancreator/cont
 ## Requirements
 - The package implementation MUST satisfy contract `pancreator.contract_runner_llm_judge.package_shape` for `lib/internal/packages/@pancreator/contract-runner-llm-judge/**`.
 - The package README Quickstart section MUST satisfy contract `pancreator.contract_runner_llm_judge.readme_ergonomics`.
-- Work sequencing MUST preserve the docs/BOOTSTRAP.md Phase 2 dependency order position 4 of 20.
+- Work sequencing MUST preserve the .docs/BOOTSTRAP.md Phase 2 dependency order position 4 of 20.
 
 ## Non-Goals
 - Defining M2+ scope for new contract kinds.
