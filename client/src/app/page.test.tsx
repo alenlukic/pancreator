@@ -1,12 +1,15 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "@/components/DashboardPage";
 import { stringifyCompactJson } from "@/lib/json-io";
 
 const mockRunState = [
   {
     taskId: "65766_0543_demo-feature",
+    featureId: "demo-feature",
     decodedTimestamp: "2026-06-02 05:43 UTC",
+    runDir: "work/172973_06-02-26/65766_0543_demo-feature",
+    inboxSource: "lib/inbox/in/demo.md",
     sourceWarning: "pan status unavailable",
     stages: [
       {
@@ -15,6 +18,7 @@ const mockRunState = [
         humanGate: "human_approval",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "Intake ratified",
         status: "complete",
       },
       {
@@ -23,6 +27,7 @@ const mockRunState = [
         humanGate: "human_approval",
         nextHumanAction: "Ratify the plan before advancing.",
         nextCommand: "pnpm -w exec pan advance 65766_0543_demo-feature --artifact touch-set.json",
+        humanAttention: "",
         status: "active",
       },
       {
@@ -31,6 +36,7 @@ const mockRunState = [
         humanGate: "",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "",
         status: "pending",
       },
       {
@@ -39,6 +45,7 @@ const mockRunState = [
         humanGate: "",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "",
         status: "pending",
       },
       {
@@ -47,6 +54,7 @@ const mockRunState = [
         humanGate: "",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "",
         status: "pending",
       },
       {
@@ -55,6 +63,16 @@ const mockRunState = [
         humanGate: "",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "",
+        status: "pending",
+      },
+      {
+        name: "compliance",
+        ownerPersona: "supervisor",
+        humanGate: "",
+        nextHumanAction: "",
+        nextCommand: "",
+        humanAttention: "",
         status: "pending",
       },
       {
@@ -63,6 +81,7 @@ const mockRunState = [
         humanGate: "",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "",
         status: "pending",
       },
       {
@@ -71,6 +90,7 @@ const mockRunState = [
         humanGate: "",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "",
         status: "pending",
       },
       {
@@ -79,6 +99,7 @@ const mockRunState = [
         humanGate: "",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "",
         status: "pending",
       },
     ],
@@ -97,11 +118,125 @@ const mockRunState = [
   },
 ];
 
+const mockActiveMemory = {
+  activeFeaturePath: "lib/inbox/in/demo-orientation.md",
+  blockersSummary: "Blocker one · Blocker two",
+  refreshTimestamp: "2026-06-08T10:07:29.699Z",
+};
+
+const mockInboxEntries = [
+  {
+    path: "lib/inbox/in/demo-orientation.md",
+    title: "Demo orientation",
+    slug: "demo-orientation",
+    ageHours: 3,
+  },
+];
+
+function orientationFetchResponse(url: string): Response | null {
+  if (url.includes("/api/active-memory")) {
+    return new Response(stringifyCompactJson(mockActiveMemory), { status: 200 });
+  }
+  if (url.includes("/api/inbox")) {
+    return new Response(stringifyCompactJson({ entries: mockInboxEntries }), { status: 200 });
+  }
+  return null;
+}
+
+const mockRunStateSecondTask = {
+  taskId: "88888_1200_other-feature",
+  featureId: "other-feature",
+  decodedTimestamp: "2026-06-02 12:00 UTC",
+  runDir: "work/172973_06-02-26/88888_1200_other-feature",
+  inboxSource: "lib/inbox/in/other.md",
+  stages: mockRunState[0].stages.map((stage) =>
+    stage.name === "plan"
+      ? {
+          ...stage,
+          humanGate: "",
+          nextHumanAction: "",
+          nextCommand: "",
+          status: "active",
+        }
+      : stage.status === "active"
+        ? { ...stage, status: "pending" }
+        : stage,
+  ),
+  runEvents: [
+    {
+      timestamp: "2026-06-01T08:00:00.000Z",
+      event: "tech-lead",
+      message: "tech-lead · plan: success",
+    },
+  ],
+};
+
+const mockConfig = {
+  invocationMode: "sdk",
+  designStepsDefault: false,
+  stageRemediation: true,
+  sdkSampling: {
+    enabled: true,
+    ratePercent: 10,
+    scope: "feature-delivery",
+  },
+  activeEscalationConfig: "auto",
+  personaEscalationBadges: [{ persona: "coder", tierLabel: "composer-2.5[fast=false]" }],
+};
+
+const mockAutomations = [
+  {
+    id: "hourly-coder",
+    name: "Hourly coder",
+    enabled: true,
+    schedule: "0 * * * *",
+    scheduleLabel: "Hourly",
+    status: "scheduled",
+    triggerKind: "agent",
+    persona: "coder",
+  },
+];
+
+const mockAutomationRecord = {
+  schemaVersion: 1,
+  id: "hourly-coder",
+  name: "Hourly coder",
+  enabled: true,
+  schedule: "0 * * * *",
+  trigger: {
+    kind: "agent",
+    persona: "coder",
+    prompt: "Review open tasks.",
+  },
+  policy: {
+    maxConcurrent: 1,
+    timeoutMinutes: 60,
+  },
+};
+
+const mockPersonas = ["coder", "tech-lead"];
+
 type MockFetchOptions = {
   runState?: unknown[];
+  config?: unknown;
+  activeMemory?: unknown;
+  inboxEntries?: unknown[];
   listEntries?: unknown[];
   fileContent?: string;
+  fileOk?: boolean;
   postCalls?: { path: string; content: string }[];
+  executeCalls?: string[];
+  executeResult?: unknown;
+  automations?: unknown[];
+  automationRecord?: unknown;
+  personas?: string[];
+  automationPutCalls?: unknown[];
+  automationPostCalls?: unknown[];
+  automationRunCalls?: string[];
+  automationRuns?: Record<string, unknown[]>;
+  complianceDescriptors?: unknown[];
+  complianceRunResult?: unknown;
+  testRunSseBody?: string;
 };
 
 function mockFetchForDashboard(options: MockFetchOptions = {}) {
@@ -109,6 +244,32 @@ function mockFetchForDashboard(options: MockFetchOptions = {}) {
     const url = String(input);
     if (url.includes("/api/run-state")) {
       return new Response(stringifyCompactJson(options.runState ?? []), { status: 200 });
+    }
+    if (url.includes("/api/active-memory")) {
+      return new Response(stringifyCompactJson(options.activeMemory ?? mockActiveMemory), { status: 200 });
+    }
+    if (url.includes("/api/inbox")) {
+      return new Response(
+        stringifyCompactJson({ entries: options.inboxEntries ?? mockInboxEntries }),
+        { status: 200 },
+      );
+    }
+    if (url.includes("/api/config")) {
+      return new Response(stringifyCompactJson(options.config ?? mockConfig), { status: 200 });
+    }
+    if (url.includes("/api/execute") && init?.method === "POST") {
+      const body = JSON.parse(String(init.body)) as { command: string };
+      options.executeCalls?.push(body.command);
+      return new Response(
+        stringifyCompactJson(
+          options.executeResult ?? {
+            stdout: "ok",
+            stderr: "",
+            exitCode: 0,
+          },
+        ),
+        { status: 200 },
+      );
     }
     if (url.includes("/api/list")) {
       return new Response(stringifyCompactJson({ entries: options.listEntries ?? [] }), { status: 200 });
@@ -119,17 +280,103 @@ function mockFetchForDashboard(options: MockFetchOptions = {}) {
       return new Response(stringifyCompactJson({}), { status: 200 });
     }
     if (url.includes("/api/file")) {
+      const ok = options.fileOk ?? true;
+      if (!ok) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
       return new Response(
         stringifyCompactJson({ content: options.fileContent ?? "modal content" }),
         { status: 200 },
       );
+    }
+    if (url.match(/\/api\/automations\/[^/]+\/run$/u) && init?.method === "POST") {
+      const automationId = url.split("/").at(-2) ?? "";
+      options.automationRunCalls?.push(automationId);
+      return new Response(
+        stringifyCompactJson({
+          outcomes: [{ automationId, runId: "run-test", status: "success" }],
+        }),
+        { status: 200 },
+      );
+    }
+    if (url.includes("/api/automations") && init?.method === "POST") {
+      const body = JSON.parse(String(init.body)) as unknown;
+      options.automationPostCalls?.push(body);
+      return new Response(stringifyCompactJson(mockAutomations[0]), { status: 201 });
+    }
+    if (url.includes("/api/automations") && init?.method === "PUT") {
+      const body = JSON.parse(String(init.body)) as unknown;
+      options.automationPutCalls?.push(body);
+      return new Response(
+        stringifyCompactJson({
+          ...mockAutomations[0],
+          enabled: (body as { enabled?: boolean }).enabled ?? true,
+          status: (body as { enabled?: boolean }).enabled ? "scheduled" : "paused",
+        }),
+        { status: 200 },
+      );
+    }
+    if (url.match(/\/api\/automations\/[^/]+\/runs$/u)) {
+      const automationId = url.split("/").at(-2) ?? "";
+      const runs = options.automationRuns?.[automationId] ?? [];
+      return new Response(stringifyCompactJson({ runs }), { status: 200 });
+    }
+    if (url.includes("/api/automations?id=")) {
+      return new Response(stringifyCompactJson(options.automationRecord ?? mockAutomationRecord), {
+        status: 200,
+      });
+    }
+    if (url.includes("/api/automations")) {
+      return new Response(
+        stringifyCompactJson({
+          automations: options.automations ?? mockAutomations,
+          personas: options.personas ?? mockPersonas,
+        }),
+        { status: 200 },
+      );
+    }
+    if (url.includes("/api/compliance-run") && init?.method === "POST") {
+      return new Response(
+        stringifyCompactJson(
+          options.complianceRunResult ?? {
+            status: "pass",
+            exitCode: 0,
+            results: [{ id: "json-formatting", pass: true, severity: "high", blocks: false }],
+          },
+        ),
+        { status: 200 },
+      );
+    }
+    if (url.includes("/api/compliance-run")) {
+      return new Response(
+        stringifyCompactJson({
+          descriptors: options.complianceDescriptors ?? [
+            {
+              id: "json-formatting",
+              severity: "high",
+              triggerModes: ["operator-on-demand"],
+              descriptorPath: "tests/compliance/json-formatting.yaml",
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }
+    if (url.includes("/api/test-run") && init?.method === "POST") {
+      const body =
+        options.testRunSseBody ??
+        'data: {"stream":"stdout","line":"vitest output"}\n\nevent: exit\ndata: {"exitCode":0}\n\n';
+      return new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
     }
     return new Response(stringifyCompactJson({}), { status: 404 });
   });
 }
 
 async function openSampleFileInModal() {
-  fireEvent.click(screen.getByTestId("tab-files"));
+  fireEvent.click(screen.getByTestId("module-tab-files"));
   await waitFor(() => {
     expect(screen.getByText("sample.md")).toBeInTheDocument();
   });
@@ -142,38 +389,114 @@ async function openSampleFileInModal() {
 describe("DashboardPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
   });
 
-  it("renders navigation for the five repository domains", async () => {
-    mockFetchForDashboard({});
-
-    render(<DashboardPage />);
-
-    expect(screen.getByTestId("domain-inbox")).toBeInTheDocument();
-    expect(screen.getByTestId("domain-memory")).toBeInTheDocument();
-    expect(screen.getByTestId("domain-personas")).toBeInTheDocument();
-    expect(screen.getByTestId("domain-work")).toBeInTheDocument();
-    expect(screen.getByTestId("domain-packages")).toBeInTheDocument();
-    expect(screen.getByTestId("domain-inbox")).toHaveTextContent("lib/inbox/");
-    expect(screen.getByTestId("domain-memory")).toHaveTextContent("lib/memory/");
-    expect(screen.getByTestId("domain-personas")).toHaveTextContent("lib/personas/");
-    expect(screen.getByTestId("domain-work")).toHaveTextContent("work/");
-    expect(screen.getByTestId("domain-packages")).toHaveTextContent("lib/internal/packages/");
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it("defaults to the cockpit tab with a 9-stage grid when active tasks exist", async () => {
+  it("defaults to the Pipeline module with CockpitShell tabs", async () => {
     mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("tab-cockpit")).toHaveClass("dashboard-tab-active");
+      expect(screen.getByTestId("cockpit-shell")).toBeInTheDocument();
+      expect(screen.getByTestId("module-tab-pipeline")).toHaveClass("cockpit-module-tab-active");
+      expect(screen.getByTestId("pipeline-module")).toBeInTheDocument();
+    });
+  });
+
+  it("renders Next Action panel with run directory and command actions", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      const panel = screen.getByTestId("next-action-panel");
+      expect(panel).toHaveTextContent("65766_0543_demo-feature (2026-06-02 05:43 UTC)");
+      expect(panel).toHaveTextContent("work/172973_06-02-26/65766_0543_demo-feature/");
+      expect(panel).toHaveTextContent("Ratify the plan before advancing.");
+      expect(panel).toHaveTextContent("pnpm -w exec pan advance");
+      expect(within(panel).getByTestId("copy-command-button")).toBeEnabled();
+      expect(screen.getByTestId("open-next-prompt-button")).toBeInTheDocument();
+      expect(screen.getByTestId("open-run-folder-button")).toBeInTheDocument();
+    });
+  });
+
+  it("copies nextCommand and shows Copied feedback", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(within(screen.getByTestId("next-action-panel")).getByTestId("copy-command-button")).toBeEnabled();
+    });
+
+    fireEvent.click(within(screen.getByTestId("next-action-panel")).getByTestId("copy-command-button"));
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "pnpm -w exec pan advance 65766_0543_demo-feature --artifact touch-set.json",
+      );
+      expect(screen.getByText("Copied")).toHaveAttribute("aria-live", "polite");
+    });
+  });
+
+  it("renders human gate queue banner and supports dismiss persistence in Next Action", async () => {
+    mockFetchForDashboard({ runState: mockRunState, fileOk: false });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("human-gate-banner")).toBeInTheDocument();
+      expect(screen.getByTestId("human-gate-queue")).toHaveTextContent("plan");
+    });
+
+    fireEvent.click(screen.getByTestId("dismiss-gate-65766_0543_demo-feature-plan"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("human-gate-banner")).not.toBeInTheDocument();
+      expect(screen.getByTestId("next-action-dismissed-gates")).toBeInTheDocument();
+    });
+  });
+
+  it("renders read-only runtime configuration panel", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      const panel = screen.getByTestId("config-readonly-panel");
+      expect(panel).toHaveAttribute("aria-readonly", "true");
+      expect(screen.getByTestId("config-invocation-mode")).toHaveTextContent("sdk");
+      expect(screen.getByTestId("config-stage-remediation")).toHaveTextContent("true");
+      expect(screen.getByTestId("config-sdk-sampling")).toHaveTextContent("10% · feature-delivery");
+      expect(screen.getByTestId("config-escalation-badges")).toHaveTextContent("coder");
+    });
+  });
+
+  it("defaults to the pipeline module with a 10-stage grid including compliance", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
       expect(screen.getByTestId("stage-grid")).toBeInTheDocument();
-      expect(screen.getByText("65766_0543_demo-feature (2026-06-02 05:43 UTC)")).toBeInTheDocument();
-      expect(screen.getByTestId("stage-cell-intake")).toHaveTextContent("Gate: human_approval");
+      expect(screen.getByTestId("task-cockpit-65766_0543_demo-feature")).toHaveTextContent(
+        "65766_0543_demo-feature (2026-06-02 05:43 UTC)",
+      );
+      expect(screen.getByTestId("stage-cell-intake")).toHaveTextContent("Intake ratified");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("tech-lead");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("Ratify the plan");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("pnpm -w exec pan advance");
+      expect(screen.getByTestId("stage-cell-compliance")).toBeInTheDocument();
     });
 
     expect(screen.getByTestId("stage-cell-implement")).not.toHaveTextContent("pnpm -w exec pan advance");
@@ -185,7 +508,7 @@ describe("DashboardPage", () => {
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("cockpit-empty")).toHaveTextContent("No active feature-delivery tasks");
+      expect(screen.getByTestId("next-action-panel")).toHaveTextContent("No active feature-delivery tasks");
     });
   });
 
@@ -201,40 +524,61 @@ describe("DashboardPage", () => {
     });
   });
 
-  it("does not render the mtime activity feed on the default cockpit view", async () => {
+  it("does not render the mtime activity feed on the default pipeline view", async () => {
     const fetchMock = mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("cockpit-view")).toBeInTheDocument();
+      expect(screen.getByTestId("pipeline-module")).toBeInTheDocument();
     });
 
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/api/activity"))).toBe(false);
     expect(screen.queryByTestId("activity-feed")).not.toBeInTheDocument();
   });
 
-  it("shows the file browser only on the files tab", async () => {
+  it("shows the file browser only on the files module tab", async () => {
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
     });
 
     render(<DashboardPage />);
 
     expect(screen.queryByText("sample.md")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId("tab-files"));
+    fireEvent.click(screen.getByTestId("module-tab-files"));
 
     await waitFor(() => {
       expect(screen.getByText("sample.md")).toBeInTheDocument();
     });
   });
 
+  it("opens next-prompt from Next Action in a read-only file modal", async () => {
+    mockFetchForDashboard({
+      runState: mockRunState,
+      fileContent: "next prompt body",
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("open-next-prompt-button")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("open-next-prompt-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-modal")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("next prompt body")).toBeInTheDocument();
+      expect(screen.getByTestId("readonly-indicator")).toHaveTextContent("Read-only");
+    });
+  });
+
   it("opens the inline modal with file content from the files tab", async () => {
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
     });
 
     render(<DashboardPage />);
@@ -246,7 +590,7 @@ describe("DashboardPage", () => {
   it("opens the file modal in read-only mode with an edit affordance", async () => {
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
     });
 
     render(<DashboardPage />);
@@ -263,7 +607,7 @@ describe("DashboardPage", () => {
     const postCalls: { path: string; content: string }[] = [];
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
       fileContent: "unchanged content",
       postCalls,
     });
@@ -287,7 +631,7 @@ describe("DashboardPage", () => {
     const postCalls: { path: string; content: string }[] = [];
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [{ path: "lib/memory/sample.md", name: "sample.md", kind: "file" }],
+      listEntries: [{ path: "work/sample.md", name: "sample.md", kind: "file" }],
       fileContent: "original line",
       postCalls,
     });
@@ -314,42 +658,34 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(postCalls).toHaveLength(1);
       expect(postCalls[0]).toEqual({
-        path: "lib/memory/sample.md",
+        path: "work/sample.md",
         content: "modified line",
       });
     });
   });
 
-  it("blocks confirm-save for guarded pipeline-owned paths", async () => {
+  it("blocks confirm-save for guarded pipeline-owned paths opened from Next Action", async () => {
     const postCalls: { path: string; content: string }[] = [];
     mockFetchForDashboard({
       runState: mockRunState,
-      listEntries: [
-        {
-          path: "work/172973_06-02-26/demo/handoff.md",
-          name: "handoff.md",
-          kind: "file",
-        },
-      ],
-      fileContent: "pipeline handoff",
+      fileContent: "pipeline next prompt",
       postCalls,
     });
 
     render(<DashboardPage />);
-    fireEvent.click(screen.getByTestId("tab-files"));
 
     await waitFor(() => {
-      expect(screen.getByText("handoff.md")).toBeInTheDocument();
+      expect(screen.getByTestId("open-next-prompt-button")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("handoff.md"));
+    fireEvent.click(screen.getByTestId("open-next-prompt-button"));
 
     await waitFor(() => {
       expect(screen.getByTestId("file-modal")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId("edit-button"));
-    fireEvent.change(screen.getByDisplayValue("pipeline handoff"), {
+    fireEvent.change(screen.getByDisplayValue("pipeline next prompt"), {
       target: { value: "unsafe edit" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -364,7 +700,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(within(modal).getByTestId("write-guard-error")).toHaveTextContent(
-        "Write blocked: work/172973_06-02-26/demo/handoff.md is a pipeline-owned file.",
+        "Write blocked: work/172973_06-02-26/65766_0543_demo-feature/next-prompt.md is a pipeline-owned file.",
       );
     });
 
@@ -372,24 +708,282 @@ describe("DashboardPage", () => {
     expect(within(modal).queryByTestId("diff-view")).not.toBeInTheDocument();
   });
 
-  it("drills into directories instead of opening them as files", async () => {
+  it("starts live polling while a task has an active stage", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = mockFetchForDashboard({ runState: mockRunState });
+      render(<DashboardPage />);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(screen.getByTestId("live-refresh-indicator")).toBeInTheDocument();
+
+      const initialCalls = fetchMock.mock.calls.filter(([input]) =>
+        String(input).includes("/api/run-state"),
+      ).length;
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(7500);
+        await Promise.resolve();
+      });
+
+      const pollCalls = fetchMock.mock.calls.filter(([input]) =>
+        String(input).includes("/api/run-state"),
+      ).length;
+      expect(pollCalls).toBeGreaterThan(initialCalls);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops live polling when no task has an active stage", async () => {
+    const terminalRunState = [
+      {
+        ...mockRunState[0],
+        stages: mockRunState[0].stages.map((stage) =>
+          stage.status === "active" ? { ...stage, status: "complete" } : stage,
+        ),
+      },
+    ];
+    mockFetchForDashboard({ runState: terminalRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("live-refresh-indicator")).not.toBeInTheDocument();
+    });
+  });
+
+  it("appends new timeline events on poll without discarding prior entries", async () => {
+    vi.useFakeTimers();
+    let pollCount = 0;
     const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
       const url = String(input);
+      const orientation = orientationFetchResponse(url);
+      if (orientation !== null) {
+        return orientation;
+      }
+      if (url.includes("/api/run-state")) {
+        pollCount += 1;
+        const runEvents =
+          pollCount <= 1
+            ? mockRunState[0].runEvents
+            : [
+                {
+                  timestamp: "2026-06-02T13:00:00.000Z",
+                  event: "coder",
+                  message: "coder · implement: success",
+                },
+                ...mockRunState[0].runEvents,
+              ];
+        return new Response(stringifyCompactJson([{ ...mockRunState[0], runEvents }]), {
+          status: 200,
+        });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson(mockConfig), { status: 200 });
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+
+    try {
+      render(<DashboardPage />);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(screen.getByTestId("run-timeline")).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(7500);
+        await Promise.resolve();
+      });
+
+      const timeline = screen.getByTestId("run-timeline");
+      const headings = [...timeline.querySelectorAll("h4")].map((node) => node.textContent);
+      expect(headings[0]).toContain("coder");
+      expect(headings).toHaveLength(3);
+    } finally {
+      vi.useRealTimers();
+      fetchMock.mockRestore();
+    }
+  });
+
+  it("opens artifact drawer with present and missing rows", async () => {
+    const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      const orientation = orientationFetchResponse(url);
+      if (orientation !== null) {
+        return orientation;
+      }
       if (url.includes("/api/run-state")) {
         return new Response(stringifyCompactJson(mockRunState), { status: 200 });
       }
-      if (url.includes("/api/list?path=lib%2Fmemory%2Ffeatures")) {
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson(mockConfig), { status: 200 });
+      }
+      if (url.includes("/api/file?path=work%2F172973_06-02-26%2F65766_0543_demo-feature%2Fplan.md")) {
+        return new Response(stringifyCompactJson({ content: "plan body" }), { status: 200 });
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stage-cell-plan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("stage-cell-plan"));
+
+    await waitFor(() => {
+      const drawer = screen.getByTestId("artifact-drawer");
+      expect(within(drawer).getByText("plan.md")).toBeInTheDocument();
+      expect(within(drawer).getAllByText("Missing").length).toBeGreaterThan(0);
+    });
+
+    fetchMock.mockRestore();
+  });
+
+  it("opens drawer artifacts in the read-only Files modal", async () => {
+    const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      const orientation = orientationFetchResponse(url);
+      if (orientation !== null) {
+        return orientation;
+      }
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson(mockRunState), { status: 200 });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson(mockConfig), { status: 200 });
+      }
+      if (url.includes("/api/file?path=work%2F172973_06-02-26%2F65766_0543_demo-feature%2Fplan.md")) {
+        return new Response(stringifyCompactJson({ content: "plan from drawer" }), { status: 200 });
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stage-cell-plan")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("stage-cell-plan"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("artifact-drawer")).toBeInTheDocument();
+    });
+
+    const drawer = screen.getByTestId("artifact-drawer");
+    fireEvent.click(within(drawer).getByText("plan.md"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-modal")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("plan from drawer")).toBeInTheDocument();
+      expect(screen.getByTestId("readonly-indicator")).toHaveTextContent("Read-only");
+    });
+
+    fetchMock.mockRestore();
+  });
+
+  it("renders telemetry badges on timeline events and active-cell chip", async () => {
+    const telemetryRunState = [
+      {
+        ...mockRunState[0],
+        runEvents: [
+          {
+            timestamp: "2026-06-02T12:00:00.000Z",
+            event: "cursor.runner.escalation",
+            message: "escalation logged",
+            name: "cursor.runner.escalation",
+            stageId: "plan",
+            escalationLabel: "composer-2.5[fast=false]",
+          },
+          ...mockRunState[0].runEvents,
+        ],
+      },
+    ];
+    mockFetchForDashboard({ runState: telemetryRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      const planCell = screen.getByTestId("stage-cell-plan");
+      expect(within(planCell).getByText("composer-2.5[fast=false]")).toBeInTheDocument();
+      const timeline = screen.getByTestId("run-timeline");
+      expect(within(timeline).getByText("composer-2.5[fast=false]")).toBeInTheDocument();
+    });
+  });
+
+  it("omits elapsed time on active cells without matching run-log timestamps", async () => {
+    const noTimestampRunState = [
+      {
+        ...mockRunState[0],
+        runEvents: [
+          {
+            timestamp: "2026-06-01T10:00:00.000Z",
+            event: "intake-analyst",
+            message: "intake only",
+            stageId: "intake",
+          },
+        ],
+      },
+    ];
+    mockFetchForDashboard({ runState: noTimestampRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      const planCell = screen.getByTestId("stage-cell-plan");
+      expect(planCell.querySelector(".stage-elapsed-time")).not.toBeInTheDocument();
+    });
+  });
+
+  it("drills into directories instead of opening them as files", async () => {
+    const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      const orientation = orientationFetchResponse(url);
+      if (orientation !== null) {
+        return orientation;
+      }
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson(mockRunState), { status: 200 });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson(mockConfig), { status: 200 });
+      }
+      if (url.includes("/api/list?path=work%2F172973_06-02-26")) {
         return new Response(
           stringifyCompactJson({
-            entries: [{ path: "lib/memory/features/spec.md", name: "spec.md", kind: "file" }],
+            entries: [
+              {
+                path: "work/172973_06-02-26/65766_0543_demo-feature",
+                name: "65766_0543_demo-feature",
+                kind: "directory",
+              },
+            ],
           }),
           { status: 200 },
         );
       }
-      if (url.includes("/api/list?path=lib%2Fmemory")) {
+      if (url.includes("/api/list?path=work")) {
         return new Response(
           stringifyCompactJson({
-            entries: [{ path: "lib/memory/features", name: "features", kind: "directory" }],
+            entries: [{ path: "work/172973_06-02-26", name: "172973_06-02-26", kind: "directory" }],
           }),
           { status: 200 },
         );
@@ -398,18 +992,373 @@ describe("DashboardPage", () => {
     });
 
     render(<DashboardPage />);
-    fireEvent.click(screen.getByTestId("tab-files"));
-    fireEvent.click(screen.getByTestId("domain-memory").querySelector("button")!);
+    fireEvent.click(screen.getByTestId("module-tab-files"));
 
     await waitFor(() => {
-      expect(screen.getByText("features")).toBeInTheDocument();
+      expect(screen.getByText("172973_06-02-26")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("features"));
+    fireEvent.click(screen.getByText("172973_06-02-26"));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/list?path=lib%2Fmemory%2Ffeatures"));
-      expect(screen.getByText("spec.md")).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/list?path=work%2F172973_06-02-26"));
+      expect(screen.getByText("65766_0543_demo-feature")).toBeInTheDocument();
+    });
+  });
+
+  it("renders active memory header fields from the orientation API", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("active-memory-header")).toBeInTheDocument();
+      expect(screen.getByTestId("active-memory-path")).toHaveTextContent("lib/inbox/in/demo-orientation.md");
+      expect(screen.getByTestId("active-memory-blockers")).toHaveTextContent("Blocker one · Blocker two");
+      expect(screen.getByTestId("active-memory-refreshed")).toHaveTextContent("2026-06-08T10:07:29.699Z");
+    });
+  });
+
+  it("renders inbox triage panel entries", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inbox-triage-panel")).toBeInTheDocument();
+      expect(screen.getByTestId("inbox-row-demo-orientation")).toHaveTextContent("Demo orientation");
+      expect(screen.getByTestId("inbox-row-demo-orientation")).toHaveTextContent("3h");
+    });
+  });
+
+  it("sorts multi-run rows by last event and human gate", async () => {
+    mockFetchForDashboard({ runState: [mockRunState[0], mockRunStateSecondTask] });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("multi-run-table")).toBeInTheDocument();
+    });
+
+    const rowLabels = [...screen.getAllByTestId(/multi-run-row-/u)].map((row) =>
+      row.textContent?.includes("65766_0543_demo-feature") ? "first" : "second",
+    );
+    expect(rowLabels[0]).toBe("first");
+
+    fireEvent.click(screen.getByTestId("multi-run-sort-human-gate"));
+
+    await waitFor(() => {
+      const rowsAfterGateSort = [...screen.getAllByTestId(/multi-run-row-/u)];
+      expect(rowsAfterGateSort[0]).toHaveTextContent("65766_0543_demo-feature");
+    });
+  });
+
+  it("updates selected run context when a multi-run row is selected", async () => {
+    mockFetchForDashboard({ runState: [mockRunState[0], mockRunStateSecondTask] });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("multi-run-row-88888_1200_other-feature")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("multi-run-select-88888_1200_other-feature"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("next-action-panel")).toHaveTextContent("88888_1200_other-feature");
+      expect(screen.getByTestId("task-cockpit-88888_1200_other-feature")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+  });
+
+  it("renders Automations list with enabled Run now and no-selection run-history state", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByTestId("module-tab-automations"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automations-module")).toBeInTheDocument();
+      expect(screen.getByTestId("automation-row-hourly-coder")).toHaveTextContent("Hourly coder");
+      expect(screen.getByTestId("automation-row-hourly-coder")).toHaveTextContent("Hourly");
+      expect(screen.getByTestId("automation-run-now-hourly-coder")).toBeEnabled();
+      expect(screen.getByTestId("automation-run-history-no-selection")).toHaveTextContent(
+        "Select an automation to view run history.",
+      );
+    });
+  });
+
+  it("loads run history when an automation row is selected", async () => {
+    mockFetchForDashboard({
+      runState: mockRunState,
+      automationRuns: {
+        "hourly-coder": [
+          {
+            runId: "run-1",
+            startedAt: "2026-06-08T10:00:00.000Z",
+            finishedAt: "2026-06-08T10:01:00.000Z",
+            status: "success",
+            trigger: "manual",
+            stdoutSummary: "done",
+            stderrSummary: "",
+          },
+        ],
+      },
+    });
+
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByTestId("module-tab-automations"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-select-hourly-coder")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("automation-select-hourly-coder"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-run-row-run-1")).toBeInTheDocument();
+      expect(screen.getByTestId("automation-run-history-refresh")).toBeInTheDocument();
+    });
+  });
+
+  it("shows no-runs empty state for a selected automation without history", async () => {
+    mockFetchForDashboard({ runState: mockRunState, automationRuns: { "hourly-coder": [] } });
+
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByTestId("module-tab-automations"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-select-hourly-coder")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("automation-select-hourly-coder"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-run-history-no-runs")).toHaveTextContent(
+        "No runs yet. Use Run now or wait for the OS scheduler tick.",
+      );
+    });
+  });
+
+  it("expands run history stdout after Run now and row selection", async () => {
+    const automationRunCalls: string[] = [];
+    mockFetchForDashboard({
+      runState: mockRunState,
+      automationRunCalls,
+      automationRuns: {
+        "hourly-coder": [
+          {
+            runId: "run-expanded",
+            startedAt: "2026-06-08T11:00:00.000Z",
+            finishedAt: "2026-06-08T11:01:00.000Z",
+            status: "success",
+            trigger: "manual",
+            stdoutSummary: "manual dispatch ok",
+            stderrSummary: "",
+          },
+        ],
+      },
+    });
+
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByTestId("module-tab-automations"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-run-now-hourly-coder")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("automation-run-now-hourly-coder"));
+
+    await waitFor(() => {
+      expect(automationRunCalls).toContain("hourly-coder");
+      expect(screen.getByTestId("automation-run-row-run-expanded")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("automation-run-expand-run-expanded"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-run-logs-run-expanded")).toHaveTextContent(
+        "manual dispatch ok",
+      );
+    });
+  });
+
+  it("toggles automation enabled state via PUT", async () => {
+    const automationPutCalls: unknown[] = [];
+    mockFetchForDashboard({ runState: mockRunState, automationPutCalls });
+
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByTestId("module-tab-automations"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-toggle-hourly-coder")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("automation-toggle-hourly-coder"));
+
+    await waitFor(() => {
+      expect(automationPutCalls).toHaveLength(1);
+      expect(automationPutCalls[0]).toMatchObject({ id: "hourly-coder", enabled: false });
+    });
+  });
+
+  it("completes the four-step automation wizard with hourly preset save", async () => {
+    const automationPostCalls: unknown[] = [];
+    mockFetchForDashboard({ runState: mockRunState, automations: [], automationPostCalls });
+
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByTestId("module-tab-automations"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-create-button")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("automation-create-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-wizard")).toBeInTheDocument();
+      expect(screen.getByTestId("automation-wizard-schedule")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Hourly review" },
+    });
+    fireEvent.click(screen.getByText("Next"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-wizard-persona")).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByLabelText("Persona"), { target: { value: "coder" } });
+    fireEvent.click(screen.getByText("Next"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-wizard-prompt")).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByLabelText("Prompt"), {
+      target: { value: "Review open tasks." },
+    });
+    fireEvent.click(screen.getByText("Next"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("automation-wizard-review")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("automation-wizard-save"));
+
+    await waitFor(() => {
+      expect(automationPostCalls).toHaveLength(1);
+      expect(automationPostCalls[0]).toMatchObject({
+        schedule: "0 * * * *",
+        enabled: true,
+        trigger: {
+          kind: "agent",
+          persona: "coder",
+          prompt: "Review open tasks.",
+        },
+      });
+    });
+  });
+
+  it("requires confirmation before mutating execute actions", async () => {
+    const executeCalls: string[] = [];
+    mockFetchForDashboard({ runState: mockRunState, executeCalls });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("execute-advance-button")).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByTestId("execute-advance-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("execute-confirm-modal")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("execute-cancel-button"));
+    expect(executeCalls).toHaveLength(0);
+
+    fireEvent.click(screen.getByTestId("execute-advance-button"));
+    await waitFor(() => {
+      expect(screen.getByTestId("execute-confirm-modal")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("execute-confirm-button"));
+
+    await waitFor(() => {
+      expect(executeCalls).toHaveLength(1);
+      expect(executeCalls[0]).toContain("advance");
+      expect(screen.getByTestId("execute-result-panel")).toBeInTheDocument();
+      expect(screen.getByTestId("execute-exit-code")).toHaveTextContent("0");
+    });
+  });
+
+  it("renders Maintenance module compliance panel and descriptor table", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByTestId("module-tab-maintenance"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("maintenance-module")).toBeInTheDocument();
+      expect(screen.getByTestId("compliance-audit-panel")).toBeInTheDocument();
+      expect(screen.getByTestId("compliance-descriptor-json-formatting")).toBeInTheDocument();
+      expect(screen.getByTestId("test-suite-picker")).toBeInTheDocument();
+    });
+  });
+
+  it("runs a selected test suite preset and surfaces exit code in OutputStream", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByTestId("module-tab-maintenance"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("test-suite-preset-client")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("test-suite-preset-client"));
+    fireEvent.click(screen.getByTestId("test-suite-run-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("output-stream-exit-code")).toHaveTextContent("Exit code: 0");
+      expect(screen.getByTestId("output-stream-log")).toHaveTextContent("vitest output");
+    });
+  });
+
+  it("disables pre-close validation when the selected task is not index-adjacent", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pre-close-validation-panel")).toBeInTheDocument();
+      expect(screen.getByTestId("pre-close-run-button")).toBeDisabled();
+      expect(screen.getByTestId("pre-close-eligibility-helper")).toBeInTheDocument();
+    });
+  });
+
+  it("enables pre-close validation when the selected task is in ship stage", async () => {
+    const shipStageRunState = [
+      {
+        ...mockRunState[0],
+        stages: mockRunState[0].stages.map((stage) => {
+          if (stage.name === "ship") {
+            return { ...stage, status: "active" };
+          }
+          if (stage.status === "active") {
+            return { ...stage, status: "complete" };
+          }
+          return stage;
+        }),
+      },
+    ];
+    mockFetchForDashboard({ runState: shipStageRunState });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pre-close-run-button")).toBeEnabled();
     });
   });
 });

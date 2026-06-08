@@ -47,6 +47,8 @@ import {
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
 } from "./active-memory-refresh.js";
 import { runTokenEconomySampleAudit } from "./commands/token-economy-sample-audit.js";
+import { abortSchedulerRunByTaskId } from "@pancreator/scheduler";
+import { runSchedulerTick } from "./scheduler-tick.js";
 import {
   buildBuildPlanIntakeMarkdown,
   buildDefaultIntakeMarkdown,
@@ -1011,6 +1013,25 @@ export async function parseAndRun(
       });
     });
 
+  const scheduler = program.command("scheduler").description("Local automation scheduler");
+
+  scheduler
+    .command("tick")
+    .description("Evaluate due automations and dispatch enabled triggers")
+    .option("--id <automationId>", "Dispatch one automation immediately (manual trigger)")
+    .action(async (opts: { id?: string }) => {
+      const result = await runSchedulerTick({
+        repoRoot,
+        automationId: opts.id?.trim() || undefined,
+      });
+      emit(writeOut, repoRoot, {
+        command: "scheduler tick",
+        status: result.exitCode === 0 ? "ok" : "error",
+        outcomes: result.outcomes,
+      });
+      exit.code = result.exitCode;
+    });
+
   program
     .command("pause")
     .description("Append a pause intervention for a task")
@@ -1068,6 +1089,9 @@ export async function parseAndRun(
         abortReason: opts.reason,
         clock: options?.clock,
       });
+      const abortedAt =
+        options?.clock !== undefined ? options.clock() : new Date();
+      await abortSchedulerRunByTaskId(repoRoot, taskId, abortedAt.toISOString());
       emit(writeOut, repoRoot, {
         command: "abort",
         status: "ok",

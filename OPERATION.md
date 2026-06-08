@@ -450,6 +450,37 @@ pnpm -w exec pan reopen <task-id> --reason "Operator verification failed after c
 
 Deferred verbs exit **125** with JSON `status: deferred` per CLI contract.
 
+### OS scheduler for automations
+
+Run due automations from cron or launchd by invoking the scheduler tick subcommand
+from the repository root. Manual dispatch for one automation uses `--id`.
+
+```bash
+# Evaluate all due enabled automations (typical cron entry)
+pnpm -w exec pan scheduler tick
+
+# Dispatch one automation immediately (manual / debugging)
+pnpm -w exec pan scheduler tick --id hourly-coder
+```
+
+Example **cron** one-liner (every 15 minutes, from repo root):
+
+```cron
+*/15 * * * * cd /path/to/daedaline && pnpm -w exec pan scheduler tick
+```
+
+Example **launchd** `ProgramArguments` fragment (hourly at minute 0):
+
+```xml
+<string>/bin/sh</string>
+<string>-c</string>
+<string>cd /path/to/daedaline && pnpm -w exec pan scheduler tick</string>
+```
+
+Run history is append-only JSONL under `.pan/scheduler/runs/<automation-id>.jsonl`.
+Cockpit Run now calls the same tick primitive for a single id via
+`POST /api/automations/<id>/run`.
+
 ## Active memory refresh
 
 - Set **Active Feature** in `lib/memory/active/current.md` explicitly when work starts.

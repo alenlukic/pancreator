@@ -15,10 +15,20 @@ import { decodeCountdownTimestamp, parseRunDirParts } from "./timestamp-decode";
 
 export {
   FEATURE_DELIVERY_STAGE_ORDER,
+  activeStageElapsedMs,
+  collectHumanGateQueue,
+  deriveRunDirFromTaskId,
+  findActiveStage,
+  formatElapsedDuration,
+  isRetryTransitionEvent,
+  newestStageTelemetryChip,
   taskDisplayLabel,
+  taskLevelNextCommand,
+  type HumanGateQueueEntry,
   type RunLogEvent,
   type StageCell,
   type StageCellStatus,
+  type StageTelemetryChip,
   type TaskRunStateEnvelope,
 } from "./run-state-shared";
 
@@ -40,6 +50,10 @@ type PersistedState = {
   status: string;
   currentStage: string;
   nextHumanAction: string;
+  source?: {
+    inboxEntry?: string;
+    inboxPath?: string;
+  };
   artifacts: {
     runDir: string;
     runLogFile: string;
@@ -109,19 +123,21 @@ function stageActionFields(
   stage: PersistedStage,
   state: PersistedState,
   statusEnvelope: PanStatusEnvelope | null,
-): { nextHumanAction: string; nextCommand: string } {
+): { nextHumanAction: string; nextCommand: string; humanAttention: string } {
   if (cellStatus === "pending") {
-    return { nextHumanAction: "", nextCommand: "" };
+    return { nextHumanAction: "", nextCommand: "", humanAttention: "" };
   }
   if (cellStatus === "active") {
     return {
       nextHumanAction: statusEnvelope?.nextHumanAction ?? state.nextHumanAction,
       nextCommand: String(statusEnvelope?.nextCommand ?? ""),
+      humanAttention: stage.humanAttention ?? "",
     };
   }
   return {
-    nextHumanAction: stage.humanAttention ?? "",
+    nextHumanAction: "",
     nextCommand: "",
+    humanAttention: stage.humanAttention ?? "",
   };
 }
 
@@ -145,6 +161,7 @@ export function synthesizeStageCells(
           ? (statusEnvelope?.nextHumanAction ?? state.nextHumanAction)
           : "",
         nextCommand: isComplete ? String(statusEnvelope?.nextCommand ?? "") : "",
+        humanAttention: "",
         status: cellStatus,
       });
       continue;
@@ -158,6 +175,7 @@ export function synthesizeStageCells(
         humanGate: "",
         nextHumanAction: "",
         nextCommand: "",
+        humanAttention: "",
         status: "pending",
       });
       continue;
@@ -172,6 +190,7 @@ export function synthesizeStageCells(
       humanGate: stage.humanGate ?? "",
       nextHumanAction: actionFields.nextHumanAction,
       nextCommand: actionFields.nextCommand,
+      humanAttention: actionFields.humanAttention,
       status: cellStatus,
     });
   }
@@ -190,26 +209,73 @@ function runLogRecordToEvent(record: Record<string, unknown>): RunLogEvent | nul
     return null;
   }
 
+  const rawName = typeof record.name === "string" ? record.name : undefined;
   const pancreator = record.pancreator as Record<string, unknown> | undefined;
+  const attributes = record.attributes as Record<string, unknown> | undefined;
+  const status = record.status as { code?: string; message?: string } | undefined;
+
   const event =
-    typeof record.name === "string"
-      ? record.name
-      : typeof pancreator?.stage_id === "string"
-        ? pancreator.stage_id
-        : "event";
+    rawName ??
+    (typeof pancreator?.stage_id === "string" ? pancreator.stage_id : "event");
 
   const outcome =
     typeof pancreator?.outcome === "string"
       ? pancreator.outcome
-      : typeof (record.status as { code?: string } | undefined)?.code === "string"
-        ? (record.status as { code: string }).code
+      : typeof status?.code === "string"
+        ? status.code
         : "logged";
 
   const persona =
     typeof pancreator?.persona === "string" ? pancreator.persona : undefined;
   const message = persona === undefined ? `${event}: ${outcome}` : `${persona} · ${event}: ${outcome}`;
 
-  return { timestamp, event, message };
+  const stageId =
+    typeof pancreator?.stage_id === "string"
+      ? pancreator.stage_id
+      : typeof attributes?.["pancreator.from_stage"] === "string"
+        ? attributes["pancreator.from_stage"]
+        : undefined;
+
+  let escalationLabel: string | undefined;
+  if (rawName === "cursor.runner.escalation") {
+    escalationLabel =
+      typeof attributes?.escalation === "string" ? attributes.escalation : "Escalation";
+  }
+
+  let retryBadge = false;
+  if (rawName === "pancreator.pipeline.advance") {
+    const transitionEvent =
+      typeof attributes?.["pancreator.transition_event"] === "string"
+        ? attributes["pancreator.transition_event"]
+        : "";
+    retryBadge =
+      transitionEvent === "must_fix" ||
+      transitionEvent === "qa_fails" ||
+      transitionEvent === "qa_fails_plan_invalidating" ||
+      transitionEvent === "compliance_fails" ||
+      transitionEvent === "compliance_fails_plan_invalidating";
+  }
+
+  let deferralBadge = false;
+  const statusMessage = status?.message ?? "";
+  if (
+    statusMessage.toLowerCase().includes("deferred") ||
+    typeof attributes?.["pancreator.deferral_code"] === "string" ||
+    typeof attributes?.deferral_code === "string"
+  ) {
+    deferralBadge = true;
+  }
+
+  return {
+    timestamp,
+    event,
+    message,
+    ...(rawName !== undefined ? { name: rawName } : {}),
+    ...(stageId !== undefined ? { stageId } : {}),
+    ...(escalationLabel !== undefined ? { escalationLabel } : {}),
+    ...(retryBadge ? { retryBadge: true } : {}),
+    ...(deferralBadge ? { deferralBadge: true } : {}),
+  };
 }
 
 export async function parseRunLogFile(runLogAbs: string): Promise<RunLogEvent[]> {
@@ -331,9 +397,12 @@ async function buildTaskEnvelope(
 
   return {
     taskId: state.taskId,
+    ...(state.featureId !== undefined ? { featureId: state.featureId } : {}),
     decodedTimestamp: panResult.envelope?.decodedTimestamp ?? localDecoded.decodedTimestamp,
     decodedTimestampDiagnostic:
       panResult.envelope?.decodedTimestampDiagnostic ?? localDecoded.decodedTimestampDiagnostic,
+    runDir: state.artifacts.runDir,
+    ...(state.source?.inboxPath !== undefined ? { inboxSource: state.source.inboxPath } : {}),
     stages,
     runEvents,
     ...(panResult.warning !== undefined ? { sourceWarning: panResult.warning } : {}),
