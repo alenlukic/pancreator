@@ -1286,7 +1286,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-run-history-no-runs")).toHaveTextContent(
-        "No runs yet. Run automation now or wait for the next scheduled tick.",
+        "No runs yet. Use Run now or wait for the OS scheduler tick.",
       );
     });
   });
@@ -1334,7 +1334,7 @@ describe("DashboardPage", () => {
     });
   });
 
-  it("requires pause confirmation before disabling an automation", async () => {
+  it("disables an automation via the enabled toggle", async () => {
     const automationPutCalls: unknown[] = [];
     mockFetchForDashboard({ runState: mockRunState, automationPutCalls });
 
@@ -1342,14 +1342,10 @@ describe("DashboardPage", () => {
     fireEvent.click(screen.getByTestId("module-tab-automations"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("automation-overflow-hourly-coder")).toBeInTheDocument();
+      expect(screen.getByTestId("automation-toggle-hourly-coder")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId("automation-overflow-hourly-coder"));
-    fireEvent.click(screen.getByTestId("automation-pause-hourly-coder"));
-    expect(automationPutCalls).toHaveLength(0);
-
-    fireEvent.click(screen.getByTestId("automation-pause-confirm-hourly-coder"));
+    fireEvent.click(screen.getByTestId("automation-toggle-hourly-coder"));
 
     await waitFor(() => {
       expect(automationPutCalls).toHaveLength(1);
@@ -1378,13 +1374,13 @@ describe("DashboardPage", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Hourly review" },
     });
-    fireEvent.click(screen.getByTestId("automation-wizard-next"));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-persona")).toBeInTheDocument();
     });
     fireEvent.change(screen.getByLabelText("Persona"), { target: { value: "coder" } });
-    fireEvent.click(screen.getByTestId("automation-wizard-next"));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-prompt")).toBeInTheDocument();
@@ -1392,7 +1388,7 @@ describe("DashboardPage", () => {
     fireEvent.change(screen.getByLabelText("Prompt"), {
       target: { value: "Review open tasks." },
     });
-    fireEvent.click(screen.getByTestId("automation-wizard-next"));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-review")).toBeInTheDocument();
@@ -1604,7 +1600,7 @@ describe("Mission Control surface", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("run-context-header")).toHaveTextContent(
-        "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+        "Cockpit V2 Feature Delivery Mission Control Run Detail",
       );
     });
   });

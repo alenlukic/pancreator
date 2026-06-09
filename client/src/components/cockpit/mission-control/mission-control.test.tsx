@@ -6,13 +6,16 @@ import {
   countStageRetryTransitions,
   detectRetryLimitFailure,
 } from "@/services/run-state-shared";
-import type { StageCell } from "@/services/run-state-shared";
+import type { StageCell, TaskRunStateEnvelope } from "@/services/run-state-shared";
+import { artifactDisplayLabel } from "./ArtifactsByStage";
 import { MissionControlModule } from "./MissionControlModule";
 import { showNotImplementedToast } from "./remediation";
 import { RetryLimitBanner } from "./RetryLimitBanner";
+import { RunContextHeader } from "./RunContextHeader";
 import { StageDetailPanel } from "./StageDetailPanel";
+import { StageMachineGrid, StageCellCard } from "./StageMachineGrid";
 
-const mockRunState = [
+const mockRunState: TaskRunStateEnvelope[] = [
   {
     taskId: "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
     featureId: "cockpit-v2-feature-delivery-mission-control-run-detail",
@@ -63,8 +66,10 @@ const mockRunState = [
   },
 ];
 
+const mockSearchParams = new URLSearchParams();
+
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
   usePathname: () => "/mission-control",
   useRouter: () => ({ push: vi.fn() }),
 }));
@@ -152,6 +157,74 @@ const longOutputEvents = [
   },
 ];
 
+describe("artifactDisplayLabel", () => {
+  it("maps design QA report filename to operator label", () => {
+    expect(artifactDisplayLabel(".pan/work/run/design-qa-report.md")).toBe("Design QA report");
+  });
+});
+
+describe("RunContextHeader", () => {
+  it("shows humanized feature title and hides raw task id by default", () => {
+    render(
+      <RunContextHeader
+        task={mockRunState[0]}
+        nowMs={Date.parse("2026-06-09T12:00:00.000Z")}
+        isPolling={false}
+        onOpenRunLogs={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Cockpit V2 Feature Delivery Mission Control Run Detail",
+    );
+    expect(screen.queryByTestId("run-context-technical-details")).not.toBeInTheDocument();
+  });
+
+  it("reveals task id behind technical details disclosure", () => {
+    render(
+      <RunContextHeader
+        task={mockRunState[0]}
+        nowMs={Date.parse("2026-06-09T12:00:00.000Z")}
+        isPolling={false}
+        onOpenRunLogs={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("toggle-technical-details"));
+    expect(screen.getByTestId("run-context-technical-details")).toHaveTextContent(
+      mockRunState[0].taskId,
+    );
+  });
+});
+
+describe("StageCellCard", () => {
+  it("suppresses gate prose and commands on mission-control chrome", () => {
+    const stage: StageCell = {
+      name: "implement",
+      ownerPersona: "coder",
+      humanGate: "human_approval",
+      nextHumanAction: "Approve plan",
+      nextCommand: "pnpm -w exec pan advance --artifact .pan/work/run/plan.md",
+      humanAttention: "Waiting on operator",
+      status: "active",
+    };
+
+    render(
+      <StageCellCard
+        stage={stage}
+        runEvents={[]}
+        nowMs={Date.now()}
+        showMissionControlChrome
+        onActivate={() => undefined}
+      />,
+    );
+
+    expect(screen.queryByText(/Gate:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pnpm/)).not.toBeInTheDocument();
+    expect(screen.getByText("implement")).toBeInTheDocument();
+  });
+});
+
 describe("StageDetailPanel", () => {
   const nowMs = Date.parse("2026-06-09T12:00:00.000Z");
 
@@ -194,6 +267,29 @@ describe("StageDetailPanel", () => {
     expect(screen.getByText("Collapse stage output")).toBeInTheDocument();
   });
 
+  it("summarizes internal runner events for operators", () => {
+    const internalEvents = [
+      {
+        timestamp: "2026-06-09T10:00:00.000Z",
+        event: "cursor.runner.escalation",
+        message: "cursor.runner.escalation: success",
+        stageId: "implement",
+      },
+    ];
+
+    render(
+      <StageDetailPanel
+        stage={failedImplementStage}
+        runEvents={internalEvents}
+        nowMs={nowMs}
+      />,
+    );
+
+    const panel = screen.getByTestId("stage-detail-panel");
+    expect(panel).not.toHaveTextContent("cursor.runner");
+    expect(panel).toHaveTextContent("Model escalation");
+  });
+
   it("copies visible stage output to clipboard", async () => {
     render(
       <StageDetailPanel
@@ -212,6 +308,22 @@ describe("StageDetailPanel", () => {
   });
 });
 
+describe("StageMachineGrid", () => {
+  it("omits mission-control retry badges on the pipeline grid default chrome", () => {
+    render(
+      <StageMachineGrid
+        tasks={mockRunState}
+        selectedTaskId={mockRunState[0].taskId}
+        nowMs={Date.parse("2026-06-09T12:00:00.000Z")}
+        onSelectTask={() => undefined}
+        onOpenStageDrawer={() => undefined}
+      />,
+    );
+
+    expect(screen.queryByTestId("retry-badge-implement")).not.toBeInTheDocument();
+  });
+});
+
 describe("showNotImplementedToast", () => {
   it("dispatches toast event with action name", () => {
     const handler = vi.fn();
@@ -225,13 +337,51 @@ describe("showNotImplementedToast", () => {
   });
 });
 
+const FD_STAGE_ORDER = [
+  "intake",
+  "plan",
+  "implement",
+  "review",
+  "test",
+  "report",
+  "compliance",
+  "ship",
+  "index",
+] as const;
+
 describe("MissionControlModule", () => {
   beforeEach(() => {
+    mockSearchParams.delete("task");
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("lists FD stages in canonical order on the stage rail", async () => {
+    mockFetch();
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mission-control-stage-rail")).toBeInTheDocument();
+    });
+
+    const rail = screen.getByTestId("mission-control-stage-rail");
+    const stageNames = [...rail.querySelectorAll("h4")].map((node) => node.textContent);
+    expect(stageNames).toEqual([...FD_STAGE_ORDER]);
+  });
+
+  it("pre-selects task from ?task= query when present in envelope", async () => {
+    mockSearchParams.set("task", mockRunState[0].taskId);
+    mockFetch();
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-context-header")).toHaveTextContent(
+        "Cockpit V2 Feature Delivery Mission Control Run Detail",
+      );
+    });
   });
 
   it("shows retry-limit banner and stage retry badges", async () => {
@@ -269,6 +419,7 @@ describe("MissionControlModule", () => {
     fireEvent.click(screen.getByTestId("open-run-logs-button"));
 
     expect(screen.getByTestId("verbose-log-drawer")).toBeInTheDocument();
+    expect(screen.getByTestId("run-timeline")).toBeInTheDocument();
   });
 
   it("marks missing required artifacts as Blocking", async () => {

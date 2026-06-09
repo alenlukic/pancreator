@@ -22,12 +22,13 @@ function basename(repoPath: string): string {
   return segments[segments.length - 1] ?? repoPath;
 }
 
-function artifactLabel(path: string): string {
+export function artifactDisplayLabel(path: string): string {
   const base = basename(path);
   if (base === "spec.md") return "Engineering spec";
   if (base === "plan.md") return "Plan";
   if (base === "review.md") return "Review report";
   if (base === "test-report.md") return "Test report";
+  if (base === "design-qa-report.md") return "Design QA report";
   if (base === "implementation-report.md") return "Implementation report";
   if (base === "delivery-report.md") return "Delivery report";
   if (base === "index.json") return "Feature index";
@@ -106,7 +107,7 @@ export function ArtifactsByStage({
                       data-testid={`artifact-row-${basename(artifactPath)}`}
                     >
                       <div className="mc-artifact-row-main">
-                        <span className="mc-artifact-title">{artifactLabel(artifactPath)}</span>
+                        <span className="mc-artifact-title">{artifactDisplayLabel(artifactPath)}</span>
                         {!present ? (
                           <span className="mc-artifact-missing-label">Missing artifact</span>
                         ) : null}

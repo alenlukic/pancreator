@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { SeverityChip } from "@/components/cockpit/shared/SeverityChip";
 import { StatusPill, type StatusPillValue } from "@/components/cockpit/shared/StatusPill";
-import { formatLastEventTime, type RunLogEvent, type StageCell } from "@/services/run-state-shared";
+import {
+  formatLastEventTime,
+  runEventActorLabel,
+  runEventDisplayLabel,
+  type RunLogEvent,
+  type StageCell,
+} from "@/services/run-state-shared";
 
 function stageStatusPill(status: StageCell["status"]): StatusPillValue {
   switch (status) {
@@ -32,6 +38,17 @@ function newestStageEvent(runEvents: RunLogEvent[], stageName: string): RunLogEv
   );
 }
 
+function hasInternalEventIdentifier(text: string): boolean {
+  return text.includes("cursor.runner") || text.includes("pancreator.pipeline");
+}
+
+function operatorFacingEventText(event: RunLogEvent): string {
+  if (hasInternalEventIdentifier(event.message) || hasInternalEventIdentifier(event.event)) {
+    return runEventDisplayLabel(event);
+  }
+  return event.message;
+}
+
 function stageOutputExcerpt(runEvents: RunLogEvent[], stageName: string): string {
   const matching = stageEvents(runEvents, stageName);
   if (matching.length === 0) {
@@ -39,7 +56,7 @@ function stageOutputExcerpt(runEvents: RunLogEvent[], stageName: string): string
   }
   return matching
     .slice(0, 5)
-    .map((event) => event.message)
+    .map((event) => operatorFacingEventText(event))
     .join("\n");
 }
 
@@ -57,7 +74,7 @@ export function StageDetailPanel({
   const newest = newestStageEvent(runEvents, stage.name);
   const output = stageOutputExcerpt(runEvents, stage.name);
   const displayOutput = expanded ? output : output.slice(0, 280);
-  const modelLabel = newest?.event ?? "—";
+  const modelLabel = newest ? runEventActorLabel(newest) : "—";
   const startTime = formatLastEventTime(
     stageEvents(runEvents, stage.name).at(-1)?.timestamp ?? null,
     nowMs,
@@ -98,7 +115,11 @@ export function StageDetailPanel({
       {stage.status === "failed" ? (
         <div className="mc-stage-detail-error" data-testid="stage-detail-error">
           <SeverityChip severity="Critical" />
-          <p>{newest?.message ?? "Stage failed without error excerpt."}</p>
+          <p>
+            {newest
+              ? operatorFacingEventText(newest)
+              : "Stage failed without error excerpt."}
+          </p>
         </div>
       ) : null}
       <div className="mc-stage-detail-output-wrap">

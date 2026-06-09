@@ -1,10 +1,13 @@
+"use client";
+
+import { useState } from "react";
 import { StatusPill, type StatusPillValue } from "@/components/cockpit/shared/StatusPill";
 import {
+  featureDisplayLabel,
   findActiveStage,
   formatLastEventTime,
   hasActiveHumanApprovalGate,
   newestRunEventTimestamp,
-  taskDisplayLabel,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
 
@@ -37,16 +40,45 @@ export function RunContextHeader({
   isPolling: boolean;
   onOpenRunLogs: () => void;
 }) {
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const lastUpdated = formatLastEventTime(newestRunEventTimestamp(task), nowMs);
+
+  async function copyTaskId() {
+    await navigator.clipboard.writeText(task.taskId);
+    setCopyFeedback("Copied task id");
+    window.setTimeout(() => setCopyFeedback(null), 2000);
+  }
 
   return (
     <header className="mc-run-context-header" data-testid="run-context-header">
       <div className="mc-run-context-primary">
-        <h1 className="mc-run-context-title">{taskDisplayLabel(task)}</h1>
+        <h1 className="mc-run-context-title">{featureDisplayLabel(task)}</h1>
         <div className="mc-run-context-meta">
           <StatusPill status={taskStatusPill(task)} />
           <span className="mc-run-context-updated">Updated {lastUpdated}</span>
         </div>
+        <button
+          type="button"
+          className="mc-show-technical-details-btn"
+          data-testid="toggle-technical-details"
+          onClick={() => setShowTechnicalDetails((current) => !current)}
+        >
+          {showTechnicalDetails ? "Hide technical details" : "Show technical details"}
+        </button>
+        {showTechnicalDetails ? (
+          <div className="mc-run-context-technical" data-testid="run-context-technical-details">
+            <code className="mc-run-context-task-id">{task.taskId}</code>
+            <button type="button" data-testid="copy-task-id" onClick={() => void copyTaskId()}>
+              Copy task id
+            </button>
+            {copyFeedback ? (
+              <span className="mc-copy-feedback" aria-live="polite">
+                {copyFeedback}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div className="mc-run-context-actions">
         {isPolling ? (
