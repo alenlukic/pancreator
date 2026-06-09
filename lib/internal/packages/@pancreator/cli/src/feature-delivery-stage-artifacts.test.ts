@@ -66,7 +66,11 @@ describe("feature-delivery-stage-artifacts", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-artifacts-"));
     const runAbs = path.join(root, sampleState.artifacts.runDir);
     await mkdir(runAbs, { recursive: true });
-    await writeFile(path.join(runAbs, "touch-set.json"), "{}", "utf8");
+    await writeFile(
+      path.join(runAbs, "touch-set.json"),
+      stringifyCompactJson({ paths: [], tests: [], shared_paths: [], integration_prerequisites: [], acceptance_criteria: [] }),
+      "utf8",
+    );
 
     const validation = validateStageCompletionArtifacts(root, sampleState, "plan");
     expect(validation.ok).toBe(false);
@@ -184,6 +188,76 @@ describe("feature-delivery-stage-artifacts", () => {
     expect(stageArtifactContract(sampleState, "compliance", "compliance_spot_fix").primaryArtifact).toMatch(
       /compliance-result\.json$/u,
     );
+  });
+
+  it("assertAdvanceArtifacts rejects plan advance without acceptance criteria", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-plan-gate-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "plan.md"), "# Plan\n\n## Tasks\n\n1. Work.\n", "utf8");
+    await writeFile(path.join(runAbs, "adr-draft.md"), "# ADR\n\n## Context\n\nBody.\n", "utf8");
+    await writeFile(
+      path.join(runAbs, "touch-set.json"),
+      stringifyCompactJson({ paths: [], tests: [], shared_paths: [], integration_prerequisites: [], acceptance_criteria: [] }),
+      "utf8",
+    );
+    await writeFile(path.join(runAbs, "handoff.md"), "# Handoff\n\n## Validation commands\n\n- pnpm test\n", "utf8");
+
+    expect(() =>
+      assertAdvanceArtifacts(
+        root,
+        sampleState,
+        "plan",
+        ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+        "human_approval",
+      ),
+    ).toThrow(/Acceptance criteria/u);
+  });
+
+  it("assertAdvanceArtifacts rejects review_spot_fix without justification", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-spot-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "review.md"), "review_passes: false\nspot_fixable: true\n", "utf8");
+
+    expect(() =>
+      assertAdvanceArtifacts(
+        root,
+        sampleState,
+        "review",
+        ".pan/work/172996_05-10-26/38670_1315_demo-feature/review.md",
+        "review_spot_fix",
+      ),
+    ).toThrow(/spot_fix_scope/u);
+  });
+
+  it("assertAdvanceArtifacts rejects implement advance without implement_gate_passes", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-implement-gate-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(
+      path.join(runAbs, "implementation-report.md"),
+      [
+        "implement_gate_passes: false",
+        "## Automated checks",
+        "pnpm lint",
+        "pnpm typecheck",
+        "pnpm test",
+        "## Coverage delta",
+        "statement: 0%",
+      ].join("\n"),
+      "utf8",
+    );
+
+    expect(() =>
+      assertAdvanceArtifacts(
+        root,
+        sampleState,
+        "implement",
+        ".pan/work/172996_05-10-26/38670_1315_demo-feature/implementation-report.md",
+        "implementation_complete",
+      ),
+    ).toThrow(/implement_gate_passes: true/u);
   });
 
   it("parseComplianceVerdict reads final gate command statuses", () => {

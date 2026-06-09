@@ -6,6 +6,7 @@ import path from "node:path";
 
 import {
   closeFeatureDeliveryArtifacts,
+  resolveFeatureDeliveryTaskId,
   runPanCheck,
   startFeatureDelivery,
   type FeatureDeliveryState,
@@ -154,6 +155,7 @@ export async function resolveFeatureDeliveryCheckoutRoot(
   }
 
   if (matches.length === 0) {
+    await resolveFeatureDeliveryTaskId(mainRoot, taskId);
     throw new Error(`No feature-delivery state.json found for task ${taskId}.`);
   }
 
@@ -258,6 +260,25 @@ export async function runIsolatedFeatureDelivery(
     taskId = `${secondsToMidnightUtc(now)}_${utcHhmm(now)}_${slug}`;
   }
   const branch = singleRunBranchName(taskId);
+  if (input.testHooks?.bypassWorktreeIsolation) {
+    const startResult = await startFeatureDelivery(
+      {
+        ...input,
+        repoRoot: mainRepoRoot,
+        inboxEntry: inboxRel,
+        taskId,
+        testHooks: input.testHooks,
+      },
+      command,
+    );
+    return {
+      ...startResult,
+      worktreePath: mainRepoRoot,
+      branch,
+      mainRepoRoot,
+    };
+  }
+
   const baseRef = input.baseRef ?? (await gitOps.resolveHead(mainRepoRoot));
 
   const pool =

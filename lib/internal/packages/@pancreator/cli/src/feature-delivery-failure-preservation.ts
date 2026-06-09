@@ -124,6 +124,41 @@ export async function preserveFeatureDeliveryFailureContext(
   return { preservedRunDir, copiedInboxOutDayDirs, manifestRel };
 }
 
+export function failurePreservationManifestRel(runDir: string): string {
+  return path.posix.join(runDir, "failure-preservation.json");
+}
+
+export function assertPreservationManifestPresent(repoRoot: string, manifestRel: string): void {
+  const abs = resolveProjectPath(repoRoot, ...manifestRel.split("/"));
+  if (!existsSync(abs)) {
+    throw new Error(
+      `Failure preservation manifest is missing at ${manifestRel}; do not release worktree lease until preservation completes.`,
+    );
+  }
+}
+
+/**
+ * Copies a mirrored failure run directory into durable recovery storage for post-mortem review.
+ */
+export async function archiveFailureContextToRecovery(input: {
+  mainRepoRoot: string;
+  runDir: string;
+  taskId: string;
+  batchId?: string;
+}): Promise<string | null> {
+  const recoveryRoot = input.batchId
+    ? path.posix.join(".pan/archive/recovery", `batch-${input.batchId}`, input.taskId)
+    : path.posix.join(".pan/archive/recovery", input.taskId);
+  const src = resolveProjectPath(input.mainRepoRoot, ...input.runDir.split("/"));
+  const dest = resolveProjectPath(input.mainRepoRoot, ...recoveryRoot.split("/"));
+  if (!existsSync(src)) {
+    return null;
+  }
+  await mkdir(path.dirname(dest), { recursive: true });
+  await cp(src, dest, { recursive: true, force: true });
+  return recoveryRoot;
+}
+
 export async function enrichRetryLimitHaltArtifact(input: {
   repoRoot: string;
   runDir: string;

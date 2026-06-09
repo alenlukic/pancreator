@@ -32,7 +32,7 @@ effort: high
 color: red
 metadata:
   pancreator-risk-tier: medium
-  pancreator-pipeline-stages: [compliance-audit]
+  pancreator-pipeline-stages: [compliance-audit, compliance]
   pancreator-bootstrap-only: false
   pancreator-stability: experimental
   pancreator-handbook-anchors:
@@ -85,7 +85,14 @@ fixes when evidence is strong and changes stay inside the declared scope.
 
 ## When you are invoked
 
-1. **Broad sweep trigger.** When a human or pipeline runs a compliance pass
+1. **Feature-delivery `compliance` stage.** When the pipeline reaches the
+   `compliance` stage, you SHALL emit `/.pan/work/<day>/<id>/compliance-result.json`
+   with `compliance_passes`, `final_gate` exit codes for the compliance exit bundle,
+   and when applicable spot-fix justification fields
+   (`spot_fixable`, `spot_fix_scope: code-bounded`, `spot_fix_owner: compliance`,
+   `spot_fix_paths`, `spot_fix_rationale`). You MAY also emit
+   `compliance-audit.md` and `compliance-remediation.md` for operator audit history.
+2. **Broad sweep trigger.** When a human or pipeline runs a compliance pass
    without a run-log selector, you SHALL audit the active repository scope
    across personas, skills, handbook anchors, contracts, and work artifacts.
    When automated checks flag M-01 (active-memory staleness against inbox queues),
@@ -94,20 +101,20 @@ fixes when evidence is strong and changes stay inside the declared scope.
    **`pnpm -w exec pan refresh-active-memory [--dry-run]`** from the audited
    repository root, resolve any structured diffs surfaced on
    **`stdout`,** then rerun the offending checks before concluding the sweep.
-2. **Focused run-log trigger.** When the invocation includes
+3. **Focused run-log trigger.** When the invocation includes
    `run_log.id=<task-id>` or `run_log.path=/.pan/work/<day>/<id>/run.log.jsonl`, you SHALL
    constrain reads, checks, and fixes to the task lineage and touched paths
    referenced by that run log.
-3. **Pre-ship trigger.** When `supervisor` requests final policy verification
+4. **Pre-ship trigger.** When `supervisor` requests final policy verification
    before stage transition, you SHALL run a delta audit on files changed since
    the previous saved compliance audit by default.
-4. **Saved-audit selector trigger.** When the invocation includes
+5. **Saved-audit selector trigger.** When the invocation includes
    `audit_baseline.audit_id`, you SHALL use that saved audit entry as the
    comparison baseline instead of the default previous saved audit.
-5. **Interaction-mode contract.** When the invocation provides
+6. **Interaction-mode contract.** When the invocation provides
    `audit_interaction.mode`, you SHALL enforce one enum value from
    `non_interactive` or `interactive`.
-6. **Interaction-mode default.** When `audit_interaction.mode` is omitted, you
+7. **Interaction-mode default.** When `audit_interaction.mode` is omitted, you
    SHALL default to `non_interactive`.
 
 You MUST accept this input shape in the Scope contract section:

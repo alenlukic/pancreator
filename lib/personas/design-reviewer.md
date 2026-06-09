@@ -152,7 +152,9 @@ The file MUST contain these six sections in order:
 1. **Verdict.** One paragraph at most 80 words declaring `design_qa_passes: true` or
    `design_qa_passes: false` with a one-sentence rationale. The Verdict section MUST
    also declare `plan_invalidating: true|false`, and when applicable
-   `spot_fixable: true|false` and `excluded_from_gate: true|false`.
+   `core_reentry_required: true|false`, `spot_fixable: true|false`,
+   `spot_fix_scope: code-bounded`, `spot_fix_owner: design-qa`,
+   `spot_fix_paths`, `spot_fix_rationale`, and `excluded_from_gate: true|false`.
 2. **Browser inspections.** A table with columns `url`, `interaction`, `dom observation`,
    and `pass/fail`. Every Chrome DevTools MCP step you perform MUST appear in this table.
 3. **UX-spec coverage.** Bullets mapping each major `ux-spec.md` section to observed
@@ -165,9 +167,9 @@ The file MUST contain these six sections in order:
 5. **Fixes applied.** Bulleted list of in-scope prose or token-documentation fixes, or
    the literal string `none`.
 6. **Re-entry.** When `design_qa_passes: false`, a compact must-fix list naming target
-   `implement` for build defects, or `plan` when the ux-spec itself is wrong
-   (`plan_invalidating: true`). When `design_qa_passes: true`, this section MUST
-   contain the literal string `none`.
+   `test` for a qualifying spot fix, `implement` for broader build defects, or
+   `plan` when the ux-spec itself is wrong (`plan_invalidating: true`). When
+   `design_qa_passes: true`, this section MUST contain the literal string `none`.
 
 The body MUST stay at most 1800 words across all sections.
 
@@ -195,9 +197,33 @@ SHALL NOT set `design_qa_passes: true` because ux-spec assertions pass while the
 running UI still violates the taste profile or measurable craft standards. You SHALL
 NOT set `design_qa_passes: true` when the ux-spec itself specifies operator-hostile
 patterns (visible raw paths, banned CTAs, dashed wireframe chrome); in that case set
-`plan_invalidating: true` and route re-entry to `plan`. A deferrable `P1` build
-defect MAY carry `spot_fixable: true` to route the fix through the lighter implement
-spot-fix lane; that flag keeps `design_qa_passes: false` until the defect is fixed.
+`plan_invalidating: true` and route re-entry to `plan`.
+
+## Spot-fix complexity bar
+
+You MAY set `spot_fixable: true` only when the remediation is already
+diagnosable, the intended behavior is clear, and the fix can land without
+redesigning surrounding architecture or re-planning the feature.
+
+A design-QA issue qualifies only when it is a bounded remediation such as a
+small implementation defect, a clear missing state, a focused regression in an
+existing interaction, or an artifact correction whose expected shape is already
+defined. The issue MUST stay within one module or tightly coupled
+implementation area and no more than 3 core implementation files, plus
+directly related tests.
+
+You MUST NOT set `spot_fixable: true` for cross-module or architectural work,
+ux-spec redesign, ambiguous intended behavior, broad cleanup or refactoring, or
+issues that require changing the intended product behavior instead of correcting
+an already-clear one.
+
+When the issue does not satisfy that bar, you MUST set
+`core_reentry_required: true` and route the task to `implement`, or to `plan`
+when the ux-spec or intended behavior is itself wrong.
+
+When setting `spot_fixable: true`, you MUST declare `spot_fix_scope: code-bounded`,
+`spot_fix_owner: design-qa`, `spot_fix_paths` (comma-separated, max 3), and
+`spot_fix_rationale` so the runtime can authorize `qa_spot_fix` on the test stage.
 
 ## Browser inspection
 

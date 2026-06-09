@@ -338,6 +338,9 @@ test("JSON.stringify is confined to canonical-json implementation and browser/te
         continue;
       }
       const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
+      if (rel.replace(/\\/g, "/").includes(".pan/archive/recovery/")) {
+        continue;
+      }
       if (entry.isDirectory()) {
         walk(rel);
         continue;
