@@ -35,12 +35,13 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- `lib/inbox/in/172966_06-09-26/81282_0125_cockpit-v2-active-memory-operator-craft-revalidation.md`
+- `(none)`
 
 ## Most recent shipped Features
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `cockpit-v2-active-memory-operator-craft-revalidation` | [indexed] (`2026-06-09T02:44:44.002Z`) | `lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/81282_0125_cockpit…` |
 | `cockpit-v2-active-memory-craft-enforcement` | [indexed] (`2026-06-09T01:40:00.000Z`) | `lib/memory/features/cockpit-v2-active-memory-craft-enforcement/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/82800_0059_cockpit-v2-active…` |
 | `cockpit-v2-active-memory-operator-readability` | [indexed] (`2026-06-09T01:00:00.000Z`) | `lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/945_2344_cockpit-v2-active-…` |
 | `cockpit-v2-module-tab-accessibility` | [indexed] (`2026-06-08T23:05:00.000Z`) | `lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/9443_2122_cockpit-v2-tab-a11y.md` |
@@ -50,7 +51,6 @@ read per `lib/memory/handbook/context-economy.md`.
 | `cockpit-v2-automation-registry-and-management-ui` | [indexed] (`2026-06-08T16:12:00.000Z`) | `lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/54351_0854_cockpit-v2-…` |
 | `cockpit-v2-active-memory-inbox-triage-multi-run-view` | [indexed] (`2026-06-08T11:05:00.000Z`) | `lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/54352_0854_cockpit…` |
 | `cockpit-v2-live-run-refresh-and-stage-artifact-drawer` | [indexed] (`2026-06-08T10:30:00.000Z`) | `lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/54352_0854_cockpi…` |
-| `cockpit-v2-pipeline-command-center-and-human-gate-queue` | [indexed] (`2026-06-08T10:30:00.000Z`) | `lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/52646_0922_cockpit-v2-pipeline-command-center-and-human-gate-queue/54353_0854_cock…` |
 
 ## Risks and blockers
 
@@ -65,9 +65,10 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-09T02:41:41.696Z`
+- Active-memory refreshed (UTC): `2026-06-09T03:30:45.828Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
 
 
 

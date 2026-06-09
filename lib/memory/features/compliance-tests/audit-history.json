@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-09T02:43:27.671Z",
+  "generated_at": "2026-06-09T03:30:45.824Z",
   "entries": [
     {
       "audit_id": "77283_0231_cockpit-v2-active-memory-operator-craft-revalidation-20260609024000",
@@ -11,24 +11,24 @@
       "stage_status": "passed",
       "baseline_audit_id": "82780_0100_cockpit-v2-active-memory-craft-enforcement-20260609013000",
       "artifact_paths": {
-        "compliance_result": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-result.json",
-        "run_dir": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation"
+        "compliance_result": ".pan/archive/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-result.json",
+        "run_dir": ".pan/archive/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation"
       },
       "scope_snapshot": [
         {
-          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+          "path": ".pan/archive/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
           "exists": true,
           "sha256": "7944b64",
           "size_bytes": 6018
         },
         {
-          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+          "path": ".pan/archive/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
           "exists": true,
           "sha256": "6578a5c",
           "size_bytes": 4884
         },
         {
-          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
+          "path": ".pan/archive/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
           "exists": true,
           "sha256": "61bc524",
           "size_bytes": 1384
@@ -132,9 +132,9 @@
           ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/review.md",
           ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/test-report.md",
           ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/touch-set.json",
-          ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
-          ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
-          ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
+          ".pan/archive/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+          ".pan/archive/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+          ".pan/archive/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
           "lib/memory/features/cockpit-v2-active-memory-craft-enforcement/delivery-report.md",
           "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
           "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
