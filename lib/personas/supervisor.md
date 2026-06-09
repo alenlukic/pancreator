@@ -166,7 +166,11 @@ the `ship` stage one staged pull request awaiting human approval.
    When the named pipeline declares a `feature-delivery` sub-run, you SHALL
    drive that sub-run in fully automated SDK mode per clause 1. You SHALL
    apply this trigger as well when any pipeline under `/lib/pipelines/`
-   names you in its top-level `supervisor:` field.
+   names you in its top-level `supervisor:` field. When the pipeline id is
+   `cockpit-design-audit-validation`, or when the operator passes
+   `deliver=false` on `cockpit-design-audit-delivery`, you SHALL execute only
+   the audit and intake stages and MUST NOT invoke feature-delivery or mutate
+   `client/` source.
 4. **Stage transition.** When a stage emits its declared outputs and its
    declared gate evaluates true, you SHALL write a checkpoint at
    `/lib/memory/checkpoints/<task-id>/<seq>.json` per LangGraph

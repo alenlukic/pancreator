@@ -75,11 +75,11 @@ inside feature-delivery.
 ## When you are invoked
 
 1. **Operator context review.** When an operator delegates `/context-reviewer`
-   with a bounded prompt (for example `.sandbox/<slug>/context-review-prompt.md`
+   with a bounded prompt (for example `.pan/sandboxes/<slug>/context-review-prompt.md`
    from `pnpm -w exec pan context-review scaffold`, or operator-authored scope
    in chat), you SHALL read every input named in that prompt and emit the
    advisory report path the prompt declares (default:
-   `.sandbox/<slug>/context-review.md`).
+   `.pan/sandboxes/<slug>/context-review.md`).
 2. **Manual rerun.** When an operator re-delegates with an updated prompt, you
    SHALL overwrite the prior report at the declared output path in place.
 

@@ -4,8 +4,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildSdkAgentCreateOptions,
   buildSdkPrompt,
   findMissingArtifactPaths,
+  PERSONA_MCP_SETTING_SOURCES,
+  resolveSdkLocalOptions,
   type CursorSdkInvokeParams,
 } from "./sdk-transport.js";
 import type { RunnerPersonaInput } from "./types.js";
@@ -56,6 +59,48 @@ describe("sdk-transport prompt and verification helpers", () => {
       modelOverride: "composer-2.5[fast=false]",
     });
     expect(prompt).toContain("Model: composer-2.5[fast=false]");
+  });
+
+  it("resolveSdkLocalOptions keeps inline-only settings when persona declares no MCP servers", () => {
+    expect(resolveSdkLocalOptions(persona, "/repo")).toEqual({ cwd: "/repo" });
+  });
+
+  it("resolveSdkLocalOptions loads operator MCP setting sources when persona declares MCP servers", () => {
+    expect(
+      resolveSdkLocalOptions(
+        { ...persona, mcpServers: ["chrome-devtools", "pancreator-memory"] },
+        "/repo",
+      ),
+    ).toEqual({
+      cwd: "/repo",
+      settingSources: [...PERSONA_MCP_SETTING_SOURCES],
+    });
+  });
+
+  it("buildSdkPrompt lists declared MCP servers and setting sources", () => {
+    const prompt = buildSdkPrompt({
+      message: "run design QA",
+      persona: { ...persona, name: "design-reviewer", mcpServers: ["chrome-devtools"] },
+    });
+    expect(prompt).toContain("MCP servers: chrome-devtools");
+    expect(prompt).toContain("MCP setting sources: user, project, plugins");
+  });
+
+  it("buildSdkAgentCreateOptions wires persona MCP dependencies into Agent.create options", () => {
+    const options = buildSdkAgentCreateOptions({
+      apiKey: "test-key",
+      sdkModelId: "composer-2.5",
+      persona: { ...persona, mcpServers: ["chrome-devtools"] },
+      cwd: "/repo",
+    });
+    expect(options).toEqual({
+      apiKey: "test-key",
+      model: { id: "composer-2.5" },
+      local: {
+        cwd: "/repo",
+        settingSources: [...PERSONA_MCP_SETTING_SOURCES],
+      },
+    });
   });
 
   it("findMissingArtifactPaths returns repo-relative gaps deterministically", async () => {

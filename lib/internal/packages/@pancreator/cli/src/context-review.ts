@@ -4,9 +4,14 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import {
+  assertSandboxWorkspace,
+  DEFAULT_CONTEXT_REVIEW_WORKSPACE,
+} from "./sandbox-paths.js";
+
 export const CONTEXT_REVIEWER_PERSONA = "context-reviewer" as const;
 
-export const DEFAULT_CONTEXT_REVIEW_WORKSPACE = ".sandbox/context-review" as const;
+export { DEFAULT_CONTEXT_REVIEW_WORKSPACE } from "./sandbox-paths.js";
 
 export function contextReviewPromptRel(workspaceDir: string): string {
   return path.posix.join(workspaceDir, "context-review-prompt.md");
@@ -60,14 +65,7 @@ function assertSafeRepoRelative(rel: string, label: string): string {
 }
 
 function normalizeWorkspaceDir(value: string | undefined): string {
-  const workspace = assertSafeRepoRelative(
-    value?.trim() ?? DEFAULT_CONTEXT_REVIEW_WORKSPACE,
-    "workspace",
-  );
-  if (!workspace.startsWith(".sandbox/")) {
-    throw new Error(`workspace MUST be under .sandbox/; got ${workspace}.`);
-  }
-  return workspace;
+  return assertSandboxWorkspace(value?.trim() ?? DEFAULT_CONTEXT_REVIEW_WORKSPACE);
 }
 
 function normalizeOptionalRunDir(value: string | undefined): string | undefined {

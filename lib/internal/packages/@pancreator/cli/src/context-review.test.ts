@@ -39,7 +39,7 @@ describe("context-review", () => {
   });
 
   it("renders context review prompt without task id", () => {
-    const workspace = ".sandbox/my-pass";
+    const workspace = ".pan/sandboxes/my-pass";
     const prompt = renderContextReviewPrompt({
       reviewLabel: "my-pass",
       workspaceDir: workspace,
@@ -58,7 +58,7 @@ describe("context-review", () => {
   it("renders optional run-dir artifact hints when supplied", () => {
     const prompt = renderContextReviewPrompt({
       reviewLabel: "with-run",
-      workspaceDir: ".sandbox/with-run",
+      workspaceDir: ".pan/sandboxes/with-run",
       scopePaths: [],
       runDir: ".pan/work/172996_05-10-26/demo-feature",
       contextPaths: [],
@@ -121,7 +121,7 @@ describe("scaffoldContextReview integration", () => {
 
     const result = await scaffoldContextReview({
       repoRoot: root,
-      workspace: ".sandbox/from-run",
+      workspace: ".pan/sandboxes/from-run",
       runDir: runDirRel,
     });
     expect(result.runDir).toBe(runDirRel);

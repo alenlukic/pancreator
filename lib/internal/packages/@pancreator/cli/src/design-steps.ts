@@ -111,7 +111,11 @@ You are \`design-engineer\` in design-plan companion mode for feature \`${input.
 ## Instructions
 
 1. Read the engineering spec and extract UX-relevant requirements.
-2. Emit \`${uxSpec}\` per \`lib/personas/design-engineer.md\` design-plan mode.
+2. Emit \`${uxSpec}\` per \`lib/personas/design-engineer.md\` and the taste profile,
+   measurable craft standards, and gate-blocking conditions in
+   \`lib/memory/handbook/engineering/design-craft.md\`. Spec Mobbin-fidelity
+   orientation panels (card surfaces, one primary CTA per region, no visible raw
+   paths, no dashed wireframe chrome, no internal prose dumps).
 3. Do not emit plan-stage artifacts; \`tech-lead\` consolidates after you finish.
 
 When complete, the runner or operator delegates \`tech-lead\` with \`${path.posix.join(input.runDir, "next-prompt.md")}\`.
@@ -142,8 +146,9 @@ You are \`design-reviewer\` in design-QA companion mode for feature \`${input.fe
 
 ## Instructions
 
-1. Run Browser MCP inspections against relevant pages and interactions declared in the ux-spec and touch-set.
-2. Emit \`${designReport}\` with \`design_qa_passes: true\` or \`design_qa_passes: false\` and prioritized, typed recommendations per \`lib/personas/design-reviewer.md\`.
-3. Run in parallel with \`qa-tester\`; the test gate requires both functional QA and design QA to pass.
+1. Run Chrome DevTools MCP inspections (\`chrome-devtools\` server: \`navigate_page\`, \`take_snapshot\`, and interaction tools) against relevant pages and interactions declared in the ux-spec and touch-set.
+2. Apply all review passes in \`lib/personas/design-reviewer.md\`, including the holistic craft bar against \`lib/memory/handbook/engineering/design-craft.md\` (conditions 1–12). ux-spec coverage alone is insufficient for \`design_qa_passes: true\`.
+3. Emit \`${designReport}\` with \`design_qa_passes: true\` or \`design_qa_passes: false\` and prioritized, typed recommendations per \`lib/personas/design-reviewer.md\`. Any standing \`P0\` or \`P1\` finding MUST yield \`design_qa_passes: false\`.
+4. Run in parallel with \`qa-tester\`; the test gate requires both functional QA and design QA to pass (\`mergedTestStageVerdict\` blocks advance when either fails).
 `;
 }

@@ -299,9 +299,50 @@ export function panArgsFromNextCommand(nextCommand: string): string {
 
 export type ActiveMemorySnapshot = {
   activeFeaturePath: string | null;
+  activeFeatureLabel: string | null;
+  activeFeatureSlug: string | null;
   blockersSummary: string;
+  blockerChips: string[];
   refreshTimestamp: string | null;
 };
+
+const ACTIVE_MEMORY_REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function formatActiveMemoryRefreshTime(
+  timestamp: string | null,
+  nowMs: number = Date.now(),
+): string {
+  if (timestamp === null) {
+    return "Refresh timestamp unavailable";
+  }
+  const eventMs = Date.parse(timestamp);
+  if (Number.isNaN(eventMs)) {
+    return "Refresh timestamp unavailable";
+  }
+  const elapsedMs = Math.max(0, nowMs - eventMs);
+  if (elapsedMs < 60 * 1000) {
+    return "Refreshed just now";
+  }
+  if (elapsedMs < 60 * 60 * 1000) {
+    const minutes = Math.floor(elapsedMs / (60 * 1000));
+    return `Refreshed ${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+  }
+  if (elapsedMs < 24 * 60 * 60 * 1000) {
+    const hours = Math.floor(elapsedMs / (60 * 60 * 1000));
+    return `Refreshed ${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  }
+  if (elapsedMs < 2 * 24 * 60 * 60 * 1000) {
+    return "Refreshed yesterday";
+  }
+  if (elapsedMs < ACTIVE_MEMORY_REFRESH_MAX_AGE_MS) {
+    const days = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
+    return `Refreshed ${days} days ago`;
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(eventMs);
+}
 
 export type InboxEntrySnapshot = {
   path: string;

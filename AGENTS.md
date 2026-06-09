@@ -190,7 +190,7 @@ context is useful; otherwise perform the work directly and cite this section.
   create it before reading, writing, listing, or failing on that path and SHALL
   add `.gitkeep` when Git tracks the path. This does not apply to generated,
   local-only, or run-scoped paths such as `lib/inbox/`, `.pan/work/<day>/<task-id>/`,
-  archive entries, `.pan/` sandboxes, or `.sandbox/`.
+  archive entries, or `.pan/sandboxes/` workspace trees.
 - **Inbox is local-only** under `lib/inbox/`; never read or modify `lib/inbox/notes/`.
   Durable archival copies belong under `.pan/archive/inbox/`.
 - **Human in-loop** at phase boundaries (`LocalUserAuthorizer`).
@@ -266,12 +266,12 @@ scheduler wiring lands.
 /.pan/archive/inbox/in/               durable archived inbound directives
 /.pan/work/<day>/<task-id>/           active pipeline workspace
 /.pan/archive/work/                   completed runs (explicit-read)
-/.sandbox/                        operator/agent scratch QA (gitignored; copy repo slices freely)
+/.pan/sandboxes/                      operator/agent scratch QA + port registry (gitignored)
 /lib/internal/packages/          TypeScript packages
 /lib/internal/tools/             validation scripts
 /client/                         operator cockpit (Next.js; de-indexed)
 /tests/                          repository tests
-/.pan/{worktrees,sandboxes,scheduler}/  control-plane state
+/.pan/{worktrees,scheduler}/     other control-plane state
 /pancreator.yaml                 live policy and project_root
 /pancreator-defaults.yaml        risk-tier defaults (not live config)
 ```
