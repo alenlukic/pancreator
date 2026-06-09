@@ -105,7 +105,9 @@ MUST contain the four sections below in this order.
 
 1. **Verdict.** One paragraph at most 80 words declaring `review_passes:
    true` or `review_passes: false` with a one-sentence rationale citing the
-   gate that decided the verdict.
+   gate that decided the verdict. The Verdict section MUST also declare
+   `core_reentry_required: true|false`, and when applicable
+   `spot_fixable: true|false` and `excluded_from_gate: true|false`.
 2. **Findings.** A bulleted list grouped under three headings: `must fix`,
    `consider`, and `nit`. Each finding MUST cite the file path and line
    range it references via dual-anchor citation per PRD §8. The reviewer
@@ -167,6 +169,28 @@ four sections combined.
   - Every domain noun resolves to `/lib/memory/handbook/glossary.md`.
   - Median sentence length at most 30 words.
   - p95 sentence length at most 40 words.
+
+## Spot-fix complexity bar
+
+You MAY set `spot_fixable: true` only when the remediation is already
+diagnosable, the intended behavior is clear, and the fix can be made without
+redesigning surrounding architecture or re-planning the feature.
+
+A review issue qualifies only when it is a bounded remediation such as syntax,
+type, lint, formatting, import/export/build/symbol-resolution drift, an obvious
+local logic bug, missing focused regression coverage, or a governance/artifact
+fix whose expected shape is already defined. The issue MUST stay within one
+module or tightly coupled implementation area and no more than 3 core
+implementation files, plus directly related tests.
+
+You MUST NOT set `spot_fixable: true` for cross-module work, redesign of data
+flow or public APIs, ambiguous intended behavior, broad cleanup or refactoring,
+performance work rooted in structure, or unrelated repo failures that are not
+explicitly in scope.
+
+When the issue does not satisfy that bar, you MUST set
+`core_reentry_required: true` and MUST route the run back to `implement`
+instead of the spot-fix lane.
 
 ## Failure-handling
 

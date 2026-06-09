@@ -373,6 +373,8 @@ export async function startFeatureDelivery(
   command: "run" | "feature new" = "run",
 ): Promise<StartFeatureDeliveryResult> {
   const repoRoot = path.resolve(input.repoRoot);
+  const { assertFeatureDeliveryWorktreeCheckout } = await import("./feature-delivery-worktree.js");
+  assertFeatureDeliveryWorktreeCheckout(repoRoot, input.testHooks);
   const now = input.clock?.() ?? new Date();
   const inboxRel = assertInboxInRelativePath(input.inboxEntry, "inbox entry");
   const inboxPath = resolveProjectPath(repoRoot, "lib", "inbox", "in", ...inboxRel.split("/"));
@@ -1610,6 +1612,9 @@ function buildStageStates(
   }));
 }
 
+const SPOT_FIX_COMPLEXITY_BAR_SUMMARY =
+  "Spot-fix bar: already diagnosable, intended behavior clear, bounded to one module or tightly coupled area, no more than 3 core implementation files plus directly related tests/artifacts, and no redesign or re-planning.";
+
 function stageGate(
   stage: PipelineStage,
   invocation: "manual" | "sdk",
@@ -1633,18 +1638,20 @@ function stageGate(
       case "review":
         return {
           humanGate: "agent_ratifies_review_outcome",
-          humanAttention: "Reviewer validates review.md; SDK routes on review_passes, must_fix, or spot-fix.",
+          humanAttention:
+            "Reviewer validates review.md; qualifying bounded issues may stay in review via spot-fix, otherwise the run returns to implement.",
         };
       case "test":
         return {
           humanGate: "agent_ratifies_qa_outcome",
-          humanAttention: "QA validates test-report.md; SDK routes on qa_passes, qa_fails, or spot-fix.",
+          humanAttention:
+            "QA validates test-report.md; only qualifying bounded issues may stay in test via spot-fix, otherwise route to implement or plan.",
         };
       case "compliance":
         return {
           humanGate: "agent_ratifies_compliance_outcome",
           humanAttention:
-            "Compliance-auditor validates compliance-result.json; SDK routes on pass, spot-fix, or re-entry.",
+            "Compliance-auditor validates compliance-result.json; only qualifying bounded drift may stay in compliance via spot-fix, otherwise route to implement or plan.",
         };
       default:
         return {};
@@ -1669,18 +1676,20 @@ function stageGate(
     case "review":
       return {
         humanGate: "review_passes_or_reenter_implement",
-        humanAttention: "Inspect high findings; approve only clean review output or send the run back to implement.",
+        humanAttention:
+          "Inspect review.md; only qualifying bounded issues may stay in review via spot-fix, otherwise send the run back to implement.",
       };
     case "test":
       return {
         humanGate: "qa_passes_or_reenter_implement",
-        humanAttention: "Inspect test-report.md; approve only when qa_passes is true or send the run back to implement.",
+        humanAttention:
+          "Inspect test-report.md; only qualifying bounded issues may stay in test via spot-fix, otherwise send the run back to implement or plan.",
       };
     case "compliance":
       return {
         humanGate: "compliance_passes_or_reenter_implement",
         humanAttention:
-          "Inspect compliance-result.json and final validation bundle; route minor drift to spot-fix and major findings to implement/plan.",
+          "Inspect compliance-result.json and the final validation bundle; route only qualifying bounded drift to spot-fix and send all broader findings to implement or plan.",
       };
     case "ship":
       return {
@@ -1752,7 +1761,7 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
       from: "review",
       on: "review_spot_fix",
       to: "review",
-      humanAttention: "Minor review findings stay in-stage; apply spot fixes and rerun review.",
+      humanAttention: "Only issues that satisfy the spot-fix complexity bar may stay in review; rerun review after the bounded remediation.",
     },
     {
       from: "review",
@@ -1776,7 +1785,7 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
       from: "test",
       on: "qa_spot_fix",
       to: "test",
-      humanAttention: "Minor QA drift stays in-stage; apply spot fixes and rerun QA.",
+      humanAttention: "Only issues that satisfy the spot-fix complexity bar may stay in test; rerun QA after the bounded remediation.",
     },
     {
       from: "test",
@@ -1800,7 +1809,7 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
       from: "compliance",
       on: "compliance_spot_fix",
       to: "compliance",
-      humanAttention: "Minor compliance drift stays in-stage; fix and rerun the compliance gate.",
+      humanAttention: "Only issues that satisfy the spot-fix complexity bar may stay in compliance; rerun the gate after the bounded remediation.",
     },
     {
       from: "compliance",
@@ -1993,15 +2002,15 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
       return base;
     }
     case "review":
-      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nAdvance on pass: ${advanceLine("review", "review_passes")}\nReturn to implement on must-fix: pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, core_reentry_required, and when applicable spot_fixable and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
-        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, lib/memory/features/${state.featureId}/ux-spec.md, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester (${state.artifacts.runDir}/next-prompt.md) + design-reviewer (${designQaPromptRel(state.artifacts.runDir)})\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`
-        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nReturn to implement on qa-fail: pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md`;
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, lib/memory/features/${state.featureId}/ux-spec.md, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester (${state.artifacts.runDir}/next-prompt.md) + design-reviewer (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
+        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
-      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nMinor drift (spot-fix and rerun compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nMajor issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
+      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nVerdict fields: compliance_passes, plan_invalidating, core_reentry_required, spot_fixable, excluded_from_gate, and final_gate\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nQualifying spot-fix (stay in compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
     case "ship": {
       const shipInputs = stateIncludesStage(state, "compliance")
         ? `local diff, ${state.artifacts.runDir}/compliance-result.json, lib/memory/features/${state.featureId}/delivery-report.md`
@@ -2661,9 +2670,14 @@ function makeStateRecord(
 }
 
 async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: string; rel: string }> {
+  const { resolveFeatureDeliveryCheckoutRoot } = await import("./feature-delivery-worktree.js");
+  const checkoutRoot = await resolveFeatureDeliveryCheckoutRoot(repoRoot, taskId);
   const roots = [
-    { abs: resolveProjectPath(repoRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
-    { abs: resolveProjectPath(repoRoot, ".pan/archive", "work"), rel: path.posix.join(".pan/archive", "work") },
+    { abs: resolveProjectPath(checkoutRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
+    {
+      abs: resolveProjectPath(checkoutRoot, ".pan/archive", "work"),
+      rel: path.posix.join(".pan/archive", "work"),
+    },
   ];
 
   const matches: Array<{ abs: string; rel: string; rootKind: ".pan/work" | ".pan/archive" }> = [];

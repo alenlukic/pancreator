@@ -39,6 +39,10 @@ import { runCreatePancreator, runPanInit } from "./pan-init.js";
 import { quoteJsonString, stringifyCliJson } from "./canonical-json-io.js";
 import { runFeatureDeliveryBatch } from "./feature-delivery-batch.js";
 import {
+  resolveFeatureDeliveryCheckoutRoot,
+  runIsolatedFeatureDelivery,
+} from "./feature-delivery-worktree.js";
+import {
   createFeatureDeliveryBatchProgressReporter,
   createFeatureDeliverySdkProgressReporter,
 } from "./feature-delivery-sdk-progress.js";
@@ -104,6 +108,10 @@ type OutputFormat = "json" | "text";
 function resolveOutputFormat(commandFormat: string | undefined, defaultFormat?: OutputFormat): OutputFormat {
   const raw = commandFormat ?? defaultFormat ?? "json";
   return raw === "text" ? "text" : "json";
+}
+
+async function featureDeliveryCheckoutRoot(mainRepoRoot: string, taskId: string): Promise<string> {
+  return await resolveFeatureDeliveryCheckoutRoot(mainRepoRoot, taskId);
 }
 
 function featureDeliverySdkProgress(options: CliRunOptions | undefined) {
@@ -449,7 +457,7 @@ export async function parseAndRun(
       emitPayload(
         writeOut,
         repoRoot,
-        await startFeatureDelivery(
+        await runIsolatedFeatureDelivery(
           {
             repoRoot,
             inboxEntry,
@@ -490,7 +498,7 @@ export async function parseAndRun(
       emit(
         writeOut,
         repoRoot,
-        await startFeatureDelivery(
+        await runIsolatedFeatureDelivery(
           {
             repoRoot,
             inboxEntry,
@@ -565,8 +573,10 @@ export async function parseAndRun(
       emitPayload(
         writeOut,
         repoRoot,
-        await readFeatureDeliveryStatusWithInterventions(repoRoot, taskId, (id) =>
-          mgr.loadActiveState(id),
+        await readFeatureDeliveryStatusWithInterventions(
+          await featureDeliveryCheckoutRoot(repoRoot, taskId),
+          taskId,
+          (id) => mgr.loadActiveState(id),
         ),
         format,
       );
@@ -579,7 +589,12 @@ export async function parseAndRun(
     .option("--format <format>", "Output format: json (default) or text")
     .action(async (taskId: string, opts: { format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
-      emitPayload(writeOut, repoRoot, await resolveFeatureDeliveryNext(repoRoot, taskId), format);
+      emitPayload(
+        writeOut,
+        repoRoot,
+        await resolveFeatureDeliveryNext(await featureDeliveryCheckoutRoot(repoRoot, taskId), taskId),
+        format,
+      );
     });
 
   program
@@ -592,7 +607,7 @@ export async function parseAndRun(
     .action(async (taskId: string, opts: { artifact: string; event?: string; format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       const result = await advanceFeatureDelivery({
-        repoRoot,
+        repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
         taskId,
         artifact: opts.artifact,
         event: opts.event,
@@ -614,7 +629,7 @@ export async function parseAndRun(
     .action(async (taskId: string, opts: { stage: string; format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       const result = await validateArtifactsForTask({
-        repoRoot,
+        repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
         taskId,
         stage: opts.stage,
       });
@@ -667,7 +682,7 @@ export async function parseAndRun(
         writeOut,
         repoRoot,
         await repairFeatureDeliveryState({
-          repoRoot,
+          repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
           taskId,
           stage: opts.stage,
           artifact: opts.artifact,
@@ -688,7 +703,7 @@ export async function parseAndRun(
         writeOut,
         repoRoot,
         await refreshFeatureDeliveryPrompt({
-          repoRoot,
+          repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
           taskId,
         }),
       );
@@ -706,7 +721,11 @@ export async function parseAndRun(
       emitPayload(
         writeOut,
         repoRoot,
-        await prepareSandbox({ repoRoot, taskId, clock: options?.clock }),
+        await prepareSandbox({
+          repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
+          taskId,
+          clock: options?.clock,
+        }),
         format,
       );
     });
@@ -720,7 +739,7 @@ export async function parseAndRun(
         writeOut,
         repoRoot,
         await closeFeatureDeliveryArtifacts({
-          repoRoot,
+          repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
           taskId,
           clock: options?.clock,
         }),

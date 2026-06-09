@@ -2557,6 +2557,7 @@ describe("operator tooling batch cli wiring", () => {
         repoRoot: root,
         inboxEntry: "demo-feature.md",
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { bypassWorktreeIsolation: true },
       });
       await writeRunnerInvocationConfig(root, "sdk");
       const taskId = start.taskId;

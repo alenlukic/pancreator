@@ -1,12 +1,20 @@
 import { asTaskId, resolveProjectPath } from "@pancreator/core";
 import { GitWorktreePool } from "@pancreator/worktree";
 import { rfc3339UtcMs } from "@pancreator/run-logger";
-import { execFile, spawnSync } from "node:child_process";
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import { quoteJsonString, stringifyCliJson } from "./canonical-json-io.js";
+import {
+  createMemoryBatchGitOps,
+  createNodeBatchGitOps,
+  type BatchGitOps,
+} from "./feature-delivery-batch-git-ops.js";
+import {
+  preserveFeatureDeliveryFailureContext,
+  stageAndCommitCheckout,
+} from "./feature-delivery-failure-preservation.js";
+import { copyInboxDirectiveToCheckout } from "./feature-delivery-worktree.js";
 import {
   closeFeatureDeliveryArtifacts,
   runPanCheck,
@@ -22,8 +30,6 @@ import {
 } from "./feature-delivery-sdk-progress.js";
 import { readCursorInvocationMode } from "./pan-init.js";
 import { makeUtcDayBucket, secondsToMidnightUtc, utcHhmm } from "./intake-scaffold.js";
-
-const execFileAsync = promisify(execFile);
 
 export const BATCH_LEDGER_SCHEMA_VERSION = 1 as const;
 
@@ -42,6 +48,8 @@ export interface BatchRunOutcome {
   status: "success" | "failed";
   error?: string;
   runDir?: string;
+  preservationManifest?: string;
+  preservedRunDir?: string;
 }
 
 export interface BatchMergeRecord {
@@ -62,16 +70,6 @@ export interface BatchLedger {
   completedAtIso?: string;
   runs: BatchRunOutcome[];
   merge: BatchMergeRecord;
-}
-
-export interface BatchGitOps {
-  resolveHead(repoRoot: string): Promise<string>;
-  createBranch(repoRoot: string, branchName: string, baseRef: string): Promise<void>;
-  mergeNoFf(
-    repoRoot: string,
-    branchName: string,
-  ): Promise<{ status: "ok" } | { status: "conflict"; paths: string[] }>;
-  commit(repoRoot: string, message: string): Promise<void>;
 }
 
 export interface BatchRunTestHooks extends FeatureDeliveryTestHooks {
@@ -157,91 +155,7 @@ async function resolveSubRunTaskId(
   return makeSubRunTaskId(now, deriveFeatureId(inboxEntry, directive));
 }
 
-function createNodeBatchGitOps(): BatchGitOps {
-  return {
-    async resolveHead(repoRoot) {
-      const result = spawnSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], {
-        encoding: "utf8",
-      });
-      if (result.status !== 0) {
-        throw new Error(result.stderr || "git rev-parse HEAD failed.");
-      }
-      return result.stdout.trim();
-    },
-    async createBranch(repoRoot, branchName, baseRef) {
-      await execFileAsync("git", ["-C", repoRoot, "checkout", "-B", branchName, baseRef], {
-        encoding: "utf8",
-      });
-    },
-    async mergeNoFf(repoRoot, branchName) {
-      const result = spawnSync("git", ["-C", repoRoot, "merge", "--no-ff", branchName], {
-        encoding: "utf8",
-      });
-      if (result.status === 0) {
-        return { status: "ok" };
-      }
-      const statusResult = spawnSync("git", ["-C", repoRoot, "diff", "--name-only", "--diff-filter=U"], {
-        encoding: "utf8",
-      });
-      const paths =
-        statusResult.status === 0
-          ? statusResult.stdout
-              .split("\n")
-              .map((line) => line.trim())
-              .filter((line) => line.length > 0)
-          : [];
-      if (paths.length === 0) {
-        throw new Error(result.stderr || `git merge --no-ff ${branchName} failed.`);
-      }
-      return { status: "conflict", paths };
-    },
-    async commit(repoRoot, message) {
-      await execFileAsync("git", ["-C", repoRoot, "commit", "-am", message], { encoding: "utf8" });
-    },
-  };
-}
-
-export function createMemoryBatchGitOps(): BatchGitOps & {
-  readonly log: Array<{ op: string; branch?: string; message?: string }>;
-  conflictOnBranch?: string;
-} {
-  const log: Array<{ op: string; branch?: string; message?: string }> = [];
-  const ops: BatchGitOps & {
-    readonly log: typeof log;
-    conflictOnBranch?: string;
-  } = {
-    log,
-    conflictOnBranch: undefined,
-    async resolveHead() {
-      return "HEAD";
-    },
-    async createBranch(_repoRoot, branchName) {
-      log.push({ op: "createBranch", branch: branchName });
-    },
-    async mergeNoFf(_repoRoot, branchName) {
-      log.push({ op: "mergeNoFf", branch: branchName });
-      if (ops.conflictOnBranch === branchName || ops.conflictOnBranch === "*") {
-        return { status: "conflict", paths: ["conflict.txt"] };
-      }
-      return { status: "ok" };
-    },
-    async commit(_repoRoot, message) {
-      log.push({ op: "commit", message });
-    },
-  };
-  return ops;
-}
-
-async function copyInboxDirective(
-  mainRoot: string,
-  worktreeRoot: string,
-  inboxRel: string,
-): Promise<void> {
-  const src = resolveProjectPath(mainRoot, "lib", "inbox", "in", ...inboxRel.split("/"));
-  const dest = resolveProjectPath(worktreeRoot, "lib", "inbox", "in", ...inboxRel.split("/"));
-  await mkdir(path.dirname(dest), { recursive: true });
-  await copyFile(src, dest);
-}
+export { createMemoryBatchGitOps, createNodeBatchGitOps, type BatchGitOps } from "./feature-delivery-batch-git-ops.js";
 
 async function writeBatchLedger(repoRoot: string, ledgerRel: string, ledger: BatchLedger): Promise<void> {
   const abs = resolveProjectPath(repoRoot, ...ledgerRel.split("/"));
@@ -314,6 +228,42 @@ async function readSubRunState(
   const stateAbs = resolveProjectPath(worktreeRoot, ...startResult.stateFile.split("/"));
   const raw = await readFile(stateAbs, "utf8");
   return JSON.parse(raw) as FeatureDeliveryState;
+}
+
+async function mirrorFailedSubRunContext(input: {
+  repoRoot: string;
+  leasePath: string;
+  startResult: StartFeatureDeliveryResult;
+  state: FeatureDeliveryState;
+  taskId: string;
+  branch: string;
+  batchId: string;
+  error: string;
+  clock?: () => Date;
+}): Promise<Pick<BatchRunOutcome, "preservationManifest" | "preservedRunDir">> {
+  const preservation = await preserveFeatureDeliveryFailureContext({
+    mainRepoRoot: input.repoRoot,
+    checkoutRoot: input.leasePath,
+    taskId: input.taskId,
+    runDir: input.startResult.runDir,
+    state: input.state,
+    batchId: input.batchId,
+    branch: input.branch,
+    error: input.error,
+    clock: input.clock,
+  });
+  try {
+    await stageAndCommitCheckout(
+      input.leasePath,
+      `batch ${input.batchId}: failure context for ${input.taskId}`,
+    );
+  } catch {
+    // Filesystem mirror on main is authoritative when git commit fails.
+  }
+  return {
+    preservationManifest: preservation.manifestRel,
+    preservedRunDir: preservation.preservedRunDir ?? undefined,
+  };
 }
 
 export async function runFeatureDeliveryBatch(
@@ -419,7 +369,10 @@ export async function runFeatureDeliveryBatch(
 
   const runOne = async (inboxEntry: string, branch: string): Promise<void> => {
     let taskId = "";
+    let leasePath: string | undefined;
     let leaseTaskId: ReturnType<typeof asTaskId> | undefined;
+    let startResult: StartFeatureDeliveryResult | undefined;
+    let finalizeLease: "release" | "suspend" | false = false;
     try {
       const runNow = input.clock?.() ?? new Date();
       taskId = await resolveSubRunTaskId(repoRoot, inboxEntry, runNow);
@@ -428,6 +381,7 @@ export async function runFeatureDeliveryBatch(
         branch,
       });
       leaseTaskId = lease.taskId;
+      leasePath = lease.path;
       progress.emit({
         kind: "batch_run_start",
         batchId,
@@ -437,9 +391,9 @@ export async function runFeatureDeliveryBatch(
         atIso: rfc3339UtcMs(runNow),
       });
 
-      await copyInboxDirective(repoRoot, lease.path, inboxEntry);
+      await copyInboxDirectiveToCheckout(repoRoot, lease.path, inboxEntry);
 
-      const startResult = await startFn(
+      startResult = await startFn(
         {
           repoRoot: lease.path,
           inboxEntry,
@@ -454,7 +408,27 @@ export async function runFeatureDeliveryBatch(
 
       if (state.currentStage !== "complete" || state.status !== "complete") {
         const error = `Sub-run ended at ${state.currentStage}/${state.status}.`;
-        ledger.runs.push({ inboxEntry, taskId, branch, status: "failed", error, runDir: startResult.runDir });
+        finalizeLease = "suspend";
+        const preservation = await mirrorFailedSubRunContext({
+          repoRoot,
+          leasePath: lease.path,
+          startResult,
+          state,
+          taskId,
+          branch,
+          batchId,
+          error,
+          clock: input.clock,
+        });
+        ledger.runs.push({
+          inboxEntry,
+          taskId,
+          branch,
+          status: "failed",
+          error,
+          runDir: startResult.runDir,
+          ...preservation,
+        });
         progress.emit({
           kind: "batch_run_failed",
           batchId,
@@ -466,10 +440,34 @@ export async function runFeatureDeliveryBatch(
         return;
       }
 
+      // Commit pipeline-complete implementation before pre-close gates so failed pan check
+      // does not discard uncommitted work when the worktree lease is released.
+      await commitFn(lease.path, `batch ${batchId}: pipeline complete for ${taskId}`);
+
       const check = await panCheckFn(lease.path);
       if (check.status !== "ok" || check.failCount > 0) {
-        const error = `Pre-close validation failed (${check.failCount} failing check(s)).`;
-        ledger.runs.push({ inboxEntry, taskId, branch, status: "failed", error, runDir: startResult.runDir });
+        const error = `Pre-close validation failed (${check.failCount} failing check(s)). Implementation committed on branch ${branch}; repair-state and re-run pan check before close-artifacts.`;
+        finalizeLease = "suspend";
+        const preservation = await mirrorFailedSubRunContext({
+          repoRoot,
+          leasePath: lease.path,
+          startResult,
+          state,
+          taskId,
+          branch,
+          batchId,
+          error,
+          clock: input.clock,
+        });
+        ledger.runs.push({
+          inboxEntry,
+          taskId,
+          branch,
+          status: "failed",
+          error,
+          runDir: startResult.runDir,
+          ...preservation,
+        });
         progress.emit({
           kind: "batch_run_failed",
           batchId,
@@ -483,6 +481,7 @@ export async function runFeatureDeliveryBatch(
 
       await closeFn({ repoRoot: lease.path, taskId, clock: input.clock });
       await commitFn(lease.path, `batch ${batchId}: close-artifacts for ${taskId}`);
+      finalizeLease = "release";
 
       ledger.runs.push({
         inboxEntry,
@@ -500,13 +499,37 @@ export async function runFeatureDeliveryBatch(
         atIso: rfc3339UtcMs(input.clock?.() ?? new Date()),
       });
     } catch (error) {
+      finalizeLease = "suspend";
       const message = error instanceof Error ? error.message : String(error);
+      const failedTaskId =
+        taskId.length > 0 ? taskId : path.posix.basename(inboxEntry, path.posix.extname(inboxEntry));
+      let preservation: Pick<BatchRunOutcome, "preservationManifest" | "preservedRunDir"> = {};
+      if (leasePath !== undefined && startResult !== undefined) {
+        try {
+          const state = await readSubRunState(leasePath, startResult);
+          preservation = await mirrorFailedSubRunContext({
+            repoRoot,
+            leasePath,
+            startResult,
+            state,
+            taskId: failedTaskId,
+            branch,
+            batchId,
+            error: message,
+            clock: input.clock,
+          });
+        } catch {
+          // Best-effort preservation; never mask the original batch error.
+        }
+      }
       ledger.runs.push({
         inboxEntry,
-        taskId: taskId.length > 0 ? taskId : path.posix.basename(inboxEntry, path.posix.extname(inboxEntry)),
+        taskId: failedTaskId,
         branch,
         status: "failed",
         error: message,
+        ...(startResult !== undefined ? { runDir: startResult.runDir } : {}),
+        ...preservation,
       });
       progress.emit({
         kind: "batch_run_failed",
@@ -518,7 +541,11 @@ export async function runFeatureDeliveryBatch(
       });
     } finally {
       if (leaseTaskId !== undefined) {
-        await pool.release(leaseTaskId);
+        if (finalizeLease === "release") {
+          await pool.release(leaseTaskId);
+        } else if (finalizeLease === "suspend") {
+          await pool.suspendLease(leaseTaskId);
+        }
       }
       activeCount -= 1;
       await writeBatchLedger(repoRoot, ledgerRel, ledger);

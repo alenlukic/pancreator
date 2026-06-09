@@ -20,6 +20,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { enrichRetryLimitHaltArtifact } from "./feature-delivery-failure-preservation.js";
 import {
   type FeatureDeliverySdkProgressReporter,
   withFeatureDeliverySdkStageHeartbeat,
@@ -144,6 +145,9 @@ export interface FeatureDeliveryRunnerLedger {
 export interface FeatureDeliveryTestHooks {
   sdkTransport?: CursorSdkTransport;
   progress?: FeatureDeliverySdkProgressReporter;
+  /** Test-only: allow startFeatureDelivery on a temp dir outside .pan/worktrees/. */
+  bypassWorktreeIsolation?: boolean;
+  worktreePool?: import("@pancreator/worktree").GitWorktreePool;
 }
 
 export function ensureAutomationState(
@@ -922,6 +926,11 @@ export async function writeRetryLimitHaltArtifact(input: {
     "",
   ].join("\n");
   await writeFile(abs, body, "utf8");
+  await enrichRetryLimitHaltArtifact({
+    repoRoot: input.repoRoot,
+    runDir: input.state.artifacts.runDir,
+    outboxRel: rel,
+  });
   return rel;
 }
 

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -174,6 +174,29 @@ describe("feature-delivery-batch", () => {
     expect(code).toBe(1);
     expect(call).toBe(2);
     expect(gitOps.log.filter((entry) => entry.op === "mergeNoFf")).toHaveLength(1);
+
+    let ledgerPath: string | undefined;
+    for (const day of await readdir(path.join(root, ".pan", "work"))) {
+      const batchParent = path.join(root, ".pan", "work", day);
+      for (const entry of await readdir(batchParent)) {
+        if (!entry.startsWith("batch-")) {
+          continue;
+        }
+        const candidate = path.join(batchParent, entry, "batch.json");
+        if (existsSync(candidate)) {
+          ledgerPath = candidate;
+          break;
+        }
+      }
+      if (ledgerPath !== undefined) {
+        break;
+      }
+    }
+    expect(ledgerPath).toBeDefined();
+    const ledger = JSON.parse(await readFile(ledgerPath!, "utf8"));
+    const failedRun = ledger.runs.find((run: { status: string }) => run.status === "failed");
+    expect(failedRun?.preservationManifest).toBeTruthy();
+    expect(existsSync(path.join(root, failedRun.preservationManifest))).toBe(true);
   });
 
   it("runs at most two sub-runs concurrently for --parallel 2", async () => {

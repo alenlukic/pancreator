@@ -136,6 +136,25 @@ export class GitWorktreePool implements WorktreePool {
     return { taskId, path: slotPath, createdAtIso: reserved.createdAtIso };
   }
 
+  async suspendLease(taskId: TaskId): Promise<void> {
+    const id = String(taskId);
+    assertSafeTaskId(id);
+    await this.stateMutex.run(async () => {
+      const state = await readPoolState(this.stateFilePath);
+      if (!state.slots[id]) {
+        throw new WorktreeSlotNotFoundError(`No worktree slot for task ${id}.`);
+      }
+      const nextActive = state.activeTaskIds.filter((activeId) => activeId !== id);
+      if (nextActive.length === state.activeTaskIds.length) {
+        return;
+      }
+      await writePoolStateAtomic(this.stateFilePath, {
+        ...state,
+        activeTaskIds: nextActive,
+      });
+    });
+  }
+
   async release(taskId: TaskId): Promise<void> {
     const id = String(taskId);
     assertSafeTaskId(id);

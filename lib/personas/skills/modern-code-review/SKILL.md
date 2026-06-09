@@ -138,7 +138,9 @@ declared in `lib/personas/reviewer.md`:
 
 1. **Verdict.** One paragraph at most 80 words declaring `review_passes:
    true` or `review_passes: false` with a one-sentence rationale citing
-   the gate that decided the verdict.
+   the gate that decided the verdict. The Verdict MUST also declare
+   `core_reentry_required: true|false`, and when applicable
+   `spot_fixable: true|false` and `excluded_from_gate: true|false`.
 2. **Findings.** The bulleted list grouped under `must fix`, `consider`,
    and `nit`.
 3. **Spec Contract results.** The table built in Step 3.
@@ -172,6 +174,13 @@ When the verdict is `review_passes: false` and the failure routes back to
 `implement` per PRD §7 line 678's gate predicate, you MUST list the
 `must fix` items the `coder` persona MUST resolve before the next round.
 The MVP loop cap declared in PRD §3.5 US-1 line 120 MUST hold.
+
+You MAY set `spot_fixable: true` only when the remediation is already
+diagnosable, intended behavior is clear, remains within one module or tightly
+coupled implementation area, touches no more than 3 core implementation files
+plus directly related tests, and does not require redesign or re-planning. All
+broader or ambiguous issues MUST stay `must fix` and route back to
+`implement`.
 
 ## Stop conditions
 
