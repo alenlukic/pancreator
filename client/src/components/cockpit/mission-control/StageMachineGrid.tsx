@@ -66,25 +66,31 @@ export function StageCellCard({
           ) : null}
         </div>
       ) : null}
-      {retryCount > 0 ? (
+      {showMissionControlChrome && retryCount > 0 ? (
         <span className="mc-retry-badge" data-testid={`retry-badge-${stage.name}`}>
           {retryCount}
         </span>
       ) : null}
-      {stage.humanGate ? <p className="stage-cell-gate">Gate: {stage.humanGate}</p> : null}
-      {stage.status === "active" && stage.nextHumanAction ? (
+      {!showMissionControlChrome && stage.humanGate ? (
+        <p className="stage-cell-gate">Gate: {stage.humanGate}</p>
+      ) : null}
+      {!showMissionControlChrome && stage.status === "active" && stage.nextHumanAction ? (
         <p className="stage-cell-action">{stage.nextHumanAction}</p>
       ) : null}
-      {stage.status === "active" && stage.humanAttention ? (
+      {!showMissionControlChrome && stage.status === "active" && stage.humanAttention ? (
         <p className="stage-cell-action">{stage.humanAttention}</p>
       ) : null}
-      {(stage.status === "complete" || stage.status === "failed") && stage.humanAttention ? (
+      {!showMissionControlChrome &&
+      (stage.status === "complete" || stage.status === "failed") &&
+      stage.humanAttention ? (
         <p className="stage-cell-action">{stage.humanAttention}</p>
       ) : null}
-      {stage.status === "active" && stage.nextCommand ? (
+      {!showMissionControlChrome && stage.status === "active" && stage.nextCommand ? (
         <code className="stage-cell-command">{stage.nextCommand}</code>
       ) : null}
-      {(stage.status === "complete" || stage.status === "failed") && stage.nextCommand ? (
+      {!showMissionControlChrome &&
+      (stage.status === "complete" || stage.status === "failed") &&
+      stage.nextCommand ? (
         <code className="stage-cell-command">{stage.nextCommand}</code>
       ) : null}
     </>

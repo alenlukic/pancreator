@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { stringifyCompactJson } from "@/lib/json-io";
+import { artifactDisplayLabel } from "./ArtifactsByStage";
 
 const GUARDED_PATH_SEGMENTS = [
   "run.log.jsonl",
@@ -235,7 +236,11 @@ export function FileModalOverlay({
   return (
     <div className="modal-backdrop" data-testid="file-modal">
       <div className="modal-panel">
-        <h3>{modal.path}</h3>
+        <h3 data-testid="file-modal-title">{artifactDisplayLabel(modal.path)}</h3>
+        <details className="mc-file-modal-path-details">
+          <summary>Show file path</summary>
+          <code data-testid="file-modal-path">{modal.path}</code>
+        </details>
         {modal.isReadOnly ? <span data-testid="readonly-indicator">Read-only</span> : null}
         <textarea
           value={modal.draft}

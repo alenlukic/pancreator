@@ -1335,7 +1335,7 @@ describe("DashboardPage", () => {
     });
   });
 
-  it("requires pause confirmation before disabling an automation", async () => {
+  it("disables an automation via the enabled toggle", async () => {
     const automationPutCalls: unknown[] = [];
     mockFetchForDashboard({ runState: mockRunState, automationPutCalls });
 
@@ -1601,7 +1601,7 @@ describe("Mission Control surface", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("run-context-header")).toHaveTextContent(
-        "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+        "Cockpit V2 Feature Delivery Mission Control Run Detail",
       );
     });
   });
