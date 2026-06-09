@@ -152,8 +152,9 @@ The file MUST contain these six sections in order:
 1. **Verdict.** One paragraph at most 80 words declaring `design_qa_passes: true` or
    `design_qa_passes: false` with a one-sentence rationale. The Verdict section MUST
    also declare `plan_invalidating: true|false`, and when applicable
-   `core_reentry_required: true|false`, `spot_fixable: true|false`, and
-   `excluded_from_gate: true|false`.
+   `core_reentry_required: true|false`, `spot_fixable: true|false`,
+   `spot_fix_scope: code-bounded`, `spot_fix_owner: design-qa`,
+   `spot_fix_paths`, `spot_fix_rationale`, and `excluded_from_gate: true|false`.
 2. **Browser inspections.** A table with columns `url`, `interaction`, `dom observation`,
    and `pass/fail`. Every Chrome DevTools MCP step you perform MUST appear in this table.
 3. **UX-spec coverage.** Bullets mapping each major `ux-spec.md` section to observed
@@ -219,6 +220,10 @@ an already-clear one.
 When the issue does not satisfy that bar, you MUST set
 `core_reentry_required: true` and route the task to `implement`, or to `plan`
 when the ux-spec or intended behavior is itself wrong.
+
+When setting `spot_fixable: true`, you MUST declare `spot_fix_scope: code-bounded`,
+`spot_fix_owner: design-qa`, `spot_fix_paths` (comma-separated, max 3), and
+`spot_fix_rationale` so the runtime can authorize `qa_spot_fix` on the test stage.
 
 ## Browser inspection
 

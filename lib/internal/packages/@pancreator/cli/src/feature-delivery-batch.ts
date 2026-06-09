@@ -11,6 +11,8 @@ import {
   type BatchGitOps,
 } from "./feature-delivery-batch-git-ops.js";
 import {
+  archiveFailureContextToRecovery,
+  assertPreservationManifestPresent,
   preserveFeatureDeliveryFailureContext,
   stageAndCommitCheckout,
 } from "./feature-delivery-failure-preservation.js";
@@ -50,6 +52,7 @@ export interface BatchRunOutcome {
   runDir?: string;
   preservationManifest?: string;
   preservedRunDir?: string;
+  recoveryArchiveDir?: string;
 }
 
 export interface BatchMergeRecord {
@@ -240,7 +243,7 @@ async function mirrorFailedSubRunContext(input: {
   batchId: string;
   error: string;
   clock?: () => Date;
-}): Promise<Pick<BatchRunOutcome, "preservationManifest" | "preservedRunDir">> {
+}): Promise<Pick<BatchRunOutcome, "preservationManifest" | "preservedRunDir" | "recoveryArchiveDir">> {
   const preservation = await preserveFeatureDeliveryFailureContext({
     mainRepoRoot: input.repoRoot,
     checkoutRoot: input.leasePath,
@@ -252,6 +255,18 @@ async function mirrorFailedSubRunContext(input: {
     error: input.error,
     clock: input.clock,
   });
+  if (preservation.manifestRel.length > 0) {
+    assertPreservationManifestPresent(input.repoRoot, preservation.manifestRel);
+  }
+  const recoveryArchiveDir =
+    preservation.preservedRunDir === null
+      ? undefined
+      : (await archiveFailureContextToRecovery({
+          mainRepoRoot: input.repoRoot,
+          runDir: preservation.preservedRunDir,
+          taskId: input.taskId,
+          batchId: input.batchId,
+        })) ?? undefined;
   try {
     await stageAndCommitCheckout(
       input.leasePath,
@@ -263,6 +278,7 @@ async function mirrorFailedSubRunContext(input: {
   return {
     preservationManifest: preservation.manifestRel,
     preservedRunDir: preservation.preservedRunDir ?? undefined,
+    recoveryArchiveDir,
   };
 }
 

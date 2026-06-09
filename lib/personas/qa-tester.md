@@ -113,8 +113,9 @@ The file MUST contain the five sections below in this order.
    `qa_passes: false` with a one-sentence rationale citing the check or issue
    that decided the verdict. The Verdict section MUST also declare
    `plan_invalidating: true|false`, and when applicable
-   `core_reentry_required: true|false`, `spot_fixable: true|false`, and
-   `excluded_from_gate: true|false`.
+   `core_reentry_required: true|false`, `spot_fixable: true|false`,
+   `spot_fix_scope: code-bounded`, `spot_fix_owner: test`,
+   `spot_fix_paths`, `spot_fix_rationale`, and `excluded_from_gate: true|false`.
 2. **Automated checks.** A table with one row per check command. Columns MUST
    be `command`, `exit code`, `pass/fail`, and `log path`. Every command in the
    Automated verification section MUST appear in this table; an omitted command
@@ -275,7 +276,9 @@ When any touch-set gate command exits non-zero after lint autofixes are
 applied, or when manual verification reveals a logic defect or missing
 required artifact, you MUST set `qa_passes: false`. When the issue satisfies
 the spot-fix complexity bar, you MAY set `spot_fixable: true`,
-`core_reentry_required: false`, and target `test` in Re-entry. Otherwise you
+`spot_fix_scope: code-bounded`, `spot_fix_owner: test`, `spot_fix_paths`
+(comma-separated, max 3), `spot_fix_rationale`, `core_reentry_required: false`,
+and target `test` in Re-entry. Otherwise you
 MUST set `spot_fixable: false` and route the task to `implement` (coder), or to
 `plan` when the finding invalidates intended behavior or scope. You MUST NOT
 route the re-entry to `reviewer` unless the issue is review-gate-only (for

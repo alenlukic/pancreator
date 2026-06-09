@@ -210,6 +210,26 @@ If a proposed spot fix reveals broader design ambiguity, cross-module coupling,
 or a need to change the intended behavior, stop treating it as a spot fix.
 Document the finding and escalate it into a planned implementation task.
 
+#### Spot-fix justification fields (runtime-enforced)
+
+Every `*_spot_fix` advance MUST include these fields in the stage artifact:
+
+- `spot_fixable: true`
+- `spot_fix_scope: artifact-only` (review only) or `code-bounded` (test/compliance)
+- `spot_fix_owner: review|test|design-qa|compliance`
+- `spot_fix_paths: <comma-separated paths, max 3>`
+- `spot_fix_rationale: <one sentence>`
+
+The CLI rejects `review_spot_fix`, `qa_spot_fix`, and `compliance_spot_fix` when
+justification is missing or out of bounds.
+
+#### Shared-layer touch-set rule
+
+Integration-heavy Cockpit slices MUST declare `shared_paths` and
+`integration_prerequisites` in `touch-set.json` at plan time. Reviewers MUST treat
+declared `shared_paths` edits as allowed integration work, not touch-set breaches.
+Undeclared shared-layer edits route back to `plan`, not repeated `must_fix` loops.
+
 ### SDK mode (`runner.cursor.invocation: sdk`)
 
 1. Add to `pancreator.yaml`:
@@ -359,9 +379,13 @@ Batch ledger: `.pan/work/<day>/batch-<batchId>/batch.json`. Sub-run branches:
 On sub-run failure, the batch orchestrator copies gate artifacts from the
 worktree to the main checkout at `.pan/work/<day>/<task-id>/` (including
 `failure-preservation.json` with pointers to `review.md`, `test-report.md`, and
-halt outboxes under `lib/inbox/out/<day>/`), then commits failure context on
-the worktree branch when possible. Inspect `preservationManifest` on each failed
-run entry in `batch.json`.
+halt outboxes under `lib/inbox/out/<day>/`), archives a recovery copy under
+`.pan/archive/recovery/batch-<batchId>/<task-id>/`, then commits failure context on
+the worktree branch when possible. Inspect `preservationManifest` and
+`recoveryArchiveDir` on each failed run entry in `batch.json`.
+
+**Operator rule:** do not delete worktrees, batch branches, or recovery archives
+until `failure-preservation.json` exists on main and the recovery copy is present.
 
 When `PAN_FD_PROGRESS=ndjson` is set, batch-level progress events
 (`batch_enter`, `batch_run_start`, `batch_run_complete`, `batch_run_failed`,

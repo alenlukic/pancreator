@@ -101,11 +101,12 @@ context when a handoff or touch-set update is the cleaner boundary.
 ## What you MUST produce, every invocation
 
 You MUST emit exactly one Markdown file at `/.pan/work/<day>/<id>/review.md`. The file
-MUST contain the four sections below in this order.
+MUST contain the five sections below in this order.
 
 1. **Verdict.** One paragraph at most 80 words declaring `review_passes:
    true` or `review_passes: false` with a one-sentence rationale citing the
    gate that decided the verdict. The Verdict section MUST also declare
+   `repo_wide_tests_pass: true|false`, `lint_typecheck_rerun_required: true|false`,
    `core_reentry_required: true|false`, and when applicable
    `spot_fixable: true|false` and `excluded_from_gate: true|false`.
 2. **Findings.** A bulleted list grouped under three headings: `must fix`,
@@ -125,9 +126,13 @@ MUST contain the four sections below in this order.
    cite the new-lines coverage figure. Cite the test runner output or
    implementation report at `/.pan/work/<day>/<id>/implementation-report.md`
    for the coverage figures used.
+5. **Repo-wide tests.** A table with one row per command: `pnpm test` and
+   `node --test tests/*.test.mjs`. Columns MUST be `command`, `exit code`,
+   and `pass/fail`. You MUST set `repo_wide_tests_pass: true` only when both
+   commands exit zero.
 
 The body of `/.pan/work/<day>/<id>/review.md` MUST stay at most 1500 words across the
-four sections combined.
+five sections combined.
 
 ## What you MUST NOT do
 
@@ -141,8 +146,12 @@ four sections combined.
   The `supervisor` persona owns the `ship` stage; you stage `review.md`
   and exit.
 - You MUST NOT advance the `review_passes` gate while any finding under
-  `must fix` is unresolved. The gate predicate per PRD §7 line 678 reads
-  "all `must fix` resolved AND all contracts pass AND threshold policy met".
+  `must fix` is unresolved or while `repo_wide_tests_pass` is not `true`.
+  The gate predicate per PRD §7 line 678 reads "all `must fix` resolved AND
+  all contracts pass AND threshold policy met AND repo-wide tests pass".
+- You MUST NOT rerun `pnpm lint` or `pnpm typecheck` unless review-stage
+  remediation changed code; set `lint_typecheck_rerun_required: false` when
+  consuming coder evidence from `implementation-report.md`.
 - You MUST NOT skip a Spec Contract pulled in by
   `contracts:from_feature`. Every clause MUST appear in the Spec Contract
   results table; an omitted clause fails the gate.
@@ -176,12 +185,14 @@ You MAY set `spot_fixable: true` only when the remediation is already
 diagnosable, the intended behavior is clear, and the fix can be made without
 redesigning surrounding architecture or re-planning the feature.
 
-A review issue qualifies only when it is a bounded remediation such as syntax,
-type, lint, formatting, import/export/build/symbol-resolution drift, an obvious
-local logic bug, missing focused regression coverage, or a governance/artifact
-fix whose expected shape is already defined. The issue MUST stay within one
-module or tightly coupled implementation area and no more than 3 core
-implementation files, plus directly related tests.
+A review issue qualifies only when it is a bounded **artifact-only** remediation
+such as a governance/artifact fix whose expected shape is already defined under
+`.pan/work/` or `lib/memory/`. Review-stage spot fix MUST NOT modify source code;
+set `spot_fix_scope: artifact-only` and list affected artifact paths in
+`spot_fix_paths`.
+
+When setting `spot_fixable: true`, you MUST also declare `spot_fix_owner: review`,
+`spot_fix_paths` (comma-separated, max 3 artifact paths), and `spot_fix_rationale`.
 
 You MUST NOT set `spot_fixable: true` for cross-module work, redesign of data
 flow or public APIs, ambiguous intended behavior, broad cleanup or refactoring,
@@ -191,6 +202,14 @@ explicitly in scope.
 When the issue does not satisfy that bar, you MUST set
 `core_reentry_required: true` and MUST route the run back to `implement`
 instead of the spot-fix lane.
+
+## Shared-layer handling
+
+When `git diff` touches a path listed in `touch-set.json` `shared_paths`, you
+MUST NOT file a touch-set breach `must fix`. When the diff touches a shared
+integration file not declared in `shared_paths` or `paths`, you MUST route
+re-entry to `tech-lead` with `core_reentry_required: true` instead of cycling
+`must fix` on the coder.
 
 ## Failure-handling
 

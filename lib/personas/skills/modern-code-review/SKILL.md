@@ -38,7 +38,7 @@ references:
 
 # Skill — `modern-code-review`
 
-A reusable 6-step review procedure that converts one touch-set's diff into
+A reusable 7-step review procedure that converts one touch-set's diff into
 one Markdown review with a binary verdict on the `review_passes` gate. The
 canonical caller is `lib/personas/reviewer.md`. M2+ adds `appsec` (security
 review variant), `frontend-eng` (UX-Spec contract review), and `sdet`
@@ -115,7 +115,16 @@ review's Spec Contract results table.
 Every `severity: block` clause whose `result` is `fail` MUST also appear in
 the `must fix` section under Findings. An omitted clause fails the gate.
 
-### Step 4 — Verify the coverage delta and the test plan
+### Step 4 — Verify repo-wide tests before QA handoff
+
+Run `pnpm test` and `node --test tests/*.test.mjs` from the repository root.
+Record both commands in the **Repo-wide tests** section of `review.md`. Set
+`repo_wide_tests_pass: true` only when both commands exit zero. Do not rerun
+`pnpm lint` or `pnpm typecheck` unless review-stage remediation changed code;
+otherwise set `lint_typecheck_rerun_required: false` and cite
+`implementation-report.md`.
+
+### Step 5 — Verify the coverage delta and the test plan
 
 Derive statement and branch coverage on the changed lines from the touch-set
 diff and the test files declared in the touch-set (`/.pan/work/<day>/<id>/touch-set.json`).
@@ -131,9 +140,9 @@ When the threshold policy in `pancreator.yaml: gates.coverage` declares
 `new_lines_only: true`, the reviewer MUST cite the new-lines coverage
 figure rather than the global coverage figure.
 
-### Step 5 — Author the four-section review body
+### Step 6 — Author the five-section review body
 
-Write `/.pan/work/<day>/<id>/review.md` with exactly four `##` sections in the order
+Write `/.pan/work/<day>/<id>/review.md` with exactly five `##` sections in the order
 declared in `lib/personas/reviewer.md`:
 
 1. **Verdict.** One paragraph at most 80 words declaring `review_passes:
@@ -144,14 +153,15 @@ declared in `lib/personas/reviewer.md`:
 2. **Findings.** The bulleted list grouped under `must fix`, `consider`,
    and `nit`.
 3. **Spec Contract results.** The table built in Step 3.
-4. **Coverage delta.** The figures captured in Step 4 plus a dual-anchor
+4. **Coverage delta.** The figures captured in Step 5 plus a dual-anchor
    citation into the source (diff, touch-set test paths, or
    `/.pan/work/<day>/<id>/implementation-report.md`) from which the
    coverage figures were derived.
+5. **Repo-wide tests.** The table built in Step 4.
 
-The full body MUST stay at most 1500 words across the four sections.
+The full body MUST stay at most 1500 words across the five sections.
 
-### Step 6 — Run Layer 1 lint and stage the verdict
+### Step 7 — Run Layer 1 lint and stage the verdict
 
 Apply the Layer 1 lint discipline declared in
 `/lib/memory/handbook/contract-style.md` to every normative clause in the
@@ -175,12 +185,14 @@ When the verdict is `review_passes: false` and the failure routes back to
 `must fix` items the `coder` persona MUST resolve before the next round.
 The MVP loop cap declared in PRD §3.5 US-1 line 120 MUST hold.
 
-You MAY set `spot_fixable: true` only when the remediation is already
-diagnosable, intended behavior is clear, remains within one module or tightly
-coupled implementation area, touches no more than 3 core implementation files
-plus directly related tests, and does not require redesign or re-planning. All
-broader or ambiguous issues MUST stay `must fix` and route back to
-`implement`.
+You MAY set `spot_fixable: true` only for artifact-only review remediation under
+`.pan/work/` or `lib/memory/`. Set `spot_fix_scope: artifact-only`,
+`spot_fix_owner: review`, `spot_fix_paths`, and `spot_fix_rationale`. Review-stage
+spot fix MUST NOT modify source code; broader issues MUST stay `must fix` and route
+back to `implement`.
+
+When `git diff` touches `touch-set.json` `shared_paths`, do not file a touch-set
+breach. Undeclared shared-layer edits route to `tech-lead` instead of coder loops.
 
 ## Stop conditions
 
@@ -189,9 +201,8 @@ broader or ambiguous issues MUST stay `must fix` and route back to
 - Halt when a Spec Contract runner fails to terminate within its declared
   `cost_ceiling_usd`; mark the row `result: timeout`, fail the gate, and
   route an inbox item to `contract-writer` per PRD §4.5 R28.
-- Halt when the diff writes outside the declared touch-set; the gate fails
-  on a `must fix` finding citing the out-of-touch-set write per PRD §7
-  line 810.
+- Halt when the diff writes outside `paths` and undeclared `shared_paths`; route
+  declared `shared_paths` edits as allowed integration work, not breaches.
 - Halt when 3 consecutive Layer 1 lint rounds fail; escalate via inbox.
 
 ## Failure-handling

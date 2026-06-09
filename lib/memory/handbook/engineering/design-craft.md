@@ -259,7 +259,9 @@ coupled implementation area, no more than 3 core implementation files plus
 directly related tests are involved, and no redesign or re-planning is needed.
 All broader issues MUST route back through `implement` or `plan`. A qualifying
 spot fix keeps `design_qa_passes: false` until the defect is fixed and does not
-pass the gate.
+pass the gate. When `spot_fixable: true`, `design-qa-report.md` MUST also record
+`spot_fix_scope: code-bounded`, `spot_fix_paths` (max 3), and
+`spot_fix_rationale` so the runtime can reject unbounded `qa_spot_fix` advances.
 
 ## Stability
 
