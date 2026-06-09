@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { CockpitGlobalHeader } from "@/components/cockpit/layout/CockpitGlobalHeader";
 import { CockpitInspectorSlot } from "@/components/cockpit/layout/CockpitInspectorSlot";
 import { CockpitMobileTabs } from "@/components/cockpit/layout/CockpitMobileTabs";
 import { CockpitNavRail } from "@/components/cockpit/layout/CockpitNavRail";
@@ -22,6 +23,7 @@ export default function CockpitLayout({ children }: { children: ReactNode }) {
       <div className="cockpit-v2-shell-body">
         <CockpitNavRail />
         <main className="cockpit-v2-main" id="cockpit-main">
+          <CockpitGlobalHeader />
           {children}
         </main>
         {hideInspector ? null : <CockpitInspectorSlot />}

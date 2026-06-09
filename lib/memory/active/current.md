@@ -35,7 +35,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- `lib/inbox/in/172966_06-09-26/63489_0621_cockpit-v2-automations-shell-history.md`
+- (none)
 
 ## Most recent shipped Features
 
@@ -65,7 +65,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-09T15:08:12.168Z`
+- Active-memory refreshed (UTC): `2026-06-09T18:25:56.830Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
 
