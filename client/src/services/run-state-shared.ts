@@ -202,6 +202,414 @@ export function isRetryTransitionEvent(event: string): boolean {
   return RETRY_TRANSITION_EVENTS.has(event);
 }
 
+export function countStageRetryTransitions(runEvents: RunLogEvent[], stageName: string): number {
+  let count = 0;
+  for (const event of runEvents) {
+    if (event.stageId !== stageName) {
+      continue;
+    }
+    const eventName = event.name ?? event.event;
+    if (event.retryBadge || isRetryTransitionEvent(eventName)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+export type RetryLimitFailureSummary = {
+  failingStage: string;
+  retryCount: number;
+  loopHistoryText: string;
+};
+
+function parseRetryLimitFields(
+  message: string,
+  stageId?: string,
+): { failingStage: string; retryCount: number } | null {
+  const stageMatch =
+    message.match(/failing[_ ]stage[:\s]+([a-z_]+)/i) ??
+    message.match(/stage[:\s]+([a-z_]+)\s+exceeded/i);
+  const countMatch =
+    message.match(/retry[_ ]count[:\s]+(\d+)/i) ??
+    message.match(/loopback budget \((\d+)/i);
+
+  const failingStage = stageMatch?.[1] ?? stageId;
+  const retryCount = countMatch?.[1] !== undefined ? Number.parseInt(countMatch[1], 10) : NaN;
+
+  if (failingStage === undefined || Number.isNaN(retryCount)) {
+    return null;
+  }
+  return { failingStage, retryCount };
+}
+
+export function detectRetryLimitFailure(runEvents: RunLogEvent[]): RetryLimitFailureSummary | null {
+  for (const event of runEvents) {
+    const haystack = `${event.event} ${event.message} ${event.name ?? ""}`;
+    if (
+      !haystack.includes("retry_limit_halt") &&
+      !haystack.includes("gate: retry_limit_halt")
+    ) {
+      continue;
+    }
+
+    const parsed = parseRetryLimitFields(event.message, event.stageId);
+    const failingStage = parsed?.failingStage ?? event.stageId ?? "unknown";
+    const retryCount = parsed?.retryCount ?? countStageRetryTransitions(runEvents, failingStage);
+
+    return {
+      failingStage,
+      retryCount,
+      loopHistoryText: `${failingStage} exceeded retry budget (${retryCount} transitions)`,
+    };
+  }
+  return null;
+}
+
+export function missionControlHref(taskId: string): string {
+  return `/mission-control?task=${encodeURIComponent(taskId)}`;
+}
+
+/** Stale heartbeat threshold for Command Center hanging-task classification. */
+export const COMMAND_CENTER_STALE_HEARTBEAT_MS = 5 * 60 * 1000;
+
+/** Long-running active stage threshold for Command Center hanging-task classification. */
+export const COMMAND_CENTER_LONG_RUNNING_STAGE_MS = 30 * 60 * 1000;
+
+export type CommandCenterSeverity =
+  | "Info"
+  | "Warning"
+  | "Needs attention"
+  | "Blocking"
+  | "Critical";
+
+const SEVERITY_URGENCY_ORDER: Record<CommandCenterSeverity, number> = {
+  Critical: 0,
+  Blocking: 1,
+  "Needs attention": 2,
+  Warning: 3,
+  Info: 4,
+};
+
+export type CommandCenterStatusPill =
+  | "Draft"
+  | "Ready"
+  | "Running"
+  | "Waiting for human"
+  | "Blocked"
+  | "Failed"
+  | "Retrying"
+  | "Complete"
+  | "Cancelled"
+  | "Archived";
+
+export function featureIdToDisplayLabel(featureId: string): string {
+  return featureId
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+export function featureDisplayLabel(
+  task: Pick<
+    TaskRunStateEnvelope,
+    "taskId" | "featureId" | "decodedTimestamp" | "decodedTimestampDiagnostic"
+  >,
+): string {
+  if (task.featureId) {
+    return featureIdToDisplayLabel(task.featureId);
+  }
+  const suffix = task.decodedTimestamp ?? task.decodedTimestampDiagnostic;
+  if (suffix) {
+    return `Feature delivery (${suffix})`;
+  }
+  return "Feature delivery run";
+}
+
+export function hasRetryLimitFailure(task: TaskRunStateEnvelope): boolean {
+  const hasFailedStage = task.stages.some((stage) => stage.status === "failed");
+  if (!hasFailedStage || !isNonTerminalTask(task)) {
+    return false;
+  }
+  return task.runEvents.some((event) => event.retryBadge);
+}
+
+export type HangingTaskKind = "stale-heartbeat" | "long-running-stage";
+
+export type HangingTaskClassification = {
+  taskId: string;
+  kind: HangingTaskKind;
+  activeStageName: string;
+  elapsedMs: number;
+};
+
+export function classifyHangingTask(
+  task: TaskRunStateEnvelope,
+  nowMs: number = Date.now(),
+): HangingTaskClassification | null {
+  if (!isNonTerminalTask(task)) {
+    return null;
+  }
+  const activeStage = findActiveStage(task);
+  if (!activeStage) {
+    return null;
+  }
+
+  const lastEventMs = newestRunEventMs(task);
+  if (lastEventMs > 0) {
+    const timeSinceLastEvent = nowMs - lastEventMs;
+    if (timeSinceLastEvent >= COMMAND_CENTER_STALE_HEARTBEAT_MS) {
+      return {
+        taskId: task.taskId,
+        kind: "stale-heartbeat",
+        activeStageName: activeStage.name,
+        elapsedMs: timeSinceLastEvent,
+      };
+    }
+  }
+
+  const stageEvents = task.runEvents.filter((event) => event.stageId === activeStage.name);
+  if (stageEvents.length > 0) {
+    const startedAt = stageEvents.reduce((earliest, event) =>
+      Date.parse(event.timestamp) < Date.parse(earliest.timestamp) ? event : earliest,
+    );
+    const stageStartedMs = Date.parse(startedAt.timestamp);
+    if (!Number.isNaN(stageStartedMs)) {
+      const stageElapsed = Math.max(0, nowMs - stageStartedMs);
+      if (stageElapsed >= COMMAND_CENTER_LONG_RUNNING_STAGE_MS) {
+        return {
+          taskId: task.taskId,
+          kind: "long-running-stage",
+          activeStageName: activeStage.name,
+          elapsedMs: stageElapsed,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+const RUN_EVENT_NAME_LABELS: Record<string, string> = {
+  "cursor.runner": "Agent stage run",
+  "cursor.runner.escalation": "Model escalation",
+  "pancreator.pipeline.advance": "Stage transition",
+  heartbeat: "Heartbeat",
+  must_fix: "Review must-fix",
+};
+
+const RUN_EVENT_OUTCOME_LABELS: Record<string, string> = {
+  success: "completed",
+  running: "started",
+  logged: "logged",
+  failed: "failed",
+  deferred: "deferred",
+};
+
+function slugSegmentToTitle(segment: string): string {
+  if (segment.length === 0) {
+    return segment;
+  }
+  return segment.charAt(0).toUpperCase() + segment.slice(1);
+}
+
+function slugToReadableWords(slug: string): string {
+  return slug
+    .split(/[._-]/u)
+    .filter(Boolean)
+    .map(slugSegmentToTitle)
+    .join(" ");
+}
+
+function parseRunEventMessage(
+  message: string,
+): { persona: string; stageOrEvent: string; outcome: string } | null {
+  const match = message.match(/^([^·]+)\s*·\s*([^:]+):\s*(.+)$/u);
+  if (!match) {
+    return null;
+  }
+  return {
+    persona: match[1].trim(),
+    stageOrEvent: match[2].trim(),
+    outcome: match[3].trim(),
+  };
+}
+
+function stageDisplayName(stageId: string): string {
+  return featureIdToDisplayLabel(stageId);
+}
+
+function readableStageOrEventLabel(stageOrEvent: string, fallbackStageId?: string): string {
+  if (stageOrEvent.includes(".")) {
+    return RUN_EVENT_NAME_LABELS[stageOrEvent] ?? slugToReadableWords(stageOrEvent);
+  }
+  if (FEATURE_DELIVERY_STAGE_ORDER.includes(stageOrEvent as (typeof FEATURE_DELIVERY_STAGE_ORDER)[number])) {
+    return `${stageDisplayName(stageOrEvent)} stage`;
+  }
+  if (fallbackStageId !== undefined) {
+    return `${stageDisplayName(fallbackStageId)} stage`;
+  }
+  return stageDisplayName(stageOrEvent);
+}
+
+/** Operator-facing event label; never exposes dot-separated internal slugs. */
+export function runEventDisplayLabel(event: RunLogEvent): string {
+  const parsed = parseRunEventMessage(event.message);
+  if (parsed !== null) {
+    const subjectLabel = readableStageOrEventLabel(parsed.stageOrEvent, event.stageId);
+    const outcome = RUN_EVENT_OUTCOME_LABELS[parsed.outcome] ?? parsed.outcome;
+    if (parsed.outcome === "success") {
+      return `${subjectLabel} completed`;
+    }
+    if (parsed.outcome === "running") {
+      return `${subjectLabel} started`;
+    }
+    if (parsed.outcome === "failed") {
+      return `${subjectLabel} failed`;
+    }
+    return `${subjectLabel} ${outcome}`;
+  }
+
+  const rawName = event.name ?? event.event;
+  const mapped = RUN_EVENT_NAME_LABELS[rawName];
+  if (mapped !== undefined) {
+    return mapped;
+  }
+
+  if (event.escalationLabel !== undefined) {
+    return "Model escalation";
+  }
+  if (event.retryBadge) {
+    return "Stage retry required";
+  }
+  if (event.deferralBadge) {
+    return "Stage deferred";
+  }
+
+  if (!rawName.includes(".") && !rawName.includes(":")) {
+    if (event.stageId !== undefined) {
+      return `${stageDisplayName(event.stageId)} stage update`;
+    }
+    return `${slugToReadableWords(rawName)} activity`;
+  }
+
+  return slugToReadableWords(rawName);
+}
+
+/** Persona or runner label for activity meta strip; keeps internal slugs out of primary lines. */
+export function runEventActorLabel(event: RunLogEvent): string {
+  const parsed = parseRunEventMessage(event.message);
+  if (parsed !== null) {
+    return slugToReadableWords(parsed.persona);
+  }
+  if (event.escalationLabel !== undefined) {
+    return "Cursor runner";
+  }
+  const rawName = event.name ?? event.event;
+  const firstSegment = rawName.split(".")[0] ?? rawName;
+  return slugToReadableWords(firstSegment);
+}
+
+export function activityStatusForEvent(event: RunLogEvent): CommandCenterStatusPill {
+  if (event.retryBadge || /: failed$/u.test(event.message) || event.message.includes("failed")) {
+    return "Failed";
+  }
+  if (event.deferralBadge) {
+    return "Blocked";
+  }
+  if (event.message.includes(": running") || event.event === "heartbeat") {
+    return "Running";
+  }
+  return "Complete";
+}
+
+export function activitySeverityForEvent(event: RunLogEvent): CommandCenterSeverity {
+  if (event.retryBadge || activityStatusForEvent(event) === "Failed") {
+    return "Critical";
+  }
+  if (event.deferralBadge) {
+    return "Blocking";
+  }
+  if (event.escalationLabel !== undefined) {
+    return "Warning";
+  }
+  return "Info";
+}
+
+export type ActivityPreviewEvent = {
+  id: string;
+  taskId: string;
+  featureLabel: string;
+  label: string;
+  actor: string;
+  stageName?: string;
+  timestamp: string;
+  status: CommandCenterStatusPill;
+  severity: CommandCenterSeverity;
+};
+
+export function buildRecentActivityPreview(
+  tasks: TaskRunStateEnvelope[],
+  limit: number = 10,
+): ActivityPreviewEvent[] {
+  const flattened: ActivityPreviewEvent[] = [];
+  for (const task of tasks) {
+    const featureLabel = featureDisplayLabel(task);
+    for (const event of task.runEvents) {
+      flattened.push({
+        id: `${task.taskId}:${event.timestamp}:${event.event}`,
+        taskId: task.taskId,
+        featureLabel,
+        label: runEventDisplayLabel(event),
+        actor: runEventActorLabel(event),
+        ...(event.stageId !== undefined ? { stageName: event.stageId } : {}),
+        timestamp: event.timestamp,
+        status: activityStatusForEvent(event),
+        severity: activitySeverityForEvent(event),
+      });
+    }
+  }
+  flattened.sort((left, right) => {
+    const severityOrder = compareBySeverity(left, right);
+    if (severityOrder !== 0) {
+      return severityOrder;
+    }
+    return Date.parse(right.timestamp) - Date.parse(left.timestamp);
+  });
+  return flattened.slice(0, limit);
+}
+
+export function humanGateSeverity(entry: HumanGateQueueEntry): CommandCenterSeverity {
+  if (entry.status === "failed") {
+    return "Critical";
+  }
+  if (entry.humanAttention.trim().length > 0) {
+    return "Blocking";
+  }
+  return "Needs attention";
+}
+
+export function compareBySeverity(
+  left: { severity: CommandCenterSeverity },
+  right: { severity: CommandCenterSeverity },
+): number {
+  return SEVERITY_URGENCY_ORDER[left.severity] - SEVERITY_URGENCY_ORDER[right.severity];
+}
+
+export function statusPillForHumanGate(_entry: HumanGateQueueEntry): CommandCenterStatusPill {
+  return "Waiting for human";
+}
+
+export function statusPillForActiveStage(stage: StageCell): CommandCenterStatusPill {
+  if (stage.status === "failed") {
+    return "Failed";
+  }
+  if (stage.status === "active") {
+    return "Running";
+  }
+  return "Ready";
+}
+
 export function isNonTerminalTask(task: TaskRunStateEnvelope): boolean {
   const completeStage = task.stages.find((stage) => stage.name === "complete");
   return completeStage?.status !== "complete";

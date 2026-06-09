@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import {
   collectHumanGateQueue,
+  featureDisplayLabel,
   findActiveStage,
   panArgsFromNextCommand,
-  taskDisplayLabel,
   taskLevelNextCommand,
   type PanExecuteResult,
   type TaskRunStateEnvelope,
@@ -140,7 +140,7 @@ export function NextActionPanel({
   return (
     <section className="next-action-panel" data-testid="next-action-panel">
       <h2>Next Action</h2>
-      <p className="next-action-label">{taskDisplayLabel(selectedTask)}</p>
+      <p className="next-action-label">{featureDisplayLabel(selectedTask)}</p>
       <p className="next-action-run-dir" title={selectedTask.runDir}>
         {selectedTask.runDir}/
       </p>
@@ -239,7 +239,7 @@ export function NextActionPanel({
       <ExecuteResultPanel result={executeResult} />
       <ExecuteConfirmModal
         command={pendingExecute?.command ?? ""}
-        taskLabel={taskDisplayLabel(selectedTask)}
+        taskLabel={featureDisplayLabel(selectedTask)}
         open={pendingExecute !== null}
         onConfirm={() => {
           if (pendingExecute !== null) {

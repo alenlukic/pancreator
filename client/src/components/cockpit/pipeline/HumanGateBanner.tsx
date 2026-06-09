@@ -2,7 +2,7 @@
 
 import {
   collectHumanGateQueue,
-  taskDisplayLabel,
+  featureDisplayLabel,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
 import { AttentionBanner } from "../shared/AttentionBanner";
@@ -36,7 +36,7 @@ export function HumanGateBanner({
         <ul className="human-gate-queue" data-testid="human-gate-queue">
           {queue.map((entry) => {
             const task = tasks.find((candidate) => candidate.taskId === entry.taskId);
-            const label = task ? taskDisplayLabel(task) : entry.taskId;
+            const label = task ? featureDisplayLabel(task) : entry.taskId;
             const artifacts = artifactAvailability[entry.taskId] ?? {};
 
             return (
