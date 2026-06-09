@@ -10,6 +10,9 @@ export interface WorktreeLease {
 /** Acquires and releases git worktrees with a single active pipeline guard. */
 export interface WorktreePool {
   acquire(taskId: TaskId, ref?: string): Promise<WorktreeLease>;
+  /** Removes the git worktree and deletes the pool slot. */
   release(taskId: TaskId): Promise<void>;
+  /** Frees a concurrent lease while preserving the worktree for repair-state. */
+  suspendLease(taskId: TaskId): Promise<void>;
   list(): Promise<WorktreeLease[]>;
 }

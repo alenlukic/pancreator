@@ -144,6 +144,9 @@ export interface FeatureDeliveryRunnerLedger {
 export interface FeatureDeliveryTestHooks {
   sdkTransport?: CursorSdkTransport;
   progress?: FeatureDeliverySdkProgressReporter;
+  /** Test-only: allow startFeatureDelivery on a temp dir outside .pan/worktrees/. */
+  bypassWorktreeIsolation?: boolean;
+  worktreePool?: import("@pancreator/worktree").GitWorktreePool;
 }
 
 export function ensureAutomationState(

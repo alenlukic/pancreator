@@ -94,10 +94,6 @@ function assertV2Shape(parsed: Record<string, unknown>): WorktreePoolStateV2 {
       throw new WorktreePoolError(`Pool state lists active task ${id} without a slot.`);
     }
   }
-  const slotKeys = Object.keys(slots);
-  if (slotKeys.length > maxConcurrent) {
-    throw new WorktreePoolError("Pool state slot count exceeds maxConcurrent.");
-  }
   return {
     version: WORKTREE_POOL_STATE_VERSION,
     maxConcurrent,

@@ -232,6 +232,25 @@ does not reset other stages' counts.
 `full_model_string`, and per-fallback fields `fallback_model`, `fallback_reason`, and
 `outcome` (`success` or `chain_exhausted`).
 
+### Feature-delivery worktree isolation (mandatory)
+
+`pan run feature-delivery` and `pan batch run` **never** mutate the main checkout
+git index. Every run acquires an isolated git worktree under
+`.pan/worktrees/<task-id>/` with branch `pan/run/<task-id>` (single run) or
+`pan/batch-<batchId>/<task-id>` (batch). Failed or halted runs suspend the pool
+lease but keep the worktree for `repair-state` and `pan advance`.
+
+**Forbidden:** multiple concurrent `pan run feature-delivery` invocations (including
+parallel supervisor Tasks). For `parallel_with` program slices, use exactly one
+`pan batch run --parallel N` command.
+
+Before SDK batch or isolated runs, load credentials (worktrees do not inherit
+gitignored `.env`):
+
+```bash
+set -a && source .env && set +a
+```
+
 ### Batch feature-delivery runs
 
 `pnpm -w exec pan batch run` orchestrates multiple inbox directives as isolated

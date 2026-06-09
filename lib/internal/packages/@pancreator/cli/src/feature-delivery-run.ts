@@ -373,6 +373,8 @@ export async function startFeatureDelivery(
   command: "run" | "feature new" = "run",
 ): Promise<StartFeatureDeliveryResult> {
   const repoRoot = path.resolve(input.repoRoot);
+  const { assertFeatureDeliveryWorktreeCheckout } = await import("./feature-delivery-worktree.js");
+  assertFeatureDeliveryWorktreeCheckout(repoRoot, input.testHooks);
   const now = input.clock?.() ?? new Date();
   const inboxRel = assertInboxInRelativePath(input.inboxEntry, "inbox entry");
   const inboxPath = resolveProjectPath(repoRoot, "lib", "inbox", "in", ...inboxRel.split("/"));
@@ -2661,9 +2663,14 @@ function makeStateRecord(
 }
 
 async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: string; rel: string }> {
+  const { resolveFeatureDeliveryCheckoutRoot } = await import("./feature-delivery-worktree.js");
+  const checkoutRoot = await resolveFeatureDeliveryCheckoutRoot(repoRoot, taskId);
   const roots = [
-    { abs: resolveProjectPath(repoRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
-    { abs: resolveProjectPath(repoRoot, ".pan/archive", "work"), rel: path.posix.join(".pan/archive", "work") },
+    { abs: resolveProjectPath(checkoutRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
+    {
+      abs: resolveProjectPath(checkoutRoot, ".pan/archive", "work"),
+      rel: path.posix.join(".pan/archive", "work"),
+    },
   ];
 
   const matches: Array<{ abs: string; rel: string; rootKind: ".pan/work" | ".pan/archive" }> = [];

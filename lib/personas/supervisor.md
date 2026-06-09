@@ -134,9 +134,27 @@ the `ship` stage one staged pull request awaiting human approval.
    operator names a directory, you SHALL select the sole `.md` file in that
    directory or ask the operator to disambiguate when multiple files exist.
    You SHALL verify `runner.cursor.invocation` is `sdk` in `pancreator.yaml`
-   before starting. You SHALL run feature delivery with:
+   before starting.
+
+   **Worktree isolation (mandatory).** Feature-delivery MUST NEVER mutate the
+   main checkout git index. `pan run feature-delivery` acquires an isolated
+   git worktree under `.pan/worktrees/<task-id>/` automatically. You SHALL
+   NOT launch multiple concurrent `pan run` invocations — not on main, not via
+   parallel supervisor Tasks. For a `parallel_with` group or multiple inbox
+   slices in the same build-order band, you SHALL use exactly one batch
+   command:
 
    ```bash
+   set -a && source .env && set +a
+   PAN_FD_PROGRESS=ndjson pnpm -w exec pan batch run --parallel <N> \
+     <day-bucket>/<inbox-1>.md \
+     <day-bucket>/<inbox-2>.md
+   ```
+
+   For a **single** inbox slice, you SHALL run:
+
+   ```bash
+   set -a && source .env && set +a
    PAN_FD_PROGRESS=ndjson pnpm -w exec pan run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
    ```
 
