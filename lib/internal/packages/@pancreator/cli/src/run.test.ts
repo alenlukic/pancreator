@@ -26,11 +26,31 @@ import {
   PAN_DEFERRED_EXIT_CODE,
 } from "./run.js";
 import { stringifyCliJson } from "./canonical-json-io.js";
+import {
+  gateFixtureBody,
+  VALID_HANDOFF_MARKDOWN,
+  VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+  VALID_PLAN_MARKDOWN,
+  VALID_REVIEW_MARKDOWN,
+  VALID_TOUCH_SET_JSON,
+} from "./feature-delivery-gate-fixtures.js";
 import { loadRepoEnv } from "./repo-env.js";
 import { PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
 const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
+
+type RunCliOptions = NonNullable<Parameters<typeof parseAndRun>[1]>;
+
+async function runCli(args: string[], options?: RunCliOptions): Promise<number> {
+  return parseAndRun(args, {
+    ...options,
+    testHooks: {
+      bypassWorktreeIsolation: true,
+      ...options?.testHooks,
+    },
+  });
+}
 
 function findLast<T>(items: readonly T[], pred: (item: T) => boolean): T | undefined {
   for (let i = items.length - 1; i >= 0; i--) {
@@ -79,31 +99,7 @@ runner:
 }
 
 function mockSdkTransport(onInvoke?: () => void): CursorSdkTransport {
-  const mockArtifactBody = (repoRoot: string, rel: string): string => {
-    const base = path.posix.basename(rel);
-    if (base === "plan.md") return "# Plan\n\n## Scope\n\nBody.\n";
-    if (base === "implementation-report.md") return "# Implementation report\n\n## Summary\n\nBody.\n";
-    if (base === "review.md") return "review_passes: true\n";
-    if (base === "test-report.md") return "qa_passes: true\n";
-    if (base === "compliance-result.json") {
-      return stringifyCliJson(repoRoot, {
-        compliance_passes: true,
-        final_gate: {
-          "pnpm lint": 0,
-          "pnpm typecheck": 0,
-          "pnpm test": 0,
-          "node --test tests/*.test.mjs": 0,
-        },
-      });
-    }
-    if (base === "ship-ratification.json") {
-      return stringifyCliJson(repoRoot, {
-        task_id: "mock-task",
-        human_ratified_diff: true,
-      });
-    }
-    return "mock-artifact\n";
-  };
+  const mockArtifactBody = (repoRoot: string, rel: string): string => gateFixtureBody(repoRoot, rel);
   return async (params) => {
     onInvoke?.();
     const cwd = params.cwd ?? process.cwd();
@@ -179,9 +175,10 @@ stages:
 
 async function seedPlanStageAdvanceArtifacts(root: string, runDirRel: string): Promise<void> {
   const runDir = path.join(root, runDirRel);
-  await writeFile(path.join(runDir, "plan.md"), "# Plan\n\n## Scope\n\nBody.\n", "utf8");
+  await writeFile(path.join(runDir, "plan.md"), VALID_PLAN_MARKDOWN, "utf8");
   await writeFile(path.join(runDir, "adr-draft.md"), "# ADR\n\n## Decision\n\nBody.\n", "utf8");
-  await writeFile(path.join(runDir, "touch-set.json"), "{}\n", "utf8");
+  await writeFile(path.join(runDir, "touch-set.json"), VALID_TOUCH_SET_JSON, "utf8");
+  await writeFile(path.join(runDir, "handoff.md"), VALID_HANDOFF_MARKDOWN, "utf8");
 }
 
 async function completeFeatureDeliveryRunForClose(
@@ -196,33 +193,33 @@ async function completeFeatureDeliveryRunForClose(
   const spec = path.join(root, "lib", "memory", "features", featureId, "spec.md");
   await mkdir(path.dirname(spec), { recursive: true });
   await writeFile(spec, "# Spec", "utf8");
-  await parseAndRun(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/spec.md`], {
+  await runCli(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/spec.md`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
   await seedPlanStageAdvanceArtifacts(root, activeRunDirRel);
-  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
+  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
-  await writeFile(path.join(activeRunDir, "implementation-report.md"), "# Impl", "utf8");
-  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/implementation-report.md`], {
+  await writeFile(path.join(activeRunDir, "implementation-report.md"), VALID_IMPLEMENTATION_REPORT_MARKDOWN, "utf8");
+  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/implementation-report.md`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
-  await writeFile(path.join(activeRunDir, "review.md"), "review_passes: true", "utf8");
-  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/review.md`], {
+  await writeFile(path.join(activeRunDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/review.md`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
   await writeFile(path.join(activeRunDir, "test-report.md"), "qa_passes: true", "utf8");
-  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/test-report.md`], {
+  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/test-report.md`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
   const report = path.join(root, "lib", "memory", "features", featureId, "delivery-report.md");
   await writeFile(report, "# Delivery", "utf8");
-  await parseAndRun(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/delivery-report.md`], {
+  await runCli(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/delivery-report.md`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -239,7 +236,7 @@ async function completeFeatureDeliveryRunForClose(
     }),
     "utf8",
   );
-  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
+  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -251,7 +248,7 @@ async function completeFeatureDeliveryRunForClose(
       }),
       "utf8",
     );
-  await parseAndRun(["advance", taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
+  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -269,7 +266,7 @@ async function completeFeatureDeliveryRunForClose(
     }),
     "utf8",
   );
-  await parseAndRun(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/index.json`], {
+  await runCli(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/index.json`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -302,7 +299,7 @@ describe("parseAndRun", () => {
     await mkdir(inboxIn, { recursive: true });
     await writeFile(path.join(inboxIn, "note.md"), "hello", "utf8");
     const out: string[] = [];
-    const code = await parseAndRun(["inbox"], {
+    const code = await runCli(["inbox"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
     });
@@ -321,7 +318,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const out: string[] = [];
-    const code = await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+    const code = await runCli(["run", "feature-delivery", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -365,7 +362,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const runOut: string[] = [];
-    const code = await parseAndRun(["run", "feature-delivery", "demo-feature.md", "--format", "text"], {
+    const code = await runCli(["run", "feature-delivery", "demo-feature.md", "--format", "text"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -386,7 +383,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const runOut: string[] = [];
-    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+    await runCli(["run", "feature-delivery", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -397,7 +394,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const nextOut: string[] = [];
-    const code = await parseAndRun(["next", runMsg.taskId], {
+    const code = await runCli(["next", runMsg.taskId], {
       repoRoot: root,
       writeOut: (c) => nextOut.push(c),
     });
@@ -417,7 +414,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const runOut: string[] = [];
-    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+    await runCli(["run", "feature-delivery", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -434,12 +431,12 @@ describe("parseAndRun", () => {
     await writeFile(statePath, stringifyCliJson(root, state), "utf8");
 
     const statusOut: string[] = [];
-    await parseAndRun(["status", taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
+    await runCli(["status", taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
     const statusMsg = JSON.parse(statusOut.join("")) as { nextCommand: string; source?: string };
     expect(statusMsg.nextCommand).toBe(persistedCmd);
 
     const nextOut: string[] = [];
-    await parseAndRun(["next", taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
+    await runCli(["next", taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
     const nextMsg = JSON.parse(nextOut.join("")) as {
       nextCommand: string;
       source: string;
@@ -452,7 +449,7 @@ describe("parseAndRun", () => {
     expect(nextMsg.event).toBeNull();
 
     const nextTextOut: string[] = [];
-    await parseAndRun(["next", taskId, "--format", "text"], {
+    await runCli(["next", taskId, "--format", "text"], {
       repoRoot: root,
       writeOut: (c) => nextTextOut.push(c),
     });
@@ -466,7 +463,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const runOut: string[] = [];
-    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+    await runCli(["run", "feature-delivery", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -484,7 +481,7 @@ describe("parseAndRun", () => {
     await writeFile(spec, "# Spec", "utf8");
 
     const advanceOut: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       ["advance", taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"],
       { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
     );
@@ -494,13 +491,13 @@ describe("parseAndRun", () => {
     expect(persisted.nextCommand).toBeUndefined();
 
     const statusOut: string[] = [];
-    await parseAndRun(["status", taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
+    await runCli(["status", taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
     const statusMsg = JSON.parse(statusOut.join("")) as { nextCommand: string };
     expect(statusMsg.nextCommand).not.toContain(outboxRel);
     expect(statusMsg.nextCommand).toMatch(/touch-set\.json/u);
 
     const nextOut: string[] = [];
-    await parseAndRun(["next", taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
+    await runCli(["next", taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
     const nextMsg = JSON.parse(nextOut.join("")) as { nextCommand: string; source: string };
     expect(nextMsg.source).toBe("derived");
     expect(nextMsg.nextCommand).not.toContain(outboxRel);
@@ -512,7 +509,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const runOut: string[] = [];
-    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+    await runCli(["run", "feature-delivery", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -522,7 +519,7 @@ describe("parseAndRun", () => {
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
-    await parseAndRun(["advance", taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+    await runCli(["advance", taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
       repoRoot: root,
       writeOut: () => {},
     });
@@ -530,23 +527,13 @@ describe("parseAndRun", () => {
     await writeFile(path.join(root, runDirRel, "plan.md"), "# Plan only\n", "utf8");
 
     const advanceOut: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       ["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`],
-      { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
+      { repoRoot: root, writeOut: (c) => advanceOut.push(c), writeErr: () => undefined },
     );
-    expect(code).toBe(0);
-    const advanceMsg = JSON.parse(advanceOut.join("")) as { warningCount: number; contentWarnings?: unknown[] };
-    expect(advanceMsg.warningCount).toBeGreaterThan(0);
-
-    const logText = await readFile(path.join(root, runLogFile), "utf8");
-    const logRecords = logText
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as { name: string; attributes?: Record<string, unknown> });
-    const advanceLine = findLast(logRecords, (record) => record.name === "pancreator.pipeline.advance");
-    expect(advanceLine).toBeDefined();
-    expect(advanceLine?.attributes?.["pancreator.content_warning_count"]).toBeGreaterThan(0);
-    expect(Array.isArray(advanceLine?.attributes?.["pancreator.content_warnings"])).toBe(true);
+    expect(code).toBe(1);
+    const advanceMsg = JSON.parse(advanceOut.join("")) as { message: string };
+    expect(advanceMsg.message).toContain("Acceptance criteria");
   });
 
   it("AC-P6: pan next and pan inbox --format text show decoded timestamps", async () => {
@@ -559,7 +546,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const runOut: string[] = [];
-    await parseAndRun(["run", "feature-delivery", "172996_05-10-26/38670_1315_demo-feature.md"], {
+    await runCli(["run", "feature-delivery", "172996_05-10-26/38670_1315_demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -567,7 +554,7 @@ describe("parseAndRun", () => {
     const { taskId } = JSON.parse(runOut.join("")) as { taskId: string };
 
     const nextTextOut: string[] = [];
-    await parseAndRun(["next", taskId, "--format", "text"], {
+    await runCli(["next", taskId, "--format", "text"], {
       repoRoot: root,
       writeOut: (c) => nextTextOut.push(c),
     });
@@ -577,7 +564,7 @@ describe("parseAndRun", () => {
     expect(nextText).toMatch(/^event: /m);
 
     const inboxTextOut: string[] = [];
-    await parseAndRun(["inbox", "--format", "text"], { repoRoot: root, writeOut: (c) => inboxTextOut.push(c) });
+    await runCli(["inbox", "--format", "text"], { repoRoot: root, writeOut: (c) => inboxTextOut.push(c) });
     const inboxText = inboxTextOut.join("");
     expect(inboxText).toContain("172996_05-10-26/38670_1315_demo-feature");
     expect(inboxText).toContain("2026-05-10 13:15 UTC");
@@ -588,7 +575,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const runOut: string[] = [];
-    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+    await runCli(["run", "feature-delivery", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -597,7 +584,7 @@ describe("parseAndRun", () => {
     const runDirRel = `.pan/work/172996_05-10-26/${taskId}`;
 
     const missingOut: string[] = [];
-    const missingCode = await parseAndRun(
+    const missingCode = await runCli(
       ["artifacts", "validate", taskId, "--stage", "review"],
       { repoRoot: root, writeOut: (c) => missingOut.push(c) },
     );
@@ -617,7 +604,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const warnOut: string[] = [];
-    const warnCode = await parseAndRun(
+    const warnCode = await runCli(
       ["artifacts", "validate", taskId, "--stage", "review"],
       { repoRoot: root, writeOut: (c) => warnOut.push(c) },
     );
@@ -626,9 +613,9 @@ describe("parseAndRun", () => {
     expect(warnMsg.warningCount).toBe(1);
     expect(warnMsg.missing).toEqual([]);
 
-    await writeFile(path.join(root, runDirRel, "review.md"), "review_passes: true\n", "utf8");
+    await writeFile(path.join(root, runDirRel, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
     const cleanOut: string[] = [];
-    const cleanCode = await parseAndRun(
+    const cleanCode = await runCli(
       ["artifacts", "validate", taskId, "--stage", "review"],
       { repoRoot: root, writeOut: (c) => cleanOut.push(c) },
     );
@@ -639,7 +626,7 @@ describe("parseAndRun", () => {
 
     await writeFile(path.join(root, runDirRel, "plan.md"), "# Plan\n\nno headings\n", "utf8");
     const planWarnOut: string[] = [];
-    const planWarnCode = await parseAndRun(
+    const planWarnCode = await runCli(
       ["artifacts", "validate", taskId, "--stage", "plan"],
       { repoRoot: root, writeOut: (c) => planWarnOut.push(c) },
     );
@@ -657,14 +644,14 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const runOut: string[] = [];
-    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+    await runCli(["run", "feature-delivery", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const { taskId } = JSON.parse(runOut.join("")) as { taskId: string };
     const statusOut: string[] = [];
-    const code = await parseAndRun(["status", taskId, "--format", "text"], {
+    const code = await runCli(["status", taskId, "--format", "text"], {
       repoRoot: root,
       writeOut: (c) => statusOut.push(c),
     });
@@ -722,7 +709,7 @@ describe("parseAndRun", () => {
     expect(step.nextCommand).not.toContain("implementation-report.md");
 
     const nextOut: string[] = [];
-    const code = await parseAndRun(["next", state.taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
+    const code = await runCli(["next", state.taskId], { repoRoot: root, writeOut: (c) => nextOut.push(c) });
     expect(code).toBe(0);
     const nextMsg = JSON.parse(nextOut.join("")) as { nextCommand: string };
     expect(nextMsg.nextCommand).toBe(step.nextCommand);
@@ -734,7 +721,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const runOut: string[] = [];
-    await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+    await runCli(["run", "feature-delivery", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -746,7 +733,7 @@ describe("parseAndRun", () => {
     await writeFile(spec, "# Spec", "utf8");
 
     const advanceOut: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       ["advance", taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"],
       { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
     );
@@ -762,7 +749,7 @@ describe("parseAndRun", () => {
 
     await seedPlanStageAdvanceArtifacts(root, runDirRel);
     const textOut: string[] = [];
-    await parseAndRun(
+    await runCli(
       ["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`, "--format", "text"],
       {
         repoRoot: root,
@@ -821,7 +808,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const out: string[] = [];
-    const code = await parseAndRun(["check", "--format", "json"], {
+    const code = await runCli(["check", "--format", "json"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
     });
@@ -847,7 +834,7 @@ describe("parseAndRun", () => {
     await writeFile(path.join(root, ".cursorindexingignore"), ".pan/work/**\n", "utf8");
     const err: string[] = [];
     const out: string[] = [];
-    const code = await parseAndRun(["doctor", "--format", "json"], {
+    const code = await runCli(["doctor", "--format", "json"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       writeErr: (c) => err.push(c),
@@ -871,7 +858,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const out: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       ["run", "feature-delivery", `lib/inbox/in/${inboxRel}`],
       {
         repoRoot: root,
@@ -898,7 +885,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -913,7 +900,7 @@ describe("parseAndRun", () => {
     await writeFile(spec, "# Demo Feature Spec", "utf8");
 
     const advanceOut: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       ["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"],
       { repoRoot: root, writeOut: (c) => advanceOut.push(c) },
     );
@@ -923,7 +910,7 @@ describe("parseAndRun", () => {
     expect(await readFile(path.join(root, advanced.nextPromptFile), "utf8")).toContain("Use subagent/persona: tech-lead");
 
     const duplicateOut: string[] = [];
-    const duplicateCode = await parseAndRun(
+    const duplicateCode = await runCli(
       ["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"],
       { repoRoot: root, writeOut: (c) => duplicateOut.push(c), writeErr: () => undefined },
     );
@@ -936,7 +923,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -947,21 +934,22 @@ describe("parseAndRun", () => {
     await writeFile(spec, "# Demo Feature Spec", "utf8");
 
     const invalidOut: string[] = [];
-    const invalidCode = await parseAndRun(
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    const invalidCode = await runCli(
       ["advance", "000200_demo-feature", "--artifact", "lib/memory/features/demo-feature/spec.md"],
       { repoRoot: root, writeOut: (c) => invalidOut.push(c), writeErr: () => undefined },
     );
     expect(invalidCode).toBe(1);
     const payload = JSON.parse(invalidOut.join("")) as { message: string };
     expect(payload.message).toContain("task id MUST match <seconds-to-midnight>_<HHMM>_<slug>.");
-    expect(payload.message).toContain("Did you mean 38670_1315_demo-feature?");
+    expect(payload.message).toContain(`Did you mean ${start.taskId}?`);
   });
 
   it("reports invalid task-id format without hint when no slug match exists", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-advance-no-hint-"));
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: () => undefined,
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -972,7 +960,7 @@ describe("parseAndRun", () => {
     await writeFile(spec, "# Demo Feature Spec", "utf8");
 
     const invalidOut: string[] = [];
-    const invalidCode = await parseAndRun(
+    const invalidCode = await runCli(
       ["advance", "000200_unknown-feature", "--artifact", "lib/memory/features/demo-feature/spec.md"],
       { repoRoot: root, writeOut: (c) => invalidOut.push(c), writeErr: () => undefined },
     );
@@ -986,7 +974,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -997,7 +985,7 @@ describe("parseAndRun", () => {
     await writeFile(review, "# Review\n\nManual out-of-band review evidence.", "utf8");
 
     const repairOut: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       [
         "repair-state",
         start.taskId,
@@ -1027,7 +1015,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1039,22 +1027,22 @@ describe("parseAndRun", () => {
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await seedPlanStageAdvanceArtifacts(root, runDirRel);
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(runDir, "implementation-report.md"), "# Impl", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+    await writeFile(path.join(runDir, "implementation-report.md"), VALID_IMPLEMENTATION_REPORT_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await writeFile(path.join(runDir, "review.md"), "review_passes: false\n\n### must fix\n- MF-01", "utf8");
-    await parseAndRun(
+    await runCli(
       ["advance", start.taskId, "--event", "must_fix", "--artifact", `${runDirRel}/review.md`],
       { repoRoot: root, writeOut: () => undefined },
     );
@@ -1063,9 +1051,9 @@ describe("parseAndRun", () => {
     expect(handoffAfterMustFix).not.toContain("chain to test in one step");
     expect(handoffAfterMustFix).toContain("implementation-report.md");
 
-    await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
+    await writeFile(path.join(runDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
     const reentryOut: string[] = [];
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
       repoRoot: root,
       writeOut: (c) => reentryOut.push(c),
     });
@@ -1099,50 +1087,46 @@ describe("parseAndRun", () => {
     });
   });
 
-  it("must_fix reentry records implement content warnings when implementation-report.md lacks ## heading", async () => {
+  it("must_fix reentry chains to test when gate artifacts are valid", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-reentry-warnings-"));
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
-    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; runLogFile: string };
+    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string };
     const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     const runDir = path.join(root, runDirRel);
 
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await seedPlanStageAdvanceArtifacts(root, runDirRel);
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(
-      path.join(runDir, "implementation-report.md"),
-      "# Impl only\nno second-level heading\n",
-      "utf8",
-    );
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+    await writeFile(path.join(runDir, "implementation-report.md"), VALID_IMPLEMENTATION_REPORT_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await writeFile(path.join(runDir, "review.md"), "review_passes: false\n\n### must fix\n- MF-01", "utf8");
-    await parseAndRun(
+    await runCli(
       ["advance", start.taskId, "--event", "must_fix", "--artifact", `${runDirRel}/review.md`],
       { repoRoot: root, writeOut: () => undefined },
     );
 
-    await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
+    await writeFile(path.join(runDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
     const reentryOut: string[] = [];
-    const code = await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
+    const code = await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
       repoRoot: root,
       writeOut: (c) => reentryOut.push(c),
     });
@@ -1153,23 +1137,62 @@ describe("parseAndRun", () => {
       currentStage: string;
     };
     expect(reentry.reviewReentry).toBe(true);
-    expect(reentry.warningCount).toBeGreaterThanOrEqual(1);
+    expect(reentry.warningCount).toBe(0);
     expect(reentry.currentStage).toBe("test");
+  });
 
-    const logText = await readFile(path.join(root, start.runLogFile), "utf8");
-    const logRecords = logText
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as { name: string; attributes?: Record<string, unknown> });
-    const implementAdvanceLine = findLast(
-      logRecords,
-      (record) =>
-        record.name === "pancreator.pipeline.advance" &&
-        record.attributes?.["pancreator.transition_event"] === "implementation_complete",
+  it("must_fix reentry rejects implementation-report without gate proof", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-reentry-gate-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await runCli(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
+    const runDir = path.join(root, runDirRel);
+
+    const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
+    await mkdir(path.dirname(spec), { recursive: true });
+    await writeFile(spec, "# Spec", "utf8");
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await seedPlanStageAdvanceArtifacts(root, runDirRel);
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(runDir, "implementation-report.md"), VALID_IMPLEMENTATION_REPORT_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    await writeFile(path.join(runDir, "review.md"), "review_passes: false\n\n### must fix\n- MF-01", "utf8");
+    await runCli(
+      ["advance", start.taskId, "--event", "must_fix", "--artifact", `${runDirRel}/review.md`],
+      { repoRoot: root, writeOut: () => undefined },
     );
-    expect(implementAdvanceLine).toBeDefined();
-    expect(implementAdvanceLine?.attributes?.["pancreator.content_warning_count"]).toBeGreaterThanOrEqual(1);
-    expect(Array.isArray(implementAdvanceLine?.attributes?.["pancreator.content_warnings"])).toBe(true);
+
+    await writeFile(
+      path.join(runDir, "implementation-report.md"),
+      "# Impl only\nno second-level heading\n",
+      "utf8",
+    );
+    await writeFile(path.join(runDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+    const reentryOut: string[] = [];
+    const code = await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
+      repoRoot: root,
+      writeOut: (c) => reentryOut.push(c),
+      writeErr: () => undefined,
+    });
+    expect(code).toBe(1);
+    const failure = JSON.parse(reentryOut.join("")) as { message: string };
+    expect(failure.message).toMatch(/implement_gate_passes|Automated checks/u);
   });
 
   it("delegates final artifact closure to librarian for complete feature-delivery runs", async () => {
@@ -1177,7 +1200,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1188,38 +1211,38 @@ describe("parseAndRun", () => {
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
     await seedPlanStageAdvanceArtifacts(root, `.pan/work/172996_05-10-26/${start.taskId}`);
-    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/touch-set.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
-    await writeFile(path.join(runDir, "implementation-report.md"), "# Impl", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/implementation-report.md`], {
+    await writeFile(path.join(runDir, "implementation-report.md"), VALID_IMPLEMENTATION_REPORT_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/implementation-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
-    await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/review.md`], {
+    await writeFile(path.join(runDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/review.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
     await writeFile(path.join(runDir, "test-report.md"), "qa_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/test-report.md`], {
+    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/test-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
 
     const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
     await writeFile(report, "# Delivery", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1236,7 +1259,7 @@ describe("parseAndRun", () => {
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/compliance-result.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/compliance-result.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1249,7 +1272,7 @@ describe("parseAndRun", () => {
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/ship-ratification.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/ship-ratification.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1257,7 +1280,7 @@ describe("parseAndRun", () => {
     const index = path.join(root, "lib", "memory", "features", "demo-feature", "index.json");
     await writeFile(index, "{}\n", "utf8");
     const completeOut: string[] = [];
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/index.json"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/index.json"], {
       repoRoot: root,
       writeOut: (c) => completeOut.push(c),
     });
@@ -1277,7 +1300,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1289,33 +1312,33 @@ describe("parseAndRun", () => {
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await seedPlanStageAdvanceArtifacts(root, activeRunDirRel);
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(activeRunDir, "implementation-report.md"), "# Impl", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/implementation-report.md`], {
+    await writeFile(path.join(activeRunDir, "implementation-report.md"), VALID_IMPLEMENTATION_REPORT_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/implementation-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(activeRunDir, "review.md"), "review_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/review.md`], {
+    await writeFile(path.join(activeRunDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/review.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await writeFile(path.join(activeRunDir, "test-report.md"), "qa_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/test-report.md`], {
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/test-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
     await writeFile(report, "# Delivery", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1332,7 +1355,7 @@ describe("parseAndRun", () => {
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1344,7 +1367,7 @@ describe("parseAndRun", () => {
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1362,7 +1385,7 @@ describe("parseAndRun", () => {
       }),
       "utf8",
     );
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/index.json"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/index.json"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1432,7 +1455,7 @@ describe("parseAndRun", () => {
     );
 
     const closeOut: string[] = [];
-    const code = await parseAndRun(["close-artifacts", start.taskId], {
+    const code = await runCli(["close-artifacts", start.taskId], {
       repoRoot: root,
       writeOut: (c) => closeOut.push(c),
       clock: () => new Date("2026-05-10T14:00:00.000Z"),
@@ -1483,13 +1506,13 @@ describe("parseAndRun", () => {
     );
 
     const statusOut: string[] = [];
-    await parseAndRun(["status", start.taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
+    await runCli(["status", start.taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
     const status = JSON.parse(statusOut.join("")) as { pipelineStatus: string; runDir: string };
     expect(status.pipelineStatus).toBe("closed");
     expect(status.runDir).toBe(closed.archivedRunDir);
 
     const statusTextOut: string[] = [];
-    await parseAndRun(["status", start.taskId, "--format", "text"], {
+    await runCli(["status", start.taskId, "--format", "text"], {
       repoRoot: root,
       writeOut: (c) => statusTextOut.push(c),
     });
@@ -1501,7 +1524,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1512,7 +1535,7 @@ describe("parseAndRun", () => {
     await (await import("node:fs/promises")).unlink(path.join(root, activeRunDirRel, "operator-verification.md"));
 
     const closeOut: string[] = [];
-    const code = await parseAndRun(["close-artifacts", start.taskId], {
+    const code = await runCli(["close-artifacts", start.taskId], {
       repoRoot: root,
       writeOut: (c) => closeOut.push(c),
       writeErr: (c) => closeOut.push(c),
@@ -1526,7 +1549,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1540,14 +1563,14 @@ describe("parseAndRun", () => {
       "# Current focus\n\n## Active Feature\n\n- `(none)`\n\n## Most recent shipped Features\n\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n\n## Operator notes\n\n- `(none)`\n",
       "utf8",
     );
-    const closeCode = await parseAndRun(["close-artifacts", start.taskId], {
+    const closeCode = await runCli(["close-artifacts", start.taskId], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     expect(closeCode).toBe(0);
 
     const reopenOut: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       ["reopen", start.taskId, "--reason", "Operator verification failed on flow one."],
       { repoRoot: root, writeOut: (c) => reopenOut.push(c), writeErr: (c) => reopenOut.push(c) },
     );
@@ -1569,7 +1592,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1581,27 +1604,27 @@ describe("parseAndRun", () => {
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await seedPlanStageAdvanceArtifacts(root, activeRunDirRel);
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(activeRunDir, "implementation-report.md"), "# Impl", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/implementation-report.md`], {
+    await writeFile(path.join(activeRunDir, "implementation-report.md"), VALID_IMPLEMENTATION_REPORT_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/implementation-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(activeRunDir, "review.md"), "review_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/review.md`], {
+    await writeFile(path.join(activeRunDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/review.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await writeFile(path.join(activeRunDir, "test-report.md"), "qa_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${activeRunDirRel}/test-report.md`], {
+    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/test-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1613,7 +1636,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const advanceOut: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       ["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"],
       { repoRoot: root, writeOut: (c) => advanceOut.push(c), writeErr: () => undefined },
     );
@@ -1627,7 +1650,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1639,27 +1662,27 @@ describe("parseAndRun", () => {
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });
     await writeFile(spec, "# Spec", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
+    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await seedPlanStageAdvanceArtifacts(root, runDirRel);
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(runDir, "implementation-report.md"), "# Impl", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+    await writeFile(path.join(runDir, "implementation-report.md"), VALID_IMPLEMENTATION_REPORT_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    await writeFile(path.join(runDir, "review.md"), "review_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
+    await writeFile(path.join(runDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
     await writeFile(path.join(runDir, "test-report.md"), "qa_passes: true", "utf8");
-    await parseAndRun(["advance", start.taskId, "--artifact", `${runDirRel}/test-report.md`], {
+    await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/test-report.md`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1667,7 +1690,7 @@ describe("parseAndRun", () => {
     const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
     await writeFile(report, "# Delivery\n\nAll good.\n", "utf8");
     const reportAdvanceOut: string[] = [];
-    const reportCode = await parseAndRun(
+    const reportCode = await runCli(
       ["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"],
       { repoRoot: root, writeOut: (c) => reportAdvanceOut.push(c) },
     );
@@ -1693,7 +1716,7 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const complianceAdvanceOut: string[] = [];
-    const complianceCode = await parseAndRun(
+    const complianceCode = await runCli(
       ["advance", start.taskId, "--artifact", `${runDirRel}/compliance-result.json`],
       { repoRoot: root, writeOut: (c) => complianceAdvanceOut.push(c) },
     );
@@ -1703,14 +1726,14 @@ describe("parseAndRun", () => {
 
     await writeFile(path.join(runDir, "ship-ratification.json"), "{}\n", "utf8");
     const shipAdvanceOut: string[] = [];
-    const shipCode = await parseAndRun(
+    const shipCode = await runCli(
       ["advance", start.taskId, "--artifact", `${runDirRel}/ship-ratification.json`],
       { repoRoot: root, writeOut: (c) => shipAdvanceOut.push(c), writeErr: () => undefined },
     );
     expect(shipCode).toBe(1);
     const shipFailure = JSON.parse(shipAdvanceOut.join("")) as { message: string };
     expect(shipFailure.message).toContain("Cannot advance ship");
-    expect(shipFailure.message).toContain("ship_ratification_missing_key");
+    expect(shipFailure.message).toMatch(/ship-ratification|human_ratified_diff|task_id/u);
   });
 
   it("close-artifacts finalizes a prematurely archived run idempotently", async () => {
@@ -1718,7 +1741,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1755,7 +1778,7 @@ describe("parseAndRun", () => {
     );
 
     const closeOut: string[] = [];
-    const code = await parseAndRun(["close-artifacts", start.taskId], {
+    const code = await runCli(["close-artifacts", start.taskId], {
       repoRoot: root,
       writeOut: (c) => closeOut.push(c),
       clock: () => new Date("2026-05-10T14:00:00.000Z"),
@@ -1778,7 +1801,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1800,7 +1823,7 @@ describe("parseAndRun", () => {
     );
 
     const closeOut: string[] = [];
-    const closeCode = await parseAndRun(["close-artifacts", start.taskId], {
+    const closeCode = await runCli(["close-artifacts", start.taskId], {
       repoRoot: root,
       writeOut: (c) => closeOut.push(c),
       clock: () => new Date("2026-05-10T14:00:00.000Z"),
@@ -1816,7 +1839,7 @@ describe("parseAndRun", () => {
     expect(existsSync(path.join(root, archivedInboxRel))).toBe(false);
 
     const statusOut: string[] = [];
-    await parseAndRun(["status", start.taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
+    await runCli(["status", start.taskId], { repoRoot: root, writeOut: (c) => statusOut.push(c) });
     const status = JSON.parse(statusOut.join("")) as { pipelineStatus: string; runDir: string };
     expect(status.pipelineStatus).toBe("complete");
     expect(status.runDir).toBe(activeRunDirRel);
@@ -1827,7 +1850,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1861,7 +1884,7 @@ describe("parseAndRun", () => {
     );
 
     const closeOut: string[] = [];
-    const code = await parseAndRun(["close-artifacts", start.taskId], {
+    const code = await runCli(["close-artifacts", start.taskId], {
       repoRoot: root,
       writeOut: (c) => closeOut.push(c),
       clock: () => new Date("2026-05-10T14:00:00.000Z"),
@@ -1885,7 +1908,7 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -1895,7 +1918,7 @@ describe("parseAndRun", () => {
     await writeFile(nextPromptAbs, "stale prompt", "utf8");
 
     const refreshOut: string[] = [];
-    const code = await parseAndRun(["refresh-prompt", start.taskId], {
+    const code = await runCli(["refresh-prompt", start.taskId], {
       repoRoot: root,
       writeOut: (c) => refreshOut.push(c),
     });
@@ -1915,13 +1938,13 @@ describe("parseAndRun", () => {
       "utf8",
     );
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const start = JSON.parse(out.join("")) as { taskId: string; runLogFile: string };
-    await parseAndRun(["pause", start.taskId], { repoRoot: root, writeOut: () => undefined });
+    await runCli(["pause", start.taskId], { repoRoot: root, writeOut: () => undefined });
 
     const runLogAbs = path.join(root, start.runLogFile);
     const logText = await readFile(runLogAbs, "utf8");
@@ -1939,15 +1962,15 @@ describe("parseAndRun", () => {
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
     const out: string[] = [];
-    await parseAndRun(["feature", "new", "demo-feature.md"], {
+    await runCli(["feature", "new", "demo-feature.md"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
     const taskId = (JSON.parse(out.join("")) as { taskId: string }).taskId;
-    await parseAndRun(["pause", taskId], { repoRoot: root, writeOut: () => undefined });
+    await runCli(["pause", taskId], { repoRoot: root, writeOut: () => undefined });
     const statusOut: string[] = [];
-    const code = await parseAndRun(["status", taskId], {
+    const code = await runCli(["status", taskId], {
       repoRoot: root,
       writeOut: (c) => statusOut.push(c),
     });
@@ -1960,7 +1983,7 @@ describe("parseAndRun", () => {
   it("appends a pause record under .pan/scheduler/interventions", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-cli2-"));
     const out: string[] = [];
-    const code = await parseAndRun(["pause", "task-a"], {
+    const code = await runCli(["pause", "task-a"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
     });
@@ -1971,7 +1994,7 @@ describe("parseAndRun", () => {
   });
 
   it("returns 1 on unknown command", async () => {
-    const code = await parseAndRun(["not-a-real-command"], {
+    const code = await runCli(["not-a-real-command"], {
       repoRoot: os.tmpdir(),
       writeOut: () => {},
       writeErr: () => {},
@@ -2038,7 +2061,7 @@ describe("operator tooling batch cli wiring", () => {
   it("pan init dry-run reports planned scaffold without writes", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-init-dry-"));
     const out: string[] = [];
-    const code = await parseAndRun(["init", "--dry-run"], {
+    const code = await runCli(["init", "--dry-run"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
     });
@@ -2052,7 +2075,7 @@ describe("operator tooling batch cli wiring", () => {
   it("pan init --apply refuses conflicts without --force", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-init-conflict-"));
     await writeFile(path.join(root, "pancreator.yaml"), "existing\n", "utf8");
-    const code = await parseAndRun(["init", "--apply"], {
+    const code = await runCli(["init", "--apply"], {
       repoRoot: root,
       writeOut: () => {},
       writeErr: () => {},
@@ -2063,7 +2086,7 @@ describe("operator tooling batch cli wiring", () => {
   it("create-pancreator scaffolds an empty project directory", async () => {
     const parent = await mkdtemp(path.join(os.tmpdir(), "pan-create-parent-"));
     const out: string[] = [];
-    const code = await parseAndRun(["create-pancreator", "demo"], {
+    const code = await runCli(["create-pancreator", "demo"], {
       repoRoot: parent,
       writeOut: (c) => out.push(c),
     });
@@ -2087,7 +2110,7 @@ describe("operator tooling batch cli wiring", () => {
     ];
     for (const { argv, tracking } of matrix) {
       const out: string[] = [];
-      const code = await parseAndRun(argv, { repoRoot: root, writeOut: (c) => out.push(c) });
+      const code = await runCli(argv, { repoRoot: root, writeOut: (c) => out.push(c) });
       expect(code).toBe(PAN_DEFERRED_EXIT_CODE);
       const env = JSON.parse(out.join("")) as Record<string, unknown>;
       expect(env.status).toBe("deferred");
@@ -2097,8 +2120,8 @@ describe("operator tooling batch cli wiring", () => {
     }
     const seqA: string[] = [];
     const seqB: string[] = [];
-    await parseAndRun(["memory"], { repoRoot: root, writeOut: (c) => seqA.push(c) });
-    await parseAndRun(["memory"], { repoRoot: root, writeOut: (c) => seqB.push(c) });
+    await runCli(["memory"], { repoRoot: root, writeOut: (c) => seqA.push(c) });
+    await runCli(["memory"], { repoRoot: root, writeOut: (c) => seqB.push(c) });
     expect(seqB.join("")).toEqual(seqA.join(""));
     expect(JSON.parse(seqA.join(""))).toMatchObject({
       verb: "pan memory",
@@ -2112,7 +2135,7 @@ describe("operator tooling batch cli wiring", () => {
     await seedMinimalWorkspace(root);
     const stamp = new Date(Date.UTC(2026, 0, 2, 0, 3, 4));
     const out: string[] = [];
-    await parseAndRun(["intake", "new", "demo-slug"], {
+    await runCli(["intake", "new", "demo-slug"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => stamp,
@@ -2127,7 +2150,7 @@ describe("operator tooling batch cli wiring", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-intake-sid-"));
     await seedMinimalWorkspace(root);
     const outLate: string[] = [];
-    await parseAndRun(["intake", "new", "late-day"], {
+    await runCli(["intake", "new", "late-day"], {
       repoRoot: root,
       writeOut: (c) => outLate.push(c),
       clock: () => new Date(Date.UTC(2026, 4, 10, 23, 59, 59)),
@@ -2136,7 +2159,7 @@ describe("operator tooling batch cli wiring", () => {
     expect(latePath).toMatch(/\/1_2359_late-day\.md$/);
 
     const outFresh: string[] = [];
-    await parseAndRun(["intake", "new", "new-day"], {
+    await runCli(["intake", "new", "new-day"], {
       repoRoot: root,
       writeOut: (c) => outFresh.push(c),
       clock: () => new Date(Date.UTC(2026, 4, 11, 0, 0, 0)),
@@ -2152,7 +2175,7 @@ describe("operator tooling batch cli wiring", () => {
     await mkdir(path.join(root, "lib", "inbox", "in", bucket), { recursive: true });
     await mkdir(path.join(root, ".pan/archive", "inbox", "in", bucket), { recursive: true });
     const out: string[] = [];
-    const code = await parseAndRun(
+    const code = await runCli(
       ["intake", "new", "coexist-slug"],
       {
         repoRoot: root,
@@ -2173,7 +2196,7 @@ describe("operator tooling batch cli wiring", () => {
     await mkdir(templates, { recursive: true });
     await writeFile(path.join(templates, "ux-spec.template.md"), "## Custom body\n", "utf8");
     const out: string[] = [];
-    await parseAndRun(
+    await runCli(
       ["intake", "new", "from-ux", "--from-template", "ux-spec"],
       {
         repoRoot: root,
@@ -2189,7 +2212,7 @@ describe("operator tooling batch cli wiring", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-intake-build-plan-missing-"));
     await seedMinimalWorkspace(root);
     const missingPrompt: string[] = [];
-    const missingPromptCode = await parseAndRun(
+    const missingPromptCode = await runCli(
       ["intake", "from-build-plan", "build-mode-inbox", "--plan-text", "plan only"],
       {
         repoRoot: root,
@@ -2203,7 +2226,7 @@ describe("operator tooling batch cli wiring", () => {
     );
 
     const missingPlan: string[] = [];
-    const missingPlanCode = await parseAndRun(
+    const missingPlanCode = await runCli(
       ["intake", "from-build-plan", "build-mode-inbox", "--operator-prompt", "prompt only"],
       {
         repoRoot: root,
@@ -2221,7 +2244,7 @@ describe("operator tooling batch cli wiring", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-intake-build-plan-"));
     await seedMinimalWorkspace(root);
     const out: string[] = [];
-    await parseAndRun(
+    await runCli(
       [
         "intake",
         "from-build-plan",
@@ -2256,7 +2279,7 @@ describe("operator tooling batch cli wiring", () => {
     await writeFile(promptPath, "file-backed operator prompt", "utf8");
     await writeFile(planPath, "## File plan\n\n1. Scaffold\n2. Document", "utf8");
     const out: string[] = [];
-    await parseAndRun(
+    await runCli(
       [
         "intake",
         "from-build-plan",
@@ -2324,7 +2347,7 @@ describe("operator tooling batch cli wiring", () => {
     );
 
     const out: string[] = [];
-    const code = await parseAndRun(["refresh-active-memory", "--dry-run"], {
+    const code = await runCli(["refresh-active-memory", "--dry-run"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       writeErr: () => {},
@@ -2349,7 +2372,7 @@ describe("operator tooling batch cli wiring", () => {
       "utf8",
     );
     const out: string[] = [];
-    const code = await parseAndRun(["refresh-active-memory", "--dry-run"], {
+    const code = await runCli(["refresh-active-memory", "--dry-run"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       clock: () => new Date(refreshIso),
@@ -2371,7 +2394,7 @@ describe("operator tooling batch cli wiring", () => {
       ),
       "utf8",
     );
-    const code = await parseAndRun(["refresh-active-memory", "--dry-run"], {
+    const code = await runCli(["refresh-active-memory", "--dry-run"], {
       repoRoot: root,
       writeOut: () => {},
       writeErr: () => {},
@@ -2390,7 +2413,7 @@ describe("operator tooling batch cli wiring", () => {
       "utf8",
     );
     const err: string[] = [];
-    const code = await parseAndRun(["refresh-active-memory"], {
+    const code = await runCli(["refresh-active-memory"], {
       repoRoot: root,
       writeOut: () => {},
       writeErr: (c) => err.push(c),
@@ -2412,7 +2435,7 @@ describe("operator tooling batch cli wiring", () => {
     const currentAbs = path.join(root, "lib", "memory", "active", "current.md");
     const activeLine = `\n- \`${chosen}\`\n`;
     await writeFile(currentAbs, `${buildSyncedCurrentMd(activeLine).trimEnd()}\n`, "utf8");
-    const code = await parseAndRun(["refresh-active-memory"], {
+    const code = await runCli(["refresh-active-memory"], {
       repoRoot: root,
       writeOut: () => {},
       writeErr: () => {},
@@ -2459,7 +2482,7 @@ describe("operator tooling batch cli wiring", () => {
     );
     const out: string[] = [];
     const err: string[] = [];
-    const code = await parseAndRun(["refresh-active-memory"], {
+    const code = await runCli(["refresh-active-memory"], {
       repoRoot: root,
       writeOut: (c) => out.push(c),
       writeErr: (c) => err.push(c),
@@ -2507,7 +2530,7 @@ describe("operator tooling batch cli wiring", () => {
         invokeCount += 1;
       });
       const out: string[] = [];
-      const code = await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      const code = await runCli(["run", "feature-delivery", "demo-feature.md"], {
         repoRoot: root,
         writeOut: (c) => out.push(c),
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -2520,7 +2543,7 @@ describe("operator tooling batch cli wiring", () => {
       const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
       await mkdir(path.dirname(spec), { recursive: true });
       await writeFile(spec, "# Spec\n\nfeature: demo\n", "utf8");
-      const advanceCode = await parseAndRun(
+      const advanceCode = await runCli(
         ["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/spec.md"],
         {
           repoRoot: root,
@@ -2557,6 +2580,7 @@ describe("operator tooling batch cli wiring", () => {
         repoRoot: root,
         inboxEntry: "demo-feature.md",
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
+        testHooks: { bypassWorktreeIsolation: true },
       });
       await writeRunnerInvocationConfig(root, "sdk");
       const taskId = start.taskId;
@@ -2652,7 +2676,7 @@ describe("operator tooling batch cli wiring", () => {
       );
       let invokeCount = 0;
       const out: string[] = [];
-      const code = await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      const code = await runCli(["run", "feature-delivery", "demo-feature.md"], {
         repoRoot: root,
         writeOut: (c) => out.push(c),
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -2664,7 +2688,7 @@ describe("operator tooling batch cli wiring", () => {
       const specRel = "lib/memory/features/demo-feature/spec.md";
       await mkdir(path.dirname(path.join(root, specRel)), { recursive: true });
       await writeFile(path.join(root, specRel), "# Spec", "utf8");
-      await parseAndRun(["advance", start.taskId, "--artifact", specRel], {
+      await runCli(["advance", start.taskId, "--artifact", specRel], {
         repoRoot: root,
         writeOut: () => undefined,
         testHooks: { sdkTransport: mockSdkTransport(() => { invokeCount += 1; }) },
@@ -2690,7 +2714,7 @@ stages:
       );
       await writeFile(path.join(root, "lib", "inbox", "in", "demo.md"), "# Demo", "utf8");
       const out: string[] = [];
-      const code = await parseAndRun(["run", "feature-delivery", "demo.md"], {
+      const code = await runCli(["run", "feature-delivery", "demo.md"], {
         repoRoot: root,
         writeOut: (c) => out.push(c),
         writeErr: () => undefined,
@@ -2725,7 +2749,7 @@ stages:
       expect(process.env.CURSOR_API_KEY).toBe("super-secret-test-key");
       await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
       const out: string[] = [];
-      await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      await runCli(["run", "feature-delivery", "demo-feature.md"], {
         repoRoot: root,
         writeOut: (c) => out.push(c),
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -2759,7 +2783,7 @@ stages:
       if (state.currentStage === "intake") {
         await mkdir(path.dirname(path.join(root, specRel)), { recursive: true });
         await writeFile(path.join(root, specRel), "# Spec\n", "utf8");
-        const specCode = await parseAndRun(["advance", taskId, "--artifact", specRel], {
+        const specCode = await runCli(["advance", taskId, "--artifact", specRel], {
           repoRoot: root,
           writeOut: () => undefined,
         });
@@ -2768,7 +2792,7 @@ stages:
       const afterSpec = JSON.parse(await readFile(statePath, "utf8")) as { currentStage: string };
       if (afterSpec.currentStage === "plan") {
         await seedPlanStageAdvanceArtifacts(root, runDirRel);
-        const planCode = await parseAndRun(
+        const planCode = await runCli(
           ["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`],
           { repoRoot: root, writeOut: () => undefined },
         );
@@ -2786,7 +2810,7 @@ stages:
       await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
       const transport = mockSdkTransport();
       const out: string[] = [];
-      const runCode = await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      const runCode = await runCli(["run", "feature-delivery", "demo-feature.md"], {
         repoRoot: root,
         writeOut: (c) => out.push(c),
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -2796,23 +2820,15 @@ stages:
       const runDirRel = path.posix.dirname(start.stateFile);
       await advanceSdkRunToImplement(root, start.taskId, start.featureId, runDirRel, transport);
       await writeRunnerInvocationConfig(root, "sdk");
-      await writeFile(
-        path.join(root, runDirRel, "review.md"),
-        "review_passes: true\n",
-        "utf8",
-      );
-      await writeFile(
-        path.join(root, runDirRel, "test-report.md"),
-        "qa_passes: true\n",
-        "utf8",
-      );
+      await writeFile(path.join(root, runDirRel, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+      await writeFile(path.join(root, runDirRel, "test-report.md"), "qa_passes: true\n", "utf8");
       await writeFile(
         path.join(root, runDirRel, "implementation-report.md"),
-        "# Implementation report\n\n## Summary\n\nBody.\n",
+        VALID_IMPLEMENTATION_REPORT_MARKDOWN,
         "utf8",
       );
       const advanceOut: string[] = [];
-      const advanceCode = await parseAndRun(
+      const advanceCode = await runCli(
         ["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`],
         {
           repoRoot: root,
@@ -2837,7 +2853,7 @@ stages:
       await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
       const transport = mockSdkTransport();
       const out: string[] = [];
-      await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      await runCli(["run", "feature-delivery", "demo-feature.md"], {
         repoRoot: root,
         writeOut: (c) => out.push(c),
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -2846,18 +2862,14 @@ stages:
       const runDirRel = path.posix.dirname(start.stateFile);
       await advanceSdkRunToImplement(root, start.taskId, start.featureId, runDirRel, transport);
       await writeRunnerInvocationConfig(root, "sdk");
-      await writeFile(
-        path.join(root, runDirRel, "review.md"),
-        "review_passes: false\n",
-        "utf8",
-      );
+      await writeFile(path.join(root, runDirRel, "review.md"), "review_passes: false\n", "utf8");
       await writeFile(
         path.join(root, runDirRel, "implementation-report.md"),
-        "# Implementation report\n\n## Summary\n\nBody.\n",
+        VALID_IMPLEMENTATION_REPORT_MARKDOWN,
         "utf8",
       );
       const advanceOut: string[] = [];
-      const advanceCode = await parseAndRun(
+      const advanceCode = await runCli(
         ["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`],
         {
           repoRoot: root,
@@ -2882,7 +2894,7 @@ stages:
       await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
       const transport = mockSdkTransport();
       const out: string[] = [];
-      await parseAndRun(["run", "feature-delivery", "demo-feature.md"], {
+      await runCli(["run", "feature-delivery", "demo-feature.md"], {
         repoRoot: root,
         writeOut: (c) => out.push(c),
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
@@ -2899,7 +2911,7 @@ stages:
       await writeFile(stateAbs, stringifyCliJson(root, patched), "utf8");
       const runDir = path.dirname(start.stateFile);
       await writeFile(path.join(root, runDir, "review.md"), "review_passes: false\n", "utf8");
-      const haltCode = await parseAndRun(
+      const haltCode = await runCli(
         ["advance", start.taskId, "--event", "must_fix", "--artifact", `${runDir}/review.md`],
         { repoRoot: root, writeOut: (c) => out.push(c), testHooks: { sdkTransport: transport } },
       );

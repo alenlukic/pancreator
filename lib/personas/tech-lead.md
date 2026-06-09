@@ -119,19 +119,25 @@ Each artifact MUST live at the path declared below.
 
 1. **Plan.** You MUST overwrite `/.pan/work/<day>/<id>/plan.md` with a Markdown
    document containing a one-paragraph architecture summary, a numbered
-   list of implementation tasks, and a dual-anchor citation per PRD §8 to
-   every Engineering-Spec section the plan satisfies.
+   list of implementation tasks, a `## Acceptance criteria` section with at
+   least one numbered measurable criterion per task, a `## Shared-layer impact`
+   section naming declared shared paths or `none`, and a dual-anchor citation
+   per PRD §8 to every Engineering-Spec section the plan satisfies.
 2. **ADR draft.** You MUST overwrite `/.pan/work/<day>/<id>/adr-draft.md` in the
    Nygard format declared in `/lib/memory/handbook/glossary.md` §5 covering
    context, decision, status, and consequences. Every external standard
    the ADR cites MUST resolve to a dual-anchor citation per PRD §8.
 3. **Touch-set.** You MUST overwrite `/.pan/work/<day>/<id>/touch-set.json` with a
-   JSON object whose keys `paths`, `symbols`, and `tests` enumerate the
-   write surface for the `implement` stage per PRD §7 line 803.
+   JSON object whose keys `paths`, `symbols`, `tests`, `shared_paths`,
+   `integration_prerequisites`, and `acceptance_criteria` enumerate the write
+   surface and measurable gates for the `implement` stage per PRD §7 line 803.
+   The `shared_paths` array MUST list cross-slice integration files the slice may
+   edit without a touch-set breach. Use `[]` when none apply.
 4. **Handoff card.** You MUST overwrite `/.pan/work/<day>/<id>/handoff.md` with a
    compact planner-to-executor card containing Feature id, executor persona,
-   upstream artifact paths, in-scope paths, explicit non-goals, validation
-   commands, known pre-existing failures, and unresolved blockers.
+   upstream artifact paths, in-scope paths, explicit non-goals, a
+   `## Validation commands` section naming gate commands and owning personas,
+   known pre-existing failures, and unresolved blockers.
 
 The `plan.md` MUST stay at most 1500 words. The `adr-draft.md` MUST stay
 at most 1000 words. The `handoff.md` MUST stay at most 500 words.
@@ -161,6 +167,10 @@ at most 1000 words. The `handoff.md` MUST stay at most 500 words.
   lines 655 through 658.
 - Every `paths` entry in `touch-set.json` MUST resolve against a path
   that exists in the worktree at plan time.
+- Every `acceptance_criteria` entry MUST include a stable `id`, a measurable
+  `criterion`, and a `validation_owner` persona slug.
+- The `## Acceptance criteria` section in `plan.md` MUST mirror the
+  `acceptance_criteria` entries in `touch-set.json`.
 - Every `symbols` entry in `touch-set.json` MUST resolve to a code
   symbol declared in the cited file per the dual-anchor rule in
   `/lib/memory/handbook/glossary.md` §4.

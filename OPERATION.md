@@ -125,13 +125,18 @@ Use this loop exactly:
    `pnpm -w exec pan close-artifacts <task-id>` once after final validation.
 
 `advance` runs after every accepted non-terminal stage: `intake`, `plan`,
-`implement`, `review`, `test`, `report`, `compliance`, `ship`, and `index`. Review has two
-branches: passing review advances to `test`; must-fix review uses `--event must_fix`
-and returns to `implement`. Test has two branches: passing test advances to `report`;
-qa-fail uses `--event qa_fails` and returns to `implement`. Compliance has two
-primary branches: passing compliance advances to `ship`; major compliance failures
-use `--event compliance_fails` and return to `implement`. Do not run `advance`
-after the final `complete` state.
+`implement`, `review`, `test`, `report`, `compliance`, `ship`, and `index`. Review has
+three branches: passing review advances to `test`; a qualifying spot fix uses
+`--event review_spot_fix` and stays in `review`; non-qualifying findings use
+`--event must_fix` and return to `implement`. Test has four branches: passing test
+advances to `report`; a qualifying spot fix uses `--event qa_spot_fix` and stays in
+`test`; non-qualifying failures use `--event qa_fails` and return to `implement`;
+plan-invalidating issues use `--event qa_fails_plan_invalidating` and return to
+`plan`. Compliance has four branches: passing compliance advances to `ship`; a
+qualifying spot fix uses `--event compliance_spot_fix` and stays in `compliance`;
+major implementation issues use `--event compliance_fails` and return to
+`implement`; plan-invalidating issues use `--event compliance_fails_plan_invalidating`
+and return to `plan`. Do not run `advance` after the final `complete` state.
 
 ### Post-invocation state machine
 
@@ -144,16 +149,86 @@ with `currentStage: intake`.
 | `intake` | `intake-analyst` | `human_approval` via advance on spec | Accept canonical spec |
 | `plan` | `tech-lead` | `human_approval` via advance on touch-set | Accept plan and scope |
 | `implement` | `coder` | `implementation_complete` | Accept implementation report |
-| `review` | `reviewer` | `review_passes` or `must_fix` | Pass (→ test) or return to implement |
-| `test` | `qa-tester` | `qa_passes` or `qa_fails` | Pass (→ report) or return to implement |
+| `review` | `reviewer` | `review_passes`, `review_spot_fix`, or `must_fix` | Pass (→ test), bounded spot-fix in-stage, or return to implement |
+| `test` | `qa-tester` | `qa_passes`, `qa_spot_fix`, `qa_fails`, or `qa_fails_plan_invalidating` | Pass (→ report), bounded spot-fix in-stage, or return to implement/plan |
 | `report` | `tech-writer` | `report_ready` | Accept delivery report |
-| `compliance` | `compliance-auditor` | `compliance_passes` or `compliance_fails` | Pass (→ ship) or return to implement |
+| `compliance` | `compliance-auditor` | `compliance_passes`, `compliance_spot_fix`, `compliance_fails`, or `compliance_fails_plan_invalidating` | Pass (→ ship), bounded spot-fix in-stage, or return to implement/plan |
 | `ship` | `supervisor` | `human_ratifies_local_diff` | Ratify local diff |
 | `index` | `librarian` | `artifacts_indexed` | Accept feature index |
 | `complete` | `librarian` | `artifacts_closed` via close-artifacts | Validate closure |
 
 Interventions journal under `.pan/scheduler/interventions/<task-id>.jsonl`.
 Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
+
+### Spot-fix complexity bar
+
+A **spot fix** is a bounded remediation task. It is appropriate when the issue is
+already diagnosable, the intended behavior is clear, and the fix can be made
+without redesigning surrounding architecture or re-planning the feature.
+
+#### Qualifies as a spot fix
+
+A task qualifies when it is primarily one or more of:
+
+- **Syntax, type, lint, or formatting issues** caused by the current change.
+- **Import, export, build, or symbol-resolution issues**, including incomplete
+  local refactors.
+- **Simple logical bugs** with an obvious correction, such as inverted
+  conditionals, off-by-one/index errors, missing null checks, or wrong branch
+  selection.
+- **Local implementation defects** contained within one module or tightly
+  coupled implementation area and no more than 3 core implementation files,
+  plus any directly related test files.
+- **Missing or weak regression coverage** for the specific behavior being fixed.
+- **Governance/artifact issues** where the expected artifact shape is already
+  defined, such as missing, stale, malformed, or incomplete required pipeline
+  artifacts.
+- **Known unrelated repo failures** only when the task is to document, isolate,
+  or preserve them in the handoff or audit trail rather than to resolve them
+  opportunistically.
+
+#### Does not qualify as a spot fix
+
+A task does **not** qualify when it requires:
+
+- Changes across multiple modules, subsystems, or architectural boundaries.
+- More than 3 core implementation files, excluding directly related tests.
+- Redesigning data flow, control flow, public APIs, persistence format,
+  pipeline semantics, or agent/operator workflow.
+- Fixing performance issues rooted in poor structure, excessive coupling,
+  inefficient architecture, or unclear ownership boundaries.
+- Interpreting ambiguous requirements or choosing between multiple plausible
+  product or technical behaviors.
+- Broad cleanup, repo-wide normalization, migration, or opportunistic
+  refactoring.
+- Resolving unrelated existing failures unless explicitly scoped as the primary
+  task.
+
+#### Escalation rule
+
+If a proposed spot fix reveals broader design ambiguity, cross-module coupling,
+or a need to change the intended behavior, stop treating it as a spot fix.
+Document the finding and escalate it into a planned implementation task.
+
+#### Spot-fix justification fields (runtime-enforced)
+
+Every `*_spot_fix` advance MUST include these fields in the stage artifact:
+
+- `spot_fixable: true`
+- `spot_fix_scope: artifact-only` (review only) or `code-bounded` (test/compliance)
+- `spot_fix_owner: review|test|design-qa|compliance`
+- `spot_fix_paths: <comma-separated paths, max 3>`
+- `spot_fix_rationale: <one sentence>`
+
+The CLI rejects `review_spot_fix`, `qa_spot_fix`, and `compliance_spot_fix` when
+justification is missing or out of bounds.
+
+#### Shared-layer touch-set rule
+
+Integration-heavy Cockpit slices MUST declare `shared_paths` and
+`integration_prerequisites` in `touch-set.json` at plan time. Reviewers MUST treat
+declared `shared_paths` edits as allowed integration work, not touch-set breaches.
+Undeclared shared-layer edits route back to `plan`, not repeated `must_fix` loops.
 
 ### SDK mode (`runner.cursor.invocation: sdk`)
 
@@ -232,6 +307,33 @@ does not reset other stages' counts.
 `full_model_string`, and per-fallback fields `fallback_model`, `fallback_reason`, and
 `outcome` (`success` or `chain_exhausted`).
 
+### Feature-delivery worktree isolation (mandatory)
+
+`pan run feature-delivery` and `pan batch run` **never** mutate the main checkout
+git index. Every run acquires an isolated git worktree under
+`.pan/worktrees/<task-id>/` with branch `pan/run/<task-id>` (single run) or
+`pan/batch-<batchId>/<task-id>` (batch). Failed or halted runs suspend the pool
+lease but keep the worktree for `repair-state` and `pan advance`. The CLI also
+**mirrors failure context onto the main checkout** (run directory, halt outbox
+day bucket, and `failure-preservation.json`) before suspending the lease.
+
+**Operator rule:** do not delete `.pan/worktrees/<task-id>/`, `pan/batch-*`
+branches, or mirrored `.pan/work/<day>/<task-id>/` failure artifacts unless you
+have finished post-mortem review or explicitly chose to discard the run.
+Agents SHALL NOT run cleanup commands that remove these paths without operator
+instruction.
+
+**Forbidden:** multiple concurrent `pan run feature-delivery` invocations (including
+parallel supervisor Tasks). For `parallel_with` program slices, use exactly one
+`pan batch run --parallel N` command.
+
+Before SDK batch or isolated runs, load credentials (worktrees do not inherit
+gitignored `.env`):
+
+```bash
+set -a && source .env && set +a
+```
+
 ### Batch feature-delivery runs
 
 `pnpm -w exec pan batch run` orchestrates multiple inbox directives as isolated
@@ -273,6 +375,17 @@ Flags:
 
 Batch ledger: `.pan/work/<day>/batch-<batchId>/batch.json`. Sub-run branches:
 `pan/batch-<batchId>/<task-id>`. Worktrees: `.pan/worktrees/<task-id>/`.
+
+On sub-run failure, the batch orchestrator copies gate artifacts from the
+worktree to the main checkout at `.pan/work/<day>/<task-id>/` (including
+`failure-preservation.json` with pointers to `review.md`, `test-report.md`, and
+halt outboxes under `lib/inbox/out/<day>/`), archives a recovery copy under
+`.pan/archive/recovery/batch-<batchId>/<task-id>/`, then commits failure context on
+the worktree branch when possible. Inspect `preservationManifest` and
+`recoveryArchiveDir` on each failed run entry in `batch.json`.
+
+**Operator rule:** do not delete worktrees, batch branches, or recovery archives
+until `failure-preservation.json` exists on main and the recovery copy is present.
 
 When `PAN_FD_PROGRESS=ndjson` is set, batch-level progress events
 (`batch_enter`, `batch_run_start`, `batch_run_complete`, `batch_run_failed`,
@@ -407,12 +520,17 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 | `plan` | `tech-lead` | `<runDir>/plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/touch-set.json` |
 | `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/implementation-report.md` |
 | `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/review.md` |
+| `review` (qualifying spot-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --event review_spot_fix --artifact <runDir>/review.md` |
 | `review` (must-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --event must_fix --artifact <runDir>/review.md` |
 | `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/test-report.md` |
+| `test` (qualifying spot-fix) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_spot_fix --artifact <runDir>/test-report.md` |
 | `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
+| `test` (plan-invalidating fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails_plan_invalidating --artifact <runDir>/test-report.md` |
 | `report` | `tech-writer` | `lib/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/delivery-report.md` |
 | `compliance` (pass) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/compliance-result.json` |
+| `compliance` (qualifying spot-fix) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_spot_fix --artifact <runDir>/compliance-result.json` |
 | `compliance` (major fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails --artifact <runDir>/compliance-result.json` |
+| `compliance` (plan-invalidating fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails_plan_invalidating --artifact <runDir>/compliance-result.json` |
 | `ship` | `supervisor` | `<runDir>/ship-ratification.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/ship-ratification.json` |
 | `index` | `librarian` | `lib/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/index.json` |
 | `complete` | `librarian` | ship-ratification + index + operator-verification | `pnpm -w exec pan close-artifacts <task-id>` |

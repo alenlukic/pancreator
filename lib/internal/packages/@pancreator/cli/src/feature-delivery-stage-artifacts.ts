@@ -7,6 +7,16 @@ import { OPERATOR_VERIFICATION_FILENAME, validateOperatorVerificationMarkdown } 
 
 import { designQaReportRel, designStepsEnabled, uxSpecRel } from "./design-steps.js";
 import type { FeatureDeliveryDesignOptions } from "./design-steps.js";
+import {
+  validateComplianceForAdvance,
+  validateDesignQaForAdvance,
+  validateHandoffMarkdown,
+  validateImplementationReport,
+  validatePlanMarkdown,
+  validateReviewMarkdownForAdvance,
+  validateTestReportForAdvance,
+  validateTouchSetJson,
+} from "./feature-delivery-gate-validation.js";
 
 /** Minimal state slice for artifact path resolution without importing feature-delivery-run. */
 export interface FeatureDeliveryArtifactState {
@@ -323,14 +333,51 @@ function readRepoText(repoRoot: string, rel: string): string | null {
   return readFileSync(abs, "utf8");
 }
 
+function gateValidationErrorToWarning(rel: string, message: string): ArtifactContentWarning {
+  return { path: rel, code: "gate_contract_violation", message };
+}
+
 function validateArtifactContent(
   repoRoot: string,
   rel: string,
+  event?: string,
 ): ArtifactContentWarning | null {
   const base = path.posix.basename(rel);
   const content = readRepoText(repoRoot, rel);
   if (content === null) {
     return null;
+  }
+
+  if (base === "plan.md") {
+    const planError = validatePlanMarkdown(content);
+    if (planError !== null) {
+      return gateValidationErrorToWarning(rel, planError);
+    }
+    return validateMarkdownBody(rel, content);
+  }
+
+  if (base === "handoff.md") {
+    const handoffError = validateHandoffMarkdown(content);
+    if (handoffError !== null) {
+      return gateValidationErrorToWarning(rel, handoffError);
+    }
+    return validateMarkdownBody(rel, content);
+  }
+
+  if (base === "touch-set.json") {
+    const touchSetError = validateTouchSetJson(content);
+    if (touchSetError !== null) {
+      return gateValidationErrorToWarning(rel, touchSetError);
+    }
+    return null;
+  }
+
+  if (base === "implementation-report.md") {
+    const implementError = validateImplementationReport(content);
+    if (implementError !== null) {
+      return gateValidationErrorToWarning(rel, implementError);
+    }
+    return validateMarkdownBody(rel, content);
   }
 
   if (base === "review.md") {
@@ -340,6 +387,12 @@ function validateArtifactContent(
         code: "review_passes_unparseable",
         message: "review.md must contain review_passes: true or review_passes: false",
       };
+    }
+    if (event !== undefined) {
+      const reviewAdvanceError = validateReviewMarkdownForAdvance(content, event);
+      if (reviewAdvanceError !== null) {
+        return gateValidationErrorToWarning(rel, reviewAdvanceError);
+      }
     }
     return null;
   }
@@ -352,6 +405,12 @@ function validateArtifactContent(
         message: "test-report.md must contain qa_passes: true or qa_passes: false",
       };
     }
+    if (event !== undefined) {
+      const testAdvanceError = validateTestReportForAdvance(content, event);
+      if (testAdvanceError !== null) {
+        return gateValidationErrorToWarning(rel, testAdvanceError);
+      }
+    }
     return null;
   }
 
@@ -362,6 +421,12 @@ function validateArtifactContent(
         code: "design_qa_passes_unparseable",
         message: "design-qa-report.md must contain design_qa_passes: true or design_qa_passes: false",
       };
+    }
+    if (event !== undefined) {
+      const designAdvanceError = validateDesignQaForAdvance(content, event);
+      if (designAdvanceError !== null) {
+        return gateValidationErrorToWarning(rel, designAdvanceError);
+      }
     }
     return null;
   }
@@ -415,6 +480,12 @@ function validateArtifactContent(
         message: "compliance-result.json must include final_gate results for the compliance exit bundle",
       };
     }
+    if (event !== undefined) {
+      const complianceAdvanceError = validateComplianceForAdvance(content, event);
+      if (complianceAdvanceError !== null) {
+        return gateValidationErrorToWarning(rel, complianceAdvanceError);
+      }
+    }
     return null;
   }
 
@@ -430,7 +501,7 @@ function validateArtifactContent(
     return null;
   }
 
-  if (base === "plan.md" || base === "implementation-report.md" || base === "ux-spec.md") {
+  if (base === "ux-spec.md") {
     return validateMarkdownBody(rel, content);
   }
 
@@ -578,6 +649,8 @@ export function requiredArtifactsAfterStageWork(
 
 const CONTENT_VALIDATED_BASENAMES = new Set([
   "plan.md",
+  "handoff.md",
+  "touch-set.json",
   "implementation-report.md",
   "review.md",
   "test-report.md",
@@ -620,6 +693,52 @@ export function validateStageCompletionArtifacts(
   };
 }
 
+function assertAdvanceGateContent(
+  repoRoot: string,
+  state: FeatureDeliveryArtifactState,
+  stage: string,
+  artifact: string,
+  event: string,
+): void {
+  const advanceArtifacts = [artifact];
+  if (stage === "test" && event === "qa_passes" && designStepsEnabled(state.options)) {
+    advanceArtifacts.push(designQaReportRel(state.artifacts.runDir));
+  }
+  for (const rel of advanceArtifacts) {
+    const warning = validateArtifactContent(repoRoot, rel, event);
+    if (warning !== null) {
+      throw new Error(`Cannot advance ${stage} on ${event}; ${warning.message}`);
+    }
+  }
+  if (stage === "implement" && event === "implementation_complete") {
+    const reportRel = path.posix.join(state.artifacts.runDir, "implementation-report.md");
+    const content = readRepoText(repoRoot, reportRel);
+    if (content !== null && !/implement_gate_passes:\s*true/iu.test(content)) {
+      throw new Error(
+        "Cannot advance implement; implementation-report.md must record implement_gate_passes: true before review handoff.",
+      );
+    }
+  }
+  if (stage === "plan" && event === "human_approval") {
+    for (const rel of contractPlanGateArtifacts(state)) {
+      const warning = validateArtifactContent(repoRoot, rel, event);
+      if (warning !== null) {
+        throw new Error(`Cannot advance plan; ${warning.message}`);
+      }
+    }
+  }
+}
+
+function contractPlanGateArtifacts(state: FeatureDeliveryArtifactState): string[] {
+  const run = state.artifacts.runDir;
+  const artifacts = [
+    path.posix.join(run, "plan.md"),
+    path.posix.join(run, "touch-set.json"),
+    handoffPath(state),
+  ];
+  return artifacts;
+}
+
 export function assertAdvanceArtifacts(
   repoRoot: string,
   state: FeatureDeliveryArtifactState,
@@ -638,6 +757,7 @@ export function assertAdvanceArtifacts(
       throw new Error(`Cannot advance ${stage}; required artifact is missing: ${required}.`);
     }
   }
+  assertAdvanceGateContent(repoRoot, state, stage, artifact, event);
 }
 
 export function defaultAdvanceEventForStage(stage: string): string {
