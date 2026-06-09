@@ -170,10 +170,15 @@ export async function resolveFeatureDeliveryCheckoutRoot(
     chosen.rootKind === ".pan/work" &&
     existsSync(worktreesRootForMain(main))
   ) {
-    throw new Error(
-      `Task ${taskId} state lives on the main checkout (${chosen.checkoutRoot}). ` +
-        "Feature-delivery requires worktree isolation — abort or archive the stale run before starting a new one.",
-    );
+    const state = JSON.parse(await readFile(chosen.abs, "utf8")) as FeatureDeliveryState;
+    const archivalStatus =
+      state.status === "complete" || state.status === "closed" || state.currentStage === "complete";
+    if (!archivalStatus) {
+      throw new Error(
+        `Task ${taskId} state lives on the main checkout (${chosen.checkoutRoot}). ` +
+          "Feature-delivery requires worktree isolation — abort or archive the stale run before starting a new one.",
+      );
+    }
   }
 
   return chosen.checkoutRoot;
