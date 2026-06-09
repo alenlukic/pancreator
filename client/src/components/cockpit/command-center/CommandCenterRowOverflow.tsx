@@ -7,11 +7,13 @@ export function CommandCenterRowOverflow({
   runDir,
   inboxSource,
   runCommand,
+  stageName,
 }: {
   taskId?: string;
   runDir?: string;
   inboxSource?: string;
   runCommand?: string;
+  stageName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -46,7 +48,8 @@ export function CommandCenterRowOverflow({
     runCommand !== undefined ||
     inboxSource !== undefined ||
     taskId !== undefined ||
-    runDir !== undefined;
+    runDir !== undefined ||
+    stageName !== undefined;
 
   if (!hasOverflow) {
     return null;
@@ -84,7 +87,7 @@ export function CommandCenterRowOverflow({
               Copy inbox path
             </button>
           ) : null}
-          {taskId || runDir ? (
+          {taskId || runDir || stageName ? (
             <button
               type="button"
               role="menuitem"
@@ -103,6 +106,7 @@ export function CommandCenterRowOverflow({
       ) : null}
       {showDetails ? (
         <div className="command-center-row-details">
+          {stageName ? <p>Stage: {stageName}</p> : null}
           {taskId ? <p>Task id: {taskId}</p> : null}
           {runDir ? <p>Run directory: {runDir}</p> : null}
         </div>

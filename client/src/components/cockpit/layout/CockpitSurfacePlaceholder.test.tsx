@@ -10,8 +10,8 @@ describe("CockpitSurfacePlaceholder", () => {
     render(<CockpitSurfacePlaceholder surface={commandCenter} />);
     expect(screen.getByTestId("cockpit-surface-placeholder")).toBeInTheDocument();
     expect(screen.getByText("Open mission control")).toBeInTheDocument();
-    expect(screen.getByTestId("status-pill")).toHaveTextContent("Running");
-    expect(screen.getByTestId("severity-chip")).toHaveTextContent("Needs attention");
+    expect(screen.getByTestId("status-pill-running")).toHaveTextContent("Running");
+    expect(screen.getByTestId("severity-chip-needs-attention")).toHaveTextContent("Needs attention");
   });
 
   it("renders kickoff stub copy on work intake", () => {

@@ -1,5 +1,5 @@
-import { DashboardPage } from "@/components/DashboardPage";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <DashboardPage />;
+  redirect("/command-center");
 }

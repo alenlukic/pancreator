@@ -204,8 +204,8 @@ describe("CommandCenterSurface", () => {
     expect(screen.queryByText(".pan/work/")).not.toBeInTheDocument();
   });
 
-  it("renders global empty state when no non-terminal runs exist", async () => {
-    mockCommandCenterFetch({ runState: [] });
+  it("renders global empty state when no operational rows exist", async () => {
+    mockCommandCenterFetch({ runState: [], automations: { automations: [], personas: [] } });
 
     render(<CommandCenterSurface />);
 

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  filterNonTerminalTasks,
   findActiveStage,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
@@ -209,8 +208,6 @@ export function useCommandCenterData() {
     };
   }, [hasActiveStage]);
 
-  const nonTerminalTasks = useMemo(() => filterNonTerminalTasks(tasks), [tasks]);
-
   const cards = useMemo(
     () =>
       buildCommandCenterRows({
@@ -223,7 +220,12 @@ export function useCommandCenterData() {
     [automationRows, complianceFindings, nowMs, tasks],
   );
 
-  const isGlobalEmpty = !loading && runStateError === null && nonTerminalTasks.length === 0;
+  const hasOperationalRows = useMemo(
+    () => cards.some((card) => card.rows.length > 0),
+    [cards],
+  );
+
+  const isGlobalEmpty = !loading && runStateError === null && !hasOperationalRows;
 
   return {
     cards,

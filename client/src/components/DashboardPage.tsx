@@ -303,11 +303,14 @@ export function DashboardPage() {
   );
 
   return (
-    <div className="app-shell" data-testid="dashboard-root">
+    <div className="legacy-dashboard-shell" data-testid="dashboard-root">
       <header className="app-header">
         <div>
           <p className="eyebrow">Pancreator operator dashboard</p>
           <h1>Operator cockpit</h1>
+          <p className="header-summary">
+            Legacy pipeline module shell. Default landing is Command Center at /command-center.
+          </p>
         </div>
       </header>
 

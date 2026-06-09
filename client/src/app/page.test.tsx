@@ -456,7 +456,7 @@ describe("DashboardPage", () => {
     });
   });
 
-  it("renders Next Action panel with run directory and command actions", async () => {
+  it("renders Next Action panel with overflow actions instead of raw paths", async () => {
     mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
@@ -464,25 +464,26 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       const panel = screen.getByTestId("next-action-panel");
       expect(panel).toHaveTextContent("Demo Feature");
-      expect(panel).toHaveTextContent(".pan/work/172973_06-02-26/65766_0543_demo-feature/");
+      expect(panel).not.toHaveTextContent(".pan/work/172973_06-02-26/65766_0543_demo-feature/");
+      expect(panel).not.toHaveTextContent("pnpm -w exec pan advance");
       expect(panel).toHaveTextContent("Ratify the plan before advancing.");
-      expect(panel).toHaveTextContent("pnpm -w exec pan advance");
-      expect(within(panel).getByTestId("copy-command-button")).toBeEnabled();
+      expect(within(panel).getByRole("button", { name: "Row actions" })).toBeInTheDocument();
       expect(screen.getByTestId("open-next-prompt-button")).toBeInTheDocument();
       expect(screen.getByTestId("open-run-folder-button")).toBeInTheDocument();
     });
   });
 
-  it("copies nextCommand and shows Copied feedback", async () => {
+  it("copies nextCommand from overflow and shows Copied feedback", async () => {
     mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(within(screen.getByTestId("next-action-panel")).getByTestId("copy-command-button")).toBeEnabled();
+      expect(within(screen.getByTestId("next-action-panel")).getByRole("button", { name: "Row actions" })).toBeInTheDocument();
     });
 
-    fireEvent.click(within(screen.getByTestId("next-action-panel")).getByTestId("copy-command-button"));
+    fireEvent.click(within(screen.getByTestId("next-action-panel")).getByRole("button", { name: "Row actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy run command" }));
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -1214,7 +1215,7 @@ describe("DashboardPage", () => {
     fireEvent.click(screen.getByTestId("multi-run-select-88888_1200_other-feature"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("next-action-panel")).toHaveTextContent("88888_1200_other-feature");
+      expect(screen.getByTestId("next-action-panel")).toHaveTextContent("Other Feature");
       expect(screen.getByTestId("task-cockpit-88888_1200_other-feature")).toHaveAttribute(
         "aria-selected",
         "true",
@@ -1286,7 +1287,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-run-history-no-runs")).toHaveTextContent(
-        "No runs yet. Run automation now or wait for the next scheduled tick.",
+        "No runs yet. Use Run now or wait for the OS scheduler tick.",
       );
     });
   });
@@ -1342,14 +1343,10 @@ describe("DashboardPage", () => {
     fireEvent.click(screen.getByTestId("module-tab-automations"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("automation-overflow-hourly-coder")).toBeInTheDocument();
+      expect(screen.getByTestId("automation-toggle-hourly-coder")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId("automation-overflow-hourly-coder"));
-    fireEvent.click(screen.getByTestId("automation-pause-hourly-coder"));
-    expect(automationPutCalls).toHaveLength(0);
-
-    fireEvent.click(screen.getByTestId("automation-pause-confirm-hourly-coder"));
+    fireEvent.click(screen.getByTestId("automation-toggle-hourly-coder"));
 
     await waitFor(() => {
       expect(automationPutCalls).toHaveLength(1);
@@ -1378,13 +1375,13 @@ describe("DashboardPage", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Hourly review" },
     });
-    fireEvent.click(screen.getByTestId("automation-wizard-next"));
+    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-persona")).toBeInTheDocument();
     });
     fireEvent.change(screen.getByLabelText("Persona"), { target: { value: "coder" } });
-    fireEvent.click(screen.getByTestId("automation-wizard-next"));
+    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-prompt")).toBeInTheDocument();
@@ -1392,7 +1389,7 @@ describe("DashboardPage", () => {
     fireEvent.change(screen.getByLabelText("Prompt"), {
       target: { value: "Review open tasks." },
     });
-    fireEvent.click(screen.getByTestId("automation-wizard-next"));
+    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-review")).toBeInTheDocument();
@@ -1687,7 +1684,7 @@ describe("Command Center default landing", () => {
     expect(screen.queryByText(/placeholder/i)).not.toBeInTheDocument();
   });
 
-  it("shows guided empty state when no non-terminal runs exist", async () => {
+  it("shows guided empty state when no operational rows exist", async () => {
     mockCommandCenterLandingFetch({ runState: [] });
 
     render(<CommandCenterPage />);
@@ -1698,6 +1695,54 @@ describe("Command Center default landing", () => {
         "href",
         "/work-intake",
       );
+    });
+  });
+
+  it("suppresses global empty when compliance preview rows exist without active runs", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson([]), { status: 200 });
+      }
+      if (url.includes("/api/automations") && !url.includes("/runs")) {
+        return new Response(stringifyCompactJson({ automations: [], personas: [] }), { status: 200 });
+      }
+      if (url.includes("audit-history.json")) {
+        return new Response(
+          stringifyCompactJson({
+            content: stringifyCompactJson({
+              entries: [{ stage_status: "failed", artifact_paths: { compliance_result: "result.json" } }],
+            }),
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("result.json")) {
+        return new Response(
+          stringifyCompactJson({
+            content: stringifyCompactJson({
+              results: [
+                {
+                  id: "json-formatting",
+                  pass: false,
+                  severity: "high",
+                  blocks: true,
+                  detail: "Missing artifact in touch-set",
+                },
+              ],
+            }),
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+    });
+
+    render(<CommandCenterPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("command-center-compliance-issues")).toBeInTheDocument();
+      expect(screen.queryByText("No active deliveries")).not.toBeInTheDocument();
     });
   });
 });
