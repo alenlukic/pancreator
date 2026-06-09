@@ -35,7 +35,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- (none)
+- `lib/inbox/in/172966_06-09-26/63490_0621_cockpit-v2-work-intake-kickoff.md`
 
 ## Most recent shipped Features
 
