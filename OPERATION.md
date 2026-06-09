@@ -238,7 +238,15 @@ does not reset other stages' counts.
 git index. Every run acquires an isolated git worktree under
 `.pan/worktrees/<task-id>/` with branch `pan/run/<task-id>` (single run) or
 `pan/batch-<batchId>/<task-id>` (batch). Failed or halted runs suspend the pool
-lease but keep the worktree for `repair-state` and `pan advance`.
+lease but keep the worktree for `repair-state` and `pan advance`. The CLI also
+**mirrors failure context onto the main checkout** (run directory, halt outbox
+day bucket, and `failure-preservation.json`) before suspending the lease.
+
+**Operator rule:** do not delete `.pan/worktrees/<task-id>/`, `pan/batch-*`
+branches, or mirrored `.pan/work/<day>/<task-id>/` failure artifacts unless you
+have finished post-mortem review or explicitly chose to discard the run.
+Agents SHALL NOT run cleanup commands that remove these paths without operator
+instruction.
 
 **Forbidden:** multiple concurrent `pan run feature-delivery` invocations (including
 parallel supervisor Tasks). For `parallel_with` program slices, use exactly one
@@ -292,6 +300,13 @@ Flags:
 
 Batch ledger: `.pan/work/<day>/batch-<batchId>/batch.json`. Sub-run branches:
 `pan/batch-<batchId>/<task-id>`. Worktrees: `.pan/worktrees/<task-id>/`.
+
+On sub-run failure, the batch orchestrator copies gate artifacts from the
+worktree to the main checkout at `.pan/work/<day>/<task-id>/` (including
+`failure-preservation.json` with pointers to `review.md`, `test-report.md`, and
+halt outboxes under `lib/inbox/out/<day>/`), then commits failure context on
+the worktree branch when possible. Inspect `preservationManifest` on each failed
+run entry in `batch.json`.
 
 When `PAN_FD_PROGRESS=ndjson` is set, batch-level progress events
 (`batch_enter`, `batch_run_start`, `batch_run_complete`, `batch_run_failed`,

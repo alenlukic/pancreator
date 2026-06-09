@@ -15,6 +15,10 @@ import {
 import type { FeatureDeliveryTestHooks } from "./feature-delivery-runner.js";
 import { secondsToMidnightUtc, utcHhmm } from "./intake-scaffold.js";
 import { createNodeBatchGitOps, type BatchGitOps } from "./feature-delivery-batch-git-ops.js";
+import {
+  preserveFeatureDeliveryFailureContext,
+  stageAndCommitCheckout,
+} from "./feature-delivery-failure-preservation.js";
 
 export const FEATURE_DELIVERY_WORKTREE_ISOLATION_ERROR =
   "Feature-delivery MUST run on an isolated git worktree under .pan/worktrees/. Use `pnpm -w exec pan run feature-delivery` or `pan batch run` — never `startFeatureDelivery` on the main checkout.";
@@ -291,6 +295,20 @@ export async function runIsolatedFeatureDelivery(
     } else if (state.status === "closed") {
       finalizeLease = "release";
     } else {
+      await preserveFeatureDeliveryFailureContext({
+        mainRepoRoot,
+        checkoutRoot: lease.path,
+        taskId: startResult.taskId,
+        runDir: startResult.runDir,
+        state,
+        branch,
+        clock: input.clock,
+      });
+      try {
+        await stageAndCommitCheckout(lease.path, `isolated run: failure context for ${startResult.taskId}`);
+      } catch {
+        // Filesystem mirror on main is authoritative when git commit fails.
+      }
       finalizeLease = "suspend";
     }
 

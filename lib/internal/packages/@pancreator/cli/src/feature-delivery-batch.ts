@@ -10,6 +10,10 @@ import {
   createNodeBatchGitOps,
   type BatchGitOps,
 } from "./feature-delivery-batch-git-ops.js";
+import {
+  preserveFeatureDeliveryFailureContext,
+  stageAndCommitCheckout,
+} from "./feature-delivery-failure-preservation.js";
 import { copyInboxDirectiveToCheckout } from "./feature-delivery-worktree.js";
 import {
   closeFeatureDeliveryArtifacts,
@@ -44,6 +48,8 @@ export interface BatchRunOutcome {
   status: "success" | "failed";
   error?: string;
   runDir?: string;
+  preservationManifest?: string;
+  preservedRunDir?: string;
 }
 
 export interface BatchMergeRecord {
@@ -224,6 +230,42 @@ async function readSubRunState(
   return JSON.parse(raw) as FeatureDeliveryState;
 }
 
+async function mirrorFailedSubRunContext(input: {
+  repoRoot: string;
+  leasePath: string;
+  startResult: StartFeatureDeliveryResult;
+  state: FeatureDeliveryState;
+  taskId: string;
+  branch: string;
+  batchId: string;
+  error: string;
+  clock?: () => Date;
+}): Promise<Pick<BatchRunOutcome, "preservationManifest" | "preservedRunDir">> {
+  const preservation = await preserveFeatureDeliveryFailureContext({
+    mainRepoRoot: input.repoRoot,
+    checkoutRoot: input.leasePath,
+    taskId: input.taskId,
+    runDir: input.startResult.runDir,
+    state: input.state,
+    batchId: input.batchId,
+    branch: input.branch,
+    error: input.error,
+    clock: input.clock,
+  });
+  try {
+    await stageAndCommitCheckout(
+      input.leasePath,
+      `batch ${input.batchId}: failure context for ${input.taskId}`,
+    );
+  } catch {
+    // Filesystem mirror on main is authoritative when git commit fails.
+  }
+  return {
+    preservationManifest: preservation.manifestRel,
+    preservedRunDir: preservation.preservedRunDir ?? undefined,
+  };
+}
+
 export async function runFeatureDeliveryBatch(
   input: RunFeatureDeliveryBatchInput,
 ): Promise<RunFeatureDeliveryBatchResult> {
@@ -327,7 +369,9 @@ export async function runFeatureDeliveryBatch(
 
   const runOne = async (inboxEntry: string, branch: string): Promise<void> => {
     let taskId = "";
+    let leasePath: string | undefined;
     let leaseTaskId: ReturnType<typeof asTaskId> | undefined;
+    let startResult: StartFeatureDeliveryResult | undefined;
     let finalizeLease: "release" | "suspend" | false = false;
     try {
       const runNow = input.clock?.() ?? new Date();
@@ -337,6 +381,7 @@ export async function runFeatureDeliveryBatch(
         branch,
       });
       leaseTaskId = lease.taskId;
+      leasePath = lease.path;
       progress.emit({
         kind: "batch_run_start",
         batchId,
@@ -348,7 +393,7 @@ export async function runFeatureDeliveryBatch(
 
       await copyInboxDirectiveToCheckout(repoRoot, lease.path, inboxEntry);
 
-      const startResult = await startFn(
+      startResult = await startFn(
         {
           repoRoot: lease.path,
           inboxEntry,
@@ -364,7 +409,26 @@ export async function runFeatureDeliveryBatch(
       if (state.currentStage !== "complete" || state.status !== "complete") {
         const error = `Sub-run ended at ${state.currentStage}/${state.status}.`;
         finalizeLease = "suspend";
-        ledger.runs.push({ inboxEntry, taskId, branch, status: "failed", error, runDir: startResult.runDir });
+        const preservation = await mirrorFailedSubRunContext({
+          repoRoot,
+          leasePath: lease.path,
+          startResult,
+          state,
+          taskId,
+          branch,
+          batchId,
+          error,
+          clock: input.clock,
+        });
+        ledger.runs.push({
+          inboxEntry,
+          taskId,
+          branch,
+          status: "failed",
+          error,
+          runDir: startResult.runDir,
+          ...preservation,
+        });
         progress.emit({
           kind: "batch_run_failed",
           batchId,
@@ -384,7 +448,26 @@ export async function runFeatureDeliveryBatch(
       if (check.status !== "ok" || check.failCount > 0) {
         const error = `Pre-close validation failed (${check.failCount} failing check(s)). Implementation committed on branch ${branch}; repair-state and re-run pan check before close-artifacts.`;
         finalizeLease = "suspend";
-        ledger.runs.push({ inboxEntry, taskId, branch, status: "failed", error, runDir: startResult.runDir });
+        const preservation = await mirrorFailedSubRunContext({
+          repoRoot,
+          leasePath: lease.path,
+          startResult,
+          state,
+          taskId,
+          branch,
+          batchId,
+          error,
+          clock: input.clock,
+        });
+        ledger.runs.push({
+          inboxEntry,
+          taskId,
+          branch,
+          status: "failed",
+          error,
+          runDir: startResult.runDir,
+          ...preservation,
+        });
         progress.emit({
           kind: "batch_run_failed",
           batchId,
@@ -418,12 +501,35 @@ export async function runFeatureDeliveryBatch(
     } catch (error) {
       finalizeLease = "suspend";
       const message = error instanceof Error ? error.message : String(error);
+      const failedTaskId =
+        taskId.length > 0 ? taskId : path.posix.basename(inboxEntry, path.posix.extname(inboxEntry));
+      let preservation: Pick<BatchRunOutcome, "preservationManifest" | "preservedRunDir"> = {};
+      if (leasePath !== undefined && startResult !== undefined) {
+        try {
+          const state = await readSubRunState(leasePath, startResult);
+          preservation = await mirrorFailedSubRunContext({
+            repoRoot,
+            leasePath,
+            startResult,
+            state,
+            taskId: failedTaskId,
+            branch,
+            batchId,
+            error: message,
+            clock: input.clock,
+          });
+        } catch {
+          // Best-effort preservation; never mask the original batch error.
+        }
+      }
       ledger.runs.push({
         inboxEntry,
-        taskId: taskId.length > 0 ? taskId : path.posix.basename(inboxEntry, path.posix.extname(inboxEntry)),
+        taskId: failedTaskId,
         branch,
         status: "failed",
         error: message,
+        ...(startResult !== undefined ? { runDir: startResult.runDir } : {}),
+        ...preservation,
       });
       progress.emit({
         kind: "batch_run_failed",
