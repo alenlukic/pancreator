@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
-import { AutomationsModule } from "../automations/AutomationsModule";
 import { MaintenanceModule } from "../maintenance/MaintenanceModule";
 import { PipelineModule } from "../pipeline/PipelineModule";
 
@@ -79,7 +79,19 @@ export function CockpitShell({
             onNavigateToMaintenance={() => onActiveModuleChange("maintenance")}
           />
         ) : null}
-        {activeModule === "automations" ? <AutomationsModule /> : null}
+        {activeModule === "automations" ? (
+          <div
+            className="cockpit-legacy-surface-banner"
+            data-testid="automations-legacy-banner"
+            role="region"
+            aria-label="Automations surface migration"
+          >
+            <p>Automations now live in the Cockpit v2 ten-surface shell.</p>
+            <Link href="/automations" className="cockpit-action-cta">
+              Open automations surface
+            </Link>
+          </div>
+        ) : null}
         {activeModule === "maintenance" ? (
           <MaintenanceModule onOpenAuditHistory={onOpenArtifact} />
         ) : null}

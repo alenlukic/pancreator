@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type Ref } from "react";
 import type { RunRecord } from "@/services/scheduler-runs";
+import { formatLastEventTime, missionControlHref } from "@/services/run-state-shared";
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
@@ -36,14 +38,33 @@ function formatDuration(startedAt: string, finishedAt?: string): string | null {
 function RunHistoryRow({
   run,
   rowRef,
+  automationEnabled,
+  onRetry,
 }: {
   run: RunRecord;
   rowRef?: Ref<HTMLLIElement>;
+  automationEnabled: boolean;
+  onRetry: () => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const duration = formatDuration(run.startedAt, run.finishedAt);
   const badgeStatus = runStatusBadge(run.status);
   const skipped = run.status === "skipped";
+  const showRetry = run.status === "error" && automationEnabled;
+
+  async function handleRetry(): Promise<void> {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      await onRetry();
+    } catch (error) {
+      setRetryError(error instanceof Error ? error.message : "Unable to retry automation run.");
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   return (
     <li
@@ -53,13 +74,22 @@ function RunHistoryRow({
     >
       <div className="automation-run-row-header">
         <RunStatusBadge status={badgeStatus} />
-        <time dateTime={run.startedAt}>{new Date(run.startedAt).toLocaleString()}</time>
+        <time dateTime={run.startedAt} title={new Date(run.startedAt).toLocaleString()}>
+          {formatLastEventTime(run.startedAt)}
+        </time>
         {duration ? <span className="automation-run-duration">{duration}</span> : null}
         <span className="automation-run-trigger-pill">{run.trigger}</span>
-        {run.taskId ? (
-          <span className="automation-run-task-id" title={run.taskId}>
-            {run.taskId}
-          </span>
+        {showRetry ? (
+          <button
+            type="button"
+            className="cockpit-action-button cockpit-action-cta automation-run-retry"
+            disabled={retrying}
+            aria-busy={retrying}
+            onClick={() => void handleRetry()}
+            data-testid={`automation-run-retry-${run.runId}`}
+          >
+            Retry automation run
+          </button>
         ) : null}
         <button
           type="button"
@@ -68,9 +98,10 @@ function RunHistoryRow({
           onClick={() => setExpanded((current) => !current)}
           data-testid={`automation-run-expand-${run.runId}`}
         >
-          {expanded ? "Collapse" : "Expand"}
+          {expanded ? "Hide run output" : "Show run output"}
         </button>
       </div>
+      {retryError ? <p className="automation-row-error">{retryError}</p> : null}
       {expanded ? (
         <div className="automation-run-log-excerpt" data-testid={`automation-run-logs-${run.runId}`}>
           {run.status === "skipped" ? (
@@ -86,6 +117,17 @@ function RunHistoryRow({
           {run.stderrSummary && run.status !== "skipped" ? (
             <pre className="automation-run-log-stderr">{run.stderrSummary}</pre>
           ) : null}
+          {run.taskId ? (
+            <div className="automation-run-artifact-links">
+              <Link
+                href={missionControlHref(run.taskId)}
+                className="cockpit-action-button"
+                data-testid={`automation-run-mission-control-${run.runId}`}
+              >
+                Open mission control
+              </Link>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </li>
@@ -95,6 +137,7 @@ function RunHistoryRow({
 export function AutomationRunHistory({
   selectedAutomationId,
   selectedAutomationName,
+  selectedAutomationEnabled,
   runs,
   loading,
   error,
@@ -104,15 +147,16 @@ export function AutomationRunHistory({
 }: {
   selectedAutomationId: string | null;
   selectedAutomationName: string | null;
+  selectedAutomationEnabled: boolean;
   runs: RunRecord[];
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
-  onRetry: () => void;
+  onRetry: () => Promise<void>;
   newestRunRef?: Ref<HTMLLIElement>;
 }) {
   return (
-    <aside className="automation-run-history" data-testid="automation-run-history">
+    <aside className="automation-run-history-card" data-testid="automation-run-history">
       <div className="automation-run-history-header">
         <h2>Run history</h2>
         {selectedAutomationId ? (
@@ -130,7 +174,7 @@ export function AutomationRunHistory({
               aria-busy={loading}
               data-testid="automation-run-history-refresh"
             >
-              Refresh
+              Refresh run history
             </button>
           </div>
         ) : null}
@@ -149,11 +193,11 @@ export function AutomationRunHistory({
       ) : loading && runs.length === 0 ? (
         <LoadingState label="Loading run history…" />
       ) : error ? (
-        <ErrorState message={error} onRetry={onRetry} />
+        <ErrorState message={error} onRetry={() => void onRetry()} />
       ) : runs.length === 0 ? (
         <EmptyState>
           <p data-testid="automation-run-history-no-runs">
-            No runs yet. Use Run now or wait for the OS scheduler tick.
+            No runs yet. Run automation now or wait for the next scheduled tick.
           </p>
           <p className="automation-run-history-hint">
             See OPERATION.md for cron and launchd setup.
@@ -166,6 +210,8 @@ export function AutomationRunHistory({
               key={run.runId}
               run={run}
               rowRef={index === 0 ? newestRunRef : undefined}
+              automationEnabled={selectedAutomationEnabled}
+              onRetry={onRetry}
             />
           ))}
         </ul>

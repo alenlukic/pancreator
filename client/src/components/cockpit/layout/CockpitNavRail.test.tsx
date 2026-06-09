@@ -41,6 +41,13 @@ describe("CockpitNavRail", () => {
     render(<CockpitNavRail />);
     expect(screen.getByTestId("rail-item-command-center")).toHaveAttribute("aria-current", "page");
   });
+
+  it("marks automations active for /automations route", () => {
+    mockPathname.mockReturnValue("/automations");
+    render(<CockpitNavRail />);
+    expect(screen.getByTestId("rail-item-automations")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByTestId("rail-item-command-center")).not.toHaveAttribute("aria-current", "page");
+  });
 });
 
 describe("CockpitMobileTabs", () => {
