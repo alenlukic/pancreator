@@ -179,12 +179,19 @@ export function validateImplementationReport(content: string): string | null {
     return "implementation-report.md must include a ## Coverage delta section with threshold figures.";
   }
   const checksBody = content.split(AUTOMATED_CHECKS_HEADING)[1]?.split(/^##\s/mu)[0] ?? "";
-  for (const command of ["pnpm lint", "pnpm typecheck", "pnpm test"]) {
-    if (!checksBody.includes(command)) {
-      return `implementation-report.md ## Automated checks must record ${command}.`;
+  for (const check of ["lint", "typecheck", "test"] as const) {
+    if (!implementationReportRecordsCheck(checksBody, check)) {
+      return `implementation-report.md ## Automated checks must record pnpm ${check} (repo-wide or --filter scoped).`;
     }
   }
   return null;
+}
+
+function implementationReportRecordsCheck(checksBody: string, check: "lint" | "typecheck" | "test"): boolean {
+  if (checksBody.includes(`pnpm ${check}`)) {
+    return true;
+  }
+  return new RegExp(`pnpm\\s+--filter\\s+\\S+\\s+${check}\\b`).test(checksBody);
 }
 
 export function validateReviewMarkdownForAdvance(content: string, event: string): string | null {
