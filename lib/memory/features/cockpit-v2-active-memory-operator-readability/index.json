@@ -1,0 +1,568 @@
+{
+  "feature_id": "cockpit-v2-active-memory-operator-readability",
+  "title": "Cockpit v2 active memory operator readability",
+  "task_id": "919_2344_cockpit-v2-active-memory-operator-readability",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-09T01:00:00.000Z",
+  "program": "cockpit-v2",
+  "design_steps": true,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/945_2344_cockpit-v2-active-memory-readability.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172967_06-08-26/945_2344_cockpit-v2-active-memory-readability.md",
+      "range": [1, 89],
+      "contentHash": "cf1e962"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Supervisor ship ratification at 2026-06-09T00:45:00Z with human_ratified_diff true; staged diff limited to six touch-set client paths delivering F-01, F-02, F-05, and F-10 audit fixes."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-09T01:00:00.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-09T01:00:00.000Z",
+    "artifacts_indexed": 22,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 4,
+    "nit_count": 1,
+    "spec_contracts_executed": 3,
+    "spec_contracts_note": "No contracts.index.json sidecar; three embedded llm-judge UX contract blocks in ux-spec.md evaluated via design-qa and RTL evidence.",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+      "range": [1, 40],
+      "contentHash": "a935b3e"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/test-report.md",
+    "verification_gates": {
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_focused_tests": "pass (45/45)",
+      "client_build": "pass",
+      "node_test_suite": "excluded-from-gate (active run awaiting close-artifacts)",
+      "pnpm_test": "excluded-from-gate (active run awaiting close-artifacts)",
+      "check_phase_0a": "pass",
+      "context_budget_report": "pass",
+      "run_compliance": "pass (ship-stage audit green after hygiene remediation)"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/test-report.md",
+      "range": [1, 47],
+      "contentHash": "b3592fb"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-result.json",
+    "audit_id": "919_2344_cockpit-v2-active-memory-operator-readability-20260608234000",
+    "baseline_audit_id": "4426_2246_cockpit-v2-module-tab-accessibility-20260608225342",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-result.json",
+      "range": [1, 341],
+      "contentHash": "dfbd812"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+      "range": [1, 328],
+      "contentHash": "b3d57fb"
+    },
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/945_2344_cockpit-v2-active-memory-readability.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/ship-ratification.json",
+    "ratified_paths": [
+      "client/src/app/api/active-memory/route.test.ts",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx",
+      "client/src/components/cockpit/pipeline/ActiveMemoryHeader.tsx",
+      "client/src/services/active-memory.ts",
+      "client/src/services/run-state-shared.ts"
+    ],
+    "operator_commit_notes": [
+      "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md — include at human commit",
+      "lib/memory/features/cockpit-v2-active-memory-operator-readability/index.json — refreshed by librarian at index stage",
+      "lib/memory/features/cockpit-v2-active-memory-operator-readability/spec.md and ux-spec.md — untracked feature folder; include at human commit"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/ship-ratification.json",
+      "range": [1, 53],
+      "contentHash": "95ac1f1"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "duplicated-inbox-parsing",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "active-memory.ts duplicates deriveSlugFromFilename and extractTitle from inbox.ts; shared extraction would reduce title or slug drift.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+        "range": [15, 15],
+        "contentHash": "a935b3e"
+      }
+    },
+    {
+      "id": "blockers-overflow-heuristic",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "BlockersExcerpt ORs DOM measurement with summary.length > 180; toggle may appear when clamped text still fits three visible lines.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+        "range": [19, 19],
+        "contentHash": "a935b3e"
+      }
+    },
+    {
+      "id": "focus-visible-css-probe",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "Focus ring visibility on blockers toggle and refresh CTA relies on design-QA browser inspection; no automated :focus-visible CSS probe exists.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+        "range": [21, 21],
+        "contentHash": "a935b3e"
+      }
+    },
+    {
+      "id": "timestamp-formatter-colocation",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "formatActiveMemoryRefreshTime exported from ActiveMemoryHeader component module for test import; dedicated formatter file would narrow component surface.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+        "range": [17, 17],
+        "contentHash": "a935b3e"
+      }
+    },
+    {
+      "id": "adr-draft-promotion",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft records server-side snapshot enrichment and in-panel blockers disclosure; copy ADR to lib/memory/adr/ before downstream features bind to it.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/adr-draft.md",
+        "range": [85, 94],
+        "contentHash": "b7e066c"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Feature folder artifacts may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/ship-ratification.json",
+        "range": [1, 53],
+        "contentHash": "95ac1f1"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks status intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/spec.md",
+        "range": [1, 22],
+        "contentHash": "5237256"
+      }
+    },
+    {
+      "id": "branch-drift-outside-touch-set",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Unstaged branch drift outside touch-set (personas, handbook, pipeline YAML, runner-cursor, CockpitShell) excluded from ship ratification; operator may commit or discard separately.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/ship-ratification.json",
+        "range": [27, 45],
+        "contentHash": "95ac1f1"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/implementation-report.md",
+        "recorded_content_hash": "0b73ee5",
+        "live_content_hash": "ade59e4",
+        "verifier_status": "changed",
+        "note": "delivery-report range citations predate final implementation-report edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+        "recorded_content_hash": "9afdb89",
+        "live_content_hash": "a935b3e",
+        "verifier_status": "changed",
+        "note": "delivery-report summary citations use partial ranges; reviewer final pass updated line-level hashes."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/test-report.md",
+        "recorded_content_hash": "b0f341f",
+        "live_content_hash": "b3592fb",
+        "verifier_status": "changed",
+        "note": "delivery-report test-report citations predate qa-tester final gate rerun."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/plan.md",
+        "recorded_content_hash": "1178cb7",
+        "live_content_hash": "bfaa2ef",
+        "verifier_status": "changed",
+        "note": "delivery-report plan citations predate plan consolidation edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/adr-draft.md",
+        "recorded_content_hash": "b1869b6",
+        "live_content_hash": "b7e066c",
+        "verifier_status": "changed",
+        "note": "delivery-report adr-draft citations predate final ADR draft pass."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": "client/src/services/active-memory.ts",
+        "recorded_content_hash": "6aa448f",
+        "live_content_hash": "b8dd14c",
+        "verifier_status": "changed",
+        "note": "delivery-report touch-set citations predate implement-stage final diff on loadActiveMemory."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": "client/src/components/cockpit/pipeline/ActiveMemoryHeader.tsx",
+        "recorded_content_hash": "edc994b",
+        "live_content_hash": "91176e0",
+        "verifier_status": "changed",
+        "note": "delivery-report ActiveMemoryHeader citations predate header refactor merge."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": "client/src/services/run-state-shared.ts",
+        "recorded_content_hash": "023740d",
+        "live_content_hash": "f10e2c0",
+        "verifier_status": "changed",
+        "note": "delivery-report ActiveMemorySnapshot citations predate snapshot field additions."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": "client/src/app/api/active-memory/route.test.ts",
+        "recorded_content_hash": "37b4220",
+        "live_content_hash": "5b0dd38",
+        "verifier_status": "changed",
+        "note": "delivery-report route.test.tsx citations predate label metadata test expansion."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "cited_path": "client/src/app/page.test.tsx",
+        "recorded_content_hash": "3d0e84f",
+        "live_content_hash": "9a7d3cf",
+        "verifier_status": "changed",
+        "note": "delivery-report page.test.tsx citations predate active-memory orientation test suite expansion."
+      }
+    ]
+  },
+  "touch_set_snapshot": {
+    "featureId": "cockpit-v2-active-memory-operator-readability",
+    "taskId": "919_2344_cockpit-v2-active-memory-operator-readability",
+    "stage": "implement",
+    "paths": [
+      "client/src/components/cockpit/pipeline/ActiveMemoryHeader.tsx",
+      "client/src/services/active-memory.ts",
+      "client/src/services/run-state-shared.ts",
+      "client/src/app/api/active-memory/route.ts",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx",
+      "client/src/app/api/active-memory/route.test.ts"
+    ],
+    "symbols": [],
+    "tests": [],
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/touch-set.json",
+      "range": [1, 86],
+      "contentHash": "8f57cd7"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/spec.md",
+          "range": [1, 210],
+          "contentHash": "5237256"
+        }
+      },
+      "ux_spec": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/ux-spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/ux-spec.md",
+          "range": [1, 271],
+          "contentHash": "bfd3c0d"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+          "range": [1, 328],
+          "contentHash": "b3d57fb"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/"
+      },
+      "plan": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/plan.md",
+          "range": [1, 105],
+          "contentHash": "bfaa2ef"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/adr-draft.md",
+          "range": [1, 94],
+          "contentHash": "b7e066c"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/touch-set.json",
+          "range": [1, 86],
+          "contentHash": "8f57cd7"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/implementation-report.md",
+          "range": [1, 84],
+          "contentHash": "ade59e4"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+          "range": [1, 40],
+          "contentHash": "a935b3e"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/test-report.md",
+          "range": [1, 47],
+          "contentHash": "b3592fb"
+        }
+      },
+      "design_qa_report": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/design-qa-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/design-qa-report.md",
+          "range": [1, 50],
+          "contentHash": "79235ba"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-result.json",
+          "range": [1, 341],
+          "contentHash": "dfbd812"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-audit.md",
+          "range": [1, 123],
+          "contentHash": "352f8e0"
+        }
+      },
+      "compliance_remediation": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-remediation.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-remediation.md",
+          "range": [1, 27],
+          "contentHash": "bcc89bc"
+        }
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/ship-ratification.json",
+          "range": [1, 53],
+          "contentHash": "95ac1f1"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/handoff.md",
+          "range": [1, 55],
+          "contentHash": "bc6e06d"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": ".pan/archive/inbox/in/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/945_2344_cockpit-v2-active-memory-readability.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172967_06-08-26/945_2344_cockpit-v2-active-memory-readability.md",
+          "range": [1, 89],
+          "contentHash": "cf1e962"
+        }
+      },
+      "design_audit": {
+        "path": ".pan/work/172967_06-08-26/37575_2342_cockpit-design-audit-delivery/cockpit-design-audit.md",
+        "note": "Source audit findings F-01, F-02, F-05, and F-10 cited by spec and ux-spec."
+      },
+      "prior_art_orientation": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+        "note": "Shipped Active memory header baseline this Feature refines for operator readability."
+      },
+      "ux_spec_dependency": {
+        "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Ratified Pipeline wireframe and shared affordances cited by spec depends_on."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": [
+      {
+        "id": "cockpit-v2-active-memory-operator-readability.ux.primary-label-not-raw-path",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/cockpit-v2-active-memory-operator-readability/ux-spec.md",
+        "note": "Evaluated via page.test.tsx RTL label hierarchy evidence and design-qa-report.md DOM probe."
+      },
+      {
+        "id": "cockpit-v2-active-memory-operator-readability.ux.refresh-cta-and-timestamp",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/cockpit-v2-active-memory-operator-readability/ux-spec.md",
+        "note": "Evaluated via page.test.tsx CTA and timestamp tests plus design-qa-report.md browser inspection."
+      },
+      {
+        "id": "cockpit-v2-active-memory-operator-readability.ux.blockers-expand-toggle",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/cockpit-v2-active-memory-operator-readability/ux-spec.md",
+        "note": "Evaluated via page.test.tsx expand toggle test and design-qa-report.md expand/collapse interaction."
+      }
+    ]
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "coder_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/945_2344_cockpit-v2-active-memory-readability.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172967_06-08-26/945_2344_cockpit-v2-active-memory-readability.md"
+  },
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/945_2344_cockpit-v2-active-memory-readability.md"
+}

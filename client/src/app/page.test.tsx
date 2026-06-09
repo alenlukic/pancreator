@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "@/components/DashboardPage";
 import { stringifyCompactJson } from "@/lib/json-io";
+import { formatActiveMemoryRefreshTime } from "@/services/run-state-shared";
 
 const mockRunState = [
   {
@@ -120,9 +121,28 @@ const mockRunState = [
 
 const mockActiveMemory = {
   activeFeaturePath: "lib/inbox/in/demo-orientation.md",
+  activeFeatureLabel: "Demo orientation",
+  activeFeatureSlug: "demo-orientation",
   blockersSummary: "Blocker one · Blocker two",
+  blockerChips: ["Blocker one", "Blocker two"],
   refreshTimestamp: "2026-06-08T10:07:29.699Z",
 };
+
+function probeActiveMemoryHeader(header: HTMLElement) {
+  const style = window.getComputedStyle(header);
+  const text = header.textContent ?? "";
+  const parent = header.parentElement;
+  const headerRect = header.getBoundingClientRect();
+  const parentRect = parent?.getBoundingClientRect();
+  return {
+    containsLibInbox: text.includes("lib/inbox/in/"),
+    borderStyle: style.borderStyle,
+    overflow:
+      parentRect !== null &&
+      parentRect !== undefined &&
+      (headerRect.right > parentRect.right + 1 || headerRect.left < parentRect.left - 1),
+  };
+}
 
 const mockInboxEntries = [
   {
@@ -1025,9 +1045,103 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("active-memory-header")).toBeInTheDocument();
-      expect(screen.getByTestId("active-memory-path")).toHaveTextContent("lib/inbox/in/demo-orientation.md");
-      expect(screen.getByTestId("active-memory-blockers")).toHaveTextContent("Blocker one · Blocker two");
-      expect(screen.getByTestId("active-memory-refreshed")).toHaveTextContent("2026-06-08T10:07:29.699Z");
+      expect(screen.getByTestId("active-memory-label")).toHaveTextContent("Demo orientation");
+      expect(screen.queryByTestId("active-memory-path")).not.toBeInTheDocument();
+      expect(screen.getByTestId("active-memory-copy-path")).toBeInTheDocument();
+      expect(screen.getAllByText("Blocker one")[0]).toBeInTheDocument();
+      expect(screen.getByTestId("active-memory-refreshed")).not.toHaveTextContent("2026-06-08T10:07:29.699Z");
+      expect(screen.getByTestId("active-memory-refresh-procedure")).toHaveTextContent("Open OPERATION.md");
+    });
+  });
+
+  it("hides inbox paths and enforces craft gates on the active memory header", async () => {
+    const recentTimestamp = new Date(Date.now() - 12 * 60 * 1000).toISOString();
+    mockFetchForDashboard({
+      runState: mockRunState,
+      activeMemory: {
+        activeFeaturePath: "lib/inbox/in/demo-orientation.md",
+        activeFeatureLabel: "Demo orientation",
+        activeFeatureSlug: "demo-orientation",
+        blockersSummary: "One · Two · Three",
+        blockerChips: ["One", "Two", "Three", "Four", "Five"],
+        refreshTimestamp: recentTimestamp,
+      },
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      const header = screen.getByTestId("active-memory-header");
+      const probe = probeActiveMemoryHeader(header);
+      expect(probe.containsLibInbox).toBe(false);
+      expect(probe.borderStyle).not.toBe("dashed");
+      expect(probe.overflow).toBe(false);
+
+      const label = screen.getByTestId("active-memory-label");
+      expect(label).toHaveClass("active-memory-label");
+      expect(label).not.toHaveClass("active-memory-label-idle");
+      expect(label.textContent).toBe("Demo orientation");
+
+      const cta = screen.getByTestId("active-memory-refresh-procedure");
+      expect(cta).toHaveTextContent("Open OPERATION.md");
+      expect(cta).toHaveAttribute("aria-describedby", "active-memory-refreshed-at");
+
+      const time = screen.getByTestId("active-memory-refreshed").querySelector("time");
+      expect(time).toHaveAttribute("datetime", recentTimestamp);
+      expect(time?.textContent).toMatch(/Refreshed \d+ minutes ago/u);
+      expect(time?.textContent).not.toMatch(/T\d{2}:/u);
+
+      expect(screen.getByTestId("active-memory-blockers-toggle")).toBeInTheDocument();
+      expect(header.querySelectorAll(".active-memory-blocker-chip")).toHaveLength(3);
+      expect(screen.queryByText("Four")).not.toBeInTheDocument();
+    });
+  });
+
+  it("expands blocker chips when the toggle is activated", async () => {
+    mockFetchForDashboard({
+      runState: mockRunState,
+      activeMemory: {
+        ...mockActiveMemory,
+        blockerChips: ["One", "Two", "Three", "Four", "Five"],
+      },
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("active-memory-blockers-toggle")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("active-memory-blockers-toggle"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Four")).toBeInTheDocument();
+      expect(screen.getByText("Five")).toBeInTheDocument();
+      expect(screen.getByTestId("active-memory-blockers-toggle")).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByTestId("active-memory-blockers")).toHaveAttribute("data-expanded", "true");
+    });
+  });
+
+  it("shows idle copy when no active feature is set", async () => {
+    mockFetchForDashboard({
+      runState: mockRunState,
+      activeMemory: {
+        activeFeaturePath: null,
+        activeFeatureLabel: null,
+        activeFeatureSlug: null,
+        blockersSummary: "",
+        blockerChips: [],
+        refreshTimestamp: null,
+      },
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("active-memory-label")).toHaveTextContent(
+        "No active feature — triage inbox or start a run",
+      );
+      expect(screen.queryByTestId("active-memory-copy-path")).not.toBeInTheDocument();
     });
   });
 
@@ -1372,5 +1486,27 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("pre-close-run-button")).toBeEnabled();
     });
+  });
+});
+
+describe("formatActiveMemoryRefreshTime", () => {
+  const nowMs = Date.parse("2026-06-09T12:00:00.000Z");
+
+  it("formats recent timestamps as relative minutes", () => {
+    expect(
+      formatActiveMemoryRefreshTime("2026-06-09T11:48:00.000Z", nowMs),
+    ).toBe("Refreshed 12 minutes ago");
+  });
+
+  it("formats yesterday timestamps without raw ISO", () => {
+    const formatted = formatActiveMemoryRefreshTime("2026-06-08T11:00:00.000Z", nowMs);
+    expect(formatted).toBe("Refreshed yesterday");
+    expect(formatted).not.toContain("T");
+  });
+
+  it("formats older timestamps with locale date/time", () => {
+    const formatted = formatActiveMemoryRefreshTime("2026-05-01T08:30:00.000Z", nowMs);
+    expect(formatted).not.toContain("T");
+    expect(formatted.length).toBeGreaterThan(0);
   });
 });

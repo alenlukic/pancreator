@@ -88,6 +88,21 @@ describe("design companion prompts", () => {
     });
     expect(prompt).toContain("`design-reviewer`");
     expect(prompt).toContain("lib/personas/design-reviewer.md");
+    expect(prompt).toContain("holistic craft bar");
+    expect(prompt).toContain("mergedTestStageVerdict");
+  });
+});
+
+describe("renderDesignPlanPrompt", () => {
+  it("requires taste profile and Mobbin-fidelity orientation panels", () => {
+    const prompt = renderDesignPlanPrompt({
+      featureId: "demo-feature",
+      taskId: "99999_demo",
+      runDir: ".pan/work/172999_01-01-26/99999_demo",
+      specPath: "lib/memory/features/demo-feature/spec.md",
+    });
+    expect(prompt).toContain("design-craft.md");
+    expect(prompt).toContain("Mobbin-fidelity");
   });
 });
 

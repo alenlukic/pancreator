@@ -1,6 +1,6 @@
 ---
 name: qa-tester
-description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests), visual QA via Browser automation when the touch-set includes UI surfaces, manual verification against the touch-set, and emit `/.pan/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
+description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests), visual QA via the Chrome DevTools MCP server when the touch-set includes UI surfaces, manual verification against the touch-set, and emit `/.pan/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
 model: auto
 permissionMode: default
 tools:
@@ -33,7 +33,7 @@ disallowedTools:
   - "Bash(git commit:*)"
 mcpServers:
   - pancreator-memory
-  - cursor-ide-browser
+  - chrome-devtools
 maxTurns: 40
 skills: []
 isolation: worktree
@@ -119,7 +119,7 @@ The file MUST contain the five sections below in this order.
 3. **Manual verification.** A bulleted list naming what was exercised and what
    was observed. Each bullet MUST name the artifact or command exercised and the
    result observed. For destructive or exploratory checks (browser flows, partial
-   installs, one-off scripts), you SHOULD use `.sandbox/<task-id>/` prepared by
+   installs, one-off scripts), you SHOULD use `.pan/sandboxes/<task-id>/` prepared by
    `pnpm -w exec pan sandbox prepare <task-id>` instead of mutating the main
    worktree.
 4. **Fixes applied.** A bulleted list of fixes you applied in-scope, or the
@@ -199,33 +199,37 @@ every exercise and its observed result in the Manual verification section.
 ## Visual QA (browser)
 
 When design steps are enabled for the run (`state.json` `options.designSteps: true`),
-DOM and visual design QA is owned by `design-reviewer` via `design-qa-prompt.md`.
-In that mode you MUST NOT duplicate Browser MCP inspections; record functional
-verification only in `test-report.md`.
+DOM and visual design QA is owned by `design-reviewer` via `design-qa-prompt.md`
+using the `chrome-devtools` MCP server. In that mode you MUST NOT duplicate
+Chrome DevTools MCP inspections; record functional verification only in
+`test-report.md`.
 
 When design steps are off and the touch-set declares a `client/` web application
-or other operator-facing UI surface, you MUST perform visual QA via Browser
-automation before setting `qa_passes: true`.
+or other operator-facing UI surface, you MUST perform visual QA via the
+`chrome-devtools` MCP server before setting `qa_passes: true`.
 
-1. **Start or attach to the dev server.** Run the documented startup command
-   (for example `pnpm --filter client dev`) and confirm the local URL is reachable.
-2. **Navigate with Browser MCP.** Use the `cursor-ide-browser` MCP server:
-   `browser_navigate` to the dashboard URL, then `browser_snapshot` to inspect
-   the DOM. Use `browser_click`, `browser_type`, and related tools to exercise
-   interactive affordances.
-3. **Verify functionality in the DOM.** You MUST confirm, via snapshot evidence,
+1. **Start the dev server.** Run the documented startup command (for example
+   `pnpm --filter client dev`) and confirm the local URL is reachable.
+2. **Open a dedicated browser instance.** Launch a fresh page with `new_page`. You
+   MUST NOT attach to an operator's personal browser. You MUST close every page
+   you open with `close_page` when verification finishes, including on failure.
+3. **Navigate and snapshot.** Use `navigate_page`, `take_snapshot`, and
+   interaction tools (`click`, `hover`, `fill`, `type_text`, `press_key`) to
+   exercise interactive affordances declared in the touch-set or handoff.
+4. **Verify functionality in the DOM.** You MUST confirm, via snapshot evidence,
    that navigation renders the declared repo domains, directory drill-down and
    file open behave without error toasts, the inline modal displays and saves
    file content, and the activity feed lists events in reverse-chronological
    order.
-4. **Verify visual design.** When the spec or handoff names a palette, you MUST
+5. **Verify visual design.** When the spec or handoff names a palette, you MUST
    confirm the primary surface, text/chrome, and accent colors match the named
    tokens and that layout hierarchy is legible (header, primary nav, content
-   pane, secondary panels).
-5. **Record outcomes.** Every browser step, DOM observation, and pass/fail
-   finding MUST appear in the Manual verification section. Any functional or
-   visual defect MUST set `qa_passes: false` and generate a Re-entry must-fix
-   entry targeting `implement`.
+   pane, secondary panels). You MAY use `take_screenshot` when snapshot evidence
+   is insufficient for visual confirmation.
+6. **Record outcomes.** Every Chrome DevTools MCP step, DOM observation, and
+   pass/fail finding MUST appear in the Manual verification section. Any
+   functional or visual defect MUST set `qa_passes: false` and generate a
+   Re-entry must-fix entry targeting `implement`.
 
 ## Straightforward fixes
 

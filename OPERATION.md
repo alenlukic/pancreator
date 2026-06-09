@@ -306,30 +306,30 @@ docs, commit messages, agent transcripts) **outside** feature-delivery gates:
 
    Optional flags:
 
-   - `--workspace .sandbox/<slug>` — output directory (default: `.sandbox/context-review`)
+   - `--workspace .pan/sandboxes/<slug>` — output directory (default: `.pan/sandboxes/context-review`)
    - `--scope-path <repo-path>` — repeat for diff scope
    - `--context-path <repo-path>` — repeat for plan/spec/ADR docs to read
    - `--run-dir .pan/work/<day>/<slug>` — optionally pull touch-set and run artifacts when that directory exists
 
-2. Delegate `/context-reviewer` with `.sandbox/<slug>/context-review-prompt.md`
+2. Delegate `/context-reviewer` with `.pan/sandboxes/<slug>/context-review-prompt.md`
    (or operator-authored scope in chat).
-3. Read `.sandbox/<slug>/context-review.md` (advisory only).
+3. Read `.pan/sandboxes/<slug>/context-review.md` (advisory only).
 
 The SDK and `pan advance` never auto-invoke context review. In-band review and
 QA remain the `reviewer` and `qa-tester` pipeline stages.
 
-### Operator sandbox (`.sandbox/`)
+### Operator sandboxes (`.pan/sandboxes/`)
 
-Top-level `.sandbox/` is gitignored scratch space for manual QA, exploratory
-testing, and out-of-band context review. It is distinct from `.pan/sandboxes/`
-(port-registry control plane) and `lib/inbox/notes/` (human-only; agents must
-not read).
+`.pan/sandboxes/` is gitignored scratch space under the local control plane for
+manual QA, exploratory testing, out-of-band context review, and env-isolation
+state (for example `port-registry.json`). It is distinct from `lib/inbox/notes/`
+(human-only; agents must not read).
 
 Recommended layouts:
 
-- `.sandbox/context-review/` — default out-of-band review workspace
-- `.sandbox/<slug>/` — ad-hoc QA or review passes
-- `.sandbox/<task-id>/` — optional copy of an in-flight run touch-set
+- `.pan/sandboxes/context-review/` — default out-of-band review workspace
+- `.pan/sandboxes/<slug>/` — ad-hoc QA or review passes
+- `.pan/sandboxes/<task-id>/` — optional copy of an in-flight run touch-set
 
 Prepare a sandbox copy from an in-flight run touch-set (optional convenience):
 
@@ -337,7 +337,7 @@ Prepare a sandbox copy from an in-flight run touch-set (optional convenience):
 pnpm -w exec pan sandbox prepare <task-id>
 ```
 
-This writes `.sandbox/<task-id>/manifest.json` listing copied paths. Use the
+This writes `.pan/sandboxes/<task-id>/manifest.json` listing copied paths. Use the
 sandbox tree for destructive checks, browser flows, or one-off scripts instead
 of mutating the main worktree.
 

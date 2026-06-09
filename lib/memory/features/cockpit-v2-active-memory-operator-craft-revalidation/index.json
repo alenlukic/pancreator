@@ -1,0 +1,736 @@
+{
+  "feature_id": "cockpit-v2-active-memory-operator-craft-revalidation",
+  "title": "Cockpit v2 active memory operator craft revalidation",
+  "task_id": "77283_0231_cockpit-v2-active-memory-operator-craft-revalidation",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-09T02:44:44.002Z",
+  "program": "cockpit-v2",
+  "design_steps": true,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": "lib/inbox/in/172966_06-09-26/81282_0125_cockpit-v2-active-memory-operator-craft-revalidation.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172966_06-09-26/81282_0125_cockpit-v2-active-memory-operator-craft-revalidation.md",
+      "range": [
+        1,
+        156
+      ],
+      "contentHash": "8aba3e2"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Supervisor ship ratification at 2026-06-09T02:45:00Z with human_ratified_diff true; staged diff limited to six touch-set client paths delivering design-craft gates 1, 2, 3, 5, 9, and 11 while restoring F-05 expand toggle and F-10 relative timestamp."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-09T02:44:44.002Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-09T02:44:44.002Z",
+    "artifacts_indexed": 22,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 6,
+    "nit_count": 2,
+    "spec_contracts_executed": 3,
+    "spec_contracts_note": "No contracts.index.json sidecar; three embedded llm-judge UX contract blocks in ux-spec.md evaluated via design-qa and RTL evidence.",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+      "range": [
+        1,
+        48
+      ],
+      "contentHash": "7944b64"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+    "verification_gates": {
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_focused_tests": "pass (49/49)",
+      "client_build": "pass (excluded-from-gate)",
+      "node_test_suite": "excluded-from-gate (active run awaiting close-artifacts)",
+      "pnpm_test": "excluded-from-gate (active run awaiting close-artifacts)",
+      "check_phase_0a": "pass (excluded-from-gate)",
+      "context_budget_report": "pass (excluded-from-gate)",
+      "run_compliance": "pass (ship-stage audit green after hygiene remediation)"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+      "range": [
+        1,
+        44
+      ],
+      "contentHash": "6578a5c"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-result.json",
+    "audit_id": "77283_0231_cockpit-v2-active-memory-operator-craft-revalidation-20260609024000",
+    "baseline_audit_id": "82780_0100_cockpit-v2-active-memory-craft-enforcement-20260609013000",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-result.json",
+      "range": [
+        1,
+        371
+      ],
+      "contentHash": "90228d9"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+      "range": [
+        1,
+        339
+      ],
+      "contentHash": "b32ca9d"
+    }
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/ship-ratification.json",
+    "ratified_paths": [
+      "client/src/app/api/active-memory/route.test.ts",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx",
+      "client/src/components/cockpit/pipeline/ActiveMemoryHeader.tsx",
+      "client/src/services/active-memory.ts",
+      "client/src/services/run-state-shared.ts"
+    ],
+    "operator_commit_notes": [
+      "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md — include at human commit",
+      "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/index.json — refreshed by librarian at index stage",
+      "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/spec.md and ux-spec.md — untracked feature folder; include at human commit"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/ship-ratification.json",
+      "range": [
+        1,
+        55
+      ],
+      "contentHash": "3740e9c"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "copy-path-vitest-gap",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "CopyPathButton clipboard activation lacks automated Vitest assertion.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "range": [
+          23,
+          23
+        ],
+        "contentHash": "c70e98e"
+      }
+    },
+    {
+      "id": "parse-blockers-fallback-untested",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "parseBlockerChips compact fallback for non-list blocker bodies is not exercised by route tests.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "range": [
+          25,
+          25
+        ],
+        "contentHash": "a3be945"
+      }
+    },
+    {
+      "id": "duplicate-chip-react-keys",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "BlockersChips uses key={chip}; identical blocker labels would collide.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "range": [
+          21,
+          21
+        ],
+        "contentHash": "f97a2f5"
+      }
+    },
+    {
+      "id": "duplicated-inbox-parsing",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "active-memory.ts duplicates deriveSlugFromFilename and extractTitle from inbox.ts; shared extraction would reduce title or slug drift.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "range": [
+          17,
+          17
+        ],
+        "contentHash": "7c518dd"
+      }
+    },
+    {
+      "id": "viewport-containment-probes",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "Vitest containment probe runs at jsdom default dimensions without explicit viewport resize at 1280×900 and 375×812.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "range": [
+          19,
+          19
+        ],
+        "contentHash": "64c4f8c"
+      }
+    },
+    {
+      "id": "touch-set-symbol-drift",
+      "owner": "tech-lead",
+      "status": "consider",
+      "reason": "touch-set.json lists formatLastEventTime but implementation exports formatActiveMemoryRefreshTime.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "range": [
+          15,
+          15
+        ],
+        "contentHash": "5ae93f2"
+      }
+    },
+    {
+      "id": "spec-blockersSummary-wording",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "Spec regression prose names blockersSummary while implementation gates expand on blockerChips.length > 3.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "range": [
+          31,
+          31
+        ],
+        "contentHash": "287d6b7"
+      }
+    },
+    {
+      "id": "expand-motion-token",
+      "owner": "coder",
+      "status": "nit",
+      "reason": "Ux-spec motion requires ≤200ms chip expand; CSS only disables transition under prefers-reduced-motion without default duration.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "range": [
+          29,
+          29
+        ],
+        "contentHash": "85b7049"
+      }
+    },
+    {
+      "id": "pipeline-sidebar-mobile-width",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "Page-level horizontal scroll at 375×812 inherits from Pipeline sidebar column width outside touch-set.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/design-qa-report.md",
+        "range": [
+          41,
+          41
+        ],
+        "contentHash": "cadcf6a"
+      }
+    },
+    {
+      "id": "adr-draft-promotion",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft records server-side snapshot enrichment with chip-summarized blockers and solid elevated card presentation; copy to lib/memory/adr/ before downstream features bind.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/adr-draft.md",
+        "range": [
+          60,
+          69
+        ],
+        "contentHash": "9bb2ccf"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Feature folder artifacts may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/ship-ratification.json",
+        "range": [
+          27,
+          45
+        ],
+        "contentHash": "9b5f200"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks status intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/spec.md",
+        "range": [
+          1,
+          22
+        ],
+        "contentHash": "f9581ff"
+      }
+    },
+    {
+      "id": "branch-drift-outside-touch-set",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Unstaged branch drift outside touch-set (personas, handbook, pipeline YAML, runner-cursor, design-steps, pancreator.yaml) excluded from ship ratification; operator may commit or discard separately.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/ship-ratification.json",
+        "range": [
+          27,
+          45
+        ],
+        "contentHash": "9b5f200"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/implementation-report.md",
+        "recorded_content_hash": "5c60784",
+        "live_content_hash": "7bde8e5",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "recorded_content_hash": "4a5304a",
+        "live_content_hash": "e383c68",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+        "recorded_content_hash": "75ad68e",
+        "live_content_hash": "e46d856",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/plan.md",
+        "recorded_content_hash": "bf60229",
+        "live_content_hash": "a9349c9",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/adr-draft.md",
+        "recorded_content_hash": "ca5c478",
+        "live_content_hash": "a6021b7",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": "client/src/services/run-state-shared.ts",
+        "recorded_content_hash": "dcc536d",
+        "live_content_hash": "78a6cdb",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": "client/src/services/active-memory.ts",
+        "recorded_content_hash": "83cad8a",
+        "live_content_hash": "471606f",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": "client/src/components/cockpit/pipeline/ActiveMemoryHeader.tsx",
+        "recorded_content_hash": "c4e105f",
+        "live_content_hash": "52f45a3",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": "client/src/app/api/active-memory/route.test.ts",
+        "recorded_content_hash": "d81e897",
+        "live_content_hash": "ac58df3",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      },
+      {
+        "citing_path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "cited_path": "client/src/app/page.test.tsx",
+        "recorded_content_hash": "0cfc85a",
+        "live_content_hash": "9268d22",
+        "verifier_status": "changed",
+        "note": "delivery-report citations predate final artifact or touch-set edits."
+      }
+    ]
+  },
+  "touch_set_snapshot": {
+    "featureId": "cockpit-v2-active-memory-operator-craft-revalidation",
+    "taskId": "77283_0231_cockpit-v2-active-memory-operator-craft-revalidation",
+    "stage": "implement",
+    "paths": [
+      "client/src/components/cockpit/pipeline/ActiveMemoryHeader.tsx",
+      "client/src/services/active-memory.ts",
+      "client/src/services/run-state-shared.ts",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx",
+      "client/src/app/api/active-memory/route.test.ts"
+    ],
+    "symbols": [],
+    "tests": [],
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
+      "range": [
+        1,
+        44
+      ],
+      "contentHash": "61bc524"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/spec.md",
+          "range": [
+            1,
+            205
+          ],
+          "contentHash": "009966d"
+        }
+      },
+      "ux_spec": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/ux-spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/ux-spec.md",
+          "range": [
+            1,
+            265
+          ],
+          "contentHash": "3605ba8"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+          "range": [
+            1,
+            339
+          ],
+          "contentHash": "b32ca9d"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/"
+      },
+      "plan": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/plan.md",
+          "range": [
+            1,
+            98
+          ],
+          "contentHash": "acfafb4"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/adr-draft.md",
+          "range": [
+            1,
+            69
+          ],
+          "contentHash": "8983862"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
+          "range": [
+            1,
+            44
+          ],
+          "contentHash": "61bc524"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/implementation-report.md",
+          "range": [
+            1,
+            74
+          ],
+          "contentHash": "0a0f7ed"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+          "range": [
+            1,
+            48
+          ],
+          "contentHash": "7944b64"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+          "range": [
+            1,
+            44
+          ],
+          "contentHash": "6578a5c"
+        }
+      },
+      "design_qa_report": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/design-qa-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/design-qa-report.md",
+          "range": [
+            1,
+            56
+          ],
+          "contentHash": "8844db7"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-result.json",
+          "range": [
+            1,
+            371
+          ],
+          "contentHash": "90228d9"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-audit.md",
+          "range": [
+            1,
+            138
+          ],
+          "contentHash": "5e3cbc7"
+        }
+      },
+      "compliance_remediation": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-remediation.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-remediation.md",
+          "range": [
+            1,
+            30
+          ],
+          "contentHash": "1277744"
+        }
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/ship-ratification.json",
+          "range": [
+            1,
+            55
+          ],
+          "contentHash": "3740e9c"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/handoff.md",
+          "range": [
+            1,
+            55
+          ],
+          "contentHash": "6e791d9"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": "lib/inbox/in/172966_06-09-26/81282_0125_cockpit-v2-active-memory-operator-craft-revalidation.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172966_06-09-26/81282_0125_cockpit-v2-active-memory-operator-craft-revalidation.md",
+          "range": [
+            1,
+            156
+          ],
+          "contentHash": "8aba3e2"
+        }
+      },
+      "design_audit": {
+        "path": ".pan/work/172966_06-09-26/83950_0830_cockpit-design-audit-validation/cockpit-design-audit.md",
+        "note": "Source audit findings F-01, F-02, F-05, F-09, F-10, and F-11 cited by spec and ux-spec."
+      },
+      "prior_art_readability": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+        "note": "Shipped operator-readability baseline; F-05 and F-10 regressions restored in this Feature."
+      },
+      "prior_art_craft_enforcement": {
+        "path": "lib/memory/features/cockpit-v2-active-memory-craft-enforcement/delivery-report.md",
+        "note": "Sibling craft-enforcement ship on same branch; revalidation closes audit validation scope under tightened gates."
+      },
+      "ux_spec_dependency": {
+        "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Ratified Pipeline wireframe and shared affordances cited by spec depends_on."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": [
+      {
+        "id": "cockpit-v2-active-memory-operator-craft-revalidation.ux.no-raw-path-default-view",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/ux-spec.md",
+        "note": "Evaluated via page.test.tsx RTL label hierarchy evidence and design-qa-report.md DOM probe."
+      },
+      {
+        "id": "cockpit-v2-active-memory-operator-craft-revalidation.ux.solid-chrome-and-containment",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/ux-spec.md",
+        "note": "Evaluated via globals.css solid border probe and page.test.tsx containment evidence."
+      },
+      {
+        "id": "cockpit-v2-active-memory-operator-craft-revalidation.ux.blockers-chips-cta-timestamp",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/ux-spec.md",
+        "note": "Evaluated via page.test.tsx chip, CTA, expand toggle, and timestamp tests plus design-qa-report.md browser inspection."
+      }
+    ]
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "coder_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": "lib/inbox/in/172966_06-09-26/81282_0125_cockpit-v2-active-memory-operator-craft-revalidation.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/."
+  }
+}

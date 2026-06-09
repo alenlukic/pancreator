@@ -514,8 +514,11 @@ export async function parseAndRun(
 
   contextReview
     .command("scaffold")
-    .description("Write context-review-prompt.md under .sandbox/ for operator delegation to context-reviewer")
-    .option("--workspace <path>", "Repo-relative workspace under .sandbox/ (default: .sandbox/context-review)")
+    .description("Write context-review-prompt.md under .pan/sandboxes/ for operator delegation to context-reviewer")
+    .option(
+      "--workspace <path>",
+      "Repo-relative workspace under .pan/sandboxes/ (default: .pan/sandboxes/context-review)",
+    )
     .option("--run-dir <path>", "Optional .pan/work/<day>/<slug> to pull artifact and touch-set paths from")
     .option("--scope-path <path>", "Repeatable explicit diff scope path", collectRepeatableOption, [])
     .option(
@@ -691,11 +694,11 @@ export async function parseAndRun(
       );
     });
 
-  const sandbox = program.command(".sandbox").description("Operator scratch QA workspaces");
+  const sandbox = program.command("sandbox").description("Operator scratch QA workspaces under .pan/sandboxes/");
 
   sandbox
     .command("prepare")
-    .description("Copy touch-set paths into .sandbox/<task-id>/ for isolated manual QA")
+    .description("Copy touch-set paths into .pan/sandboxes/<task-id>/ for isolated manual QA")
     .argument("<taskId>", "Task id under .pan/work/")
     .option("--format <format>", "Output format: json (default) or text")
     .action(async (taskId: string, opts: { format?: string }) => {

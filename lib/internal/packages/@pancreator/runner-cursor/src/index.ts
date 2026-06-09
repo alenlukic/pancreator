@@ -28,10 +28,13 @@ export type {
 export { RUNNER_INVOCATION_SCHEMA_VERSION } from "./types.js";
 export type { CursorSdkTransport, CursorSdkInvokeParams, CursorSdkInvokeResult } from "./sdk-transport.js";
 export {
+  buildSdkAgentCreateOptions,
   buildSdkPrompt,
   createDefaultCursorSdkTransport,
   createStreamedCursorSdkTransport,
   findMissingArtifactPaths,
+  PERSONA_MCP_SETTING_SOURCES,
+  resolveSdkLocalOptions,
 } from "./sdk-transport.js";
 export type { CursorSdkUsageCapture } from "./sdk-transport.js";
 export {

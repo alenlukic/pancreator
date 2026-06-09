@@ -1,109 +1,705 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-08T17:26:11.289Z",
+  "generated_at": "2026-06-09T02:43:27.671Z",
   "entries": [
     {
-      "audit_id": "27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests-20260608165723",
-      "task_id": "27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests",
-      "feature_id": "cockpit-v2-maintenance-toolkit-compliance-tests",
-      "recorded_at": "2026-06-08T16:57:23.000Z",
+      "audit_id": "77283_0231_cockpit-v2-active-memory-operator-craft-revalidation-20260609024000",
+      "task_id": "77283_0231_cockpit-v2-active-memory-operator-craft-revalidation",
+      "feature_id": "cockpit-v2-active-memory-operator-craft-revalidation",
+      "recorded_at": "2026-06-09T02:40:00.000Z",
       "stage_status": "passed",
-      "baseline_audit_id": "31248_1519_cockpit-v2-local-scheduler-tick-and-run-history-20260608162153",
+      "baseline_audit_id": "82780_0100_cockpit-v2-active-memory-craft-enforcement-20260609013000",
       "artifact_paths": {
-        "compliance_result": ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/compliance-result.json",
-        "run_dir": ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests"
+        "compliance_result": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/compliance-result.json",
+        "run_dir": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation"
       },
       "scope_snapshot": [
         {
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+          "exists": true,
+          "sha256": "7944b64",
+          "size_bytes": 6018
+        },
+        {
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+          "exists": true,
+          "sha256": "6578a5c",
+          "size_bytes": 4884
+        },
+        {
+          "path": ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
+          "exists": true,
+          "sha256": "61bc524",
+          "size_bytes": 1384
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-craft-enforcement/delivery-report.md",
+          "exists": true,
+          "sha256": "c886246",
+          "size_bytes": 11524
+        },
+        {
           "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
           "exists": true,
-          "sha256": "79f8a7f",
-          "size_bytes": 13417
+          "sha256": "97abded",
+          "size_bytes": 13527
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+          "exists": true,
+          "sha256": "b32ca9d",
+          "size_bytes": 11381
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+          "exists": true,
+          "sha256": "b3d57fb",
+          "size_bytes": 10888
         },
         {
           "path": "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
           "exists": true,
-          "sha256": "a5fc16e",
-          "size_bytes": 12742
+          "sha256": "41d6fc3",
+          "size_bytes": 12877
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "exists": true,
+          "sha256": "23dcb91",
+          "size_bytes": 12718
         },
         {
           "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
           "exists": true,
-          "sha256": "6f98588",
-          "size_bytes": 11440
+          "sha256": "1f50944",
+          "size_bytes": 11550
         },
         {
           "path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
           "exists": true,
-          "sha256": "85d7255",
-          "size_bytes": 13126
+          "sha256": "836e9d2",
+          "size_bytes": 13266
         },
         {
           "path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
           "exists": true,
-          "sha256": "c6c1043",
-          "size_bytes": 11089
+          "sha256": "0db9ec9",
+          "size_bytes": 11184
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md",
+          "exists": true,
+          "sha256": "33151d4",
+          "size_bytes": 9715
         },
         {
           "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
           "exists": true,
-          "sha256": "733bd18",
-          "size_bytes": 10757
+          "sha256": "a68b889",
+          "size_bytes": 10847
         },
         {
           "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
           "exists": true,
-          "sha256": "c5de8cd",
-          "size_bytes": 9600
+          "sha256": "a72057b",
+          "size_bytes": 9695
         },
         {
           "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
           "exists": true,
-          "sha256": "2f17f6d",
-          "size_bytes": 19012
+          "sha256": "0a37e18",
+          "size_bytes": 19252
         },
         {
           "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
           "exists": true,
-          "sha256": "8502a88",
+          "sha256": "8f1cff5",
           "size_bytes": 9677
         },
         {
           "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
           "exists": true,
-          "sha256": "4ef8200",
-          "size_bytes": 13594
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
-          "exists": true,
-          "sha256": "d5c6f63",
-          "size_bytes": 5345
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
-          "exists": true,
-          "sha256": "7cfee52",
-          "size_bytes": 5528
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json",
-          "exists": true,
-          "sha256": "45aad55",
-          "size_bytes": 6615
+          "sha256": "b77951f",
+          "size_bytes": 13604
         }
       ],
       "delta_summary": {
         "added": 4,
         "removed": 3,
-        "modified": 9,
+        "modified": 14,
         "changed_paths": [
-          ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
-          ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
-          ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json",
+          ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/review.md",
+          ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/test-report.md",
+          ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/touch-set.json",
+          ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/review.md",
+          ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/test-report.md",
+          ".pan/work/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/touch-set.json",
+          "lib/memory/features/cockpit-v2-active-memory-craft-enforcement/delivery-report.md",
+          "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md",
+          "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+          "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
+          "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md",
+          "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
+    {
+      "audit_id": "82780_0100_cockpit-v2-active-memory-craft-enforcement-20260609013000",
+      "task_id": "82780_0100_cockpit-v2-active-memory-craft-enforcement",
+      "feature_id": "cockpit-v2-active-memory-craft-enforcement",
+      "recorded_at": "2026-06-09T01:30:00.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "919_2344_cockpit-v2-active-memory-operator-readability-20260608234000",
+      "artifact_paths": {
+        "compliance_result": ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/compliance-result.json",
+        "run_dir": ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement"
+      },
+      "scope_snapshot": [
+        {
+          "path": ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/review.md",
+          "exists": true,
+          "sha256": "09833ad",
+          "size_bytes": 4183
+        },
+        {
+          "path": ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/test-report.md",
+          "exists": true,
+          "sha256": "56eb4b7",
+          "size_bytes": 4683
+        },
+        {
+          "path": ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/touch-set.json",
+          "exists": true,
+          "sha256": "39a7184",
+          "size_bytes": 3428
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-craft-enforcement/delivery-report.md",
+          "exists": true,
+          "sha256": "c886246",
+          "size_bytes": 11524
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "exists": true,
+          "sha256": "97abded",
+          "size_bytes": 13527
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+          "exists": true,
+          "sha256": "b3d57fb",
+          "size_bytes": 10888
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "exists": true,
+          "sha256": "41d6fc3",
+          "size_bytes": 12877
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "exists": true,
+          "sha256": "23dcb91",
+          "size_bytes": 12718
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "exists": true,
+          "sha256": "1f50944",
+          "size_bytes": 11550
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
+          "exists": true,
+          "sha256": "836e9d2",
+          "size_bytes": 13266
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "exists": true,
+          "sha256": "0db9ec9",
+          "size_bytes": 11184
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md",
+          "exists": true,
+          "sha256": "33151d4",
+          "size_bytes": 9715
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "exists": true,
+          "sha256": "a68b889",
+          "size_bytes": 10847
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
+          "exists": true,
+          "sha256": "a72057b",
+          "size_bytes": 9695
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
+          "exists": true,
+          "sha256": "0a37e18",
+          "size_bytes": 19252
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
+          "exists": true,
+          "sha256": "8f1cff5",
+          "size_bytes": 9677
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
+          "exists": true,
+          "sha256": "b77951f",
+          "size_bytes": 13604
+        }
+      ],
+      "delta_summary": {
+        "added": 4,
+        "removed": 3,
+        "modified": 13,
+        "changed_paths": [
+          ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+          ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/test-report.md",
+          ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/touch-set.json",
+          ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/review.md",
+          ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/test-report.md",
+          ".pan/archive/work/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/touch-set.json",
+          "lib/memory/features/cockpit-v2-active-memory-craft-enforcement/delivery-report.md",
+          "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+          "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
+          "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md",
+          "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
+    {
+      "audit_id": "919_2344_cockpit-v2-active-memory-operator-readability-20260608234000",
+      "task_id": "919_2344_cockpit-v2-active-memory-operator-readability",
+      "feature_id": "cockpit-v2-active-memory-operator-readability",
+      "recorded_at": "2026-06-08T23:40:00.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "4426_2246_cockpit-v2-module-tab-accessibility-20260608225342",
+      "artifact_paths": {
+        "compliance_result": ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/compliance-result.json",
+        "run_dir": ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability"
+      },
+      "scope_snapshot": [
+        {
+          "path": ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+          "exists": true,
+          "sha256": "a935b3e",
+          "size_bytes": 4800
+        },
+        {
+          "path": ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/test-report.md",
+          "exists": true,
+          "sha256": "b3592fb",
+          "size_bytes": 5387
+        },
+        {
+          "path": ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/touch-set.json",
+          "exists": true,
+          "sha256": "8f57cd7",
+          "size_bytes": 2982
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "exists": true,
+          "sha256": "97abded",
+          "size_bytes": 13527
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+          "exists": true,
+          "sha256": "b3d57fb",
+          "size_bytes": 10888
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "exists": true,
+          "sha256": "41d6fc3",
+          "size_bytes": 12877
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "exists": true,
+          "sha256": "23dcb91",
+          "size_bytes": 12718
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "exists": true,
+          "sha256": "1f50944",
+          "size_bytes": 11550
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
+          "exists": true,
+          "sha256": "836e9d2",
+          "size_bytes": 13266
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "exists": true,
+          "sha256": "0db9ec9",
+          "size_bytes": 11184
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md",
+          "exists": true,
+          "sha256": "33151d4",
+          "size_bytes": 9715
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "exists": true,
+          "sha256": "a68b889",
+          "size_bytes": 10847
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
+          "exists": true,
+          "sha256": "a72057b",
+          "size_bytes": 9695
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
+          "exists": true,
+          "sha256": "0a37e18",
+          "size_bytes": 19252
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
+          "exists": true,
+          "sha256": "8f1cff5",
+          "size_bytes": 9677
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
+          "exists": true,
+          "sha256": "b77951f",
+          "size_bytes": 13604
+        }
+      ],
+      "delta_summary": {
+        "added": 4,
+        "removed": 3,
+        "modified": 12,
+        "changed_paths": [
+          ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/review.md",
+          ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/test-report.md",
+          ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/touch-set.json",
+          ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/review.md",
+          ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/test-report.md",
+          ".pan/archive/work/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/touch-set.json",
+          "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md",
+          "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
+          "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md",
+          "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
+    {
+      "audit_id": "4426_2246_cockpit-v2-module-tab-accessibility-20260608225342",
+      "task_id": "4426_2246_cockpit-v2-module-tab-accessibility",
+      "feature_id": "cockpit-v2-module-tab-accessibility",
+      "recorded_at": "2026-06-08T22:53:42.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "8919_2131_cockpit-v2-craft-polish-pass-20260608214021",
+      "artifact_paths": {
+        "compliance_result": ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/compliance-result.json",
+        "run_dir": ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility"
+      },
+      "scope_snapshot": [
+        {
+          "path": ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/review.md",
+          "exists": true,
+          "sha256": "b2434c5",
+          "size_bytes": 4430
+        },
+        {
+          "path": ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/test-report.md",
+          "exists": true,
+          "sha256": "324b5ea",
+          "size_bytes": 4779
+        },
+        {
+          "path": ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/touch-set.json",
+          "exists": true,
+          "sha256": "6af8238",
+          "size_bytes": 1943
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "exists": true,
+          "sha256": "97abded",
+          "size_bytes": 13527
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "exists": true,
+          "sha256": "41d6fc3",
+          "size_bytes": 12877
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "exists": true,
+          "sha256": "23dcb91",
+          "size_bytes": 12718
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "exists": true,
+          "sha256": "1f50944",
+          "size_bytes": 11550
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
+          "exists": true,
+          "sha256": "836e9d2",
+          "size_bytes": 13266
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "exists": true,
+          "sha256": "0db9ec9",
+          "size_bytes": 11184
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md",
+          "exists": true,
+          "sha256": "33151d4",
+          "size_bytes": 9715
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "exists": true,
+          "sha256": "a68b889",
+          "size_bytes": 10847
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
+          "exists": true,
+          "sha256": "a72057b",
+          "size_bytes": 9695
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
+          "exists": true,
+          "sha256": "0a37e18",
+          "size_bytes": 19252
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
+          "exists": true,
+          "sha256": "8f1cff5",
+          "size_bytes": 9677
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
+          "exists": true,
+          "sha256": "b77951f",
+          "size_bytes": 13604
+        }
+      ],
+      "delta_summary": {
+        "added": 4,
+        "removed": 3,
+        "modified": 11,
+        "changed_paths": [
+          ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/review.md",
+          ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/test-report.md",
+          ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/touch-set.json",
+          ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/review.md",
+          ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/test-report.md",
+          ".pan/archive/work/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/touch-set.json",
           "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
           "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
+          "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md",
+          "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
+    {
+      "audit_id": "8919_2131_cockpit-v2-craft-polish-pass-20260608214021",
+      "task_id": "8919_2131_cockpit-v2-craft-polish-pass",
+      "feature_id": "cockpit-v2-craft-polish-pass",
+      "recorded_at": "2026-06-08T21:40:21.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests-20260608165723",
+      "artifact_paths": {
+        "compliance_result": ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/compliance-result.json",
+        "run_dir": ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass"
+      },
+      "scope_snapshot": [
+        {
+          "path": ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/review.md",
+          "exists": true,
+          "sha256": "7262a55",
+          "size_bytes": 4655
+        },
+        {
+          "path": ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/test-report.md",
+          "exists": true,
+          "sha256": "3044163",
+          "size_bytes": 5018
+        },
+        {
+          "path": ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/touch-set.json",
+          "exists": true,
+          "sha256": "ca9995b",
+          "size_bytes": 6467
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "exists": true,
+          "sha256": "97abded",
+          "size_bytes": 13527
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "exists": true,
+          "sha256": "41d6fc3",
+          "size_bytes": 12877
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
+          "exists": true,
+          "sha256": "23dcb91",
+          "size_bytes": 12718
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "exists": true,
+          "sha256": "1f50944",
+          "size_bytes": 11550
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
+          "exists": true,
+          "sha256": "836e9d2",
+          "size_bytes": 13266
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "exists": true,
+          "sha256": "0db9ec9",
+          "size_bytes": 11184
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "exists": true,
+          "sha256": "a68b889",
+          "size_bytes": 10847
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
+          "exists": true,
+          "sha256": "a72057b",
+          "size_bytes": 9695
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
+          "exists": true,
+          "sha256": "0a37e18",
+          "size_bytes": 19252
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
+          "exists": true,
+          "sha256": "8f1cff5",
+          "size_bytes": 9677
+        },
+        {
+          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
+          "exists": true,
+          "sha256": "b77951f",
+          "size_bytes": 13604
+        }
+      ],
+      "delta_summary": {
+        "added": 4,
+        "removed": 3,
+        "modified": 10,
+        "changed_paths": [
+          ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
+          ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
+          ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json",
+          ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/review.md",
+          ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/test-report.md",
+          ".pan/archive/work/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/touch-set.json",
+          "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
+          "lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md",
           "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
           "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
           "lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md",
@@ -111,439 +707,7 @@
           "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
           "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
           "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/review.md",
-          ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/test-report.md",
-          ".pan/archive/work/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/touch-set.json"
-        ]
-      },
-      "findings_summary": {
-        "total": 0,
-        "block": 0,
-        "major": 0,
-        "minor": 0,
-        "note": 0
-      }
-    },
-    {
-      "audit_id": "31248_1519_cockpit-v2-local-scheduler-tick-and-run-history-20260608162153",
-      "task_id": "31248_1519_cockpit-v2-local-scheduler-tick-and-run-history",
-      "feature_id": "cockpit-v2-local-scheduler-tick-and-run-history",
-      "recorded_at": "2026-06-08T16:21:53.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": "47315_1051_cockpit-v2-automation-registry-and-management-ui-20260608151126",
-      "artifact_paths": {
-        "compliance_result": ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/compliance-result.json",
-        "run_dir": ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history"
-      },
-      "scope_snapshot": [
-        {
-          "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "exists": true,
-          "sha256": "79f8a7f",
-          "size_bytes": 13417
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
-          "exists": true,
-          "sha256": "a5fc16e",
-          "size_bytes": 12742
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "exists": true,
-          "sha256": "6f98588",
-          "size_bytes": 11440
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
-          "exists": true,
-          "sha256": "85d7255",
-          "size_bytes": 13126
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "exists": true,
-          "sha256": "733bd18",
-          "size_bytes": 10757
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
-          "exists": true,
-          "sha256": "c5de8cd",
-          "size_bytes": 9600
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
-          "exists": true,
-          "sha256": "2f17f6d",
-          "size_bytes": 19012
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "exists": true,
-          "sha256": "8502a88",
-          "size_bytes": 9677
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          "exists": true,
-          "sha256": "4ef8200",
-          "size_bytes": 13594
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
-          "exists": true,
-          "sha256": "5d812a6",
-          "size_bytes": 5205
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
-          "exists": true,
-          "sha256": "75ac832",
-          "size_bytes": 5659
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json",
-          "exists": true,
-          "sha256": "a88473c",
-          "size_bytes": 7255
-        }
-      ],
-      "delta_summary": {
-        "added": 4,
-        "removed": 3,
-        "modified": 8,
-        "changed_paths": [
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/touch-set.json",
-          "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
-          "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "lib/memory/features/cockpit-v2-local-scheduler-tick-and-run-history/delivery-report.md",
-          "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/review.md",
-          ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/test-report.md",
-          ".pan/archive/work/172967_06-08-26/31248_1519_cockpit-v2-local-scheduler-tick-and-run-history/touch-set.json"
-        ]
-      },
-      "findings_summary": {
-        "total": 0,
-        "block": 0,
-        "major": 0,
-        "minor": 0,
-        "note": 0
-      }
-    },
-    {
-      "audit_id": "47315_1051_cockpit-v2-automation-registry-and-management-ui-20260608151126",
-      "task_id": "47315_1051_cockpit-v2-automation-registry-and-management-ui",
-      "feature_id": "cockpit-v2-automation-registry-and-management-ui",
-      "recorded_at": "2026-06-08T15:11:26.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": "47315_1051_cockpit-v2-automation-registry-and-management-ui-20260608114216",
-      "artifact_paths": {
-        "compliance_result": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/compliance-result.json",
-        "run_dir": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui"
-      },
-      "scope_snapshot": [
-        {
-          "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "exists": true,
-          "sha256": "79f8a7f",
-          "size_bytes": 13417
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
-          "exists": true,
-          "sha256": "a5fc16e",
-          "size_bytes": 12742
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "exists": true,
-          "sha256": "6f98588",
-          "size_bytes": 11440
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "exists": true,
-          "sha256": "733bd18",
-          "size_bytes": 10757
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
-          "exists": true,
-          "sha256": "c5de8cd",
-          "size_bytes": 9600
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
-          "exists": true,
-          "sha256": "2f17f6d",
-          "size_bytes": 19012
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "exists": true,
-          "sha256": "8502a88",
-          "size_bytes": 9677
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          "exists": true,
-          "sha256": "4ef8200",
-          "size_bytes": 13594
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
-          "exists": true,
-          "sha256": "52783a6",
-          "size_bytes": 5303
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
-          "exists": true,
-          "sha256": "c43e9b4",
-          "size_bytes": 5304
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/touch-set.json",
-          "exists": true,
-          "sha256": "d50cc26",
-          "size_bytes": 5476
-        }
-      ],
-      "delta_summary": {
-        "added": 0,
-        "removed": 0,
-        "modified": 11,
-        "changed_paths": [
-          "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
-          "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/touch-set.json"
-        ]
-      },
-      "findings_summary": {
-        "total": 0,
-        "block": 0,
-        "major": 0,
-        "minor": 0,
-        "note": 0
-      }
-    },
-    {
-      "audit_id": "47315_1051_cockpit-v2-automation-registry-and-management-ui-20260608114216",
-      "task_id": "47315_1051_cockpit-v2-automation-registry-and-management-ui",
-      "feature_id": "cockpit-v2-automation-registry-and-management-ui",
-      "recorded_at": "2026-06-08T11:42:16.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": "49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view-20260608103000",
-      "artifact_paths": {
-        "compliance_result": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/compliance-result.json",
-        "run_dir": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui"
-      },
-      "scope_snapshot": [
-        {
-          "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "exists": true,
-          "sha256": "79f8a7f",
-          "size_bytes": 13417
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
-          "exists": true,
-          "sha256": "8174ce9",
-          "size_bytes": 12516
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "exists": true,
-          "sha256": "6f98588",
-          "size_bytes": 11440
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "exists": true,
-          "sha256": "733bd18",
-          "size_bytes": 10757
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
-          "exists": true,
-          "sha256": "c5de8cd",
-          "size_bytes": 9600
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
-          "exists": true,
-          "sha256": "2f17f6d",
-          "size_bytes": 19012
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "exists": true,
-          "sha256": "8502a88",
-          "size_bytes": 9677
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          "exists": true,
-          "sha256": "4ef8200",
-          "size_bytes": 13594
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
-          "exists": true,
-          "sha256": "52783a6",
-          "size_bytes": 5303
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
-          "exists": true,
-          "sha256": "b0591a5",
-          "size_bytes": 5535
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/touch-set.json",
-          "exists": true,
-          "sha256": "d50cc26",
-          "size_bytes": 5476
-        }
-      ],
-      "delta_summary": {
-        "added": 4,
-        "removed": 3,
-        "modified": 7,
-        "changed_paths": [
-          ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
-          ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
-          ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json",
-          "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "lib/memory/features/cockpit-v2-automation-registry-and-management-ui/delivery-report.md",
-          "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/review.md",
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/test-report.md",
-          ".pan/archive/work/172967_06-08-26/47315_1051_cockpit-v2-automation-registry-and-management-ui/touch-set.json"
-        ]
-      },
-      "findings_summary": {
-        "total": 0,
-        "block": 0,
-        "major": 0,
-        "minor": 0,
-        "note": 0
-      }
-    },
-    {
-      "audit_id": "49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view-20260608103000",
-      "task_id": "49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view",
-      "feature_id": "cockpit-v2-active-memory-inbox-triage-multi-run-view",
-      "recorded_at": "2026-06-08T10:30:00.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": "51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer-20260608100740",
-      "artifact_paths": {
-        "compliance_result": ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/compliance-result.json",
-        "run_dir": ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view"
-      },
-      "scope_snapshot": [
-        {
-          "path": "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "exists": true,
-          "sha256": "79f8a7f",
-          "size_bytes": 13417
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "exists": true,
-          "sha256": "6f98588",
-          "size_bytes": 11440
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "exists": true,
-          "sha256": "733bd18",
-          "size_bytes": 10757
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
-          "exists": true,
-          "sha256": "c5de8cd",
-          "size_bytes": 9600
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
-          "exists": true,
-          "sha256": "2f17f6d",
-          "size_bytes": 19012
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "exists": true,
-          "sha256": "8502a88",
-          "size_bytes": 9677
-        },
-        {
-          "path": "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          "exists": true,
-          "sha256": "4ef8200",
-          "size_bytes": 13594
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
-          "exists": true,
-          "sha256": "ee4ff9b",
-          "size_bytes": 5499
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
-          "exists": true,
-          "sha256": "09445e1",
-          "size_bytes": 5058
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json",
-          "exists": true,
-          "sha256": "4b3e990",
-          "size_bytes": 2291
-        }
-      ],
-      "delta_summary": {
-        "added": 4,
-        "removed": 3,
-        "modified": 6,
-        "changed_paths": [
-          ".pan/archive/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/review.md",
-          ".pan/archive/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/test-report.md",
-          ".pan/archive/work/172967_06-08-26/51057_0949_cockpit-v2-live-run-refresh-and-stage-artifact-drawer/touch-set.json",
-          "lib/memory/features/cockpit-v2-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "lib/memory/features/cockpit-v2-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "lib/memory/features/cockpit-v2-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/delivery-report.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/index.json",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/spec.md",
-          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md",
-          ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/review.md",
-          ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/test-report.md",
-          ".pan/archive/work/172967_06-08-26/49726_1011_cockpit-v2-active-memory-inbox-triage-multi-run-view/touch-set.json"
+          "lib/memory/features/cockpit-v2-ux-spec-and-information-architecture/ux-spec.md"
         ]
       },
       "findings_summary": {

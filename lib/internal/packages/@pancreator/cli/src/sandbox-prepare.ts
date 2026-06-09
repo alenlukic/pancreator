@@ -6,14 +6,9 @@ import path from "node:path";
 import { extractTouchSetPaths } from "./context-review.js";
 import { loadFeatureDeliveryStateForTask } from "./feature-delivery-run.js";
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { sandboxDirRel, sandboxManifestRel } from "./sandbox-paths.js";
 
-export function sandboxDirRel(taskId: string): string {
-  return path.posix.join(".sandbox", taskId);
-}
-
-export function sandboxManifestRel(taskId: string): string {
-  return path.posix.join(sandboxDirRel(taskId), "manifest.json");
-}
+export { sandboxDirRel, sandboxManifestRel } from "./sandbox-paths.js";
 
 function assertSafeRepoRelative(rel: string): string {
   const norm = rel.replace(/\\/gu, "/").replace(/^\/+/u, "");

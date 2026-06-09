@@ -15,6 +15,44 @@ import {
 } from "./sdk-trace-collector.js";
 import type { RunnerPersonaInput, SdkTraceContext } from "./types.js";
 
+/** Cursor setting layers loaded when a persona declares MCP dependencies. */
+export const PERSONA_MCP_SETTING_SOURCES = ["user", "project", "plugins"] as const;
+
+export type PersonaMcpSettingSource = (typeof PERSONA_MCP_SETTING_SOURCES)[number];
+
+/**
+ * Maps persona `mcpServers` names to SDK local options. Personas without MCP
+ * dependencies keep inline-only settings (no ambient Cursor config). Personas
+ * that declare MCP servers load user, project, and plugin MCP registrations so
+ * SDK invocations match interactive Cursor sessions (for example `chrome-devtools`).
+ */
+export function resolveSdkLocalOptions(
+  persona: RunnerPersonaInput,
+  cwd: string,
+): { cwd: string; settingSources?: PersonaMcpSettingSource[] } {
+  if (persona.mcpServers.length === 0) {
+    return { cwd };
+  }
+  return { cwd, settingSources: [...PERSONA_MCP_SETTING_SOURCES] };
+}
+
+export function buildSdkAgentCreateOptions(params: {
+  apiKey: string;
+  sdkModelId: string;
+  persona: RunnerPersonaInput;
+  cwd: string;
+}): {
+  apiKey: string;
+  model: { id: string };
+  local: ReturnType<typeof resolveSdkLocalOptions>;
+} {
+  return {
+    apiKey: params.apiKey,
+    model: { id: params.sdkModelId },
+    local: resolveSdkLocalOptions(params.persona, params.cwd),
+  };
+}
+
 export interface CursorSdkInvokeParams {
   message: string;
   persona: RunnerPersonaInput;
@@ -61,6 +99,12 @@ export function buildSdkPrompt(params: CursorSdkInvokeParams): string {
     `Allowed tools: ${params.persona.tools.join(", ") || "(none)"}`,
     `Disallowed tools: ${params.persona.disallowedTools.join(", ") || "(none)"}`,
   ];
+  if (params.persona.mcpServers.length > 0) {
+    lines.push(`MCP servers: ${params.persona.mcpServers.join(", ")}`);
+    lines.push(
+      `MCP setting sources: ${PERSONA_MCP_SETTING_SOURCES.join(", ")} (loaded from the operator Cursor environment)`,
+    );
+  }
   if (params.requiredArtifactPaths !== undefined && params.requiredArtifactPaths.length > 0) {
     lines.push("Required output artifacts (all MUST exist on disk before finishing):");
     for (const artifact of params.requiredArtifactPaths) {
@@ -118,11 +162,15 @@ export function createDefaultCursorSdkTransport(): CursorSdkTransport {
     const effectiveModel = params.modelOverride ?? params.persona.model;
     const sdkModelId = resolveSdkModelId(effectiveModel);
     try {
-      const result = await Agent.prompt(prompt, {
-        apiKey,
-        model: { id: sdkModelId },
-        local: { cwd },
-      });
+      const result = await Agent.prompt(
+        prompt,
+        buildSdkAgentCreateOptions({
+          apiKey,
+          sdkModelId,
+          persona: params.persona,
+          cwd,
+        }),
+      );
       if (result.status === "error") {
         return {
           status: "error",
@@ -203,11 +251,14 @@ export function createStreamedCursorSdkTransport(): CursorSdkTransport {
     const wallStartMs = Date.now();
 
     try {
-      const agent = await Agent.create({
-        apiKey,
-        model: { id: sdkModelId },
-        local: { cwd, settingSources: ["project"] },
-      });
+      const agent = await Agent.create(
+        buildSdkAgentCreateOptions({
+          apiKey,
+          sdkModelId,
+          persona: params.persona,
+          cwd,
+        }),
+      );
 
       try {
         const run = await agent.send(prompt, {
