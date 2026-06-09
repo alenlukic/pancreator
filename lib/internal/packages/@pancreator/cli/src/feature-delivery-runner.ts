@@ -26,7 +26,6 @@ import {
   parseSpotFixJustificationFromRecord,
   validateSpotFixJustification,
 } from "./feature-delivery-gate-validation.js";
-import { enrichRetryLimitHaltArtifact } from "./feature-delivery-failure-preservation.js";
 import {
   type FeatureDeliverySdkProgressReporter,
   withFeatureDeliverySdkStageHeartbeat,
