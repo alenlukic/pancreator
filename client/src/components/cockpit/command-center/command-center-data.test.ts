@@ -314,7 +314,38 @@ describe("buildCommandCenterRows activity region", () => {
     const activity = cards.find((card) => card.region === "recent-activity");
     expect(activity?.rows[0]?.label).toContain("Implement stage started");
     expect(activity?.rows[0]?.label).not.toMatch(/cursor\.runner/u);
-    expect(activity?.rows[0]?.metaHint).toContain("Implement");
-    expect(activity?.rows[0]?.metaHint).toContain("Coder");
+    expect(activity?.rows[0]?.metaHint).toBe("Coder");
+    expect(activity?.rows[0]?.overflow.stageName).toBe("implement");
+  });
+
+  it("keeps pipeline stage slugs out of default row meta for operational cards", () => {
+    const gatedTask = makeTask();
+    const runningTask = makeTask({
+      taskId: "88888_1200_running",
+      featureId: "running-feature",
+      stages: baseStages.map((stage) =>
+        stage.name === "plan"
+          ? { ...stage, humanGate: "", status: "complete" as const }
+          : stage.name === "test"
+            ? { ...stage, status: "active" as const }
+            : stage,
+      ),
+    });
+
+    const cards = buildCommandCenterRows({
+      tasks: [gatedTask, runningTask],
+      complianceFindings: [],
+      automationRows: [],
+      activityEvents: [],
+      nowMs: Date.parse("2026-06-02T13:00:00.000Z"),
+    });
+
+    const running = cards.find((card) => card.region === "running-now");
+    expect(running?.rows[0]?.metaHint).toBeUndefined();
+    expect(running?.rows[0]?.overflow.stageName).toBe("test");
+
+    const needsYou = cards.find((card) => card.region === "needs-you");
+    expect(needsYou?.rows.every((row) => row.metaHint === undefined)).toBe(true);
+    expect(needsYou?.rows[0]?.overflow.stageName).toBe("plan");
   });
 });

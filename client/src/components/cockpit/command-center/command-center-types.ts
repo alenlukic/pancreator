@@ -20,6 +20,7 @@ export type CommandCenterRowOverflow = {
   runDir?: string;
   inboxSource?: string;
   runCommand?: string;
+  stageName?: string;
 };
 
 export type CommandCenterRowCta = {

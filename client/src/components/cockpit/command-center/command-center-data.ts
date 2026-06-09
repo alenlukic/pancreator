@@ -3,7 +3,6 @@ import {
   classifyHangingTask,
   compareBySeverity,
   featureDisplayLabel,
-  featureIdToDisplayLabel,
   hasRetryLimitFailure,
   humanGateSeverity,
   statusPillForActiveStage,
@@ -57,7 +56,6 @@ function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comman
       severity: toSeverityChip(severity),
       ageIso: timestamp ?? new Date(nowMs).toISOString(),
       ageLabel: formatLastEventTime(timestamp, nowMs),
-      metaHint: entry.stageName,
       primaryCta: {
         label: "Open mission control",
         href: missionControlHref(entry.taskId),
@@ -67,6 +65,7 @@ function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comman
         runDir: entry.runDir,
         inboxSource: entry.inboxSource,
         runCommand: task ? taskLevelNextCommand(task) : undefined,
+        stageName: entry.stageName,
       },
     });
   }
@@ -84,7 +83,6 @@ function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comman
       severity: "Critical",
       ageIso: timestamp ?? new Date(nowMs).toISOString(),
       ageLabel: formatLastEventTime(timestamp, nowMs),
-      metaHint: activeStage?.name,
       primaryCta: {
         label: "Open mission control",
         href: missionControlHref(task.taskId),
@@ -94,6 +92,7 @@ function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comman
         runDir: task.runDir,
         inboxSource: task.inboxSource,
         runCommand: taskLevelNextCommand(task),
+        stageName: activeStage?.name,
       },
     });
   }
@@ -121,7 +120,6 @@ function buildRunningNowRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comm
       severity: "Info",
       ageIso: timestamp ?? new Date(nowMs).toISOString(),
       ageLabel: formatLastEventTime(timestamp, nowMs),
-      metaHint: activeStage.name,
       primaryCta: {
         label: "Open mission control",
         href: missionControlHref(task.taskId),
@@ -131,6 +129,7 @@ function buildRunningNowRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comm
         runDir: task.runDir,
         inboxSource: task.inboxSource,
         runCommand: taskLevelNextCommand(task),
+        stageName: activeStage.name,
       },
     });
   }
@@ -247,29 +246,23 @@ function buildActivityRows(
     return Date.parse(right.timestamp) - Date.parse(left.timestamp);
   });
 
-  return sorted.map((event) => {
-    const metaParts = [
-      event.stageName !== undefined ? featureIdToDisplayLabel(event.stageName) : undefined,
-      event.actor,
-    ].filter((part): part is string => part !== undefined && part.length > 0);
-
-    return {
-      id: `activity:${event.id}`,
-      label: truncateLabel(`${event.label} · ${event.featureLabel}`),
-      status: toStatusPill(event.status),
-      severity: toSeverityChip(event.severity),
-      ageIso: event.timestamp,
-      ageLabel: formatLastEventTime(event.timestamp, nowMs),
-      metaHint: metaParts.join(" · "),
-      primaryCta: {
-        label: "Open activity log",
-        href: "/activity-log",
-      },
-      overflow: {
-        taskId: event.taskId,
-      },
-    };
-  });
+  return sorted.map((event) => ({
+    id: `activity:${event.id}`,
+    label: truncateLabel(`${event.label} · ${event.featureLabel}`),
+    status: toStatusPill(event.status),
+    severity: toSeverityChip(event.severity),
+    ageIso: event.timestamp,
+    ageLabel: formatLastEventTime(event.timestamp, nowMs),
+    metaHint: event.actor,
+    primaryCta: {
+      label: "Open activity log",
+      href: "/activity-log",
+    },
+    overflow: {
+      taskId: event.taskId,
+      stageName: event.stageName,
+    },
+  }));
 }
 
 
