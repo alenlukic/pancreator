@@ -72,6 +72,13 @@ describe("feature-delivery-gate-validation", () => {
     expect(validateImplementationReport(validImplementationReport)).toBeNull();
   });
 
+  it("accepts workspace-scoped automated check commands", () => {
+    const report = validImplementationReport.replaceAll("pnpm lint", "pnpm --filter client lint")
+      .replaceAll("pnpm typecheck", "pnpm --filter client typecheck")
+      .replaceAll("pnpm test", "pnpm --filter client test");
+    expect(validateImplementationReport(report)).toBeNull();
+  });
+
   it("requires repo-wide tests for review_passes advance", () => {
     expect(
       validateReviewMarkdownForAdvance("review_passes: true\nrepo_wide_tests_pass: true\n", "review_passes"),
