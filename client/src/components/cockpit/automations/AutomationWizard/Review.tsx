@@ -1,4 +1,4 @@
-import { humanScheduleLabel } from "@/services/automations-client";
+import { humanScheduleLabel, previewNextRunLabel } from "@/services/automations-client";
 
 export function AutomationWizardReview({
   name,
@@ -44,6 +44,12 @@ export function AutomationWizardReview({
         <div>
           <dt>Schedule</dt>
           <dd>{humanScheduleLabel(schedule)}</dd>
+        </div>
+        <div>
+          <dt>Preview next run</dt>
+          <dd data-testid="automation-wizard-preview-next-run">
+            {previewNextRunLabel(schedule)}
+          </dd>
         </div>
         <div>
           <dt>Persona</dt>

@@ -133,8 +133,10 @@ export function AutomationsModule() {
     return map;
   }, [latestRunsByAutomationId, runs, selectedAutomationId]);
 
-  const selectedAutomationName =
-    automations.find((automation) => automation.id === selectedAutomationId)?.name ?? null;
+  const selectedAutomation =
+    automations.find((automation) => automation.id === selectedAutomationId) ?? null;
+  const selectedAutomationName = selectedAutomation?.name ?? null;
+  const selectedAutomationEnabled = selectedAutomation?.enabled ?? false;
 
   async function handleToggleEnabled(
     automation: AutomationSummary,
@@ -196,6 +198,17 @@ export function AutomationsModule() {
     setWizard({ mode: "edit", record });
   }
 
+  async function handleRetryRun(automationId: string): Promise<void> {
+    const response = await fetch(`/api/automations/${encodeURIComponent(automationId)}/run`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const data = (await response.json()) as { errors?: string[] };
+      throw new Error(data.errors?.join(" ") ?? "Unable to retry automation run.");
+    }
+    await loadRunHistory(automationId);
+  }
+
   async function handleRunNow(automation: AutomationSummary): Promise<void> {
     setRunningAutomationIds((current) => new Set(current).add(automation.id));
     try {
@@ -254,6 +267,7 @@ export function AutomationsModule() {
         <AutomationRunHistory
           selectedAutomationId={selectedAutomationId}
           selectedAutomationName={selectedAutomationName}
+          selectedAutomationEnabled={selectedAutomationEnabled}
           runs={runs}
           loading={runsLoading}
           error={runsError}
@@ -262,10 +276,11 @@ export function AutomationsModule() {
               void loadRunHistory(selectedAutomationId);
             }
           }}
-          onRetry={() => {
-            if (selectedAutomationId) {
-              void loadRunHistory(selectedAutomationId);
+          onRetry={async () => {
+            if (!selectedAutomationId) {
+              return;
             }
+            await handleRetryRun(selectedAutomationId);
           }}
           newestRunRef={newestRunRef}
         />

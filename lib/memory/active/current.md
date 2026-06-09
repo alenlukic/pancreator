@@ -35,7 +35,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- (none)
+- `lib/inbox/in/172966_06-09-26/63489_0621_cockpit-v2-automations-shell-history.md`
 
 ## Most recent shipped Features
 
