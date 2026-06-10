@@ -113,7 +113,9 @@ export async function preserveFeatureDeliveryFailureContext(
       ? {
           pipelineStatus: `${input.state.currentStage}/${input.state.status}`,
           featureId: input.state.featureId,
-          retryCount: input.state.automation?.retryCount,
+          ...(input.state.automation !== undefined
+            ? { cumulativeRetryCount: input.state.automation.cumulativeRetryCount }
+            : {}),
         }
       : {}),
   };

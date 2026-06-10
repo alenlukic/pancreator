@@ -1,0 +1,481 @@
+{
+  "feature_id": "command-center-pipeline-command-center-and-human-gate-queue",
+  "title": "Command Center — Pipeline command center and human gate queue",
+  "task_id": "52646_0922_command-center-pipeline-command-center-and-human-gate-queue",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-08T10:30:00.000Z",
+  "program": "command-center",
+  "design_steps": true,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/54353_0854_command-center-pipeline-command-center.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172967_06-08-26/54353_0854_command-center-pipeline-command-center.md",
+      "range": [1, 69],
+      "contentHash": "428db94"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Supervisor ship ratification at 2026-06-08T10:00:00Z with human_ratified_diff true; staged diff limited to 21 touch-set client paths."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-08T10:30:00.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-08T10:30:00.000Z",
+    "artifacts_indexed": 24,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 4,
+    "nit_count": 2,
+    "spec_contracts_executed": 3,
+    "spec_contracts_note": "Three embedded llm-judge UX contract blocks in ux-spec dependency; contract run logs under .pan/work/contract-runs/.",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/review.md",
+      "range": [1, 71],
+      "contentHash": "17ed879"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/test-report.md",
+    "verification_gates": {
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_focused_tests": "pass (33/33)",
+      "client_build": "pass",
+      "node_test_suite": "excluded-from-gate (159/160; sibling pending_close_artifacts)",
+      "pnpm_test": "excluded-from-gate (84/85; sibling pending_close_artifacts)",
+      "check_phase_0a": "pass",
+      "context_budget_report": "pass",
+      "run_compliance": "pass"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/test-report.md",
+      "range": [1, 46],
+      "contentHash": "4cd3d45"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/compliance-result.json",
+    "audit_id": "52646_0922_command-center-pipeline-command-center-and-human-gate-queue-20260608094523",
+    "baseline_audit_id": "53639_0906_command-center-ux-spec-and-information-architecture-20260608091900",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/compliance-result.json",
+      "range": [1, 304],
+      "contentHash": "bc182db"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+      "range": [1, 326],
+      "contentHash": "a68b889"
+    },
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/54353_0854_command-center-pipeline-command-center.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+    "ratified_paths": [
+      "client/src/services/run-state-shared.ts",
+      "client/src/services/run-state.ts",
+      "client/src/services/config.ts",
+      "client/src/app/api/config/route.ts",
+      "client/src/app/api/config/route.test.ts",
+      "client/src/app/api/run-state/route.test.ts",
+      "client/src/components/DashboardPage.tsx",
+      "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+      "client/src/components/command-center/pipeline/PipelineModule.tsx",
+      "client/src/components/command-center/pipeline/NextActionPanel.tsx",
+      "client/src/components/command-center/pipeline/HumanGateBanner.tsx",
+      "client/src/components/command-center/pipeline/ConfigReadOnlyPanel.tsx",
+      "client/src/components/command-center/pipeline/StageMachineGrid.tsx",
+      "client/src/components/command-center/pipeline/RunEventTimeline.tsx",
+      "client/src/components/command-center/shared/CopyCommandButton.tsx",
+      "client/src/components/command-center/shared/AttentionBanner.tsx",
+      "client/src/components/command-center/shared/LoadingState.tsx",
+      "client/src/components/command-center/shared/EmptyState.tsx",
+      "client/src/components/command-center/shared/ErrorState.tsx",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx"
+    ],
+    "operator_commit_notes": [
+      "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md — include at human commit",
+      "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/index.json — refreshed by librarian at index stage"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+      "range": [1, 25],
+      "contentHash": "4a8f2d8"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "gate-artifact-links",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "HumanGateBanner artifact links use /api/file GET hrefs instead of Files-tab modal navigation; operators may leave Command Center shell context.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/review.md",
+        "range": [15, 19],
+        "contentHash": "17ed879"
+      }
+    },
+    {
+      "id": "gate-queue-active-only",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "collectHumanGateQueue includes synthesized active cell status only; non-current ready stages are omitted from the queue.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/review.md",
+        "range": [21, 25],
+        "contentHash": "17ed879"
+      }
+    },
+    {
+      "id": "config-refresh-integration-test",
+      "owner": "qa-tester",
+      "status": "consider",
+      "reason": "loadRuntimeConfig re-reads disk on each GET but no test mutates pancreator.yaml between fetches to lock refresh contract.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/review.md",
+        "range": [27, 31],
+        "contentHash": "17ed879"
+      }
+    },
+    {
+      "id": "adr-0010-copy",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft records run-state field split as proposed; copy ADR 0010 to lib/memory/adr/ before downstream features bind to it.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/adr-draft.md",
+        "range": [53, 56],
+        "contentHash": "badc10c"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "delivery-report.md and refreshed index.json may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+        "range": [13, 18],
+        "contentHash": "4a8f2d8"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks status intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/spec.md",
+        "range": [1, 22],
+        "contentHash": "8b23a71"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": []
+  },
+  "touch_set_snapshot": {
+    "featureId": "command-center-pipeline-command-center-and-human-gate-queue",
+    "taskId": "52646_0922_command-center-pipeline-command-center-and-human-gate-queue",
+    "stage": "implement",
+    "paths": [
+      "client/src/services/run-state-shared.ts",
+      "client/src/services/run-state.ts",
+      "client/src/services/config.ts",
+      "client/src/app/api/config/route.ts",
+      "client/src/app/api/config/route.test.ts",
+      "client/src/app/api/run-state/route.test.ts",
+      "client/src/components/DashboardPage.tsx",
+      "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+      "client/src/components/command-center/pipeline/PipelineModule.tsx",
+      "client/src/components/command-center/pipeline/NextActionPanel.tsx",
+      "client/src/components/command-center/pipeline/HumanGateBanner.tsx",
+      "client/src/components/command-center/pipeline/ConfigReadOnlyPanel.tsx",
+      "client/src/components/command-center/pipeline/StageMachineGrid.tsx",
+      "client/src/components/command-center/pipeline/RunEventTimeline.tsx",
+      "client/src/components/command-center/shared/CopyCommandButton.tsx",
+      "client/src/components/command-center/shared/AttentionBanner.tsx",
+      "client/src/components/command-center/shared/LoadingState.tsx",
+      "client/src/components/command-center/shared/EmptyState.tsx",
+      "client/src/components/command-center/shared/ErrorState.tsx",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx"
+    ],
+    "symbols": [],
+    "tests": [],
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/touch-set.json",
+      "range": [1, 177],
+      "contentHash": "cea1e3a"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/spec.md",
+          "range": [1, 197],
+          "contentHash": "8b23a71"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "range": [1, 326],
+          "contentHash": "a68b889"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/"
+      },
+      "plan": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/plan.md",
+          "range": [1, 122],
+          "contentHash": "315a764"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/adr-draft.md",
+          "range": [1, 78],
+          "contentHash": "badc10c"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/touch-set.json",
+          "range": [1, 177],
+          "contentHash": "cea1e3a"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/implementation-report.md",
+          "range": [1, 64],
+          "contentHash": "382f480"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/review.md",
+          "range": [1, 71],
+          "contentHash": "17ed879"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/test-report.md",
+          "range": [1, 46],
+          "contentHash": "4cd3d45"
+        }
+      },
+      "design_qa_report": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/design-qa-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/design-qa-report.md",
+          "range": [1, 41],
+          "contentHash": "2392668"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/compliance-result.json",
+          "range": [1, 304],
+          "contentHash": "bc182db"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/compliance-audit.md",
+          "range": [1, 140],
+          "contentHash": "fa859e7"
+        }
+      },
+      "compliance_remediation": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/compliance-remediation.md",
+        "note": "Compliance-auditor remediation notes for baseline-delta audit."
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/ship-ratification.json",
+          "range": [1, 25],
+          "contentHash": "4a8f2d8"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/handoff.md",
+          "range": [1, 54],
+          "contentHash": "dd27a08"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      },
+      "contract_runs": {
+        "path": ".pan/work/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/contract-runs/",
+        "note": "Manual llm-judge evaluation logs for embedded ux-spec contract blocks."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/54353_0854_command-center-pipeline-command-center.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172967_06-08-26/54353_0854_command-center-pipeline-command-center.md",
+          "range": [1, 69],
+          "contentHash": "428db94"
+        }
+      },
+      "ux_spec_dependency": {
+        "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Ratified Command Center UX authority cited by spec depends_on."
+      },
+      "prior_art_p9": {
+        "path": "lib/memory/features/surface-opt-p9-dashboard-operator-command-center/delivery-report.md",
+        "note": "P9 9-stage grid and run-event timeline prior art extended by this Feature."
+      },
+      "prior_art_p10": {
+        "path": "lib/memory/features/surface-opt-p10-dashboard-safe-editing/spec.md",
+        "note": "P10 read-only default and diff confirmation preserved in Files tab."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": [
+      {
+        "id": "command-center-pipeline-command-center-and-human-gate-queue.ux.copy-command-feedback",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Contract run log under .pan/work/contract-runs/."
+      },
+      {
+        "id": "command-center-pipeline-command-center-and-human-gate-queue.ux.human-gate-banner",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Contract run log under .pan/work/contract-runs/."
+      },
+      {
+        "id": "command-center-pipeline-command-center-and-human-gate-queue.ux.config-readonly",
+        "kind": "llm-judge",
+        "severity": "warn",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Contract run log under .pan/work/contract-runs/."
+      }
+    ]
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "coder_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/54353_0854_command-center-pipeline-command-center.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172967_06-08-26/54353_0854_command-center-pipeline-command-center.md"
+  },
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/52646_0922_command-center-pipeline-command-center-and-human-gate-queue/54353_0854_command-center-pipeline-command-center.md"
+}

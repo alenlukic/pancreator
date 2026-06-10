@@ -1,0 +1,522 @@
+{
+  "feature_id": "command-center-module-tab-accessibility",
+  "title": "Command Center module tab accessibility",
+  "task_id": "4426_2246_command-center-module-tab-accessibility",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-08T23:05:00.000Z",
+  "program": "command-center",
+  "design_steps": false,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11y.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172967_06-08-26/9443_2122_command-center-tab-a11y.md",
+      "range": [1, 54],
+      "contentHash": "eea0634"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Supervisor ship ratification at 2026-06-08T22:55:00Z with human_ratified_diff true; staged diff limited to three touch-set client paths closing design-audit F-01 and F-09."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-08T23:05:00.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-08T23:05:00.000Z",
+    "artifacts_indexed": 20,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 2,
+    "nit_count": 1,
+    "spec_contracts_executed": 1,
+    "spec_contracts_note": "Dependency contract ux.module-tab-focus from ratified ux-spec feature; manual llm-judge evaluation passed. contracts:from_feature returned zero clauses under feature folder.",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
+      "range": [1, 64],
+      "contentHash": "b2434c5"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": false,
+    "artifact": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/test-report.md",
+    "verification_gates": {
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_focused_tests": "pass (43/43)",
+      "pnpm_lint": "excluded-from-gate",
+      "pnpm_test": "excluded-from-gate",
+      "node_test_suite": "excluded-from-gate",
+      "check_phase_0a": "pass",
+      "context_budget_report": "pass",
+      "run_compliance": "pass"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/test-report.md",
+      "range": [1, 46],
+      "contentHash": "324b5ea"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-result.json",
+    "audit_id": "4426_2246_command-center-module-tab-accessibility-20260608225342",
+    "baseline_audit_id": "8919_2131_command-center-craft-polish-pass-20260608214021",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-result.json",
+      "range": [1, 310],
+      "contentHash": "b2f8a3e"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+      "range": [1, 306],
+      "contentHash": "33151d4"
+    },
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11y.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/ship-ratification.json",
+    "ratified_paths": [
+      "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx"
+    ],
+    "operator_commit_notes": [
+      "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md — include at human commit",
+      "lib/memory/features/command-center-module-tab-accessibility/index.json — refreshed by librarian at index stage",
+      "lib/memory/features/command-center-module-tab-accessibility/spec.md — untracked feature folder; include at human commit"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/ship-ratification.json",
+      "range": [1, 43],
+      "contentHash": "f9e79f8"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "focus-visible-probe",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "Active-tab :focus-visible CSS lacks automated style probe; keyboard focus-ring visibility on inverted active tab relies on qa-tester manual verification.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
+        "range": [15, 23],
+        "contentHash": "b2434c5"
+      }
+    },
+    {
+      "id": "tabindex-roving-pattern",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "tabIndex remains tied to aria-selected rather than focused tab per manual-activation ADR; keyboard operators may report Tab-return confusion.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
+        "range": [25, 33],
+        "contentHash": "b2434c5"
+      }
+    },
+    {
+      "id": "files-label-test-organization",
+      "owner": "coder",
+      "status": "nit",
+      "reason": "Files secondary-label test sits adjacent to keyboard activation block in page.test.tsx; could move into dedicated describe block.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
+        "range": [37, 41],
+        "contentHash": "b2434c5"
+      }
+    },
+    {
+      "id": "adr-0010-copy",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft 0010 records WAI-ARIA manual-activation tabs as proposed; copy to lib/memory/adr/ before downstream features bind to it.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/adr-draft.md",
+        "range": [43, 48],
+        "contentHash": "c61e331"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "delivery-report.md, spec.md, and refreshed index.json may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/ship-ratification.json",
+        "range": [23, 25],
+        "contentHash": "f9e79f8"
+      }
+    },
+    {
+      "id": "branch-drift",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "Unstaged branch drift outside touch-set (personas, handbook, pipeline YAML, tsbuildinfo, audit-history) excluded from ship scope; operator may commit or discard separately.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/ship-ratification.json",
+        "range": [26, 36],
+        "contentHash": "f9e79f8"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks status intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-module-tab-accessibility/spec.md",
+        "range": [1, 22],
+        "contentHash": "f9b07f9"
+      }
+    },
+    {
+      "id": "stale-delivery-citations",
+      "owner": "librarian",
+      "status": "flagged",
+      "reason": "delivery-report.md embeds 8 unique paths whose recorded contentHash values predate final stage artifacts; index.json stale_citations_flagged records drift for knowledge-curation follow-up.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "range": [1, 306],
+        "contentHash": "33151d4"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/implementation-report.md",
+        "recorded_content_hash": "16e9155",
+        "live_content_hash": "fccf94b",
+        "verifier_status": "changed",
+        "note": "delivery-report summary citations predate final implementation-report edits."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
+        "recorded_content_hash": "80925e7",
+        "live_content_hash": "b2434c5",
+        "verifier_status": "changed",
+        "note": "delivery-report review citations predate reviewer final pass."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/test-report.md",
+        "recorded_content_hash": "57171c7",
+        "live_content_hash": "324b5ea",
+        "verifier_status": "changed",
+        "note": "delivery-report test-report citations predate qa-tester final gate rerun."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/plan.md",
+        "recorded_content_hash": "3a05475",
+        "live_content_hash": "b284dd8",
+        "verifier_status": "changed",
+        "note": "delivery-report plan citations predate tech-lead final plan edits."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/adr-draft.md",
+        "recorded_content_hash": "e453189",
+        "live_content_hash": "c61e331",
+        "verifier_status": "changed",
+        "note": "delivery-report adr-draft citations predate ADR finalization pass."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "cited_path": "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+        "recorded_content_hash": "fc0ab74",
+        "live_content_hash": "fc4b76e",
+        "verifier_status": "changed",
+        "note": "delivery-report DashboardModuleShell citations predate implement-stage WAI-ARIA tab wiring."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "cited_path": "client/src/app/globals.css",
+        "recorded_content_hash": "6105dc2",
+        "live_content_hash": "aa20f95",
+        "verifier_status": "changed",
+        "note": "delivery-report globals.css citation predates active-tab focus-visible halo rule."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "cited_path": "client/src/app/page.test.tsx",
+        "recorded_content_hash": "550fd09",
+        "live_content_hash": "ee6fd70",
+        "verifier_status": "changed",
+        "note": "delivery-report page.test.tsx citations predate focused 43-test module-tab accessibility suite."
+      }
+    ]
+  },
+  "touch_set_snapshot": {
+    "featureId": "command-center-module-tab-accessibility",
+    "taskId": "4426_2246_command-center-module-tab-accessibility",
+    "stage": "implement",
+    "paths": [
+      "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx"
+    ],
+    "symbols": ["DashboardModuleShell", "DashboardModule", "MODULE_TABS", "handleTabKeyDown"],
+    "tests": [
+      "pnpm --dir client lint",
+      "pnpm --dir client typecheck",
+      "pnpm --dir client test -- src/app/page.test.tsx"
+    ],
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/touch-set.json",
+      "range": [1, 59],
+      "contentHash": "6af8238"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/command-center-module-tab-accessibility/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-module-tab-accessibility/spec.md",
+          "range": [1, 170],
+          "contentHash": "f9b07f9"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+          "range": [1, 306],
+          "contentHash": "33151d4"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/command-center-module-tab-accessibility/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/"
+      },
+      "plan": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/plan.md",
+          "range": [1, 94],
+          "contentHash": "b284dd8"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/adr-draft.md",
+          "range": [1, 84],
+          "contentHash": "c61e331"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/touch-set.json",
+          "range": [1, 59],
+          "contentHash": "6af8238"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/implementation-report.md",
+          "range": [1, 73],
+          "contentHash": "fccf94b"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
+          "range": [1, 64],
+          "contentHash": "b2434c5"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/test-report.md",
+          "range": [1, 46],
+          "contentHash": "324b5ea"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-result.json",
+          "range": [1, 310],
+          "contentHash": "b2f8a3e"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-audit.md",
+          "range": [1, 108],
+          "contentHash": "d7d6d01"
+        }
+      },
+      "compliance_remediation": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-remediation.md",
+        "note": "Compliance-auditor remediation notes for work-tree hygiene blocking exit bundle.",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-remediation.md",
+          "range": [1, 24],
+          "contentHash": "a20eb5d"
+        }
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/ship-ratification.json",
+          "range": [1, 43],
+          "contentHash": "f9e79f8"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/handoff.md",
+          "range": [1, 55],
+          "contentHash": "3aa71f0"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      },
+      "contract_runs": {
+        "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/contract-runs/",
+        "note": "Manual llm-judge evaluation log for ux.module-tab-focus dependency contract.",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/contract-runs/command-center-ux-spec-and-information-architecture.ux.module-tab-focus.log",
+          "range": [1, 16],
+          "contentHash": "2ec7d54"
+        }
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": ".pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11y.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172967_06-08-26/9443_2122_command-center-tab-a11y.md",
+          "range": [1, 54],
+          "contentHash": "eea0634"
+        }
+      },
+      "design_audit_prior_art": {
+        "path": ".pan/work/172967_06-08-26/9781_2116_command-center-design-audit-delivery/command-center-design-audit.md",
+        "note": "Design audit run 9781_2116 — blocker F-01 and minor F-09 authority for this module-tab accessibility scope."
+      },
+      "ux_spec_prior_art": {
+        "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Ratified UX authority for module tab semantics and ux.module-tab-focus contract."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": [
+      {
+        "id": "command-center-ux-spec-and-information-architecture.ux.module-tab-focus",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Dependency contract from ratified ux-spec feature; manual llm-judge re-evaluation on staged implementation."
+      }
+    ]
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "coder_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11y.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172967_06-08-26/9443_2122_command-center-tab-a11y.md"
+  },
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11y.md"
+}

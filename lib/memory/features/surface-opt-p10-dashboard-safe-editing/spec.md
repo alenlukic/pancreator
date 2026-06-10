@@ -45,7 +45,7 @@ a hard block on writes to pipeline-owned paths. These controls apply only to the
 dashboard file-editor modal and SHALL NOT touch the CLI runner, MCP handlers,
 active memory layout, or agent projections.
 
-This piece ships after P9 delivers the operator cockpit view because P10 modifies
+This piece ships after P9 delivers the Command Center view because P10 modifies
 the same `DashboardPage` component. The hard gate P10⇐P9 is load-bearing.
 
 ## 2 — Requirements
@@ -195,7 +195,7 @@ any persona spec, or any file outside the `client/` directory.
 
 ## 6 — Out of scope
 
-- The dashboard operator-cockpit view (delivered by P9).
+- The dashboard operator-Command Center view (delivered by P9).
 - Any CLI or runner engine change (Track O, P5–P8).
 - Any MCP handler, active-memory, or agent-projection change.
 - Changes to `state.json` shape or `run.log.jsonl` schema.
@@ -204,7 +204,7 @@ any persona spec, or any file outside the `client/` directory.
 
 ## 7 — Dependencies and sequencing
 
-- **P9** (Track D): the operator cockpit view shipped first. `DashboardPage`
+- **P9** (Track D): the Command Center view shipped first. `DashboardPage`
   after P9 contains the two-tab layout, `StageMachineGrid`, `RunEventTimeline`,
   and the file browser under the "Files" tab. P10 SHALL NOT ship before P9 is
   delivered.

@@ -1,0 +1,567 @@
+{
+  "feature_id": "command-center-active-memory-craft-enforcement",
+  "title": "Command Center active memory craft enforcement",
+  "task_id": "82780_0100_command-center-active-memory-craft-enforcement",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-09T01:40:00.000Z",
+  "program": "command-center",
+  "design_steps": true,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": ".pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-center-active-memory-craft-enforcement.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172966_06-09-26/82800_0059_command-center-active-memory-craft-enforcement.md",
+      "range": [1, 177],
+      "contentHash": "f9f2653"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Supervisor ship ratification at 2026-06-09T01:35:00Z with human_ratified_diff true; staged diff limited to six touch-set client paths delivering design-craft gates #2, #3, #9, #11, and #12 while retaining F-05 and F-10."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-09T01:40:00.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-09T01:40:00.000Z",
+    "artifacts_indexed": 22,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 4,
+    "nit_count": 3,
+    "spec_contracts_executed": 0,
+    "spec_contracts_note": "No contracts.index.json sidecar; no feature-local clauses declared.",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
+      "range": [1, 39],
+      "contentHash": "09833ad"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/test-report.md",
+    "verification_gates": {
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_focused_tests": "pass (46/46)",
+      "client_build": "pass (excluded-from-gate)",
+      "node_test_suite": "excluded-from-gate (active run awaiting close-artifacts)",
+      "pnpm_test": "excluded-from-gate (active run awaiting close-artifacts)",
+      "check_phase_0a": "pass (excluded-from-gate)",
+      "context_budget_report": "pass (excluded-from-gate)",
+      "run_compliance": "pass (ship-stage audit green after hygiene remediation)"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/test-report.md",
+      "range": [1, 44],
+      "contentHash": "56eb4b7"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-result.json",
+    "audit_id": "82780_0100_command-center-active-memory-craft-enforcement-20260609013000",
+    "baseline_audit_id": "919_2344_command-center-active-memory-operator-readability-20260608234000",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-result.json",
+      "range": [1, 347],
+      "contentHash": "5a1f712"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+      "range": [1, 370],
+      "contentHash": "c886246"
+    },
+    "archived_inbox_source": ".pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-center-active-memory-craft-enforcement.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/ship-ratification.json",
+    "ratified_paths": [
+      "client/src/app/api/active-memory/route.test.ts",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx",
+      "client/src/components/command-center/pipeline/ActiveMemoryHeader.tsx",
+      "client/src/services/active-memory.ts",
+      "client/src/services/run-state-shared.ts"
+    ],
+    "operator_commit_notes": [
+      "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md — include at human commit",
+      "lib/memory/features/command-center-active-memory-craft-enforcement/index.json — refreshed by librarian at index stage",
+      "lib/memory/features/command-center-active-memory-craft-enforcement/spec.md and ux-spec.md — untracked feature folder; include at human commit"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/ship-ratification.json",
+      "range": [1, 55],
+      "contentHash": "41dd2d2"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "copy-path-vitest-gap",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "CopyPathButton clipboard activation and Copied tooltip feedback lack automated Vitest assertion.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
+        "range": [15, 15],
+        "contentHash": "09833ad"
+      }
+    },
+    {
+      "id": "parse-blockers-fallback-untested",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "parseBlockerItems compact fallback for non-list blocker bodies is not exercised by route tests.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
+        "range": [16, 16],
+        "contentHash": "09833ad"
+      }
+    },
+    {
+      "id": "source-link-touch-target",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "View full blockers in Files link hit target is ~13.5px tall versus 32px touch floor at 375×812.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/design-qa-report.md",
+        "range": [42, 42],
+        "contentHash": "2e908ea"
+      }
+    },
+    {
+      "id": "pipeline-sidebar-mobile-width",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "Page-level horizontal scroll at 375×812 inherits from Pipeline sidebar column width outside touch-set.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/design-qa-report.md",
+        "range": [40, 40],
+        "contentHash": "2e908ea"
+      }
+    },
+    {
+      "id": "spec-blockersSummary-wording",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "Spec regression prose names blockersSummary while implementation gates expand on blockerItems.length > 3.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-active-memory-craft-enforcement/spec.md",
+        "range": [169, 170],
+        "contentHash": "eb983ce"
+      }
+    },
+    {
+      "id": "blockers-source-prop-name",
+      "owner": "coder",
+      "status": "nit",
+      "reason": "BlockersExcerpt reuses onOpenRefreshProcedure prop name for Files source callback.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
+        "range": [23, 23],
+        "contentHash": "09833ad"
+      }
+    },
+    {
+      "id": "adr-draft-promotion",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft records structured blockers, slug plus ghost copy, and solid elevated chrome scoped to Active memory panel; copy to lib/memory/adr/ before downstream features bind.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/adr-draft.md",
+        "range": [85, 94],
+        "contentHash": "7483fc9"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Feature folder artifacts may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/ship-ratification.json",
+        "range": [27, 45],
+        "contentHash": "41dd2d2"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks status intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-active-memory-craft-enforcement/spec.md",
+        "range": [1, 22],
+        "contentHash": "eb983ce"
+      }
+    },
+    {
+      "id": "branch-drift-outside-touch-set",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Unstaged branch drift outside touch-set (personas, handbook, pipeline YAML, runner-cursor, DashboardModuleShell, pancreator.yaml) excluded from ship ratification; operator may commit or discard separately.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/ship-ratification.json",
+        "range": [27, 45],
+        "contentHash": "41dd2d2"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/implementation-report.md",
+        "recorded_content_hash": "15aa080",
+        "live_content_hash": "70a7bc1",
+        "verifier_status": "changed",
+        "note": "delivery-report cites pre-final implementation-report edits"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
+        "recorded_content_hash": "03e9834",
+        "live_content_hash": "09833ad",
+        "verifier_status": "changed",
+        "note": "delivery-report summary citations predate round-3 re-review"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/test-report.md",
+        "recorded_content_hash": "388a528",
+        "live_content_hash": "56eb4b7",
+        "verifier_status": "changed",
+        "note": "delivery-report test-report citations predate final qa gate rerun"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/plan.md",
+        "recorded_content_hash": "f65245b",
+        "live_content_hash": "e01db6e",
+        "verifier_status": "changed",
+        "note": "delivery-report plan citations predate plan consolidation edits"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/adr-draft.md",
+        "recorded_content_hash": "a98e22b",
+        "live_content_hash": "7483fc9",
+        "verifier_status": "changed",
+        "note": "delivery-report adr-draft citations predate final ADR draft pass"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": "client/src/services/run-state-shared.ts",
+        "recorded_content_hash": "1295b48",
+        "live_content_hash": "efd81d3",
+        "verifier_status": "changed",
+        "note": "delivery-report ActiveMemorySnapshot citations predate blockerItems field"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": "client/src/services/active-memory.ts",
+        "recorded_content_hash": "9a12bdc",
+        "live_content_hash": "a8798bf",
+        "verifier_status": "changed",
+        "note": "delivery-report active-memory citations predate parseBlockerItems final diff"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": "client/src/components/command-center/pipeline/ActiveMemoryHeader.tsx",
+        "recorded_content_hash": "d7ca773",
+        "live_content_hash": "bd36a36",
+        "verifier_status": "changed",
+        "note": "delivery-report ActiveMemoryHeader citations predate craft-enforcement refactor"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": "client/src/app/api/active-memory/route.test.ts",
+        "recorded_content_hash": "13b0092",
+        "live_content_hash": "8f82064",
+        "verifier_status": "changed",
+        "note": "delivery-report route.test citations predate blockerItems test expansion"
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "cited_path": "client/src/app/page.test.tsx",
+        "recorded_content_hash": "a7cb842",
+        "live_content_hash": "91a38eb",
+        "verifier_status": "changed",
+        "note": "delivery-report page.test citations predate craft orientation test suite"
+      }
+    ]
+  },
+  "touch_set_snapshot": {
+    "featureId": "command-center-active-memory-craft-enforcement",
+    "taskId": "82780_0100_command-center-active-memory-craft-enforcement",
+    "stage": "implement",
+    "paths": [
+      "client/src/components/command-center/pipeline/ActiveMemoryHeader.tsx",
+      "client/src/services/active-memory.ts",
+      "client/src/services/run-state-shared.ts",
+      "client/src/app/api/active-memory/route.ts",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx",
+      "client/src/app/api/active-memory/route.test.ts"
+    ],
+    "symbols": [],
+    "tests": [],
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/touch-set.json",
+      "range": [1, 96],
+      "contentHash": "39a7184"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/command-center-active-memory-craft-enforcement/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-active-memory-craft-enforcement/spec.md",
+          "range": [1, 218],
+          "contentHash": "eb983ce"
+        }
+      },
+      "ux_spec": {
+        "path": "lib/memory/features/command-center-active-memory-craft-enforcement/ux-spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-active-memory-craft-enforcement/ux-spec.md",
+          "range": [1, 332],
+          "contentHash": "b400610"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+          "range": [1, 370],
+          "contentHash": "c886246"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/command-center-active-memory-craft-enforcement/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/"
+      },
+      "plan": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/plan.md",
+          "range": [1, 114],
+          "contentHash": "e01db6e"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/adr-draft.md",
+          "range": [1, 98],
+          "contentHash": "7483fc9"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/touch-set.json",
+          "range": [1, 96],
+          "contentHash": "39a7184"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/implementation-report.md",
+          "range": [1, 80],
+          "contentHash": "70a7bc1"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
+          "range": [1, 39],
+          "contentHash": "09833ad"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/test-report.md",
+          "range": [1, 44],
+          "contentHash": "56eb4b7"
+        }
+      },
+      "design_qa_report": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/design-qa-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/design-qa-report.md",
+          "range": [1, 55],
+          "contentHash": "2e908ea"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-result.json",
+          "range": [1, 347],
+          "contentHash": "5a1f712"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-audit.md",
+          "range": [1, 124],
+          "contentHash": "d0e2cf1"
+        }
+      },
+      "compliance_remediation": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-remediation.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-remediation.md",
+          "range": [1, 27],
+          "contentHash": "37f27c4"
+        }
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/ship-ratification.json",
+          "range": [1, 55],
+          "contentHash": "41dd2d2"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/handoff.md",
+          "range": [1, 55],
+          "contentHash": "6e750b0"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/qa-logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": ".pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-center-active-memory-craft-enforcement.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172966_06-09-26/82800_0059_command-center-active-memory-craft-enforcement.md",
+          "range": [1, 177],
+          "contentHash": "f9f2653"
+        }
+      },
+      "design_audit": {
+        "path": ".pan/work/172966_06-09-26/82901_0058_command-center-design-audit-delivery/command-center-design-audit.md",
+        "note": "Source audit findings F-01, F-02, F-09, F-11, and F-12 cited by spec and ux-spec."
+      },
+      "prior_art_readability": {
+        "path": "lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md",
+        "note": "Shipped operator-readability baseline this Feature refines for craft enforcement; F-05 and F-10 retained."
+      },
+      "ux_spec_dependency": {
+        "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Ratified Pipeline wireframe and shared affordances cited by spec depends_on."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": []
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "coder_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-center-active-memory-craft-enforcement.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172966_06-09-26/82800_0059_command-center-active-memory-craft-enforcement.md"
+  },
+  "archived_inbox_source": ".pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-center-active-memory-craft-enforcement.md"
+}

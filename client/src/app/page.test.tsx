@@ -2,8 +2,8 @@ import type React from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "@/components/DashboardPage";
-import MissionControlPage from "@/app/(cockpit)/mission-control/page";
-import CommandCenterPage from "@/app/(cockpit)/command-center/page";
+import MissionControlPage from "@/app/mission-control/page";
+import CommandCenterPage from "@/app/command-center/page";
 import { stringifyCompactJson } from "@/lib/json-io";
 import { formatActiveMemoryRefreshTime } from "@/services/run-state-shared";
 
@@ -444,14 +444,14 @@ describe("DashboardPage", () => {
     vi.useRealTimers();
   });
 
-  it("defaults to the Pipeline module with CockpitShell tabs", async () => {
+  it("defaults to the Pipeline module with DashboardModuleShell tabs", async () => {
     mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("cockpit-shell")).toBeInTheDocument();
-      expect(screen.getByTestId("module-tab-pipeline")).toHaveClass("cockpit-module-tab-active");
+      expect(screen.getByTestId("dashboard-module-shell")).toBeInTheDocument();
+      expect(screen.getByTestId("module-tab-pipeline")).toHaveClass("dashboard-module-tab-active");
       expect(screen.getByTestId("pipeline-module")).toBeInTheDocument();
     });
   });
@@ -533,7 +533,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("stage-grid")).toBeInTheDocument();
-      expect(screen.getByTestId("task-cockpit-65766_0543_demo-feature")).toHaveTextContent(
+      expect(screen.getByTestId("task-command-center-65766_0543_demo-feature")).toHaveTextContent(
         "65766_0543_demo-feature (2026-06-02 05:43 UTC)",
       );
       expect(screen.getByTestId("stage-cell-intake")).toHaveTextContent("Intake ratified");
@@ -1216,197 +1216,23 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("next-action-panel")).toHaveTextContent("Other Feature");
-      expect(screen.getByTestId("task-cockpit-88888_1200_other-feature")).toHaveAttribute(
+      expect(screen.getByTestId("task-command-center-88888_1200_other-feature")).toHaveAttribute(
         "aria-selected",
         "true",
       );
     });
   });
 
-  it("renders Automations list with enabled Run now and no-selection run-history state", async () => {
+  it("shows automations legacy banner instead of inline module", async () => {
     mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
     fireEvent.click(screen.getByTestId("module-tab-automations"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("automations-module")).toBeInTheDocument();
-      expect(screen.getByTestId("automation-row-hourly-coder")).toHaveTextContent("Hourly coder");
-      expect(screen.getByTestId("automation-row-hourly-coder")).toHaveTextContent("Hourly");
-      expect(screen.getByTestId("automation-run-now-hourly-coder")).toBeEnabled();
-      expect(screen.getByTestId("automation-run-history-no-selection")).toHaveTextContent(
-        "Select an automation to view run history.",
-      );
-    });
-  });
-
-  it("loads run history when an automation row is selected", async () => {
-    mockFetchForDashboard({
-      runState: mockRunState,
-      automationRuns: {
-        "hourly-coder": [
-          {
-            runId: "run-1",
-            startedAt: "2026-06-08T10:00:00.000Z",
-            finishedAt: "2026-06-08T10:01:00.000Z",
-            status: "success",
-            trigger: "manual",
-            stdoutSummary: "done",
-            stderrSummary: "",
-          },
-        ],
-      },
-    });
-
-    render(<DashboardPage />);
-    fireEvent.click(screen.getByTestId("module-tab-automations"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-select-hourly-coder")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId("automation-select-hourly-coder"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-run-row-run-1")).toBeInTheDocument();
-      expect(screen.getByTestId("automation-run-history-refresh")).toBeInTheDocument();
-    });
-  });
-
-  it("shows no-runs empty state for a selected automation without history", async () => {
-    mockFetchForDashboard({ runState: mockRunState, automationRuns: { "hourly-coder": [] } });
-
-    render(<DashboardPage />);
-    fireEvent.click(screen.getByTestId("module-tab-automations"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-select-hourly-coder")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId("automation-select-hourly-coder"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-run-history-no-runs")).toHaveTextContent(
-        "No runs yet. Use Run now or wait for the OS scheduler tick.",
-      );
-    });
-  });
-
-  it("expands run history stdout after Run now and row selection", async () => {
-    const automationRunCalls: string[] = [];
-    mockFetchForDashboard({
-      runState: mockRunState,
-      automationRunCalls,
-      automationRuns: {
-        "hourly-coder": [
-          {
-            runId: "run-expanded",
-            startedAt: "2026-06-08T11:00:00.000Z",
-            finishedAt: "2026-06-08T11:01:00.000Z",
-            status: "success",
-            trigger: "manual",
-            stdoutSummary: "manual dispatch ok",
-            stderrSummary: "",
-          },
-        ],
-      },
-    });
-
-    render(<DashboardPage />);
-    fireEvent.click(screen.getByTestId("module-tab-automations"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-run-now-hourly-coder")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId("automation-run-now-hourly-coder"));
-
-    await waitFor(() => {
-      expect(automationRunCalls).toContain("hourly-coder");
-      expect(screen.getByTestId("automation-run-row-run-expanded")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId("automation-run-expand-run-expanded"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-run-logs-run-expanded")).toHaveTextContent(
-        "manual dispatch ok",
-      );
-    });
-  });
-
-  it("disables an automation via the enabled toggle", async () => {
-    const automationPutCalls: unknown[] = [];
-    mockFetchForDashboard({ runState: mockRunState, automationPutCalls });
-
-    render(<DashboardPage />);
-    fireEvent.click(screen.getByTestId("module-tab-automations"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-toggle-hourly-coder")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId("automation-toggle-hourly-coder"));
-
-    await waitFor(() => {
-      expect(automationPutCalls).toHaveLength(1);
-      expect(automationPutCalls[0]).toMatchObject({ id: "hourly-coder", enabled: false });
-    });
-  });
-
-  it("completes the four-step automation wizard with hourly preset save", async () => {
-    const automationPostCalls: unknown[] = [];
-    mockFetchForDashboard({ runState: mockRunState, automations: [], automationPostCalls });
-
-    render(<DashboardPage />);
-    fireEvent.click(screen.getByTestId("module-tab-automations"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-create-button")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId("automation-create-button"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-wizard")).toBeInTheDocument();
-      expect(screen.getByTestId("automation-wizard-schedule")).toBeInTheDocument();
-    });
-
-    fireEvent.change(screen.getByLabelText("Name"), {
-      target: { value: "Hourly review" },
-    });
-    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-wizard-persona")).toBeInTheDocument();
-    });
-    fireEvent.change(screen.getByLabelText("Persona"), { target: { value: "coder" } });
-    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-wizard-prompt")).toBeInTheDocument();
-    });
-    fireEvent.change(screen.getByLabelText("Prompt"), {
-      target: { value: "Review open tasks." },
-    });
-    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("automation-wizard-review")).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByTestId("automation-wizard-save"));
-
-    await waitFor(() => {
-      expect(automationPostCalls).toHaveLength(1);
-      expect(automationPostCalls[0]).toMatchObject({
-        schedule: "0 * * * *",
-        enabled: true,
-        trigger: {
-          kind: "agent",
-          persona: "coder",
-          prompt: "Review open tasks.",
-        },
-      });
+      expect(screen.getByTestId("automations-legacy-banner")).toBeInTheDocument();
+      expect(screen.getByText("Open automations surface")).toHaveAttribute("href", "/automations");
+      expect(screen.queryByTestId("automations-module")).not.toBeInTheDocument();
     });
   });
 
@@ -1515,10 +1341,10 @@ describe("DashboardPage", () => {
 
 const mockMissionControlRunState = [
   {
-    taskId: "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
-    featureId: "cockpit-v2-feature-delivery-mission-control-run-detail",
+    taskId: "61498_0655_command-center-feature-delivery-mission-control-run-detail",
+    featureId: "command-center-feature-delivery-mission-control-run-detail",
     decodedTimestamp: "2026-06-09 06:55 UTC",
-    runDir: ".pan/work/172966_06-09-26/61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+    runDir: ".pan/work/172966_06-09-26/61498_0655_command-center-feature-delivery-mission-control-run-detail",
     stages: [
       { name: "intake", ownerPersona: "intake-analyst", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "complete" },
       { name: "plan", ownerPersona: "tech-lead", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "complete" },
@@ -1593,7 +1419,7 @@ describe("Mission Control surface", () => {
   it("deep-links ?task= to the named run in the header", async () => {
     mockMissionControlSearchParams.set(
       "task",
-      "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+      "61498_0655_command-center-feature-delivery-mission-control-run-detail",
     );
     mockFetchForDashboard({ runState: mockMissionControlRunState });
 
@@ -1601,7 +1427,7 @@ describe("Mission Control surface", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("run-context-header")).toHaveTextContent(
-        "Cockpit V2 Feature Delivery Mission Control Run Detail",
+        "Command Center Feature Delivery Mission Control Run Detail",
       );
     });
   });

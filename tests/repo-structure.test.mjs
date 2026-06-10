@@ -70,8 +70,16 @@ function isOutOfBandWorkTask(taskAbs) {
   return typeof manifest?.reason === "string" && manifest.reason.trim().length >= 12;
 }
 
-function isExemptActiveWorkTaskWithoutState(taskAbs) {
-  return isOutOfBandWorkTask(taskAbs) || isComplianceAuditWorkTask(taskAbs);
+function isBatchLedgerWorkTask(taskAbs, taskId) {
+  return taskId.startsWith("batch-") && fs.existsSync(path.join(taskAbs, "batch.json"));
+}
+
+function isExemptActiveWorkTaskWithoutState(taskAbs, taskId) {
+  return (
+    isOutOfBandWorkTask(taskAbs) ||
+    isComplianceAuditWorkTask(taskAbs) ||
+    isBatchLedgerWorkTask(taskAbs, taskId)
+  );
 }
 
 
@@ -179,7 +187,7 @@ test("active work task directories without feature-delivery state are absent", (
       const taskAbs = path.join(dayAbs, taskEntry.name);
       const taskRel = path.posix.join(".pan/work", dayEntry.name, taskEntry.name);
       const statePath = path.join(taskAbs, "state.json");
-      if (!fs.existsSync(statePath) && !isExemptActiveWorkTaskWithoutState(taskAbs)) {
+      if (!fs.existsSync(statePath) && !isExemptActiveWorkTaskWithoutState(taskAbs, taskEntry.name)) {
         offenders.push(taskRel);
       }
     }

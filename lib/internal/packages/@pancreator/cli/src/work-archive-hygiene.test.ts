@@ -121,6 +121,20 @@ describe("scanWorkArchiveHygiene", () => {
     expect(result.issues.some((issue) => issue.code === "orphan_work_dir")).toBe(false);
   });
 
+  it("accepts batch ledger directories without state.json", async () => {
+    const root = await mkRepo();
+    const taskDir = path.join(root, ".pan/work", "172971_06-04-26", "batch-58309_0748_batch");
+    await mkdir(taskDir, { recursive: true });
+    await writeFile(
+      path.join(taskDir, "batch.json"),
+      stringifyCliJson(root, { schemaVersion: 1, batchId: "58309_0748_batch", runs: [] }),
+      "utf8",
+    );
+
+    const result = await scanWorkArchiveHygiene(root);
+    expect(result.issues.some((issue) => issue.code === "orphan_work_dir")).toBe(false);
+  });
+
   it("accepts out-of-band work directories without state.json", async () => {
     const root = await mkRepo();
     const taskDir = path.join(root, ".pan/work", "172971_06-04-26", "99999_manual_audit");

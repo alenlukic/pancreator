@@ -26,7 +26,7 @@ describe("feature-delivery-failure-preservation", () => {
   it("mirrors run artifacts and halt outbox from worktree to main checkout", async () => {
     const main = await mkdtemp(path.join(os.tmpdir(), "pan-failure-main-"));
     const worktree = await mkdtemp(path.join(os.tmpdir(), "pan-failure-wt-"));
-    const taskId = "61497_0655_cockpit-v2-unified-work-intake-and-kickoff-flow";
+    const taskId = "61497_0655_command-center-unified-work-intake-and-kickoff-flow";
     const dayDir = "172966_06-09-26";
     const runDir = path.posix.join(".pan/work", dayDir, taskId);
     const runAbs = path.join(worktree, ...runDir.split("/"));
@@ -46,7 +46,7 @@ describe("feature-delivery-failure-preservation", () => {
       schemaVersion: "1",
       pipelineId: "feature-delivery",
       taskId,
-      featureId: "cockpit-v2-unified-work-intake-and-kickoff-flow",
+      featureId: "command-center-unified-work-intake-and-kickoff-flow",
       status: "halted",
       currentStage: "review",
       createdAtIso: "2026-06-09T08:46:00.000Z",

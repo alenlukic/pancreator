@@ -1,0 +1,585 @@
+{
+  "feature_id": "command-center-automation-registry-and-management-ui",
+  "title": "Command Center — Automation registry and management UI",
+  "task_id": "47315_1051_command-center-automation-registry-and-management-ui",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-08T16:12:00.000Z",
+  "program": "command-center",
+  "design_steps": true,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/54351_0854_command-center-automations-registry.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172967_06-08-26/54351_0854_command-center-automations-registry.md",
+      "range": [1, 64],
+      "contentHash": "5e949a7"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Supervisor re-ratification at 2026-06-08T15:15:00Z with human_ratified_diff true after WCAG 4.1.2 delete-dialog focus-trap repair; all 30 touch-set paths staged with 35 bundled sibling Command Center infrastructure files; compliance re-audit 47315_1051_command-center-automation-registry-and-management-ui-20260608151126 green."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-08T16:12:00.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-08T16:12:00.000Z",
+    "artifacts_indexed": 25,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 5,
+    "nit_count": 1,
+    "spec_contracts_executed": 3,
+    "spec_contracts_note": "contracts:from_feature deferred (exit 125); three embedded llm-judge UX contract blocks in ux-spec.md evaluated manually with contract run logs under .pan/work/contract-runs/.",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+      "range": [1, 80],
+      "contentHash": "52783a6"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/test-report.md",
+    "verification_gates": {
+      "scheduler_tests": "pass (14/14)",
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_focused_tests": "pass (35/35)",
+      "automations_client_tests": "pass (5/5)",
+      "client_build": "pass (excluded-from-gate)",
+      "node_test_suite": "pass (160/160)",
+      "pnpm_test": "pass (85/85)",
+      "check_phase_0a": "pass",
+      "context_budget_report": "pass",
+      "run_compliance": "pass"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/test-report.md",
+      "range": [1, 69],
+      "contentHash": "c43e9b4"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/compliance-result.json",
+    "audit_id": "47315_1051_command-center-automation-registry-and-management-ui-20260608151126",
+    "baseline_audit_id": "49726_1011_command-center-active-memory-inbox-triage-multi-run-view-20260608103000",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/compliance-result.json",
+      "range": [1, 317],
+      "contentHash": "821ec0d"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+      "range": [1, 384],
+      "contentHash": "41d6fc3"
+    },
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/54351_0854_command-center-automations-registry.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/ship-ratification.json",
+    "ratified_paths": [
+      "lib/internal/packages/@pancreator/scheduler/package.json",
+      "lib/internal/packages/@pancreator/scheduler/tsconfig.json",
+      "lib/internal/packages/@pancreator/scheduler/vitest.config.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/index.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/paths.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/schema.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/registry.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/errors.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/paths.test.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/schema.test.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/registry.test.ts",
+      "client/src/services/automations.ts",
+      "client/src/services/automations-client.ts",
+      "client/src/services/automations-client.test.ts",
+      "client/src/app/api/automations/route.ts",
+      "client/src/app/api/automations/route.test.ts",
+      "client/src/components/command-center/automations/AutomationsModule.tsx",
+      "client/src/components/command-center/automations/AutomationListView.tsx",
+      "client/src/components/command-center/automations/AutomationRunHistory.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Shell.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Schedule.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Persona.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Prompt.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Review.tsx",
+      "client/src/components/command-center/shared/StatusBadge.tsx",
+      "client/src/components/command-center/shared/useFocusTrap.ts",
+      "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+      "client/package.json",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx"
+    ],
+    "operator_commit_notes": [
+      "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md — include at human commit",
+      "lib/memory/features/command-center-automation-registry-and-management-ui/index.json — refreshed by librarian at index stage",
+      "lib/memory/features/command-center-automation-registry-and-management-ui/spec.md and ux-spec.md — untracked at ship; include at human commit",
+      "pnpm-lock.yaml — staged workspace lockfile update for @pancreator/scheduler dependency"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/ship-ratification.json",
+      "range": [1, 38],
+      "contentHash": "c03c9b0"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "branch-scope",
+      "owner": "tech-lead",
+      "status": "consider",
+      "reason": "Staged diff includes ~35 paths outside the declared touch-set (Pipeline module, orientation APIs, shared Command Center services); reconcile branch scope or amend touch-set before ship.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+        "range": [23, 27],
+        "contentHash": "52783a6"
+      }
+    },
+    {
+      "id": "cron-drift",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "isValidCronExpression and preset label logic mirror scheduler schema in the browser facade; future schema changes risk client/server drift.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+        "range": [36, 39],
+        "contentHash": "52783a6"
+      }
+    },
+    {
+      "id": "persona-api-validation",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "Schema v1 accepts any non-empty trigger.persona string while spec requires slug matching lib/personas/*.md; direct POST bypasses discovery validation.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+        "range": [40, 43],
+        "contentHash": "52783a6"
+      }
+    },
+    {
+      "id": "duplicate-list-fetch",
+      "owner": "coder",
+      "status": "nit",
+      "reason": "AutomationsModule calls GET /api/automations twice via separate loaders on mount; merge into one loader to reduce redundant network work.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+        "range": [47, 49],
+        "contentHash": "52783a6"
+      }
+    },
+    {
+      "id": "adr-copy",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft records scheduler primitive and registry layout as proposed; copy ADR to lib/memory/adr/ before downstream features bind to it.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/adr-draft.md",
+        "range": [89, 90],
+        "contentHash": "88044d2"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "delivery-report.md, index.json, spec.md, and ux-spec.md may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/ship-ratification.json",
+        "range": [25, 30],
+        "contentHash": "b6839d6"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks status intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-automation-registry-and-management-ui/spec.md",
+        "range": [1, 22],
+        "contentHash": "758aede"
+      }
+    },
+    {
+      "id": "scheduler-deferral",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Run now and run-history population remain stubbed until command-center-automations-scheduler ships tick execution and run-log append.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/implementation-report.md",
+        "range": [76, 79],
+        "contentHash": "85c0d5b"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/implementation-report.md",
+        "recorded_content_hash": "352ce2b",
+        "live_content_hash": "85c0d5b",
+        "verifier_status": "changed",
+        "note": "delivery-report summary citations predate final implementation-report edits; full-file hash refreshed at index time."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+        "recorded_content_hash": "80a3cf0",
+        "live_content_hash": "52783a6",
+        "verifier_status": "changed",
+        "note": "delivery-report review citations predate reviewer final pass and contract-run table."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/plan.md",
+        "recorded_content_hash": "c98929a",
+        "live_content_hash": "7de63bc",
+        "verifier_status": "changed",
+        "note": "delivery-report plan citations predate tech-lead final plan edits."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/adr-draft.md",
+        "recorded_content_hash": "afe4368",
+        "live_content_hash": "88044d2",
+        "verifier_status": "changed",
+        "note": "delivery-report adr-draft citations predate ADR finalization pass."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/test-report.md",
+        "recorded_content_hash": "5220cf7",
+        "live_content_hash": "c43e9b4",
+        "verifier_status": "changed",
+        "note": "delivery-report test-report citations predate qa-tester final gate rerun with full-repo pass counts."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/ship-ratification.json",
+        "recorded_content_hash": "b6839d6",
+        "live_content_hash": "c03c9b0",
+        "verifier_status": "changed",
+        "note": "delivery-report ship-ratification citations predate supervisor re-ratification after WCAG focus-trap repair."
+      }
+    ]
+  },
+  "touch_set_snapshot": {
+    "featureId": "command-center-automation-registry-and-management-ui",
+    "taskId": "47315_1051_command-center-automation-registry-and-management-ui",
+    "stage": "implement",
+    "paths": [
+      "lib/internal/packages/@pancreator/scheduler/package.json",
+      "lib/internal/packages/@pancreator/scheduler/tsconfig.json",
+      "lib/internal/packages/@pancreator/scheduler/vitest.config.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/index.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/paths.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/schema.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/registry.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/errors.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/paths.test.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/schema.test.ts",
+      "lib/internal/packages/@pancreator/scheduler/src/registry.test.ts",
+      "client/src/services/automations.ts",
+      "client/src/services/automations-client.ts",
+      "client/src/services/automations-client.test.ts",
+      "client/src/app/api/automations/route.ts",
+      "client/src/app/api/automations/route.test.ts",
+      "client/src/components/command-center/automations/AutomationsModule.tsx",
+      "client/src/components/command-center/automations/AutomationListView.tsx",
+      "client/src/components/command-center/automations/AutomationRunHistory.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Shell.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Schedule.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Persona.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Prompt.tsx",
+      "client/src/components/command-center/automations/AutomationWizard/Review.tsx",
+      "client/src/components/command-center/shared/StatusBadge.tsx",
+      "client/src/components/command-center/shared/useFocusTrap.ts",
+      "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+      "client/package.json",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx"
+    ],
+    "symbols": [],
+    "tests": [],
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/touch-set.json",
+      "range": [1, 151],
+      "contentHash": "d50cc26"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/command-center-automation-registry-and-management-ui/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-automation-registry-and-management-ui/spec.md",
+          "range": [1, 185],
+          "contentHash": "758aede"
+        }
+      },
+      "ux_spec": {
+        "path": "lib/memory/features/command-center-automation-registry-and-management-ui/ux-spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-automation-registry-and-management-ui/ux-spec.md",
+          "range": [1, 338],
+          "contentHash": "842b3c7"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+          "range": [1, 384],
+          "contentHash": "41d6fc3"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/command-center-automation-registry-and-management-ui/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/"
+      },
+      "plan": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/plan.md",
+          "range": [1, 81],
+          "contentHash": "7de63bc"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/adr-draft.md",
+          "range": [1, 98],
+          "contentHash": "88044d2"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/touch-set.json",
+          "range": [1, 151],
+          "contentHash": "d50cc26"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/implementation-report.md",
+          "range": [1, 116],
+          "contentHash": "85c0d5b"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/review.md",
+          "range": [1, 80],
+          "contentHash": "52783a6"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/test-report.md",
+          "range": [1, 69],
+          "contentHash": "c43e9b4"
+        }
+      },
+      "design_qa_report": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/design-qa-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/design-qa-report.md",
+          "range": [1, 68],
+          "contentHash": "af9b6e1"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/compliance-result.json",
+          "range": [1, 317],
+          "contentHash": "821ec0d"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/compliance-audit.md",
+          "range": [1, 182],
+          "contentHash": "ab9abb5"
+        }
+      },
+      "compliance_remediation": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/compliance-remediation.md",
+        "note": "Compliance-auditor remediation notes for baseline-delta audit."
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/ship-ratification.json",
+          "range": [1, 38],
+          "contentHash": "c03c9b0"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/handoff.md",
+          "range": [1, 54],
+          "contentHash": "4b1175f"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      },
+      "contract_runs": {
+        "path": ".pan/work/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/contract-runs/",
+        "note": "Manual llm-judge evaluation logs for embedded ux-spec contract blocks."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": ".pan/archive/inbox/in/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/54351_0854_command-center-automations-registry.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172967_06-08-26/54351_0854_command-center-automations-registry.md",
+          "range": [1, 64],
+          "contentHash": "5e949a7"
+        }
+      },
+      "ux_spec_dependency": {
+        "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Ratified Command Center UX authority cited by spec depends_on; per-feature ux-spec.md embeds Automations module contracts."
+      },
+      "prior_art_command_center": {
+        "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+        "note": "Shipped DashboardModuleShell tab wiring and shared Command Center affordances this Feature extends with Automations module."
+      },
+      "blocks_scheduler_feature": {
+        "path": "lib/memory/features/command-center-automation-registry-and-management-ui/spec.md",
+        "note": "blocks command-center-automations-scheduler for tick execution and run-log append deferred from this delivery."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": [
+      {
+        "id": "command-center-automation-registry-and-management-ui.ux.list-enabled-toggle",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-automation-registry-and-management-ui/ux-spec.md",
+        "note": "Contract run log under .pan/work/contract-runs/."
+      },
+      {
+        "id": "command-center-automation-registry-and-management-ui.ux.wizard-four-steps",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-automation-registry-and-management-ui/ux-spec.md",
+        "note": "Contract run log under .pan/work/contract-runs/."
+      },
+      {
+        "id": "command-center-automation-registry-and-management-ui.ux.run-now-stub",
+        "kind": "llm-judge",
+        "severity": "warn",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-automation-registry-and-management-ui/ux-spec.md",
+        "note": "Contract run log under .pan/work/contract-runs/."
+      }
+    ]
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "coder_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/54351_0854_command-center-automations-registry.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172967_06-08-26/54351_0854_command-center-automations-registry.md"
+  },
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/47315_1051_command-center-automation-registry-and-management-ui/54351_0854_command-center-automations-registry.md"
+}

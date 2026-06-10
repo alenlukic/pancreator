@@ -41,16 +41,16 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
-| `cockpit-v2-feature-delivery-mission-control-run-detail` | [indexed] (`2026-06-09T11:30:00.000Z`) | `lib/memory/features/cockpit-v2-feature-delivery-mission-control-run-detail/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_cockpit-v2-feature-delivery-mission-control-run-detail/63490_0621_cockp…` |
-| `cockpit-v2-command-center-operational-state-surface` | [indexed] (`2026-06-09T11:05:00.000Z`) | `lib/memory/features/cockpit-v2-command-center-operational-state-surface/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_cockpit-v2-command-center-operational-state-surface/63491_0621_cockpit-…` |
-| `cockpit-v2-app-shell-navigation-rail-and-operator-theme-tokens` | [indexed] (`2026-06-09T06:52:30.000Z`) | `—` | `—` | `.pan/archive/inbox/in/172966_06-09-26/63441_0622_cockpit-v2-app-shell-navigation-rail-and-operator-theme-tokens/63602_06…` |
-| `cockpit-v2-ux-philosophy-information-architecture-and-user-stories` | [indexed] (`2026-06-09T05:50:00.000Z`) | `lib/memory/features/cockpit-v2-ux-philosophy-information-architecture-and-user-stories/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/69695_0438_cockpit-v2-ux-philosophy-information-architecture-and-user-stories/6971…` |
-| `cockpit-v2-active-memory-operator-craft-revalidation` | [indexed] (`2026-06-09T02:44:44.002Z`) | `lib/memory/features/cockpit-v2-active-memory-operator-craft-revalidation/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/77283_0231_cockpit-v2-active-memory-operator-craft-revalidation/81282_0125_cockpit…` |
-| `cockpit-v2-active-memory-craft-enforcement` | [indexed] (`2026-06-09T01:40:00.000Z`) | `lib/memory/features/cockpit-v2-active-memory-craft-enforcement/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82780_0100_cockpit-v2-active-memory-craft-enforcement/82800_0059_cockpit-v2-active…` |
-| `cockpit-v2-active-memory-operator-readability` | [indexed] (`2026-06-09T01:00:00.000Z`) | `lib/memory/features/cockpit-v2-active-memory-operator-readability/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/919_2344_cockpit-v2-active-memory-operator-readability/945_2344_cockpit-v2-active-…` |
-| `cockpit-v2-module-tab-accessibility` | [indexed] (`2026-06-08T23:05:00.000Z`) | `lib/memory/features/cockpit-v2-module-tab-accessibility/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/4426_2246_cockpit-v2-module-tab-accessibility/9443_2122_cockpit-v2-tab-a11y.md` |
-| `cockpit-v2-craft-polish-pass` | [indexed] (`2026-06-08T21:48:00.000Z`) | `lib/memory/features/cockpit-v2-craft-polish-pass/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/8919_2131_cockpit-v2-craft-polish-pass/8947_2130_cockpit-v2-craft-polish-pass.md` |
-| `cockpit-v2-maintenance-toolkit-compliance-tests` | [indexed] (`2026-06-08T17:02:53.000Z`) | `lib/memory/features/cockpit-v2-maintenance-toolkit-compliance-tests/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/27260_1625_cockpit-v2-maintenance-toolkit-compliance-tests/54350_0854_cockpit-v2-m…` |
+| `command-center-feature-delivery-mission-control-run-detail` | [indexed] (`2026-06-09T11:30:00.000Z`) | `lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_cockp…` |
+| `command-center-command-center-operational-state-surface` | [indexed] (`2026-06-09T11:05:00.000Z`) | `lib/memory/features/command-center-command-center-operational-state-surface/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-command-center-operational-state-surface/63491_0621_command-center-…` |
+| `command-center-app-shell-navigation-rail-and-operator-theme-tokens` | [indexed] (`2026-06-09T06:52:30.000Z`) | `—` | `—` | `.pan/archive/inbox/in/172966_06-09-26/63441_0622_command-center-app-shell-navigation-rail-and-operator-theme-tokens/63602_06…` |
+| `command-center-ux-philosophy-information-architecture-and-user-stories` | [indexed] (`2026-06-09T05:50:00.000Z`) | `lib/memory/features/command-center-ux-philosophy-information-architecture-and-user-stories/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories/6971…` |
+| `command-center-active-memory-operator-craft-revalidation` | [indexed] (`2026-06-09T02:44:44.002Z`) | `lib/memory/features/command-center-active-memory-operator-craft-revalidation/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/81282_0125_command-center…` |
+| `command-center-active-memory-craft-enforcement` | [indexed] (`2026-06-09T01:40:00.000Z`) | `lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-center-active…` |
+| `command-center-active-memory-operator-readability` | [indexed] (`2026-06-09T01:00:00.000Z`) | `lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/919_2344_command-center-active-memory-operator-readability/945_2344_command-center-active-…` |
+| `command-center-module-tab-accessibility` | [indexed] (`2026-06-08T23:05:00.000Z`) | `lib/memory/features/command-center-module-tab-accessibility/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11y.md` |
+| `command-center-craft-polish-pass` | [indexed] (`2026-06-08T21:48:00.000Z`) | `lib/memory/features/command-center-craft-polish-pass/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/8919_2131_command-center-craft-polish-pass/8947_2130_command-center-craft-polish-pass.md` |
+| `command-center-maintenance-toolkit-compliance-tests` | [indexed] (`2026-06-08T17:02:53.000Z`) | `lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/54350_0854_command-center-m…` |
 
 ## Risks and blockers
 
@@ -65,7 +65,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-09T15:08:12.168Z`
+- Active-memory refreshed (UTC): `2026-06-09T18:25:56.830Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
 

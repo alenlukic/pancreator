@@ -133,9 +133,17 @@ function isValidComplianceAuditWorkspace(taskAbs: string): boolean {
   );
 }
 
+function isBatchLedgerDirectory(taskDirAbs: string, taskId: string): boolean {
+  return taskId.startsWith("batch-") && existsSync(path.join(taskDirAbs, "batch.json"));
+}
+
 /** Active .pan/work/<day>/<task-id>/ without feature-delivery state.json may still be intentional. */
-export function isExemptOrphanWorkDirectory(taskDirAbs: string): boolean {
-  return isValidOutOfBandManifest(taskDirAbs) || isValidComplianceAuditWorkspace(taskDirAbs);
+export function isExemptOrphanWorkDirectory(taskDirAbs: string, taskId?: string): boolean {
+  return (
+    isValidOutOfBandManifest(taskDirAbs) ||
+    isValidComplianceAuditWorkspace(taskDirAbs) ||
+    (taskId !== undefined && isBatchLedgerDirectory(taskDirAbs, taskId))
+  );
 }
 
 async function resolveCanonicalTaskId(
@@ -291,7 +299,7 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
       if (existsSync(stateAbs)) {
         continue;
       }
-      if (isExemptOrphanWorkDirectory(taskAbs)) {
+      if (isExemptOrphanWorkDirectory(taskAbs, taskId)) {
         continue;
       }
       issues.push({

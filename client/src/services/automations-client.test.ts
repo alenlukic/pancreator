@@ -3,9 +3,13 @@ import {
   CRON_PRESETS,
   defaultAgentAutomationDraft,
   deriveAutomationId,
+  filterAutomationSummaries,
+  formatNextRunLabel,
   formatScheduleLabel,
   humanScheduleLabel,
   isValidCronExpression,
+  nextCronFireAfter,
+  previewNextRunLabel,
 } from "@/services/automations-client";
 
 describe("automations-client", () => {
@@ -49,4 +53,43 @@ describe("automations-client", () => {
       policy: { maxConcurrent: 1, timeoutMinutes: 60 },
     });
   });
+
+  it("computes the next cron fire after a reference time", () => {
+    const after = new Date("2026-06-09T10:15:00.000Z");
+    const next = nextCronFireAfter("0 * * * *", after);
+    expect(next?.toISOString()).toBe("2026-06-09T11:00:00.000Z");
+  });
+
+  it("formats preview and next-run labels for hourly schedules", () => {
+    const nowMs = Date.parse("2026-06-09T10:15:00.000Z");
+    expect(formatNextRunLabel("0 * * * *", nowMs)).toBe("in 45m");
+    expect(previewNextRunLabel("0 * * * *", nowMs)).toBe("in 45m");
+  });
+
+  it("filters automations by search and paused status", () => {
+    const automations = [
+      {
+        id: "a",
+        name: "Alpha",
+        enabled: false,
+        schedule: "0 * * * *",
+        scheduleLabel: "Hourly",
+        status: "paused" as const,
+        triggerKind: "agent" as const,
+        persona: "coder",
+      },
+      {
+        id: "b",
+        name: "Beta",
+        enabled: true,
+        schedule: "0 0 * * *",
+        scheduleLabel: "Daily at midnight",
+        status: "scheduled" as const,
+        triggerKind: "agent" as const,
+      },
+    ];
+    const filtered = filterAutomationSummaries(automations, "alpha", "paused", {});
+    expect(filtered.map((item) => item.id)).toEqual(["a"]);
+  });
 });
+

@@ -92,10 +92,12 @@ SDK mode runs these companions automatically when design steps are on.
 Use this loop exactly:
 
 1. Put the request in `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
-2. Start the run (path relative to `<project_root>/lib/inbox/in/` only; for embedded
+2. Load repo-root credentials (worktrees do not inherit gitignored `.env`), then
+   start the run (path relative to `<project_root>/lib/inbox/in/` only; for embedded
    installs with `project_root: ".pancreator"`, that is `.pancreator/lib/inbox/in/`):
 
    ```bash
+   set -a && source .env && set +a
    pnpm -w exec pan run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
    # equivalent alias:
    pnpm -w exec pan feature new <day-bucket>/<SID>_<HHMM>_<slug>.md
@@ -104,6 +106,7 @@ Use this loop exactly:
    Example:
 
    ```bash
+   set -a && source .env && set +a
    pnpm -w exec pan run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
    ```
 
@@ -225,7 +228,7 @@ justification is missing or out of bounds.
 
 #### Shared-layer touch-set rule
 
-Integration-heavy Cockpit slices MUST declare `shared_paths` and
+Integration-heavy Command Center slices MUST declare `shared_paths` and
 `integration_prerequisites` in `touch-set.json` at plan time. Reviewers MUST treat
 declared `shared_paths` edits as allowed integration work, not touch-set breaches.
 Undeclared shared-layer edits route back to `plan`, not repeated `must_fix` loops.
@@ -327,8 +330,8 @@ instruction.
 parallel supervisor Tasks). For `parallel_with` program slices, use exactly one
 `pan batch run --parallel N` command.
 
-Before SDK batch or isolated runs, load credentials (worktrees do not inherit
-gitignored `.env`):
+Before any pipeline run (`pan run`, `pan batch run`, `pan advance`), load
+credentials (worktrees do not inherit gitignored `.env`):
 
 ```bash
 set -a && source .env && set +a
@@ -491,6 +494,7 @@ For adopting Pancreator into an existing repository with `project_root: ".pancre
 6. Run feature delivery in SDK mode (embedded `pancreator.yaml` defaults to `runner.cursor.invocation: sdk`):
 
    ```bash
+   set -a && source .env && set +a
    pnpm -w exec pan run feature-delivery <day-bucket>/<SID>_<HHMM>_<slug>.md
    ```
 
@@ -597,7 +601,7 @@ Example **launchd** `ProgramArguments` fragment (hourly at minute 0):
 ```
 
 Run history is append-only JSONL under `.pan/scheduler/runs/<automation-id>.jsonl`.
-Cockpit Run now calls the same tick primitive for a single id via
+Command Center Run now calls the same tick primitive for a single id via
 `POST /api/automations/<id>/run`.
 
 ## Active memory refresh

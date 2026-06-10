@@ -68,7 +68,7 @@ Paths used to plan and build Pancreator itself:
 - `.docs/**` (PRD, bootstrap, M1 route maps, and `.docs/README.md` directory guide)
 - `lib/memory/adr/`, `lib/memory/backlog/`, `lib/memory/research/`
 - `lib/memory/features/bootstrap-phase-*`
-- `.pan/archive/**`, `tests/**`, `client/` (monorepo operator cockpit)
+- `.pan/archive/**`, `tests/**`, `client/` (monorepo Command Center)
 
 Internal surfaces SHALL be excluded from default Cursor semantic indexing via
 `.cursorindexingignore`. Agents MAY still open them with explicit paths when the

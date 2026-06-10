@@ -2,7 +2,7 @@
 
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { useCallback, useEffect, useState } from "react";
-import { CockpitShell, type CockpitModule } from "@/components/cockpit/layout/CockpitShell";
+import { DashboardModuleShell, type DashboardModule } from "@/components/command-center/layout/DashboardModuleShell";
 import { stringifyCompactJson } from "@/lib/json-io";
 
 type RepoListEntry = {
@@ -94,7 +94,7 @@ export function DashboardPage() {
     writeGuardError: null,
   });
   const [status, setStatus] = useState<string>("");
-  const [activeModule, setActiveModule] = useState<CockpitModule>("pipeline");
+  const [activeModule, setActiveModule] = useState<DashboardModule>("pipeline");
   const [filesOpen, setFilesOpen] = useState(true);
   const [loadingEntries, setLoadingEntries] = useState(false);
 
@@ -307,16 +307,16 @@ export function DashboardPage() {
       <header className="app-header">
         <div>
           <p className="eyebrow">Pancreator operator dashboard</p>
-          <h1>Operator cockpit</h1>
+          <h1>Command Center</h1>
           <p className="header-summary">
             Legacy pipeline module shell. Default landing is Command Center at /command-center.
           </p>
         </div>
       </header>
 
-      <main className="dashboard dashboard-cockpit-v2">
+      <main className="dashboard dashboard-command-center">
         <section className="panel panel-main" aria-label="Dashboard workspace">
-          <CockpitShell
+          <DashboardModuleShell
             filesContent={filesContent}
             activeModule={activeModule}
             onActiveModuleChange={setActiveModule}

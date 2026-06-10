@@ -185,8 +185,8 @@ the `ship` stage one staged pull request awaiting human approval.
    drive that sub-run in fully automated SDK mode per clause 1. You SHALL
    apply this trigger as well when any pipeline under `/lib/pipelines/`
    names you in its top-level `supervisor:` field. When the pipeline id is
-   `cockpit-design-audit-validation`, or when the operator passes
-   `deliver=false` on `cockpit-design-audit-delivery`, you SHALL execute only
+   `command-center-design-audit-validation`, or when the operator passes
+   `deliver=false` on `command-center-design-audit-delivery`, you SHALL execute only
    the audit and intake stages and MUST NOT invoke feature-delivery or mutate
    `client/` source.
 4. **Stage transition.** When a stage emits its declared outputs and its

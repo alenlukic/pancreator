@@ -1,0 +1,685 @@
+{
+  "feature_id": "command-center-maintenance-toolkit-compliance-tests",
+  "title": "Command Center — Maintenance toolkit (compliance and tests)",
+  "task_id": "27260_1625_command-center-maintenance-toolkit-compliance-tests",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-08T17:02:53.000Z",
+  "program": "command-center",
+  "design_steps": true,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/54350_0854_command-center-maintenance-toolkit.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172967_06-08-26/54350_0854_command-center-maintenance-toolkit.md",
+      "range": [1, 68],
+      "contentHash": "2a247eb"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Supervisor ship ratification at 2026-06-08T17:05:00Z with human_ratified_diff true; 19 touch-set maintenance paths staged plus 79 bundled sibling Command Center infrastructure files on command-center-overhaul; compliance audit 27260_1625_command-center-maintenance-toolkit-compliance-tests-20260608165723 green."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-08T17:02:53.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-08T17:02:53.000Z",
+    "artifacts_indexed": 24,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 5,
+    "nit_count": 3,
+    "spec_contracts_executed": 0,
+    "spec_contracts_note": "contracts:from_feature deferred (exit 125); three ux-spec block contracts adjudicated manually with contract run logs under .pan/work/contract-runs/.",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+      "range": [1, 46],
+      "contentHash": "d5c6f63"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/test-report.md",
+    "verification_gates": {
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_focused_tests": "pass (53/53)",
+      "client_build": "pass (excluded-from-gate)",
+      "node_test_suite": "pass (160/160 after scheduler close-artifacts remediation)",
+      "pnpm_test": "pass (85/85 after scheduler close-artifacts remediation)",
+      "check_phase_0a": "pass",
+      "context_budget_report": "pass",
+      "run_compliance": "pass"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/test-report.md",
+      "range": [1, 53],
+      "contentHash": "7cfee52"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/compliance-result.json",
+    "audit_id": "27260_1625_command-center-maintenance-toolkit-compliance-tests-20260608165723",
+    "baseline_audit_id": "31248_1519_command-center-local-scheduler-tick-and-run-history-20260608162153",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/compliance-result.json",
+      "range": [1, 343],
+      "contentHash": "f826ae4"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+      "range": [1, 355],
+      "contentHash": "0db9ec9"
+    },
+    "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/54350_0854_command-center-maintenance-toolkit.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/ship-ratification.json",
+    "ratified_paths": [
+      "client/src/services/maintenance-compliance.ts",
+      "client/src/services/maintenance-compliance.test.ts",
+      "client/src/services/maintenance-test-run.ts",
+      "client/src/services/maintenance-test-run.test.ts",
+      "client/src/services/maintenance-runs.ts",
+      "client/src/services/maintenance-suite-presets.ts",
+      "client/src/app/api/compliance-run/route.ts",
+      "client/src/app/api/compliance-run/route.test.ts",
+      "client/src/app/api/test-run/route.ts",
+      "client/src/app/api/test-run/route.test.ts",
+      "client/src/components/command-center/maintenance/MaintenanceModule.tsx",
+      "client/src/components/command-center/maintenance/ComplianceAuditPanel.tsx",
+      "client/src/components/command-center/maintenance/TestSuitePicker.tsx",
+      "client/src/components/command-center/maintenance/PreCloseValidationPanel.tsx",
+      "client/src/components/command-center/shared/OutputStream.tsx",
+      "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+      "client/src/components/command-center/pipeline/PipelineModule.tsx",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx"
+    ],
+    "operator_commit_notes": [
+      "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md — include at human commit",
+      "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/index.json — refreshed by librarian at index stage",
+      "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/spec.md and ux-spec.md — untracked at ship; include at human commit",
+      "lib/memory/features/compliance-tests/audit-history.json — compliance audit ledger update unstaged; include at human commit",
+      "client/next.config.ts, client/src/services/scheduler-runs-read.ts, and AM-index unstaged command-center-overhaul drift — include at human commit when reconciling branch scope",
+      "pnpm-lock.yaml — staged workspace lockfile update for command-center-overhaul dependencies"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/ship-ratification.json",
+      "range": [1, 55],
+      "contentHash": "1a9da2e"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "branch-scope",
+      "owner": "tech-lead",
+      "status": "consider",
+      "reason": "Staged diff includes 79 paths outside the declared 19-path maintenance touch-set; reconcile branch scope or amend touch-set before ship.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/ship-ratification.json",
+        "range": [36, 38],
+        "contentHash": "1a9da2e"
+      }
+    },
+    {
+      "id": "buffered-sse",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "streamSuiteOutput awaits full process completion before yielding stdout/stderr lines; long Vitest runs do not update the browser incrementally.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "range": [15, 15],
+        "contentHash": "d5c6f63"
+      }
+    },
+    {
+      "id": "session-history",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "History list items render without click handlers; operators cannot reload prior logs without re-running the suite.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "range": [17, 17],
+        "contentHash": "d5c6f63"
+      }
+    },
+    {
+      "id": "pre-close-link",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "Pre-close failure navigation opens Maintenance tab without passing failed bundle context for pre-selection.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "range": [19, 19],
+        "contentHash": "d5c6f63"
+      }
+    },
+    {
+      "id": "suite-presets-touch-set",
+      "owner": "tech-lead",
+      "status": "consider",
+      "reason": "maintenance-suite-presets.ts shared allowlist module is not listed in touch-set.json creates.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "range": [21, 21],
+        "contentHash": "d5c6f63"
+      }
+    },
+    {
+      "id": "compliance-failure-ui-tests",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "No page test covers compliance findings expand or high-severity non-zero exit scenarios.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "range": [23, 23],
+        "contentHash": "d5c6f63"
+      }
+    },
+    {
+      "id": "data-testid-drift",
+      "owner": "coder",
+      "status": "nit",
+      "reason": "output-stream-panel and output-stream-log vs ux-spec output-stream identifier.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "range": [27, 27],
+        "contentHash": "d5c6f63"
+      }
+    },
+    {
+      "id": "get-descriptors-nit",
+      "owner": "coder",
+      "status": "nit",
+      "reason": "GET /api/compliance-run descriptor listing endpoint was not named in plan task 2.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "range": [29, 29],
+        "contentHash": "d5c6f63"
+      }
+    },
+    {
+      "id": "audit-history-copy",
+      "owner": "coder",
+      "status": "nit",
+      "reason": "Button copy Audit history vs ux-spec View audit history ledger.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "range": [31, 31],
+        "contentHash": "d5c6f63"
+      }
+    },
+    {
+      "id": "adr-copy",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft records maintenance API decisions as proposed; copy ADR to lib/memory/adr/ before downstream features bind to it.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/adr-draft.md",
+        "range": [89, 107],
+        "contentHash": "3855d89"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "delivery-report.md, index.json, spec.md, and ux-spec.md may remain untracked; operator must include them at human commit alongside staged touch-set paths.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/ship-ratification.json",
+        "range": [39, 45],
+        "contentHash": "1a9da2e"
+      }
+    },
+    {
+      "id": "audit-history-unstaged",
+      "owner": "operator",
+      "status": "open",
+      "reason": "lib/memory/features/compliance-tests/audit-history.json compliance ledger update unstaged at ship; include at human commit.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/ship-ratification.json",
+        "range": [43, 43],
+        "contentHash": "1a9da2e"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks status intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/spec.md",
+        "range": [1, 22],
+        "contentHash": "87b8984"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/implementation-report.md",
+        "recorded_content_hash": "bf21b85",
+        "live_content_hash": "cf3c302",
+        "verifier_status": "changed",
+        "note": "delivery-report summary citations predate final implementation-report edits."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "recorded_content_hash": "885364f",
+        "live_content_hash": "d5c6f63",
+        "verifier_status": "changed",
+        "note": "delivery-report review citations predate reviewer final pass."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/test-report.md",
+        "recorded_content_hash": "ad9f15d",
+        "live_content_hash": "7cfee52",
+        "verifier_status": "changed",
+        "note": "delivery-report test-report citations predate qa-tester final gate rerun."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/plan.md",
+        "recorded_content_hash": "add52c3",
+        "live_content_hash": "a4cc7ff",
+        "verifier_status": "changed",
+        "note": "delivery-report plan citations predate tech-lead final plan edits."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/adr-draft.md",
+        "recorded_content_hash": "f437098",
+        "live_content_hash": "3855d89",
+        "verifier_status": "changed",
+        "note": "delivery-report adr-draft citations predate ADR finalization pass."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/services/maintenance-compliance.ts",
+        "recorded_content_hash": "9ec8262",
+        "live_content_hash": "226fa3a",
+        "verifier_status": "changed",
+        "note": "delivery-report maintenance-compliance.ts citation predates implement-stage final edits."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/app/api/compliance-run/route.ts",
+        "recorded_content_hash": "12f9602",
+        "live_content_hash": "173d0b4",
+        "verifier_status": "changed",
+        "note": "delivery-report compliance-run route citation predates route finalization."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/services/maintenance-test-run.ts",
+        "recorded_content_hash": "5537af1",
+        "live_content_hash": "87eb379",
+        "verifier_status": "changed",
+        "note": "delivery-report maintenance-test-run.ts citation predates implement-stage final edits."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/services/maintenance-suite-presets.ts",
+        "recorded_content_hash": "91a7c28",
+        "live_content_hash": "0c5fc46",
+        "verifier_status": "changed",
+        "note": "delivery-report maintenance-suite-presets.ts citation predates allowlist module finalization."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/app/api/test-run/route.ts",
+        "recorded_content_hash": "17bb530",
+        "live_content_hash": "f7f6faa",
+        "verifier_status": "changed",
+        "note": "delivery-report test-run route citation predates SSE framing finalization."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/components/command-center/shared/OutputStream.tsx",
+        "recorded_content_hash": "6da8dbf",
+        "live_content_hash": "925adab",
+        "verifier_status": "changed",
+        "note": "delivery-report OutputStream citation predates component finalization."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/components/command-center/maintenance/MaintenanceModule.tsx",
+        "recorded_content_hash": "0265170",
+        "live_content_hash": "9caef1d",
+        "verifier_status": "changed",
+        "note": "delivery-report MaintenanceModule citation predates shell wiring finalization."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/components/command-center/maintenance/PreCloseValidationPanel.tsx",
+        "recorded_content_hash": "c4c808e",
+        "live_content_hash": "039f091",
+        "verifier_status": "changed",
+        "note": "delivery-report PreCloseValidationPanel citation predates stage-gate finalization."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/services/maintenance-runs.ts",
+        "recorded_content_hash": "6d6936d",
+        "live_content_hash": "e2a5438",
+        "verifier_status": "changed",
+        "note": "delivery-report maintenance-runs.ts citation predates session metadata finalization."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/app/page.test.tsx",
+        "recorded_content_hash": "5f6f3aa",
+        "live_content_hash": "5ffcccf",
+        "verifier_status": "changed",
+        "note": "delivery-report page.test.tsx citations predate Maintenance integration test additions."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/app/api/test-run/route.test.ts",
+        "recorded_content_hash": "280a1b7",
+        "live_content_hash": "3a326c8",
+        "verifier_status": "changed",
+        "note": "delivery-report test-run route.test.ts citation predates route test finalization."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "cited_path": "client/src/app/api/compliance-run/route.test.ts",
+        "recorded_content_hash": "4aedb77",
+        "live_content_hash": "04a4d14",
+        "verifier_status": "changed",
+        "note": "delivery-report compliance-run route.test.ts citation predates route test finalization."
+      }
+    ]
+  },
+  "touch_set_snapshot": {
+    "featureId": "command-center-maintenance-toolkit-compliance-tests",
+    "taskId": "27260_1625_command-center-maintenance-toolkit-compliance-tests",
+    "stage": "implement",
+    "paths": [
+      "client/src/services/maintenance-compliance.ts",
+      "client/src/services/maintenance-test-run.ts",
+      "client/src/services/maintenance-runs.ts",
+      "client/src/app/api/compliance-run/route.ts",
+      "client/src/app/api/compliance-run/route.test.ts",
+      "client/src/app/api/test-run/route.ts",
+      "client/src/app/api/test-run/route.test.ts",
+      "client/src/components/command-center/maintenance/MaintenanceModule.tsx",
+      "client/src/components/command-center/maintenance/ComplianceAuditPanel.tsx",
+      "client/src/components/command-center/maintenance/TestSuitePicker.tsx",
+      "client/src/components/command-center/maintenance/PreCloseValidationPanel.tsx",
+      "client/src/components/command-center/shared/OutputStream.tsx",
+      "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+      "client/src/components/command-center/pipeline/PipelineModule.tsx",
+      "client/src/app/globals.css",
+      "client/src/app/page.test.tsx"
+    ],
+    "symbols": [],
+    "tests": [],
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/touch-set.json",
+      "range": [1, 199],
+      "contentHash": "45aad55"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/spec.md",
+          "range": [1, 223],
+          "contentHash": "87b8984"
+        }
+      },
+      "ux_spec": {
+        "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/ux-spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/ux-spec.md",
+          "range": [1, 291],
+          "contentHash": "6b3b7a3"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "range": [1, 355],
+          "contentHash": "0db9ec9"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/"
+      },
+      "plan": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/plan.md",
+          "range": [1, 118],
+          "contentHash": "a4cc7ff"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/adr-draft.md",
+          "range": [1, 119],
+          "contentHash": "3855d89"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/touch-set.json",
+          "range": [1, 199],
+          "contentHash": "45aad55"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/implementation-report.md",
+          "range": [1, 64],
+          "contentHash": "cf3c302"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/review.md",
+          "range": [1, 46],
+          "contentHash": "d5c6f63"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/test-report.md",
+          "range": [1, 53],
+          "contentHash": "7cfee52"
+        }
+      },
+      "design_qa_report": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/design-qa-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/design-qa-report.md",
+          "range": [1, 49],
+          "contentHash": "5544a7e"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/compliance-result.json",
+          "range": [1, 343],
+          "contentHash": "f826ae4"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/compliance-audit.md",
+          "range": [1, 164],
+          "contentHash": "584cf28"
+        }
+      },
+      "compliance_remediation": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/compliance-remediation.md",
+        "note": "Compliance-auditor remediation notes for scheduler close-artifacts hygiene blocking exit bundle.",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/compliance-remediation.md",
+          "range": [1, 29],
+          "contentHash": "e444984"
+        }
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/ship-ratification.json",
+          "range": [1, 55],
+          "contentHash": "1a9da2e"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/handoff.md",
+          "range": [1, 55],
+          "contentHash": "4a08546"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/54350_0854_command-center-maintenance-toolkit.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172967_06-08-26/54350_0854_command-center-maintenance-toolkit.md",
+          "range": [1, 68],
+          "contentHash": "2a247eb"
+        }
+      },
+      "pipeline_dependency": {
+        "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+        "note": "Shipped Pipeline module and NextActionPanel placement; PreCloseValidationPanel mounts beneath NextActionPanel per spec depends_on."
+      },
+      "ux_spec_dependency": {
+        "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
+        "note": "Ratified Command Center UX authority; per-feature ux-spec.md embeds Maintenance module contracts."
+      },
+      "compliance_runner_dependency": {
+        "path": "lib/internal/tools/run-compliance.mjs",
+        "note": "POST /api/compliance-run delegates to runCompliance() rather than reimplementing descriptor execution."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": []
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "coder_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/54350_0854_command-center-maintenance-toolkit.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172967_06-08-26/54350_0854_command-center-maintenance-toolkit.md"
+  },
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/27260_1625_command-center-maintenance-toolkit-compliance-tests/54350_0854_command-center-maintenance-toolkit.md"
+}
