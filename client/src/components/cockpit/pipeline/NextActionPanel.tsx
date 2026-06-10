@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import {
   collectHumanGateQueue,
+  featureDisplayLabel,
   findActiveStage,
   panArgsFromNextCommand,
-  taskDisplayLabel,
   taskLevelNextCommand,
   type PanExecuteResult,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
 import { stringifyCompactJson } from "@/lib/json-io";
-import { CopyCommandButton } from "../shared/CopyCommandButton";
+import { CommandCenterRowOverflow } from "../command-center/CommandCenterRowOverflow";
+import { buildTaskOverflow } from "../command-center/command-center-row-helpers";
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
@@ -140,16 +141,12 @@ export function NextActionPanel({
   return (
     <section className="next-action-panel" data-testid="next-action-panel">
       <h2>Next Action</h2>
-      <p className="next-action-label">{taskDisplayLabel(selectedTask)}</p>
-      <p className="next-action-run-dir" title={selectedTask.runDir}>
-        {selectedTask.runDir}/
-      </p>
+      <p className="next-action-label">{featureDisplayLabel(selectedTask)}</p>
       {activeStage?.nextHumanAction ? (
         <p className="next-action-human">{activeStage.nextHumanAction}</p>
       ) : null}
-      {nextCommand ? <code className="next-action-command">{nextCommand}</code> : null}
       <div className="next-action-actions">
-        <CopyCommandButton command={nextCommand} />
+        <CommandCenterRowOverflow {...buildTaskOverflow(selectedTask)} />
         <button
           type="button"
           className="cockpit-action-button"
@@ -239,7 +236,7 @@ export function NextActionPanel({
       <ExecuteResultPanel result={executeResult} />
       <ExecuteConfirmModal
         command={pendingExecute?.command ?? ""}
-        taskLabel={taskDisplayLabel(selectedTask)}
+        taskLabel={featureDisplayLabel(selectedTask)}
         open={pendingExecute !== null}
         onConfirm={() => {
           if (pendingExecute !== null) {

@@ -519,7 +519,10 @@ export async function runFeatureDeliveryBatch(
       const message = error instanceof Error ? error.message : String(error);
       const failedTaskId =
         taskId.length > 0 ? taskId : path.posix.basename(inboxEntry, path.posix.extname(inboxEntry));
-      let preservation: Pick<BatchRunOutcome, "preservationManifest" | "preservedRunDir"> = {};
+      let preservation: Pick<
+        BatchRunOutcome,
+        "preservationManifest" | "preservedRunDir" | "recoveryArchiveDir"
+      > = {};
       if (leasePath !== undefined && startResult !== undefined) {
         try {
           const state = await readSubRunState(leasePath, startResult);

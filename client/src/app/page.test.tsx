@@ -1,8 +1,31 @@
+import type React from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "@/components/DashboardPage";
+import MissionControlPage from "@/app/(cockpit)/mission-control/page";
+import CommandCenterPage from "@/app/(cockpit)/command-center/page";
 import { stringifyCompactJson } from "@/lib/json-io";
 import { formatActiveMemoryRefreshTime } from "@/services/run-state-shared";
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: React.ReactNode }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
+const mockMissionControlSearchParams = new URLSearchParams();
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => mockMissionControlSearchParams,
+  usePathname: () => "/mission-control",
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 const mockRunState = [
   {
@@ -433,33 +456,34 @@ describe("DashboardPage", () => {
     });
   });
 
-  it("renders Next Action panel with run directory and command actions", async () => {
+  it("renders Next Action panel with overflow actions instead of raw paths", async () => {
     mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
 
     await waitFor(() => {
       const panel = screen.getByTestId("next-action-panel");
-      expect(panel).toHaveTextContent("65766_0543_demo-feature (2026-06-02 05:43 UTC)");
-      expect(panel).toHaveTextContent(".pan/work/172973_06-02-26/65766_0543_demo-feature/");
+      expect(panel).toHaveTextContent("Demo Feature");
+      expect(panel).not.toHaveTextContent(".pan/work/172973_06-02-26/65766_0543_demo-feature/");
+      expect(panel).not.toHaveTextContent("pnpm -w exec pan advance");
       expect(panel).toHaveTextContent("Ratify the plan before advancing.");
-      expect(panel).toHaveTextContent("pnpm -w exec pan advance");
-      expect(within(panel).getByTestId("copy-command-button")).toBeEnabled();
+      expect(within(panel).getByRole("button", { name: "Row actions" })).toBeInTheDocument();
       expect(screen.getByTestId("open-next-prompt-button")).toBeInTheDocument();
       expect(screen.getByTestId("open-run-folder-button")).toBeInTheDocument();
     });
   });
 
-  it("copies nextCommand and shows Copied feedback", async () => {
+  it("copies nextCommand from overflow and shows Copied feedback", async () => {
     mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(within(screen.getByTestId("next-action-panel")).getByTestId("copy-command-button")).toBeEnabled();
+      expect(within(screen.getByTestId("next-action-panel")).getByRole("button", { name: "Row actions" })).toBeInTheDocument();
     });
 
-    fireEvent.click(within(screen.getByTestId("next-action-panel")).getByTestId("copy-command-button"));
+    fireEvent.click(within(screen.getByTestId("next-action-panel")).getByRole("button", { name: "Row actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Copy run command" }));
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -1191,7 +1215,7 @@ describe("DashboardPage", () => {
     fireEvent.click(screen.getByTestId("multi-run-select-88888_1200_other-feature"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("next-action-panel")).toHaveTextContent("88888_1200_other-feature");
+      expect(screen.getByTestId("next-action-panel")).toHaveTextContent("Other Feature");
       expect(screen.getByTestId("task-cockpit-88888_1200_other-feature")).toHaveAttribute(
         "aria-selected",
         "true",
@@ -1311,7 +1335,7 @@ describe("DashboardPage", () => {
     });
   });
 
-  it("toggles automation enabled state via PUT", async () => {
+  it("disables an automation via the enabled toggle", async () => {
     const automationPutCalls: unknown[] = [];
     mockFetchForDashboard({ runState: mockRunState, automationPutCalls });
 
@@ -1351,13 +1375,13 @@ describe("DashboardPage", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Hourly review" },
     });
-    fireEvent.click(screen.getByText("Next"));
+    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-persona")).toBeInTheDocument();
     });
     fireEvent.change(screen.getByLabelText("Persona"), { target: { value: "coder" } });
-    fireEvent.click(screen.getByText("Next"));
+    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-prompt")).toBeInTheDocument();
@@ -1365,7 +1389,7 @@ describe("DashboardPage", () => {
     fireEvent.change(screen.getByLabelText("Prompt"), {
       target: { value: "Review open tasks." },
     });
-    fireEvent.click(screen.getByText("Next"));
+    fireEvent.click(within(screen.getByTestId("automation-wizard")).getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("automation-wizard-review")).toBeInTheDocument();
@@ -1485,6 +1509,240 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("pre-close-run-button")).toBeEnabled();
+    });
+  });
+});
+
+const mockMissionControlRunState = [
+  {
+    taskId: "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+    featureId: "cockpit-v2-feature-delivery-mission-control-run-detail",
+    decodedTimestamp: "2026-06-09 06:55 UTC",
+    runDir: ".pan/work/172966_06-09-26/61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+    stages: [
+      { name: "intake", ownerPersona: "intake-analyst", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "complete" },
+      { name: "plan", ownerPersona: "tech-lead", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "complete" },
+      { name: "implement", ownerPersona: "coder", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "failed" },
+      { name: "review", ownerPersona: "reviewer", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "pending" },
+      { name: "test", ownerPersona: "qa-tester", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "pending" },
+      { name: "report", ownerPersona: "tech-writer", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "pending" },
+      { name: "compliance", ownerPersona: "supervisor", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "pending" },
+      { name: "ship", ownerPersona: "supervisor", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "pending" },
+      { name: "index", ownerPersona: "librarian", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "pending" },
+      { name: "complete", ownerPersona: "librarian", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "pending" },
+    ],
+    runEvents: [
+      {
+        timestamp: "2026-06-09T12:00:00.000Z",
+        event: "retry_limit_halt",
+        message:
+          "gate: retry_limit_halt failing_stage: implement retry_count: 3 exceeded loopback budget",
+        stageId: "implement",
+      },
+      {
+        timestamp: "2026-06-09T11:00:00.000Z",
+        event: "must_fix",
+        message: "review routed back to implement",
+        stageId: "implement",
+        retryBadge: true,
+      },
+      {
+        timestamp: "2026-06-09T10:00:00.000Z",
+        event: "must_fix",
+        message: "second implement retry",
+        stageId: "implement",
+        retryBadge: true,
+      },
+      {
+        timestamp: "2026-06-09T09:00:00.000Z",
+        event: "must_fix",
+        message: "first implement retry",
+        stageId: "implement",
+        retryBadge: true,
+      },
+    ],
+  },
+];
+
+describe("Mission Control surface", () => {
+  beforeEach(() => {
+    mockMissionControlSearchParams.delete("task");
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("renders nine-stage rail with retry badges and retry-limit banner", async () => {
+    mockFetchForDashboard({ runState: mockMissionControlRunState });
+
+    render(<MissionControlPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mission-control-module")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("mission-control-stage-rail")).toBeInTheDocument();
+    expect(screen.getByTestId("stage-cell-intake")).toBeInTheDocument();
+    expect(screen.getByTestId("stage-cell-index")).toBeInTheDocument();
+    expect(screen.getByTestId("retry-limit-banner")).toBeInTheDocument();
+    expect(screen.getByTestId("retry-badge-implement")).toHaveTextContent("3");
+  });
+
+  it("deep-links ?task= to the named run in the header", async () => {
+    mockMissionControlSearchParams.set(
+      "task",
+      "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+    );
+    mockFetchForDashboard({ runState: mockMissionControlRunState });
+
+    render(<MissionControlPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-context-header")).toHaveTextContent(
+        "Cockpit V2 Feature Delivery Mission Control Run Detail",
+      );
+    });
+  });
+
+  it("shows live indicator while polling a non-terminal task", async () => {
+    mockFetchForDashboard({ runState: mockRunState });
+
+    render(<MissionControlPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mc-live-indicator")).toBeInTheDocument();
+    });
+  });
+
+  it("opens artifact preview in read-only Files modal", async () => {
+    mockFetchForDashboard({
+      runState: mockMissionControlRunState,
+      fileContent: "implementation report body",
+    });
+
+    render(<MissionControlPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("artifacts-by-stage")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("verbose-log-drawer")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("preview-artifact-implementation-report.md"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("file-modal")).toBeInTheDocument();
+      expect(screen.getByTestId("readonly-indicator")).toHaveTextContent("Read-only");
+      expect(screen.getByDisplayValue("implementation report body")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("Command Center default landing", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockCommandCenterLandingFetch(options: { runState?: unknown[] } = {}) {
+    return vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson(options.runState ?? mockRunState), { status: 200 });
+      }
+      if (url.includes("/api/automations") && !url.includes("/runs")) {
+        return new Response(stringifyCompactJson({ automations: [], personas: [] }), { status: 200 });
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+  }
+
+  it("renders operational Command Center surface instead of placeholder", async () => {
+    mockCommandCenterLandingFetch();
+
+    render(<CommandCenterPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("command-center-page")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-needs-you")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-running-now")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-compliance-issues")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-hanging-tasks")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-recent-automations")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-recent-activity")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/placeholder/i)).not.toBeInTheDocument();
+  });
+
+  it("shows guided empty state when no operational rows exist", async () => {
+    mockCommandCenterLandingFetch({ runState: [] });
+
+    render(<CommandCenterPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("No active deliveries")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Start feature delivery" })).toHaveAttribute(
+        "href",
+        "/work-intake",
+      );
+    });
+  });
+
+  it("suppresses global empty when compliance preview rows exist without active runs", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson([]), { status: 200 });
+      }
+      if (url.includes("/api/automations") && !url.includes("/runs")) {
+        return new Response(stringifyCompactJson({ automations: [], personas: [] }), { status: 200 });
+      }
+      if (url.includes("audit-history.json")) {
+        return new Response(
+          stringifyCompactJson({
+            content: stringifyCompactJson({
+              entries: [{ stage_status: "failed", artifact_paths: { compliance_result: "result.json" } }],
+            }),
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("result.json")) {
+        return new Response(
+          stringifyCompactJson({
+            content: stringifyCompactJson({
+              results: [
+                {
+                  id: "json-formatting",
+                  pass: false,
+                  severity: "high",
+                  blocks: true,
+                  detail: "Missing artifact in touch-set",
+                },
+              ],
+            }),
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+    });
+
+    render(<CommandCenterPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("command-center-compliance-issues")).toBeInTheDocument();
+      expect(screen.queryByText("No active deliveries")).not.toBeInTheDocument();
     });
   });
 });

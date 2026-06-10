@@ -20,6 +20,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { enrichRetryLimitHaltArtifact } from "./feature-delivery-failure-preservation.js";
 import {
   parseSpotFixJustificationFromMarkdown,
   parseSpotFixJustificationFromRecord,

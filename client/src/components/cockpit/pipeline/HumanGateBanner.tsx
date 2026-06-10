@@ -2,9 +2,9 @@
 
 import {
   collectHumanGateQueue,
-  taskDisplayLabel,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
+import { gateQueueEntryLabel } from "../command-center/command-center-row-helpers";
 import { AttentionBanner } from "../shared/AttentionBanner";
 
 const ARTIFACT_FILES = ["plan.md", "review.md", "test-report.md"] as const;
@@ -35,8 +35,7 @@ export function HumanGateBanner({
       <div className="human-gate-banner" data-testid="human-gate-banner">
         <ul className="human-gate-queue" data-testid="human-gate-queue">
           {queue.map((entry) => {
-            const task = tasks.find((candidate) => candidate.taskId === entry.taskId);
-            const label = task ? taskDisplayLabel(task) : entry.taskId;
+            const label = gateQueueEntryLabel(entry, tasks);
             const artifacts = artifactAvailability[entry.taskId] ?? {};
 
             return (
