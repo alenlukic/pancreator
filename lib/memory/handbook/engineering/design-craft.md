@@ -253,9 +253,15 @@ findings SHALL NOT block the gate but SHALL be logged in the report for operator
 follow-up. The `design-reviewer` SHALL NOT set `design_qa_passes: true` while any
 `P0` or `P1` finding stands, and SHALL NOT downgrade a gate-blocking condition to
 `P2` or `P3` to avoid failing the gate. A deferrable `P1` build defect MAY carry
-`spot_fixable: true` to route the fix through the lighter implement spot-fix lane;
-that flag keeps `design_qa_passes: false` until the defect is fixed and does not pass
-the gate.
+`spot_fixable: true` only when the remediation is already diagnosable, the
+intended behavior is clear, the change stays within one module or tightly
+coupled implementation area, no more than 3 core implementation files plus
+directly related tests are involved, and no redesign or re-planning is needed.
+All broader issues MUST route back through `implement` or `plan`. A qualifying
+spot fix keeps `design_qa_passes: false` until the defect is fixed and does not
+pass the gate. When `spot_fixable: true`, `design-qa-report.md` MUST also record
+`spot_fix_scope: code-bounded`, `spot_fix_paths` (max 3), and
+`spot_fix_rationale` so the runtime can reject unbounded `qa_spot_fix` advances.
 
 ## Stability
 

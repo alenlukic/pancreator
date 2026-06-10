@@ -7,7 +7,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
 
-import { preserveFeatureDeliveryFailureContext } from "./feature-delivery-failure-preservation.js";
+import { stringifyCliJson } from "./canonical-json-io.js";
+import {
+  archiveFailureContextToRecovery,
+  preserveFeatureDeliveryFailureContext,
+} from "./feature-delivery-failure-preservation.js";
 import type { FeatureDeliveryState } from "./feature-delivery-run.js";
 
 describe("feature-delivery-failure-preservation", () => {
@@ -30,7 +34,7 @@ describe("feature-delivery-failure-preservation", () => {
     await writeFile(path.join(runAbs, "review.md"), "review_passes: false\n", "utf8");
     await writeFile(
       path.join(runAbs, "state.json"),
-      JSON.stringify({ status: "halted", currentStage: "review" }),
+      stringifyCliJson(worktree, { status: "halted", currentStage: "review" }),
       "utf8",
     );
     const outDayRel = path.posix.join("lib", "inbox", "out", dayDir);
@@ -78,5 +82,23 @@ describe("feature-delivery-failure-preservation", () => {
     expect(manifestText).toContain(taskId);
     expect(manifestText).toContain("58309_0748_batch");
     expect(manifestText).toContain(path.posix.join(runDir, "review.md"));
+  });
+
+  it("archives mirrored failure context under recovery bundle path", async () => {
+    const main = await mkdtemp(path.join(os.tmpdir(), "pan-failure-recovery-"));
+    const taskId = "58309_0748_demo";
+    const runDir = path.posix.join(".pan/work/172966_06-09-26", taskId);
+    const runAbs = path.join(main, ...runDir.split("/"));
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "review.md"), "review_passes: false\n", "utf8");
+
+    const recoveryRel = await archiveFailureContextToRecovery({
+      mainRepoRoot: main,
+      runDir,
+      taskId,
+      batchId: "58309_0748_batch",
+    });
+    expect(recoveryRel).toBe(path.posix.join(".pan/archive/recovery/batch-58309_0748_batch", taskId));
+    expect(existsSync(path.join(main, recoveryRel!, "review.md"))).toBe(true);
   });
 });

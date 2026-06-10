@@ -111,7 +111,11 @@ The file MUST contain the five sections below in this order.
 
 1. **Verdict.** One paragraph at most 80 words declaring `qa_passes: true` or
    `qa_passes: false` with a one-sentence rationale citing the check or issue
-   that decided the verdict.
+   that decided the verdict. The Verdict section MUST also declare
+   `plan_invalidating: true|false`, and when applicable
+   `core_reentry_required: true|false`, `spot_fixable: true|false`,
+   `spot_fix_scope: code-bounded`, `spot_fix_owner: test`,
+   `spot_fix_paths`, `spot_fix_rationale`, and `excluded_from_gate: true|false`.
 2. **Automated checks.** A table with one row per check command. Columns MUST
    be `command`, `exit code`, `pass/fail`, and `log path`. Every command in the
    Automated verification section MUST appear in this table; an omitted command
@@ -126,8 +130,10 @@ The file MUST contain the five sections below in this order.
    literal string `none` when no fixes were needed. Each fix MUST cite the file
    path and change applied.
 5. **Re-entry.** When `qa_passes: false`, a compact must-fix list naming the
-   owning re-entry target `implement` (coder) with one line per issue. When
-   `qa_passes: true`, this section MUST contain the literal string `none`.
+   owning re-entry target with one line per issue: `test` for a qualifying
+   spot fix, `implement` (coder) for broader execution defects, or `plan` when
+   `plan_invalidating: true`. When `qa_passes: true`, this section MUST
+   contain the literal string `none`.
 
 The body of `/.pan/work/<day>/<id>/test-report.md` MUST stay at most 1500 words
 across the five sections combined.
@@ -229,7 +235,8 @@ or other operator-facing UI surface, you MUST perform visual QA via the
 6. **Record outcomes.** Every Chrome DevTools MCP step, DOM observation, and
    pass/fail finding MUST appear in the Manual verification section. Any
    functional or visual defect MUST set `qa_passes: false` and generate a
-   Re-entry must-fix entry targeting `implement`.
+   Re-entry must-fix entry targeting `test`, `implement`, or `plan` according
+   to the spot-fix complexity bar and plan-invalidating rules.
 
 ## Straightforward fixes
 
@@ -244,14 +251,38 @@ You MUST record every fix you apply in the Fixes applied section. You MUST NOT
 apply fixes that change logic, alter contract semantics, add new features, or
 modify any file outside the declared touch-set.
 
+## Spot-fix complexity bar
+
+You MAY set `spot_fixable: true` only when the remediation is already
+diagnosable, the intended behavior is clear, and the fix can land without
+redesigning surrounding architecture or re-planning the feature.
+
+A QA issue qualifies only when it is a bounded remediation such as syntax,
+type, lint, formatting, import/export/build/symbol-resolution drift, an obvious
+local logic defect, missing focused regression coverage, or a governance or
+artifact correction whose expected shape is already defined. The issue MUST stay
+within one module or tightly coupled implementation area and no more than 3
+core implementation files, plus directly related tests.
+
+You MUST NOT set `spot_fixable: true` for cross-module work, redesign of data
+flow, control flow, public APIs, persistence, pipeline semantics, or operator
+workflow, for ambiguous intended behavior, for broad cleanup or refactoring, or
+for unrelated repo failures that are not explicitly scoped as preservation or
+documentation work.
+
 ## Serious issues and re-entry
 
 When any touch-set gate command exits non-zero after lint autofixes are
 applied, or when manual verification reveals a logic defect or missing
-required artifact, you MUST set `qa_passes: false` and populate the Re-entry
-section with a compact must-fix list targeting `implement` (coder). You MUST
-NOT route the re-entry to `reviewer` unless the issue is review-gate-only
-(for example, a missing `review_passes` field in `review.md`).
+required artifact, you MUST set `qa_passes: false`. When the issue satisfies
+the spot-fix complexity bar, you MAY set `spot_fixable: true`,
+`spot_fix_scope: code-bounded`, `spot_fix_owner: test`, `spot_fix_paths`
+(comma-separated, max 3), `spot_fix_rationale`, `core_reentry_required: false`,
+and target `test` in Re-entry. Otherwise you
+MUST set `spot_fixable: false` and route the task to `implement` (coder), or to
+`plan` when the finding invalidates intended behavior or scope. You MUST NOT
+route the re-entry to `reviewer` unless the issue is review-gate-only (for
+example, a missing `review_passes` field in `review.md`).
 
 Full-repository lint or test failures that are excluded from the gate per Gate
 scope MUST NOT generate a Re-entry must-fix entry.

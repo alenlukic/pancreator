@@ -22,6 +22,12 @@ import path from "node:path";
 
 import { enrichRetryLimitHaltArtifact } from "./feature-delivery-failure-preservation.js";
 import {
+  parseSpotFixJustificationFromMarkdown,
+  parseSpotFixJustificationFromRecord,
+  validateSpotFixJustification,
+} from "./feature-delivery-gate-validation.js";
+import { enrichRetryLimitHaltArtifact } from "./feature-delivery-failure-preservation.js";
+import {
   type FeatureDeliverySdkProgressReporter,
   withFeatureDeliverySdkStageHeartbeat,
 } from "./feature-delivery-sdk-progress.js";
@@ -1017,7 +1023,11 @@ export async function trySdkAutoChainAfterStageWork(input: {
       return attemptChain("review_passes", reviewRel);
     }
     if (verdict.passes === false) {
-      if (verdict.spotFixable || verdict.excludedFromGate) {
+      const spotFix = parseSpotFixJustificationFromMarkdown(content);
+      const spotFixValid =
+        validateSpotFixJustification("review_spot_fix", spotFix) === null &&
+        (verdict.spotFixable || verdict.excludedFromGate);
+      if (spotFixValid) {
         return attemptChain("review_spot_fix", reviewRel);
       }
       return attemptChain("must_fix", reviewRel);
@@ -1050,7 +1060,11 @@ export async function trySdkAutoChainAfterStageWork(input: {
       return attemptChain("qa_passes", testRel);
     }
     if (verdict.passes === false) {
-      if (verdict.spotFixable || verdict.excludedFromGate) {
+      const spotFix = parseSpotFixJustificationFromMarkdown(content);
+      const spotFixValid =
+        validateSpotFixJustification("qa_spot_fix", spotFix) === null &&
+        (verdict.spotFixable || verdict.excludedFromGate);
+      if (spotFixValid) {
         return attemptChain("qa_spot_fix", testRel);
       }
       const chainEvent = verdict.planInvalidating ? "qa_fails_plan_invalidating" : "qa_fails";
@@ -1080,7 +1094,21 @@ export async function trySdkAutoChainAfterStageWork(input: {
       return attemptChain("compliance_fails", complianceRel);
     }
     if (verdict.passes === false || finalGateFails || verdict.spotFixable || verdict.excludedFromGate) {
-      return attemptChain("compliance_spot_fix", complianceRel);
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = JSON.parse(content) as Record<string, unknown>;
+      } catch {
+        return attemptChain("compliance_fails", complianceRel);
+      }
+      const spotFixValid =
+        validateSpotFixJustification(
+          "compliance_spot_fix",
+          parseSpotFixJustificationFromRecord(parsed),
+        ) === null;
+      if (spotFixValid) {
+        return attemptChain("compliance_spot_fix", complianceRel);
+      }
+      return attemptChain("compliance_fails", complianceRel);
     }
   }
 

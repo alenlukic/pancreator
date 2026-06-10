@@ -22,6 +22,11 @@ import type { CursorSdkTransport } from "@pancreator/runner-cursor";
 import { stringifyCompactJson } from "@pancreator/core";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
+import {
+  gateFixtureBody,
+  VALID_HANDOFF_MARKDOWN,
+  VALID_TOUCH_SET_JSON,
+} from "./feature-delivery-gate-fixtures.js";
 
 const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
@@ -109,30 +114,14 @@ stages:
   }
   const runDir = path.join(root, runDirRel);
   await mkdir(runDir, { recursive: true });
-  await writeFile(path.join(runDir, "handoff.md"), "# handoff\n", "utf8");
+  await writeFile(path.join(runDir, "handoff.md"), VALID_HANDOFF_MARKDOWN, "utf8");
   await writeFile(path.join(runDir, "next-prompt.md"), "# prompt\n", "utf8");
-  await writeFile(path.join(runDir, "touch-set.json"), "{}\n", "utf8");
+  await writeFile(path.join(runDir, "touch-set.json"), VALID_TOUCH_SET_JSON, "utf8");
   await writeFile(path.join(runDir, "run.log.jsonl"), "", "utf8");
 }
 
-function mockStageArtifactBody(rel: string): string {
-  const base = path.posix.basename(rel);
-  if (base === "plan.md") return "# Plan\n\n## Scope\n\nBody.\n";
-  if (base === "implementation-report.md") return "# Implementation report\n\n## Summary\n\nBody.\n";
-  if (base === "review.md") return "review_passes: true\n";
-  if (base === "test-report.md") return "qa_passes: true\n";
-  if (base === "compliance-result.json") {
-    return stringifyCliJson(CANONICAL_REPO_ROOT, {
-      compliance_passes: true,
-      final_gate: {
-        "pnpm lint": 0,
-        "pnpm typecheck": 0,
-        "pnpm test": 0,
-        "node --test tests/*.test.mjs": 0,
-      },
-    });
-  }
-  return "mock-artifact\n";
+function mockStageArtifactBody(repoRoot: string, rel: string): string {
+  return gateFixtureBody(repoRoot, rel);
 }
 
 function sampleLedger(overrides: Partial<FeatureDeliveryRunnerLedger> = {}): FeatureDeliveryRunnerLedger {
@@ -254,7 +243,7 @@ describe("feature-delivery-runner automation", () => {
       for (const rel of required) {
         const abs = path.join(cwd, rel);
         await mkdir(path.dirname(abs), { recursive: true });
-        await writeFile(abs, mockStageArtifactBody(rel), "utf8");
+        await writeFile(abs, mockStageArtifactBody(cwd, rel), "utf8");
       }
       return { status: "ok", resultText: "ok" };
     };
@@ -434,7 +423,7 @@ configs:
       for (const rel of required) {
         const abs = path.join(cwd, rel);
         await mkdir(path.dirname(abs), { recursive: true });
-        await writeFile(abs, mockStageArtifactBody(rel), "utf8");
+        await writeFile(abs, mockStageArtifactBody(cwd, rel), "utf8");
       }
       return { status: "ok", resultText: "ok" };
     };
@@ -512,7 +501,7 @@ configs:
       for (const rel of required) {
         const abs = path.join(cwd, rel);
         await mkdir(path.dirname(abs), { recursive: true });
-        await writeFile(abs, mockStageArtifactBody(rel), "utf8");
+        await writeFile(abs, mockStageArtifactBody(cwd, rel), "utf8");
       }
       return { status: "ok", resultText: "ok" };
     };
@@ -543,7 +532,7 @@ configs:
     await seedSdkAdvanceRepo(root, runDirRel);
     const stateFileRel = `${runDirRel}/state.json`;
     const implementationReportRel = `${runDirRel}/implementation-report.md`;
-    await writeFile(path.join(root, implementationReportRel), "# Implementation report\n", "utf8");
+    await writeFile(path.join(root, implementationReportRel), mockStageArtifactBody(root, implementationReportRel), "utf8");
 
     const state: FeatureDeliveryState = {
       schemaVersion: "1",
@@ -601,7 +590,7 @@ configs:
       for (const rel of required) {
         const abs = path.join(cwd, rel);
         await mkdir(path.dirname(abs), { recursive: true });
-        await writeFile(abs, mockStageArtifactBody(rel), "utf8");
+        await writeFile(abs, mockStageArtifactBody(cwd, rel), "utf8");
       }
       return { status: "ok", resultText: "ok" };
     };

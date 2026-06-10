@@ -28,7 +28,7 @@ stages:
     label: Canonicalize the human directive
   - id: plan
     persona: tech-lead
-    label: Draft plan, ADR, touch-set, and handoff card
+    label: Draft quantified plan, ADR, touch-set with shared-layer annex, and handoff card
     outputs:
       - lib/memory/features/<feature-id>/ux-spec.md
       - .pan/work/<day>/<task-id>/plan.md
@@ -39,14 +39,16 @@ stages:
       - .pan/work/<day>/<task-id>/design-plan-prompt.md
   - id: implement
     persona: coder
-    label: Implement against the declared touch-set from the handoff card
+    label: Implement touch-set work and emit implementation-report gate proof
+    outputs:
+      - .pan/work/<day>/<task-id>/implementation-report.md
     inputs:
       - .pan/work/<day>/<task-id>/next-prompt.md
       - .pan/work/<day>/<task-id>/handoff.md
       - .pan/work/<day>/<task-id>/touch-set.json
   - id: review
     persona: reviewer
-    label: Run modern-code-review and contracts pass with compact must-fix output
+    label: Run modern-code-review, repo-wide tests, and contracts pass before QA
     outputs:
       - .pan/work/<day>/<task-id>/review.md
   - id: test
