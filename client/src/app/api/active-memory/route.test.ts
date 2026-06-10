@@ -15,7 +15,7 @@ function writeCurrentMd(
 ): void {
   const activeFeaturePath =
     options.activeFeaturePath === undefined
-      ? "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md"
+      ? "lib/inbox/in/172967_06-08-26/54352_0854_command-center-pipeline-orientation.md"
       : options.activeFeaturePath;
   const blockers = options.blockers ?? [
     "Blocker one",
@@ -74,8 +74,8 @@ describe("GET /api/active-memory", () => {
     writeCurrentMd(tempRoot);
     writeInboxDirective(
       tempRoot,
-      "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md",
-      "Cockpit v2 pipeline orientation",
+      "lib/inbox/in/172967_06-08-26/54352_0854_command-center-pipeline-orientation.md",
+      "Command Center pipeline orientation",
     );
   });
 
@@ -89,10 +89,10 @@ describe("GET /api/active-memory", () => {
     try {
       const snapshot = await loadActiveMemory(tempRoot);
       expect(snapshot.activeFeaturePath).toBe(
-        "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md",
+        "lib/inbox/in/172967_06-08-26/54352_0854_command-center-pipeline-orientation.md",
       );
-      expect(snapshot.activeFeatureLabel).toBe("Cockpit v2 pipeline orientation");
-      expect(snapshot.activeFeatureSlug).toBe("cockpit-v2-pipeline-orientation");
+      expect(snapshot.activeFeatureLabel).toBe("Command Center pipeline orientation");
+      expect(snapshot.activeFeatureSlug).toBe("command-center-pipeline-orientation");
       expect(snapshot.blockersSummary).toBe("Blocker one · Blocker two · Blocker three");
       expect(snapshot.blockerChips).toEqual([
         "Blocker one",

@@ -1,8 +1,8 @@
-import { CockpitSurfacePlaceholder } from "@/components/cockpit/layout/CockpitSurfacePlaceholder";
-import { COCKPIT_SURFACES } from "@/components/cockpit/layout/surface-config";
+import { CommandCenterSurfacePlaceholder } from "@/components/command-center/layout/CommandCenterSurfacePlaceholder";
+import { COMMAND_CENTER_SURFACES } from "@/components/command-center/layout/surface-config";
 
-const surface = COCKPIT_SURFACES.find((entry) => entry.id === "compliance")!;
+const surface = COMMAND_CENTER_SURFACES.find((entry) => entry.id === "compliance")!;
 
 export default function CompliancePage() {
-  return <CockpitSurfacePlaceholder surface={surface} />;
+  return <CommandCenterSurfacePlaceholder surface={surface} />;
 }

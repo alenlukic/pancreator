@@ -8,7 +8,7 @@ threshold_policy: defaults.medium  # from pancreator-defaults.yaml
 # Design steps for feature-delivery. When true, plan delegates to design-engineer
 # before tech-lead consolidation; test runs design-reviewer design QA in parallel with
 # qa-tester, and the test gate requires both qa_passes and design_qa_passes. Enabled by
-# default because the operator cockpit (client/) is the live product surface under active
+# default because the Command Center (client/) is the live product surface under active
 # design iteration. Per-feature spec.md frontmatter `design_steps: false` overrides this
 # default for backend-only features that ship no operator-facing UI.
 feature_delivery:

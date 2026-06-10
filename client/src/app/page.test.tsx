@@ -444,14 +444,14 @@ describe("DashboardPage", () => {
     vi.useRealTimers();
   });
 
-  it("defaults to the Pipeline module with CockpitShell tabs", async () => {
+  it("defaults to the Pipeline module with DashboardModuleShell tabs", async () => {
     mockFetchForDashboard({ runState: mockRunState });
 
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("cockpit-shell")).toBeInTheDocument();
-      expect(screen.getByTestId("module-tab-pipeline")).toHaveClass("cockpit-module-tab-active");
+      expect(screen.getByTestId("dashboard-module-shell")).toBeInTheDocument();
+      expect(screen.getByTestId("module-tab-pipeline")).toHaveClass("dashboard-module-tab-active");
       expect(screen.getByTestId("pipeline-module")).toBeInTheDocument();
     });
   });
@@ -533,7 +533,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("stage-grid")).toBeInTheDocument();
-      expect(screen.getByTestId("task-cockpit-65766_0543_demo-feature")).toHaveTextContent(
+      expect(screen.getByTestId("task-command-center-65766_0543_demo-feature")).toHaveTextContent(
         "65766_0543_demo-feature (2026-06-02 05:43 UTC)",
       );
       expect(screen.getByTestId("stage-cell-intake")).toHaveTextContent("Intake ratified");
@@ -1216,7 +1216,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("next-action-panel")).toHaveTextContent("Other Feature");
-      expect(screen.getByTestId("task-cockpit-88888_1200_other-feature")).toHaveAttribute(
+      expect(screen.getByTestId("task-command-center-88888_1200_other-feature")).toHaveAttribute(
         "aria-selected",
         "true",
       );
@@ -1341,10 +1341,10 @@ describe("DashboardPage", () => {
 
 const mockMissionControlRunState = [
   {
-    taskId: "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
-    featureId: "cockpit-v2-feature-delivery-mission-control-run-detail",
+    taskId: "61498_0655_command-center-feature-delivery-mission-control-run-detail",
+    featureId: "command-center-feature-delivery-mission-control-run-detail",
     decodedTimestamp: "2026-06-09 06:55 UTC",
-    runDir: ".pan/work/172966_06-09-26/61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+    runDir: ".pan/work/172966_06-09-26/61498_0655_command-center-feature-delivery-mission-control-run-detail",
     stages: [
       { name: "intake", ownerPersona: "intake-analyst", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "complete" },
       { name: "plan", ownerPersona: "tech-lead", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "complete" },
@@ -1419,7 +1419,7 @@ describe("Mission Control surface", () => {
   it("deep-links ?task= to the named run in the header", async () => {
     mockMissionControlSearchParams.set(
       "task",
-      "61498_0655_cockpit-v2-feature-delivery-mission-control-run-detail",
+      "61498_0655_command-center-feature-delivery-mission-control-run-detail",
     );
     mockFetchForDashboard({ runState: mockMissionControlRunState });
 
@@ -1427,7 +1427,7 @@ describe("Mission Control surface", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("run-context-header")).toHaveTextContent(
-        "Cockpit V2 Feature Delivery Mission Control Run Detail",
+        "Command Center Feature Delivery Mission Control Run Detail",
       );
     });
   });

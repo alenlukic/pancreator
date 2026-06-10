@@ -276,7 +276,7 @@ scheduler wiring lands.
 /.pan/sandboxes/                      operator/agent scratch QA + port registry (gitignored)
 /lib/internal/packages/          TypeScript packages
 /lib/internal/tools/             validation scripts
-/client/                         operator cockpit (Next.js; de-indexed)
+/client/                         Command Center (Next.js; de-indexed)
 /tests/                          repository tests
 /.pan/{worktrees,scheduler}/     other control-plane state
 /pancreator.yaml                 live policy and project_root

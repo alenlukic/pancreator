@@ -1,4 +1,4 @@
-import { KickoffSurface } from "@/components/cockpit/kickoff/KickoffSurface";
+import { KickoffSurface } from "@/components/command-center/kickoff/KickoffSurface";
 
 export default function WorkIntakePage() {
   return <KickoffSurface />;

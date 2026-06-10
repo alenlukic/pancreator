@@ -1,0 +1,553 @@
+{
+  "feature_id": "command-center-feature-delivery-mission-control-run-detail",
+  "title": "Command Center — FD Mission Control run detail",
+  "task_id": "50770_0953_command-center-feature-delivery-mission-control-run-detail",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-09T11:30:00.000Z",
+  "program": "command-center",
+  "design_steps": true,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": ".pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_command-center-fd-mission-control.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172966_06-09-26/63490_0621_command-center-fd-mission-control.md",
+      "range": [1, 83],
+      "contentHash": "d08b981"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Supervisor ship ratification at 2026-06-09T11:05:00Z with human_ratified_diff true; staged diff covers operator-readability re-entry delta in eight touch-set paths atop base Mission Control at commit d614324."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-09T11:30:00.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-09T11:30:00.000Z",
+    "artifacts_indexed": 24,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 3,
+    "nit_count": 2,
+    "spec_contracts_executed": 3,
+    "spec_contracts_note": "Three embedded llm-judge UX contract blocks in ux-spec.md; no contracts.index.json sidecar.",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/review.md",
+      "range": [1, 40],
+      "contentHash": "f1158c3"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/test-report.md",
+    "verification_gates": {
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_focused_tests": "pass (20/20)",
+      "client_full_tests": "pass (163/163)",
+      "client_build": "excluded-from-gate (pre-existing repo build failure)",
+      "node_test_suite": "excluded-from-gate (pre-existing)",
+      "pnpm_test": "excluded-from-gate (pre-existing)"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/test-report.md",
+      "range": [1, 46],
+      "contentHash": "05156a9"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/compliance-result.json",
+    "audit_id": "50770_0953_command-center-feature-delivery-mission-control-run-detail-20260609070000",
+    "baseline_audit_id": "69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories-20260609053000",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/compliance-result.json",
+      "range": [1, 322],
+      "contentHash": "f933a2c"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+      "range": [1, 436],
+      "contentHash": "0188f27"
+    },
+    "archived_inbox_source": ".pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_command-center-fd-mission-control.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/ship-ratification.json",
+    "ratified_paths": [
+      "client/src/app/page.test.tsx",
+      "client/src/components/command-center/layout/CommandCenterSurfacePlaceholder.test.tsx",
+      "client/src/components/command-center/mission-control/ArtifactsByStage.tsx",
+      "client/src/components/command-center/mission-control/RunContextHeader.tsx",
+      "client/src/components/command-center/mission-control/StageDetailPanel.tsx",
+      "client/src/components/command-center/mission-control/StageMachineGrid.tsx",
+      "client/src/components/command-center/mission-control/dashboard-file-modal.tsx",
+      "client/src/components/command-center/mission-control/mission-control.test.tsx"
+    ],
+    "base_commit_note": "Remaining mission-control production paths committed on branch pan/batch-50770_0953_batch/50770_0953_command-center-feature-delivery-mission-control-run-detail at d614324.",
+    "operator_commit_notes": [
+      "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md — include at human commit",
+      "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/index.json — refreshed by librarian at index stage",
+      "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/spec.md and ux-spec.md — include at human commit"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/ship-ratification.json",
+      "range": [1, 52],
+      "contentHash": "4df3616"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "fd-stage-order-duplication",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "FD_STAGE_ORDER duplicated across MissionControlStageRail, ArtifactsByStage, and mission-control.test.tsx.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/review.md",
+        "range": [15, 15],
+        "contentHash": "974a92f"
+      }
+    },
+    {
+      "id": "touch-set-test-drift",
+      "owner": "tech-lead",
+      "status": "consider",
+      "reason": "page.test.tsx and CommandCenterSurfacePlaceholder.test.tsx carry staged fixes required for full client suite but were not listed in touch-set.json paths.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/review.md",
+        "range": [35, 35],
+        "contentHash": "8e9a134"
+      }
+    },
+    {
+      "id": "verbose-log-event-slugs",
+      "owner": "coder",
+      "status": "consider",
+      "reason": "VerboseLogDrawer event-type select exposes internal dot-separated event ids; design-QA P2 recommendation open.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/design-qa-report.md",
+        "range": [35, 35],
+        "contentHash": "42ad5c7"
+      }
+    },
+    {
+      "id": "remediation-cta-stubs",
+      "owner": "coder",
+      "status": "open",
+      "reason": "Retry-limit remediation CTAs remain stub toasts until command-center-quick-fix lands.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/adr-draft.md",
+        "range": [77, 78],
+        "contentHash": "470ae05"
+      }
+    },
+    {
+      "id": "contracts-index-missing",
+      "owner": "tech-lead",
+      "status": "consider",
+      "reason": "Three llm-judge blocks in ux-spec.md lack contracts.index.json registration; pan lint contracts:from_feature deferred at M1.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/review.md",
+        "range": [89, 89],
+        "contentHash": "8e9a134"
+      }
+    },
+    {
+      "id": "adr-draft-promotion",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft not yet promoted to lib/memory/adr/ for downstream binding authority.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/adr-draft.md",
+        "range": [75, 78],
+        "contentHash": "470ae05"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Feature folder (spec, ux-spec, delivery-report, index.json) may remain untracked until human commit.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/ship-ratification.json",
+        "range": [31, 38],
+        "contentHash": "4df3616"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/spec.md",
+        "range": [1, 22],
+        "contentHash": "ef6057d"
+      }
+    }
+  ],
+  "stale_citations_flagged": {
+    "scan_scope": "feature-folder-and-delivery-report",
+    "abbrev_len_at_index_time": 7,
+    "total_stale_in_delivery_report": 41,
+    "changed_citations": [
+      {
+        "citing_path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/implementation-report.md",
+        "recorded_content_hash": "093bfd2",
+        "live_content_hash": "72618ce",
+        "verifier_status": "changed",
+        "note": "delivery-report authored before final implementation-report edits."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/review.md",
+        "recorded_content_hash": "0075d23",
+        "live_content_hash": "92ae419",
+        "verifier_status": "changed",
+        "note": "delivery-report review citations predate reviewer final pass."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+        "cited_path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/test-report.md",
+        "recorded_content_hash": "eb318d1",
+        "live_content_hash": "d9f8280",
+        "verifier_status": "changed",
+        "note": "delivery-report test-report citations predate qa-tester gate logs."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+        "cited_path": "client/src/components/command-center/mission-control/RunContextHeader.tsx",
+        "recorded_content_hash": "8499080",
+        "live_content_hash": "8b4e264",
+        "verifier_status": "changed",
+        "note": "delivery-report touch-set citations predate operator-readability re-entry."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+        "cited_path": "client/src/components/command-center/mission-control/mission-control.test.tsx",
+        "recorded_content_hash": "23af121",
+        "live_content_hash": "3d06da9",
+        "verifier_status": "changed",
+        "note": "delivery-report test citations predate focused 20-test suite expansion."
+      },
+      {
+        "citing_path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+        "cited_path": "client/src/services/run-state-shared.ts",
+        "recorded_content_hash": "398f3e9",
+        "live_content_hash": "b9e30b2",
+        "verifier_status": "changed",
+        "note": "delivery-report service citations predate implement-stage final diff."
+      }
+    ]
+  },
+  "touch_set_snapshot": {
+    "featureId": "command-center-feature-delivery-mission-control-run-detail",
+    "taskId": "50770_0953_command-center-feature-delivery-mission-control-run-detail",
+    "stage": "implement",
+    "paths": [
+      "client/src/app/(command-center)/mission-control/page.tsx",
+      "client/src/app/api/run-state/route.ts",
+      "client/src/app/globals.css",
+      "client/src/components/command-center/mission-control/ArtifactsByStage.tsx",
+      "client/src/components/command-center/mission-control/MissionControlModule.tsx",
+      "client/src/components/command-center/mission-control/MissionControlStageRail.tsx",
+      "client/src/components/command-center/mission-control/RetryLimitBanner.tsx",
+      "client/src/components/command-center/mission-control/RunContextHeader.tsx",
+      "client/src/components/command-center/mission-control/RunEventTimeline.tsx",
+      "client/src/components/command-center/mission-control/StageDetailPanel.tsx",
+      "client/src/components/command-center/mission-control/StageMachineGrid.tsx",
+      "client/src/components/command-center/mission-control/VerboseLogDrawer.tsx",
+      "client/src/components/command-center/mission-control/dashboard-file-modal.tsx",
+      "client/src/app/page.test.tsx",
+      "client/src/components/command-center/layout/CommandCenterSurfacePlaceholder.test.tsx",
+      "client/src/components/command-center/mission-control/mission-control.test.tsx",
+      "client/src/components/command-center/mission-control/remediation.ts",
+      "client/src/components/command-center/pipeline/PipelineModule.tsx",
+      "client/src/components/command-center/pipeline/RunEventTimeline.tsx",
+      "client/src/components/command-center/pipeline/StageMachineGrid.tsx",
+      "client/src/services/run-state-shared.ts",
+      "client/src/services/run-state.ts",
+      "client/src/services/stage-artifact-contract.ts"
+    ],
+    "symbols": [],
+    "tests": [],
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/touch-set.json",
+      "range": [1, 52],
+      "contentHash": "74dab4a"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/spec.md",
+          "range": [1, 228],
+          "contentHash": "ef6057d"
+        }
+      },
+      "ux_spec": {
+        "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/ux-spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/ux-spec.md",
+          "range": [1, 274],
+          "contentHash": "f9fe1f0"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md",
+          "range": [1, 436],
+          "contentHash": "0188f27"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/"
+      },
+      "plan": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/plan.md",
+          "range": [1, 177],
+          "contentHash": "9932c24"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/adr-draft.md",
+          "range": [1, 84],
+          "contentHash": "63b2486"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/touch-set.json",
+          "range": [1, 52],
+          "contentHash": "74dab4a"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/implementation-report.md",
+          "range": [1, 118],
+          "contentHash": "1dfc5f3"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/review.md",
+          "range": [1, 108],
+          "contentHash": "8e9a134"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/test-report.md",
+          "range": [1, 46],
+          "contentHash": "05156a9"
+        }
+      },
+      "design_qa_report": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/design-qa-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/design-qa-report.md",
+          "range": [1, 49],
+          "contentHash": "42ad5c7"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/compliance-result.json",
+          "range": [1, 322],
+          "contentHash": "f933a2c"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/compliance-audit.md",
+          "range": [1, 119],
+          "contentHash": "266472e"
+        }
+      },
+      "compliance_remediation": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/compliance-remediation.md",
+        "note": "Compliance-auditor remediation notes for baseline-delta audit."
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/ship-ratification.json",
+          "range": [1, 52],
+          "contentHash": "4df3616"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/handoff.md",
+          "range": [1, 54],
+          "contentHash": "37a8be9"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/qa-logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      },
+      "contract_runs": {
+        "path": ".pan/work/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/contract-runs/",
+        "note": "Embedded ux-spec llm-judge contract runner logs."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": ".pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_command-center-fd-mission-control.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172966_06-09-26/63490_0621_command-center-fd-mission-control.md",
+          "range": [1, 83],
+          "contentHash": "d08b981"
+        }
+      },
+      "ux_spec_parent": {
+        "path": "lib/memory/features/command-center-ux-philosophy-information-architecture-and-user-stories/ux-spec.md",
+        "note": "Ratified FD Mission Control §4.4 authority cited by spec and ux-spec depends_on."
+      },
+      "prior_art_live_refresh": {
+        "path": "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+        "note": "Shipped run-state polling, stage grid, and P10 artifact modal patterns this Feature extends."
+      },
+      "prior_art_command_center": {
+        "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+        "note": "Shipped Pipeline module and human-gate queue; mission-control grid re-exports canonical implementations."
+      }
+    }
+  },
+  "contracts": {
+    "clauses": [
+      {
+        "id": "command-center-feature-delivery-mission-control-run-detail.ux.fd-mission-control-stage-rail",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/ux-spec.md",
+        "note": "Evaluated via mission-control.test.tsx RTL evidence and design-qa Chrome DevTools inspection."
+      },
+      {
+        "id": "command-center-feature-delivery-mission-control-run-detail.ux.verbose-log-calm-default",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/ux-spec.md",
+        "note": "Evaluated via calm-default drawer tests and design-qa drawer inspection."
+      },
+      {
+        "id": "command-center-feature-delivery-mission-control-run-detail.ux.artifacts-p10-readonly",
+        "kind": "llm-judge",
+        "severity": "block",
+        "result": "pass",
+        "artifact": "lib/memory/features/command-center-feature-delivery-mission-control-run-detail/ux-spec.md",
+        "note": "Evaluated via artifact preview modal tests and design-qa P10 inspection."
+      }
+    ]
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "coder_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_command-center-fd-mission-control.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172966_06-09-26/63490_0621_command-center-fd-mission-control.md"
+  },
+  "archived_inbox_source": ".pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_command-center-fd-mission-control.md"
+}

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { SurfaceShellGate } from "@/components/cockpit/layout/SurfaceShellGate";
+import { SurfaceShellGate } from "@/components/command-center/layout/SurfaceShellGate";
 import { palette } from "@/services/theme";
 import "./globals.css";
 

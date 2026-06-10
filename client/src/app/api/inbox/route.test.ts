@@ -15,10 +15,10 @@ describe("GET /api/inbox", () => {
     fs.mkdirSync(inboxRoot, { recursive: true });
     fs.mkdirSync(path.join(tempRoot, "lib/inbox/notes"), { recursive: true });
 
-    const inboxFile = path.join(inboxRoot, "54352_0854_cockpit-v2-pipeline-orientation.md");
+    const inboxFile = path.join(inboxRoot, "54352_0854_command-center-pipeline-orientation.md");
     fs.writeFileSync(
       inboxFile,
-      "# Cockpit v2 pipeline orientation\n\nDirective body.\n",
+      "# Command Center pipeline orientation\n\nDirective body.\n",
     );
     const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
     fs.utimesSync(inboxFile, twoHoursAgo / 1000, twoHoursAgo / 1000);
@@ -37,13 +37,13 @@ describe("GET /api/inbox", () => {
       const entries = await loadInboxEntries(tempRoot);
       expect(entries).toHaveLength(1);
       expect(entries[0]).toMatchObject({
-        path: "lib/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md",
-        title: "Cockpit v2 pipeline orientation",
-        slug: "cockpit-v2-pipeline-orientation",
+        path: "lib/inbox/in/172967_06-08-26/54352_0854_command-center-pipeline-orientation.md",
+        title: "Command Center pipeline orientation",
+        slug: "command-center-pipeline-orientation",
         ageHours: 2,
       });
       expect(inboxRunCommand(entries[0]?.path ?? "")).toBe(
-        "pnpm -w exec pan run feature-delivery 172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md",
+        "pnpm -w exec pan run feature-delivery 172967_06-08-26/54352_0854_command-center-pipeline-orientation.md",
       );
 
       const response = await GET();

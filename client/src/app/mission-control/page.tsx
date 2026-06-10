@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { MissionControlModule } from "@/components/cockpit/mission-control/MissionControlModule";
+import { MissionControlModule } from "@/components/command-center/mission-control/MissionControlModule";
 
 export default function MissionControlPage() {
   return (

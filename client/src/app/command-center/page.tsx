@@ -1,4 +1,4 @@
-import { CommandCenterSurface } from "@/components/cockpit/command-center/CommandCenterSurface";
+import { CommandCenterSurface } from "@/components/command-center/command-center/CommandCenterSurface";
 
 export default function CommandCenterPage() {
   return <CommandCenterSurface />;

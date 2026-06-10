@@ -228,7 +228,7 @@ justification is missing or out of bounds.
 
 #### Shared-layer touch-set rule
 
-Integration-heavy Cockpit slices MUST declare `shared_paths` and
+Integration-heavy Command Center slices MUST declare `shared_paths` and
 `integration_prerequisites` in `touch-set.json` at plan time. Reviewers MUST treat
 declared `shared_paths` edits as allowed integration work, not touch-set breaches.
 Undeclared shared-layer edits route back to `plan`, not repeated `must_fix` loops.
@@ -601,7 +601,7 @@ Example **launchd** `ProgramArguments` fragment (hourly at minute 0):
 ```
 
 Run history is append-only JSONL under `.pan/scheduler/runs/<automation-id>.jsonl`.
-Cockpit Run now calls the same tick primitive for a single id via
+Command Center Run now calls the same tick primitive for a single id via
 `POST /api/automations/<id>/run`.
 
 ## Active memory refresh
