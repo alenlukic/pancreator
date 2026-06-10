@@ -1,0 +1,101 @@
+id: experience-planning
+version: "1"
+supervisor: supervisor
+metadata:
+  pancreator-bootstrap-only: false
+  description: >-
+    Pre-feature-delivery planning pipeline for product and experience work.
+    When the operator names this pipeline with a brief (an inbox directive or
+    prose the supervisor scaffolds into one), the intake-analyst and the
+    contract-writer SHALL refine the brief into a canonical planning brief in
+    at most 5 clarifying-question rounds; the sme-product and the sme-design
+    SHALL then produce parallel recommendation artifacts; the operator SHALL
+    review the recommendations at a human gate with bounded loop-back to
+    refinement; the product-design-lead SHALL synthesize the approved
+    recommendations into one feature-delivery-ready intake directive with
+    drafted spec frontmatter design_steps enabled; the supervisor MAY then run
+    feature-delivery on that directive in fully automated SDK mode. This
+    pipeline plans and scaffolds; it MUST NOT implement product code.
+  args:
+    - id: brief
+      label: Repo-relative path to the operator brief inbox directive under lib/inbox/in/
+    - id: deliver
+      label: When false, the supervisor SHALL stop after synthesis and leave the drafted directive for manual kickoff
+      default: "false"
+    - id: max-review-loops
+      label: Maximum operator-review loop-backs to sme-consult before the supervisor SHALL halt and escalate via inbox
+      default: "2"
+  references:
+    - kind: lines
+      path: .docs/PRD.md
+      range: [123, 132]
+      contentHash: 2eb6aa4
+      note: >-
+        PRD §3.5 US-2 — design-specialist dialogue refines rough operator
+        intent into a canonical UX artifact.
+    - kind: lines
+      path: .docs/PRD.md
+      range: [154, 163]
+      contentHash: 2eb6aa4
+      note: >-
+        PRD §3.5 US-5 — long-lived SME personas with private memory consult on
+        operator-initiated work.
+    - kind: lines
+      path: lib/pipelines/command-center-design-audit-delivery.yaml
+      range: [42, 66]
+      contentHash: 76c9f11
+      note: >-
+        Supervisor-driven pre-feature-delivery stage shape this pipeline
+        follows.
+    - kind: lines
+      path: lib/memory/handbook/engineering/design/control-surface-ux.md
+      range: [1, 40]
+      contentHash: 3c08445
+      note: >-
+        Control-surface UX obligations that SME recommendations cite by
+        obligation number.
+stages:
+  - id: brief-intake
+    persona: intake-analyst
+    label: Refine the operator brief into a canonical planning brief through at most 5 clarifying-question rounds, delegating gate-clause normalization to contract-writer when the brief names machine-checkable outcomes
+    inputs:
+      - "arg:brief"
+      - lib/memory/handbook/inbox-lifecycle.md
+    outputs:
+      - .pan/work/<day>/<task-id>/planning-brief.md
+  - id: sme-consult
+    persona: sme-product
+    label: Produce parallel product and design recommendation artifacts against the planning brief; the supervisor SHALL delegate sme-design concurrently with sme-product and both artifacts gate this stage
+    inputs:
+      - .pan/work/<day>/<task-id>/planning-brief.md
+      - lib/memory/handbook/engineering/design/control-surface-ux.md
+      - lib/memory/handbook/engineering/design/design-system.md
+      - lib/memory/handbook/engineering/design/component-standard.md
+    outputs:
+      - .pan/work/<day>/<task-id>/product-recommendations.md
+      - .pan/work/<day>/<task-id>/design-recommendations.md
+  - id: operator-review
+    persona: supervisor
+    label: Present both recommendation artifacts to the operator through an inbox thread round and record the approve or revise decision; on revise, loop back to sme-consult at most arg max-review-loops times before halting via inbox escalation
+    gate: human_approval
+    inputs:
+      - .pan/work/<day>/<task-id>/product-recommendations.md
+      - .pan/work/<day>/<task-id>/design-recommendations.md
+    outputs:
+      - lib/inbox/threads/<day>/<feature-slug>/operator-review-round.md
+    loop: "operator revise decision returns the pipeline to sme-consult; arg:max-review-loops bounds the loop count"
+  - id: synthesis
+    persona: product-design-lead
+    label: Merge the approved recommendations and operator feedback into one feature-delivery-ready intake directive with drafted spec frontmatter design_steps true and an explicit Tradeoffs resolved section
+    inputs:
+      - .pan/work/<day>/<task-id>/product-recommendations.md
+      - .pan/work/<day>/<task-id>/design-recommendations.md
+      - lib/inbox/threads/<day>/<feature-slug>/operator-review-round.md
+    outputs:
+      - lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md
+  - id: deliver
+    persona: supervisor
+    label: Run feature-delivery on the synthesized directive in fully automated SDK mode with design steps on so design-engineer and design-reviewer gate the run
+    gate: "arg:deliver != false"
+    inputs:
+      - lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md

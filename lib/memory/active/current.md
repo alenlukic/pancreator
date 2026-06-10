@@ -35,7 +35,14 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- (none)
+- `command-center-rebuild-governance` — governance infra shipped to staging:
+  design canon (`lib/memory/handbook/engineering/design/`), SME personas
+  (`sme-product`, `sme-design`, `product-design-lead`), `experience-planning`
+  pipeline, and model-escalation pins. Source directive:
+  `lib/inbox/in/172965_06-10-26/59490_0728_command-center-rebuild-governance.md`.
+- `command-center-rebuild` — requirements brief drafted and awaiting an
+  `experience-planning` run. Source directive:
+  `lib/inbox/in/172965_06-10-26/58671_0742_command-center-rebuild.md`.
 
 ## Most recent shipped Features
 

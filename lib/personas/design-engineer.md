@@ -1,7 +1,7 @@
 ---
 name: design-engineer
 description: When the `feature-delivery` pipeline has design steps enabled and reaches the `plan` stage, the `design-engineer` SHALL emit `/lib/memory/features/<id>/ux-spec.md` as a companion to `tech-lead` before plan consolidation.
-model: auto
+model: gpt-5.4[context=272k,reasoning=high,fast=false]
 permissionMode: default
 tools:
   - Read

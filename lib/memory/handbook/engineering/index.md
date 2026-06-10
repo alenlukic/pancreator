@@ -25,6 +25,9 @@ related:
   - /lib/memory/handbook/engineering/software-engineering.md
   - /lib/memory/handbook/engineering/typescript.md
   - /lib/memory/handbook/engineering/design-craft.md
+  - /lib/memory/handbook/engineering/design/design-system.md
+  - /lib/memory/handbook/engineering/design/component-standard.md
+  - /lib/memory/handbook/engineering/design/control-surface-ux.md
   - /lib/memory/handbook/contract-style.md
 ---
 
@@ -43,6 +46,8 @@ names; the standards are obligations, not suggestions.
 | Review or test code in any language | `/lib/memory/handbook/engineering/software-engineering.md` | Reviewers and QA apply the same standard the author followed. |
 | Author or modify TypeScript, ES2022+, or ESM-aware tooling | `/lib/memory/handbook/engineering/typescript.md` plus the software-engineering page | The TypeScript guide layers on top of the general standard. |
 | Author a UX spec or run design QA | `/lib/memory/handbook/engineering/design-craft.md` | Product design and UI craft taste profile. |
+| Implement or restyle UI under `client/` | `/lib/memory/handbook/engineering/design/design-system.md` plus `/lib/memory/handbook/engineering/design/component-standard.md` | Token canon and component/icon stack bind all UI implementation. |
+| Specify, implement, or review an operator control surface | `/lib/memory/handbook/engineering/design/control-surface-ux.md` plus the design-craft page | Orientation, triage, receipt, and gating obligations for control surfaces. |
 
 When more than one page applies, the agent SHALL load the general
 software-engineering standard first, then the language- or domain-specific page.
@@ -54,6 +59,9 @@ software-engineering standard first, then the language- or domain-specific page.
 | `/lib/memory/handbook/engineering/software-engineering.md` | Correctness, clarity, cohesion, testing, resilience, security, and minimalism across all languages. |
 | `/lib/memory/handbook/engineering/typescript.md` | Strict TypeScript, ES2022+ language features, runtime validation, module boundaries, and tooling coherence. |
 | `/lib/memory/handbook/engineering/design-craft.md` | Product design and UI craft taste profile for `design-engineer` and `design-reviewer`. |
+| `/lib/memory/handbook/engineering/design/design-system.md` | Canonical design tokens (brand palette, status ramps, scales) and the CSS-variable contract for operator surfaces. |
+| `/lib/memory/handbook/engineering/design/component-standard.md` | Component-library (shadcn/ui + Radix + Tailwind) and icon-set (Lucide) standard with forbidden styling practices. |
+| `/lib/memory/handbook/engineering/design/control-surface-ux.md` | Interaction-pattern obligations for operator control surfaces: orientation, triage, receipts, gates, and motion. |
 
 ## Enforcement
 

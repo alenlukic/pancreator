@@ -10,11 +10,15 @@
 #   - When no valid model step exists, escalate via bracket qualifiers on the same
 #     family (effort=, reasoning=) per https://cursor.com/docs/models-and-pricing
 #   - Sparse tier keys are intentional: loopbacks may reuse the prior tier.
+#   - Design-critical and synthesis personas (sme-product, sme-design,
+#     product-design-lead, design-engineer, design-reviewer) MUST NOT resolve to
+#     `auto` or to a Composer-pool model in any config; every tier for these
+#     personas pins an explicit high-reasoning model.
 #
 # Pricing reference: https://cursor.com/docs/models-and-pricing (API output $/1M
 # as primary cost axis). Capability tie-break: LiveBench-2026-01-08.
 
-active_config: auto
+active_config: default
 
 configs:
   default:
@@ -72,8 +76,7 @@ configs:
         default: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
       compliance-auditor:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: gpt-5.5[context=272k,reasoning=high,fast=false]
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
 
       contract-writer:
         default: auto
@@ -93,13 +96,27 @@ configs:
         1: gpt-5.4-mini
         3: gpt-5.3-codex[reasoning=high,fast=false]
 
+      # --- experience-planning pipeline ---
+
+      sme-product:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      sme-design:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      product-design-lead:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
+
 
   complex:
     personas:
       # --- feature-delivery pipeline ---
 
       intake-analyst:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
 
       tech-lead:
         default: gpt-5.5[context=272k,reasoning=high,fast=false]
@@ -110,7 +127,7 @@ configs:
         4: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       reviewer:
-        default: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
         2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       qa-tester:
@@ -146,8 +163,7 @@ configs:
         default: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
       compliance-auditor:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: gpt-5.5[context=272k,reasoning=high,fast=false]
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
 
       contract-writer:
         default: auto
@@ -166,6 +182,20 @@ configs:
         default: auto
         1: gpt-5.4-mini
         3: gpt-5.3-codex[reasoning=high,fast=false]
+
+      # --- experience-planning pipeline ---
+
+      sme-product:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      sme-design:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      product-design-lead:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
 
   auto:
@@ -215,3 +245,22 @@ configs:
 
       pr-writer:
         default: auto
+
+      # --- experience-planning pipeline ---
+      # Design-critical and synthesis personas stay pinned even in the auto
+      # config; the ladder rules forbid `auto` for them.
+
+      design-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      design-reviewer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      sme-product:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      sme-design:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      product-design-lead:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]

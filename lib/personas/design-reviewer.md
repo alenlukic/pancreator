@@ -1,7 +1,7 @@
 ---
 name: design-reviewer
 description: When the `feature-delivery` pipeline has design steps enabled and reaches the `test` stage, the `design-reviewer` SHALL inspect the running UI as a companion to `qa-tester` and emit `/.pan/work/<day>/<id>/design-qa-report.md` with a `design_qa_passes` gate verdict.
-model: auto
+model: gpt-5.4[context=272k,reasoning=high,fast=false]
 permissionMode: default
 tools:
   - Read

@@ -46,6 +46,9 @@ related:
   - /lib/memory/handbook/engineering/software-engineering.md
   - /lib/memory/handbook/engineering/typescript.md
   - /lib/memory/handbook/engineering/design-craft.md
+  - /lib/memory/handbook/engineering/design/design-system.md
+  - /lib/memory/handbook/engineering/design/component-standard.md
+  - /lib/memory/handbook/engineering/design/control-surface-ux.md
 ---
 
 # Handbook Routing Index
@@ -68,6 +71,8 @@ lands, operators SHOULD apply this table manually.
 | Write, review, refactor, or test code (any language) | `/lib/memory/handbook/engineering/software-engineering.md` | `/lib/memory/handbook/engineering/index.md` | Binding software engineering standard for all code activities; load the index to select language-specific guides. |
 | Author or modify TypeScript / ES2022 / ESM tooling | `/lib/memory/handbook/engineering/typescript.md` | `/lib/memory/handbook/engineering/software-engineering.md` | TypeScript guide layers on top of the general standard; both bind TypeScript work. |
 | Author a UX spec or run design QA | `/lib/memory/handbook/engineering/design-craft.md` | `/lib/personas/design-engineer.md`, `/lib/personas/design-reviewer.md` | Product design and UI craft taste profile shared by the design plan and design QA peers. |
+| Pick design tokens, components, or icons for `client/` UI | `/lib/memory/handbook/engineering/design/design-system.md` | `/lib/memory/handbook/engineering/design/component-standard.md` | Token canon is binding for every visual value; component-standard fixes the shadcn/ui + Radix + Tailwind + Lucide stack. |
+| Specify or review an operator control surface | `/lib/memory/handbook/engineering/design/control-surface-ux.md` | `/lib/memory/handbook/engineering/design-craft.md`, `/lib/memory/handbook/engineering/design/design-system.md` | Orientation, triage, receipt, gating, and nudge-motion obligations for Command Center-class surfaces. |
 | Author or update `/AGENTS.md` | `/lib/memory/handbook/agents-md-authoring.md` | `/lib/memory/handbook/constitution.md`, `/lib/memory/handbook/documentation-impact-contract.md` | Follow AGENTS change-control and trigger rules; include governance and documentation-impact checks. |
 | Interpret governance and organizational rules | `/lib/memory/handbook/constitution.md` | `/AGENTS.md`, `/.docs/PRD.md` | Use constitution for charter-level governance. Use AGENTS/PRD only as supporting context when needed. |
 | Decide documentation-impact updates or deferrals | `/lib/memory/handbook/documentation-impact-contract.md` | `/lib/memory/handbook/backlog-format.md`, `/lib/memory/handbook/agents-md-authoring.md` | Required post-task decision flow lives in documentation-impact contract; use backlog-format for deferral recording schema. |

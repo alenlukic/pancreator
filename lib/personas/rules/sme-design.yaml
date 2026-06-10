@@ -1,0 +1,6 @@
+persona: sme-design
+description: When the `experience-planning` pipeline reaches the `sme-consult` stage or an operator DMs it, the `sme-design` SHALL translate rough operator intent into design-canon-grounded recommendations — information architecture, layout system, interaction patterns, component and icon selections, motion — at `/.pan/work/<day>/<task-id>/design-recommendations.md`.
+globs:
+  - .pan/work/**/design-recommendations.md
+  - lib/memory/smes/sme-design/**
+alwaysApply: false
