@@ -1,4 +1,5 @@
 import type { TaskRunStateEnvelope } from "@/services/run-state-shared";
+import type { ShippedOutcome } from "@/services/run-state";
 import type {
   ActivityPreviewEvent,
   CommandCenterSeverity,
@@ -8,12 +9,10 @@ import type { StatusPillValue } from "../shared/StatusPill";
 import type { SeverityChipValue } from "../shared/SeverityChip";
 
 export type CommandCenterCardRegion =
-  | "needs-you"
+  | "human-gates"
+  | "anomalies"
   | "running-now"
-  | "compliance-issues"
-  | "hanging-tasks"
-  | "recent-automations"
-  | "recent-activity";
+  | "recent-outcomes";
 
 export type CommandCenterRowOverflow = {
   taskId?: string;
@@ -21,6 +20,7 @@ export type CommandCenterRowOverflow = {
   inboxSource?: string;
   runCommand?: string;
   stageName?: string;
+  gateAction?: "approve" | "reject" | "revise";
 };
 
 export type CommandCenterRowCta = {
@@ -39,6 +39,7 @@ export type CommandCenterRowModel = {
   ageLabel: string;
   metaHint?: string;
   primaryCta: CommandCenterRowCta;
+  secondaryCta?: CommandCenterRowCta;
   overflow: CommandCenterRowOverflow;
 };
 
@@ -48,6 +49,9 @@ export type CommandCenterCardModel = {
   title: string;
   emptyCopy: string;
   rows: CommandCenterRowModel[];
+  overflowHref?: string;
+  dataAgeMs?: number;
+  degradedSource?: string;
 };
 
 export type ComplianceFindingRow = {
@@ -72,9 +76,15 @@ export type AutomationPreviewRow = {
 export type CommandCenterBuildInput = {
   tasks: TaskRunStateEnvelope[];
   complianceFindings: ComplianceFindingRow[];
-  automationRows: AutomationPreviewRow[];
+  shippedOutcomes: ShippedOutcome[];
   activityEvents: ActivityPreviewEvent[];
   nowMs?: number;
+  dataFetchedAtMs?: number;
+  failedSources?: string[];
 };
+
+export const COMMAND_CENTER_STALE_DATA_MS = 60_000;
+export const COMMAND_CENTER_ACTIVE_REVALIDATE_MS = 10_000;
+export const COMMAND_CENTER_MAX_ROWS_PER_REGION = 5;
 
 export type { CommandCenterSeverity, CommandCenterStatusPill };

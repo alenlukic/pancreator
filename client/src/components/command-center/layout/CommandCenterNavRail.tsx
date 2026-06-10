@@ -8,7 +8,7 @@ import { COMMAND_CENTER_SURFACES, getSurfaceByRoute, type CommandCenterSurfaceCo
 const RAIL_COLLAPSE_KEY = "command-center-rail-collapsed";
 const DESKTOP_RAIL_QUERY = "(min-width: 1280px)";
 
-export function CommandCenterNavRail() {
+export function CommandCenterNavRail({ onOpenCommandPalette }: { onOpenCommandPalette?: () => void }) {
   const pathname = usePathname();
   const listRef = useRef<HTMLUListElement>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -47,23 +47,18 @@ export function CommandCenterNavRail() {
     });
   }, []);
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent, index: number) => {
-      const items = COMMAND_CENTER_SURFACES;
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        const next = (index + 1) % items.length;
-        listRef.current?.querySelectorAll<HTMLAnchorElement>("[data-rail-item]")[next]?.focus();
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        const next = (index - 1 + items.length) % items.length;
-        listRef.current?.querySelectorAll<HTMLAnchorElement>("[data-rail-item]")[next]?.focus();
-      } else if (event.key === "Enter" && !items[index].firstSlice) {
-        event.preventDefault();
-      }
-    },
-    [],
-  );
+  const handleKeyDown = useCallback((event: React.KeyboardEvent, index: number) => {
+    const items = COMMAND_CENTER_SURFACES;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const next = (index + 1) % items.length;
+      listRef.current?.querySelectorAll<HTMLAnchorElement>("[data-rail-item]")[next]?.focus();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const next = (index - 1 + items.length) % items.length;
+      listRef.current?.querySelectorAll<HTMLAnchorElement>("[data-rail-item]")[next]?.focus();
+    }
+  }, []);
 
   return (
     <nav
@@ -79,6 +74,18 @@ export function CommandCenterNavRail() {
         onClick={toggleCollapsed}
       >
         {railCollapsed ? "Expand navigation" : "Collapse navigation"}
+      </button>
+      <button
+        type="button"
+        className="command-center-cmdk-trigger"
+        data-testid="cmdk-trigger-rail"
+        onClick={() => onOpenCommandPalette?.()}
+        aria-keyshortcuts="Meta+K Control+K"
+      >
+        <span className="command-center-nav-rail-icon" aria-hidden="true">
+          ⌘
+        </span>
+        {!railCollapsed ? <span className="command-center-nav-rail-label">Cmd-K</span> : null}
       </button>
       <ul ref={listRef} className="command-center-nav-rail-list">
         {COMMAND_CENTER_SURFACES.map((surface, index) => (
@@ -106,34 +113,6 @@ function CommandCenterNavRailItem({
   collapsed: boolean;
   onKeyDown: (event: React.KeyboardEvent) => void;
 }) {
-  const deferred = !surface.firstSlice;
-
-  if (deferred) {
-    return (
-      <li className="command-center-nav-rail-item command-center-nav-rail-item-deferred">
-        <span
-          className="command-center-nav-rail-link command-center-nav-rail-link-disabled"
-          data-rail-item
-          data-testid={`rail-item-${surface.id}`}
-          aria-disabled="true"
-          title="Coming soon"
-          tabIndex={0}
-          onKeyDown={onKeyDown}
-        >
-          <span className="command-center-nav-rail-icon" aria-hidden="true">
-            {surface.icon}
-          </span>
-          {!collapsed ? (
-            <>
-              <span className="command-center-nav-rail-label">{surface.label}</span>
-              <span className="command-center-nav-rail-soon">Coming soon</span>
-            </>
-          ) : null}
-        </span>
-      </li>
-    );
-  }
-
   return (
     <li className={`command-center-nav-rail-item${isActive ? " command-center-nav-rail-item-active" : ""}`}>
       <Link
@@ -142,10 +121,11 @@ function CommandCenterNavRailItem({
         data-rail-item
         data-testid={`rail-item-${surface.id}`}
         aria-current={isActive ? "page" : undefined}
+        title={surface.operatorJob}
         onKeyDown={onKeyDown}
       >
         <span className="command-center-nav-rail-icon" aria-hidden="true">
-          {surface.icon}
+          {surface.iconLabel}
         </span>
         {!collapsed ? <span className="command-center-nav-rail-label">{surface.label}</span> : null}
       </Link>

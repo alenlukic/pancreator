@@ -131,7 +131,7 @@ describe("classifyHangingTask", () => {
 });
 
 describe("buildCommandCenterRows", () => {
-  it("builds six card regions with needs-you sorted by severity", () => {
+  it("builds four orientation regions with anomalies sorted by severity", () => {
     const criticalTask = makeTask({
       taskId: "88888_1200_critical",
       featureId: "critical-feature",
@@ -158,25 +158,33 @@ describe("buildCommandCenterRows", () => {
     const cards = buildCommandCenterRows({
       tasks: [makeTask(), criticalTask],
       complianceFindings: [],
-      automationRows: [],
-      activityEvents: buildRecentActivityPreview([makeTask()], 10),
+      shippedOutcomes: [
+        {
+          featureId: "demo-feature",
+          title: "Demo Feature",
+          taskId: "65766_0543_demo-feature",
+          indexedAt: "2026-06-02T12:00:00.000Z",
+        },
+      ],
+      activityEvents: [],
       nowMs: Date.parse("2026-06-02T13:00:00.000Z"),
     });
 
-    expect(cards).toHaveLength(6);
+    expect(cards).toHaveLength(4);
     expect(cards.map((card) => card.testId)).toEqual([
-      "command-center-needs-you",
+      "command-center-human-gates",
+      "command-center-anomalies",
       "command-center-running-now",
-      "command-center-compliance-issues",
-      "command-center-hanging-tasks",
-      "command-center-recent-automations",
-      "command-center-recent-activity",
+      "command-center-recent-outcomes",
     ]);
 
-    const needsYou = cards.find((card) => card.region === "needs-you");
-    expect(needsYou?.rows.length).toBeGreaterThan(0);
-    expect(needsYou?.rows[0]?.severity).toBe("Critical");
-    expect(needsYou?.rows[0]?.primaryCta.label).toBe("Open mission control");
+    const humanGates = cards.find((card) => card.region === "human-gates");
+    expect(humanGates?.rows.length).toBeGreaterThan(0);
+    expect(humanGates?.rows[0]?.primaryCta.label).toContain("Approve");
+
+    const anomalies = cards.find((card) => card.region === "anomalies");
+    expect(anomalies?.rows[0]?.severity).toBe("Critical");
+    expect(anomalies?.rows[0]?.primaryCta.label).toBe("Open run detail");
   });
 
   it("maps failed compliance results to findings rows", () => {
@@ -286,36 +294,26 @@ describe("buildRecentActivityPreview", () => {
   });
 });
 
-describe("buildCommandCenterRows activity region", () => {
-  it("renders recent activity rows without internal slug suffixes", () => {
+describe("buildCommandCenterRows operational cards", () => {
+  it("renders recent outcomes from shipped feature indexes", () => {
     const cards = buildCommandCenterRows({
-      tasks: [makeTask()],
+      tasks: [],
       complianceFindings: [],
-      automationRows: [],
-      activityEvents: buildRecentActivityPreview(
-        [
-          makeTask({
-            runEvents: [
-              {
-                timestamp: "2026-06-02T12:00:00.000Z",
-                event: "cursor.runner",
-                message: "coder · implement: running",
-                name: "cursor.runner",
-                stageId: "implement",
-              },
-            ],
-          }),
-        ],
-        10,
-      ),
+      shippedOutcomes: [
+        {
+          featureId: "command-center-rebuild",
+          title: "Command Center rebuild",
+          taskId: "52276_0928_command-center-rebuild",
+          indexedAt: "2026-06-02T12:00:00.000Z",
+        },
+      ],
+      activityEvents: [],
       nowMs: Date.parse("2026-06-02T13:00:00.000Z"),
     });
 
-    const activity = cards.find((card) => card.region === "recent-activity");
-    expect(activity?.rows[0]?.label).toContain("Implement stage started");
-    expect(activity?.rows[0]?.label).not.toMatch(/cursor\.runner/u);
-    expect(activity?.rows[0]?.metaHint).toBe("Coder");
-    expect(activity?.rows[0]?.overflow.stageName).toBe("implement");
+    const outcomes = cards.find((card) => card.region === "recent-outcomes");
+    expect(outcomes?.rows[0]?.label).toBe("Command Center rebuild");
+    expect(outcomes?.rows[0]?.primaryCta.label).toBe("Open shipped feature");
   });
 
   it("keeps pipeline stage slugs out of default row meta for operational cards", () => {
@@ -335,7 +333,7 @@ describe("buildCommandCenterRows activity region", () => {
     const cards = buildCommandCenterRows({
       tasks: [gatedTask, runningTask],
       complianceFindings: [],
-      automationRows: [],
+      shippedOutcomes: [],
       activityEvents: [],
       nowMs: Date.parse("2026-06-02T13:00:00.000Z"),
     });
@@ -344,8 +342,8 @@ describe("buildCommandCenterRows activity region", () => {
     expect(running?.rows[0]?.metaHint).toBeUndefined();
     expect(running?.rows[0]?.overflow.stageName).toBe("test");
 
-    const needsYou = cards.find((card) => card.region === "needs-you");
-    expect(needsYou?.rows.every((row) => row.metaHint === undefined)).toBe(true);
-    expect(needsYou?.rows[0]?.overflow.stageName).toBe("plan");
+    const humanGates = cards.find((card) => card.region === "human-gates");
+    expect(humanGates?.rows.every((row) => row.metaHint === undefined)).toBe(true);
+    expect(humanGates?.rows[0]?.overflow.stageName).toBe("plan");
   });
 });

@@ -1,5 +1,5 @@
 import type React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CommandCenterGlobalHeader } from "./CommandCenterGlobalHeader";
 
@@ -26,17 +26,20 @@ describe("CommandCenterGlobalHeader", () => {
     mockUsePathname.mockReturnValue("/command-center");
   });
 
-  it("renders Start feature delivery link on first-slice routes", () => {
-    render(<CommandCenterGlobalHeader />);
+  it("renders Feature Delivery link and Cmd-K trigger on first-slice routes", () => {
+    const onOpen = vi.fn();
+    render(<CommandCenterGlobalHeader onOpenCommandPalette={onOpen} />);
     expect(screen.getByTestId("command-center-global-header")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Start feature delivery" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
       "href",
-      "/work-intake",
+      "/mission-control",
     );
+    fireEvent.click(screen.getByTestId("cmdk-trigger-header"));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("hides on non-first-slice routes", () => {
-    mockUsePathname.mockReturnValue("/repo-explorer");
+  it("hides on routes outside the shipped destination set", () => {
+    mockUsePathname.mockReturnValue("/work-intake");
     render(<CommandCenterGlobalHeader />);
     expect(screen.queryByTestId("command-center-global-header")).not.toBeInTheDocument();
   });

@@ -27,7 +27,7 @@ export function CommandCenterMobileTabs() {
             aria-selected={isActive}
           >
             <span className="command-center-mobile-tab-icon" aria-hidden="true">
-              {surface.icon}
+              {surface.iconLabel}
             </span>
             <span className="command-center-mobile-tab-label">{surface.shortLabel}</span>
           </Link>

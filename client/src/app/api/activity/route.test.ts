@@ -20,14 +20,14 @@ describe("GET /api/activity feed ordering", () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  it("serves reverse-chronological events via GET", async () => {
+  it("serves mutation receipts via GET", async () => {
     const originalRoot = process.cwd();
     process.chdir(tempRoot);
     try {
       const response = await GET();
       expect(response.status).toBe(200);
-      const payload = (await response.json()) as Array<{ timestamp: string }>;
-      expect(Array.isArray(payload)).toBe(true);
+      const payload = (await response.json()) as { receipts: Array<{ timestamp: string; actor: string; verb: string; object: string }> };
+      expect(Array.isArray(payload.receipts)).toBe(true);
     } finally {
       process.chdir(originalRoot);
     }

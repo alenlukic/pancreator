@@ -7,7 +7,10 @@ import { GET } from "@/app/api/run-state/route";
 import {
   collectHumanGateQueue,
   deriveRunDirFromTaskId,
+  excludeReconciledAttentionTasks,
   getActiveRunState,
+  loadArchivedTaskIds,
+  loadShippedOutcomes,
   parseRunLogFile,
   synthesizeStageCells,
   activeStageElapsedMs,
@@ -535,6 +538,97 @@ describe("GET /api/run-state", () => {
     try {
       const envelopes = await getActiveRunState(tempRoot);
       expect(envelopes.map((entry) => entry.taskId)).toEqual(["65766_0543_active-feature"]);
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("returns attention view with reconciliation metadata", async () => {
+    writeState(tempRoot, "172973_06-02-26", "65766_0543_demo-feature");
+    const featureDir = path.join(tempRoot, "lib", "memory", "features", "demo-feature");
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(featureDir, "index.json"),
+      stringifyCompactJson({
+        feature_id: "demo-feature",
+        title: "Demo Feature",
+        task_id: "99999_0101_shipped-demo",
+        status: "indexed",
+        indexed_at: "2026-06-02T12:00:00.000Z",
+      }),
+    );
+
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(new Request("http://localhost/api/run-state?view=attention"));
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        tasks: Array<{ taskId: string }>;
+        reconciliation: { shippedOutcomes: Array<{ taskId: string }> };
+      };
+      expect(payload.tasks.some((task) => task.taskId === "65766_0543_demo-feature")).toBe(true);
+      expect(payload.reconciliation.shippedOutcomes[0]?.taskId).toBe("99999_0101_shipped-demo");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("loads archived task ids from .pan/archive/work", async () => {
+    const archiveDir = path.join(tempRoot, ".pan", "archive", "work", "172973_06-02-26", "88888_0101_archived");
+    fs.mkdirSync(archiveDir, { recursive: true });
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const archived = await loadArchivedTaskIds(tempRoot);
+      expect(archived.has("88888_0101_archived")).toBe(true);
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("excludes archived and shipped tasks from attention reconciliation", () => {
+    const envelopes = [
+      {
+        taskId: "65766_0543_demo-feature",
+        runDir: ".pan/work/demo/65766_0543_demo-feature",
+        stages: [{ name: "complete", ownerPersona: "librarian", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "complete" as const }],
+        runEvents: [],
+      },
+      {
+        taskId: "88888_0101_active",
+        runDir: ".pan/work/demo/88888_0101_active",
+        stages: [{ name: "plan", ownerPersona: "tech-lead", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "active" as const }],
+        runEvents: [],
+      },
+    ];
+    const filtered = excludeReconciledAttentionTasks(
+      envelopes,
+      new Set(["65766_0543_demo-feature"]),
+      new Set(["88888_0101_other"]),
+    );
+    expect(filtered.map((task) => task.taskId)).toEqual(["88888_0101_active"]);
+  });
+
+  it("loads shipped outcomes from indexed feature folders", async () => {
+    const featureDir = path.join(tempRoot, "lib", "memory", "features", "demo-feature");
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(featureDir, "index.json"),
+      stringifyCompactJson({
+        feature_id: "demo-feature",
+        title: "Demo Feature",
+        task_id: "65766_0543_demo-feature",
+        status: "indexed",
+        indexed_at: "2026-06-02T12:00:00.000Z",
+      }),
+    );
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const outcomes = await loadShippedOutcomes(tempRoot, 3);
+      expect(outcomes[0]?.featureId).toBe("demo-feature");
+      expect(outcomes[0]?.title).toBe("Demo Feature");
     } finally {
       process.chdir(originalRoot);
     }
