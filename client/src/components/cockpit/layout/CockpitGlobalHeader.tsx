@@ -16,7 +16,7 @@ export function CockpitGlobalHeader() {
   return (
     <header className="cockpit-global-header" data-testid="cockpit-global-header">
       <div className="cockpit-global-header-copy">
-        <p className="cockpit-global-header-eyebrow">Cockpit v2</p>
+        <p className="cockpit-global-header-eyebrow">Command Center</p>
         <p className="cockpit-global-header-title">Operator delivery surface</p>
       </div>
       <Link href="/work-intake" className="cockpit-global-header-cta">

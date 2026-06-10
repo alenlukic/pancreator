@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { stringifyCompactJson } from "@/lib/json-io";
 import { StatusPill } from "@/components/cockpit/shared/StatusPill";
 import { getPresetById } from "./kickoff-model-presets";
 import type { KickoffFlowApi } from "./useKickoffFlow";
@@ -32,7 +33,7 @@ export function KickoffStepReview({ flow }: KickoffStepReviewProps) {
       const response = await fetch("/api/kickoff/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown: state.directiveMarkdown }),
+        body: stringifyCompactJson({ markdown: state.directiveMarkdown }),
       });
       const payload = (await response.json()) as { path?: string; error?: string };
       if (!response.ok || payload.path === undefined) {
@@ -56,7 +57,7 @@ export function KickoffStepReview({ flow }: KickoffStepReviewProps) {
         const saveResponse = await fetch("/api/kickoff/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ markdown: state.directiveMarkdown }),
+          body: stringifyCompactJson({ markdown: state.directiveMarkdown }),
         });
         const savePayload = (await saveResponse.json()) as { path?: string; error?: string };
         if (!saveResponse.ok || savePayload.path === undefined) {
@@ -69,7 +70,7 @@ export function KickoffStepReview({ flow }: KickoffStepReviewProps) {
       const response = await fetch("/api/kickoff/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inboxPath }),
+        body: stringifyCompactJson({ inboxPath }),
       });
       const payload = (await response.json()) as {
         taskId?: string;

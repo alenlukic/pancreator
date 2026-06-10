@@ -12,7 +12,7 @@ export function CockpitMobileTabs() {
     <nav
       className="cockpit-mobile-tabs"
       role="tablist"
-      aria-label="Cockpit surfaces"
+      aria-label="Command Center surfaces"
       data-testid="cockpit-mobile-tabs"
     >
       {MOBILE_TAB_SURFACES.map((surface) => {

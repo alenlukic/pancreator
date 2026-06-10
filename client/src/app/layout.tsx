@@ -1,17 +1,18 @@
 import type { ReactNode } from "react";
+import { SurfaceShellGate } from "@/components/cockpit/layout/SurfaceShellGate";
 import { palette } from "@/services/theme";
 import "./globals.css";
 
 export const metadata = {
-  title: "Pancreator Repository Dashboard",
-  description: "Operator-local v0 dashboard for repository relationships and activity",
+  title: "Command Center",
+  description: "Operator delivery surface for Pancreator pipeline work",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body style={{ backgroundColor: palette.eggshell, color: palette["midnight-violet"] }}>
-        {children}
+        <SurfaceShellGate>{children}</SurfaceShellGate>
       </body>
     </html>
   );

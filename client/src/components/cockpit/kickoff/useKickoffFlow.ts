@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { quoteJsonString } from "@/lib/json-io";
 import type { InboxEntrySnapshot } from "@/services/inbox";
 import { DEFAULT_PRESET_ID } from "./kickoff-model-presets";
 import type {
@@ -21,12 +22,12 @@ function buildRawTextSeed(rawText: string): string {
   const createdIso = new Date().toISOString();
   return [
     "---",
-    `title: ${JSON.stringify(title)}`,
+    `title: ${quoteJsonString(title)}`,
     "feature_id: kickoff-directive",
     "stage: intake",
     "owner: intake-analyst",
     "status: open",
-    `created_at: ${JSON.stringify(createdIso)}`,
+    `created_at: ${quoteJsonString(createdIso)}`,
     "references: []",
     "---",
     "",

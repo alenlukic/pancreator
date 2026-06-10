@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { stringifyCompactJson } from "@/lib/json-io";
 import type { InboxEntrySnapshot } from "@/services/inbox";
 import type { KickoffFlowApi } from "./useKickoffFlow";
 import type { KickoffSourceKind } from "./kickoff-types";
@@ -73,7 +74,7 @@ export function KickoffStepSource({ flow }: KickoffStepSourceProps) {
       const response = await fetch("/api/kickoff/url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmed }),
+        body: stringifyCompactJson({ url: trimmed }),
       });
       const payload = (await response.json()) as {
         directiveSeed?: string;

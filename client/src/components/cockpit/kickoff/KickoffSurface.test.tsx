@@ -1,6 +1,7 @@
 import type React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { stringifyCompactJson } from "@/lib/json-io";
 import { KickoffSurface } from "./KickoffSurface";
 
 vi.mock("next/link", () => ({
@@ -30,7 +31,7 @@ const launchEnvelope = {
 };
 
 function jsonResponse(payload: unknown, status = 200): Response {
-  return new Response(JSON.stringify(payload), {
+  return new Response(stringifyCompactJson(payload), {
     status,
     headers: { "Content-Type": "application/json" },
   });

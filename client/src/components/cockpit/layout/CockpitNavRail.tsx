@@ -69,7 +69,7 @@ export function CockpitNavRail() {
     <nav
       className={`cockpit-nav-rail${railCollapsed ? " cockpit-nav-rail-collapsed" : ""}`}
       role="navigation"
-      aria-label="Cockpit surfaces"
+      aria-label="Command Center surfaces"
       data-testid="cockpit-nav-rail"
     >
       <button

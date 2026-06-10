@@ -1,3 +1,4 @@
+import { quoteJsonString } from "@pancreator/core";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
@@ -155,13 +156,13 @@ export function buildUrlDirectiveSeed(title: string, excerpt: string, sourceUrl:
   const featureId = slugifyIntakeBasename(title);
   return [
     "---",
-    `title: ${JSON.stringify(title)}`,
-    `feature_id: ${JSON.stringify(featureId)}`,
+    `title: ${quoteJsonString(title)}`,
+    `feature_id: ${quoteJsonString(featureId)}`,
     "stage: intake",
     "owner: intake-analyst",
     "status: open",
-    `created_at: ${JSON.stringify(createdIso)}`,
-    `source_url: ${JSON.stringify(sourceUrl)}`,
+    `created_at: ${quoteJsonString(createdIso)}`,
+    `source_url: ${quoteJsonString(sourceUrl)}`,
     "references: []",
     "---",
     "",

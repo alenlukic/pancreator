@@ -5,11 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { quoteJsonString, stringifyCliJson } from "./canonical-json-io.js";
-import {
-  createMemoryBatchGitOps,
-  createNodeBatchGitOps,
-  type BatchGitOps,
-} from "./feature-delivery-batch-git-ops.js";
+import { createNodeBatchGitOps, type BatchGitOps } from "./feature-delivery-batch-git-ops.js";
 import {
   archiveFailureContextToRecovery,
   assertPreservationManifestPresent,

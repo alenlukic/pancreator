@@ -52,16 +52,6 @@ async function runCli(args: string[], options?: RunCliOptions): Promise<number> 
   });
 }
 
-function findLast<T>(items: readonly T[], pred: (item: T) => boolean): T | undefined {
-  for (let i = items.length - 1; i >= 0; i--) {
-    const item = items[i];
-    if (item !== undefined && pred(item)) {
-      return item;
-    }
-  }
-  return undefined;
-}
-
 const FEATURE_DELIVERY_PERSONAS = [
   "intake-analyst",
   "tech-lead",
@@ -514,7 +504,7 @@ describe("parseAndRun", () => {
       writeOut: (c) => runOut.push(c),
       clock: () => new Date("2026-05-10T13:15:30.000Z"),
     });
-    const { taskId, runLogFile } = JSON.parse(runOut.join("")) as { taskId: string; runLogFile: string };
+    const { taskId } = JSON.parse(runOut.join("")) as { taskId: string; runLogFile: string };
     const runDirRel = `.pan/work/172996_05-10-26/${taskId}`;
     const spec = path.join(root, "lib", "memory", "features", "demo-feature", "spec.md");
     await mkdir(path.dirname(spec), { recursive: true });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { stringifyCompactJson } from "@/lib/json-io";
 import type { KickoffFlowApi } from "./useKickoffFlow";
 
 type KickoffStepPreviewProps = {
@@ -23,7 +24,7 @@ export function KickoffStepPreview({ flow }: KickoffStepPreviewProps) {
       const response = await fetch("/api/kickoff/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown: state.directiveMarkdown }),
+        body: stringifyCompactJson({ markdown: state.directiveMarkdown }),
       });
       const payload = (await response.json()) as { path?: string; error?: string };
       if (!response.ok || payload.path === undefined) {

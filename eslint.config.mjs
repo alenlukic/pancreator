@@ -15,6 +15,7 @@ export default tseslint.config(
       "lib/internal/tools/**/*.mjs",
       "client/**",
       "**/next-env.d.ts",
+      ".pan/**",
     ],
   },
   js.configs.recommended,

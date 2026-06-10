@@ -2,8 +2,8 @@ import type React from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "@/components/DashboardPage";
-import MissionControlPage from "@/app/(cockpit)/mission-control/page";
-import CommandCenterPage from "@/app/(cockpit)/command-center/page";
+import MissionControlPage from "@/app/mission-control/page";
+import CommandCenterPage from "@/app/command-center/page";
 import { stringifyCompactJson } from "@/lib/json-io";
 import { formatActiveMemoryRefreshTime } from "@/services/run-state-shared";
 

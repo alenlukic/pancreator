@@ -338,7 +338,8 @@ test("JSON.stringify is confined to canonical-json implementation and browser/te
         continue;
       }
       const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
-      if (rel.replace(/\\/g, "/").includes(".pan/archive/recovery/")) {
+      const normRel = rel.replace(/\\/g, "/").replace(/^\.\/+/, "");
+      if (normRel.includes(".pan/archive/recovery/") || normRel.startsWith(".pan/worktrees/")) {
         continue;
       }
       if (entry.isDirectory()) {

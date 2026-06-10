@@ -2,16 +2,16 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { CockpitGlobalHeader } from "@/components/cockpit/layout/CockpitGlobalHeader";
-import { CockpitInspectorSlot } from "@/components/cockpit/layout/CockpitInspectorSlot";
-import { CockpitMobileTabs } from "@/components/cockpit/layout/CockpitMobileTabs";
-import { CockpitNavRail } from "@/components/cockpit/layout/CockpitNavRail";
+import { CockpitGlobalHeader } from "./CockpitGlobalHeader";
+import { CockpitInspectorSlot } from "./CockpitInspectorSlot";
+import { CockpitMobileTabs } from "./CockpitMobileTabs";
+import { CockpitNavRail } from "./CockpitNavRail";
 
 function isCommandCenterRoute(pathname: string): boolean {
   return pathname === "/command-center" || pathname === "/";
 }
 
-export default function CockpitLayout({ children }: { children: ReactNode }) {
+export function CommandCenterShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const hideInspector = isCommandCenterRoute(pathname);
 

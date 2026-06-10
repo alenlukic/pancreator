@@ -1,7 +1,7 @@
 import type React from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import CockpitLayout from "@/app/(cockpit)/layout";
+import { CommandCenterShell } from "./CommandCenterShell";
 import { CockpitNavRail } from "./CockpitNavRail";
 import { CockpitMobileTabs } from "./CockpitMobileTabs";
 
@@ -62,16 +62,16 @@ describe("CockpitMobileTabs", () => {
   });
 });
 
-describe("CockpitLayout", () => {
+describe("CommandCenterShell", () => {
   beforeEach(() => {
     mockPathname.mockReturnValue("/command-center");
   });
 
   it("composes nav rail, main content, and mobile tabs on command center", () => {
     render(
-      <CockpitLayout>
+      <CommandCenterShell>
         <div data-testid="layout-child">Surface content</div>
-      </CockpitLayout>,
+      </CommandCenterShell>,
     );
 
     expect(screen.getByTestId("cockpit-v2-shell")).toHaveClass("cockpit-v2-shell-no-inspector");
@@ -84,9 +84,9 @@ describe("CockpitLayout", () => {
   it("renders inspector slot on non-command-center routes", () => {
     mockPathname.mockReturnValue("/mission-control");
     render(
-      <CockpitLayout>
+      <CommandCenterShell>
         <div data-testid="layout-child">Surface content</div>
-      </CockpitLayout>,
+      </CommandCenterShell>,
     );
 
     expect(screen.getByTestId("cockpit-v2-shell")).not.toHaveClass("cockpit-v2-shell-no-inspector");
