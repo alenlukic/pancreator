@@ -63,7 +63,7 @@ describe("POST /api/execute", () => {
       expect(result).toMatchObject({
         deferred: true,
         exitCode: 125,
-        deferralMessage: "Batch status subcommand not yet available",
+        deferralMessage: "Batch/parallel feature-delivery is disabled",
       });
 
       const request = new Request("http://localhost/api/execute", {

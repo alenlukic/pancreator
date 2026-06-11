@@ -37,6 +37,7 @@ const validTouchSet = stringifyCompactJson({
   shared_paths: ["client/globals.css"],
   integration_prerequisites: [],
   acceptance_criteria: [{ id: "AC-1", criterion: "API returns 200", validation_owner: "qa-tester" }],
+  manual_qa_test_cases: [{ id: "MQA-1", steps: ["Open the affected surface"], expected: "Behavior matches AC-1" }],
 });
 
 const validImplementationReport = `implement_gate_passes: true

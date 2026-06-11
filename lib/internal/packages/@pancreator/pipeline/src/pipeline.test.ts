@@ -138,15 +138,15 @@ stages:
 });
 
 describe("feature-delivery stage slice", () => {
-  it("executes the intake stage slice from the canonical pipeline", async () => {
+  it("executes the plan stage slice from the canonical pipeline", async () => {
     const repoRoot = path.resolve(import.meta.dirname, "../../../../../..");
     const def = loadPipelineYaml(path.join(repoRoot, "lib", "pipelines", "feature-delivery.yaml"));
     const visited: string[] = [];
-    await executeStageSlice(def, "intake", { ok: true }, (stage) => {
+    await executeStageSlice(def, "plan", { ok: true }, (stage) => {
       visited.push(stage.id);
       return { ok: true };
     });
-    expect(visited).toEqual(["intake"]);
+    expect(visited).toEqual(["plan"]);
   });
 });
 

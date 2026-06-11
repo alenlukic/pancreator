@@ -5,6 +5,10 @@ import { stringifyCompactJson } from "@pancreator/core";
 import { describe, expect, it } from "vitest";
 
 import {
+  planStageRequiredArtifactRels,
+  seedPlanStageAdvanceArtifacts,
+} from "./feature-delivery-gate-fixtures.js";
+import {
   assertAdvanceArtifacts,
   parseComplianceVerdict,
   requiredArtifactsAfterStageWork,
@@ -21,15 +25,12 @@ const sampleState = {
 };
 
 describe("feature-delivery-stage-artifacts", () => {
-  it("plan stage requires four outputs after work and three for advance", () => {
+  it("plan stage requires consolidated outputs after work and three for advance", () => {
     const contract = stageArtifactContract(sampleState, "plan");
     expect(contract.primaryArtifact).toMatch(/touch-set\.json$/u);
-    expect(contract.requiredAfterStageWork).toEqual([
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/plan.md",
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
-    ]);
+    expect(contract.requiredAfterStageWork).toEqual(
+      planStageRequiredArtifactRels(sampleState.artifacts.runDir, sampleState.featureId),
+    );
     expect(contract.acceptedAdvanceArtifacts).toEqual([
       ".pan/work/172996_05-10-26/38670_1315_demo-feature/plan.md",
       ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
@@ -37,7 +38,7 @@ describe("feature-delivery-stage-artifacts", () => {
     ]);
   });
 
-  it("plan stage requires ux-spec when design steps are on", () => {
+  it("plan stage always requires ux-spec in the consolidated flow", () => {
     const contract = stageArtifactContract(
       {
         ...sampleState,
@@ -45,7 +46,7 @@ describe("feature-delivery-stage-artifacts", () => {
       },
       "plan",
     );
-    expect(contract.requiredAfterStageWork[0]).toBe("lib/memory/features/demo-feature/ux-spec.md");
+    expect(contract.requiredAfterStageWork).toContain("lib/memory/features/demo-feature/ux-spec.md");
   });
 
   it("test stage requires design-qa-report when design steps are on", () => {
@@ -68,27 +69,25 @@ describe("feature-delivery-stage-artifacts", () => {
     await mkdir(runAbs, { recursive: true });
     await writeFile(
       path.join(runAbs, "touch-set.json"),
-      stringifyCompactJson({ paths: [], tests: [], shared_paths: [], integration_prerequisites: [], acceptance_criteria: [] }),
+      stringifyCompactJson({ paths: [], tests: [], shared_paths: [], integration_prerequisites: [], acceptance_criteria: [], manual_qa_test_cases: [] }),
       "utf8",
     );
 
     const validation = validateStageCompletionArtifacts(root, sampleState, "plan");
     expect(validation.ok).toBe(false);
     expect(validation.warningCount).toBe(0);
-    expect(validation.missing).toEqual([
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/plan.md",
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
-    ]);
+    expect(validation.missing).toEqual(
+      planStageRequiredArtifactRels(sampleState.artifacts.runDir, sampleState.featureId).filter(
+        (rel) => !rel.endsWith("/touch-set.json"),
+      ),
+    );
   });
 
   it("assertAdvanceArtifacts rejects advance when adr-draft.md is missing", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-advance-adr-"));
-    const runAbs = path.join(root, sampleState.artifacts.runDir);
-    await mkdir(runAbs, { recursive: true });
-    await writeFile(path.join(runAbs, "plan.md"), "# Plan\n\n## Scope\n\nBody.\n", "utf8");
-    await writeFile(path.join(runAbs, "touch-set.json"), "{}", "utf8");
-    await writeFile(path.join(runAbs, "handoff.md"), "# handoff", "utf8");
+    await seedPlanStageAdvanceArtifacts(root, sampleState.artifacts.runDir, sampleState.featureId);
+    const { unlink } = await import("node:fs/promises");
+    await unlink(path.join(root, sampleState.artifacts.runDir, "adr-draft.md"));
 
     expect(() =>
       assertAdvanceArtifacts(
@@ -164,7 +163,6 @@ describe("feature-delivery-stage-artifacts", () => {
 
   it("requiredArtifactsAfterStageWork covers every pipeline stage", () => {
     for (const stage of [
-      "intake",
       "plan",
       "implement",
       "review",
@@ -192,16 +190,18 @@ describe("feature-delivery-stage-artifacts", () => {
 
   it("assertAdvanceArtifacts rejects plan advance without acceptance criteria", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-plan-gate-"));
-    const runAbs = path.join(root, sampleState.artifacts.runDir);
-    await mkdir(runAbs, { recursive: true });
-    await writeFile(path.join(runAbs, "plan.md"), "# Plan\n\n## Tasks\n\n1. Work.\n", "utf8");
-    await writeFile(path.join(runAbs, "adr-draft.md"), "# ADR\n\n## Context\n\nBody.\n", "utf8");
+    await seedPlanStageAdvanceArtifacts(root, sampleState.artifacts.runDir, sampleState.featureId);
     await writeFile(
-      path.join(runAbs, "touch-set.json"),
-      stringifyCompactJson({ paths: [], tests: [], shared_paths: [], integration_prerequisites: [], acceptance_criteria: [] }),
+      path.join(root, sampleState.artifacts.runDir, "touch-set.json"),
+      stringifyCompactJson({
+        paths: [],
+        tests: [],
+        shared_paths: [],
+        integration_prerequisites: [],
+        manual_qa_test_cases: [],
+      }),
       "utf8",
     );
-    await writeFile(path.join(runAbs, "handoff.md"), "# Handoff\n\n## Validation commands\n\n- pnpm test\n", "utf8");
 
     expect(() =>
       assertAdvanceArtifacts(
@@ -211,7 +211,7 @@ describe("feature-delivery-stage-artifacts", () => {
         ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
         "human_approval",
       ),
-    ).toThrow(/Acceptance criteria/u);
+    ).toThrow(/acceptance_criteria array/u);
   });
 
   it("assertAdvanceArtifacts rejects review_spot_fix without justification", async () => {

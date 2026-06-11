@@ -24,6 +24,7 @@ import { stringifyCompactJson } from "@pancreator/core";
 import { stringifyCliJson } from "./canonical-json-io.js";
 import {
   gateFixtureBody,
+  seedPlanStageAdvanceArtifacts,
   VALID_HANDOFF_MARKDOWN,
   VALID_TOUCH_SET_JSON,
 } from "./feature-delivery-gate-fixtures.js";
@@ -119,6 +120,7 @@ stages:
   await writeFile(path.join(runDir, "next-prompt.md"), "# prompt\n", "utf8");
   await writeFile(path.join(runDir, "touch-set.json"), VALID_TOUCH_SET_JSON, "utf8");
   await writeFile(path.join(runDir, "run.log.jsonl"), "", "utf8");
+  await seedPlanStageAdvanceArtifacts(root, runDirRel);
 }
 
 function mockStageArtifactBody(repoRoot: string, rel: string): string {
@@ -272,7 +274,13 @@ describe("feature-delivery-runner automation", () => {
     await mkdir(path.dirname(testAbs), { recursive: true });
     await writeFile(
       testAbs,
-      "---\nqa_passes: false\nplan_invalidating: true\n---\n",
+      "qa_passes: false\nplan_invalidating: true\n",
+      "utf8",
+    );
+    const designRel = path.posix.join(state.artifacts.runDir, "design-qa-report.md");
+    await writeFile(
+      path.join(root, designRel),
+      "design_qa_passes: true\n",
       "utf8",
     );
 
@@ -518,7 +526,7 @@ configs:
     });
 
     expect(captured).toEqual([
-      "claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]",
+      "gpt-5.4[context=272k,reasoning=high,fast=false]",
     ]);
     if (prevEscalation === undefined) {
       delete process.env.PAN_MODEL_ESCALATION_CONFIG;

@@ -53,7 +53,7 @@ export function createStageMockTransport(
       params.requiredArtifactPaths ??
       (params.artifactPath !== undefined ? [params.artifactPath] : []);
     const missingArtifacts = findMissing(repoRoot, required);
-    if (missingArtifacts.length > 0) {
+    if (missingArtifacts.length > 0 && params.persona.name !== REMEDIATION_PERSONA) {
       return {
         status: "error",
         errorMessage: `Cursor SDK run finished but required artifacts are missing: ${missingArtifacts.join(", ")}`,

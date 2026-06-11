@@ -44,6 +44,7 @@ import {
   renderProductPlanPrompt,
   techAcceptanceCriteriaRel,
   techPlanRel,
+  uxSpecRel,
   resolveDesignStepsConfig,
   type FeatureDeliveryDesignOptions,
 } from "./design-steps.js";

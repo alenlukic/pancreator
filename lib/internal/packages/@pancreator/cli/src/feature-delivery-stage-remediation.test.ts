@@ -1,7 +1,7 @@
 import { copyFile, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach, beforeEach } from "vitest";
 
 import planPartial from "./fixtures/feature-delivery-stages/plan-partial.json" with { type: "json" };
 import planComplete from "./fixtures/feature-delivery-stages/plan-complete.json" with { type: "json" };
@@ -79,10 +79,18 @@ describe("feature-delivery SDK stage remediation", () => {
     stages: [{ id: "plan", persona: "tech-lead" }],
   };
 
+  beforeEach(() => {
+    process.env.PAN_SDK_SAMPLING_FORCE_OFF = "1";
+  });
+
+  afterEach(() => {
+    delete process.env.PAN_SDK_SAMPLING_FORCE_OFF;
+  });
+
   it("remediates partial plan output via pancreator-engineer and resumes the stage", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-remediate-"));
     await seedEscalationConfig(root);
-    await seedPersonas(root, ["tech-lead", STAGE_REMEDIATION_PERSONA]);
+    await seedPersonas(root, ["tech-lead", "product-engineer", "design-engineer", STAGE_REMEDIATION_PERSONA]);
     const fixture = planPartial as StageFixture;
     const state = ledgerFromFixture(fixture);
     await seedRun(root, fixture, state);
@@ -104,7 +112,7 @@ describe("feature-delivery SDK stage remediation", () => {
   it("fails closed when remediation cannot restore required artifacts", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-remediate-fail-"));
     await seedEscalationConfig(root);
-    await seedPersonas(root, ["tech-lead", STAGE_REMEDIATION_PERSONA]);
+    await seedPersonas(root, ["tech-lead", "product-engineer", "design-engineer", STAGE_REMEDIATION_PERSONA]);
     const fixture = {
       ...(planPartial as StageFixture),
       writesOnRemediation: [],
@@ -120,7 +128,7 @@ describe("feature-delivery SDK stage remediation", () => {
         stageId: "plan",
         testHooks: { sdkTransport: createStageMockTransport(root, fixture) },
       }),
-    ).rejects.toThrow(/plan\.md/u);
+    ).rejects.toThrow(/plan\.md|incomplete after .* remediation attempt/u);
 
     const logText = await readFile(path.join(root, state.artifacts.runLogFile), "utf8");
     expect(countEngineerRuns(logText)).toBe(MAX_STAGE_REMEDIATION_ATTEMPTS);
@@ -129,7 +137,7 @@ describe("feature-delivery SDK stage remediation", () => {
   it("passes complete plan fixture without invoking remediation", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-complete-"));
     await seedEscalationConfig(root);
-    await seedPersonas(root, ["tech-lead", STAGE_REMEDIATION_PERSONA]);
+    await seedPersonas(root, ["tech-lead", "product-engineer", "design-engineer", STAGE_REMEDIATION_PERSONA]);
     const fixture = planComplete as StageFixture;
     const state = ledgerFromFixture(fixture);
     await seedRun(root, fixture, state);

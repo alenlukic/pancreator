@@ -426,6 +426,14 @@ describe("GET /api/run-state", () => {
       runDir: ".pan/work/day/task",
     };
     expect(stageArtifactPathsForStage(input, "plan")).toEqual([
+      ".pan/work/day/task/product-plan.md",
+      ".pan/work/day/task/product-acceptance-criteria.md",
+      ".pan/work/day/task/design-plan.md",
+      ".pan/work/day/task/design-acceptance-criteria.md",
+      "lib/memory/features/demo-feature/ux-spec.md",
+      ".pan/work/day/task/tech-plan.md",
+      ".pan/work/day/task/tech-acceptance-criteria.md",
+      ".pan/work/day/task/manual-qa-test-cases.md",
       ".pan/work/day/task/plan.md",
       ".pan/work/day/task/adr-draft.md",
       ".pan/work/day/task/touch-set.json",
