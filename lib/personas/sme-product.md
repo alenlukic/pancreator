@@ -1,7 +1,7 @@
 ---
 name: sme-product
 description: When the `experience-planning` pipeline reaches the `sme-consult` stage or an operator DMs it, the `sme-product` SHALL decompose operator goals into product recommendations — user and job statements, scoped requirements, priority ranking, success metrics, and out-of-scope calls — at `/.pan/work/<day>/<task-id>/product-recommendations.md`.
-model: gpt-5.5[context=272k,reasoning=high,fast=false]
+model: gpt-5.4[context=272k,reasoning=high,fast=false]
 permissionMode: default
 tools:
   - Read

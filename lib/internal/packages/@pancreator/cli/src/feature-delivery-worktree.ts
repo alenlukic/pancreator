@@ -162,12 +162,23 @@ export async function resolveFeatureDeliveryCheckoutRoot(
   const workMatches = matches.filter((match) => match.rootKind === ".pan/work");
   const archiveMatches = matches.filter((match) => match.rootKind === ".pan/archive");
 
-  let chosen = workMatches[0] ?? archiveMatches[0]!;
+  const preferActiveWorktreeMatch = (
+    candidates: typeof workMatches,
+  ): (typeof workMatches)[number] => {
+    const worktreeMatch = candidates.find((match) =>
+      isFeatureDeliveryWorktreeCheckout(mainRoot, match.checkoutRoot),
+    );
+    return worktreeMatch ?? candidates[0]!;
+  };
+
+  let chosen =
+    workMatches.length > 0 ? preferActiveWorktreeMatch(workMatches) : archiveMatches[0]!;
   if (workMatches.length > 0 && archiveMatches.length > 0) {
-    const workState = JSON.parse(await readFile(workMatches[0]!.abs, "utf8")) as FeatureDeliveryState;
-    chosen = workState.status !== "closed" ? workMatches[0]! : archiveMatches[0]!;
+    const activeWork = preferActiveWorktreeMatch(workMatches);
+    const workState = JSON.parse(await readFile(activeWork.abs, "utf8")) as FeatureDeliveryState;
+    chosen = workState.status !== "closed" ? activeWork : archiveMatches[0]!;
   } else if (workMatches.length > 1) {
-    chosen = workMatches[0]!;
+    chosen = preferActiveWorktreeMatch(workMatches);
   }
 
   const main = resolveMainRepositoryRoot(chosen.checkoutRoot);

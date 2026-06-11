@@ -1,7 +1,7 @@
 ---
 name: sme-design
 description: When the `experience-planning` pipeline reaches the `sme-consult` stage or an operator DMs it, the `sme-design` SHALL translate rough operator intent into design-canon-grounded recommendations — information architecture, layout system, interaction patterns, component and icon selections, motion — at `/.pan/work/<day>/<task-id>/design-recommendations.md`.
-model: gpt-5.5[context=272k,reasoning=high,fast=false]
+model: gpt-5.4[context=272k,reasoning=high,fast=false]
 permissionMode: default
 tools:
   - Read
