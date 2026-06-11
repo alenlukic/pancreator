@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { COMMAND_CENTER_SURFACES, getSurfaceByRoute, type CommandCenterSurfaceConfig } from "./surface-config";
+import { getSurfaceIcon } from "./surface-icons";
 
 const RAIL_COLLAPSE_KEY = "command-center-rail-collapsed";
 const DESKTOP_RAIL_QUERY = "(min-width: 1280px)";
@@ -47,23 +48,18 @@ export function CommandCenterNavRail() {
     });
   }, []);
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent, index: number) => {
-      const items = COMMAND_CENTER_SURFACES;
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        const next = (index + 1) % items.length;
-        listRef.current?.querySelectorAll<HTMLAnchorElement>("[data-rail-item]")[next]?.focus();
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        const next = (index - 1 + items.length) % items.length;
-        listRef.current?.querySelectorAll<HTMLAnchorElement>("[data-rail-item]")[next]?.focus();
-      } else if (event.key === "Enter" && !items[index].firstSlice) {
-        event.preventDefault();
-      }
-    },
-    [],
-  );
+  const handleKeyDown = useCallback((event: React.KeyboardEvent, index: number) => {
+    const items = COMMAND_CENTER_SURFACES;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const next = (index + 1) % items.length;
+      listRef.current?.querySelectorAll<HTMLAnchorElement>("[data-rail-item]")[next]?.focus();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const next = (index - 1 + items.length) % items.length;
+      listRef.current?.querySelectorAll<HTMLAnchorElement>("[data-rail-item]")[next]?.focus();
+    }
+  }, []);
 
   return (
     <nav
@@ -106,33 +102,7 @@ function CommandCenterNavRailItem({
   collapsed: boolean;
   onKeyDown: (event: React.KeyboardEvent) => void;
 }) {
-  const deferred = !surface.firstSlice;
-
-  if (deferred) {
-    return (
-      <li className="command-center-nav-rail-item command-center-nav-rail-item-deferred">
-        <span
-          className="command-center-nav-rail-link command-center-nav-rail-link-disabled"
-          data-rail-item
-          data-testid={`rail-item-${surface.id}`}
-          aria-disabled="true"
-          title="Coming soon"
-          tabIndex={0}
-          onKeyDown={onKeyDown}
-        >
-          <span className="command-center-nav-rail-icon" aria-hidden="true">
-            {surface.icon}
-          </span>
-          {!collapsed ? (
-            <>
-              <span className="command-center-nav-rail-label">{surface.label}</span>
-              <span className="command-center-nav-rail-soon">Coming soon</span>
-            </>
-          ) : null}
-        </span>
-      </li>
-    );
-  }
+  const Icon = getSurfaceIcon(surface.id);
 
   return (
     <li className={`command-center-nav-rail-item${isActive ? " command-center-nav-rail-item-active" : ""}`}>
@@ -142,10 +112,12 @@ function CommandCenterNavRailItem({
         data-rail-item
         data-testid={`rail-item-${surface.id}`}
         aria-current={isActive ? "page" : undefined}
+        title={surface.operatorJob}
+        aria-label={surface.label}
         onKeyDown={onKeyDown}
       >
         <span className="command-center-nav-rail-icon" aria-hidden="true">
-          {surface.icon}
+          <Icon size={24} strokeWidth={1.75} />
         </span>
         {!collapsed ? <span className="command-center-nav-rail-label">{surface.label}</span> : null}
       </Link>

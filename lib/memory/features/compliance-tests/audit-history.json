@@ -1,8 +1,83 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-09T04:46:27.105Z",
+  "generated_at": "2026-06-10T20:20:10.631Z",
   "entries": [
+    {
+      "audit_id": "52276_0928_command-center-rebuild-20260610201825",
+      "task_id": "52276_0928_command-center-rebuild",
+      "feature_id": "command-center-rebuild",
+      "recorded_at": "2026-06-10T20:18:25.956Z",
+      "stage_status": "pass",
+      "baseline_audit_id": "69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories-20260609053000",
+      "artifact_paths": {
+        "compliance_result": ".pan/archive/work/172965_06-10-26/52276_0928_command-center-rebuild/compliance-result.json",
+        "run_dir": ".pan/archive/work/172965_06-10-26/52276_0928_command-center-rebuild"
+      },
+      "scope_snapshot": [
+        {
+          "path": ".pan/archive/work/172965_06-10-26/52276_0928_command-center-rebuild/review.md",
+          "exists": true,
+          "sha256": "963e8f0",
+          "size_bytes": 2329
+        },
+        {
+          "path": ".pan/archive/work/172965_06-10-26/52276_0928_command-center-rebuild/test-report.md",
+          "exists": true,
+          "sha256": "d17e5e0",
+          "size_bytes": 1838
+        },
+        {
+          "path": ".pan/archive/work/172965_06-10-26/52276_0928_command-center-rebuild/touch-set.json",
+          "exists": true,
+          "sha256": "edb4dde",
+          "size_bytes": 14309
+        },
+        {
+          "path": "lib/memory/features/command-center-rebuild/delivery-report.md",
+          "exists": true,
+          "sha256": "72a7877",
+          "size_bytes": 5126
+        }
+      ],
+      "delta_summary": {
+        "added": 4,
+        "removed": 19,
+        "modified": 0,
+        "changed_paths": [
+          ".pan/archive/work/172965_06-10-26/52276_0928_command-center-rebuild/review.md",
+          ".pan/archive/work/172965_06-10-26/52276_0928_command-center-rebuild/test-report.md",
+          ".pan/archive/work/172965_06-10-26/52276_0928_command-center-rebuild/touch-set.json",
+          ".pan/work/172966_06-09-26/69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories/review.md",
+          ".pan/work/172966_06-09-26/69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories/test-report.md",
+          ".pan/work/172966_06-09-26/69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories/touch-set.json",
+          "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+          "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
+          "lib/memory/features/command-center-active-memory-operator-craft-revalidation/delivery-report.md",
+          "lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md",
+          "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
+          "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",
+          "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
+          "lib/memory/features/command-center-local-scheduler-tick-and-run-history/delivery-report.md",
+          "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
+          "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
+          "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+          "lib/memory/features/command-center-rebuild/delivery-report.md",
+          "lib/memory/features/command-center-ux-philosophy-information-architecture-and-user-stories/delivery-report.md",
+          "lib/memory/features/command-center-ux-spec-and-information-architecture/delivery-report.md",
+          "lib/memory/features/command-center-ux-spec-and-information-architecture/index.json",
+          "lib/memory/features/command-center-ux-spec-and-information-architecture/spec.md",
+          "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
     {
       "audit_id": "69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories-20260609053000",
       "task_id": "69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories",
@@ -596,142 +671,6 @@
           ".pan/archive/work/172967_06-08-26/919_2344_command-center-active-memory-operator-readability/touch-set.json",
           "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
           "lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md",
-          "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
-          "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",
-          "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "lib/memory/features/command-center-local-scheduler-tick-and-run-history/delivery-report.md",
-          "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
-          "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
-          "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/delivery-report.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/index.json",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/spec.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md"
-        ]
-      },
-      "findings_summary": {
-        "total": 0,
-        "block": 0,
-        "major": 0,
-        "minor": 0,
-        "note": 0
-      }
-    },
-    {
-      "audit_id": "4426_2246_command-center-module-tab-accessibility-20260608225342",
-      "task_id": "4426_2246_command-center-module-tab-accessibility",
-      "feature_id": "command-center-module-tab-accessibility",
-      "recorded_at": "2026-06-08T22:53:42.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": "8919_2131_command-center-craft-polish-pass-20260608214021",
-      "artifact_paths": {
-        "compliance_result": ".pan/archive/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/compliance-result.json",
-        "run_dir": ".pan/archive/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility"
-      },
-      "scope_snapshot": [
-        {
-          "path": ".pan/archive/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
-          "exists": true,
-          "sha256": "b2434c5",
-          "size_bytes": 4430
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/test-report.md",
-          "exists": true,
-          "sha256": "324b5ea",
-          "size_bytes": 4779
-        },
-        {
-          "path": ".pan/archive/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/touch-set.json",
-          "exists": true,
-          "sha256": "6af8238",
-          "size_bytes": 1943
-        },
-        {
-          "path": "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "exists": true,
-          "sha256": "97abded",
-          "size_bytes": 13527
-        },
-        {
-          "path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
-          "exists": true,
-          "sha256": "41d6fc3",
-          "size_bytes": 12877
-        },
-        {
-          "path": "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",
-          "exists": true,
-          "sha256": "23dcb91",
-          "size_bytes": 12718
-        },
-        {
-          "path": "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "exists": true,
-          "sha256": "1f50944",
-          "size_bytes": 11550
-        },
-        {
-          "path": "lib/memory/features/command-center-local-scheduler-tick-and-run-history/delivery-report.md",
-          "exists": true,
-          "sha256": "836e9d2",
-          "size_bytes": 13266
-        },
-        {
-          "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
-          "exists": true,
-          "sha256": "0db9ec9",
-          "size_bytes": 11184
-        },
-        {
-          "path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
-          "exists": true,
-          "sha256": "33151d4",
-          "size_bytes": 9715
-        },
-        {
-          "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "exists": true,
-          "sha256": "a68b889",
-          "size_bytes": 10847
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/delivery-report.md",
-          "exists": true,
-          "sha256": "a72057b",
-          "size_bytes": 9695
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/index.json",
-          "exists": true,
-          "sha256": "0a37e18",
-          "size_bytes": 19252
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/spec.md",
-          "exists": true,
-          "sha256": "8f1cff5",
-          "size_bytes": 9677
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
-          "exists": true,
-          "sha256": "b77951f",
-          "size_bytes": 13604
-        }
-      ],
-      "delta_summary": {
-        "added": 4,
-        "removed": 3,
-        "modified": 11,
-        "changed_paths": [
-          ".pan/archive/work/172967_06-08-26/8919_2131_command-center-craft-polish-pass/review.md",
-          ".pan/archive/work/172967_06-08-26/8919_2131_command-center-craft-polish-pass/test-report.md",
-          ".pan/archive/work/172967_06-08-26/8919_2131_command-center-craft-polish-pass/touch-set.json",
-          ".pan/archive/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/review.md",
-          ".pan/archive/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/test-report.md",
-          ".pan/archive/work/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/touch-set.json",
-          "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
           "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
           "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",
           "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",

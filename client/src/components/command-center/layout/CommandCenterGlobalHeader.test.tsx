@@ -26,17 +26,17 @@ describe("CommandCenterGlobalHeader", () => {
     mockUsePathname.mockReturnValue("/command-center");
   });
 
-  it("renders Start feature delivery link on first-slice routes", () => {
+  it("renders Feature Delivery link on first-slice routes", () => {
     render(<CommandCenterGlobalHeader />);
     expect(screen.getByTestId("command-center-global-header")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Start feature delivery" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
       "href",
-      "/work-intake",
+      "/mission-control",
     );
   });
 
-  it("hides on non-first-slice routes", () => {
-    mockUsePathname.mockReturnValue("/repo-explorer");
+  it("hides on routes outside the shipped destination set", () => {
+    mockUsePathname.mockReturnValue("/work-intake");
     render(<CommandCenterGlobalHeader />);
     expect(screen.queryByTestId("command-center-global-header")).not.toBeInTheDocument();
   });

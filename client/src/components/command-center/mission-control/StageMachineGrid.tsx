@@ -96,9 +96,15 @@ export function StageCellCard({
     </>
   );
 
+  const stageLabel = stage.name.replace(/_/gu, " ");
+
   if (isPending) {
     return (
-      <article className={cellClasses} data-testid={stageTestId(stage.name)}>
+      <article
+        className={cellClasses}
+        data-testid={stageTestId(stage.name)}
+        aria-label={`${stageLabel} stage, pending, owned by ${stage.ownerPersona}`}
+      >
         {content}
       </article>
     );
@@ -109,6 +115,7 @@ export function StageCellCard({
       type="button"
       className={`${cellClasses} stage-cell-interactive`}
       data-testid={stageTestId(stage.name)}
+      aria-label={`${stageLabel} stage, ${stage.status}, owned by ${stage.ownerPersona}`}
       onClick={onActivate}
     >
       {content}

@@ -126,26 +126,10 @@ const mockRunState = [
   },
 ];
 
-const mockAutomations = {
-  automations: [
-    {
-      id: "hourly-coder",
-      name: "Hourly coder",
-      enabled: true,
-      schedule: "0 * * * *",
-      scheduleLabel: "Hourly",
-      status: "scheduled",
-      triggerKind: "agent",
-      persona: "coder",
-    },
-  ],
-  personas: ["coder"],
-};
-
 function mockCommandCenterFetch(options: {
   runState?: unknown[];
   runStateOk?: boolean;
-  automations?: unknown;
+  shippedOutcomes?: unknown[];
 } = {}) {
   return vi.spyOn(global, "fetch").mockImplementation(async (input) => {
     const url = String(input);
@@ -155,21 +139,20 @@ function mockCommandCenterFetch(options: {
           status: 500,
         });
       }
-      return new Response(stringifyCompactJson(options.runState ?? mockRunState), { status: 200 });
-    }
-    if (url.includes("/api/automations") && !url.includes("/runs")) {
-      return new Response(stringifyCompactJson(options.automations ?? mockAutomations), {
-        status: 200,
-      });
-    }
-    if (url.includes("/api/automations/") && url.includes("/runs")) {
-      return new Response(stringifyCompactJson({ runs: [] }), { status: 200 });
+      return new Response(
+        stringifyCompactJson({
+          tasks: options.runState ?? mockRunState,
+          reconciliation: {
+            archivedTaskIds: [],
+            shippedTaskIds: [],
+            shippedOutcomes: options.shippedOutcomes ?? [],
+          },
+        }),
+        { status: 200 },
+      );
     }
     if (url.includes("/api/file")) {
       return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
-    }
-    if (url.includes("/api/compliance-run")) {
-      return new Response(stringifyCompactJson({ descriptors: [] }), { status: 200 });
     }
     return new Response(stringifyCompactJson({}), { status: 404 });
   });
@@ -184,19 +167,17 @@ describe("CommandCenterSurface", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders six card regions with operational rows", async () => {
+  it("renders four orientation regions with operational rows", async () => {
     mockCommandCenterFetch();
 
     render(<CommandCenterSurface />);
 
     await waitFor(() => {
       expect(screen.getByTestId("command-center-page")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-needs-you")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-human-gates")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-anomalies")).toBeInTheDocument();
       expect(screen.getByTestId("command-center-running-now")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-compliance-issues")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-hanging-tasks")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-recent-automations")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-recent-activity")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-recent-outcomes")).toBeInTheDocument();
       expect(screen.getAllByText("Demo Feature").length).toBeGreaterThan(0);
       expect(screen.getAllByTestId("command-center-row").length).toBeGreaterThan(0);
     });
@@ -205,19 +186,19 @@ describe("CommandCenterSurface", () => {
   });
 
   it("renders global empty state when no operational rows exist", async () => {
-    mockCommandCenterFetch({ runState: [], automations: { automations: [], personas: [] } });
+    mockCommandCenterFetch({ runState: [] });
 
     render(<CommandCenterSurface />);
 
     await waitFor(() => {
       expect(screen.getByText("No active deliveries")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Start feature delivery" })).toHaveAttribute(
+      expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
         "href",
-        "/work-intake",
+        "/mission-control",
       );
     });
 
-    expect(screen.queryByTestId("command-center-needs-you")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("command-center-human-gates")).not.toBeInTheDocument();
   });
 
   it("shows loading skeleton with aria-busy", async () => {
@@ -244,17 +225,86 @@ describe("CommandCenterSurface", () => {
     });
   });
 
-  it("exposes keyboard-focusable primary CTAs on rows", async () => {
+  it("renders archive degraded banner when reconciliation reports archive error", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(
+          stringifyCompactJson({
+            tasks: mockRunState,
+            reconciliation: {
+              archivedTaskIds: [],
+              shippedTaskIds: [],
+              shippedOutcomes: [],
+              errors: {
+                archive: "Unable to load archived task ids",
+              },
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+
+    render(<CommandCenterSurface />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Degraded data from archive").length).toBeGreaterThan(0);
+      expect(screen.getByText("Unable to load archived task ids")).toBeInTheDocument();
+    });
+  });
+
+  it("renders feature-index degraded banner when reconciliation reports feature-index error", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(
+          stringifyCompactJson({
+            tasks: mockRunState,
+            reconciliation: {
+              archivedTaskIds: [],
+              shippedTaskIds: [],
+              shippedOutcomes: [],
+              errors: {
+                "feature-index": "Unable to load shipped outcomes from feature-index",
+              },
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+
+    render(<CommandCenterSurface />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Degraded data from feature-index").length).toBeGreaterThan(0);
+      expect(
+        screen.getByText("Unable to load shipped outcomes from feature-index"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("exposes human-gate approve and reject CTAs on rows", async () => {
     mockCommandCenterFetch();
 
     render(<CommandCenterSurface />);
 
     await waitFor(() => {
-      const ctas = screen.getAllByRole("link", { name: "Open mission control" });
-      expect(ctas[0]).toHaveAttribute("href", "/mission-control?task=65766_0543_demo-feature");
+      const approve = screen.getAllByRole("link", { name: /Approve /u })[0];
+      expect(approve).toHaveAttribute("href", "/mission-control?task=65766_0543_demo-feature");
+      expect(screen.getAllByRole("link", { name: /Reject /u })[0]).toBeInTheDocument();
     });
 
-    fireEvent.focus(screen.getAllByRole("link", { name: "Open mission control" })[0]!);
-    expect(document.activeElement?.textContent).toContain("Open mission control");
+    fireEvent.focus(screen.getAllByRole("link", { name: /Approve /u })[0]!);
+    expect(document.activeElement?.textContent).toMatch(/Approve/u);
   });
 });

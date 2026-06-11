@@ -1,0 +1,404 @@
+{
+  "feature_id": "command-center-rebuild",
+  "title": "Command Center rebuild",
+  "task_id": "52276_0928_command-center-rebuild",
+  "status": "indexed",
+  "current_stage": "index",
+  "pipeline_state": "artifacts_indexed",
+  "indexed_at": "2026-06-10T21:20:00.000Z",
+  "program": "command-center",
+  "design_steps": true,
+  "intake": {
+    "round": 0,
+    "open_questions": 0,
+    "pending_questions": [],
+    "clarifying_rounds_posted": 0,
+    "source_inbox_item": ".pan/archive/inbox/in/172965_06-10-26/52276_0928_command-center-rebuild/28722_1601_command-center-rebuild-spec-theme-refresh.md",
+    "source_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172965_06-10-26/28722_1601_command-center-rebuild-spec-theme-refresh.md",
+      "range": [1, 128],
+      "contentHash": "688061b"
+    },
+    "prior_inbox_item": "lib/inbox/in/172965_06-10-26/55292_0838_command-center-rebuild.md",
+    "prior_inbox_item_citation": {
+      "kind": "lines",
+      "path": "lib/inbox/in/172965_06-10-26/55292_0838_command-center-rebuild.md",
+      "range": [1, 327],
+      "contentHash": "ec0efb6"
+    },
+    "human_approval_gate": "ratified",
+    "human_approval_note": "Operator ship ratification at 2026-06-10T21:15:00Z with human_ratified_diff true; worktree branch pan/run/52276_0928_command-center-rebuild holds five-destination rebuild, theme canon, and design-QA round-2 fixes."
+  },
+  "handoff": {
+    "decision": "index-complete",
+    "verdict": "pass",
+    "completed_stage": "index",
+    "completed_by": "librarian",
+    "completed_at": "2026-06-10T21:20:00.000Z",
+    "next_owner": "operator",
+    "next_stage": "complete",
+    "handoff_note": "Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, advance to complete and run close-artifacts."
+  },
+  "index": {
+    "indexer": "librarian",
+    "completed_at": "2026-06-10T21:20:00.000Z",
+    "artifacts_indexed": 22,
+    "content_hash_refresh_performed": true,
+    "abbrev_len_at_index_time": 7,
+    "metadata": {
+      "pancreator-bootstrap-only": false
+    }
+  },
+  "review": {
+    "verdict": "pass",
+    "review_passes": true,
+    "artifact": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/review.md",
+    "block_findings": 0,
+    "must_fix_count": 0,
+    "consider_count": 1,
+    "nit_count": 1,
+    "spec_contracts_executed": 0,
+    "spec_contracts_note": "No contracts.index.json sidecar; zero Spec Contracts declared for this feature.",
+    "excluded_from_gate": true,
+    "excluded_note": "tests/cursor-sync.test.mjs operator waiver — do not revert escalation YAML or persona models",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/review.md",
+      "range": [1, 55],
+      "contentHash": "963e8f0"
+    }
+  },
+  "test": {
+    "qa_passes": true,
+    "design_qa_passes": true,
+    "artifact": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/test-report.md",
+    "design_qa_artifact": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/design-qa-report.md",
+    "verification_gates": {
+      "client_lint": "pass",
+      "client_typecheck": "pass",
+      "client_full_tests": "pass (223/223)",
+      "node_test_suite": "excluded-from-gate (cursor-sync operator waiver)",
+      "check_phase_0a": "pass",
+      "context_budget_report": "pass",
+      "compliance_final_gate": "pass (cursor-sync waived in final_gate_notes)"
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/test-report.md",
+      "range": [1, 43],
+      "contentHash": "d17e5e0"
+    },
+    "design_qa_citation": {
+      "kind": "lines",
+      "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/design-qa-report.md",
+      "range": [1, 50],
+      "contentHash": "6a541c6"
+    }
+  },
+  "compliance": {
+    "compliance_passes": true,
+    "artifact": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/compliance-result.json",
+    "audit_id": "52276_0928_command-center-rebuild-20260610201825",
+    "baseline_audit_id": "69695_0438_command-center-ux-philosophy-information-architecture-and-user-stories-20260609053000",
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/compliance-result.json",
+      "range": [1, 142],
+      "contentHash": "08209cc"
+    }
+  },
+  "delivery_report": {
+    "path": "lib/memory/features/command-center-rebuild/delivery-report.md",
+    "archived_inbox_source_note": "Source directive remains under lib/inbox/in/ at index time; close-artifacts archives inbox and work paths.",
+    "citation": {
+      "kind": "lines",
+      "path": "lib/memory/features/command-center-rebuild/delivery-report.md",
+      "range": [1, 177],
+      "contentHash": "72a7877"
+    },
+    "archived_inbox_source": ".pan/archive/inbox/in/172965_06-10-26/52276_0928_command-center-rebuild/28722_1601_command-center-rebuild-spec-theme-refresh.md"
+  },
+  "ship": {
+    "ship_authority": "human_ratifies_local_diff",
+    "ship_ratification_artifact": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/ship-ratification.json",
+    "worktree_branch": "pan/run/52276_0928_command-center-rebuild",
+    "ratified_paths_note": "Full touch-set under .pan/work/.../touch-set.json (71 paths); client-only rebuild excluding Cmd-K.",
+    "operator_commit_notes": [
+      "lib/memory/features/command-center-rebuild/delivery-report.md",
+      "lib/memory/features/command-center-rebuild/index.json",
+      "lib/memory/features/command-center-rebuild/spec.md",
+      "lib/memory/features/command-center-rebuild/ux-spec.md"
+    ],
+    "supervisor_invariants": {
+      "git_push_executed": false,
+      "gh_pr_create_executed": false,
+      "git_commit_executed": false,
+      "git_commit_no_verify_executed": false
+    },
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/ship-ratification.json",
+      "range": [1, 8],
+      "contentHash": "c65dd34"
+    }
+  },
+  "open_followups": [
+    {
+      "id": "cursor-sync-waiver",
+      "owner": "operator",
+      "status": "open",
+      "reason": "tests/cursor-sync.test.mjs fails on main escalation YAML drift; operator waived for this feature — do not revert persona model frontmatter to satisfy gate.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/review.md",
+        "range": [13, 13],
+        "contentHash": "963e8f0"
+      }
+    },
+    {
+      "id": "touch-set-retired-paths",
+      "owner": "tech-lead",
+      "status": "consider",
+      "reason": "touch-set.json omits retired source paths the diff deletes (client/src/services/theme.ts); migration to client/src/theme/theme.ts matches plan.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/review.md",
+        "range": [31, 31],
+        "contentHash": "963e8f0"
+      }
+    },
+    {
+      "id": "adr-draft-promotion",
+      "owner": "operator",
+      "status": "open",
+      "reason": "ADR draft not yet promoted to lib/memory/adr/ for downstream binding authority.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/adr-draft.md",
+        "range": [1, 35],
+        "contentHash": "eb0dd1d"
+      }
+    },
+    {
+      "id": "spec-frontmatter-status",
+      "owner": "operator",
+      "status": "consider",
+      "reason": "spec.md frontmatter marks intake-awaiting-ratification while ship ratification reconciles at commit time.",
+      "citation": {
+        "kind": "lines",
+        "path": "lib/memory/features/command-center-rebuild/spec.md",
+        "range": [1, 22],
+        "contentHash": "37ae5d1"
+      }
+    },
+    {
+      "id": "human-commit-untracked",
+      "owner": "operator",
+      "status": "open",
+      "reason": "Feature folder and client touch-set remain uncommitted on worktree branch until human commit and merge.",
+      "citation": {
+        "kind": "lines",
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/ship-ratification.json",
+        "range": [1, 8],
+        "contentHash": "c65dd34"
+      }
+    }
+  ],
+  "touch_set_snapshot": {
+    "featureId": "command-center-rebuild",
+    "taskId": "52276_0928_command-center-rebuild",
+    "stage": "implement",
+    "path_count": 71,
+    "test_count": 25,
+    "citation": {
+      "kind": "lines",
+      "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/touch-set.json",
+      "range": [1, 277],
+      "contentHash": "edb4dde"
+    }
+  },
+  "artifact_index": {
+    "feature_folder": {
+      "engineering_spec": {
+        "path": "lib/memory/features/command-center-rebuild/spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-rebuild/spec.md",
+          "range": [1, 247],
+          "contentHash": "37ae5d1"
+        }
+      },
+      "ux_spec": {
+        "path": "lib/memory/features/command-center-rebuild/ux-spec.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-rebuild/ux-spec.md",
+          "range": [1, 176],
+          "contentHash": "79a0177"
+        }
+      },
+      "delivery_report": {
+        "path": "lib/memory/features/command-center-rebuild/delivery-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/memory/features/command-center-rebuild/delivery-report.md",
+          "range": [1, 177],
+          "contentHash": "72a7877"
+        }
+      },
+      "per_feature_index": {
+        "path": "lib/memory/features/command-center-rebuild/index.json"
+      }
+    },
+    "pipeline_artifacts": {
+      "active_work_dir": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/"
+      },
+      "plan": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/plan.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/plan.md",
+          "range": [1, 48],
+          "contentHash": "68a3212"
+        }
+      },
+      "adr_draft": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/adr-draft.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/adr-draft.md",
+          "range": [1, 35],
+          "contentHash": "eb0dd1d"
+        }
+      },
+      "touch_set": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/touch-set.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/touch-set.json",
+          "range": [1, 277],
+          "contentHash": "edb4dde"
+        }
+      },
+      "implementation_report": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/implementation-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/implementation-report.md",
+          "range": [1, 53],
+          "contentHash": "f6027df"
+        }
+      },
+      "review_report": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/review.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/review.md",
+          "range": [1, 55],
+          "contentHash": "963e8f0"
+        }
+      },
+      "test_report": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/test-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/test-report.md",
+          "range": [1, 43],
+          "contentHash": "d17e5e0"
+        }
+      },
+      "design_qa_report": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/design-qa-report.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/design-qa-report.md",
+          "range": [1, 50],
+          "contentHash": "6a541c6"
+        }
+      },
+      "compliance_result": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/compliance-result.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/compliance-result.json",
+          "range": [1, 142],
+          "contentHash": "08209cc"
+        }
+      },
+      "compliance_audit": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/compliance-audit.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/compliance-audit.md",
+          "range": [1, 54],
+          "contentHash": "6cecbbf"
+        }
+      },
+      "ship_ratification": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/ship-ratification.json",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/ship-ratification.json",
+          "range": [1, 8],
+          "contentHash": "c65dd34"
+        }
+      },
+      "handoff": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/handoff.md",
+        "citation": {
+          "kind": "lines",
+          "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/handoff.md",
+          "range": [1, 55],
+          "contentHash": "cd04ada"
+        }
+      },
+      "pipeline_close": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/pipeline-close.md"
+      },
+      "operator_verification": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/operator-verification.md"
+      },
+      "run_log": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/run.log.jsonl",
+        "note": "Run log present; line-range hash deferred until close-artifacts archival."
+      },
+      "gate_logs": {
+        "path": ".pan/work/172965_06-10-26/52276_0928_command-center-rebuild/qa-logs/",
+        "note": "QA, compliance, and client gate command transcripts."
+      }
+    },
+    "lineage": {
+      "source_inbox_item": {
+        "path": ".pan/archive/inbox/in/172965_06-10-26/52276_0928_command-center-rebuild/28722_1601_command-center-rebuild-spec-theme-refresh.md",
+        "citation": {
+          "kind": "lines",
+          "path": "lib/inbox/in/172965_06-10-26/28722_1601_command-center-rebuild-spec-theme-refresh.md",
+          "range": [1, 128],
+          "contentHash": "688061b"
+        }
+      },
+      "experience_planning_parent": {
+        "path": "lib/inbox/in/172965_06-10-26/55292_0838_command-center-rebuild.md",
+        "note": "Experience-planning synthesis directive; spec refresh inbox superseded intake source at repair."
+      },
+      "ux_spec_parent": {
+        "path": "lib/memory/features/command-center-ux-philosophy-information-architecture-and-user-stories/ux-spec.md",
+        "note": "Ratified IA authority cited by spec depends_on."
+      }
+    }
+  },
+  "metadata": {
+    "pancreator-bootstrap-only": false,
+    "librarian_populated": true,
+    "placeholder": false,
+    "documentation_only": false
+  },
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172965_06-10-26/52276_0928_command-center-rebuild/28722_1601_command-center-rebuild-spec-theme-refresh.md",
+    "note": "Active inbox path at index time; close-artifacts moves to .pan/archive/inbox/in/.",
+    "prior_path": "lib/inbox/in/172965_06-10-26/28722_1601_command-center-rebuild-spec-theme-refresh.md"
+  },
+  "archived_inbox_source": ".pan/archive/inbox/in/172965_06-10-26/52276_0928_command-center-rebuild/28722_1601_command-center-rebuild-spec-theme-refresh.md"
+}

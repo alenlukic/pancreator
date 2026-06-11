@@ -5,15 +5,17 @@ import {
   findActiveStage,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
-import type { AutomationSummary } from "@/services/automations-client";
-import type { RunRecord } from "@/services/scheduler-runs";
 import {
   buildCommandCenterRows,
   mapComplianceResultsToFindings,
 } from "./command-center-data";
-import type { AutomationPreviewRow, ComplianceFindingRow } from "./command-center-types";
+import type { ComplianceFindingRow } from "./command-center-types";
+import {
+  COMMAND_CENTER_ACTIVE_REVALIDATE_MS,
+  COMMAND_CENTER_STALE_DATA_MS,
+} from "./command-center-types";
+import type { ShippedOutcome } from "@/services/run-state";
 
-const POLL_INTERVAL_MS = 7500;
 const AUDIT_HISTORY_PATH = "lib/memory/features/compliance-tests/audit-history.json";
 
 type AuditHistoryEntry = {
@@ -37,13 +39,15 @@ type ComplianceResultFile = {
   }>;
 };
 
-async function fetchJson<T>(url: string): Promise<T | null> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    return null;
-  }
-  return (await response.json()) as T;
-}
+type AttentionRunStatePayload = {
+  tasks: TaskRunStateEnvelope[];
+  reconciliation: {
+    archivedTaskIds: string[];
+    shippedOutcomes: ShippedOutcome[];
+    shippedTaskIds: string[];
+    errors?: Record<string, string>;
+  };
+};
 
 async function fetchFileContent(path: string): Promise<string | null> {
   const response = await fetch(`/api/file?path=${encodeURIComponent(path)}`);
@@ -88,52 +92,37 @@ async function loadComplianceFindings(): Promise<ComplianceFindingRow[]> {
   }
 }
 
-async function loadAutomationPreviews(
-  automations: AutomationSummary[],
-): Promise<AutomationPreviewRow[]> {
-  const previews = await Promise.all(
-    automations.slice(0, 5).map(async (automation) => {
-      const runs = await fetchJson<{ runs: RunRecord[] }>(
-        `/api/automations/${encodeURIComponent(automation.id)}/runs`,
-      );
-      const latestRun = runs?.runs?.[0];
-      const failed = latestRun?.status === "error";
-      return {
-        automationId: automation.id,
-        name: automation.name,
-        scheduleLabel: automation.scheduleLabel,
-        status: failed ? "failed" : automation.enabled ? automation.status : "paused",
-        lastRunAt: latestRun?.startedAt,
-        canRetry: failed && automation.enabled,
-      } satisfies AutomationPreviewRow;
-    }),
-  );
-  return previews;
-}
-
 export function useCommandCenterData() {
   const [tasks, setTasks] = useState<TaskRunStateEnvelope[]>([]);
   const [loading, setLoading] = useState(true);
   const [runStateError, setRunStateError] = useState<string | null>(null);
   const [complianceFindings, setComplianceFindings] = useState<ComplianceFindingRow[]>([]);
   const [complianceError, setComplianceError] = useState<string | null>(null);
-  const [automationRows, setAutomationRows] = useState<AutomationPreviewRow[]>([]);
-  const [automationError, setAutomationError] = useState<string | null>(null);
+  const [shippedOutcomes, setShippedOutcomes] = useState<ShippedOutcome[]>([]);
+  const [outcomesError, setOutcomesError] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [dataFetchedAtMs, setDataFetchedAtMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
-
   const loadRunState = useCallback(async () => {
     setRunStateError(null);
+    setOutcomesError(null);
+    setArchiveError(null);
     try {
-      const response = await fetch("/api/run-state");
+      const response = await fetch("/api/run-state?view=attention");
       if (!response.ok) {
         const data = (await response.json()) as { error?: string };
         setTasks([]);
         setRunStateError(data.error ?? "Unable to load run state");
         return null;
       }
-      const data = (await response.json()) as TaskRunStateEnvelope[];
-      setTasks(data);
-      return data;
+      const data = (await response.json()) as AttentionRunStatePayload;
+      setTasks(data.tasks);
+      setShippedOutcomes(data.reconciliation.shippedOutcomes);
+      const reconciliationErrors = data.reconciliation.errors ?? {};
+      setOutcomesError(reconciliationErrors["feature-index"] ?? null);
+      setArchiveError(reconciliationErrors.archive ?? null);
+      setDataFetchedAtMs(Date.now());
+      return data.tasks;
     } catch {
       setTasks([]);
       setRunStateError("Unable to load run state");
@@ -143,26 +132,11 @@ export function useCommandCenterData() {
 
   const loadSupplementary = useCallback(async () => {
     setComplianceError(null);
-    setAutomationError(null);
     try {
       const findings = await loadComplianceFindings();
       setComplianceFindings(findings);
     } catch {
       setComplianceError("Unable to load compliance findings");
-    }
-
-    try {
-      const automationsPayload = await fetchJson<{ automations: AutomationSummary[] }>(
-        "/api/automations",
-      );
-      const automations = automationsPayload?.automations ?? [];
-      if (automations.length === 0) {
-        setAutomationRows([]);
-      } else {
-        setAutomationRows(await loadAutomationPreviews(automations));
-      }
-    } catch {
-      setAutomationError("Unable to load automations");
     }
   }, []);
 
@@ -190,34 +164,50 @@ export function useCommandCenterData() {
     }
     const pollTimer = window.setInterval(() => {
       void loadRunState();
-    }, POLL_INTERVAL_MS);
+    }, COMMAND_CENTER_ACTIVE_REVALIDATE_MS);
     return () => {
       window.clearInterval(pollTimer);
     };
   }, [hasActiveStage, loadRunState]);
 
   useEffect(() => {
-    if (!hasActiveStage) {
-      return undefined;
-    }
     const elapsedTimer = window.setInterval(() => {
       setNowMs(Date.now());
     }, 1000);
     return () => {
       window.clearInterval(elapsedTimer);
     };
-  }, [hasActiveStage]);
+  }, []);
+
+  const failedSources = useMemo(() => {
+    const sources: string[] = [];
+    if (runStateError) {
+      sources.push("run-state");
+    }
+    if (complianceError) {
+      sources.push("compliance");
+    }
+    if (outcomesError) {
+      sources.push("feature-index");
+    }
+    if (archiveError) {
+      sources.push("archive");
+    }
+    return sources;
+  }, [archiveError, complianceError, outcomesError, runStateError]);
 
   const cards = useMemo(
     () =>
       buildCommandCenterRows({
         tasks,
         complianceFindings,
-        automationRows,
+        shippedOutcomes,
         activityEvents: [],
         nowMs,
+        dataFetchedAtMs: dataFetchedAtMs ?? undefined,
+        failedSources,
       }),
-    [automationRows, complianceFindings, nowMs, tasks],
+    [complianceFindings, dataFetchedAtMs, failedSources, nowMs, shippedOutcomes, tasks],
   );
 
   const hasOperationalRows = useMemo(
@@ -227,13 +217,23 @@ export function useCommandCenterData() {
 
   const isGlobalEmpty = !loading && runStateError === null && !hasOperationalRows;
 
+  const isDataStale = useMemo(() => {
+    if (dataFetchedAtMs === null) {
+      return false;
+    }
+    return nowMs - dataFetchedAtMs > COMMAND_CENTER_STALE_DATA_MS;
+  }, [dataFetchedAtMs, nowMs]);
+
   return {
     cards,
     loading,
     runStateError,
     complianceError,
-    automationError,
+    outcomesError,
+    archiveError,
     isGlobalEmpty,
+    isDataStale,
+    dataFetchedAtMs,
     retry: refresh,
   };
 }

@@ -1,8 +1,18 @@
-import { CommandCenterSurfacePlaceholder } from "@/components/command-center/layout/CommandCenterSurfacePlaceholder";
-import { COMMAND_CENTER_SURFACES } from "@/components/command-center/layout/surface-config";
+"use client";
 
-const surface = COMMAND_CENTER_SURFACES.find((entry) => entry.id === "compliance")!;
+import { useState } from "react";
+import { MaintenanceModule } from "@/components/command-center/maintenance/MaintenanceModule";
 
 export default function CompliancePage() {
-  return <CommandCenterSurfacePlaceholder surface={surface} />;
+  const [, setAuditHistoryPath] = useState<string | null>(null);
+
+  return (
+    <div className="compliance-page" data-testid="compliance-page">
+      <header className="compliance-page-header">
+        <h1>Compliance + Recovery</h1>
+        <p>Trigger audits, inspect failures, and run recovery actions.</p>
+      </header>
+      <MaintenanceModule onOpenAuditHistory={(path) => setAuditHistoryPath(path)} />
+    </div>
+  );
 }

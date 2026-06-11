@@ -1,12 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ComplianceIssuesCard } from "./cards/ComplianceIssuesCard";
-import { HangingTasksCard } from "./cards/HangingTasksCard";
-import { NeedsYouCard } from "./cards/NeedsYouCard";
-import { RecentActivityCard } from "./cards/RecentActivityCard";
-import { RecentAutomationsCard } from "./cards/RecentAutomationsCard";
-import { RunningNowCard } from "./cards/RunningNowCard";
+import { AttentionBanner } from "../shared/AttentionBanner";
+import { CommandCenterCard } from "./CommandCenterCard";
 import type { CommandCenterCardModel } from "./command-center-types";
 import { useCommandCenterData } from "./useCommandCenterData";
 
@@ -31,20 +27,23 @@ export function CommandCenterSurface() {
     loading,
     runStateError,
     complianceError,
-    automationError,
+    outcomesError,
+    archiveError,
     isGlobalEmpty,
+    isDataStale,
+    dataFetchedAtMs,
     retry,
   } = useCommandCenterData();
 
   if (isGlobalEmpty) {
     return (
       <div className="command-center-page" data-testid="command-center-page">
-        <h1 className="command-center-page-title">Command Center</h1>
+        <h1 className="command-center-page-title">Home</h1>
         <div className="command-center-page-empty">
           <h2>No active deliveries</h2>
-          <p>Start a feature-delivery run from Work Intake when you are ready to kick off.</p>
-          <Link href="/work-intake" className="command-center-row-cta">
-            Start feature delivery
+          <p>Open Feature Delivery when you are ready to supervise a run.</p>
+          <Link href="/mission-control" className="command-center-row-cta">
+            Open Feature Delivery
           </Link>
         </div>
       </div>
@@ -53,7 +52,7 @@ export function CommandCenterSurface() {
 
   return (
     <div className="command-center-page" data-testid="command-center-page">
-      <h1 className="command-center-page-title">Command Center</h1>
+      <h1 className="command-center-page-title">Home</h1>
 
       {runStateError ? (
         <div className="command-center-error-banner" role="alert">
@@ -64,40 +63,40 @@ export function CommandCenterSurface() {
         </div>
       ) : null}
 
+      {isDataStale && dataFetchedAtMs !== null ? (
+        <AttentionBanner title="Attention data is stale">
+          <p>
+            Last successful refresh was {Math.floor((Date.now() - dataFetchedAtMs) / 1000)} seconds
+            ago. Active work revalidates every 10 seconds.
+          </p>
+        </AttentionBanner>
+      ) : null}
+
       <div
-        className="command-center-grid"
+        className="command-center-grid command-center-grid-four"
         data-testid={loading ? "command-center-loading" : "command-center-grid"}
         aria-busy={loading || undefined}
       >
-        <div className="command-center-grid-full">
-          <NeedsYouCard card={cardByRegion(cards, "needs-you")} loading={loading} />
-        </div>
-        <div className="command-center-grid-two-col">
-          <RunningNowCard card={cardByRegion(cards, "running-now")} loading={loading} />
-          <ComplianceIssuesCard
-            card={cardByRegion(cards, "compliance-issues")}
-            loading={loading}
-          />
-          <HangingTasksCard card={cardByRegion(cards, "hanging-tasks")} loading={loading} />
-          <RecentAutomationsCard
-            card={cardByRegion(cards, "recent-automations")}
-            loading={loading}
-          />
-        </div>
-        <div className="command-center-grid-full">
-          <RecentActivityCard card={cardByRegion(cards, "recent-activity")} loading={loading} />
-        </div>
+        <CommandCenterCard card={cardByRegion(cards, "human-gates")} loading={loading} />
+        <CommandCenterCard card={cardByRegion(cards, "anomalies")} loading={loading} />
+        <CommandCenterCard card={cardByRegion(cards, "running-now")} loading={loading} />
+        <CommandCenterCard card={cardByRegion(cards, "recent-outcomes")} loading={loading} />
       </div>
 
       {complianceError ? (
-        <p className="command-center-inline-error" role="status">
-          {complianceError}
-        </p>
+        <AttentionBanner title="Degraded data from compliance">
+          <p>{complianceError}</p>
+        </AttentionBanner>
       ) : null}
-      {automationError ? (
-        <p className="command-center-inline-error" role="status">
-          {automationError}
-        </p>
+      {archiveError ? (
+        <AttentionBanner title="Degraded data from archive">
+          <p>{archiveError}</p>
+        </AttentionBanner>
+      ) : null}
+      {outcomesError ? (
+        <AttentionBanner title="Degraded data from feature-index">
+          <p>{outcomesError}</p>
+        </AttentionBanner>
       ) : null}
     </div>
   );

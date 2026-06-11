@@ -3,19 +3,25 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ExecuteConfirmModal } from "../pipeline/ExecuteConfirmModal";
+import { ExecuteResultPanel } from "../pipeline/ExecuteResultPanel";
 import {
   FileModalOverlay,
   useDashboardFileModal,
 } from "./dashboard-file-modal";
+import { stringifyCompactJson } from "@/lib/json-io";
 import type { RuntimeConfigSnapshot } from "@/services/config";
 import {
   detectRetryLimitFailure,
+  featureDisplayLabel,
   filterNonTerminalTasks,
   findActiveStage,
   isNonTerminalTask,
+  type PanExecuteResult,
   type StageCell,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
+import { MultiRunTable } from "../pipeline/MultiRunTable";
 import { ArtifactsByStage } from "./ArtifactsByStage";
 import { MISSION_CONTROL_TOAST_EVENT } from "./remediation";
 import { MissionControlStageRail } from "./MissionControlStageRail";
@@ -39,6 +45,11 @@ export function MissionControlModule() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [executeBusy, setExecuteBusy] = useState(false);
+  const [executeResult, setExecuteResult] = useState<PanExecuteResult | null>(null);
+  const [pendingExecute, setPendingExecute] = useState<{ label: string; command: string } | null>(
+    null,
+  );
   const [config, setConfig] = useState<RuntimeConfigSnapshot | null>(null);
 
   const file = useDashboardFileModal();
@@ -102,6 +113,55 @@ export function MissionControlModule() {
     window.addEventListener(MISSION_CONTROL_TOAST_EVENT, handleToast);
     return () => window.removeEventListener(MISSION_CONTROL_TOAST_EVENT, handleToast);
   }, []);
+
+  useEffect(() => {
+    if (pendingExecute === null) {
+      return undefined;
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPendingExecute(null);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [pendingExecute]);
+
+  async function runExecute(command: string) {
+    setExecuteBusy(true);
+    setExecuteResult(null);
+    try {
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: stringifyCompactJson({ command }),
+      });
+      const payload = (await response.json()) as PanExecuteResult | { error?: string };
+      if (!response.ok) {
+        setExecuteResult({
+          stdout: "",
+          stderr: "error" in payload ? String(payload.error) : "Execute failed",
+          exitCode: response.status,
+        });
+        return;
+      }
+      setExecuteResult(payload as PanExecuteResult);
+      void loadRunState();
+    } catch {
+      setExecuteResult({
+        stdout: "",
+        stderr: "Unable to execute command",
+        exitCode: 1,
+      });
+    } finally {
+      setExecuteBusy(false);
+      setPendingExecute(null);
+    }
+  }
+
+  function requestMutatingExecute(label: string, command: string) {
+    setPendingExecute({ label, command });
+  }
 
   const nonTerminalTasks = useMemo(() => filterNonTerminalTasks(tasks), [tasks]);
 
@@ -233,43 +293,112 @@ export function MissionControlModule() {
           </button>
         </div>
       ) : null}
-      <RunContextHeader
-        task={selectedTask}
-        nowMs={nowMs}
-        isPolling={isPolling}
-        onOpenRunLogs={() => setLogDrawerOpen(true)}
-      />
-      {retryLimitSummary !== null ? <RetryLimitBanner summary={retryLimitSummary} /> : null}
-      <MissionControlStageRail
-        task={selectedTask}
-        selectedStageName={selectedStageName}
-        nowMs={nowMs}
-        onSelectStage={handleSelectStage}
-      />
-      <div className="mc-workspace">
-        {selectedStage !== null ? (
-          <StageDetailPanel stage={selectedStage} runEvents={selectedTask.runEvents} nowMs={nowMs} />
-        ) : (
-          <section className="mc-stage-detail-placeholder" data-testid="stage-detail-placeholder">
-            Select a stage to view detail.
-          </section>
-        )}
-        <ArtifactsByStage
-          task={selectedTask}
-          selectedStageName={selectedStageName}
-          designSteps={config?.designStepsDefault ?? false}
-          onPreviewArtifact={file.handleOpenArtifact}
-          onOpenInEditor={(path) => {
-            file.handleOpenArtifact(path);
-            file.enterEditMode();
-          }}
+      <div className="mc-run-list-and-detail">
+        <MultiRunTable
+          tasks={nonTerminalTasks.length > 0 ? nonTerminalTasks : tasks}
+          selectedTaskId={selectedTask.taskId}
+          nowMs={nowMs}
+          onSelectTask={setSelectedTaskId}
         />
+        <div className="mc-run-detail-column">
+          <RunContextHeader
+            task={selectedTask}
+            nowMs={nowMs}
+            isPolling={isPolling}
+            onOpenRunLogs={() => setLogDrawerOpen(true)}
+          />
+          {isNonTerminalTask(selectedTask) ? (
+            <div className="mc-intervention-strip" data-testid="mission-control-intervention-strip">
+              <button
+                type="button"
+                className="command-center-row-cta-quiet"
+                data-testid="mc-intervention-pause"
+                disabled={executeBusy}
+                aria-label={`Pause ${featureDisplayLabel(selectedTask)}`}
+                onClick={() =>
+                  requestMutatingExecute("Pause", `pause ${selectedTask.taskId}`)
+                }
+              >
+                Pause
+              </button>
+              <button
+                type="button"
+                className="command-center-row-cta-quiet"
+                data-testid="mc-intervention-steer"
+                disabled={executeBusy}
+                aria-label={`Steer ${featureDisplayLabel(selectedTask)}`}
+                onClick={() =>
+                  file.handleOpenNextPrompt(`${selectedTask.runDir}/next-prompt.md`)
+                }
+              >
+                Steer
+              </button>
+              <button
+                type="button"
+                className="command-center-row-cta-quiet mc-intervention-destructive"
+                data-testid="mc-intervention-abort"
+                disabled={executeBusy}
+                aria-label={`Abort ${featureDisplayLabel(selectedTask)}`}
+                onClick={() =>
+                  requestMutatingExecute(
+                    "Abort",
+                    `abort ${selectedTask.taskId} --reason "operator initiated from Command Center"`,
+                  )
+                }
+              >
+                Abort
+              </button>
+            </div>
+          ) : null}
+          <ExecuteResultPanel result={executeResult} />
+          {retryLimitSummary !== null ? <RetryLimitBanner summary={retryLimitSummary} /> : null}
+          <MissionControlStageRail
+            task={selectedTask}
+            selectedStageName={selectedStageName}
+            nowMs={nowMs}
+            onSelectStage={handleSelectStage}
+          />
+          <div className="mc-workspace">
+            {selectedStage !== null ? (
+              <StageDetailPanel
+                stage={selectedStage}
+                runEvents={selectedTask.runEvents}
+                nowMs={nowMs}
+              />
+            ) : (
+              <section className="mc-stage-detail-placeholder" data-testid="stage-detail-placeholder">
+                Select a stage to view detail.
+              </section>
+            )}
+            <ArtifactsByStage
+              task={selectedTask}
+              selectedStageName={selectedStageName}
+              designSteps={config?.designStepsDefault ?? false}
+              onPreviewArtifact={file.handleOpenArtifact}
+              onOpenInEditor={(path) => {
+                file.handleOpenArtifact(path);
+                file.enterEditMode();
+              }}
+            />
+          </div>
+        </div>
       </div>
       <VerboseLogDrawer
         open={logDrawerOpen}
         task={selectedTask}
         tasks={tasks}
         onClose={() => setLogDrawerOpen(false)}
+      />
+      <ExecuteConfirmModal
+        command={pendingExecute?.command ?? ""}
+        taskLabel={featureDisplayLabel(selectedTask)}
+        open={pendingExecute !== null}
+        onConfirm={() => {
+          if (pendingExecute !== null) {
+            void runExecute(pendingExecute.command);
+          }
+        }}
+        onCancel={() => setPendingExecute(null)}
       />
       {toastMessage !== null ? (
         <div className="mc-toast" data-testid="mission-control-toast" role="status" aria-live="polite">

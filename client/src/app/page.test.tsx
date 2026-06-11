@@ -534,7 +534,7 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("stage-grid")).toBeInTheDocument();
       expect(screen.getByTestId("task-command-center-65766_0543_demo-feature")).toHaveTextContent(
-        "65766_0543_demo-feature (2026-06-02 05:43 UTC)",
+        "Demo Feature",
       );
       expect(screen.getByTestId("stage-cell-intake")).toHaveTextContent("Intake ratified");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("tech-lead");
@@ -1191,7 +1191,7 @@ describe("DashboardPage", () => {
     });
 
     const rowLabels = [...screen.getAllByTestId(/multi-run-row-/u)].map((row) =>
-      row.textContent?.includes("65766_0543_demo-feature") ? "first" : "second",
+      row.textContent?.includes("Demo Feature") ? "first" : "second",
     );
     expect(rowLabels[0]).toBe("first");
 
@@ -1199,7 +1199,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       const rowsAfterGateSort = [...screen.getAllByTestId(/multi-run-row-/u)];
-      expect(rowsAfterGateSort[0]).toHaveTextContent("65766_0543_demo-feature");
+      expect(rowsAfterGateSort[0]).toHaveTextContent("Demo Feature");
     });
   });
 
@@ -1475,35 +1475,32 @@ describe("Command Center default landing", () => {
     vi.restoreAllMocks();
   });
 
-  function mockCommandCenterLandingFetch(options: { runState?: unknown[] } = {}) {
-    return vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+  it("renders operational Home surface with four orientation regions", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.includes("/api/run-state")) {
-        return new Response(stringifyCompactJson(options.runState ?? mockRunState), { status: 200 });
-      }
-      if (url.includes("/api/automations") && !url.includes("/runs")) {
-        return new Response(stringifyCompactJson({ automations: [], personas: [] }), { status: 200 });
+        return new Response(
+          stringifyCompactJson({
+            tasks: mockRunState,
+            reconciliation: { archivedTaskIds: [], shippedTaskIds: [], shippedOutcomes: [] },
+          }),
+          { status: 200 },
+        );
       }
       if (url.includes("/api/file")) {
         return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
       }
       return new Response(stringifyCompactJson({}), { status: 404 });
     });
-  }
-
-  it("renders operational Command Center surface instead of placeholder", async () => {
-    mockCommandCenterLandingFetch();
 
     render(<CommandCenterPage />);
 
     await waitFor(() => {
       expect(screen.getByTestId("command-center-page")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-needs-you")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-human-gates")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-anomalies")).toBeInTheDocument();
       expect(screen.getByTestId("command-center-running-now")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-compliance-issues")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-hanging-tasks")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-recent-automations")).toBeInTheDocument();
-      expect(screen.getByTestId("command-center-recent-activity")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-recent-outcomes")).toBeInTheDocument();
     });
 
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
@@ -1511,27 +1508,45 @@ describe("Command Center default landing", () => {
   });
 
   it("shows guided empty state when no operational rows exist", async () => {
-    mockCommandCenterLandingFetch({ runState: [] });
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(
+          stringifyCompactJson({
+            tasks: [],
+            reconciliation: { archivedTaskIds: [], shippedTaskIds: [], shippedOutcomes: [] },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
 
     render(<CommandCenterPage />);
 
     await waitFor(() => {
       expect(screen.getByText("No active deliveries")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Start feature delivery" })).toHaveAttribute(
+      expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
         "href",
-        "/work-intake",
+        "/mission-control",
       );
     });
   });
 
-  it("suppresses global empty when compliance preview rows exist without active runs", async () => {
+  it("suppresses global empty when anomaly rows exist without active runs", async () => {
     vi.spyOn(global, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.includes("/api/run-state")) {
-        return new Response(stringifyCompactJson([]), { status: 200 });
-      }
-      if (url.includes("/api/automations") && !url.includes("/runs")) {
-        return new Response(stringifyCompactJson({ automations: [], personas: [] }), { status: 200 });
+        return new Response(
+          stringifyCompactJson({
+            tasks: [],
+            reconciliation: { archivedTaskIds: [], shippedTaskIds: [], shippedOutcomes: [] },
+          }),
+          { status: 200 },
+        );
       }
       if (url.includes("audit-history.json")) {
         return new Response(
@@ -1567,7 +1582,7 @@ describe("Command Center default landing", () => {
     render(<CommandCenterPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("command-center-compliance-issues")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-anomalies")).toBeInTheDocument();
       expect(screen.queryByText("No active deliveries")).not.toBeInTheDocument();
     });
   });

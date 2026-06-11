@@ -1,14 +1,9 @@
 export type CommandCenterSurfaceId =
   | "command-center"
-  | "feature-backlog"
-  | "work-intake"
   | "mission-control"
   | "compliance"
-  | "repo-explorer"
-  | "agent-chat"
-  | "sandboxes"
-  | "activity-log"
-  | "automations";
+  | "automations"
+  | "activity-log";
 
 export type CommandCenterSurfaceConfig = {
   id: CommandCenterSurfaceId;
@@ -16,46 +11,32 @@ export type CommandCenterSurfaceConfig = {
   shortLabel: string;
   route: string;
   firstSlice: boolean;
-  icon: string;
+  iconLabel: string;
   description: string;
+  operatorJob: string;
 };
 
+/** Five shipped destinations per command-center-rebuild ux-spec. */
 export const COMMAND_CENTER_SURFACES: CommandCenterSurfaceConfig[] = [
   {
     id: "command-center",
-    label: "Command Center",
-    shortLabel: "Command",
+    label: "Home",
+    shortLabel: "Home",
     route: "/command-center",
     firstSlice: true,
-    icon: "⌂",
-    description: "Operator overview and active work orientation.",
-  },
-  {
-    id: "feature-backlog",
-    label: "Feature Backlog",
-    shortLabel: "Backlog",
-    route: "/feature-backlog",
-    firstSlice: false,
-    icon: "☰",
-    description: "Ranked product backlog and intake queue.",
-  },
-  {
-    id: "work-intake",
-    label: "Work Intake / Kickoff",
-    shortLabel: "Intake",
-    route: "/work-intake",
-    firstSlice: true,
-    icon: "✎",
-    description: "Start feature delivery from inbox directives.",
+    iconLabel: "HM",
+    description: "Orientation across human gates, anomalies, running work, and recent outcomes.",
+    operatorJob: "Answer what needs attention within 30 seconds.",
   },
   {
     id: "mission-control",
-    label: "FD Mission Control",
-    shortLabel: "Mission",
+    label: "Feature Delivery",
+    shortLabel: "Delivery",
     route: "/mission-control",
     firstSlice: true,
-    icon: "◎",
-    description: "Stage rail and run telemetry for active tasks.",
+    iconLabel: "FD",
+    description: "Active run supervision, human gates, and intervention levers.",
+    operatorJob: "Supervise active feature-delivery runs and human gates.",
   },
   {
     id: "compliance",
@@ -63,35 +44,19 @@ export const COMMAND_CENTER_SURFACES: CommandCenterSurfaceConfig[] = [
     shortLabel: "Compliance",
     route: "/compliance",
     firstSlice: true,
-    icon: "⚑",
+    iconLabel: "CR",
     description: "Audit runs, findings, and recovery actions.",
+    operatorJob: "Triage compliance failures and recover delivery health.",
   },
   {
-    id: "repo-explorer",
-    label: "Repo Explorer",
-    shortLabel: "Repo",
-    route: "/repo-explorer",
-    firstSlice: false,
-    icon: "⎘",
-    description: "Browse repository files and artifacts.",
-  },
-  {
-    id: "agent-chat",
-    label: "Agent Chat",
-    shortLabel: "Chat",
-    route: "/agent-chat",
-    firstSlice: false,
-    icon: "💬",
-    description: "Conversational operator console for agents.",
-  },
-  {
-    id: "sandboxes",
-    label: "Sandbox Manager",
-    shortLabel: "Sandboxes",
-    route: "/sandboxes",
-    firstSlice: false,
-    icon: "▣",
-    description: "Scratch workspaces and port registry.",
+    id: "automations",
+    label: "Automations",
+    shortLabel: "Auto",
+    route: "/automations",
+    firstSlice: true,
+    iconLabel: "AU",
+    description: "Scheduled agent runs and cron automations.",
+    operatorJob: "Manage automation lifecycle and run history.",
   },
   {
     id: "activity-log",
@@ -99,30 +64,21 @@ export const COMMAND_CENTER_SURFACES: CommandCenterSurfaceConfig[] = [
     shortLabel: "Activity",
     route: "/activity-log",
     firstSlice: true,
-    icon: "☰",
-    description: "Chronological operator and pipeline events.",
-  },
-  {
-    id: "automations",
-    label: "Automations / Cron",
-    shortLabel: "Automations",
-    route: "/automations",
-    firstSlice: true,
-    icon: "⏱",
-    description: "Scheduled agent runs and cron automations.",
+    iconLabel: "AL",
+    description: "Mutation receipts for operator and pipeline actions.",
+    operatorJob: "Audit state mutations with actor, verb, object, and artifact links.",
   },
 ];
 
 export const FIRST_SLICE_SURFACES = COMMAND_CENTER_SURFACES.filter((surface) => surface.firstSlice);
 
-/** Mobile tab bar order per ux-spec (differs from rail enumeration order). */
+/** Mobile tab bar mirrors the five shipped destinations. */
 const MOBILE_TAB_ORDER: CommandCenterSurfaceId[] = [
   "command-center",
   "mission-control",
-  "work-intake",
   "compliance",
-  "activity-log",
   "automations",
+  "activity-log",
 ];
 
 export const MOBILE_TAB_SURFACES = MOBILE_TAB_ORDER.map(

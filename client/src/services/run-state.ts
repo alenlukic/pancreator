@@ -425,3 +425,103 @@ export async function getActiveRunState(
 
   return envelopes.sort((left, right) => left.taskId.localeCompare(right.taskId));
 }
+
+export type ShippedOutcome = {
+  featureId: string;
+  title: string;
+  taskId: string;
+  indexedAt: string;
+};
+
+type FeatureIndexRecord = {
+  feature_id?: string;
+  title?: string;
+  task_id?: string;
+  status?: string;
+  indexed_at?: string;
+  index?: { completed_at?: string };
+};
+
+export async function loadArchivedTaskIds(repoRoot: string = findRepoRoot()): Promise<Set<string>> {
+  const archiveRoot = path.join(repoRoot, ".pan", "archive", "work");
+  const archived = new Set<string>();
+  if (!fs.existsSync(archiveRoot)) {
+    return archived;
+  }
+
+  const dayBuckets = await fsp.readdir(archiveRoot, { withFileTypes: true });
+  for (const dayEntry of dayBuckets) {
+    if (!dayEntry.isDirectory()) {
+      continue;
+    }
+    const taskDirs = await fsp.readdir(path.join(archiveRoot, dayEntry.name), { withFileTypes: true });
+    for (const taskEntry of taskDirs) {
+      if (taskEntry.isDirectory()) {
+        archived.add(taskEntry.name);
+      }
+    }
+  }
+  return archived;
+}
+
+export async function loadShippedOutcomes(
+  repoRoot: string = findRepoRoot(),
+  limit = 5,
+): Promise<ShippedOutcome[]> {
+  const featuresRoot = path.join(repoRoot, "lib", "memory", "features");
+  if (!fs.existsSync(featuresRoot)) {
+    return [];
+  }
+
+  const outcomes: ShippedOutcome[] = [];
+  const featureDirs = await fsp.readdir(featuresRoot, { withFileTypes: true });
+
+  for (const featureDir of featureDirs) {
+    if (!featureDir.isDirectory()) {
+      continue;
+    }
+    const indexPath = path.join(featuresRoot, featureDir.name, "index.json");
+    if (!fs.existsSync(indexPath)) {
+      continue;
+    }
+    try {
+      const raw = await fsp.readFile(indexPath, "utf8");
+      const record = JSON.parse(raw) as FeatureIndexRecord;
+      if (record.status !== "indexed" || record.task_id === undefined) {
+        continue;
+      }
+      outcomes.push({
+        featureId: record.feature_id ?? featureDir.name,
+        title: record.title ?? featureDir.name,
+        taskId: record.task_id,
+        indexedAt: record.indexed_at ?? record.index?.completed_at ?? new Date(0).toISOString(),
+      });
+    } catch {
+      // skip unreadable indexes
+    }
+  }
+
+  return outcomes
+    .sort((left, right) => Date.parse(right.indexedAt) - Date.parse(left.indexedAt))
+    .slice(0, limit);
+}
+
+export function excludeReconciledAttentionTasks(
+  tasks: TaskRunStateEnvelope[],
+  archivedTaskIds: Set<string>,
+  shippedTaskIds: Set<string>,
+): TaskRunStateEnvelope[] {
+  return tasks.filter((task) => {
+    if (archivedTaskIds.has(task.taskId)) {
+      return false;
+    }
+    if (shippedTaskIds.has(task.taskId)) {
+      return false;
+    }
+    const completeStage = task.stages.find((stage) => stage.name === "complete");
+    if (completeStage?.status === "complete") {
+      return false;
+    }
+    return true;
+  });
+}
