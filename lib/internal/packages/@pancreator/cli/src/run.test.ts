@@ -46,7 +46,6 @@ async function runCli(args: string[], options?: RunCliOptions): Promise<number> 
   return parseAndRun(args, {
     ...options,
     testHooks: {
-      bypassWorktreeIsolation: true,
       ...options?.testHooks,
     },
   });
@@ -54,10 +53,13 @@ async function runCli(args: string[], options?: RunCliOptions): Promise<number> 
 
 const FEATURE_DELIVERY_PERSONAS = [
   "intake-analyst",
+  "product-engineer",
+  "design-engineer",
   "tech-lead",
   "coder",
   "reviewer",
   "qa-tester",
+  "design-reviewer",
   "tech-writer",
   "compliance-auditor",
   "supervisor",
@@ -139,9 +141,6 @@ async function seedFeatureDeliveryRepo(root: string): Promise<void> {
     `id: feature-delivery
 version: "1"
 stages:
-  - id: intake
-    persona: intake-analyst
-    label: Canonicalize the human directive
   - id: plan
     persona: tech-lead
   - id: implement
@@ -331,10 +330,10 @@ describe("parseAndRun", () => {
       currentStage: string;
       transitions: unknown[];
     };
-    expect(state.currentStage).toBe("intake");
+    expect(state.currentStage).toBe("plan");
     expect(state.transitions.length).toBeGreaterThan(5);
     expect(await readFile(path.join(root, msg.handoffFile), "utf8")).toContain(
-      "Executor persona: intake-analyst",
+      "Executor persona: tech-lead",
     );
     const runMsg = JSON.parse(raw) as { nextCommand?: string };
     expect(runMsg.nextCommand).toMatch(/^pnpm -w exec pan advance /u);
@@ -1571,7 +1570,7 @@ describe("parseAndRun", () => {
       runDir: string;
     };
     expect(reopened.pipelineStatus).toBe("reopened");
-    expect(reopened.currentStage).toBe("intake");
+    expect(reopened.currentStage).toBe("plan");
     expect(reopened.runDir).toBe(`.pan/work/${dayDir}/${start.taskId}`);
     expect(existsSync(path.join(root, reopened.runDir, "state.json"))).toBe(true);
     expect(existsSync(path.join(root, ".pan/archive", "work", dayDir, start.taskId))).toBe(false);
@@ -1915,8 +1914,8 @@ describe("parseAndRun", () => {
     expect(code).toBe(0);
     const refreshed = JSON.parse(refreshOut.join("")) as { command: string; currentStage: string };
     expect(refreshed.command).toBe("refresh-prompt");
-    expect(refreshed.currentStage).toBe("intake");
-    expect(await readFile(nextPromptAbs, "utf8")).toContain("Use subagent/persona: intake-analyst");
+    expect(refreshed.currentStage).toBe("plan");
+    expect(await readFile(nextPromptAbs, "utf8")).toContain("Use subagent/persona: tech-lead");
   });
 
   it("writes an intervention pause line to feature-delivery run.log when paused", async () => {
@@ -1966,7 +1965,7 @@ describe("parseAndRun", () => {
     });
     expect(code).toBe(0);
     const status = JSON.parse(statusOut.join("")) as { interventionState: string; currentStage: string };
-    expect(status.currentStage).toBe("intake");
+    expect(status.currentStage).toBe("plan");
     expect(status.interventionState).toBe("paused");
   });
 
@@ -2570,7 +2569,7 @@ describe("operator tooling batch cli wiring", () => {
         repoRoot: root,
         inboxEntry: "demo-feature.md",
         clock: () => new Date("2026-05-10T13:15:30.000Z"),
-        testHooks: { bypassWorktreeIsolation: true },
+        testHooks: {},
       });
       await writeRunnerInvocationConfig(root, "sdk");
       const taskId = start.taskId;
@@ -2583,8 +2582,6 @@ describe("operator tooling batch cli wiring", () => {
 
       const artifactForStage = (stage: string): string => {
         switch (stage) {
-          case "intake":
-            return `lib/memory/features/${featureId}/spec.md`;
           case "plan":
             return `${runDir}/touch-set.json`;
           case "implement":
@@ -2697,7 +2694,7 @@ describe("operator tooling batch cli wiring", () => {
         `id: feature-delivery
 version: "1"
 stages:
-  - id: intake
+  - id: plan
     persona: missing-persona
 `,
         "utf8",

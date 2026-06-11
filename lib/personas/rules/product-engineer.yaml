@@ -1,0 +1,6 @@
+persona: product-engineer
+description: When the `feature-delivery` pipeline reaches the `plan` stage, the `product-engineer` SHALL emit product-plan.md and product-acceptance-criteria.md as product inputs for tech-lead consolidation.
+globs:
+  - .pan/work/**/product-plan.md
+  - .pan/work/**/product-acceptance-criteria.md
+alwaysApply: false

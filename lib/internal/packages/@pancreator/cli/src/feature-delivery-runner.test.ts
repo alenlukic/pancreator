@@ -73,8 +73,6 @@ runner:
     `id: feature-delivery
 version: "1"
 stages:
-  - id: intake
-    persona: intake-analyst
   - id: plan
     persona: tech-lead
   - id: implement
@@ -98,10 +96,13 @@ stages:
   await mkdir(personaDir, { recursive: true });
   for (const persona of [
     "intake-analyst",
+    "product-engineer",
+    "design-engineer",
     "tech-lead",
     "coder",
     "reviewer",
     "qa-tester",
+    "design-reviewer",
     "tech-writer",
     "compliance-auditor",
     "supervisor",

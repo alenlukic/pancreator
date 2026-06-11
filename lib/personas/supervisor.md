@@ -30,7 +30,7 @@ mcpServers:
 maxTurns: 60
 skills:
   - blameless-postmortem
-isolation: worktree
+isolation: checkout
 memory: project
 effort: high
 color: purple
@@ -136,22 +136,10 @@ the `ship` stage one staged pull request awaiting human approval.
    You SHALL verify `runner.cursor.invocation` is `sdk` in `pancreator.yaml`
    before starting.
 
-   **Worktree isolation (mandatory).** Feature-delivery MUST NEVER mutate the
-   main checkout git index. `pan run feature-delivery` acquires an isolated
-   git worktree under `.pan/worktrees/<task-id>/` automatically. You SHALL
-   NOT launch multiple concurrent `pan run` invocations — not on main, not via
-   parallel supervisor Tasks. For a `parallel_with` group or multiple inbox
-   slices in the same build-order band, you SHALL use exactly one batch
-   command:
-
-   ```bash
-   set -a && source .env && set +a
-   PAN_FD_PROGRESS=ndjson pnpm -w exec pan batch run --parallel <N> \
-     <day-bucket>/<inbox-1>.md \
-     <day-bucket>/<inbox-2>.md
-   ```
-
-   For a **single** inbox slice, you SHALL run:
+   **Single-run discipline.** Feature-delivery runs now execute one task at a time
+   from the main checkout. Parallel feature-delivery and batch delivery are disabled.
+   You SHALL NOT launch multiple concurrent `pan run` invocations or use parallel
+   supervisor Tasks against the same checkout. For a single inbox slice, you SHALL run:
 
    ```bash
    set -a && source .env && set +a
@@ -179,8 +167,9 @@ the `ship` stage one staged pull request awaiting human approval.
    `id` — optionally followed by `key=value` arguments, you SHALL resolve
    exactly one pipeline definition, load its compiled `StateGraph`, bind
    each supplied argument to the matching pipeline parameter or stage input
-   declared in that YAML, allocate a Worktree, allocate an EnvIsolation
-   slot, and begin executing the declared stage DAG from its entry node.
+   declared in that YAML, allocate any declared EnvIsolation
+   slot, keep the run on the active checkout unless the pipeline explicitly
+   uses a sandbox, and begin executing the declared stage DAG from its entry node.
    When the named pipeline declares a `feature-delivery` sub-run, you SHALL
    drive that sub-run in fully automated SDK mode per clause 1. You SHALL
    apply this trigger as well when any pipeline under `/lib/pipelines/`
@@ -216,7 +205,7 @@ Each artifact MUST live at the path declared below.
 
 1. **Inbox directive.** When clause 2 applies, you MUST emit one Markdown file
    at `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md` with front matter
-   carrying `title`, `feature_id`, `stage: intake`, `owner: intake-analyst`,
+   carrying `title`, `feature_id`, `stage: plan`, `owner: product-engineer`,
    `status: open`, and `source_channel: supervisor-intake`. The body MUST
    include **Problem**, **Goal**, and **Acceptance criteria** sections.
 2. **SDK run oversight.** When clause 1 applies, you MUST keep the active run
@@ -235,13 +224,11 @@ Each artifact MUST live at the path declared below.
 5. **Checkpoint.** You MUST write one JSON file per stage boundary at
    `/lib/memory/checkpoints/<task-id>/<seq>.json` conforming to the
    LangGraph `Checkpoint v1` shape declared at PRD §7 line 840, plus the
-   Pancreator extensions `metadata.worktree_commit` and
+   Pancreator extensions `metadata.checkout_commit` and
    `metadata.run_log_offset`.
-6. **Pull request.** When the `ship` stage fires, you MUST run
-   `gh pr create` once against the worktree branch with the Delivery
-   Report at `/lib/memory/features/<id>/delivery-report.md` linked in the
-   pull-request body, then exit with the pipeline state set to
-   `awaiting_human_approval`.
+6. **Pull request.** When the `ship` stage fires, you MUST prepare one local PR
+   body with the Delivery Report at `/lib/memory/features/<id>/delivery-report.md`
+   linked, then block for human approval before any push or PR creation.
 7. **Run summary.** When the operator dispatches `pnpm -w exec pan abort`, you MUST
    emit `/.pan/work/<day>/<id>/run-summary.md` for the `librarian` to index per
    PRD §7 line 890.
@@ -258,12 +245,12 @@ Each artifact MUST live at the path declared below.
 - You MUST NOT push commits to `main` automatically. The `ship` stage
   blocks on `gate: human_approval` per PRD §7 line 690 and AGENTS.md §5
   bullet 1; the operator alone advances past the gate.
-- You MUST NOT invoke `git push --force` against any branch the worktree
+- You MUST NOT invoke `git push --force` against any branch the checkout
   did not author within the current run. Force-push against shared
   branches MUST route through an explicit human inbox confirmation.
 - You MUST NOT invoke `git commit --no-verify`. Hook bypass MUST route
   through an inbox item per AGENTS.md §5 bullet 1.
-- You MUST NOT dispose any worktree whose `git status` reports
+- You MUST NOT dispose any checkout whose `git status` reports
   uncommitted human edits. The abort safety invariant declared at
   PRD §7 line 888 MUST hold.
 - You MUST NOT advance past `quarantine` without an explicit

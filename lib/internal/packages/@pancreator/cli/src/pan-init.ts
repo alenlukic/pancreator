@@ -98,8 +98,6 @@ risk_tier: medium
 const GREENFIELD_PIPELINE_YAML = `id: feature-delivery
 version: "1"
 stages:
-  - id: intake
-    persona: intake-analyst
   - id: plan
     persona: tech-lead
   - id: implement

@@ -5,7 +5,18 @@ import { existsSync } from "node:fs";
 
 import { OPERATOR_VERIFICATION_FILENAME, validateOperatorVerificationMarkdown } from "./operator-verification.js";
 
-import { designQaReportRel, designStepsEnabled, uxSpecRel } from "./design-steps.js";
+import {
+  designAcceptanceCriteriaRel,
+  designPlanRel,
+  designQaReportRel,
+  designStepsEnabled,
+  manualQaTestCasesRel,
+  productAcceptanceCriteriaRel,
+  productPlanRel,
+  techAcceptanceCriteriaRel,
+  techPlanRel,
+  uxSpecRel,
+} from "./design-steps.js";
 import type { FeatureDeliveryDesignOptions } from "./design-steps.js";
 import {
   validateComplianceForAdvance,
@@ -56,7 +67,6 @@ export interface StageArtifactValidation {
 }
 
 const STAGE_IDS = [
-  "intake",
   "plan",
   "implement",
   "review",
@@ -515,22 +525,25 @@ export function stageArtifactContract(
 ): StageArtifactContract {
   const run = state.artifacts.runDir;
   switch (stage) {
-    case "intake": {
-      const spec = path.posix.join("lib", "memory", "features", state.featureId, "spec.md");
-      return {
-        primaryArtifact: spec,
-        requiredAfterStageWork: [spec],
-        acceptedAdvanceArtifacts: [spec],
-      };
-    }
     case "plan": {
       const plan = path.posix.join(run, "plan.md");
       const adr = path.posix.join(run, "adr-draft.md");
       const touchSet = path.posix.join(run, "touch-set.json");
       const handoff = handoffPath(state);
-      const requiredAfterStageWork = designStepsEnabled(state.options)
-        ? [uxSpecRel(state.featureId), plan, adr, touchSet, handoff]
-        : [plan, adr, touchSet, handoff];
+      const requiredAfterStageWork = [
+        productPlanRel(run),
+        productAcceptanceCriteriaRel(run),
+        techPlanRel(run),
+        techAcceptanceCriteriaRel(run),
+        manualQaTestCasesRel(run),
+        plan,
+        adr,
+        touchSet,
+        handoff,
+        ...(designStepsEnabled(state.options)
+          ? [designPlanRel(run), designAcceptanceCriteriaRel(run), uxSpecRel(state.featureId)]
+          : []),
+      ];
       const acceptedAdvanceArtifacts = [plan, touchSet, handoff];
       return {
         primaryArtifact: touchSet,
@@ -648,6 +661,13 @@ export function requiredArtifactsAfterStageWork(
 }
 
 const CONTENT_VALIDATED_BASENAMES = new Set([
+  "product-plan.md",
+  "product-acceptance-criteria.md",
+  "design-plan.md",
+  "design-acceptance-criteria.md",
+  "tech-plan.md",
+  "tech-acceptance-criteria.md",
+  "manual-qa-test-cases.md",
   "plan.md",
   "handoff.md",
   "touch-set.json",
@@ -730,13 +750,7 @@ function assertAdvanceGateContent(
 }
 
 function contractPlanGateArtifacts(state: FeatureDeliveryArtifactState): string[] {
-  const run = state.artifacts.runDir;
-  const artifacts = [
-    path.posix.join(run, "plan.md"),
-    path.posix.join(run, "touch-set.json"),
-    handoffPath(state),
-  ];
-  return artifacts;
+  return [...stageArtifactContract(state, "plan").requiredAfterStageWork];
 }
 
 export function assertAdvanceArtifacts(
@@ -762,7 +776,6 @@ export function assertAdvanceArtifacts(
 
 export function defaultAdvanceEventForStage(stage: string): string {
   switch (stage) {
-    case "intake":
     case "plan":
       return "human_approval";
     case "implement":

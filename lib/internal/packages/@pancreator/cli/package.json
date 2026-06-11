@@ -14,7 +14,10 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["bin", "dist"],
+  "files": [
+    "bin",
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts src/cli.ts --format esm --dts --clean",
     "typecheck": "tsc -p tsconfig.json",
@@ -34,7 +37,6 @@
     "@pancreator/run-logger": "workspace:*",
     "@pancreator/runner-cursor": "workspace:*",
     "@pancreator/scheduler": "workspace:*",
-    "@pancreator/worktree": "workspace:*",
     "commander": "catalog:"
   },
   "devDependencies": {

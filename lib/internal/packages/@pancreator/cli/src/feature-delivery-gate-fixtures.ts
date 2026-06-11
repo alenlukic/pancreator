@@ -31,6 +31,7 @@ export const VALID_TOUCH_SET_JSON = stringifyCompactJson({
   shared_paths: [],
   integration_prerequisites: [],
   acceptance_criteria: [{ id: "AC-1", criterion: "verified", validation_owner: "qa-tester" }],
+  manual_qa_test_cases: [{ id: "MQA-1", steps: ["Open the affected surface"], expected: "Behavior matches AC-1" }],
 });
 
 export const VALID_IMPLEMENTATION_REPORT_MARKDOWN = [
@@ -63,6 +64,10 @@ export function gateFixtureBody(repoRoot: string, rel: string): string {
   if (base === "implementation-report.md") return VALID_IMPLEMENTATION_REPORT_MARKDOWN;
   if (base === "review.md") return VALID_REVIEW_MARKDOWN;
   if (base === "test-report.md") return "qa_passes: true\n";
+  if (base === "design-qa-report.md") return "design_qa_passes: true\n";
+  if (base === "manual-qa-test-cases.md") return "# Manual QA test cases\n\n## MQA-1\n\nSteps and expected result.\n";
+  if (base.endsWith("acceptance-criteria.md")) return "# Acceptance criteria\n\n## Criteria\n\n- AC-1: verified.\n";
+  if (base.endsWith("plan.md")) return "# Plan\n\n## Plan\n\nSteps.\n";
   if (base === "compliance-result.json") {
     return stringifyCliJson(repoRoot, {
       compliance_passes: true,

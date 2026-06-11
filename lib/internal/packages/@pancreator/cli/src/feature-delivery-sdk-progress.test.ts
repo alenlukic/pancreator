@@ -60,15 +60,15 @@ describe("feature-delivery-sdk-progress", () => {
       {
         taskId: "task-1",
         featureId: "feat-1",
-        stageId: "intake",
-        persona: "intake-analyst",
+        stageId: "plan",
+        persona: "tech-lead",
       },
       async () => "ok",
     );
 
     const joined = err.join("");
-    expect(joined).toContain("[pan fd] task-1: entering intake (intake-analyst)");
-    expect(joined).toContain("[pan fd] task-1: finished intake (intake-analyst)");
+    expect(joined).toContain("[pan fd] task-1: entering plan (tech-lead)");
+    expect(joined).toContain("[pan fd] task-1: finished plan (tech-lead)");
   });
 
   it("skips progress emission when reporter is undefined", async () => {

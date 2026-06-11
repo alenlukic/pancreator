@@ -310,9 +310,6 @@ importers:
       '@pancreator/scheduler':
         specifier: workspace:*
         version: link:../scheduler
-      '@pancreator/worktree':
-        specifier: workspace:*
-        version: link:../worktree
       commander:
         specifier: 'catalog:'
         version: 12.1.0

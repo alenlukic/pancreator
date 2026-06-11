@@ -164,6 +164,9 @@ export function validateTouchSetJson(content: string): string | null {
   if (!Array.isArray(record.acceptance_criteria)) {
     return "touch-set.json must include an acceptance_criteria array with measurable ids.";
   }
+  if (!Array.isArray(record.manual_qa_test_cases)) {
+    return "touch-set.json must include a manual_qa_test_cases array (use [] when none).";
+  }
   return null;
 }
 

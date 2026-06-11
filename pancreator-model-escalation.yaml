@@ -11,7 +11,7 @@
 #     family (effort=, reasoning=) per https://cursor.com/docs/models-and-pricing
 #   - Sparse tier keys are intentional: loopbacks may reuse the prior tier.
 #   - Design-critical and synthesis personas (sme-product, sme-design,
-#     product-design-lead, design-engineer, design-reviewer) MUST NOT resolve to
+#     product-design-lead, product-engineer, design-engineer, design-reviewer) MUST NOT resolve to
 #     `auto` or to a Composer-pool model in any config; every tier for these
 #     personas pins an explicit high-reasoning model.
 #
@@ -25,8 +25,6 @@ configs:
     personas:
       # --- feature-delivery pipeline ---
 
-      intake-analyst:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       tech-lead:
         default: gpt-5.5[context=272k,reasoning=high,fast=false]
@@ -45,6 +43,9 @@ configs:
         default: auto
         2: gpt-5.3-codex[reasoning=high,fast=false]
         4: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      product-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       design-engineer:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
@@ -100,8 +101,6 @@ configs:
     personas:
       # --- feature-delivery pipeline ---
 
-      intake-analyst:
-        default: claude-fable-5[thinking=true,context=300k,effort=high]
 
       tech-lead:
         default: gpt-5.5[context=272k,reasoning=high,fast=false]
@@ -118,6 +117,9 @@ configs:
       qa-tester:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
         3: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      product-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       design-engineer:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
@@ -186,8 +188,6 @@ configs:
     personas:
       # --- feature-delivery pipeline ---
 
-      intake-analyst:
-        default: auto
 
       tech-lead:
         default: auto
@@ -234,27 +234,28 @@ configs:
       # Design-critical and synthesis personas stay pinned even in the auto
       # config; the ladder rules forbid `auto` for them.
 
+      product-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
       design-engineer:
-        default: auto
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       design-reviewer:
-        default: auto
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       sme-product:
-        default: auto
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       sme-design:
-        default: auto
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       product-design-lead:
-        default: auto
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
     
   fable:
     personas:
       # --- feature-delivery pipeline ---
 
-      intake-analyst:
-        default: claude-fable-5[thinking=true,context=300k,effort=high]
 
       tech-lead:
         default: claude-fable-5[thinking=true,context=300k,effort=high]
@@ -300,6 +301,9 @@ configs:
       # --- experience-planning pipeline ---
       # Design-critical and synthesis personas stay pinned even in the auto
       # config; the ladder rules forbid `auto` for them.
+
+      product-engineer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
 
       design-engineer:
         default: claude-fable-5[thinking=true,context=300k,effort=high]
