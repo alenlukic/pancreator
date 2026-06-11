@@ -22,6 +22,7 @@ import type { CursorSdkTransport } from "@pancreator/runner-cursor";
 import { stringifyCompactJson } from "@pancreator/core";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { deliveryReportRel } from "./feature-delivery-stage-artifacts.js";
 import {
   gateFixtureBody,
   seedPlanStageAdvanceArtifacts,
@@ -185,7 +186,7 @@ describe("feature-delivery-runner automation", () => {
   it("trySdkAutoChainAfterStageWork auto-advances report when delivery report exists", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-report-auto-advance-"));
     const state = sampleLedger({ currentStage: "report" });
-    const reportRel = path.join(root, "lib", "memory", "features", state.featureId, "delivery-report.md");
+    const reportRel = path.join(root, ...deliveryReportRel(state.artifacts.runDir).split("/"));
     await mkdir(path.dirname(reportRel), { recursive: true });
     await writeFile(reportRel, "# Delivery report\n", "utf8");
     let advanced = false;

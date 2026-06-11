@@ -33,6 +33,8 @@ import {
   VALID_IMPLEMENTATION_REPORT_MARKDOWN,
   VALID_REVIEW_MARKDOWN,
 } from "./feature-delivery-gate-fixtures.js";
+import { deliveryReportRel, durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
+import { COMPLIANCE_AUDIT_HISTORY_REL } from "./compliance-audit-history.js";
 import { loadRepoEnv } from "./repo-env.js";
 import { PersonaResolveError, resolvePersona } from "./persona-resolve.js";
 
@@ -190,9 +192,10 @@ async function completeFeatureDeliveryRunForClose(
     repoRoot: root,
     writeOut: () => undefined,
   });
-  const report = path.join(root, "lib", "memory", "features", featureId, "delivery-report.md");
+  const deliveryReportPathRel = deliveryReportRel(activeRunDirRel);
+  const report = path.join(root, ...deliveryReportPathRel.split("/"));
   await writeFile(report, "# Delivery", "utf8");
-  await runCli(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/delivery-report.md`], {
+  await runCli(["advance", taskId, "--artifact", deliveryReportPathRel], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -226,7 +229,9 @@ async function completeFeatureDeliveryRunForClose(
     writeOut: () => undefined,
   });
   const inboxSourceRel = "lib/inbox/in/demo-feature.md";
-  const index = path.join(root, "lib", "memory", "features", featureId, "index.json");
+  const indexRel = durableFeatureIndexRel(featureId);
+  const index = path.join(root, ...indexRel.split("/"));
+  await mkdir(path.dirname(index), { recursive: true });
   await writeFile(
     index,
     stringifyCliJson(root, {
@@ -235,11 +240,11 @@ async function completeFeatureDeliveryRunForClose(
       status: "indexed",
       indexed_at: "2026-05-10T13:30:00.000Z",
       source_inbox_item: { path: inboxSourceRel },
-      delivery_report: { path: `lib/memory/features/${featureId}/delivery-report.md` },
+      delivery_report: { path: deliveryReportPathRel },
     }),
     "utf8",
   );
-  await runCli(["advance", taskId, "--artifact", `lib/memory/features/${featureId}/index.json`], {
+  await runCli(["advance", taskId, "--artifact", indexRel], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -1153,9 +1158,12 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
-    const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
+    const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
+    const deliveryReportPathRel = deliveryReportRel(runDirRel);
+
+    const report = path.join(root, ...deliveryReportPathRel.split("/"));
     await writeFile(report, "# Delivery", "utf8");
-    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"], {
+    await runCli(["advance", start.taskId, "--artifact", deliveryReportPathRel], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1190,10 +1198,12 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
-    const index = path.join(root, "lib", "memory", "features", "demo-feature", "index.json");
+    const indexRel = durableFeatureIndexRel("demo-feature");
+    const index = path.join(root, ...indexRel.split("/"));
+    await mkdir(path.dirname(index), { recursive: true });
     await writeFile(index, "{}\n", "utf8");
     const completeOut: string[] = [];
-    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/index.json"], {
+    await runCli(["advance", start.taskId, "--artifact", indexRel], {
       repoRoot: root,
       writeOut: (c) => completeOut.push(c),
     });
@@ -1241,9 +1251,12 @@ describe("parseAndRun", () => {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
+    const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
+    const deliveryReportPathRel = deliveryReportRel(runDirRel);
+
+    const report = path.join(root, ...deliveryReportPathRel.split("/"));
     await writeFile(report, "# Delivery", "utf8");
-    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"], {
+    await runCli(["advance", start.taskId, "--artifact", deliveryReportPathRel], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1276,8 +1289,10 @@ describe("parseAndRun", () => {
       repoRoot: root,
       writeOut: () => undefined,
     });
-    const index = path.join(root, "lib", "memory", "features", "demo-feature", "index.json");
+    const indexRel = durableFeatureIndexRel("demo-feature");
+    const index = path.join(root, ...indexRel.split("/"));
     const inboxSourceRel = "lib/inbox/in/demo-feature.md";
+    await mkdir(path.dirname(index), { recursive: true });
     await writeFile(
       index,
       stringifyCliJson(root, {
@@ -1286,11 +1301,11 @@ describe("parseAndRun", () => {
         status: "indexed",
         indexed_at: "2026-05-10T13:30:00.000Z",
         source_inbox_item: { path: inboxSourceRel },
-        delivery_report: { path: "lib/memory/features/demo-feature/delivery-report.md" },
+        delivery_report: { path: deliveryReportPathRel },
       }),
       "utf8",
     );
-    await runCli(["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/index.json"], {
+    await runCli(["advance", start.taskId, "--artifact", indexRel], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1313,9 +1328,9 @@ describe("parseAndRun", () => {
       ].join("\n"),
       "utf8",
     );
-    await mkdir(path.join(root, "lib", "memory", "features", "compliance-tests"), { recursive: true });
+    await mkdir(path.dirname(path.join(root, COMPLIANCE_AUDIT_HISTORY_REL)), { recursive: true });
     await writeFile(
-      path.join(root, "lib", "memory", "features", "compliance-tests", "audit-history.json"),
+      path.join(root, COMPLIANCE_AUDIT_HISTORY_REL),
       stringifyCliJson(root, {
         schema_version: "1",
         max_entries: 5,
@@ -1399,7 +1414,7 @@ describe("parseAndRun", () => {
     expect(existsSync(path.join(root, closed.archivedInboxPath))).toBe(true);
     expect(existsSync(path.join(root, closed.stateFile))).toBe(true);
     const complianceHistoryAfterClose = JSON.parse(
-      await readFile(path.join(root, "lib", "memory", "features", "compliance-tests", "audit-history.json"), "utf8"),
+      await readFile(path.join(root, COMPLIANCE_AUDIT_HISTORY_REL), "utf8"),
     ) as {
       entries: Array<{ artifact_paths?: { compliance_result?: string; run_dir?: string } }>;
     };
@@ -1526,7 +1541,8 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
-    const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
+    const deliveryReportPathRel = deliveryReportRel(activeRunDirRel);
+    const report = path.join(root, ...deliveryReportPathRel.split("/"));
     await writeFile(
       report,
       "# Delivery\n\nBad citation {kind: lines, path: .pan/work/example.md, range: [1, 2], contentHash: abc}\n",
@@ -1534,7 +1550,7 @@ describe("parseAndRun", () => {
     );
     const advanceOut: string[] = [];
     const code = await runCli(
-      ["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"],
+      ["advance", start.taskId, "--artifact", deliveryReportPathRel],
       { repoRoot: root, writeOut: (c) => advanceOut.push(c), writeErr: () => undefined },
     );
     expect(code).toBe(1);
@@ -1576,11 +1592,12 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
-    const report = path.join(root, "lib", "memory", "features", "demo-feature", "delivery-report.md");
+    const deliveryReportPathRel = deliveryReportRel(runDirRel);
+    const report = path.join(root, ...deliveryReportPathRel.split("/"));
     await writeFile(report, "# Delivery\n\nAll good.\n", "utf8");
     const reportAdvanceOut: string[] = [];
     const reportCode = await runCli(
-      ["advance", start.taskId, "--artifact", "lib/memory/features/demo-feature/delivery-report.md"],
+      ["advance", start.taskId, "--artifact", deliveryReportPathRel],
       { repoRoot: root, writeOut: (c) => reportAdvanceOut.push(c) },
     );
     expect(reportCode).toBe(0);
@@ -2488,13 +2505,13 @@ describe("operator tooling batch cli wiring", () => {
           case "test":
             return `${runDir}/test-report.md`;
           case "report":
-            return `lib/memory/features/${featureId}/delivery-report.md`;
+            return deliveryReportRel(runDir);
           case "compliance":
             return `${runDir}/compliance-result.json`;
           case "ship":
             return `${runDir}/ship-ratification.json`;
           case "index":
-            return `lib/memory/features/${featureId}/index.json`;
+            return durableFeatureIndexRel(featureId);
           default:
             throw new Error(`No artifact mapping for stage ${stage}`);
         }

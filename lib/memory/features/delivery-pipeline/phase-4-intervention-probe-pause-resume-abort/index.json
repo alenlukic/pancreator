@@ -5,9 +5,7 @@
   "status": "pending-human-ratification",
   "task_id": "71096_0415_phase-4-intervention-probe-pause-resume-abort",
   "summary": "This feature ships a bounded Phase 4 intervention probe that captures empirical pause, resume, and abort evidence while the run sits at live plan, then records matching run.log.jsonl event ids in pause-resume-abort-evidence.json.",
-  "implementation_surfaces": [
-    "lib/internal/packages/@pancreator/intervention/"
-  ],
+  "implementation_surfaces": ["lib/internal/packages/@pancreator/intervention/"],
   "compressed_from": [
     "lib/memory/features/phase-4-intervention-probe-pause-resume-abort/delivery-report.md",
     "lib/memory/features/phase-4-intervention-probe-pause-resume-abort/index.json",

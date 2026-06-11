@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 import { scanWorkArchiveHygiene } from "./work-archive-hygiene.js";
 
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
@@ -91,9 +92,10 @@ describe("scanWorkArchiveHygiene", () => {
     const root = await mkRepo();
     const dayDir = "172971_06-04-26";
     const inboxRel = `lib/inbox/in/${dayDir}/shared.md`;
-    await mkdir(path.join(root, "lib", "memory", "features", "demo-feature"), { recursive: true });
+    const indexRel = durableFeatureIndexRel("demo-feature");
+    await mkdir(path.dirname(path.join(root, indexRel)), { recursive: true });
     await writeFile(
-      path.join(root, "lib", "memory", "features", "demo-feature", "index.json"),
+      path.join(root, indexRel),
       stringifyCliJson(root, { task_id: "20000_1300_demo-feature" }),
       "utf8",
     );

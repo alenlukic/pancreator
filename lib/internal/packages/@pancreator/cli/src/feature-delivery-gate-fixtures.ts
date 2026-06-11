@@ -70,7 +70,7 @@ export const VALID_ACCEPTANCE_CRITERIA_MARKDOWN =
 
 export const VALID_MANUAL_QA_MARKDOWN = "# Manual QA test cases\n\n## MQA-1\n\nSteps and expected result.\n";
 
-export function planStageRequiredArtifactRels(runDirRel: string, featureId: string): string[] {
+export function planStageRequiredArtifactRels(runDirRel: string, _featureId: string): string[] {
   return [
     `${runDirRel}/product-plan.md`,
     `${runDirRel}/product-acceptance-criteria.md`,
@@ -90,7 +90,7 @@ export function planStageRequiredArtifactRels(runDirRel: string, featureId: stri
 export async function seedPlanStageAdvanceArtifacts(
   root: string,
   runDirRel: string,
-  featureId = "demo-feature",
+  _featureId = "demo-feature",
 ): Promise<void> {
   const runDir = path.join(root, runDirRel);
   await mkdir(runDir, { recursive: true });

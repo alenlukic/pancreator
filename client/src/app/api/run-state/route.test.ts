@@ -430,7 +430,7 @@ describe("GET /api/run-state", () => {
       ".pan/work/day/task/product-acceptance-criteria.md",
       ".pan/work/day/task/design-plan.md",
       ".pan/work/day/task/design-acceptance-criteria.md",
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/ux-spec.md",
+      ".pan/work/day/task/ux-spec.md",
       ".pan/work/day/task/tech-plan.md",
       ".pan/work/day/task/tech-acceptance-criteria.md",
       ".pan/work/day/task/manual-qa-test-cases.md",
@@ -443,7 +443,7 @@ describe("GET /api/run-state", () => {
       ".pan/work/day/task/implementation-report.md",
     ]);
     expect(stageArtifactPathsForStage({ ...input, designSteps: true }, "plan")).toContain(
-      ".pan/work/172996_05-10-26/38670_1315_demo-feature/ux-spec.md",
+      ".pan/work/day/task/ux-spec.md",
     );
   });
 

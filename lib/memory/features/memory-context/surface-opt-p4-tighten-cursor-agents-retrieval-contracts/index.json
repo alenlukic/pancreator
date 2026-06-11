@@ -13,10 +13,7 @@
     "review.spec_contracts_note: No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "intake.human_approval_note: Spec ratified at plan advance per state.json advanceHistory intake→plan event."
   ],
-  "implementation_surfaces": [
-    "tests/cursor-agents-retrieval-contract.test.mjs",
-    "tests/context-budget-report.test.mjs"
-  ],
+  "implementation_surfaces": ["tests/cursor-agents-retrieval-contract.test.mjs", "tests/context-budget-report.test.mjs"],
   "validation": [
     {
       "review": {

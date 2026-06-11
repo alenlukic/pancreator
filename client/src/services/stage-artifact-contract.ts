@@ -13,8 +13,54 @@ function joinPosix(...segments: string[]): string {
   return segments.filter(Boolean).join("/");
 }
 
-function uxSpecRel(featureId: string): string {
-  return joinPosix("lib", "memory", "features", featureId, "ux-spec.md");
+function durableFeatureCategory(featureId: string): string {
+  if (
+    featureId.startsWith("command-center-") ||
+    featureId.startsWith("surface-opt-p9") ||
+    featureId.startsWith("surface-opt-p10") ||
+    featureId.startsWith("v0-ui-dashboard")
+  ) {
+    return "command-center";
+  }
+  if (
+    featureId.startsWith("active-memory") ||
+    featureId.includes("token-economy") ||
+    featureId.includes("memory")
+  ) {
+    return "memory-context";
+  }
+  if (featureId.startsWith("pancreator-") || featureId.startsWith("m1-substrate-runtime")) {
+    return "platform-substrate";
+  }
+  if (
+    featureId.includes("compliance") ||
+    featureId.includes("json-formatting") ||
+    featureId.includes("timestamp") ||
+    featureId.includes("verification")
+  ) {
+    return "quality-governance";
+  }
+  if (
+    featureId.includes("pipeline") ||
+    featureId.includes("inbox") ||
+    featureId.includes("dogfood") ||
+    featureId.includes("sdk")
+  ) {
+    return "delivery-pipeline";
+  }
+  return "bootstrap-repo-ops";
+}
+
+function durableFeatureIndexRel(featureId: string): string {
+  return joinPosix("lib", "memory", "features", durableFeatureCategory(featureId), featureId, "index.json");
+}
+
+function uxSpecRel(runDir: string): string {
+  return joinPosix(runDir, "ux-spec.md");
+}
+
+function deliveryReportRel(runDir: string): string {
+  return joinPosix(runDir, "delivery-report.md");
 }
 
 function productPlanRel(runDir: string): string {
@@ -71,7 +117,7 @@ export function stageArtifactPathsForStage(
         productAcceptanceCriteriaRel(runDir),
         designPlanRel(runDir),
         designAcceptanceCriteriaRel(runDir),
-        uxSpecRel(featureId),
+        uxSpecRel(runDir),
         techPlanRel(runDir),
         techAcceptanceCriteriaRel(runDir),
         manualQaTestCasesRel(runDir),
@@ -92,7 +138,7 @@ export function stageArtifactPathsForStage(
       return [testReport, designQaReportRel(runDir)];
     }
     case "report": {
-      return [joinPosix("lib", "memory", "features", featureId, "delivery-report.md")];
+      return [deliveryReportRel(runDir)];
     }
     case "compliance": {
       return [joinPosix(runDir, "compliance-result.json")];
@@ -101,7 +147,7 @@ export function stageArtifactPathsForStage(
       return [joinPosix(runDir, "ship-ratification.json")];
     }
     case "index": {
-      return [joinPosix("lib", "memory", "features", featureId, "index.json")];
+      return [durableFeatureIndexRel(featureId)];
     }
     default:
       return [];

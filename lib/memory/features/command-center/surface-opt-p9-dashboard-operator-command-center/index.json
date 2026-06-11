@@ -36,9 +36,7 @@
       }
     }
   ],
-  "open_followups": [
-    "browser-visual-qa"
-  ],
+  "open_followups": ["browser-visual-qa"],
   "compressed_from": [
     "lib/memory/features/surface-opt-p9-dashboard-operator-command-center/delivery-report.md",
     "lib/memory/features/surface-opt-p9-dashboard-operator-command-center/index.json",

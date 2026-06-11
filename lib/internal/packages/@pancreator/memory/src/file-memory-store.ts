@@ -160,6 +160,11 @@ export class FileMemoryStore implements MemoryStore {
       return direct;
     }
 
+    const uncategorized = `features/uncategorized/${id}/index.json`;
+    if ((await this.get(uncategorized)) !== undefined) {
+      return uncategorized;
+    }
+
     const indexKeys = (await this.listKeys("features")).filter((key) => key.endsWith("/index.json"));
     for (const key of indexKeys) {
       const raw = await this.get(key);
@@ -184,7 +189,7 @@ export class FileMemoryStore implements MemoryStore {
   }
 
   /**
-   * The system SHALL read category-aware `lib/memory/features/**/<id>/index.json` when present.
+   * The system SHALL read category-aware `lib/memory/features/{category}/{id}/index.json` when present.
    */
   async readJsonFeatureIndex(id: FeatureId): Promise<unknown | undefined> {
     const rel = await this.resolveFeatureIndexKey(id);

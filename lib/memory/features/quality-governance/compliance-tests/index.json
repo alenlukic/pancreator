@@ -17,12 +17,7 @@
     "tests/compliance/low-warning-emission.yaml",
     "tests/compliance/"
   ],
-  "retained_artifacts": [
-    "audit-history.json",
-    "manual-runbook.md",
-    "run-template.json",
-    "severity-routing.md"
-  ],
+  "retained_artifacts": ["audit-history.json", "manual-runbook.md", "run-template.json", "severity-routing.md"],
   "compressed_from": [
     "lib/memory/features/compliance-tests/audit-history.json",
     "lib/memory/features/compliance-tests/delivery-report.md",

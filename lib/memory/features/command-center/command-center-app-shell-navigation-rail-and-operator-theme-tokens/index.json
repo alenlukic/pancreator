@@ -7,9 +7,7 @@
   "task_id": "63441_0622_command-center-app-shell-navigation-rail-and-operator-theme-tokens",
   "program": "command-center",
   "summary": "Compressed memory record for Command Center app shell, navigation rail, and operator theme tokens.",
-  "planning_context": [
-    "handoff.decision: index-complete"
-  ],
+  "planning_context": ["handoff.decision: index-complete"],
   "compressed_from": [
     "lib/memory/features/command-center-app-shell-navigation-rail-and-operator-theme-tokens/index.json"
   ],

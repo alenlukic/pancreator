@@ -199,7 +199,7 @@ test("inventoryReferences: finds a known path string in repo", () => {
   ]);
   assert.ok(hits.length > 0);
   const files = new Set(hits.map((h) => h.file));
-  assert.ok([...files].some((f) => f.endsWith(".md") || f.endsWith(".json")));
+  assert.ok([...files].some((f) => /\.(md|json|ya?ml)$/u.test(f)));
 });
 
 

@@ -9,9 +9,7 @@
     "handoff.handoff_note: Per-folder index pairs spec.md with this stub delivery-report.md. Promote to full feature-delivery memory when package scope closes.",
     "handoff.decision: stub-index"
   ],
-  "implementation_surfaces": [
-    "lib/internal/packages/@pancreator/inbox/"
-  ],
+  "implementation_surfaces": ["lib/internal/packages/@pancreator/inbox/"],
   "retained_artifacts": [
     "contracts/pancreator.inbox.package_shape.rego",
     "contracts/pancreator.inbox.package_shape.yaml",

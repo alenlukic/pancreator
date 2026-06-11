@@ -38,11 +38,7 @@
       }
     }
   ],
-  "open_followups": [
-    "inbox-out-delivery-report-staging",
-    "live-sdk-invocation-policy",
-    "subordinate-qa-residual"
-  ],
+  "open_followups": ["inbox-out-delivery-report-staging", "live-sdk-invocation-policy", "subordinate-qa-residual"],
   "compressed_from": [
     "lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/delivery-report.md",
     "lib/memory/features/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/index.json",

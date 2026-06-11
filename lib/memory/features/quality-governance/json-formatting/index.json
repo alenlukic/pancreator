@@ -35,10 +35,7 @@
       }
     }
   ],
-  "open_followups": [
-    "json-formatting-citation-verifier-prefix",
-    "json-formatting-markdown-corpus-scan"
-  ],
+  "open_followups": ["json-formatting-citation-verifier-prefix", "json-formatting-markdown-corpus-scan"],
   "compressed_from": [
     "lib/memory/features/json-formatting/delivery-report.md",
     "lib/memory/features/json-formatting/index.json",

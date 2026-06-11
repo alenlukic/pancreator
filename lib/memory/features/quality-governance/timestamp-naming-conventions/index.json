@@ -24,12 +24,7 @@
       }
     }
   ],
-  "open_followups": [
-    "migration-write",
-    "contenthash-mix",
-    "runner-not-wired",
-    "post-2500-rollover"
-  ],
+  "open_followups": ["migration-write", "contenthash-mix", "runner-not-wired", "post-2500-rollover"],
   "retained_artifacts": [
     "contracts/.gitkeep",
     "contracts/timestamp-naming.migration-precedence.yaml",

@@ -11,6 +11,7 @@ import {
   persistComplianceAuditHistoryForResult,
 } from "./compliance-audit-history.js";
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { deliveryReportRel, durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 
 async function writeJson(repoRoot: string, abs: string, value: unknown): Promise<void> {
   await mkdir(path.dirname(abs), { recursive: true });
@@ -49,7 +50,7 @@ describe("compliance-audit-history", () => {
         ],
       },
     });
-    await writeJson(root, path.join(root, "lib/memory/features/demo-feature/index.json"), {
+    await writeJson(root, path.join(root, durableFeatureIndexRel("demo-feature")), {
       feature_id: "demo-feature",
       task_id: "38670_1315_demo-feature",
       indexed_at: "2026-05-10T14:20:00.000Z",
@@ -80,7 +81,7 @@ describe("compliance-audit-history", () => {
       compliance_passes: true,
       scope: { inputsAudited: ["lib/memory/features/shared.md"] },
     });
-    await writeJson(root, path.join(root, "lib/memory/features/old/index.json"), {
+    await writeJson(root, path.join(root, durableFeatureIndexRel("old")), {
       feature_id: "old",
       task_id: "40000_1200_old",
       indexed_at: "2026-05-11T12:05:00.000Z",
@@ -97,7 +98,7 @@ describe("compliance-audit-history", () => {
     await writeJson(root, path.join(root, `${runDirRel}/touch-set.json`), { touched: ["x"] });
     await writeJson(root, path.join(root, `${runDirRel}/review.md`), { review: true });
     await writeJson(root, path.join(root, `${runDirRel}/test-report.md`), { qa: true });
-    await writeJson(root, path.join(root, "lib/memory/features/new/delivery-report.md"), { delivered: true });
+    await writeJson(root, path.join(root, deliveryReportRel(runDirRel)), { delivered: true });
     await writeJson(root, path.join(root, `${runDirRel}/compliance-result.json`), {
       taskId: "39999_1210_new",
       featureId: "new",
@@ -107,7 +108,7 @@ describe("compliance-audit-history", () => {
       scope: {
         inputsAudited: [
           `${runDirRel}/touch-set.json`,
-          "lib/memory/features/new/delivery-report.md",
+          deliveryReportRel(runDirRel),
         ],
       },
     });

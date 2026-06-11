@@ -33,10 +33,7 @@
       }
     }
   ],
-  "open_followups": [
-    "cli-index-ts-touch-set",
-    "repo-structure-deferred-smoke"
-  ],
+  "open_followups": ["cli-index-ts-touch-set", "repo-structure-deferred-smoke"],
   "compressed_from": [
     "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/delivery-report.md",
     "lib/memory/features/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json",

@@ -21,10 +21,7 @@
       }
     }
   ],
-  "open_followups": [
-    "touch-set-wp-b-stale-paths",
-    "per-feature-index-dual-anchor-parity"
-  ],
+  "open_followups": ["touch-set-wp-b-stale-paths", "per-feature-index-dual-anchor-parity"],
   "compressed_from": [
     "lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/.gitkeep",
     "lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md",

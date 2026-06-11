@@ -5,19 +5,9 @@
   "status": "indexed",
   "task_id": "27984_1613_bootstrap-phase-5-m1-exit-close-docs-bootstrap",
   "summary": "This feature delivered the WP1 greenfield evidence contract, the deterministic in-repo evaluator, the WP2 knowledge-curation cron-seed guidance, and the WP3 KPI baseline evidence package. WP5 state-transition documentation remains intentionally deferred per plan decision D4, and the review confirmed the follow-on…",
-  "implementation_surfaces": [
-    "lib/internal/tools/evaluate-greenfield-evidence.mjs",
-    "lib/pipelines/knowledge-curation.yaml"
-  ],
-  "open_followups": [
-    "WP5-state-transition",
-    "WP4-handbook-promotions",
-    "lib/memory/adr/0002-m1-baseline.md"
-  ],
-  "retained_artifacts": [
-    "greenfield-evidence.fixture.json",
-    "greenfield-evidence.schema.json"
-  ],
+  "implementation_surfaces": ["lib/internal/tools/evaluate-greenfield-evidence.mjs", "lib/pipelines/knowledge-curation.yaml"],
+  "open_followups": ["WP5-state-transition", "WP4-handbook-promotions", "lib/memory/adr/0002-m1-baseline.md"],
+  "retained_artifacts": ["greenfield-evidence.fixture.json", "greenfield-evidence.schema.json"],
   "compressed_from": [
     "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md",
     "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json",

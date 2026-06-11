@@ -36,11 +36,7 @@
       }
     }
   ],
-  "open_followups": [
-    "wp-c-bulk-sweep",
-    "touch-set-no-diff-paths",
-    "mcp-write-tools-deferred"
-  ],
+  "open_followups": ["wp-c-bulk-sweep", "touch-set-no-diff-paths", "mcp-write-tools-deferred"],
   "compressed_from": [
     "lib/memory/features/ci-best-practices-batch/delivery-report.md",
     "lib/memory/features/ci-best-practices-batch/index.json",

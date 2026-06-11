@@ -13,10 +13,7 @@
     "review.spec_contracts_note: No contracts/ directory under feature folder; review used behavioral delta coverage only.",
     "intake.human_approval_note: Spec ratified at plan advance per state.json advanceHistory intake→plan event."
   ],
-  "implementation_surfaces": [
-    "client/src/components/DashboardPage.tsx",
-    "client/src/app/page.test.tsx"
-  ],
+  "implementation_surfaces": ["client/src/components/DashboardPage.tsx", "client/src/app/page.test.tsx"],
   "validation": [
     {
       "review": {
@@ -32,10 +29,7 @@
       }
     }
   ],
-  "open_followups": [
-    "browser-visual-qa",
-    "delivery-report-citation-refresh"
-  ],
+  "open_followups": ["browser-visual-qa", "delivery-report-citation-refresh"],
   "compressed_from": [
     "lib/memory/features/surface-opt-p10-dashboard-safe-editing/delivery-report.md",
     "lib/memory/features/surface-opt-p10-dashboard-safe-editing/index.json",
