@@ -1,0 +1,72 @@
+{
+  "feature_id": "command-center-local-scheduler-tick-and-run-history",
+  "title": "Command Center — Local scheduler tick and run history",
+  "category": "command-center",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "31248_1519_command-center-local-scheduler-tick-and-run-history",
+  "program": "command-center",
+  "summary": "This feature delivery ships local automation execution and append-only JSONL run history for Command Center. The @pancreator/scheduler package gains due evaluation, concurrency locks, run-log I/O, and tick orchestration under .pan/scheduler/. The CLI exposes pnpm -w exec pan scheduler tick with optional --id for…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian.",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: contracts:from_feature deferred (exit 125); no lib/memory/features/command-center-local-scheduler-tick-and-run-history/contracts/ wrapper.",
+    "intake.human_approval_note: Supervisor ship ratification at 2026-06-08T16:30:00Z with human_ratified_diff true; 34 touch-set paths staged plus 49 bundled sibling Command Center infrastructure files on command-center-overhaul; compliance audit…"
+  ],
+  "implementation_surfaces": [
+    "lib/internal/packages/@pancreator/scheduler/package.json",
+    "lib/internal/packages/@pancreator/scheduler/tsconfig.json",
+    "lib/internal/packages/@pancreator/scheduler/vitest.config.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/index.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/paths.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/schema.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/registry.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/errors.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/paths.test.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/schema.test.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/registry.test.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/due.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/due.test.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/lock.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/lock.test.ts",
+    "lib/internal/packages/@pancreator/scheduler/src/run-log.ts"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true,
+        "design_qa_passes": true
+      }
+    },
+    {
+      "compliance": {
+        "compliance_passes": true
+      }
+    }
+  ],
+  "open_followups": [
+    "branch-scope",
+    "finished-at-clock",
+    "intervention-pause-journal",
+    "list-badge-prefetch",
+    "tick-executor-duplication",
+    "cron-utc-assumption",
+    "import-order-nit",
+    "adr-copy"
+  ],
+  "compressed_from": [
+    "lib/memory/features/command-center-local-scheduler-tick-and-run-history/delivery-report.md",
+    "lib/memory/features/command-center-local-scheduler-tick-and-run-history/index.json",
+    "lib/memory/features/command-center-local-scheduler-tick-and-run-history/spec.md",
+    "lib/memory/features/command-center-local-scheduler-tick-and-run-history/ux-spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

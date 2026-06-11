@@ -1,0 +1,64 @@
+{
+  "feature_id": "sampled-token-audit",
+  "title": "Sampled Token Audit",
+  "category": "memory-context",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "53589_0906_sampled-token-audit",
+  "summary": "The sampled-token-audit Feature adds phase-1 token observability to feature-delivery SDK invocations. The implementation SHALL expose runner.cursor.sdkSampling in pancreator.yaml, route roughly 10 percent of stage invocations through a deterministic hash gate to a streamed SDK transport, persist redacted traces under…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian.",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: No contracts/ directory under feature folder; review used behavioral delta coverage only.",
+    "intake.human_approval_note: Spec ratified at intake→plan advance per state.json advanceHistory."
+  ],
+  "implementation_surfaces": [
+    "pancreator.yaml",
+    "pancreator-model-escalation.yaml",
+    "lib/internal/packages/@pancreator/cli/src/sdk-sampling.ts",
+    "lib/internal/packages/@pancreator/cli/src/pan-init.ts",
+    "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
+    "lib/internal/packages/@pancreator/cli/src/token-economy-analyzer.ts",
+    "lib/internal/packages/@pancreator/cli/src/commands/token-economy-sample-audit.ts",
+    "lib/internal/packages/@pancreator/runner-cursor/src/sdk-trace-collector.ts",
+    "lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts",
+    "tests/compliance/context-usage/lib/collect-usage.mjs",
+    "tests/compliance/context-usage/lib/paths.mjs",
+    "tests/compliance/context-usage/lib/tasks.mjs"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true
+      }
+    },
+    {
+      "compliance": {
+        "compliance_passes": true
+      }
+    }
+  ],
+  "open_followups": [
+    "staged-only-commit",
+    "companion-harness-touch-set",
+    "live-repair-agent",
+    "runner-cursor-build-prerequisite",
+    "model-escalation-rollback",
+    "calibration-trace-evidence",
+    "parallel-calibration-hardening"
+  ],
+  "compressed_from": [
+    "lib/memory/features/sampled-token-audit/delivery-report.md",
+    "lib/memory/features/sampled-token-audit/index.json",
+    "lib/memory/features/sampled-token-audit/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

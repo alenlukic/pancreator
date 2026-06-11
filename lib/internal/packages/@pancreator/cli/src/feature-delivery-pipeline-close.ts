@@ -5,6 +5,7 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { operatorVerificationRel } from "./operator-verification.js";
+import { deliveryReportRel, durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 
 export const PIPELINE_CLOSE_FILENAME = "pipeline-close.md";
 
@@ -45,7 +46,7 @@ function formatStageHistoryRows(history: PipelineCloseAdvanceEntry[] | undefined
 }
 
 function readIndexFollowups(repoRoot: string, featureId: string): string[] {
-  const indexRel = path.posix.join("lib", "memory", "features", featureId, "index.json");
+  const indexRel = durableFeatureIndexRel(featureId);
   const indexAbs = resolveRepoPath(repoRoot, indexRel);
   if (!existsSync(indexAbs)) {
     return [];
@@ -69,8 +70,8 @@ export function renderPipelineCloseDoc(
   repoRoot: string,
   now: Date,
 ): string {
-  const deliveryReportRel = path.posix.join("lib", "memory", "features", state.featureId, "delivery-report.md");
-  const indexRel = path.posix.join("lib", "memory", "features", state.featureId, "index.json");
+  const reportRel = deliveryReportRel(state.artifacts.runDir);
+  const indexRel = durableFeatureIndexRel(state.featureId);
   const verificationRel = operatorVerificationRel(state);
   const residual: string[] = [];
 
@@ -115,7 +116,7 @@ ${residualSection}
 
 ## Operator next steps
 
-- Read-only: inspect \`${deliveryReportRel}\`, \`${indexRel}\`, \`${verificationRel}\`, and the local diff.
+- Read-only: inspect \`${reportRel}\`, \`${indexRel}\`, \`${verificationRel}\`, and the local diff.
 - Read-only: execute acceptance criteria and manual test flows in \`${verificationRel}\` before archival when possible; reopen with \`pnpm -w exec pan reopen ${state.taskId}\` when verification fails after close.
 - Read-only: review this file and update residual issues or next steps before archival when needed.
 - When satisfied, run exactly once:

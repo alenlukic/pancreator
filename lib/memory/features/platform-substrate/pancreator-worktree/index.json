@@ -1,0 +1,31 @@
+{
+  "feature_id": "pancreator-worktree",
+  "title": "Engineering Spec - @pancreator/worktree",
+  "category": "platform-substrate",
+  "status": "indexed",
+  "current_stage": "contracts-authored",
+  "summary": "Bootstrap slice 54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants indexed this Phase-2 engineering-spec folder for @pancreator/worktree. Canonical requirements remain in spec.md and registered contracts under contracts/ (where present).",
+  "planning_context": [
+    "handoff.handoff_note: Per-folder index pairs spec.md with this stub delivery-report.md. Promote to full feature-delivery memory when package scope closes.",
+    "handoff.decision: stub-index"
+  ],
+  "implementation_surfaces": ["lib/internal/packages/@pancreator/worktree/"],
+  "retained_artifacts": [
+    "contracts/pancreator.worktree.package_shape.rego",
+    "contracts/pancreator.worktree.package_shape.yaml",
+    "contracts/pancreator.worktree.readme_ergonomics.yaml",
+    "contracts.index.json"
+  ],
+  "compressed_from": [
+    "lib/memory/features/pancreator-worktree/contracts/pancreator.worktree.package_shape.rego",
+    "lib/memory/features/pancreator-worktree/contracts/pancreator.worktree.package_shape.yaml",
+    "lib/memory/features/pancreator-worktree/contracts/pancreator.worktree.readme_ergonomics.yaml",
+    "lib/memory/features/pancreator-worktree/contracts.index.json",
+    "lib/memory/features/pancreator-worktree/delivery-report.md",
+    "lib/memory/features/pancreator-worktree/index.json",
+    "lib/memory/features/pancreator-worktree/plan.md",
+    "lib/memory/features/pancreator-worktree/spec.md",
+    "lib/memory/features/pancreator-worktree/tasks.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

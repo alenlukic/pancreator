@@ -1,0 +1,62 @@
+{
+  "feature_id": "command-center-active-memory-operator-craft-revalidation",
+  "title": "Command Center active memory operator craft revalidation",
+  "category": "command-center",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "77283_0231_command-center-active-memory-operator-craft-revalidation",
+  "program": "command-center",
+  "summary": "This feature revalidates the Command Center Pipeline Active memory panel under tightened design-craft gates 1, 2, 3, 5, 9, and 11 while restoring F-05 expand toggle and F-10 relative timestamp remediations. The implement stage extends ActiveMemorySnapshot and loadActiveMemory with activeFeatureLabel…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian.",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: No contracts.index.json sidecar; three embedded llm-judge UX contract blocks in ux-spec.md evaluated via design-qa and RTL evidence.",
+    "intake.human_approval_note: Supervisor ship ratification at 2026-06-09T02:45:00Z with human_ratified_diff true; staged diff limited to six touch-set client paths delivering design-craft gates 1, 2, 3, 5, 9, and 11 while restoring F-05 expand…"
+  ],
+  "implementation_surfaces": [
+    "client/src/components/command-center/pipeline/ActiveMemoryHeader.tsx",
+    "client/src/services/active-memory.ts",
+    "client/src/services/run-state-shared.ts",
+    "client/src/app/globals.css",
+    "client/src/app/page.test.tsx",
+    "client/src/app/api/active-memory/route.test.ts"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true,
+        "design_qa_passes": true
+      }
+    },
+    {
+      "compliance": {
+        "compliance_passes": true
+      }
+    }
+  ],
+  "open_followups": [
+    "copy-path-vitest-gap",
+    "parse-blockers-fallback-untested",
+    "duplicate-chip-react-keys",
+    "duplicated-inbox-parsing",
+    "viewport-containment-probes",
+    "touch-set-symbol-drift",
+    "spec-blockersSummary-wording",
+    "expand-motion-token"
+  ],
+  "compressed_from": [
+    "lib/memory/features/command-center-active-memory-operator-craft-revalidation/delivery-report.md",
+    "lib/memory/features/command-center-active-memory-operator-craft-revalidation/index.json",
+    "lib/memory/features/command-center-active-memory-operator-craft-revalidation/spec.md",
+    "lib/memory/features/command-center-active-memory-operator-craft-revalidation/ux-spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

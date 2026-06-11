@@ -1,0 +1,70 @@
+{
+  "feature_id": "command-center-pipeline-command-center-and-human-gate-queue",
+  "title": "Command Center — Pipeline command center and human gate queue",
+  "category": "command-center",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "52646_0922_command-center-pipeline-command-center-and-human-gate-queue",
+  "program": "command-center",
+  "summary": "This feature delivery ships the Command Center Pipeline command center: run-state field split, enriched task envelopes, a read-only config API, DashboardModuleShell extraction, and P9 grid and timeline migration. The server exposes humanAttention and nextCommand as separate StageCell fields, adds runDir and optional…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian.",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: Three embedded llm-judge UX contract blocks in ux-spec dependency; contract run logs under .pan/work/contract-runs/.",
+    "intake.human_approval_note: Supervisor ship ratification at 2026-06-08T10:00:00Z with human_ratified_diff true; staged diff limited to 21 touch-set client paths."
+  ],
+  "implementation_surfaces": [
+    "client/src/services/run-state-shared.ts",
+    "client/src/services/run-state.ts",
+    "client/src/services/config.ts",
+    "client/src/app/api/config/route.ts",
+    "client/src/app/api/config/route.test.ts",
+    "client/src/app/api/run-state/route.test.ts",
+    "client/src/components/DashboardPage.tsx",
+    "client/src/components/command-center/layout/DashboardModuleShell.tsx",
+    "client/src/components/command-center/pipeline/PipelineModule.tsx",
+    "client/src/components/command-center/pipeline/NextActionPanel.tsx",
+    "client/src/components/command-center/pipeline/HumanGateBanner.tsx",
+    "client/src/components/command-center/pipeline/ConfigReadOnlyPanel.tsx",
+    "client/src/components/command-center/pipeline/StageMachineGrid.tsx",
+    "client/src/components/command-center/pipeline/RunEventTimeline.tsx",
+    "client/src/components/command-center/shared/CopyCommandButton.tsx",
+    "client/src/components/command-center/shared/AttentionBanner.tsx"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true,
+        "design_qa_passes": true
+      }
+    },
+    {
+      "compliance": {
+        "compliance_passes": true
+      }
+    }
+  ],
+  "open_followups": [
+    "gate-artifact-links",
+    "gate-queue-active-only",
+    "config-refresh-integration-test",
+    "adr-0010-copy",
+    "human-commit-untracked",
+    "spec-frontmatter-status"
+  ],
+  "compressed_from": [
+    "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
+    "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/index.json",
+    "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/spec.md",
+    "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/ux-spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

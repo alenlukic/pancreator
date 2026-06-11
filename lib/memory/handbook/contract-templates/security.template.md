@@ -66,11 +66,11 @@ description: |
   flag MUST be `true`.
 references:
   - kind: lines
-    path: /lib/memory/features/<id>/threat-model.md
+    path: /lib/memory/features/<category>/<id>/threat-model.md
     range: [<start>, <end>]
     contentHash: <sha256>
     note: "STRIDE-Spoofing mitigation #2."
-spec: /lib/memory/features/<id>/contracts/session-token-rotation.rego
+spec: /lib/memory/features/<category>/<id>/contracts/session-token-rotation.rego
 runtime:
   package: pancreator.security.session
   query: data.pancreator.security.session.deny
@@ -95,7 +95,7 @@ kind: llm-judge
 severity: block
 applies_to:
   kind: artifact-symbol
-  path: /lib/memory/features/<id>/threat-model.md
+  path: /lib/memory/features/<category>/<id>/threat-model.md
   symbol: "STRIDE: Repudiation"
   contentHash: <sha256>
 owner: appsec
@@ -105,7 +105,7 @@ description: |
   fields, the retention window, and the tamper-evidence strategy.
 references:
   - kind: lines
-    path: /lib/memory/features/<id>/threat-model.md
+    path: /lib/memory/features/<category>/<id>/threat-model.md
     range: [<start>, <end>]
     contentHash: <sha256>
     note: "STRIDE-Repudiation section."
@@ -133,7 +133,7 @@ runtime:
     cost_ceiling_usd: 0.50
 metadata:
   pancreator.contract_id: <feature>.security.repudiation.audit-log-coverage
-  pancreator.applies_to: artifact-symbol:/lib/memory/features/<id>/threat-model.md#STRIDE-Repudiation
+  pancreator.applies_to: artifact-symbol:/lib/memory/features/<category>/<id>/threat-model.md#STRIDE-Repudiation
   pancreator.stride: repudiation
   pancreator.asvs: V8.3.1
   pancreator.likelihood: 3
@@ -156,11 +156,11 @@ description: |
   SHALL be reported with the path and line of the call.
 references:
   - kind: lines
-    path: /lib/memory/features/<id>/threat-model.md
+    path: /lib/memory/features/<category>/<id>/threat-model.md
     range: [<start>, <end>]
     contentHash: <sha256>
     note: "STRIDE-Tampering mitigation #5."
-spec: /lib/memory/features/<id>/contracts/no-eval-on-user-input.semgrep.yaml
+spec: /lib/memory/features/<category>/<id>/contracts/no-eval-on-user-input.semgrep.yaml
 runtime:
   rules: ["pancreator.security.no-eval-on-user-input"]
 metadata:

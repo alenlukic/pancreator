@@ -17,7 +17,7 @@ references:
 
 # Template — Delivery Report
 
-Use this template when authoring `lib/memory/features/<id>/delivery-report.md`.
+Use this template when authoring `.pan/work/<day>/<task-id>/delivery-report.md`.
 Copy the section headings and citation shape; replace placeholders with run-specific
 content from the six upstream inputs.
 

@@ -464,13 +464,13 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 | `test` (qualifying spot-fix) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_spot_fix --artifact <runDir>/test-report.md` |
 | `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
 | `test` (plan-invalidating fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails_plan_invalidating --artifact <runDir>/test-report.md` |
-| `report` | `tech-writer` | `lib/memory/features/<feature-id>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/delivery-report.md` |
+| `report` | `tech-writer` | `<runDir>/delivery-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/delivery-report.md` |
 | `compliance` (pass) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/compliance-result.json` |
 | `compliance` (qualifying spot-fix) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_spot_fix --artifact <runDir>/compliance-result.json` |
 | `compliance` (major fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails --artifact <runDir>/compliance-result.json` |
 | `compliance` (plan-invalidating fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails_plan_invalidating --artifact <runDir>/compliance-result.json` |
 | `ship` | `supervisor` | `<runDir>/ship-ratification.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/ship-ratification.json` |
-| `index` | `librarian` | `lib/memory/features/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/index.json` |
+| `index` | `librarian` | `lib/memory/features/<category>/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<category>/<feature-id>/index.json` |
 | `complete` | `librarian` | ship-ratification + index + operator-verification | `pnpm -w exec pan close-artifacts <task-id>` |
 
 Ad-hoc and recovery verbs:
@@ -484,7 +484,7 @@ Ad-hoc and recovery verbs:
 
 Compliance audit history contract (feature-delivery compliance stage):
 
-- Saved audit ledger: `lib/memory/features/compliance-tests/audit-history.json`
+- Saved audit ledger: `lib/memory/features/quality-governance/compliance-tests/audit-history.json`
 - Retention: newest 5 audits
 - Default baseline: previous saved audit entry
 - Optional baseline override: set `baseline_audit_id` in `<runDir>/compliance-result.json` to one of the saved audit IDs
@@ -545,7 +545,8 @@ Command Center Run now calls the same tick primitive for a single id via
   or the managed operator-notes stamp drift from indexed artifacts.
 - `pnpm -w exec pan close-artifacts <task-id>` refreshes shipped rows and clears Active
   Feature to `(none)` when it matched the archived inbox source.
-- `lib/memory/features/*/index.json` remain the indexed source of truth for features.
+- `lib/memory/features/index.md` is the retrieval map for shipped feature context.
+- `lib/memory/features/<category>/<feature-id>/index.json` remain the compact indexed source of truth for features.
 
 ## Version control and optional PR drafting
 

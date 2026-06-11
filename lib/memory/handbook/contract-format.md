@@ -197,7 +197,7 @@ runtime:
   package: pancreator.coverage           # OPA package name
   query: data.pancreator.coverage.deny   # default: data.<package>.deny
   bundle: lib/internal/packages/policy/rego/         # optional; inherits from /policies/ default
-spec: /lib/memory/features/<id>/contracts/<id>.rego  # required for non-inline rego
+spec: /lib/memory/features/<category>/<id>/contracts/<id>.rego  # required for non-inline rego
 ```
 
 The Rego module MUST carry an OPA `# METADATA` block. See
@@ -233,7 +233,7 @@ agrees. Cost above the ceiling halts the panel and routes via inbox.
 ```yaml
 runtime:
   test_describe: <contract id>          # MUST match clause.id exactly
-  spec: /lib/memory/features/<id>/contracts/<id>.spec.ts
+  spec: /lib/memory/features/<category>/<id>/contracts/<id>.spec.ts
 ```
 
 ### 4.4 — `kind: schemathesis` (M2+)

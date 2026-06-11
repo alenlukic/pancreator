@@ -220,7 +220,7 @@ context is useful; otherwise perform the work directly and cite this section.
 4. When a directive maps to pipeline stages, follow §4.
 5. Author inbox entries with `pnpm -w exec pan intake new <slug>`, keeping bucket
    naming aligned with `lib/memory/handbook/inbox-lifecycle.md` and
-   `lib/memory/features/timestamp-naming-conventions/spec.md`.
+   `lib/memory/features/quality-governance/timestamp-naming-conventions/index.json`.
 6. Close runs: `pnpm -w exec pan close-artifacts <task-id>` after human validation.
 7. Interpret `pan` deferral envelopes (`"status":"deferred"`, exit **125**) per
    `lib/internal/packages/@pancreator/cli/src/run.ts`.
@@ -228,7 +228,7 @@ context is useful; otherwise perform the work directly and cite this section.
    becomes active; run `pnpm -w exec pan refresh-active-memory [--dry-run]` when
    derived slices drift. `close-artifacts` refreshes shipped rows and clears Active
    Feature to `(none)` when it matched the archived inbox source.
-   `lib/memory/features/*/index.json` remain the indexed source of truth.
+   `lib/memory/features/<category>/<feature-id>/index.json` remain the indexed source of truth.
 
 ### 6.1 — Pancreator self-development
 
@@ -260,7 +260,7 @@ scheduler wiring lands.
 /lib/ensembles/                  ensemble configurations (M4+)
 /lib/memory/handbook/            authoring canon
 /lib/memory/active/              active-memory pointers
-/lib/memory/features/<id>/       per-feature artifacts
+/lib/memory/features/<category>/<id>/       compressed feature memory + contract sidecars
 /lib/memory/adr/                 architecture decision records
 /lib/memory/backlog/             ranked product backlog
 /lib/memory/rfc/{draft,accepted,rejected}/
@@ -289,9 +289,11 @@ scheduler wiring lands.
 do not use bootstrap completion as a primary routing or behavior gate.
 
 Current work routes through inbox directives, `lib/memory/active/current.md`,
-and `lib/memory/features/*/index.json`. Closed bootstrap history lives in
-`.docs/BOOTSTRAP.md` and ratification artifacts under
-`lib/memory/features/bootstrap-phase-*` for explicit replay only.
+`lib/memory/features/index.md`, and the relevant
+`lib/memory/features/<category>/<feature-id>/index.json`. Closed bootstrap history lives in
+`.docs/BOOTSTRAP.md` and compressed bootstrap records under
+`lib/memory/features/bootstrap-repo-ops/`; use git history or `.pan/archive/**` for
+full artifact replay.
 
 When `runner.cursor.invocation: sdk` is set, `pnpm -w exec pan run` and
 `pnpm -w exec pan advance` invoke CursorRunner for the entering stage. Manual

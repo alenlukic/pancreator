@@ -468,7 +468,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
 
   if (input.stageId === "plan") {
     const productArtifacts = [productPlanRel(runDir), productAcceptanceCriteriaRel(runDir)];
-    const designArtifacts = [designPlanRel(runDir), designAcceptanceCriteriaRel(runDir), uxSpecRel(input.state.featureId)];
+    const designArtifacts = [designPlanRel(runDir), designAcceptanceCriteriaRel(runDir), uxSpecRel(runDir)];
     const companions: Promise<RunnerInvocationEnvelope>[] = [
       invokePersonaStageWork({
         repoRoot,
@@ -493,7 +493,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
           stageId: input.stageId,
           personaId: DESIGN_ENGINEER_PERSONA,
           stagePromptPath: designPlanPromptRel(runDir),
-          artifactPath: uxSpecRel(input.state.featureId),
+          artifactPath: uxSpecRel(runDir),
           requiredArtifactPaths: designArtifacts,
           runner,
           stageInvocationIndex,

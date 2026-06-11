@@ -10,7 +10,7 @@ purpose: |
   artifacts inside active memory.
 references:
   - kind: lines
-    path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     range: [237, 246]
     contentHash: 9b2ddcc
     note: "Spec requires runs.md pointers without embedded artifacts."

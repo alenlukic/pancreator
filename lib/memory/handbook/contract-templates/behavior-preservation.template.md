@@ -90,7 +90,7 @@ references:
     range: [715, 715]
     contentHash: 2eb6aa4
     note: "PRD §7 — behavior-preservation 5-tier definition."
-spec: /lib/memory/features/<id>/contracts/behavior-preservation.rego
+spec: /lib/memory/features/<category>/<id>/contracts/behavior-preservation.rego
 runtime:
   package: pancreator.refactor.behavior_preservation
   query: data.pancreator.refactor.behavior_preservation.deny

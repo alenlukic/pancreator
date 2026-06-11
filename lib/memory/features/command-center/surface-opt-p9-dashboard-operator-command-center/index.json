@@ -1,0 +1,46 @@
+{
+  "feature_id": "surface-opt-p9-dashboard-operator-command-center",
+  "title": "surface-opt P9 — dashboard Command Center",
+  "category": "command-center",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "65766_0543_surface-opt-p9-dashboard-operator-command-center",
+  "program": "pancreator-surface-optimization",
+  "summary": "This feature delivery ships a read-only dashboard Command Center. The default view renders one 9-stage grid and a run-event timeline per active feature-delivery task. A server-side aggregation layer at GET /api/run-state discovers non-terminal runs under .pan/work/, prefers pnpm -w exec pan status <taskId> --format…",
+  "planning_context": [
+    "handoff.handoff_note: Index links delivery report, active work artifacts, and implementation surface. After human acceptance, run pan advance with the feature index artifact to transition to complete.",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: No contracts/ directory under feature folder; review used behavioral delta coverage only.",
+    "intake.human_approval_note: Spec ratified at plan advance per state.json advanceHistory intake→plan event."
+  ],
+  "implementation_surfaces": [
+    "client/src/components/DashboardPage.tsx",
+    "client/src/app/globals.css",
+    "client/src/services/run-state.ts",
+    "client/src/app/api/run-state/route.ts",
+    "client/src/app/api/run-state/route.test.ts",
+    "client/src/app/page.test.tsx"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    },
+    {
+      "test": {
+        "qa_passes": false
+      }
+    }
+  ],
+  "open_followups": ["browser-visual-qa"],
+  "compressed_from": [
+    "lib/memory/features/surface-opt-p9-dashboard-operator-command-center/delivery-report.md",
+    "lib/memory/features/surface-opt-p9-dashboard-operator-command-center/index.json",
+    "lib/memory/features/surface-opt-p9-dashboard-operator-command-center/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

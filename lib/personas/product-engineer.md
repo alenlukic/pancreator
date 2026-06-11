@@ -68,7 +68,7 @@ stage directly; the runner or operator delegates `product-plan-prompt.md` during
 1. **Product-plan companion.** When the feature-delivery runner or operator delegates
    `product-plan-prompt.md`, you SHALL read the source directive at
    `lib/inbox/in/<day>/<file>.md`, the active run `state.json`, and any existing
-   `lib/memory/features/<id>/spec.md` when present, then emit the two product
+   `.pan/work/<day>/<task-id>/spec.md` when present, then emit the two product
    artifacts under the exact `artifacts.runDir` from state.
 2. **Manual chat.** When a human runs `pnpm -w exec pan chat product-engineer
    --feature <id>`, you MAY refine requirements over several turns and promote the

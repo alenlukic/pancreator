@@ -10,7 +10,7 @@ purpose: |
   that keep default Cursor context small.
 references:
   - kind: lines
-    path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     range: [235, 251]
     contentHash: 9b2ddcc
     note: "Spec acceptance criteria require README scope and soft budgets."
@@ -30,7 +30,7 @@ related:
 # Active memory tier
 
 This directory holds **active-memory** only. The Feature cites scope rules at
-`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [235, 251], contentHash: 9b2ddcc}`.
+`{kind: lines, path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json, range: [235, 251], contentHash: 9b2ddcc}`.
 
 ## What belongs here
 

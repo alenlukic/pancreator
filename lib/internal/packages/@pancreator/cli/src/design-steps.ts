@@ -65,8 +65,8 @@ export async function resolveDesignStepsConfig(repoRoot: string, featureId: stri
   return { designSteps, designStepsSource: source };
 }
 
-export function uxSpecRel(featureId: string): string {
-  return path.posix.join("lib", "memory", "features", featureId, "ux-spec.md");
+export function uxSpecRel(runDir: string): string {
+  return path.posix.join(runDir, "ux-spec.md");
 }
 
 export function productPlanPromptRel(runDir: string): string {
@@ -148,7 +148,7 @@ Emit exactly these artifacts:
 
 - \`${designPlanRel(input.runDir)}\`
 - \`${designAcceptanceCriteriaRel(input.runDir)}\`
-- \`${uxSpecRel(input.featureId)}\`
+- \`${uxSpecRel(input.runDir)}\`
 
 The design plan and \`D-AC-\` criteria MUST be specific enough for a less sophisticated implementation model to execute without design re-planning. Keep the UX spec aligned with the taste profile, the holistic craft bar, and Mobbin-fidelity orientation-panel standards from \`design-craft.md\`. Do not run design QA; \`${DESIGN_REVIEWER_PERSONA}\` owns that during test.
 `;
@@ -161,7 +161,7 @@ export function renderDesignQaPrompt(input: {
 }): string {
   return `# Design-QA companion prompt — ${input.featureId}
 
-You are \`${DESIGN_REVIEWER_PERSONA}\`. Read \`lib/personas/design-reviewer.md\`, \`lib/memory/handbook/engineering/design-craft.md\`, \`${uxSpecRel(input.featureId)}\`, \`${designPlanRel(input.runDir)}\`, \`${designAcceptanceCriteriaRel(input.runDir)}\`, \`${path.posix.join(input.runDir, "review.md")}\`, and the current local diff.
+You are \`${DESIGN_REVIEWER_PERSONA}\`. Read \`lib/personas/design-reviewer.md\`, \`lib/memory/handbook/engineering/design-craft.md\`, \`${uxSpecRel(input.runDir)}\`, \`${designPlanRel(input.runDir)}\`, \`${designAcceptanceCriteriaRel(input.runDir)}\`, \`${path.posix.join(input.runDir, "review.md")}\`, and the current local diff.
 
 Run global UI/UX/design rules QA with the Chrome DevTools MCP server. Your gate enforces holistic craft bar, spacing, hierarchy, interaction states, accessibility basics, responsive behavior, copy clarity, and global UI/UX/design rules. Do NOT gate task-specific product/design/technical acceptance criteria; reviewer and qa-tester own those. Use the plan only to locate affected surfaces.
 

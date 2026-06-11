@@ -1,0 +1,46 @@
+{
+  "feature_id": "ci-best-practices-batch",
+  "title": "CI and best-practices batch — test aggregation, compliance runner, citation refresh, MCP read tools",
+  "category": "quality-governance",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "24959_1704_ci-best-practices-batch",
+  "summary": "ci-best-practices-batch shipped four coordinated updates: root CI test aggregation, a descriptor-driven compliance runner, deterministic citation refresh tooling, and typed MCP read-only handlers. The reviewer cleared MF-01 and MF-02, and the implementation report records green validation across the required command…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run pan advance to complete, then pan close-artifacts for archival closure per…",
+    "handoff.decision: index-complete",
+    "intake.human_approval_note: Delivery report and ship gate are complete; index links ship artifacts before complete-stage archival."
+  ],
+  "implementation_surfaces": [
+    "package.json",
+    "OPERATION.md",
+    "lib/internal/tools/run-compliance.mjs",
+    "lib/internal/tools/refresh-citations.mjs",
+    "lib/internal/packages/@pancreator/mcp-server/lib/pan-read-handlers.ts",
+    "lib/internal/packages/@pancreator/mcp-server/lib/definitions.ts",
+    "lib/internal/packages/@pancreator/mcp-server/lib/pan-execute.ts",
+    "lib/internal/packages/@pancreator/mcp-server/lib/pan-execute.test.ts",
+    "lib/internal/packages/@pancreator/mcp-server/README.md",
+    "tests/run-compliance.test.mjs",
+    "tests/refresh-citations.test.mjs",
+    "tests/repo-structure.test.mjs",
+    "lib/personas/compliance-auditor.md"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    }
+  ],
+  "open_followups": ["wp-c-bulk-sweep", "touch-set-no-diff-paths", "mcp-write-tools-deferred"],
+  "compressed_from": [
+    "lib/memory/features/ci-best-practices-batch/delivery-report.md",
+    "lib/memory/features/ci-best-practices-batch/index.json",
+    "lib/memory/features/ci-best-practices-batch/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

@@ -8,7 +8,7 @@ supersedes: null
 superseded-by: null
 references:
   - kind: lines
-    path: lib/memory/features/timestamp-naming-conventions/spec.md
+    path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json
     range: [50, 112]
     contentHash: 2355044
     note: "Engineering Spec acceptance criteria for UTC naming, migration, and handbook updates."
@@ -26,7 +26,7 @@ references:
 
 ## Context
 
-Pancreator stores temporal pipeline artifacts under `.pan/work/` and operator messages under `lib/inbox/`. Current names do not provide one reverse-chronological convention for day directories, work items, or inbox artifacts. The Engineering Spec requires a UTC-only convention, a migration, and reference updates. Citation: `{kind: lines, path: lib/memory/features/timestamp-naming-conventions/spec.md, range: [50, 112], contentHash: 2355044}`.
+Pancreator stores temporal pipeline artifacts under `.pan/work/` and operator messages under `lib/inbox/`. Current names do not provide one reverse-chronological convention for day directories, work items, or inbox artifacts. The Engineering Spec requires a UTC-only convention, a migration, and reference updates. Citation: `{kind: lines, path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json, range: [50, 112], contentHash: 2355044}`.
 
 ADR 0003 defines the inbox lifecycle and archive boundary. This ADR builds on that lifecycle by adding naming rules for active, threaded, outbound, and archived inbox artifacts. Citation: `{kind: lines, path: lib/memory/adr/0003-inbox-lifecycle-and-archival.md, range: [52, 109], contentHash: 064d359}`.
 
@@ -34,17 +34,17 @@ ADR 0004 defines the documentation-impact check. This ADR uses that decision by 
 
 ## Decision
 
-When Pancreator creates or processes an in-scope temporal artifact, Pancreator SHALL use UTC as the only time zone. Citation: `{kind: lines, path: lib/memory/features/timestamp-naming-conventions/spec.md, range: [54, 59], contentHash: a4dd126}`.
+When Pancreator creates or processes an in-scope temporal artifact, Pancreator SHALL use UTC as the only time zone. Citation: `{kind: lines, path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json, range: [54, 59], contentHash: a4dd126}`.
 
-When Pancreator names a `.pan/work/` day directory, Pancreator SHALL use `{days-to-FDS}_{MM-DD-YY}` with a 6-digit days-to-`FDS` prefix. Citation: `{kind: lines, path: lib/memory/features/timestamp-naming-conventions/spec.md, range: [67, 70], contentHash: 2355044}`.
+When Pancreator names a `.pan/work/` day directory, Pancreator SHALL use `{days-to-FDS}_{MM-DD-YY}` with a 6-digit days-to-`FDS` prefix. Citation: `{kind: lines, path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json, range: [67, 70], contentHash: 2355044}`.
 
-When Pancreator names a `.pan/work/` task directory, Pancreator SHALL use `{SID-prefix}_{HHMM}_{semantic-suffix}` and SHALL include a bare integer collision counter between `HHMM` and the semantic suffix when a basename conflict occurs. Citation: `{kind: lines, path: lib/memory/features/timestamp-naming-conventions/spec.md, range: [71, 100], contentHash: 2355044}`.
+When Pancreator names a `.pan/work/` task directory, Pancreator SHALL use `{SID-prefix}_{HHMM}_{semantic-suffix}` and SHALL include a bare integer collision counter between `HHMM` and the semantic suffix when a basename conflict occurs. Citation: `{kind: lines, path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json, range: [71, 100], contentHash: 2355044}`.
 
-When Pancreator names system-produced artifacts under `lib/inbox/out/` or `lib/inbox/threads/`, Pancreator SHALL use `{SID-prefix}_{HHMM}_{semantic-suffix}`. Citation: `{kind: lines, path: lib/memory/features/timestamp-naming-conventions/spec.md, range: [77, 84], contentHash: 2355044}`.
+When Pancreator names system-produced artifacts under `lib/inbox/out/` or `lib/inbox/threads/`, Pancreator SHALL use `{SID-prefix}_{HHMM}_{semantic-suffix}`. Citation: `{kind: lines, path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json, range: [77, 84], contentHash: 2355044}`.
 
-When an agent processes a non-conforming human-generated artifact under `lib/inbox/in/` or `lib/inbox/threads/`, that agent MUST append the two time prefixes before downstream processing continues. Citation: `{kind: lines, path: lib/memory/features/timestamp-naming-conventions/spec.md, range: [85, 90], contentHash: 2355044}`.
+When an agent processes a non-conforming human-generated artifact under `lib/inbox/in/` or `lib/inbox/threads/`, that agent MUST append the two time prefixes before downstream processing continues. Citation: `{kind: lines, path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json, range: [85, 90], contentHash: 2355044}`.
 
-When Pancreator migrates existing artifacts, the migration MUST derive timestamps in this order: first git commit timestamp, then frontmatter `created_at`, then filesystem `mtime`, then operator override. Git commit time is deterministic and replayable across clones; frontmatter is explicit but sparse; `mtime` is mutable; operator override is last because it is manual. Citation: `{kind: lines, path: lib/memory/features/timestamp-naming-conventions/spec.md, range: [123, 129], contentHash: 2355044}`.
+When Pancreator migrates existing artifacts, the migration MUST derive timestamps in this order: first git commit timestamp, then frontmatter `created_at`, then filesystem `mtime`, then operator override. Git commit time is deterministic and replayable across clones; frontmatter is explicit but sparse; `mtime` is mutable; operator override is last because it is manual. Citation: `{kind: lines, path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json, range: [123, 129], contentHash: 2355044}`.
 
 When Pancreator encodes the policy, the coder SHOULD use the existing compliance descriptor shape in `tests/compliance/` and MAY add Conftest/Rego or an equivalent runner when the descriptor requires executable path validation. Citation: `{kind: lines, path: tests/compliance/schemas/latest.yaml, range: [1, 63], contentHash: 8bbb8a7}`.
 

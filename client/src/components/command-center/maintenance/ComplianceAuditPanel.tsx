@@ -27,7 +27,7 @@ type ComplianceReport = {
   results?: ComplianceResultRow[];
 };
 
-const AUDIT_HISTORY_PATH = "lib/memory/features/compliance-tests/audit-history.json";
+const AUDIT_HISTORY_PATH = "lib/memory/features/quality-governance/compliance-tests/audit-history.json";
 const SEVERITY_ORDER = ["high", "medium", "low"] as const;
 
 function descriptorLabel(id: string): string {

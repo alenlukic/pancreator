@@ -35,7 +35,7 @@ stages:
       - .pan/work/<day>/<task-id>/product-acceptance-criteria.md
       - .pan/work/<day>/<task-id>/design-plan.md
       - .pan/work/<day>/<task-id>/design-acceptance-criteria.md
-      - lib/memory/features/<feature-id>/ux-spec.md
+      - .pan/work/<day>/<task-id>/ux-spec.md
       - .pan/work/<day>/<task-id>/tech-plan.md
       - .pan/work/<day>/<task-id>/tech-acceptance-criteria.md
       - .pan/work/<day>/<task-id>/manual-qa-test-cases.md
@@ -71,7 +71,7 @@ stages:
       - .pan/work/<day>/<task-id>/review.md
       - .pan/work/<day>/<task-id>/touch-set.json
       - .pan/work/<day>/<task-id>/manual-qa-test-cases.md
-      - lib/memory/features/<feature-id>/ux-spec.md
+      - .pan/work/<day>/<task-id>/ux-spec.md
     outputs:
       - .pan/work/<day>/<task-id>/test-report.md
       - .pan/work/<day>/<task-id>/design-qa-report.md
@@ -79,6 +79,8 @@ stages:
   - id: report
     persona: tech-writer
     label: Author the delivery report
+    outputs:
+      - .pan/work/<day>/<task-id>/delivery-report.md
   - id: compliance
     persona: compliance-auditor
     label: Audit baseline-delta compliance (saved audit history) and run final validation bundle
@@ -89,6 +91,6 @@ stages:
     persona: librarian
     label: Index emitted artifacts and refresh the feature index before librarian artifact closure
     outputs:
-      - lib/memory/features/<feature-id>/index.json
+      - lib/memory/features/<category>/<feature-id>/index.json
       - .pan/work/<day>/<task-id>/pipeline-close.md
       - .pan/work/<day>/<task-id>/operator-verification.md

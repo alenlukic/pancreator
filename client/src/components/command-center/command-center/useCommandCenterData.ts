@@ -16,7 +16,7 @@ import {
 } from "./command-center-types";
 import type { ShippedOutcome } from "@/services/run-state";
 
-const AUDIT_HISTORY_PATH = "lib/memory/features/compliance-tests/audit-history.json";
+const AUDIT_HISTORY_PATH = "lib/memory/features/quality-governance/compliance-tests/audit-history.json";
 
 type AuditHistoryEntry = {
   stage_status?: string;

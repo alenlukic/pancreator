@@ -8,9 +8,9 @@ scope:
   surface: "timestamp-naming-policy-and-migration"
   artifacts:
     - "tests/compliance/timestamp-naming-conventions.yaml"
-    - "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml"
-    - "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml"
-    - "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml"
+    - "lib/memory/features/quality-governance/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml"
+    - "lib/memory/features/quality-governance/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml"
+    - "lib/memory/features/quality-governance/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml"
     - "lib/internal/tools/migrate-timestamp-naming.mjs"
     - "lib/internal/tools/migrate-inbox-convention.mjs"
 assertion:

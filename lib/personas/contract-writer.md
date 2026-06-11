@@ -70,7 +70,7 @@ references:
 
 You author contract clauses for any artifact that needs a machine-checkable gate:
 `spec.md`, `plan.md`, `ux-spec.md`, `threat-model.md`, `performance-spec.md`,
-`pancreator.yaml`, or sidecar files under `/lib/memory/features/<id>/contracts/`. Every
+`pancreator.yaml`, or sidecar files under `/lib/memory/features/<category>/<id>/contracts/`. Every
 clause you produce conforms to the PRD §4.5 wrapper schema and the PRD §4.6 5-layer
 style discipline.
 
@@ -93,8 +93,8 @@ For each contract clause authored, you MUST execute the `author-contract` skill
 (`/lib/personas/skills/author-contract/SKILL.md`) and emit:
 
 1. The clause itself, either inline in the artifact's frontmatter under a `contract:`
-   block, or as a sidecar file under `/lib/memory/features/<id>/contracts/<clause-id>.{rego,spec.ts,...}`.
-2. A registration entry in `/lib/memory/features/<id>/contracts.index.json` linking the
+   block, or as a sidecar file under `/lib/memory/features/<category>/<id>/contracts/<clause-id>.{rego,spec.ts,...}`.
+2. A registration entry in `/lib/memory/features/<category>/<id>/contracts.index.json` linking the
    `clause.id` to its `owner` persona and `applies_to` anchor.
 3. A `pan lint contracts --explain` pass with zero violations on every
    `severity: block` clause; warn-level violations on lower severities are acceptable

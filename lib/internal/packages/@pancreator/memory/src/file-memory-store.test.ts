@@ -50,7 +50,7 @@ describe("FileMemoryStore", () => {
     const id = asFeatureId("my-feature");
     await mem.writeJsonFeatureIndex(id, { a: 1 });
     const raw = await readFile(
-      path.join(root, "features", "my-feature", "index.json"),
+      path.join(root, "features", "uncategorized", "my-feature", "index.json"),
       "utf8",
     );
     expect(raw).toContain(`"a": 1`);
@@ -66,7 +66,7 @@ describe("FileMemoryStore", () => {
     const id = asFeatureId("array-feature");
     await mem.writeJsonFeatureIndex(id, { depends_on: ["P5", "P6"] });
     const raw = await readFile(
-      path.join(root, "features", "array-feature", "index.json"),
+      path.join(root, "features", "uncategorized", "array-feature", "index.json"),
       "utf8",
     );
     expect(raw).toMatch(/"depends_on": \["P5", "P6"\]/);

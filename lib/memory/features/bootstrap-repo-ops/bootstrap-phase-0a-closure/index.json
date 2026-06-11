@@ -1,0 +1,15 @@
+{
+  "feature_id": "bootstrap-phase-0a-closure",
+  "title": "Bootstrap Phase 0a closure",
+  "category": "bootstrap-repo-ops",
+  "status": "ready-for-review",
+  "summary": "Phase 0a delivered the M1 primitive package skeleton under lib/internal/packages/@pancreator/, the unscoped meta package at lib/internal/packages/pancreator, workspace build/lint/typecheck scripts, and the phase-0a-verification.md record capturing observed command exits.",
+  "implementation_surfaces": ["lib/internal/packages/@pancreator/"],
+  "compressed_from": [
+    "lib/memory/features/bootstrap-phase-0a-closure/delivery-report.md",
+    "lib/memory/features/bootstrap-phase-0a-closure/index.json",
+    "lib/memory/features/bootstrap-phase-0a-closure/phase-0a-verification.md",
+    "lib/memory/features/bootstrap-phase-0a-closure/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

@@ -1,0 +1,31 @@
+{
+  "feature_id": "pancreator-contract-runner-rego",
+  "title": "Engineering Spec - @pancreator/contract-runner-rego",
+  "category": "platform-substrate",
+  "status": "indexed",
+  "current_stage": "contracts-authored",
+  "summary": "Bootstrap slice 54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants indexed this Phase-2 engineering-spec folder for @pancreator/contract-runner-rego. Canonical requirements remain in spec.md and registered contracts under contracts/ (where present).",
+  "planning_context": [
+    "handoff.handoff_note: Per-folder index pairs spec.md with this stub delivery-report.md. Promote to full feature-delivery memory when package scope closes.",
+    "handoff.decision: stub-index"
+  ],
+  "implementation_surfaces": ["lib/internal/packages/@pancreator/contract-runner-rego/"],
+  "retained_artifacts": [
+    "contracts/pancreator.contract_runner_rego.package_shape.rego",
+    "contracts/pancreator.contract_runner_rego.package_shape.yaml",
+    "contracts/pancreator.contract_runner_rego.readme_ergonomics.yaml",
+    "contracts.index.json"
+  ],
+  "compressed_from": [
+    "lib/memory/features/pancreator-contract-runner-rego/contracts/pancreator.contract_runner_rego.package_shape.rego",
+    "lib/memory/features/pancreator-contract-runner-rego/contracts/pancreator.contract_runner_rego.package_shape.yaml",
+    "lib/memory/features/pancreator-contract-runner-rego/contracts/pancreator.contract_runner_rego.readme_ergonomics.yaml",
+    "lib/memory/features/pancreator-contract-runner-rego/contracts.index.json",
+    "lib/memory/features/pancreator-contract-runner-rego/delivery-report.md",
+    "lib/memory/features/pancreator-contract-runner-rego/index.json",
+    "lib/memory/features/pancreator-contract-runner-rego/plan.md",
+    "lib/memory/features/pancreator-contract-runner-rego/spec.md",
+    "lib/memory/features/pancreator-contract-runner-rego/tasks.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

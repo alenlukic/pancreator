@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "pancreator.adopter_scan.package_shape",
+      "path": "/lib/memory/features/platform-substrate/pancreator-adopter-scan/contracts/pancreator.adopter_scan.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "lib/internal/packages/@pancreator/adopter-scan/**"
+      }
+    },
+    {
+      "id": "pancreator.adopter_scan.readme_ergonomics",
+      "path": "/lib/memory/features/platform-substrate/pancreator-adopter-scan/contracts/pancreator.adopter_scan.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "lib/internal/packages/@pancreator/adopter-scan/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "222cba7"
+      }
+    }
+  ]
+}

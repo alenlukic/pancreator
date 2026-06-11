@@ -8,7 +8,7 @@ scope:
   surface: "json-formatting-policy-migration-and-hashes"
   artifacts:
     - "tests/compliance/json-formatting.yaml"
-    - "lib/memory/features/json-formatting/spec.md"
+    - "lib/memory/features/quality-governance/json-formatting/index.json"
     - "lib/internal/tools/canonical-json-format.mjs"
     - "lib/internal/tools/migrate-json-formatting.mjs"
     - "tests/migrate-json-formatting.test.mjs"

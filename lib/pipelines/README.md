@@ -41,6 +41,6 @@ lands, operators SHALL run the seed manually:
    then delegate the librarian persona through the `scan`, `curate`, and `report`
    stages using a dedicated inbox directive when drift work is required.
 3. **Destinations:** drift reports land in `lib/inbox/out/`; per-feature citation
-   scans land under `lib/memory/features/<feature-id>/citation-rot-scan.md`.
+   scans land under `lib/memory/curation/<feature-id>-citation-rot-scan.md`.
 4. **Ownership:** the librarian persona owns the anti-rot loop; scheduler automation
    deferral is recorded under `metadata.cron_seed.anti_rot_loop.scheduler_deferral`.

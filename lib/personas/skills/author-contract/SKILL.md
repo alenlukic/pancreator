@@ -17,7 +17,7 @@ metadata:
   pancreator-allowed-kinds-m3plus: [rego, llm-judge, playwright, schemathesis, axe, semgrep, hypothesis, fast-check, ts-predicate, py-predicate]
   pancreator-emits:
     - clause-inline-or-sidecar
-    - /lib/memory/features/<id>/contracts.index.json entry
+    - /lib/memory/features/<category>/<id>/contracts.index.json entry
 references:
   - kind: lines
     path: .docs/PRD.md
@@ -150,11 +150,11 @@ checklist in `/lib/memory/handbook/contract-style.md`.
 When all gates are green, you MUST:
 
 1. Place the clause inline (in the artifact's frontmatter under `contract:`) or as
-   a sidecar file under `/lib/memory/features/<id>/contracts/<clause-id>.{rego,spec.ts,...}`
+   a sidecar file under `/lib/memory/features/<category>/<id>/contracts/<clause-id>.{rego,spec.ts,...}`
    referenced from the clause via `spec:` / `module:`. Sidecar is preferred for
    `kind: playwright`, `kind: schemathesis`, large rego modules, or anything
    benefiting from native LSP support.
-2. Auto-register the `clause.id` in `/lib/memory/features/<id>/contracts.index.json`
+2. Auto-register the `clause.id` in `/lib/memory/features/<category>/<id>/contracts.index.json`
    with the resolved `applies_to` anchor and the named `owner` persona.
 3. Verify the wrapper schema (Zod) and the per-kind payload schema both validate
    from Phase 3 step 2 onward; until then, hand-check the wrapper against

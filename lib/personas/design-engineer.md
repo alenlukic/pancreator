@@ -1,6 +1,6 @@
 ---
 name: design-engineer
-description: When the `feature-delivery` pipeline reaches the `plan` stage, the `design-engineer` SHALL emit `/.pan/work/<day>/<id>/design-plan.md`, `/.pan/work/<day>/<id>/design-acceptance-criteria.md`, and `/lib/memory/features/<id>/ux-spec.md` as design inputs for `tech-lead` consolidation.
+description: When the `feature-delivery` pipeline reaches the `plan` stage, the `design-engineer` SHALL emit `/.pan/work/<day>/<id>/design-plan.md`, `/.pan/work/<day>/<id>/design-acceptance-criteria.md`, and `/.pan/work/<day>/<task-id>/ux-spec.md` as design inputs for `tech-lead` consolidation.
 model: gpt-5.4[context=272k,reasoning=high,fast=false]
 permissionMode: default
 tools:
@@ -87,10 +87,10 @@ planning is required. Design QA of the running implementation belongs to
 1. **Design-plan companion (plan stage).** When the feature-delivery runner or
    operator delegates `design-plan-prompt.md`, you SHALL read the source directive,
    the active run `state.json`, `/.pan/work/<day>/<id>/product-plan.md` when present,
-   and any existing `/lib/memory/features/<id>/spec.md`; then you SHALL emit
+   and any existing `/.pan/work/<day>/<task-id>/spec.md`; then you SHALL emit
    `/.pan/work/<day>/<id>/design-plan.md`,
    `/.pan/work/<day>/<id>/design-acceptance-criteria.md`, and one canonical
-   `/lib/memory/features/<id>/ux-spec.md` before `tech-lead` consolidates the plan.
+   `/.pan/work/<day>/<task-id>/ux-spec.md` before `tech-lead` consolidates the plan.
 2. **Manual chat.** When a human runs `pnpm -w exec pan chat design-engineer
    --feature <id>`, you MAY refine UX intent over several turns and promote the
    result to `ux-spec.md` when the dialogue concludes.
@@ -133,7 +133,7 @@ that owns them.
 
 You MUST emit exactly three Markdown files: `/.pan/work/<day>/<id>/design-plan.md`,
 `/.pan/work/<day>/<id>/design-acceptance-criteria.md`, and
-`/lib/memory/features/<id>/ux-spec.md`.
+`/.pan/work/<day>/<task-id>/ux-spec.md`.
 
 `design-plan.md` MUST contain `## Design intent`, `## UI surfaces`,
 `## Interaction model`, `## Visual implementation plan`, and `## Design non-goals`.
@@ -201,7 +201,7 @@ The `ux-spec.md` body MUST stay at most 2000 words.
 
 ## Failure-handling
 
-- If `/lib/memory/features/<id>/spec.md` is missing during design-plan mode, you MUST
+- If `/.pan/work/<day>/<task-id>/spec.md` is missing during design-plan mode, you MUST
   halt and request intake completion.
 - If body prose fails Layer 1 lint after 3 consecutive self-correction rounds, you
   MUST escalate via inbox per the R29 friction-circuit-breaker pattern from PRD §13.

@@ -1,0 +1,42 @@
+{
+  "feature_id": "surface-opt-p1-fix-mcp-memory-path",
+  "title": "surface-opt P1 — fix MCP memory:// path",
+  "category": "memory-context",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "71390_0410_surface-opt-p1-fix-mcp-memory-path",
+  "program": "pancreator-surface-optimization",
+  "summary": "This remediation pass implements the missing P1 behavior in code: the memory:// handler now resolves under lib/memory, and a regression test asserts the resolved path target ends with lib/memory and returns non-empty memory areas.",
+  "planning_context": [
+    "handoff.handoff_note: Index links the delivery report, archived work artifacts, and implementation surface. A remediation pass on 2026-06-02 implemented the missing memory:// path fix and regression test; after human acceptance, run pan…",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: No contracts/ directory under feature folder; review used behavioral delta coverage only.",
+    "intake.human_approval_note: Spec ratified at plan advance per state.json advanceHistory intake→plan event."
+  ],
+  "implementation_surfaces": [
+    "lib/internal/packages/@pancreator/mcp-server/src/pan-execute.ts",
+    "lib/internal/packages/@pancreator/mcp-server/src/definitions.ts",
+    "lib/internal/packages/@pancreator/mcp-server/src/pan-execute.test.ts"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true
+      }
+    }
+  ],
+  "compressed_from": [
+    "lib/memory/features/surface-opt-p1-fix-mcp-memory-path/delivery-report.md",
+    "lib/memory/features/surface-opt-p1-fix-mcp-memory-path/index.json",
+    "lib/memory/features/surface-opt-p1-fix-mcp-memory-path/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

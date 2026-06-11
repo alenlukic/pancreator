@@ -40,7 +40,7 @@ function sampleState(overrides: Partial<FeatureDeliveryState> = {}): FeatureDeli
         from: "index",
         to: "complete",
         event: "artifacts_indexed",
-        artifact: "lib/memory/features/demo-feature/index.json",
+        artifact: "lib/memory/features/bootstrap-repo-ops/demo-feature/index.json",
       },
     ],
     ...overrides,

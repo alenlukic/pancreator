@@ -1,0 +1,21 @@
+{
+  "feature_id": "cursor-token-economy",
+  "title": "Cursor Token Economy and Default Context Budget",
+  "category": "memory-context",
+  "status": "shipped",
+  "current_stage": "shipped",
+  "summary": "This Feature reduces default Cursor cache-read volume while preserving explicit access to canonical repo surfaces. It adds a root .cursorindexingignore, narrows selected Cursor rule globs, introduces lib/memory/handbook/context-economy.md with a routing entry in lib/memory/handbook/index.md, splits PRD orientation…",
+  "validation": [
+    {
+      "review": {
+        "review_passes": true
+      }
+    }
+  ],
+  "compressed_from": [
+    "lib/memory/features/cursor-token-economy/delivery-report.md",
+    "lib/memory/features/cursor-token-economy/index.json",
+    "lib/memory/features/cursor-token-economy/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

@@ -1,0 +1,63 @@
+{
+  "feature_id": "command-center-active-memory-craft-enforcement",
+  "title": "Command Center active memory craft enforcement",
+  "category": "command-center",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "82780_0100_command-center-active-memory-craft-enforcement",
+  "program": "command-center",
+  "summary": "This feature closes design-craft gates #2, #3, #9, #11, and #12 on the Command Center Pipeline Active memory panel while retaining F-05 expand toggle and F-10 relative timestamp from operator-readability. The implement stage replaces blockersSummary prose with structured blockerItems chips, hides visible lib/inbox/in/…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian.",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: No contracts.index.json sidecar; no feature-local clauses declared.",
+    "intake.human_approval_note: Supervisor ship ratification at 2026-06-09T01:35:00Z with human_ratified_diff true; staged diff limited to six touch-set client paths delivering design-craft gates #2, #3, #9, #11, and #12 while retaining F-05 and F-10."
+  ],
+  "implementation_surfaces": [
+    "client/src/components/command-center/pipeline/ActiveMemoryHeader.tsx",
+    "client/src/services/active-memory.ts",
+    "client/src/services/run-state-shared.ts",
+    "client/src/app/api/active-memory/route.ts",
+    "client/src/app/globals.css",
+    "client/src/app/page.test.tsx",
+    "client/src/app/api/active-memory/route.test.ts"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true,
+        "design_qa_passes": true
+      }
+    },
+    {
+      "compliance": {
+        "compliance_passes": true
+      }
+    }
+  ],
+  "open_followups": [
+    "copy-path-vitest-gap",
+    "parse-blockers-fallback-untested",
+    "source-link-touch-target",
+    "pipeline-sidebar-mobile-width",
+    "spec-blockersSummary-wording",
+    "blockers-source-prop-name",
+    "adr-draft-promotion",
+    "human-commit-untracked"
+  ],
+  "compressed_from": [
+    "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
+    "lib/memory/features/command-center-active-memory-craft-enforcement/index.json",
+    "lib/memory/features/command-center-active-memory-craft-enforcement/spec.md",
+    "lib/memory/features/command-center-active-memory-craft-enforcement/ux-spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

@@ -46,7 +46,7 @@ describe("feature-delivery-stage-artifacts", () => {
       },
       "plan",
     );
-    expect(contract.requiredAfterStageWork).toContain("lib/memory/features/demo-feature/ux-spec.md");
+    expect(contract.requiredAfterStageWork).toContain(".pan/work/172996_05-10-26/38670_1315_demo-feature/ux-spec.md");
   });
 
   it("test stage requires design-qa-report when design steps are on", () => {

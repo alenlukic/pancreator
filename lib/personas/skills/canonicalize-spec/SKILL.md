@@ -1,6 +1,6 @@
 ---
 name: canonicalize-spec
-description: Converts one informal Markdown spec posted under `lib/inbox/in/` into one canonical Engineering Spec at `/lib/memory/features/<id>/spec.md`. Scaffolds the Feature folder, parses the informal source, runs an inbox-borne clarifying-question dialogue at most 5 rounds, folds each human reply into the working draft, then stages the spec for the `human_approval` gate.
+description: Converts one informal Markdown spec posted under `lib/inbox/in/` into one canonical Engineering Spec at `/.pan/work/<day>/<task-id>/spec.md`. Scaffolds the Feature folder, parses the informal source, runs an inbox-borne clarifying-question dialogue at most 5 rounds, folds each human reply into the working draft, then stages the spec for the `human_approval` gate.
 license: Apache-2.0
 metadata:
   pancreator-stability: experimental
@@ -11,8 +11,8 @@ metadata:
     - /lib/memory/handbook/glossary.md
     - /lib/memory/handbook/contract-style.md
   pancreator-emits:
-    - /lib/memory/features/<id>/spec.md
-    - /lib/memory/features/<id>/index.json
+    - /.pan/work/<day>/<task-id>/spec.md
+    - /lib/memory/features/<category>/<id>/index.json
     - lib/inbox/threads/<thread-id>/<round>.md
     - lib/memory/active/current.md
 references:
@@ -30,7 +30,7 @@ references:
     path: .docs/PRD.md
     range: [641, 648]
     contentHash: 2eb6aa4
-    note: "PRD §7 — feature-delivery `intake` stage YAML declaring inputs `[inbox_message]`, outputs `[/lib/memory/features/<id>/spec.md]`, `loop.max_rounds: 5`, and `gate: human_approval`."
+    note: "PRD §7 — feature-delivery `intake` stage YAML declaring inputs `[inbox_message]`, outputs `[/.pan/work/<day>/<task-id>/spec.md]`, `loop.max_rounds: 5`, and `gate: human_approval`."
   - kind: lines
     path: .docs/PRD.md
     range: [921, 931]
@@ -58,7 +58,7 @@ output MUST satisfy the Spec Kit v0.8 layout cited in
   trigger the `intake` stage; an empty queue MUST halt and route an inbox
   item per the Failure-handling section.
 - `/lib/memory/features/` SHALL exist; the skill scaffolds
-  `/lib/memory/features/<id>/` on first invocation.
+  `/lib/memory/features/<category>/<id>/` on first invocation.
 - `/lib/memory/handbook/glossary.md` SHALL exist; every domain noun in the
   canonical spec resolves through this file.
 - `/lib/memory/handbook/contract-style.md` SHALL exist; the spec body satisfies
@@ -78,7 +78,7 @@ rather than overwrite.
 Scaffold the directory layout per PRD §8 lines 921 through 931:
 
 ```
-/lib/memory/features/<id>/
+/lib/memory/features/<category>/<id>/
   index.json          # empty placeholder; librarian populates at post_run
   spec.md             # this skill's canonical output
 ```
@@ -146,7 +146,7 @@ question SHALL persist into the next round.
 ### Step 5 — Author the canonical Engineering Spec
 
 When the open-question list is empty, you MUST overwrite
-`/lib/memory/features/<id>/spec.md` with the four `##` sections below in this
+`/.pan/work/<day>/<task-id>/spec.md` with the four `##` sections below in this
 order. Missing sections fail the gate.
 
 1. **Spec.** One paragraph at most 120 words stating the Feature's intent,
@@ -185,7 +185,7 @@ PRD §13.
 
 When all gates are green, you MUST:
 
-1. Stage `/lib/memory/features/<id>/spec.md`. You MUST NOT commit; you MUST
+1. Stage `/.pan/work/<day>/<task-id>/spec.md`. You MUST NOT commit; you MUST
    NOT push.
 2. Open one inbox item at
    `lib/inbox/in/<timestamp>-intake-<id>-ratification.md` summarizing the

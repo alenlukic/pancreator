@@ -118,11 +118,84 @@ export class FileMemoryStore implements MemoryStore {
     return keys.sort();
   }
 
+  private async resolveFeatureIndexKey(id: FeatureId): Promise<string | undefined> {
+    const rootRaw = await this.get("features/index.json");
+    if (rootRaw !== undefined) {
+      try {
+        const root = JSON.parse(rootRaw) as unknown;
+        const categories =
+          root !== null && typeof root === "object" && "categories" in root
+            ? (root as { categories?: unknown }).categories
+            : undefined;
+        if (Array.isArray(categories)) {
+          for (const category of categories) {
+            if (category === null || typeof category !== "object" || !("features" in category)) {
+              continue;
+            }
+            const features = (category as { features?: unknown }).features;
+            if (!Array.isArray(features)) {
+              continue;
+            }
+            const match = features.find(
+              (feature) =>
+                feature !== null &&
+                typeof feature === "object" &&
+                (feature as { feature_id?: unknown }).feature_id === id &&
+                typeof (feature as { path?: unknown }).path === "string",
+            ) as { path?: string } | undefined;
+            if (match?.path !== undefined) {
+              const rel = match.path.replace(/^lib\/memory\//, "");
+              assertSafeRelativeKey(rel);
+              return rel;
+            }
+          }
+        }
+      } catch {
+        // Fall through to direct and scanned lookup for partially migrated repos.
+      }
+    }
+
+    const direct = `features/${id}/index.json`;
+    if ((await this.get(direct)) !== undefined) {
+      return direct;
+    }
+
+    const uncategorized = `features/uncategorized/${id}/index.json`;
+    if ((await this.get(uncategorized)) !== undefined) {
+      return uncategorized;
+    }
+
+    const indexKeys = (await this.listKeys("features")).filter((key) => key.endsWith("/index.json"));
+    for (const key of indexKeys) {
+      const raw = await this.get(key);
+      if (raw === undefined) {
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(raw) as unknown;
+        if (
+          parsed !== null &&
+          typeof parsed === "object" &&
+          (parsed as { feature_id?: unknown }).feature_id === id
+        ) {
+          return key;
+        }
+      } catch {
+        // Ignore malformed feature indexes during fallback scanning.
+      }
+    }
+
+    return undefined;
+  }
+
   /**
-   * The system SHALL read `lib/memory/features/<id>/index.json` when present.
+   * The system SHALL read category-aware `lib/memory/features/{category}/{id}/index.json` when present.
    */
   async readJsonFeatureIndex(id: FeatureId): Promise<unknown | undefined> {
-    const rel = `features/${id}/index.json`;
+    const rel = await this.resolveFeatureIndexKey(id);
+    if (rel === undefined) {
+      return undefined;
+    }
     const raw = await this.get(rel);
     if (raw === undefined) {
       return undefined;
@@ -131,10 +204,10 @@ export class FileMemoryStore implements MemoryStore {
   }
 
   /**
-   * The system SHALL write `lib/memory/features/<id>/index.json` as formatted JSON.
+   * The system SHALL write feature indexes as formatted JSON, preserving category-aware paths.
    */
   async writeJsonFeatureIndex(id: FeatureId, value: unknown): Promise<void> {
-    const rel = `features/${id}/index.json`;
+    const rel = (await this.resolveFeatureIndexKey(id)) ?? `features/uncategorized/${id}/index.json`;
     const text = stringifyMemoryJson(this.memoryRoot, value);
     await this.set(rel, text);
   }

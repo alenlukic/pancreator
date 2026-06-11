@@ -1,299 +1,506 @@
 {
-  "metadata": {
-    "pancreator-bootstrap-only": true,
-    "generated_by": "librarian",
-    "completed_at": "2026-04-27T18:10:00Z",
-    "note": "This global feature index is bootstrap-only until runtime feature indexing ships."
-  },
-  "features": [
+  "schema_version": 1,
+  "generated_by": "feature-memory-compression",
+  "layout": "lib/memory/features/<category>/<feature-id>/index.json",
+  "compression_policy": "Retain compact planning memory and active contract sidecars; omit full specs, plans, delivery reports, UX specs, generated evidence, and run artifacts from durable feature folders.",
+  "categories": [
     {
-      "feature_id": "bootstrap-phase-0a-closure",
-      "title": "Bootstrap Phase 0a closure",
-      "current_stage": "ratification",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/bootstrap-phase-0a-closure/index.json",
-        "range": [1, 1],
-        "contentHash": "af43bd5"
-      }
+      "id": "bootstrap-repo-ops",
+      "title": "Bootstrap and repository operations",
+      "when_to_read": "Use for bootstrap closure, repository layout, embedded install, and one-time migration history.",
+      "index_path": "lib/memory/features/bootstrap-repo-ops/index.md",
+      "features": [
+        {
+          "feature_id": "bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+          "title": "Bootstrap cruft cleanup batch — stub feature folders and Cursor agent variants",
+          "status": "indexed",
+          "path": "lib/memory/features/bootstrap-repo-ops/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/index.json"
+        },
+        {
+          "feature_id": "bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout",
+          "title": "Bootstrap de-hacking pass — simplify ops, docs, and memory layout",
+          "status": "indexed",
+          "path": "lib/memory/features/bootstrap-repo-ops/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/index.json"
+        },
+        {
+          "feature_id": "bootstrap-phase-0a-closure",
+          "title": "Bootstrap Phase 0a closure",
+          "status": "ready-for-review",
+          "path": "lib/memory/features/bootstrap-repo-ops/bootstrap-phase-0a-closure/index.json"
+        },
+        {
+          "feature_id": "bootstrap-phase-5-m1-exit-close-docs-bootstrap",
+          "title": "Bootstrap Phase 5 M1 Exit — close .docs/BOOTSTRAP.md",
+          "status": "indexed",
+          "path": "lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json"
+        },
+        {
+          "feature_id": "embedded-harness-install-project-root-pancreator-and-fresh-install-manifest",
+          "title": "Embedded harness install — project_root .pancreator and fresh-install manifest",
+          "status": "indexed",
+          "path": "lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json"
+        },
+        {
+          "feature_id": "embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs",
+          "title": "Embedded install — cursor agent sync, init content seeding, and inbox path bugs",
+          "status": "indexed",
+          "path": "lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json"
+        },
+        {
+          "feature_id": "repository-layout-restructure-and-archive-migration",
+          "title": "Repository Layout Restructure and Archive Migration",
+          "status": "indexed",
+          "path": "lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json"
+        }
+      ]
     },
     {
-      "feature_id": "bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
-      "title": "Bootstrap cruft cleanup batch — stub feature folders and Cursor agent variants",
-      "current_stage": "index",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/index.json",
-        "range": [1, 1],
-        "contentHash": "703406c"
-      }
+      "id": "command-center",
+      "title": "Command Center UX and operator surfaces",
+      "when_to_read": "Use when planning or reviewing Command Center UI, operator mission control, automation views, or design-craft work.",
+      "index_path": "lib/memory/features/command-center/index.md",
+      "features": [
+        {
+          "feature_id": "command-center-active-memory-craft-enforcement",
+          "title": "Command Center active memory craft enforcement",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-active-memory-craft-enforcement/index.json"
+        },
+        {
+          "feature_id": "command-center-active-memory-inbox-triage-multi-run-view",
+          "title": "Command Center — Active memory, inbox triage, and multi-run view",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-active-memory-inbox-triage-multi-run-view/index.json"
+        },
+        {
+          "feature_id": "command-center-active-memory-operator-craft-revalidation",
+          "title": "Command Center active memory operator craft revalidation",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-active-memory-operator-craft-revalidation/index.json"
+        },
+        {
+          "feature_id": "command-center-active-memory-operator-readability",
+          "title": "Command Center active memory operator readability",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-active-memory-operator-readability/index.json"
+        },
+        {
+          "feature_id": "command-center-app-shell-navigation-rail-and-operator-theme-tokens",
+          "title": "Command Center app shell, navigation rail, and operator theme tokens",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-app-shell-navigation-rail-and-operator-theme-tokens/index.json"
+        },
+        {
+          "feature_id": "command-center-automation-registry-and-management-ui",
+          "title": "Command Center — Automation registry and management UI",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-automation-registry-and-management-ui/index.json"
+        },
+        {
+          "feature_id": "command-center-automations-list-and-run-history-under-ten-surface-shell",
+          "title": "Command Center Automations list and run history under ten-surface shell Engineering Spec",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-automations-list-and-run-history-under-ten-surface-shell/index.json"
+        },
+        {
+          "feature_id": "command-center-command-center-operational-state-surface",
+          "title": "Command Center Command Center operational state surface",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-command-center-operational-state-surface/index.json"
+        },
+        {
+          "feature_id": "command-center-craft-polish-pass",
+          "title": "Command Center — craft polish pass",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-craft-polish-pass/index.json"
+        },
+        {
+          "feature_id": "command-center-feature-delivery-mission-control-run-detail",
+          "title": "Command Center — FD Mission Control run detail",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-feature-delivery-mission-control-run-detail/index.json"
+        },
+        {
+          "feature_id": "command-center-live-run-refresh-and-stage-artifact-drawer",
+          "title": "Command Center — Live run refresh and stage artifact drawer",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-live-run-refresh-and-stage-artifact-drawer/index.json"
+        },
+        {
+          "feature_id": "command-center-local-scheduler-tick-and-run-history",
+          "title": "Command Center — Local scheduler tick and run history",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-local-scheduler-tick-and-run-history/index.json"
+        },
+        {
+          "feature_id": "command-center-maintenance-toolkit-compliance-tests",
+          "title": "Command Center — Maintenance toolkit (compliance and tests)",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-maintenance-toolkit-compliance-tests/index.json"
+        },
+        {
+          "feature_id": "command-center-module-tab-accessibility",
+          "title": "Command Center module tab accessibility",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-module-tab-accessibility/index.json"
+        },
+        {
+          "feature_id": "command-center-pipeline-command-center-and-human-gate-queue",
+          "title": "Command Center — Pipeline command center and human gate queue",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-pipeline-command-center-and-human-gate-queue/index.json"
+        },
+        {
+          "feature_id": "command-center-rebuild",
+          "title": "Command Center rebuild",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-rebuild/index.json"
+        },
+        {
+          "feature_id": "command-center-unified-work-intake-and-kickoff-flow",
+          "title": "Command Center unified Work Intake and kickoff flow Engineering Spec",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-unified-work-intake-and-kickoff-flow/index.json"
+        },
+        {
+          "feature_id": "command-center-ux-philosophy-information-architecture-and-user-stories",
+          "title": "Command Center UX philosophy, information architecture, and user stories",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-ux-philosophy-information-architecture-and-user-stories/index.json"
+        },
+        {
+          "feature_id": "command-center-ux-spec-and-information-architecture",
+          "title": "Command Center — UX spec and information architecture",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-ux-spec-and-information-architecture/index.json"
+        },
+        {
+          "feature_id": "surface-opt-p10-dashboard-safe-editing",
+          "title": "surface-opt P10 — dashboard safe editing",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/surface-opt-p10-dashboard-safe-editing/index.json"
+        },
+        {
+          "feature_id": "surface-opt-p9-dashboard-operator-command-center",
+          "title": "surface-opt P9 — dashboard Command Center",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/surface-opt-p9-dashboard-operator-command-center/index.json"
+        },
+        {
+          "feature_id": "v0-ui-dashboard-subordinate-feature-pipeline-qa",
+          "title": "v0 UI dashboard — subordinate feature-pipeline QA exercise",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/v0-ui-dashboard-subordinate-feature-pipeline-qa/index.json"
+        }
+      ]
     },
     {
-      "feature_id": "compliance-tests",
-      "title": "Compliance Tests",
-      "current_stage": "index",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/compliance-tests/index.json",
-        "range": [1, 1],
-        "contentHash": "380f910"
-      }
+      "id": "delivery-pipeline",
+      "title": "Feature-delivery pipeline and run operations",
+      "when_to_read": "Use when changing feature-delivery stages, SDK progress, inbox kickoff, QA/review gates, or run lifecycle semantics.",
+      "index_path": "lib/memory/features/delivery-pipeline/index.md",
+      "features": [
+        {
+          "feature_id": "batch-feature-delivery-runs-sequential-parallel",
+          "title": "Batch feature-delivery runs (sequential + parallel)",
+          "status": "indexed",
+          "path": "lib/memory/features/delivery-pipeline/batch-feature-delivery-runs-sequential-parallel/index.json"
+        },
+        {
+          "feature_id": "build-mode-inbox-scaffolding",
+          "title": "Build-mode inbox scaffolding",
+          "status": "indexed",
+          "path": "lib/memory/features/delivery-pipeline/build-mode-inbox-scaffolding/index.json"
+        },
+        {
+          "feature_id": "cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref",
+          "title": "CLI operator tooling batch — deferral protocol, intake scaffolder, active-memory refresh",
+          "status": "indexed",
+          "path": "lib/memory/features/delivery-pipeline/cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref/index.json"
+        },
+        {
+          "feature_id": "fd-pipeline-sdk-mode-retry-model-escalation-tiers",
+          "title": "FD pipeline SDK mode — retry model escalation tiers",
+          "status": "indexed",
+          "path": "lib/memory/features/delivery-pipeline/fd-pipeline-sdk-mode-retry-model-escalation-tiers/index.json"
+        },
+        {
+          "feature_id": "feature-delivery-harness-wire-cursorrunner-through-run-and-advance",
+          "title": "Feature-delivery harness — wire CursorRunner through run and advance",
+          "status": "indexed",
+          "path": "lib/memory/features/delivery-pipeline/feature-delivery-harness-wire-cursorrunner-through-run-and-advance/index.json"
+        },
+        {
+          "feature_id": "inbox-convention-migration",
+          "title": "Inbox convention migration — Engineering Spec",
+          "status": "indexed",
+          "path": "lib/memory/features/delivery-pipeline/inbox-convention-migration/index.json"
+        },
+        {
+          "feature_id": "phase-4-dogfood-proof-bundle-evidence-index",
+          "title": "Phase 4 Dogfood Proof Bundle Evidence Index",
+          "status": "pending-human-ratification",
+          "path": "lib/memory/features/delivery-pipeline/phase-4-dogfood-proof-bundle-evidence-index/index.json"
+        },
+        {
+          "feature_id": "phase-4-intervention-probe-pause-resume-abort",
+          "title": "Phase 4 Intervention Probe (Pause, Resume, Abort)",
+          "status": "pending-human-ratification",
+          "path": "lib/memory/features/delivery-pipeline/phase-4-intervention-probe-pause-resume-abort/index.json"
+        },
+        {
+          "feature_id": "surface-opt-track-o-cli-engine",
+          "title": "surface-opt Track O — CLI/runner engine pass",
+          "status": "indexed",
+          "path": "lib/memory/features/delivery-pipeline/surface-opt-track-o-cli-engine/index.json"
+        },
+        {
+          "feature_id": "us-1-dogfood-phase-4-exit",
+          "title": "US-1 Dogfood Phase 4 Exit Intake Spec",
+          "status": "human-ratified",
+          "path": "lib/memory/features/delivery-pipeline/us-1-dogfood-phase-4-exit/index.json"
+        }
+      ]
     },
     {
-      "feature_id": "pancreator-adopter-scan",
-      "title": "Engineering Spec - @pancreator/adopter-scan",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-adopter-scan/index.json",
-        "range": [1, 79],
-        "contentHash": "181ddbf"
-      }
+      "id": "memory-context",
+      "title": "Memory, context economy, and retrieval",
+      "when_to_read": "Use when changing active memory, feature indexes, Cursor retrieval, context budget, token economy, or memory MCP behavior.",
+      "index_path": "lib/memory/features/memory-context/index.md",
+      "features": [
+        {
+          "feature_id": "active-memory-context-economy-pass-2",
+          "title": "Active Memory Separation and Cursor Context Economy Pass 2",
+          "status": "shipped",
+          "path": "lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json"
+        },
+        {
+          "feature_id": "context-usage-test-harness",
+          "title": "Context Usage Test Harness",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/context-usage-test-harness/index.json"
+        },
+        {
+          "feature_id": "cursor-token-economy",
+          "title": "Cursor Token Economy and Default Context Budget",
+          "status": "shipped",
+          "path": "lib/memory/features/memory-context/cursor-token-economy/index.json"
+        },
+        {
+          "feature_id": "pancreator-memory",
+          "title": "Engineering Spec - @pancreator/memory",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/pancreator-memory/index.json"
+        },
+        {
+          "feature_id": "sampled-token-audit",
+          "title": "Sampled Token Audit",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/sampled-token-audit/index.json"
+        },
+        {
+          "feature_id": "surface-opt-p1-fix-mcp-memory-path",
+          "title": "surface-opt P1 — fix MCP memory:// path",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/surface-opt-p1-fix-mcp-memory-path/index.json"
+        },
+        {
+          "feature_id": "surface-opt-p2-fix-mcp-work-run-log-path",
+          "title": "surface-opt P2 — fix MCP work-run-log:// path",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/surface-opt-p2-fix-mcp-work-run-log-path/index.json"
+        },
+        {
+          "feature_id": "surface-opt-p3-cap-current-md-shipped-features-ledger",
+          "title": "surface-opt P3 — cap current.md shipped-Features ledger",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/surface-opt-p3-cap-current-md-shipped-features-ledger/index.json"
+        },
+        {
+          "feature_id": "surface-opt-p4-tighten-cursor-agents-retrieval-contracts",
+          "title": "surface-opt P4 — tighten .cursor/agents retrieval contracts",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/surface-opt-p4-tighten-cursor-agents-retrieval-contracts/index.json"
+        },
+        {
+          "feature_id": "token-economy-calibration-hardening",
+          "title": "Token Economy Calibration Hardening",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/token-economy-calibration-hardening/index.json"
+        },
+        {
+          "feature_id": "token-economy-prototype",
+          "title": "Token Economy Prototype",
+          "status": "indexed",
+          "path": "lib/memory/features/memory-context/token-economy-prototype/index.json"
+        }
+      ]
     },
     {
-      "feature_id": "pancreator-checkpointer-fs",
-      "title": "Engineering Spec - @pancreator/checkpointer-fs",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-checkpointer-fs/index.json",
-        "range": [1, 79],
-        "contentHash": "91ff62d"
-      }
+      "id": "platform-substrate",
+      "title": "Pancreator package substrate",
+      "when_to_read": "Use when changing @pancreator package boundaries, package contracts, CLI/MCP substrate, policy, runner, or storage packages.",
+      "index_path": "lib/memory/features/platform-substrate/index.md",
+      "features": [
+        {
+          "feature_id": "m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+          "title": "M1 substrate runtime batch — harness loop, install paths, library mode, Phoenix conformance",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/index.json"
+        },
+        {
+          "feature_id": "pancreator-adopter-scan",
+          "title": "Engineering Spec - @pancreator/adopter-scan",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-adopter-scan/index.json"
+        },
+        {
+          "feature_id": "pancreator-checkpointer-fs",
+          "title": "Engineering Spec - @pancreator/checkpointer-fs",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-checkpointer-fs/index.json"
+        },
+        {
+          "feature_id": "pancreator-cli",
+          "title": "Engineering Spec - @pancreator/cli",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-cli/index.json"
+        },
+        {
+          "feature_id": "pancreator-contract",
+          "title": "Engineering Spec - @pancreator/contract",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-contract/index.json"
+        },
+        {
+          "feature_id": "pancreator-contract-runner-llm-judge",
+          "title": "Engineering Spec - @pancreator/contract-runner-llm-judge",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-contract-runner-llm-judge/index.json"
+        },
+        {
+          "feature_id": "pancreator-contract-runner-rego",
+          "title": "Engineering Spec - @pancreator/contract-runner-rego",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-contract-runner-rego/index.json"
+        },
+        {
+          "feature_id": "pancreator-contract-style",
+          "title": "Engineering Spec - @pancreator/contract-style",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-contract-style/index.json"
+        },
+        {
+          "feature_id": "pancreator-core",
+          "title": "Engineering Spec - @pancreator/core",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-core/index.json"
+        },
+        {
+          "feature_id": "pancreator-env-isolation",
+          "title": "Engineering Spec - @pancreator/env-isolation",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-env-isolation/index.json"
+        },
+        {
+          "feature_id": "pancreator-inbox",
+          "title": "Engineering Spec - @pancreator/inbox",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-inbox/index.json"
+        },
+        {
+          "feature_id": "pancreator-intervention",
+          "title": "Engineering Spec - @pancreator/intervention",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-intervention/index.json"
+        },
+        {
+          "feature_id": "pancreator-mcp-server",
+          "title": "Engineering Spec - @pancreator/mcp-server",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-mcp-server/index.json"
+        },
+        {
+          "feature_id": "pancreator-notifier",
+          "title": "Engineering Spec - @pancreator/notifier",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-notifier/index.json"
+        },
+        {
+          "feature_id": "pancreator-persona",
+          "title": "Engineering Spec - @pancreator/persona",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-persona/index.json"
+        },
+        {
+          "feature_id": "pancreator-pipeline",
+          "title": "Engineering Spec - @pancreator/pipeline",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-pipeline/index.json"
+        },
+        {
+          "feature_id": "pancreator-policy",
+          "title": "Engineering Spec - @pancreator/policy",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-policy/index.json"
+        },
+        {
+          "feature_id": "pancreator-run-logger",
+          "title": "Engineering Spec - @pancreator/run-logger",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-run-logger/index.json"
+        },
+        {
+          "feature_id": "pancreator-runner-cursor",
+          "title": "Engineering Spec - @pancreator/runner-cursor",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-runner-cursor/index.json"
+        },
+        {
+          "feature_id": "pancreator-worktree",
+          "title": "Engineering Spec - @pancreator/worktree",
+          "status": "indexed",
+          "path": "lib/memory/features/platform-substrate/pancreator-worktree/index.json"
+        }
+      ]
     },
     {
-      "feature_id": "pancreator-cli",
-      "title": "Engineering Spec - @pancreator/cli",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-cli/index.json",
-        "range": [1, 79],
-        "contentHash": "a06cceb"
-      }
-    },
-    {
-      "feature_id": "pancreator-contract",
-      "title": "Engineering Spec - @pancreator/contract",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-contract/index.json",
-        "range": [1, 79],
-        "contentHash": "185e960"
-      }
-    },
-    {
-      "feature_id": "pancreator-contract-runner-llm-judge",
-      "title": "Engineering Spec - @pancreator/contract-runner-llm-judge",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-contract-runner-llm-judge/index.json",
-        "range": [1, 79],
-        "contentHash": "03da8ce"
-      }
-    },
-    {
-      "feature_id": "pancreator-contract-runner-rego",
-      "title": "Engineering Spec - @pancreator/contract-runner-rego",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-contract-runner-rego/index.json",
-        "range": [1, 79],
-        "contentHash": "3504454"
-      }
-    },
-    {
-      "feature_id": "pancreator-contract-style",
-      "title": "Engineering Spec - @pancreator/contract-style",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-contract-style/index.json",
-        "range": [1, 79],
-        "contentHash": "a51959f"
-      }
-    },
-    {
-      "feature_id": "pancreator-core",
-      "title": "Engineering Spec - @pancreator/core",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-core/index.json",
-        "range": [1, 79],
-        "contentHash": "446cfb4"
-      }
-    },
-    {
-      "feature_id": "pancreator-env-isolation",
-      "title": "Engineering Spec - @pancreator/env-isolation",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-env-isolation/index.json",
-        "range": [1, 79],
-        "contentHash": "fcad03f"
-      }
-    },
-    {
-      "feature_id": "pancreator-inbox",
-      "title": "Engineering Spec - @pancreator/inbox",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-inbox/index.json",
-        "range": [1, 79],
-        "contentHash": "ef47681"
-      }
-    },
-    {
-      "feature_id": "pancreator-intervention",
-      "title": "Engineering Spec - @pancreator/intervention",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-intervention/index.json",
-        "range": [1, 79],
-        "contentHash": "0a0b3ce"
-      }
-    },
-    {
-      "feature_id": "pancreator-mcp-server",
-      "title": "Engineering Spec - @pancreator/mcp-server",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-mcp-server/index.json",
-        "range": [1, 79],
-        "contentHash": "e8caf3a"
-      }
-    },
-    {
-      "feature_id": "pancreator-memory",
-      "title": "Engineering Spec - @pancreator/memory",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-memory/index.json",
-        "range": [1, 79],
-        "contentHash": "404932f"
-      }
-    },
-    {
-      "feature_id": "pancreator-notifier",
-      "title": "Engineering Spec - @pancreator/notifier",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-notifier/index.json",
-        "range": [1, 79],
-        "contentHash": "1fd15ed"
-      }
-    },
-    {
-      "feature_id": "pancreator-persona",
-      "title": "Engineering Spec - @pancreator/persona",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-persona/index.json",
-        "range": [1, 79],
-        "contentHash": "f0ff741"
-      }
-    },
-    {
-      "feature_id": "pancreator-pipeline",
-      "title": "Engineering Spec - @pancreator/pipeline",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-pipeline/index.json",
-        "range": [1, 79],
-        "contentHash": "745e688"
-      }
-    },
-    {
-      "feature_id": "pancreator-policy",
-      "title": "Engineering Spec - @pancreator/policy",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-policy/index.json",
-        "range": [1, 79],
-        "contentHash": "7c0fde0"
-      }
-    },
-    {
-      "feature_id": "pancreator-run-logger",
-      "title": "Engineering Spec - @pancreator/run-logger",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-run-logger/index.json",
-        "range": [1, 79],
-        "contentHash": "9d6def5"
-      }
-    },
-    {
-      "feature_id": "pancreator-runner-cursor",
-      "title": "Engineering Spec - @pancreator/runner-cursor",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-runner-cursor/index.json",
-        "range": [1, 79],
-        "contentHash": "cbba40f"
-      }
-    },
-    {
-      "feature_id": "pancreator-worktree",
-      "title": "Engineering Spec - @pancreator/worktree",
-      "current_stage": "contracts-authored",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/pancreator-worktree/index.json",
-        "range": [1, 79],
-        "contentHash": "b0fea08"
-      }
-    },
-    {
-      "feature_id": "timestamp-naming-conventions",
-      "title": "Timestamp naming conventions",
-      "current_stage": "index",
-      "last_commit": "d472d02",
-      "path": {
-        "kind": "lines",
-        "path": "lib/memory/features/timestamp-naming-conventions/index.json",
-        "range": [1, 1],
-        "contentHash": "34efe2f"
-      }
+      "id": "quality-governance",
+      "title": "Quality, compliance, and governance",
+      "when_to_read": "Use when changing compliance tests, JSON/timestamp policy, operator verification, CI expectations, contract style, or QA gates.",
+      "index_path": "lib/memory/features/quality-governance/index.md",
+      "features": [
+        {
+          "feature_id": "ci-best-practices-batch",
+          "title": "CI and best-practices batch — test aggregation, compliance runner, citation refresh, MCP read tools",
+          "status": "indexed",
+          "path": "lib/memory/features/quality-governance/ci-best-practices-batch/index.json"
+        },
+        {
+          "feature_id": "compliance-tests",
+          "title": "Compliance Tests Intake Spec",
+          "status": "indexed",
+          "path": "lib/memory/features/quality-governance/compliance-tests/index.json"
+        },
+        {
+          "feature_id": "json-formatting",
+          "title": "Canonical JSON formatting policy",
+          "status": "indexed",
+          "path": "lib/memory/features/quality-governance/json-formatting/index.json"
+        },
+        {
+          "feature_id": "operator-verification-and-reopen",
+          "title": "Operator verification at close and task reopen",
+          "status": "indexed",
+          "path": "lib/memory/features/quality-governance/operator-verification-and-reopen/index.json"
+        },
+        {
+          "feature_id": "timestamp-naming-conventions",
+          "title": "Timestamp naming conventions",
+          "status": "intake-closed",
+          "path": "lib/memory/features/quality-governance/timestamp-naming-conventions/index.json"
+        }
+      ]
     }
-  ],
-  "coverage_gaps": []
+  ]
 }

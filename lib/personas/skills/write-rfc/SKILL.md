@@ -75,7 +75,7 @@ already exists at the same slug, you MUST append a numeric suffix
 overwrite.
 
 When the proposal touches a single Feature, you MUST also stage a copy at
-`/lib/memory/features/<id>/rfc-<slug>.md` and link it from the Feature's
+`/lib/memory/features/<category>/<id>/rfc-<slug>.md` and link it from the Feature's
 `index.json` on the next `librarian` post_run sweep.
 
 ### Step 2 — Fill the RFC frontmatter

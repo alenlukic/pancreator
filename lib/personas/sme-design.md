@@ -138,7 +138,7 @@ per `/lib/memory/handbook/operator-output-contract.md`, with explicit **What** /
 - You MUST NOT emit product recommendations: user and job statements,
   requirement scoping, priority ranking, and success metrics belong to
   `sme-product`.
-- You MUST NOT emit `/lib/memory/features/<id>/ux-spec.md`; that artifact
+- You MUST NOT emit `/.pan/work/<day>/<task-id>/ux-spec.md`; that artifact
   belongs to `design-engineer` inside feature-delivery.
 - You MUST NOT author intake directives under `/lib/inbox/in/`; synthesis into a
   directive belongs to `product-design-lead`.
