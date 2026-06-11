@@ -1,6 +1,7 @@
 import { quoteJsonString, resolveProjectPath, resolveRepoPath } from "@pancreator/core";
 import { existsSync } from "node:fs";
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
@@ -14,6 +15,12 @@ const OPS_NOTES_AUTO_START = "<!-- pan:active-memory:operator-notes:auto -->";
 const OPS_NOTES_AUTO_END = "<!-- /pan:active-memory:operator-notes:auto -->";
 
 const CURRENT_MD_REL = "lib/memory/active/current.md";
+
+function resolveFeatureIndexAbs(repoRoot: string, featureId: string): string {
+  const durable = resolveRepoPath(repoRoot, durableFeatureIndexRel(featureId));
+  if (existsSync(durable)) return durable;
+  return resolveProjectPath(repoRoot, "lib", "memory", "features", featureId, "index.json");
+}
 
 interface ActiveMemorySlices {
   shippedFeaturesBody: string;
@@ -350,7 +357,7 @@ export async function patchFeatureIndexArchivedInbox(
   archivedInboxRel: string,
   priorInboxSourceRel: string,
 ): Promise<void> {
-  const indexAbs = resolveProjectPath(repoRoot, "lib", "memory", "features", featureId, "index.json");
+  const indexAbs = resolveFeatureIndexAbs(repoRoot, featureId);
   if (!existsSync(indexAbs)) {
     return;
   }
@@ -404,7 +411,7 @@ export async function patchFeatureIndexReopenedInbox(
   featureId: string,
   activeInboxRel: string,
 ): Promise<void> {
-  const indexAbs = resolveProjectPath(repoRoot, "lib", "memory", "features", featureId, "index.json");
+  const indexAbs = resolveFeatureIndexAbs(repoRoot, featureId);
   if (!existsSync(indexAbs)) {
     return;
   }
@@ -480,20 +487,33 @@ export async function applyActiveMemoryRefreshOnReopen(
 
 export async function deriveShippedMarkdownTable(repoRoot: string): Promise<string> {
   const featuresRoot = resolveProjectPath(repoRoot, "lib", "memory", "features");
-  let dirs: string[] = [];
+  const indexPaths: Array<{ abs: string; dirName: string }> = [];
   try {
-    dirs = (await readdir(featuresRoot, { withFileTypes: true }))
+    const categories = (await readdir(featuresRoot, { withFileTypes: true }))
       .filter((d) => d.isDirectory() && !d.name.startsWith("."))
       .map((d) => d.name);
+    for (const category of categories) {
+      const categoryRoot = path.join(featuresRoot, category);
+      const legacyIndex = path.join(categoryRoot, "index.json");
+      if (existsSync(legacyIndex)) {
+        indexPaths.push({ abs: legacyIndex, dirName: category });
+        continue;
+      }
+      const featureDirs = (await readdir(categoryRoot, { withFileTypes: true }))
+        .filter((d) => d.isDirectory() && !d.name.startsWith("."))
+        .map((d) => d.name);
+      for (const dirName of featureDirs) {
+        const abs = path.join(categoryRoot, dirName, "index.json");
+        if (existsSync(abs)) indexPaths.push({ abs, dirName });
+      }
+    }
   } catch {
     return "\n(No indexed features discovered.)\n";
   }
 
   const rows: IndexedShipRow[] = [];
 
-  for (const dirName of dirs) {
-    const indexPath = path.join(featuresRoot, dirName, "index.json");
-    if (!existsSync(indexPath)) continue;
+  for (const { abs: indexPath, dirName } of indexPaths) {
     const rawText = await readFile(indexPath, "utf8");
     const parsed = JSON.parse(rawText) as Record<string, unknown>;
     const statusRaw = parsed["status"];

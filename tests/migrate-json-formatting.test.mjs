@@ -239,13 +239,13 @@ test("lintDeliveryReportCitations flags JS-literal and compact dual-anchor forms
 
 test("markdown citation compliance scan flags compact and JS-literal dual-anchor forms", () => {
   const allowlist = new Set([
-    "lib/memory/features/json-formatting/spec.md",
+    "lib/memory/features/quality-governance/json-formatting/index.json",
     "tests/fixtures/json-formatting/forbidden-inline-citation-snippet.raw",
   ]);
   const targets = [
     ...new Set([
       ...collectMarkdownCitationScanTargets(),
-      "lib/memory/features/json-formatting/spec.md",
+      "lib/memory/features/quality-governance/json-formatting/index.json",
       "tests/fixtures/json-formatting/forbidden-inline-citation-snippet.raw",
     ]),
   ];

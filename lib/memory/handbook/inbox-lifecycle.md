@@ -147,7 +147,7 @@ active thread, operators SHALL post replies under the referenced thread path in
 When `runner.cursor.invocation` is `sdk`, the feature-delivery runtime MAY write
 timestamp-prefixed leaves under `/lib/inbox/out/<day-bucket>/` with basename shape
 `{SID-prefix}_{HHMM}_{semantic-suffix}.md` per
-`lib/memory/features/timestamp-naming-conventions/spec.md`.
+`lib/memory/features/quality-governance/timestamp-naming-conventions/index.json`.
 
 | Artifact | Front matter | Operator action |
 |---|---|---|

@@ -65,7 +65,7 @@ Execute these steps in order, once per Feature review.
 
 ### Step 1 — Load the design artifacts before reading the code
 
-Read `/lib/memory/features/<id>/spec.md`, `/.pan/work/<day>/<id>/plan.md`, and
+Read `/.pan/work/<day>/<task-id>/spec.md`, `/.pan/work/<day>/<id>/plan.md`, and
 `/.pan/work/<day>/<id>/adr-draft.md` first; do NOT open the diff until the design
 context is loaded. The design-first ordering follows the Bacchelli/Bird
 finding cited at PRD §17 line 1255 that reviewers who skip the design
@@ -99,7 +99,7 @@ fails the gate.
 
 ### Step 3 — Run every Spec Contract pulled in by `contracts:from_feature`
 
-Enumerate every clause in `/lib/memory/features/<id>/contracts/`. For each
+Enumerate every clause in `/lib/memory/features/<category>/<id>/contracts/`. For each
 clause, run the matching `ContractRunner` per
 `/lib/memory/handbook/contract-format.md` and record the row below in the
 review's Spec Contract results table.

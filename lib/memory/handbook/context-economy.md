@@ -21,7 +21,7 @@ references:
     contentHash: a4563dc
     note: Handbook index defines retrieval policy and routing table maintenance rules.
   - kind: lines
-    path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     range: [288, 352]
     contentHash: 9b2ddcc
     note: Context-economy acceptance criteria include tier routing and simple task mode.
@@ -67,7 +67,7 @@ Agents MUST NOT read, traverse, ingest, cite, or modify files under
 ## Memory-tier routing
 
 This section states canonical routing cited at
-`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [288, 312], contentHash: 9b2ddcc}`.
+`{kind: lines, path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json, range: [288, 312], contentHash: 9b2ddcc}`.
 
 When an agent asks what the memory tiers mean, the agent SHALL open
 `lib/memory/handbook/memory-tiers.md` before loading broader `lib/memory/` trees.
@@ -265,7 +265,7 @@ for human decisions unless debugging a specific generator.
 | Section-level PRD routing (internal) | `.docs/PRD.index.md` | Pancreator self-dev only. |
 | M1 and bootstrap routing (internal) | `.docs/M1.index.md` | Pancreator self-dev only. |
 | Subagent invocation and model escalation | `lib/memory/handbook/context-economy.md` §“Model and context escalation guidance” | One canonical `.cursor/agents/<name>.md` per persona; escalate model class per documented triggers. |
-| Feature implementation | `lib/memory/features/<id>/spec.md` | Canonical Engineering Spec for that Feature. |
+| Feature implementation | `.pan/work/<day>/<task-id>/spec.md` | Canonical Engineering Spec for that Feature. |
 | Bootstrap phase authority | `.docs/BOOTSTRAP.md` | Open only when compact M1 routing is insufficient. |
 | Governance and documentation-impact | `lib/memory/handbook/documentation-impact-contract.md`, `lib/memory/handbook/constitution.md` | Required for post-task documentation decisions; optional `/pr-writer` for PR bodies. |
 

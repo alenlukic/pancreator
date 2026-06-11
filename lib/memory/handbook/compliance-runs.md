@@ -16,13 +16,13 @@ references:
     contentHash: b953d77
     note: "AGENTS §6.2 binds agents to compliance-run triggers after structure changes."
   - kind: lines
-    path: lib/memory/features/compliance-tests/manual-runbook.md
+    path: lib/memory/features/quality-governance/compliance-tests/manual-runbook.md
     range: [1, 52]
     contentHash: a207354
     note: "Manual runbook defines operator-on-demand and structure-change modes."
 related:
   - /AGENTS.md
-  - /lib/memory/features/compliance-tests/manual-runbook.md
+  - /lib/memory/features/quality-governance/compliance-tests/manual-runbook.md
   - /tests/compliance/schemas/latest.yaml
 ---
 
@@ -50,5 +50,5 @@ agents SHALL NOT assume automatic cadence execution in the first slice.
 | `operator-on-demand` | Operator or agent requests an ad hoc run | Run all descriptors in `tests/compliance/` |
 | `scheduled-cadence` | Deferred | Maintain backlog linkage; do not assume automation |
 
-See `lib/memory/features/compliance-tests/manual-runbook.md` for the full
+See `lib/memory/features/quality-governance/compliance-tests/manual-runbook.md` for the full
 structure-change matrix and manual execution protocol.

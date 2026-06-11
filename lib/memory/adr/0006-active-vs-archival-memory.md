@@ -9,12 +9,12 @@ superseded-by: null
 feature_id: active-memory-context-economy-pass-2
 references:
   - kind: lines
-    path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     range: [191, 210]
     contentHash: 9b2ddcc
     note: Feature scope, preservation boundary, and explicit-read obligation for historical trees.
   - kind: lines
-    path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     range: [275, 286]
     contentHash: 9b2ddcc
     note: Engineering Spec lists required ADR contents.
@@ -76,7 +76,7 @@ Pancreator mixes short-term coordination, durable Feature memory, and historical
 pipeline outputs in one repository. Pass 1 narrowed default Cursor context, yet
 operators still need one explicit model that separates routine orientation
 from durable specs and from archival runs without deleting history. Citation:
-`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [191, 210], contentHash: 9b2ddcc}`.
+`{kind: lines, path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json, range: [191, 210], contentHash: 9b2ddcc}`.
 
 ADR-0003 frames archive separation for inbox intake. ADR-0004 requires explicit
 deferral records with backlog linkage. ADR-0005 requires manifest and rollback
@@ -190,5 +190,5 @@ Citation:
 ## Status
 
 This ADR is accepted on 2026-05-09 (UTC). The ratified Engineering Spec at
-`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [275, 286], contentHash: 9b2ddcc}`
+`{kind: lines, path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json, range: [275, 286], contentHash: 9b2ddcc}`
 requires this decision record.

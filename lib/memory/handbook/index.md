@@ -91,7 +91,7 @@ lands, operators SHOULD apply this table manually.
 | Run or document `pan` CLI commands for operators | `/lib/memory/handbook/pancreator-config.md` §“CLI invocation in this workspace” | `/lib/memory/handbook/operator-output-contract.md`, `/OPERATION.md` | Use `pnpm -w exec pan …` from repo root; bare `pan` is not on PATH. |
 | Relay feature-delivery SDK progress to operator chat | `/AGENTS.md` §5 | `/OPERATION.md` § SDK mode, `/lib/memory/handbook/context-economy.md` | Agents prefix with `PAN_FD_PROGRESS=ndjson`, monitor stderr, and post concise status lines; operators in a TTY get `[pan fd] …` on stderr automatically. |
 | External versus internal repository surfaces | `/lib/memory/adr/0008-external-vs-internal-surfaces.md` | `/lib/memory/handbook/glossary.md`, `/lib/memory/handbook/context-economy.md` | Defines README, OPERATION, and AGENTS surface split and de-indexing policy. |
-| Run compliance tests after structure changes | `/lib/memory/handbook/compliance-runs.md` | `/lib/memory/features/compliance-tests/manual-runbook.md`, `/AGENTS.md` §6.2 | Defines when agents SHALL run `tests/compliance/` descriptors; scheduled cadence remains deferred. |
+| Run compliance tests after structure changes | `/lib/memory/handbook/compliance-runs.md` | `/lib/memory/features/quality-governance/compliance-tests/manual-runbook.md`, `/AGENTS.md` §6.2 | Defines when agents SHALL run `tests/compliance/` descriptors; scheduled cadence remains deferred. |
 
 ## Retrieval discipline
 

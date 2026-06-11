@@ -192,8 +192,8 @@ items:
     opened_at: "2026-04-26T20:30:00Z"
     links:
       - /.pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md
-      - /lib/memory/features/compliance-tests/manual-runbook.md
-      - /lib/memory/features/compliance-tests/spec.md
+      - /lib/memory/features/quality-governance/compliance-tests/manual-runbook.md
+      - /lib/memory/features/quality-governance/compliance-tests/index.json
     evidence: "Current compliance-tests slice is manual-first and defers default 4-hour scheduler enforcement plus structure-change auto-trigger wiring."
     notes: "Implement runtime automation that enforces the default 4-hour cadence when no schedule override exists and runs compliance checks on qualifying structure changes."
 
@@ -315,7 +315,7 @@ items:
     priority: low
     opened_at: "2026-04-27T20:25:00Z"
     links:
-      - /lib/memory/features/timestamp-naming-conventions/spec.md
+      - /lib/memory/features/quality-governance/timestamp-naming-conventions/index.json
       - /lib/memory/adr/0005-timestamp-naming-conventions.md
       - /lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
       - /lib/internal/tools/migrate-timestamp-naming.mjs
@@ -364,13 +364,13 @@ items:
     links:
       - /.cursor/rules/persona-designer.mdc
       - /lib/personas/persona-designer.md
-      - /lib/memory/features/cursor-token-economy/spec.md
+      - /lib/memory/features/memory-context/cursor-token-economy/index.json
     evidence: "Context-economy rule audit deferred narrowing persona-designer.mdc because it spans persona specs and Cursor mirrors."
     notes: "If glob tightening is desired, update persona spec and .mdc together with explicit human ratification."
 
   - id: cursor-token-economy-cursorignore-future-slice
     title: Evaluate root .cursorignore after proving explicit-read access for excluded paths
-    source: lib/memory/features/cursor-token-economy/spec.md
+    source: lib/memory/features/memory-context/cursor-token-economy/index.json
     owner: tech-lead
     milestone: phase-2
     status: open
@@ -384,14 +384,14 @@ items:
 
   - id: active-memory-physical-tier-migration
     title: Plan safe physical migration for memory and work tiers
-    source: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     owner: tech-lead
     milestone: phase-2
     status: deferred
     priority: high
     opened_at: "2026-05-09T22:55:00Z"
     links:
-      - /lib/memory/features/active-memory-context-economy-pass-2/spec.md
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
       - /.pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
       - /lib/memory/adr/0005-timestamp-naming-conventions.md
     evidence: "Pass-2 plan confirms physical migration of .pan/work/** and existing lib/memory/** requires shims, tests, manifest, reference updates, and rollback notes."
@@ -399,14 +399,14 @@ items:
 
   - id: active-memory-budget-warning-tool
     title: Add active-memory soft-budget warning tooling
-    source: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     owner: coder
     milestone: phase-2
     status: deferred
     priority: medium
     opened_at: "2026-05-09T22:55:00Z"
     links:
-      - /lib/memory/features/active-memory-context-economy-pass-2/spec.md
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
       - /lib/internal/tools/context-budget-report.mjs
       - /lib/memory/active/
     evidence: "Pass-2 plan ships documented active-memory budgets and tier reporting while deferring executable threshold warnings."
@@ -414,14 +414,14 @@ items:
 
   - id: active-memory-rule-glob-ratification
     title: Ratify any unsafe Cursor rule glob narrowing
-    source: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     owner: persona-designer
     milestone: phase-1
     status: deferred
     priority: medium
     opened_at: "2026-05-09T22:55:00Z"
     links:
-      - /lib/memory/features/active-memory-context-economy-pass-2/spec.md
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
       - /.cursor/rules/persona-designer.mdc
       - /.cursor/rules/pancreator-engineer.mdc
       - /.pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
@@ -431,7 +431,7 @@ items:
 
   - id: cursor-token-economy-shipped
     title: Cursor token economy and default context budget pass 1 delivered
-    source: lib/memory/features/cursor-token-economy/delivery-report.md
+    source: lib/memory/features/memory-context/cursor-token-economy/index.json
     owner: librarian
     milestone: phase-1
     status: done
@@ -439,17 +439,17 @@ items:
     opened_at: "2026-05-10T03:16:00Z"
     delivered_at: "2026-05-10T03:16:00Z"
     links:
-      - /lib/memory/features/cursor-token-economy/delivery-report.md
-      - /lib/memory/features/cursor-token-economy/spec.md
-      - /lib/memory/features/cursor-token-economy/index.json
+      - /lib/memory/features/memory-context/cursor-token-economy/index.json
+      - /lib/memory/features/memory-context/cursor-token-economy/index.json
+      - /lib/memory/features/memory-context/cursor-token-economy/index.json
       - /lib/inbox/out/172991_05-15-26/50909_1005_cursor-token-economy-delivery-report.md
       - /.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
     evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, .docs/PRD.summary.md plus .docs/PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to lib/inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring is not implemented per AGENTS.md \u00a78."
-    notes: "Closed in the same operator session that shipped pass-2 because pass-2 extends pass-1 deferred scope (extends_relationship: extends-deferred-scope per lib/memory/features/active-memory-context-economy-pass-2/index.json)."
+    notes: "Closed in the same operator session that shipped pass-2 because pass-2 extends pass-1 deferred scope (extends_relationship: extends-deferred-scope per lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json)."
 
   - id: active-memory-context-economy-pass-2-shipped
     title: Active memory separation and Cursor context economy pass 2 delivered
-    source: lib/memory/features/active-memory-context-economy-pass-2/delivery-report.md
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     owner: librarian
     milestone: phase-1
     status: done
@@ -457,9 +457,9 @@ items:
     opened_at: "2026-05-10T03:02:00Z"
     delivered_at: "2026-05-10T03:02:00Z"
     links:
-      - /lib/memory/features/active-memory-context-economy-pass-2/delivery-report.md
-      - /lib/memory/features/active-memory-context-economy-pass-2/spec.md
-      - /lib/memory/features/active-memory-context-economy-pass-2/index.json
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
       - /lib/memory/adr/0006-active-vs-archival-memory.md
       - /lib/inbox/out/172991_05-15-26/81300_0125_active-memory-context-economy-pass-2-delivery-report.md
       - /.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
@@ -468,7 +468,7 @@ items:
 
   - id: active-memory-post-ship-ownership
     title: Define owner for lib/memory/active/** post-ship rotation
-    source: lib/memory/features/active-memory-context-economy-pass-2/delivery-report.md
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     owner: persona-designer
     milestone: phase-1
     status: open
@@ -502,7 +502,7 @@ items:
 
   - id: json-formatting-shipped
     title: Canonical JSON formatting policy delivered
-    source: lib/memory/features/json-formatting/delivery-report.md
+    source: lib/memory/features/quality-governance/json-formatting/index.json
     owner: librarian
     milestone: phase-4
     status: done
@@ -510,9 +510,9 @@ items:
     opened_at: "2026-05-24T00:00:00Z"
     delivered_at: "2026-05-24T00:00:00Z"
     links:
-      - /lib/memory/features/json-formatting/delivery-report.md
-      - /lib/memory/features/json-formatting/spec.md
-      - /lib/memory/features/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
       - /lib/internal/tools/canonical-json-format.mjs
       - /lib/internal/tools/migrate-json-formatting.mjs
       - /.pan/work/172983_05-23-26/67055_0522_json-formatting/review.md
@@ -521,16 +521,16 @@ items:
 
   - id: json-formatting-citation-verifier-prefix
     title: Update citation verifier for abbreviated contentHash prefix comparison
-    source: lib/memory/features/json-formatting/spec.md
+    source: lib/memory/features/quality-governance/json-formatting/index.json
     owner: tech-lead
     milestone: phase-5
     status: open
     priority: medium
     opened_at: "2026-05-23T00:00:00Z"
     links:
-      - /lib/memory/features/json-formatting/spec.md
-      - /lib/memory/features/json-formatting/index.json
-      - /lib/memory/features/json-formatting/delivery-report.md
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
       - /lib/internal/tools/migrate-json-formatting.mjs
       - /lib/memory/handbook/glossary.md
     evidence: "json-formatting shipped abbreviated contentHash storage in JSON and Markdown surfaces, and spec Deferrals explicitly defers verifier prefix comparison to a companion feature. The feature index already listed this id under deferred_companion_features, but the phase-4 deferral promotion gap left it untracked in backlog."
@@ -538,15 +538,15 @@ items:
 
   - id: json-formatting-markdown-corpus-scan
     title: Repo-wide Markdown dual-anchor citation layout compliance pass
-    source: lib/memory/features/json-formatting/delivery-report.md
+    source: lib/memory/features/quality-governance/json-formatting/index.json
     owner: pancreator-engineer
     milestone: phase-5
     status: open
     priority: medium
     opened_at: "2026-05-23T00:00:00Z"
     links:
-      - /lib/memory/features/json-formatting/spec.md
-      - /lib/memory/features/json-formatting/delivery-report.md
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
       - /lib/internal/tools/canonical-json-format.mjs
       - /lib/internal/tools/reformat-markdown-citations.mjs
       - /tests/migrate-json-formatting.test.mjs
@@ -585,7 +585,7 @@ items:
 
   - id: bootstrap-ci-narrow-paths-re-enable
     title: Re-enable GitHub Actions CI when runtime stabilizes
-    source: lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/spec.md
+    source: lib/memory/features/bootstrap-repo-ops/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/index.json
     owner: pancreator-engineer
     milestone: phase-5
     status: cancelled
@@ -631,7 +631,7 @@ items:
 
   - id: repository-layout-restructure-and-archive-migration-shipped
     title: Repository layout restructure and archive migration delivered
-    source: lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md
+    source: lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json
     owner: librarian
     milestone: phase-5
     status: done
@@ -639,15 +639,15 @@ items:
     opened_at: "2026-05-30T05:49:00Z"
     delivered_at: "2026-05-30T07:00:00Z"
     links:
-      - /lib/memory/features/repository-layout-restructure-and-archive-migration/delivery-report.md
-      - /lib/memory/features/repository-layout-restructure-and-archive-migration/spec.md
-      - /lib/memory/features/repository-layout-restructure-and-archive-migration/index.json
+      - /lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json
+      - /lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json
+      - /lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json
     evidence: "One-shot migration consolidated archives under .pan/archive/, active work under .pan/work/, and source under lib/; retired agent tier variants; validation gates green per delivery-report.md and test-report.md."
     notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure."
 
   - id: bootstrap-phase-5-m1-exit-close-docs-bootstrap-shipped
     title: Bootstrap Phase 5 M1 exit close docs bootstrap delivered
-    source: lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md
+    source: lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
     owner: librarian
     milestone: phase-5
     status: done
@@ -655,9 +655,9 @@ items:
     opened_at: "2026-05-30T16:13:35Z"
     delivered_at: "2026-05-30T16:53:12Z"
     links:
-      - /lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/delivery-report.md
-      - /lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/spec.md
-      - /lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
+      - /lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
+      - /lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
+      - /lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
       - /lib/internal/tools/evaluate-greenfield-evidence.mjs
       - /lib/pipelines/knowledge-curation.yaml
     evidence: "Feature shipped WP1 greenfield evidence kit, deterministic evaluator, WP2 knowledge-curation cron-seed guidance, and WP3 KPI baseline evidence; review and qa gates passed per delivery-report.md; WP5 state-transition docs intentionally deferred per plan decision D4."
@@ -665,7 +665,7 @@ items:
 
   - id: embedded-harness-install-project-root-pancreator-and-fresh-install-manifest-shipped
     title: Embedded harness install — project_root .pancreator and fresh-install manifest delivered
-    source: lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md
+    source: lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
     owner: librarian
     milestone: phase-5
     status: done
@@ -673,9 +673,9 @@ items:
     opened_at: "2026-05-30T20:20:56Z"
     delivered_at: "2026-05-30T21:05:00Z"
     links:
-      - /lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/delivery-report.md
-      - /lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/spec.md
-      - /lib/memory/features/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
       - /lib/internal/packages/@pancreator/core/src/project-root.ts
       - /lib/memory/handbook/embedded-install-manifest.yaml
     evidence: "Feature shipped shared project-root resolver, CLI path prefixing, embedded pan init scaffold, allow/deny manifest, US-9 kit updates, and regression tests; review and qa gates passed per delivery-report.md."
@@ -683,7 +683,7 @@ items:
 
   - id: embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-shipped
     title: Embedded install — cursor agent sync, init content seeding, and inbox path bugs delivered
-    source: lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md
+    source: lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
     owner: librarian
     milestone: phase-5
     status: done
@@ -691,9 +691,9 @@ items:
     opened_at: "2026-05-31T03:47:56Z"
     delivered_at: "2026-05-31T04:30:00Z"
     links:
-      - /lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/delivery-report.md
-      - /lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/spec.md
-      - /lib/memory/features/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
       - /lib/internal/packages/@pancreator/cli/src/cursor-sync.ts
       - /lib/internal/packages/@pancreator/cli/src/pan-init.ts
     evidence: "Feature shipped pan cursor-sync CLI verb, embedded init persona/handbook seeding with post-init sync, project_root inbox path fixes, embedded SDK default, and operator docs; review and qa gates passed per delivery-report.md and test-report.md."

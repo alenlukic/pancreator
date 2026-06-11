@@ -75,6 +75,8 @@ import {
 } from "./operator-verification.js";
 import {
   assertAdvanceArtifacts,
+  deliveryReportRel,
+  durableFeatureIndexRel,
   parseReviewPassesVerdict,
   stageArtifactContract,
   validateStageCompletionArtifacts,
@@ -942,7 +944,7 @@ export async function closeFeatureDeliveryArtifacts(
   let inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
   const shipRatificationRelActive = path.posix.join(closure.runDirRel, "ship-ratification.json");
   const shipRatificationRelArchive = path.posix.join(closure.workArchiveRel, "ship-ratification.json");
-  const indexRel = path.posix.join("lib", "memory", "features", state.featureId, "index.json");
+  const indexRel = durableFeatureIndexRel(state.featureId);
   const activeMemoryRel = path.posix.join("lib", "memory", "active", "current.md");
 
   const activeRunExists = existsSync(activeRunDirAbs);
@@ -1892,12 +1894,12 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 ## In-scope paths
 
 - ${state.source.inboxPath}
-- lib/memory/features/${state.featureId}/spec.md (when present)
+- ${state.artifacts.runDir}/spec.md (when present)
 - ${productPlanRel(state.artifacts.runDir)}
 - ${productAcceptanceCriteriaRel(state.artifacts.runDir)}
 - ${designPlanRel(state.artifacts.runDir)}
 - ${designAcceptanceCriteriaRel(state.artifacts.runDir)}
-- ${uxSpecRel(state.featureId)}
+- ${uxSpecRel(state.artifacts.runDir)}
 - ${techPlanRel(state.artifacts.runDir)}
 - ${techAcceptanceCriteriaRel(state.artifacts.runDir)}
 - ${manualQaTestCasesRel(state.artifacts.runDir)}
@@ -1907,7 +1909,7 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 - ${state.artifacts.runDir}/implementation-report.md
 - ${state.artifacts.runDir}/review.md
 - ${state.artifacts.runDir}/test-report.md
-- lib/memory/features/${state.featureId}/delivery-report.md
+- ${deliveryReportRel(state.artifacts.runDir)}
 - ${state.artifacts.runDir}/compliance-result.json
 - ${state.artifacts.runDir}/ship-ratification.json
 - ${state.artifacts.runDir}/${PIPELINE_CLOSE_FILENAME}
@@ -2000,8 +2002,8 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
     case "plan":
       return `Input: ${state.source.inboxPath}
 Product companion: ${productPlanPromptRel(state.artifacts.runDir)} → ${productPlanRel(state.artifacts.runDir)} + ${productAcceptanceCriteriaRel(state.artifacts.runDir)}
-Design companion: ${designPlanPromptRel(state.artifacts.runDir)} → ${designPlanRel(state.artifacts.runDir)} + ${designAcceptanceCriteriaRel(state.artifacts.runDir)} + ${uxSpecRel(state.featureId)}
-Outputs: ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${uxSpecRel(state.featureId)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}
+Design companion: ${designPlanPromptRel(state.artifacts.runDir)} → ${designPlanRel(state.artifacts.runDir)} + ${designAcceptanceCriteriaRel(state.artifacts.runDir)} + ${uxSpecRel(state.artifacts.runDir)}
+Outputs: ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}
 Plan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria, manual_qa_test_cases; handoff.md MUST include ## Validation commands.
 Advance after ${
         state.automation?.runnerInvocation === "sdk" ? "agent validates product/design/tech plan artifacts" : "human ratification"
@@ -2018,20 +2020,20 @@ Advance after ${
       return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, repo_wide_tests_pass, lint_typecheck_rerun_required, core_reentry_required, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run repo-wide pnpm test and node --test tests/*.test.mjs before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
-        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, lib/memory/features/${state.featureId}/ux-spec.md, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
         : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
-      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: ${deliveryReportRel(state.artifacts.runDir)}\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
-      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nVerdict fields: compliance_passes, plan_invalidating, core_reentry_required, spot_fixable, excluded_from_gate, and final_gate\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nQualifying spot-fix (stay in compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
+      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, ${deliveryReportRel(state.artifacts.runDir)}, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nVerdict fields: compliance_passes, plan_invalidating, core_reentry_required, spot_fixable, excluded_from_gate, and final_gate\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nQualifying spot-fix (stay in compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
     case "ship": {
       const shipInputs = stateIncludesStage(state, "compliance")
-        ? `local diff, ${state.artifacts.runDir}/compliance-result.json, lib/memory/features/${state.featureId}/delivery-report.md`
-        : `local diff, ${state.artifacts.runDir}/test-report.md, lib/memory/features/${state.featureId}/delivery-report.md`;
+        ? `local diff, ${state.artifacts.runDir}/compliance-result.json, ${deliveryReportRel(state.artifacts.runDir)}`
+        : `local diff, ${state.artifacts.runDir}/test-report.md, ${deliveryReportRel(state.artifacts.runDir)}`;
       return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/ship-ratification.json (human_ratified_diff: true)\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
     }
     case "index":
-      return `Inputs: delivery report and accepted ship artifacts\nOutputs: lib/memory/features/${state.featureId}/index.json, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not .pan/archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\nDo NOT mv .pan/work/ to .pan/archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
+      return `Inputs: delivery report and accepted ship artifacts\nOutputs: ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not .pan/archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\nDo NOT mv .pan/work/ to .pan/archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
       return state.status === "closed" ? closedContractMarkdown(state) : finalClosureContractMarkdown(state);
     default:
@@ -2044,7 +2046,7 @@ function complianceScopePathsForFeatureState(state: FeatureDeliveryState): strin
     path.posix.join(state.artifacts.runDir, "touch-set.json"),
     path.posix.join(state.artifacts.runDir, "review.md"),
     path.posix.join(state.artifacts.runDir, "test-report.md"),
-    path.posix.join("lib", "memory", "features", state.featureId, "delivery-report.md"),
+    deliveryReportRel(state.artifacts.runDir),
   ];
 }
 

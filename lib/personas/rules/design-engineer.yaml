@@ -3,5 +3,5 @@ description: When the `feature-delivery` pipeline reaches the `plan` stage, the 
 globs:
   - .pan/work/**/design-plan.md
   - .pan/work/**/design-acceptance-criteria.md
-  - lib/memory/features/**/ux-spec.md
+  - .pan/work/**/ux-spec.md
 alwaysApply: false

@@ -1,0 +1,36 @@
+{
+  "feature_id": "compliance-tests",
+  "title": "Compliance Tests Intake Spec",
+  "category": "quality-governance",
+  "status": "indexed",
+  "current_stage": "index",
+  "summary": "This slice ships the canonical compliance-test surface under tests/compliance/, the first-slice manual runbook, severity routing, run-template fields, and the AGENTS trigger guidance. Review is green with review_passes: true, the compliance audit is green with compliance_passes: true, and the first slice keeps…",
+  "planning_context": [
+    "handoff.handoff_note: Round 06 and the delivery report complete the implementation/reporting flow. Librarian should index the emitted feature artifacts and preserve the round-04 remediation constraints in the feature index.",
+    "handoff.decision: delivery-reported"
+  ],
+  "implementation_surfaces": [
+    "tests/compliance/schemas/latest.yaml",
+    "tests/compliance/schemas/v1.yaml",
+    "tests/compliance/high-remediation-blocking.yaml",
+    "tests/compliance/medium-backlog-default-off.yaml",
+    "tests/compliance/low-warning-emission.yaml",
+    "tests/compliance/"
+  ],
+  "retained_artifacts": [
+    "audit-history.json",
+    "manual-runbook.md",
+    "run-template.json",
+    "severity-routing.md"
+  ],
+  "compressed_from": [
+    "lib/memory/features/compliance-tests/audit-history.json",
+    "lib/memory/features/compliance-tests/delivery-report.md",
+    "lib/memory/features/compliance-tests/index.json",
+    "lib/memory/features/compliance-tests/manual-runbook.md",
+    "lib/memory/features/compliance-tests/run-template.json",
+    "lib/memory/features/compliance-tests/severity-routing.md",
+    "lib/memory/features/compliance-tests/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

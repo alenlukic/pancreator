@@ -1,0 +1,33 @@
+{
+  "feature_id": "pancreator-run-logger",
+  "title": "Engineering Spec - @pancreator/run-logger",
+  "category": "platform-substrate",
+  "status": "indexed",
+  "current_stage": "contracts-authored",
+  "summary": "Bootstrap slice 54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants indexed this Phase-2 engineering-spec folder for @pancreator/run-logger. Canonical requirements remain in spec.md and registered contracts under contracts/ (where present).",
+  "planning_context": [
+    "handoff.handoff_note: Per-folder index pairs spec.md with this stub delivery-report.md. Promote to full feature-delivery memory when package scope closes.",
+    "handoff.decision: stub-index"
+  ],
+  "implementation_surfaces": [
+    "lib/internal/packages/@pancreator/run-logger/"
+  ],
+  "retained_artifacts": [
+    "contracts/pancreator.run_logger.package_shape.rego",
+    "contracts/pancreator.run_logger.package_shape.yaml",
+    "contracts/pancreator.run_logger.readme_ergonomics.yaml",
+    "contracts.index.json"
+  ],
+  "compressed_from": [
+    "lib/memory/features/pancreator-run-logger/contracts/pancreator.run_logger.package_shape.rego",
+    "lib/memory/features/pancreator-run-logger/contracts/pancreator.run_logger.package_shape.yaml",
+    "lib/memory/features/pancreator-run-logger/contracts/pancreator.run_logger.readme_ergonomics.yaml",
+    "lib/memory/features/pancreator-run-logger/contracts.index.json",
+    "lib/memory/features/pancreator-run-logger/delivery-report.md",
+    "lib/memory/features/pancreator-run-logger/index.json",
+    "lib/memory/features/pancreator-run-logger/plan.md",
+    "lib/memory/features/pancreator-run-logger/spec.md",
+    "lib/memory/features/pancreator-run-logger/tasks.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

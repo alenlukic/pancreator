@@ -20,6 +20,7 @@ export interface DdlReadEnvelope {
 
 export interface FeatureSummary {
   readonly feature_id: string;
+  readonly category?: string;
   readonly title?: string;
   readonly status?: string;
   readonly indexPath: string;
@@ -85,23 +86,61 @@ async function readJsonFile(absPath: string): Promise<Record<string, unknown> | 
   }
 }
 
+interface FeatureIndexRecord {
+  readonly category?: string;
+  readonly dirName: string;
+  readonly indexPath: string;
+  readonly index: Record<string, unknown>;
+}
+
+async function collectFeatureIndexRecords(repoRoot: string): Promise<FeatureIndexRecord[]> {
+  const featuresRoot = path.join(repoRoot, "lib", "memory", "features");
+  const records: FeatureIndexRecord[] = [];
+
+  for (const category of await safeReaddir(featuresRoot)) {
+    const categoryRoot = path.join(featuresRoot, category);
+
+    const legacyIndexPath = path.posix.join("lib", "memory", "features", category, "index.json");
+    const legacyIndex = await readJsonFile(path.join(repoRoot, legacyIndexPath));
+    if (legacyIndex?.feature_id !== undefined) {
+      records.push({ category: undefined, dirName: category, indexPath: legacyIndexPath, index: legacyIndex });
+      continue;
+    }
+
+    for (const dirName of await safeReaddir(categoryRoot)) {
+      const indexPath = path.posix.join(
+        "lib",
+        "memory",
+        "features",
+        category,
+        dirName,
+        "index.json",
+      );
+      const index = await readJsonFile(path.join(repoRoot, indexPath));
+      if (index !== null) {
+        records.push({ category, dirName, indexPath, index });
+      }
+    }
+  }
+
+  return records.sort((a, b) => {
+    const aId = String(a.index.feature_id ?? a.dirName);
+    const bId = String(b.index.feature_id ?? b.dirName);
+    return aId.localeCompare(bId);
+  });
+}
+
 export async function listFeatureSummaries(
   ctx: DdlExecutionContext,
 ): Promise<FeatureListResult> {
-  const featuresRoot = path.join(ctx.repoRoot, "lib", "memory", "features");
-  const dirs = await safeReaddir(featuresRoot);
-  /** @type {FeatureSummary[]} */
-  const features = [];
-  for (const dirName of dirs) {
-    const indexPath = path.posix.join("lib", "memory", "features", dirName, "index.json");
-    const index = await readJsonFile(path.join(ctx.repoRoot, indexPath));
-    features.push({
-      feature_id: String(index?.feature_id ?? dirName),
-      title: typeof index?.title === "string" ? index.title : undefined,
-      status: typeof index?.status === "string" ? index.status : undefined,
-      indexPath,
-    });
-  }
+  const features = (await collectFeatureIndexRecords(ctx.repoRoot)).map((record) => ({
+    feature_id: String(record.index.feature_id ?? record.dirName),
+    category: record.category,
+    title: typeof record.index.title === "string" ? record.index.title : undefined,
+    status: typeof record.index.status === "string" ? record.index.status : undefined,
+    indexPath: record.indexPath,
+  }));
+
   return {
     status: "ok",
     command: "feature.list",
@@ -113,50 +152,51 @@ export async function showFeature(
   ctx: DdlExecutionContext,
   featureId: string,
 ): Promise<FeatureShowResult | { status: "error"; command: "feature.show"; error: string }> {
-  const featuresRoot = path.join(ctx.repoRoot, "lib", "memory", "features");
-  const dirs = await safeReaddir(featuresRoot);
-  let matchDir: string | undefined;
-  for (const dirName of dirs) {
-    const indexPath = path.join(featuresRoot, dirName, "index.json");
-    const index = await readJsonFile(indexPath);
-    const id = String(index?.feature_id ?? dirName);
-    if (id === featureId || dirName === featureId) {
-      matchDir = dirName;
-      break;
-    }
-  }
-  if (matchDir === undefined) {
+  const records = await collectFeatureIndexRecords(ctx.repoRoot);
+  const match = records.find((record) => {
+    const id = String(record.index.feature_id ?? record.dirName);
+    return id === featureId || record.dirName === featureId;
+  });
+
+  if (match === undefined) {
     return {
       status: "error",
       command: "feature.show",
       error: `Feature not found: ${featureId}`,
     };
   }
-  const indexRel = path.posix.join("lib", "memory", "features", matchDir, "index.json");
-  const specRel = path.posix.join("lib", "memory", "features", matchDir, "spec.md");
-  const index = (await readJsonFile(path.join(ctx.repoRoot, indexRel))) ?? {};
+
+  const legacySpecRel = path.posix.join(
+    "lib",
+    "memory",
+    "features",
+    ...(match.category !== undefined ? [match.category] : []),
+    match.dirName,
+    "spec.md",
+  );
   let spec: string | undefined;
   try {
-    spec = await readFile(path.join(ctx.repoRoot, specRel), "utf8");
+    spec = await readFile(path.join(ctx.repoRoot, legacySpecRel), "utf8");
   } catch {
     spec = undefined;
   }
+
   return {
     status: "ok",
     command: "feature.show",
-    feature_id: String(index.feature_id ?? featureId),
-    index,
+    feature_id: String(match.index.feature_id ?? featureId),
+    index: match.index,
     spec,
     citations: [
       {
         kind: "path",
-        path: indexRel,
+        path: match.indexPath,
       },
       ...(spec !== undefined
         ? [
             {
               kind: "path",
-              path: specRel,
+              path: legacySpecRel,
             },
           ]
         : []),

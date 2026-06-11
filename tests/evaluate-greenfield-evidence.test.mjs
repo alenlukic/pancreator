@@ -17,7 +17,7 @@ import {
 import { deepCloneJson } from "../lib/internal/tools/canonical-json-format.mjs";
 
 const FIXTURE_PATH =
-  "lib/memory/features/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json";
+  "lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/greenfield-evidence.fixture.json";
 
 const PASSING_ARTIFACT = {
   schema_version: "1",

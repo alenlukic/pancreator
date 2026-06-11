@@ -12,6 +12,7 @@ export const COMPLIANCE_AUDIT_HISTORY_REL = path.posix.join(
   "lib",
   "memory",
   "features",
+  "quality-governance",
   "compliance-tests",
   "audit-history.json",
 );
@@ -453,7 +454,7 @@ function normalizedHistory(raw: unknown): ComplianceAuditHistory {
   };
 }
 
-function relFromFeatureIndex(indexRel: string, featureId: string, maybeRel: string | null): string | null {
+function relFromFeatureIndex(indexRel: string, maybeRel: string | null): string | null {
   const normalized = maybeRel === null ? null : normalizeRepoRelativePath(maybeRel);
   if (normalized === null) {
     return null;
@@ -461,7 +462,7 @@ function relFromFeatureIndex(indexRel: string, featureId: string, maybeRel: stri
   if (normalized.startsWith(".pan/work/") || normalized.startsWith(".pan/archive/") || normalized.startsWith("lib/")) {
     return normalized;
   }
-  return path.posix.join("lib", "memory", "features", featureId, normalized);
+  return path.posix.join(path.posix.dirname(indexRel), normalized);
 }
 
 function parseAuditPathsFromMarkdown(content: string): string[] {
@@ -482,91 +483,99 @@ async function buildBackfillEntries(repoRoot: string): Promise<ComplianceAuditHi
   if (!existsSync(featuresRoot)) {
     return [];
   }
-  const dirs = (await readdir(featuresRoot, { withFileTypes: true }))
+  const categories = (await readdir(featuresRoot, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
     .map((entry) => entry.name)
     .sort((a, b) => a.localeCompare(b));
 
   const rows: ComplianceAuditHistoryEntry[] = [];
-  for (const featureDir of dirs) {
-    const indexRel = path.posix.join("lib", "memory", "features", featureDir, "index.json");
-    const indexAbs = resolveRepoPath(repoRoot, indexRel);
-    if (!existsSync(indexAbs)) {
-      continue;
-    }
-    let parsedIndex: Record<string, unknown>;
-    try {
-      parsedIndex = JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>;
-    } catch {
-      continue;
-    }
-    const featureId = asString(parsedIndex.feature_id) ?? featureDir;
-    const taskIdFromIndex = asString(parsedIndex.task_id);
-    const artifactIndex = asRecord(parsedIndex.artifact_index);
-    const pipelineArtifacts = asRecord(artifactIndex?.pipeline_artifacts);
-    const complianceResultRel = relFromFeatureIndex(
-      indexRel,
-      featureId,
-      asString(asRecord(pipelineArtifacts?.compliance_result)?.path),
-    );
-    const complianceAuditRel = relFromFeatureIndex(
-      indexRel,
-      featureId,
-      asString(asRecord(pipelineArtifacts?.compliance_audit)?.path),
-    );
-    const runDirRel = relFromFeatureIndex(indexRel, featureId, asString(asRecord(pipelineArtifacts?.work_dir)?.path));
-    const candidateRel = complianceResultRel ?? complianceAuditRel;
-    if (candidateRel === null) {
-      continue;
-    }
-    const candidateAbs = resolveRepoPath(repoRoot, candidateRel);
-    if (!existsSync(candidateAbs)) {
-      continue;
-    }
+  for (const category of categories) {
+    const categoryRoot = path.join(featuresRoot, category);
+    const featureDirs = (await readdir(categoryRoot, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+      .map((entry) => entry.name)
+      .sort((a, b) => a.localeCompare(b));
 
-    let recordedAt = maybeIso(parsedIndex.indexed_at) ?? new Date(0).toISOString();
-    let stageStatus = "unknown";
-    let findings = blankFindings();
-    let scopePaths: string[] = [];
-    let taskId = taskIdFromIndex ?? extractTaskIdFromPath(candidateRel) ?? "unknown-task";
-
-    if (candidateRel.endsWith(".json")) {
-      try {
-        const parsedResult = JSON.parse(await readFile(candidateAbs, "utf8")) as Record<string, unknown>;
-        recordedAt = parseRecordedAt(parsedResult, new Date(recordedAt));
-        stageStatus = parseStageStatus(parsedResult);
-        findings = parseFindingsSummary(parsedResult);
-        scopePaths = parseScopePathsFromComplianceRecord(parsedResult, []);
-        taskId = asString(parsedResult.taskId) ?? asString(parsedResult.task_id) ?? taskId;
-      } catch {
-        // Leave fallback metadata.
+    for (const featureDir of featureDirs) {
+      const indexRel = path.posix.join("lib", "memory", "features", category, featureDir, "index.json");
+      const indexAbs = resolveRepoPath(repoRoot, indexRel);
+      if (!existsSync(indexAbs)) {
+        continue;
       }
-    } else {
-      const markdown = await readFile(candidateAbs, "utf8");
-      const statInfo = await stat(candidateAbs);
-      recordedAt = new Date(statInfo.mtimeMs).toISOString();
-      stageStatus = /compliance_passes:\s*true/iu.test(markdown) ? "passed" : "unknown";
-      scopePaths = parseAuditPathsFromMarkdown(markdown);
-    }
 
-    const snapshot = await buildSnapshot(repoRoot, scopePaths);
-    rows.push({
-      audit_id: makeAuditId(taskId, recordedAt),
-      task_id: taskId,
-      feature_id: featureId,
-      recorded_at: recordedAt,
-      stage_status: stageStatus,
-      baseline_audit_id: null,
-      artifact_paths: {
-        ...(complianceResultRel !== null ? { compliance_result: complianceResultRel } : {}),
-        ...(complianceAuditRel !== null ? { compliance_audit: complianceAuditRel } : {}),
-        ...(runDirRel !== null ? { run_dir: runDirRel } : {}),
-        index_json: indexRel,
-      },
-      scope_snapshot: snapshot,
-      delta_summary: blankDelta(),
-      findings_summary: findings,
-    });
+      let parsedIndex: Record<string, unknown>;
+      try {
+        parsedIndex = JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+
+      const featureId = asString(parsedIndex.feature_id) ?? featureDir;
+      const taskIdFromIndex = asString(parsedIndex.task_id);
+      const artifactIndex = asRecord(parsedIndex.artifact_index);
+      const pipelineArtifacts = asRecord(artifactIndex?.pipeline_artifacts);
+      const complianceResultRel = relFromFeatureIndex(
+        indexRel,
+        asString(asRecord(pipelineArtifacts?.compliance_result)?.path),
+      );
+      const complianceAuditRel = relFromFeatureIndex(
+        indexRel,
+        asString(asRecord(pipelineArtifacts?.compliance_audit)?.path),
+      );
+      const runDirRel = relFromFeatureIndex(indexRel, asString(asRecord(pipelineArtifacts?.work_dir)?.path));
+      const candidateRel = complianceResultRel ?? complianceAuditRel;
+      if (candidateRel === null) {
+        continue;
+      }
+      const candidateAbs = resolveRepoPath(repoRoot, candidateRel);
+      if (!existsSync(candidateAbs)) {
+        continue;
+      }
+
+      let recordedAt = maybeIso(parsedIndex.indexed_at) ?? new Date(0).toISOString();
+      let stageStatus = "unknown";
+      let findings = blankFindings();
+      let scopePaths: string[] = [];
+      let taskId = taskIdFromIndex ?? extractTaskIdFromPath(candidateRel) ?? "unknown-task";
+
+      if (candidateRel.endsWith(".json")) {
+        try {
+          const parsedResult = JSON.parse(await readFile(candidateAbs, "utf8")) as Record<string, unknown>;
+          recordedAt = parseRecordedAt(parsedResult, new Date(recordedAt));
+          stageStatus = parseStageStatus(parsedResult);
+          findings = parseFindingsSummary(parsedResult);
+          scopePaths = parseScopePathsFromComplianceRecord(parsedResult, []);
+          taskId = asString(parsedResult.taskId) ?? asString(parsedResult.task_id) ?? taskId;
+        } catch {
+          // Leave fallback metadata.
+        }
+      } else {
+        const markdown = await readFile(candidateAbs, "utf8");
+        const statInfo = await stat(candidateAbs);
+        recordedAt = new Date(statInfo.mtimeMs).toISOString();
+        stageStatus = /compliance_passes:\s*true/iu.test(markdown) ? "passed" : "unknown";
+        scopePaths = parseAuditPathsFromMarkdown(markdown);
+      }
+
+      const snapshot = await buildSnapshot(repoRoot, scopePaths);
+      rows.push({
+        audit_id: makeAuditId(taskId, recordedAt),
+        task_id: taskId,
+        feature_id: featureId,
+        recorded_at: recordedAt,
+        stage_status: stageStatus,
+        baseline_audit_id: null,
+        artifact_paths: {
+          ...(complianceResultRel !== null ? { compliance_result: complianceResultRel } : {}),
+          ...(complianceAuditRel !== null ? { compliance_audit: complianceAuditRel } : {}),
+          ...(runDirRel !== null ? { run_dir: runDirRel } : {}),
+          index_json: indexRel,
+        },
+        scope_snapshot: snapshot,
+        delta_summary: blankDelta(),
+        findings_summary: findings,
+      });
+    }
   }
 
   const sorted = sortEntriesNewest(rows).slice(0, COMPLIANCE_AUDIT_HISTORY_MAX);

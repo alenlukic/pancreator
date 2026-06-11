@@ -167,7 +167,7 @@ When all gates are green, you MUST:
 4. When the new ADR supersedes a prior ADR, schedule the prior ADR's
    `superseded-by:` update through the `librarian` post_run hook; do NOT
    edit the prior ADR yourself.
-5. Register the new ADR in `/lib/memory/features/<id>/index.json` when the ADR
+5. Register the new ADR in `/lib/memory/features/<category>/<id>/index.json` when the ADR
    was authored under a Feature; the `librarian` runs the registration on
    the next post_run sweep.
 

@@ -227,7 +227,7 @@ Each artifact MUST live at the path declared below.
    Pancreator extensions `metadata.checkout_commit` and
    `metadata.run_log_offset`.
 6. **Pull request.** When the `ship` stage fires, you MUST prepare one local PR
-   body with the Delivery Report at `/lib/memory/features/<id>/delivery-report.md`
+   body with the Delivery Report at `/.pan/work/<day>/<task-id>/delivery-report.md`
    linked, then block for human approval before any push or PR creation.
 7. **Run summary.** When the operator dispatches `pnpm -w exec pan abort`, you MUST
    emit `/.pan/work/<day>/<id>/run-summary.md` for the `librarian` to index per

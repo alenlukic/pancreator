@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "pancreator.pipeline.package_shape",
+      "path": "/lib/memory/features/platform-substrate/pancreator-pipeline/contracts/pancreator.pipeline.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "lib/internal/packages/@pancreator/pipeline/**"
+      }
+    },
+    {
+      "id": "pancreator.pipeline.readme_ergonomics",
+      "path": "/lib/memory/features/platform-substrate/pancreator-pipeline/contracts/pancreator.pipeline.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "lib/internal/packages/@pancreator/pipeline/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "592a2a1"
+      }
+    }
+  ]
+}

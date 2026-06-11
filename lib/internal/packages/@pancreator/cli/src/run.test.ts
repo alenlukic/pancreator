@@ -2210,7 +2210,7 @@ describe("operator tooling batch cli wiring", () => {
         status: "indexed",
         indexed_at: "2026-05-26T18:23:19.000Z",
         intake: { source_inbox_item: stale },
-        delivery_report: { path: "lib/memory/features/ci-best-practices-batch/delivery-report.md" },
+        delivery_report: { path: "lib/memory/features/quality-governance/ci-best-practices-batch/index.json" },
       }),
       "utf8",
     );

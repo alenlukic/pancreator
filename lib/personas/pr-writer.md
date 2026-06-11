@@ -179,7 +179,7 @@ resolution in the following priority order (most explicit wins):
    path, you SHALL extract the task ID and Feature ID from its frontmatter or
    first-paragraph content, then resolve the work directory from those values.
 3. **Feature ID.** When the operator supplies only a Feature ID (for example
-   `64023`), you SHALL read `lib/memory/features/<id>/index.json` to locate
+   `64023`), you SHALL read `lib/memory/features/<category>/<id>/index.json` to locate
    the most recent active or archived work directory, then resolve from there.
 
 When multiple hints appear simultaneously, you MUST apply the priority order
@@ -228,7 +228,7 @@ You MUST read each of the following from the artifact directory when present:
 - `touch-set.json` — declared pipeline touch-set when present.
 - `handoff.md` — stage narrative and context.
 - `plan.md` — technical design summary.
-- `lib/memory/features/<id>/delivery-report.md` — upstream `tech-writer` output
+- `.pan/work/<day>/<task-id>/delivery-report.md` — upstream `tech-writer` output
   when present; read as supplementary input only (feature folder, not artifact
   directory).
 
@@ -310,7 +310,7 @@ The `## Next operator steps` block MUST include at minimum:
   response prose and the fenced PR block.
 - You MUST NOT create or modify inbox items, delivery reports, or stage
   artifacts. The `tech-writer` persona owns
-  `lib/memory/features/<id>/delivery-report.md`; you MAY read it as
+  `.pan/work/<day>/<task-id>/delivery-report.md`; you MAY read it as
   supplementary input but MUST NOT overwrite or append to it.
 - You MUST NOT run `gh pr create` or any git-mutating command. The operator or
   `supervisor` pastes and applies the fenced PR body.

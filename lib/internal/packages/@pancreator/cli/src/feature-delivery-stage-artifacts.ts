@@ -43,6 +43,33 @@ function handoffPath(state: FeatureDeliveryArtifactState): string {
   return state.artifacts.handoffFile ?? path.posix.join(state.artifacts.runDir, "handoff.md");
 }
 
+export function durableFeatureCategory(featureId: string): string {
+  if (featureId.startsWith("command-center-") || featureId.startsWith("surface-opt-p9") || featureId.startsWith("surface-opt-p10") || featureId.startsWith("v0-ui-dashboard")) {
+    return "command-center";
+  }
+  if (featureId.startsWith("active-memory") || featureId.includes("token-economy") || featureId.includes("memory")) {
+    return "memory-context";
+  }
+  if (featureId.startsWith("pancreator-") || featureId.startsWith("m1-substrate-runtime")) {
+    return "platform-substrate";
+  }
+  if (featureId.includes("compliance") || featureId.includes("json-formatting") || featureId.includes("timestamp") || featureId.includes("verification")) {
+    return "quality-governance";
+  }
+  if (featureId.includes("pipeline") || featureId.includes("inbox") || featureId.includes("dogfood") || featureId.includes("sdk")) {
+    return "delivery-pipeline";
+  }
+  return "bootstrap-repo-ops";
+}
+
+export function durableFeatureIndexRel(featureId: string): string {
+  return path.posix.join("lib", "memory", "features", durableFeatureCategory(featureId), featureId, "index.json");
+}
+
+export function deliveryReportRel(runDir: string): string {
+  return path.posix.join(runDir, "delivery-report.md");
+}
+
 export interface StageArtifactContract {
   /** Primary artifact referenced on advance commands and in run logs. */
   primaryArtifact: string;
@@ -541,7 +568,7 @@ export function stageArtifactContract(
         touchSet,
         handoff,
         ...(designStepsEnabled(state.options)
-          ? [designPlanRel(run), designAcceptanceCriteriaRel(run), uxSpecRel(state.featureId)]
+          ? [designPlanRel(run), designAcceptanceCriteriaRel(run), uxSpecRel(run)]
           : []),
       ];
       const acceptedAdvanceArtifacts = [plan, touchSet, handoff];
@@ -593,13 +620,7 @@ export function stageArtifactContract(
       };
     }
     case "report": {
-      const deliveryReport = path.posix.join(
-        "lib",
-        "memory",
-        "features",
-        state.featureId,
-        "delivery-report.md",
-      );
+      const deliveryReport = deliveryReportRel(run);
       return {
         primaryArtifact: deliveryReport,
         requiredAfterStageWork: [deliveryReport],
@@ -634,7 +655,7 @@ export function stageArtifactContract(
       };
     }
     case "index": {
-      const index = path.posix.join("lib", "memory", "features", state.featureId, "index.json");
+      const index = durableFeatureIndexRel(state.featureId);
       return {
         primaryArtifact: index,
         requiredAfterStageWork: [index],

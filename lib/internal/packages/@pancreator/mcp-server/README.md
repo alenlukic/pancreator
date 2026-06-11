@@ -26,7 +26,7 @@ This package exposes the bootstrap `pan` workspace surface as an MCP server over
 | MCP tool | Arguments | Envelope command | Notes |
 |---|---|---|---|
 | `pan.inbox` | `{}` | `inbox` | Lists `lib/inbox/in/` entries. |
-| `pan.feature` | `{ "action": "list" }` | `feature.list` | Summaries from `lib/memory/features/*/index.json`. |
+| `pan.feature` | `{ "action": "list" }` | `feature.list` | Summaries from `lib/memory/features/<category>/<feature-id>/index.json`. |
 | `pan.feature` | `{ "action": "show", "featureId": "<id>" }` | `feature.show` | Returns index JSON and `spec.md` when present. |
 | `pan.status` | `{}` or `{ "taskId": "<id>" }` | `status` | Parsed `pancreator.yaml` plus optional task-scoped ledger read. |
 | `pan.memory` | `{ "query": "<text>" }` | `memory.query` | Routes through handbook index and active-memory files. |

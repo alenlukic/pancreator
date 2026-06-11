@@ -83,7 +83,7 @@ export function planStageRequiredArtifactRels(runDirRel: string, featureId: stri
     `${runDirRel}/handoff.md`,
     `${runDirRel}/design-plan.md`,
     `${runDirRel}/design-acceptance-criteria.md`,
-    `lib/memory/features/${featureId}/ux-spec.md`,
+    `${runDirRel}/ux-spec.md`,
   ];
 }
 
@@ -94,7 +94,6 @@ export async function seedPlanStageAdvanceArtifacts(
 ): Promise<void> {
   const runDir = path.join(root, runDirRel);
   await mkdir(runDir, { recursive: true });
-  await mkdir(path.join(root, "lib", "memory", "features", featureId), { recursive: true });
   await writeFile(path.join(runDir, "plan.md"), VALID_PLAN_MARKDOWN, "utf8");
   await writeFile(path.join(runDir, "adr-draft.md"), VALID_ADR_MARKDOWN, "utf8");
   await writeFile(path.join(runDir, "touch-set.json"), VALID_TOUCH_SET_JSON, "utf8");
@@ -118,11 +117,7 @@ export async function seedPlanStageAdvanceArtifacts(
     "utf8",
   );
   await writeFile(path.join(runDir, "manual-qa-test-cases.md"), VALID_MANUAL_QA_MARKDOWN, "utf8");
-  await writeFile(
-    path.join(root, "lib", "memory", "features", featureId, "ux-spec.md"),
-    VALID_UX_SPEC_MARKDOWN,
-    "utf8",
-  );
+  await writeFile(path.join(runDir, "ux-spec.md"), VALID_UX_SPEC_MARKDOWN, "utf8");
 }
 
 export async function seedTestStageAdvanceArtifacts(root: string, runDirRel: string): Promise<void> {

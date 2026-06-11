@@ -318,7 +318,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
 - **Artifact** — a durable file produced by a pipeline or conversation: PRD,
   ADR, RFC, UX Spec, test plan, runbook, postmortem, delivery report.
   Citation-bearing and anti-rot-tracked.
-- **Feature** — a first-class entity under `/lib/memory/features/<id>/` binding
+- **Feature** — a first-class entity under `/lib/memory/features/<category>/<id>/` binding
   every artifact for a single product capability. Has a unique slug and a
   generated `index.json`.
 - **Backlog** — `/lib/memory/backlog/`. The live, ranked product roadmap. Owned
@@ -344,7 +344,7 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   MUST be fully formed fenced command blocks listing every path and flag. Agents
   MUST NOT use underspecified file lists or offload automatable commands to the
   operator. Policy: `/lib/memory/handbook/operator-output-contract.md` §3.4.
-- **Spec Kit alignment** — `/lib/memory/features/<id>/` paths align with GitHub
+- **Spec Kit alignment** — `/lib/memory/features/<category>/<id>/` paths align with GitHub
   Spec Kit v0.8 conventions: `spec.md`, `plan.md`, `tasks.md`. The repo-level
   constitution lives at `/lib/memory/handbook/constitution.md`.
 

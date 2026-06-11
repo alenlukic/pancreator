@@ -2,6 +2,7 @@ import { resolveProjectPath } from "@pancreator/core";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 
 /** Minimal feature-delivery ledger fields used by hygiene scans. */
 interface FeatureDeliveryState {
@@ -151,7 +152,7 @@ async function resolveCanonicalTaskId(
   featureId: string,
   candidates: string[],
 ): Promise<string> {
-  const indexRel = path.posix.join("lib", "memory", "features", featureId, "index.json");
+  const indexRel = durableFeatureIndexRel(featureId);
   const indexAbs = resolveProjectPath(repoRoot, indexRel);
   if (existsSync(indexAbs)) {
     try {

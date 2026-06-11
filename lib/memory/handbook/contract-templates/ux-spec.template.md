@@ -54,7 +54,7 @@ kind: llm-judge
 severity: block
 applies_to:
   kind: artifact-symbol
-  path: /lib/memory/features/<id>/ux-spec.md
+  path: /.pan/work/<day>/<task-id>/ux-spec.md
   symbol: <UX-spec section heading>
   contentHash: <sha256>
 owner: contract-writer                              # M1; design-engineer at M2
@@ -63,7 +63,7 @@ description: |
   the frontend SHALL <observable response>.
 references:
   - kind: lines
-    path: /lib/memory/features/<id>/ux-spec.md
+    path: /.pan/work/<day>/<task-id>/ux-spec.md
     range: [<start>, <end>]
     contentHash: <sha256>
     note: <which UX-spec section this gates>
@@ -87,7 +87,7 @@ runtime:
     cost_ceiling_usd: 0.50
 metadata:
   pancreator.contract_id: <id>
-  pancreator.applies_to: artifact-symbol:/lib/memory/features/<id>/ux-spec.md#<symbol>
+  pancreator.applies_to: artifact-symbol:/.pan/work/<day>/<task-id>/ux-spec.md#<symbol>
   pancreator.wcag-criteria: ["<WCAG ID>"]            # REQUIRED if a11y
 ```
 
@@ -99,7 +99,7 @@ kind: axe
 severity: block
 applies_to:
   kind: artifact-symbol
-  path: /lib/memory/features/<id>/ux-spec.md
+  path: /.pan/work/<day>/<task-id>/ux-spec.md
   symbol: "Section: Color and Contrast"
   contentHash: <sha256>
 owner: design-engineer
@@ -109,7 +109,7 @@ description: |
   `@axe-core/playwright`.
 references:
   - kind: lines
-    path: /lib/memory/features/<id>/ux-spec.md
+    path: /.pan/work/<day>/<task-id>/ux-spec.md
     range: [<start>, <end>]
     contentHash: <sha256>
     note: "UX-spec contrast requirements."
@@ -119,7 +119,7 @@ runtime:
   rules: [color-contrast]
 metadata:
   pancreator.contract_id: <feature>.ux.color-contrast
-  pancreator.applies_to: artifact-symbol:/lib/memory/features/<id>/ux-spec.md#Color-and-Contrast
+  pancreator.applies_to: artifact-symbol:/.pan/work/<day>/<task-id>/ux-spec.md#Color-and-Contrast
   pancreator.wcag-criteria: ["1.4.3"]
 ```
 
@@ -131,7 +131,7 @@ kind: playwright
 severity: block
 applies_to:
   kind: artifact-symbol
-  path: /lib/memory/features/<id>/ux-spec.md
+  path: /.pan/work/<day>/<task-id>/ux-spec.md
   symbol: "Section: Modal Focus Behavior"
   contentHash: <sha256>
 owner: design-engineer
@@ -140,16 +140,16 @@ description: |
   within 100 ms and SHALL NOT escape the modal until the modal closes.
 references:
   - kind: lines
-    path: /lib/memory/features/<id>/ux-spec.md
+    path: /.pan/work/<day>/<task-id>/ux-spec.md
     range: [<start>, <end>]
     contentHash: <sha256>
     note: "UX-spec modal focus requirements."
-spec: /lib/memory/features/<id>/contracts/focus-trap.spec.ts
+spec: /lib/memory/features/<category>/<id>/contracts/focus-trap.spec.ts
 runtime:
   test_describe: <feature>.ux.focus-trap
 metadata:
   pancreator.contract_id: <feature>.ux.focus-trap
-  pancreator.applies_to: artifact-symbol:/lib/memory/features/<id>/ux-spec.md#Modal-Focus-Behavior
+  pancreator.applies_to: artifact-symbol:/.pan/work/<day>/<task-id>/ux-spec.md#Modal-Focus-Behavior
   pancreator.wcag-criteria: ["2.4.3", "2.4.7"]
 ```
 

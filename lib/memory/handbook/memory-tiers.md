@@ -10,7 +10,7 @@ purpose: |
   retrieval cost, durability, and operator-facing intent.
 references:
   - kind: lines
-    path: lib/memory/features/active-memory-context-economy-pass-2/spec.md
+    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     range: [212, 312]
     contentHash: 9b2ddcc
     note: "Acceptance criteria anchor active-memory and memory-tier handbook obligations."
@@ -29,7 +29,7 @@ related:
 
 This page defines the six context tiers agents use when they classify default
 versus explicit-read context. The Feature cites this taxonomy at
-`{kind: lines, path: lib/memory/features/active-memory-context-economy-pass-2/spec.md, range: [212, 312], contentHash: 9b2ddcc}`.
+`{kind: lines, path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json, range: [212, 312], contentHash: 9b2ddcc}`.
 
 ## Active memory
 

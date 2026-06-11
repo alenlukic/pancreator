@@ -1,0 +1,13 @@
+{
+  "feature_id": "inbox-convention-migration",
+  "title": "Inbox convention migration — Engineering Spec",
+  "category": "delivery-pipeline",
+  "status": "indexed",
+  "summary": "This re-entry slice hardens the standalone inbox convention migration tool and extends legacy thread discovery so nested layout is handled safely. Review records review_passes: true, states that prior must-fix findings are resolved, and lists no must-fix items.",
+  "compressed_from": [
+    "lib/memory/features/inbox-convention-migration/delivery-report.md",
+    "lib/memory/features/inbox-convention-migration/index.json",
+    "lib/memory/features/inbox-convention-migration/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

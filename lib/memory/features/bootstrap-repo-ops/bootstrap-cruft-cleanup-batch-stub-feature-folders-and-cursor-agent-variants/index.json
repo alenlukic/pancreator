@@ -1,0 +1,35 @@
+{
+  "feature_id": "bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+  "title": "Bootstrap cruft cleanup batch — stub feature folders and Cursor agent variants",
+  "category": "bootstrap-repo-ops",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+  "summary": "Work package A normalized 20 pancreator-* feature folders by prepending YAML frontmatter to each spec.md, creating stub delivery-report.md and index.json files, and clearing global coverage gaps in lib/memory/features/index.json. Work package B is corrected and reverted: the -standard and -complex mirrors remain in…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, active-work pipeline artifacts, and Work package A normalization surface. After human accepts this index artifact, run pan advance to complete, then pan close-artifacts for archival…",
+    "handoff.decision: index-complete",
+    "intake.human_approval_note: Delivery report status is human-accepted; index links ship artifacts before complete-stage archival."
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    }
+  ],
+  "open_followups": [
+    "touch-set-wp-b-stale-paths",
+    "per-feature-index-dual-anchor-parity"
+  ],
+  "compressed_from": [
+    "lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/.gitkeep",
+    "lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/delivery-report.md",
+    "lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/index.json",
+    "lib/memory/features/bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

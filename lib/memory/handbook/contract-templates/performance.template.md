@@ -66,11 +66,11 @@ description: |
   rolling window with no more than a 1.0 percent miss-rate per window.
 references:
   - kind: lines
-    path: /lib/memory/features/<id>/perf-spec.md
+    path: /lib/memory/features/<category>/<id>/perf-spec.md
     range: [<start>, <end>]
     contentHash: <sha256>
     note: "Checkout p95-latency SLO."
-spec: /lib/memory/features/<id>/contracts/checkout-p95-latency.rego
+spec: /lib/memory/features/<category>/<id>/contracts/checkout-p95-latency.rego
 runtime:
   package: pancreator.perf.checkout
   query: data.pancreator.perf.checkout.deny
@@ -95,7 +95,7 @@ Sidecar `checkout-p95-latency.rego`:
 #   window.
 # severity: warn
 # references:
-#   - "/lib/memory/features/<id>/perf-spec.md"
+#   - "/lib/memory/features/<category>/<id>/perf-spec.md"
 # custom:
 #   pancreator.contract_id: <feature>.perf.checkout-p95-latency
 #   pancreator.applies_to: pipeline-telemetry:feature-delivery#checkout.latency.p95_ms

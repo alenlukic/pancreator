@@ -21,7 +21,7 @@ metadata:
       - node lib/internal/tools/run-compliance.mjs
     artifact_destinations:
       drift_report: lib/inbox/out/<timestamp>-knowledge-curation-drift-report.md
-      feature_citation_scan: lib/memory/features/<feature-id>/citation-rot-scan.md
+      feature_citation_scan: lib/memory/curation/<feature-id>-citation-rot-scan.md
       compliance_result: .pan/work/<day>/<task-id>/compliance-result.json
     anti_rot_loop:
       owner_persona: librarian

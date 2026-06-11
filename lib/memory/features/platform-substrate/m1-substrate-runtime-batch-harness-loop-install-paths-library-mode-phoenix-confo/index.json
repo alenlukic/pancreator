@@ -1,0 +1,21 @@
+{
+  "feature_id": "m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+  "title": "M1 substrate runtime batch — harness loop, install paths, library mode, Phoenix conformance",
+  "category": "platform-substrate",
+  "status": "indexed",
+  "task_id": "966_2343_m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo",
+  "summary": "This batch shipped the harness-loop core and the operator surfaces around it: a LangGraph-backed pipeline compiler and execution path, SDK-flagged runner invocation with manual still the default, Phoenix-only run-logger conformance, a library-mode proof, and non-destructive install paths. The review passed, and the…",
+  "implementation_surfaces": [
+    "lib/internal/packages/@pancreator/checkpointer-fs/",
+    "lib/internal/packages/@pancreator/runner-cursor/",
+    "lib/internal/packages/@pancreator/pipeline/",
+    "lib/internal/packages/@pancreator/run-logger/",
+    "lib/internal/packages/@pancreator/cli/"
+  ],
+  "compressed_from": [
+    "lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/delivery-report.md",
+    "lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/index.json",
+    "lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}

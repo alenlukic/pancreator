@@ -66,7 +66,7 @@ references:
     range: [<start>, <end>]
     contentHash: <sha256>
     note: "POST /checkout declaration."
-spec: /lib/memory/features/<id>/contracts/401-on-missing-token.rego
+spec: /lib/memory/features/<category>/<id>/contracts/401-on-missing-token.rego
 runtime:
   package: pancreator.api.checkout
   query: data.pancreator.api.checkout.deny

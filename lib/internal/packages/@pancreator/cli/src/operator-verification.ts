@@ -72,8 +72,8 @@ export function renderOperatorVerificationScaffold(
   repoRoot: string,
   now: Date,
 ): string {
-  const specRel = path.posix.join("lib", "memory", "features", state.featureId, "spec.md");
-  const deliveryRel = path.posix.join("lib", "memory", "features", state.featureId, "delivery-report.md");
+  const specRel = path.posix.join(state.artifacts.runDir, "spec.md");
+  const deliveryRel = path.posix.join(state.artifacts.runDir, "delivery-report.md");
   const testReportRel = path.posix.join(state.artifacts.runDir, "test-report.md");
   const touchSetRel = path.posix.join(state.artifacts.runDir, "touch-set.json");
 

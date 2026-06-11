@@ -10,7 +10,7 @@ purpose: |
   embedding durable or archival artifacts.
 references:
   - kind: lines
-    path: lib/memory/features/active-memory-context-economy-pass-2/delivery-report.md
+    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
     range: [1, 120]
     contentHash: d18eff8
     note: "Most recent shipped Feature delivery report."
@@ -48,16 +48,16 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
-| `command-center-rebuild` | [indexed] (`2026-06-10T21:20:00.000Z`) | `lib/memory/features/command-center-rebuild/delivery-report.md` | `—` | `.pan/archive/inbox/in/172965_06-10-26/52276_0928_command-center-rebuild/28722_1601_command-center-rebuild-spec-theme-ref…` |
-| `command-center-feature-delivery-mission-control-run-detail` | [indexed] (`2026-06-09T11:30:00.000Z`) | `lib/memory/features/command-center-feature-delivery-mission-control-run-detail/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_c…` |
-| `command-center-command-center-operational-state-surface` | [indexed] (`2026-06-09T11:05:00.000Z`) | `lib/memory/features/command-center-command-center-operational-state-surface/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-command-center-operational-state-surface/63491_0621_comm…` |
+| `command-center-rebuild` | [indexed] (`2026-06-10T21:20:00.000Z`) | `lib/memory/features/command-center/command-center-rebuild/index.json` | `—` | `.pan/archive/inbox/in/172965_06-10-26/52276_0928_command-center-rebuild/28722_1601_command-center-rebuild-spec-theme-ref…` |
+| `command-center-feature-delivery-mission-control-run-detail` | [indexed] (`2026-06-09T11:30:00.000Z`) | `lib/memory/features/command-center/command-center-feature-delivery-mission-control-run-detail/index.json` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_c…` |
+| `command-center-command-center-operational-state-surface` | [indexed] (`2026-06-09T11:05:00.000Z`) | `lib/memory/features/command-center/command-center-command-center-operational-state-surface/index.json` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-command-center-operational-state-surface/63491_0621_comm…` |
 | `command-center-app-shell-navigation-rail-and-operator-theme-tokens` | [indexed] (`2026-06-09T06:52:30.000Z`) | `—` | `—` | `.pan/archive/inbox/in/172966_06-09-26/63441_0622_command-center-app-shell-navigation-rail-and-operator-theme-tokens/6360…` |
-| `command-center-ux-philosophy-information-architecture-and-user-stories` | [indexed] (`2026-06-09T05:50:00.000Z`) | `lib/memory/features/command-center-ux-philosophy-information-architecture-and-user-stories/delivery-report.md` | `—` | `—` |
-| `command-center-active-memory-operator-craft-revalidation` | [indexed] (`2026-06-09T02:44:44.002Z`) | `lib/memory/features/command-center-active-memory-operator-craft-revalidation/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/81282_0125_com…` |
-| `command-center-active-memory-craft-enforcement` | [indexed] (`2026-06-09T01:40:00.000Z`) | `lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-cente…` |
-| `command-center-active-memory-operator-readability` | [indexed] (`2026-06-09T01:00:00.000Z`) | `lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/919_2344_command-center-active-memory-operator-readability/945_2344_command-center…` |
-| `command-center-module-tab-accessibility` | [indexed] (`2026-06-08T23:05:00.000Z`) | `lib/memory/features/command-center-module-tab-accessibility/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11…` |
-| `command-center-craft-polish-pass` | [indexed] (`2026-06-08T21:48:00.000Z`) | `lib/memory/features/command-center-craft-polish-pass/delivery-report.md` | `—` | `.pan/archive/inbox/in/172967_06-08-26/8919_2131_command-center-craft-polish-pass/8947_2130_command-center-craft-polish-p…` |
+| `command-center-ux-philosophy-information-architecture-and-user-stories` | [indexed] (`2026-06-09T05:50:00.000Z`) | `lib/memory/features/command-center/command-center-ux-philosophy-information-architecture-and-user-stories/index.json` | `—` | `—` |
+| `command-center-active-memory-operator-craft-revalidation` | [indexed] (`2026-06-09T02:44:44.002Z`) | `lib/memory/features/command-center/command-center-active-memory-operator-craft-revalidation/index.json` | `—` | `.pan/archive/inbox/in/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/81282_0125_com…` |
+| `command-center-active-memory-craft-enforcement` | [indexed] (`2026-06-09T01:40:00.000Z`) | `lib/memory/features/command-center/command-center-active-memory-craft-enforcement/index.json` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-cente…` |
+| `command-center-active-memory-operator-readability` | [indexed] (`2026-06-09T01:00:00.000Z`) | `lib/memory/features/command-center/command-center-active-memory-operator-readability/index.json` | `—` | `.pan/archive/inbox/in/172967_06-08-26/919_2344_command-center-active-memory-operator-readability/945_2344_command-center…` |
+| `command-center-module-tab-accessibility` | [indexed] (`2026-06-08T23:05:00.000Z`) | `lib/memory/features/command-center/command-center-module-tab-accessibility/index.json` | `—` | `.pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11…` |
+| `command-center-craft-polish-pass` | [indexed] (`2026-06-08T21:48:00.000Z`) | `lib/memory/features/command-center/command-center-craft-polish-pass/index.json` | `—` | `.pan/archive/inbox/in/172967_06-08-26/8919_2131_command-center-craft-polish-pass/8947_2130_command-center-craft-polish-p…` |
 
 ## Risks and blockers
 

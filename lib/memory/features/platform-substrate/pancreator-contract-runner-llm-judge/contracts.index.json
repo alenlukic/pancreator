@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "pancreator.contract_runner_llm_judge.package_shape",
+      "path": "/lib/memory/features/platform-substrate/pancreator-contract-runner-llm-judge/contracts/pancreator.contract_runner_llm_judge.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "lib/internal/packages/@pancreator/contract-runner-llm-judge/**"
+      }
+    },
+    {
+      "id": "pancreator.contract_runner_llm_judge.readme_ergonomics",
+      "path": "/lib/memory/features/platform-substrate/pancreator-contract-runner-llm-judge/contracts/pancreator.contract_runner_llm_judge.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "lib/internal/packages/@pancreator/contract-runner-llm-judge/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "62a8f00"
+      }
+    }
+  ]
+}

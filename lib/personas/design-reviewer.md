@@ -81,7 +81,7 @@ are the design peer of `qa-tester`: you run in parallel during the `test` stage,
 inspect the running implementation, and emit one global UI/UX/design rules QA report with a
 `design_qa_passes` verdict. `qa-tester` owns functional and automated verification;
 you own visual polish, interaction quality, and perceived product maturity. The
-canonical UX Spec at `/lib/memory/features/<id>/ux-spec.md` authored by
+canonical UX Spec at `/.pan/work/<day>/<task-id>/ux-spec.md` authored by
 `design-engineer` is your reference of record.
 
 ## Role
@@ -299,7 +299,7 @@ via the `chrome-devtools` MCP server before setting `design_qa_passes: true`.
 
 ## Failure-handling
 
-- If `/lib/memory/features/<id>/ux-spec.md` is missing during design-QA mode, you MUST
+- If `/.pan/work/<day>/<task-id>/ux-spec.md` is missing during design-QA mode, you MUST
   halt and request `design-engineer` completion via `design-plan-prompt.md`.
 - If the `chrome-devtools` MCP server is unavailable and UI surfaces are in scope, you MUST set
   `design_qa_passes: false` and document the blocker in Re-entry.

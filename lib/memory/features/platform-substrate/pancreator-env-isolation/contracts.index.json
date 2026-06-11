@@ -1,0 +1,24 @@
+{
+  "clauses": [
+    {
+      "id": "pancreator.env_isolation.package_shape",
+      "path": "/lib/memory/features/platform-substrate/pancreator-env-isolation/contracts/pancreator.env_isolation.package_shape.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "file-path",
+        "glob": "lib/internal/packages/@pancreator/env-isolation/**"
+      }
+    },
+    {
+      "id": "pancreator.env_isolation.readme_ergonomics",
+      "path": "/lib/memory/features/platform-substrate/pancreator-env-isolation/contracts/pancreator.env_isolation.readme_ergonomics.yaml",
+      "owner": "contract-writer",
+      "appliesTo": {
+        "kind": "artifact-symbol",
+        "path": "lib/internal/packages/@pancreator/env-isolation/README.md",
+        "symbol": "# Quickstart",
+        "contentHash": "e2b46a8"
+      }
+    }
+  ]
+}

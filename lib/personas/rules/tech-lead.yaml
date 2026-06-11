@@ -1,5 +1,5 @@
 persona: tech-lead
-description: When the `feature-delivery` pipeline reaches the `plan` stage with a ratified Engineering Spec at `/lib/memory/features/<id>/spec.md`, the `tech-lead` SHALL emit `/.pan/work/<day>/<id>/plan.md`, `/.pan/work/<day>/<id>/adr-draft.md`, and `/.pan/work/<day>/<id>/touch-set.json` for the downstream `implement` stage.
+description: When the `feature-delivery` pipeline reaches the `plan` stage with a ratified Engineering Spec at `/.pan/work/<day>/<task-id>/spec.md`, the `tech-lead` SHALL emit `/.pan/work/<day>/<id>/plan.md`, `/.pan/work/<day>/<id>/adr-draft.md`, and `/.pan/work/<day>/<id>/touch-set.json` for the downstream `implement` stage.
 globs:
   - lib/memory/adr/*.md
   - .pan/work/**/adr-draft.md
