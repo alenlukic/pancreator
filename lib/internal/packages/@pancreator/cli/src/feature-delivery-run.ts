@@ -30,11 +30,21 @@ import {
 } from "./compliance-audit-history.js";
 import { readCursorInvocationMode } from "./pan-init.js";
 import {
+  designAcceptanceCriteriaRel,
   designPlanPromptRel,
+  designPlanRel,
   designQaPromptRel,
   designStepsEnabled,
+  manualQaTestCasesRel,
+  productAcceptanceCriteriaRel,
+  productPlanPromptRel,
+  productPlanRel,
   renderDesignPlanPrompt,
   renderDesignQaPrompt,
+  renderProductPlanPrompt,
+  techAcceptanceCriteriaRel,
+  techPlanRel,
+  uxSpecRel,
   resolveDesignStepsConfig,
   type FeatureDeliveryDesignOptions,
 } from "./design-steps.js";
@@ -82,7 +92,6 @@ export const FEATURE_DELIVERY_STATE_SCHEMA_VERSION = "1" as const;
 
 const FDS_UTC_MS = Date.UTC(2500, 0, 1, 0, 0, 0, 0);
 const FEATURE_DELIVERY_STAGES = [
-  "intake",
   "plan",
   "implement",
   "review",
@@ -111,7 +120,6 @@ type FeatureDeliveryCurrentStage =
 
 export type StageStatus = "ready" | "pending" | "complete" | "blocked" | "skipped";
 export type PipelineStatus =
-  | "ready_for_intake_delegation"
   | "ready_for_stage_delegation"
   | "waiting_for_human_gate"
   | "complete"
@@ -237,7 +245,7 @@ export interface StartFeatureDeliveryResult {
   handoffFile: string;
   runLogFile: string;
   nextPromptFile: string;
-  currentStage: "intake";
+  currentStage: "plan";
   nextHumanAction: string;
   nextCommand?: string | null;
   event?: string | null;
@@ -373,8 +381,6 @@ export async function startFeatureDelivery(
   command: "run" | "feature new" = "run",
 ): Promise<StartFeatureDeliveryResult> {
   const repoRoot = path.resolve(input.repoRoot);
-  const { assertFeatureDeliveryWorktreeCheckout } = await import("./feature-delivery-worktree.js");
-  assertFeatureDeliveryWorktreeCheckout(repoRoot, input.testHooks);
   const now = input.clock?.() ?? new Date();
   const inboxRel = assertInboxInRelativePath(input.inboxEntry, "inbox entry");
   const inboxPath = resolveProjectPath(repoRoot, "lib", "inbox", "in", ...inboxRel.split("/"));
@@ -410,8 +416,8 @@ export async function startFeatureDelivery(
     pipelineId: "feature-delivery",
     taskId,
     featureId,
-    status: "ready_for_intake_delegation",
-    currentStage: "intake",
+    status: "ready_for_stage_delegation",
+    currentStage: "plan",
     createdAtIso: rfc3339UtcMs(now),
     source: {
       inboxEntry: inboxRel,
@@ -427,27 +433,29 @@ export async function startFeatureDelivery(
     stages: buildStageStates(pipeline, invocation),
     transitions: featureDeliveryTransitions(pipeline),
     nextHumanAction:
-      "Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing to plan.",
+      "Delegate product-plan-prompt.md to product-engineer and design-plan-prompt.md to design-engineer, then delegate next-prompt.md to tech-lead for consolidated planning.",
     options: {
-      designSteps: designConfig.designSteps,
+      designSteps: true,
       designStepsSource: designConfig.designStepsSource,
     },
   };
 
   ensureAutomationState(state, invocation);
-  state.nextHumanAction = nextHumanActionForStage(state, "intake", undefined, invocation);
+  state.nextHumanAction = nextHumanActionForStage(state, "plan", undefined, invocation);
 
   await mkdir(runDir, { recursive: true });
   await writeFile(handoffFile, renderHandoff(repoRoot, state, pipeline, directive), "utf8");
   await writeFile(nextPromptFile, renderNextPrompt(repoRoot, state, pipeline), "utf8");
+  await writeFile(stateFile, stringifyCliJson(repoRoot, state), "utf8");
+  await persistDesignCompanionPrompts(repoRoot, state);
 
   if (invocation === "sdk") {
-    prepareStageInvocationIndexForSdkEntry(state, "intake", invocation);
+    prepareStageInvocationIndexForSdkEntry(state, "plan", invocation);
     await invokeFeatureDeliveryEnteringStage({
       repoRoot,
       state,
       pipeline,
-      stageId: "intake",
+      stageId: "plan",
       compiled,
       now,
       testHooks: input.testHooks,
@@ -464,7 +472,7 @@ export async function startFeatureDelivery(
       repoRoot,
       state,
       pipeline,
-      completedStageId: "intake",
+      completedStageId: "plan",
       compiled: compiledForChain,
       now,
       testHooks: input.testHooks,
@@ -493,7 +501,7 @@ export async function startFeatureDelivery(
     handoffFile: handoffFileRel,
     runLogFile: runLogFileRel,
     nextPromptFile: nextPromptFileRel,
-    currentStage: "intake",
+    currentStage: state.currentStage,
     nextHumanAction: state.nextHumanAction,
   }) as StartFeatureDeliveryResult;
 }
@@ -1245,7 +1253,7 @@ export async function reopenFeatureDelivery(
   const targetStageInput = input.stage?.trim();
   let targetStage: FeatureDeliveryStageId | typeof TERMINAL_STAGE;
   if (targetStageInput === undefined || targetStageInput.length === 0) {
-    targetStage = state.pipelineId === "out-of-band" ? "intake" : "intake";
+    targetStage = "plan";
   } else {
     if (targetStageInput === TERMINAL_STAGE || targetStageInput === "closed") {
       throw new Error(`reopen MUST NOT target terminal stage ${targetStageInput}.`);
@@ -1629,7 +1637,6 @@ function stageGate(
 ): Pick<FeatureDeliveryStageState, "humanGate" | "humanAttention"> {
   if (invocation === "sdk") {
     switch (stage.id) {
-      case "intake":
       case "plan":
       case "report":
       case "ship":
@@ -1666,15 +1673,10 @@ function stageGate(
     }
   }
   switch (stage.id) {
-    case "intake":
-      return {
-        humanGate: "human_approval",
-        humanAttention: "Answer intake clarifying questions and ratify the canonical spec before planning.",
-      };
     case "plan":
       return {
         humanGate: "human_approval",
-        humanAttention: "Ratify the plan, ADR draft, touch-set, and handoff before execution.",
+        humanAttention: "Ratify product, design, and technical plans, acceptance criteria, manual QA cases, ADR draft, touch-set, and handoff before execution.",
       };
     case "implement":
       return {
@@ -1720,14 +1722,8 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
     {
       from: "created",
       on: "invoke",
-      to: "intake",
-      humanAttention: "Operator delegates the handoff card to intake-analyst.",
-    },
-    {
-      from: "intake",
-      on: "human_approval",
       to: "plan",
-      humanAttention: "Canonical spec is ratified or clarified before plan starts.",
+      humanAttention: "Operator delegates product, design, and technical planning prompts.",
     },
     {
       from: "plan",
@@ -1896,7 +1892,15 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 ## In-scope paths
 
 - ${state.source.inboxPath}
-- lib/memory/features/${state.featureId}/spec.md
+- lib/memory/features/${state.featureId}/spec.md (when present)
+- ${productPlanRel(state.artifacts.runDir)}
+- ${productAcceptanceCriteriaRel(state.artifacts.runDir)}
+- ${designPlanRel(state.artifacts.runDir)}
+- ${designAcceptanceCriteriaRel(state.artifacts.runDir)}
+- ${uxSpecRel(state.featureId)}
+- ${techPlanRel(state.artifacts.runDir)}
+- ${techAcceptanceCriteriaRel(state.artifacts.runDir)}
+- ${manualQaTestCasesRel(state.artifacts.runDir)}
 - ${state.artifacts.runDir}/plan.md
 - ${state.artifacts.runDir}/adr-draft.md
 - ${state.artifacts.runDir}/touch-set.json
@@ -1950,10 +1954,14 @@ function renderNextPrompt(
   const stage = state.currentStage;
   const sdkMode = state.automation?.runnerInvocation === "sdk";
   const designCompanionNote =
-    designStepsEnabled(state.options) && stage === "plan"
-      ? `\nDesign steps are ON. Manual mode: delegate \`/design-engineer\` with \`${designPlanPromptRel(state.artifacts.runDir)}\` first, then \`${persona}\` with this prompt.\n`
-      : designStepsEnabled(state.options) && stage === "test"
-        ? `\nDesign steps are ON. Manual mode: delegate \`/qa-tester\` with this prompt AND \`/design-reviewer\` with \`${designQaPromptRel(state.artifacts.runDir)}\` in parallel. The test gate requires both \`qa_passes\` and \`design_qa_passes\`.\n`
+    stage === "plan"
+      ? `
+Manual mode: delegate \`/product-engineer\` with \`${productPlanPromptRel(state.artifacts.runDir)}\`, delegate \`/design-engineer\` with \`${designPlanPromptRel(state.artifacts.runDir)}\`, then delegate \`${persona}\` with this prompt for technical consolidation.
+`
+      : stage === "test"
+        ? `
+Manual mode: delegate \`/qa-tester\` with this prompt AND \`/design-reviewer\` with \`${designQaPromptRel(state.artifacts.runDir)}\` in parallel. The test gate requires both \`qa_passes\` and \`design_qa_passes\`.
+`
         : "";
   return `You are executing the ${stage} stage for feature-delivery task ${state.taskId}.
 
@@ -1989,20 +1997,17 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
   };
 
   switch (stage) {
-    case "intake":
-      return `Input: ${state.source.inboxPath}\nOutput: lib/memory/features/${state.featureId}/spec.md\nAdvance after ${
-        state.automation?.runnerInvocation === "sdk" ? "agent validates spec" : "human ratification"
-      }: ${advanceLine("intake")}`;
     case "plan":
-      return designStepsEnabled(state.options)
-        ? `Input: lib/memory/features/${state.featureId}/spec.md\nDesign companion (when design steps on): ${designPlanPromptRel(state.artifacts.runDir)} → lib/memory/features/${state.featureId}/ux-spec.md, then tech-lead consolidates\nOutputs: lib/memory/features/${state.featureId}/ux-spec.md, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nPlan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria; handoff.md MUST include ## Validation commands.\nAdvance after ${
-            state.automation?.runnerInvocation === "sdk" ? "agent validates plan artifacts" : "human ratification"
-          }: ${advanceLine("plan")}`
-        : `Input: lib/memory/features/${state.featureId}/spec.md\nOutputs: ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}\nPlan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria; handoff.md MUST include ## Validation commands.\nAdvance after ${
-            state.automation?.runnerInvocation === "sdk" ? "agent validates plan artifacts" : "human ratification"
-          }: ${advanceLine("plan")}`;
+      return `Input: ${state.source.inboxPath}
+Product companion: ${productPlanPromptRel(state.artifacts.runDir)} → ${productPlanRel(state.artifacts.runDir)} + ${productAcceptanceCriteriaRel(state.artifacts.runDir)}
+Design companion: ${designPlanPromptRel(state.artifacts.runDir)} → ${designPlanRel(state.artifacts.runDir)} + ${designAcceptanceCriteriaRel(state.artifacts.runDir)} + ${uxSpecRel(state.featureId)}
+Outputs: ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${uxSpecRel(state.featureId)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}
+Plan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria, manual_qa_test_cases; handoff.md MUST include ## Validation commands.
+Advance after ${
+        state.automation?.runnerInvocation === "sdk" ? "agent validates product/design/tech plan artifacts" : "human ratification"
+      }: ${advanceLine("plan")}`;
     case "implement": {
-      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json\nOutput: ${state.artifacts.runDir}/implementation-report.md\nImplement gate: set implement_gate_passes: true only after lint, typecheck, tests, coverage thresholds, and applicable compliance checks pass.\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
+      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}\nOutput: ${state.artifacts.runDir}/implementation-report.md\nImplement gate: set implement_gate_passes: true only after lint, typecheck, tests, coverage thresholds, applicable compliance checks, and every product/design/technical acceptance criterion pass.\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
       const reentry = resolveImplementMustFixReentry(state, repoRoot);
       if (reentry !== null) {
         return `${base}\nAfter must_fix fixes, when ${state.artifacts.runDir}/review.md already records review_passes: true, chain to test in one step: ${reentry.nextCommand}`;
@@ -2010,11 +2015,11 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
       return base;
     }
     case "review":
-      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, repo_wide_tests_pass, lint_typecheck_rerun_required, core_reentry_required, and when applicable spot_fixable and excluded_from_gate\nReview gate: run repo-wide pnpm test and node --test tests/*.test.mjs before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, repo_wide_tests_pass, lint_typecheck_rerun_required, core_reentry_required, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run repo-wide pnpm test and node --test tests/*.test.mjs before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
-        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, lib/memory/features/${state.featureId}/ux-spec.md, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester (${state.artifacts.runDir}/next-prompt.md) + design-reviewer (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
-        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, lib/memory/features/${state.featureId}/ux-spec.md, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
+        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: lib/memory/features/${state.featureId}/delivery-report.md\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
@@ -2678,12 +2683,10 @@ function makeStateRecord(
 }
 
 async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: string; rel: string }> {
-  const { resolveFeatureDeliveryCheckoutRoot } = await import("./feature-delivery-worktree.js");
-  const checkoutRoot = await resolveFeatureDeliveryCheckoutRoot(repoRoot, taskId);
   const roots = [
-    { abs: resolveProjectPath(checkoutRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
+    { abs: resolveProjectPath(repoRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
     {
-      abs: resolveProjectPath(checkoutRoot, ".pan/archive", "work"),
+      abs: resolveProjectPath(repoRoot, ".pan/archive", "work"),
       rel: path.posix.join(".pan/archive", "work"),
     },
   ];
@@ -2762,24 +2765,35 @@ async function persistDesignCompanionPrompts(
   repoRoot: string,
   state: FeatureDeliveryState,
 ): Promise<void> {
-  if (!designStepsEnabled(state.options)) {
-    return;
-  }
   const runDir = state.artifacts.runDir;
   const specPath = path.posix.join("lib", "memory", "features", state.featureId, "spec.md");
   if (state.currentStage === "plan") {
     await writeFile(
-      resolveRepoPath(repoRoot, designPlanPromptRel(runDir)),
-      renderDesignPlanPrompt({
+      resolveRepoPath(repoRoot, productPlanPromptRel(runDir)),
+      renderProductPlanPrompt({
         featureId: state.featureId,
         taskId: state.taskId,
         runDir,
+        sourcePath: state.source.inboxPath,
         specPath,
       }),
       "utf8",
     );
+    if (designStepsEnabled(state.options)) {
+      await writeFile(
+        resolveRepoPath(repoRoot, designPlanPromptRel(runDir)),
+        renderDesignPlanPrompt({
+          featureId: state.featureId,
+          taskId: state.taskId,
+          runDir,
+          sourcePath: state.source.inboxPath,
+          specPath,
+        }),
+        "utf8",
+      );
+    }
   }
-  if (state.currentStage === "test") {
+  if (state.currentStage === "test" && designStepsEnabled(state.options)) {
     await writeFile(
       resolveRepoPath(repoRoot, designQaPromptRel(runDir)),
       renderDesignQaPrompt({
@@ -3240,7 +3254,6 @@ async function advanceReviewReentryFromImplement(input: {
 
 function defaultEventForStage(stage: string): string {
   switch (stage) {
-    case "intake":
     case "plan":
       return "human_approval";
     case "implement":
@@ -3389,7 +3402,6 @@ function nextHumanActionForStage(
   const prefix = extra === undefined ? "" : `${extra} `;
   if (invocation === "sdk") {
     switch (stage) {
-      case "intake":
       case "plan":
       case "report":
         return `${prefix}SDK validates stage artifacts and auto-advances when validation passes.`;
@@ -3412,16 +3424,14 @@ function nextHumanActionForStage(
     }
   }
   switch (stage) {
-    case "intake":
-      return `${prefix}Delegate next-prompt.md to intake-analyst; ratify the emitted spec before advancing.`;
     case "plan":
-      return `${prefix}Delegate next-prompt.md to tech-lead; ratify plan.md, touch-set.json, and handoff.md before advancing.`;
+      return `${prefix}Delegate product-plan-prompt.md to product-engineer and design-plan-prompt.md to design-engineer, then delegate next-prompt.md to tech-lead. Ratify product/design/tech plans, acceptance criteria, manual QA cases, plan.md, touch-set.json, and handoff.md before advancing.`;
     case "implement":
       return `${prefix}Delegate next-prompt.md to coder; monitor drift and require ${state.artifacts.runDir}/implementation-report.md before review.`;
     case "review":
       return `${prefix}Delegate next-prompt.md to reviewer; inspect ${state.artifacts.runDir}/review.md and choose pass or must-fix.`;
     case "test":
-      return `${prefix}Delegate next-prompt.md to qa-tester; inspect ${state.artifacts.runDir}/test-report.md and choose pass or qa-fail.`;
+      return `${prefix}Delegate next-prompt.md to qa-tester and design-qa-prompt.md to design-reviewer in parallel; inspect test-report.md plus design-qa-report.md and choose pass or qa-fail.`;
     case "report":
       return stateIncludesStage(state, "compliance")
         ? `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before compliance.`

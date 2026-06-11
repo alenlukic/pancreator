@@ -34,7 +34,6 @@
     "@pancreator/run-logger": "workspace:*",
     "@pancreator/runner-cursor": "workspace:*",
     "@pancreator/scheduler": "workspace:*",
-    "@pancreator/worktree": "workspace:*",
     "commander": "catalog:"
   },
   "devDependencies": {

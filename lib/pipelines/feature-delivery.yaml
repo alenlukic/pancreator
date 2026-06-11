@@ -4,13 +4,13 @@ metadata:
   pancreator-bootstrap-only: false
   description: >-
     PRD §11 MVP pipeline. Walks a semi-formal directive in lib/inbox/in/ through
-    canonicalization, planning, implementation, review, delivery report, and
-    ship. Mirrors PRD §3.5 US-1. Each stage is owned by a named persona; the
-    supervisor enforces gates and dispatches Intervention actions. Runtime
-    invocation and advancement regenerate a bounded next-prompt.md so stage
-    delegation does not rely on prior chat context. The complete-stage prompt is
-    a bounded librarian handoff for agent-executed artifact closure with
-    pan close-artifacts after the operator reviews pipeline-close.md.
+    product, design, and technical planning; implementation; review; QA;
+    delivery report; compliance; ship; and index. Mirrors PRD §3.5 US-1. Each
+    stage is owned by a named persona; plan-stage companion prompts collect
+    product and design implementation plans plus acceptance criteria before the
+    tech-lead emits the consolidated execution bundle. Runtime invocation and
+    advancement regenerate a bounded next-prompt.md so stage delegation does not
+    rely on prior chat context.
   references:
     - kind: lines
       path: .docs/PRD.md
@@ -23,40 +23,54 @@ metadata:
       contentHash: b788753
       note: BOOTSTRAP Phase 4 names this pipeline as the US-1 dogfood entry point.
 stages:
-  - id: intake
-    persona: intake-analyst
-    label: Canonicalize the human directive
   - id: plan
     persona: tech-lead
-    label: Draft quantified plan, ADR, touch-set with shared-layer annex, and handoff card
+    label: Consolidate product, design, and technical plans, acceptance criteria, manual QA cases, ADR, touch-set, and handoff
+    inputs:
+      - lib/inbox/in/<day>/<directive>.md
+      - .pan/work/<day>/<task-id>/product-plan-prompt.md
+      - .pan/work/<day>/<task-id>/design-plan-prompt.md
     outputs:
+      - .pan/work/<day>/<task-id>/product-plan.md
+      - .pan/work/<day>/<task-id>/product-acceptance-criteria.md
+      - .pan/work/<day>/<task-id>/design-plan.md
+      - .pan/work/<day>/<task-id>/design-acceptance-criteria.md
       - lib/memory/features/<feature-id>/ux-spec.md
+      - .pan/work/<day>/<task-id>/tech-plan.md
+      - .pan/work/<day>/<task-id>/tech-acceptance-criteria.md
+      - .pan/work/<day>/<task-id>/manual-qa-test-cases.md
       - .pan/work/<day>/<task-id>/plan.md
       - .pan/work/<day>/<task-id>/adr-draft.md
       - .pan/work/<day>/<task-id>/touch-set.json
       - .pan/work/<day>/<task-id>/handoff.md
       - .pan/work/<day>/<task-id>/next-prompt.md
+      - .pan/work/<day>/<task-id>/product-plan-prompt.md
       - .pan/work/<day>/<task-id>/design-plan-prompt.md
   - id: implement
     persona: coder
-    label: Implement touch-set work and emit implementation-report gate proof
+    label: Implement the planned touch-set and emit implementation-report gate proof
     outputs:
       - .pan/work/<day>/<task-id>/implementation-report.md
     inputs:
       - .pan/work/<day>/<task-id>/next-prompt.md
       - .pan/work/<day>/<task-id>/handoff.md
       - .pan/work/<day>/<task-id>/touch-set.json
+      - .pan/work/<day>/<task-id>/product-plan.md
+      - .pan/work/<day>/<task-id>/design-plan.md
+      - .pan/work/<day>/<task-id>/tech-plan.md
+      - .pan/work/<day>/<task-id>/manual-qa-test-cases.md
   - id: review
     persona: reviewer
-    label: Run modern-code-review, repo-wide tests, and contracts pass before QA
+    label: Verify ALL product, design, and technical acceptance criteria before QA
     outputs:
       - .pan/work/<day>/<task-id>/review.md
   - id: test
     persona: qa-tester
-    label: Run automated checks and manual verification; emit test-report.md
+    label: Exercise manual QA test cases in parallel with design QA; emit test-report.md
     inputs:
       - .pan/work/<day>/<task-id>/review.md
       - .pan/work/<day>/<task-id>/touch-set.json
+      - .pan/work/<day>/<task-id>/manual-qa-test-cases.md
       - lib/memory/features/<feature-id>/ux-spec.md
     outputs:
       - .pan/work/<day>/<task-id>/test-report.md

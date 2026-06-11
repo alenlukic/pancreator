@@ -4,25 +4,57 @@
   "featureId": "demo-feature",
   "runDir": ".pan/work/172996_05-10-26/38670_1315_demo-feature",
   "handoffFile": ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
-  "stagePrompt": "# Plan stage\nEmit plan.md, adr-draft.md, touch-set.json, and handoff.md.",
+  "stagePrompt": "# Plan stage\nEmit consolidated planning artifacts.",
   "writesOnSuccess": [
     {
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/product-plan.md",
+      "content": "# Product plan\n\n## Scope\n\nDemo.\n"
+    },
+    {
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/product-acceptance-criteria.md",
+      "content": "# Acceptance criteria\n\n## Criteria\n\n- P-AC-1: verified.\n"
+    },
+    {
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/design-plan.md",
+      "content": "# Design plan\n\n## Layout\n\nDemo.\n"
+    },
+    {
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/design-acceptance-criteria.md",
+      "content": "# Acceptance criteria\n\n## Criteria\n\n- D-AC-1: verified.\n"
+    },
+    {
+      "path": "lib/memory/features/demo-feature/ux-spec.md",
+      "content": "# UX spec\n\n## Surface\n\nPanel layout.\n"
+    },
+    {
       "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
-      "content": "{}\n"
+      "content": "{\"paths\":[\"client/foo.ts\"],\"symbols\":[],\"tests\":[{\"kind\":\"command\",\"command\":\"pnpm test\"}],\"shared_paths\":[],\"integration_prerequisites\":[],\"acceptance_criteria\":[{\"id\":\"AC-1\",\"criterion\":\"verified\",\"validation_owner\":\"qa-tester\"}],\"manual_qa_test_cases\":[{\"id\":\"MQA-1\",\"steps\":[\"Open the affected surface\"],\"expected\":\"Behavior matches AC-1\"}]}\n"
     }
   ],
   "writesOnRemediation": [
     {
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/tech-plan.md",
+      "content": "# Tech plan\n\n## Approach\n\nDemo.\n"
+    },
+    {
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/tech-acceptance-criteria.md",
+      "content": "# Acceptance criteria\n\n## Criteria\n\n- T-AC-1: verified.\n"
+    },
+    {
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/manual-qa-test-cases.md",
+      "content": "# Manual QA test cases\n\n## MQA-1\n\nSteps and expected result.\n"
+    },
+    {
       "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/plan.md",
-      "content": "# Plan\n"
+      "content": "# Plan\n\n## Architecture\n\nSummary.\n\n## Acceptance criteria\n\n1. AC-1: behavior verified.\n\n## Shared-layer impact\n\nnone\n\n## Tasks\n\n1. Implement.\n"
     },
     {
       "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/adr-draft.md",
-      "content": "# ADR\n"
+      "content": "# ADR\n\n## Decision\n\nBody.\n"
     },
     {
       "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/handoff.md",
-      "content": "# Handoff\n"
+      "content": "# Handoff\n\n## Validation commands\n\n- pnpm test (coder)\n"
     }
   ]
 }

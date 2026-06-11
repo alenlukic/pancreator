@@ -17,6 +17,34 @@ function uxSpecRel(featureId: string): string {
   return joinPosix("lib", "memory", "features", featureId, "ux-spec.md");
 }
 
+function productPlanRel(runDir: string): string {
+  return joinPosix(runDir, "product-plan.md");
+}
+
+function productAcceptanceCriteriaRel(runDir: string): string {
+  return joinPosix(runDir, "product-acceptance-criteria.md");
+}
+
+function designPlanRel(runDir: string): string {
+  return joinPosix(runDir, "design-plan.md");
+}
+
+function designAcceptanceCriteriaRel(runDir: string): string {
+  return joinPosix(runDir, "design-acceptance-criteria.md");
+}
+
+function techPlanRel(runDir: string): string {
+  return joinPosix(runDir, "tech-plan.md");
+}
+
+function techAcceptanceCriteriaRel(runDir: string): string {
+  return joinPosix(runDir, "tech-acceptance-criteria.md");
+}
+
+function manualQaTestCasesRel(runDir: string): string {
+  return joinPosix(runDir, "manual-qa-test-cases.md");
+}
+
 function designQaReportRel(runDir: string): string {
   return joinPosix(runDir, "design-qa-report.md");
 }
@@ -31,19 +59,27 @@ export function stageArtifactPathsForStage(
   stage: string,
 ): readonly string[] {
   const { featureId, runDir } = input;
-  const designSteps = input.designSteps ?? false;
 
   switch (stage) {
-    case "intake": {
-      const spec = joinPosix("lib", "memory", "features", featureId, "spec.md");
-      return [spec];
-    }
     case "plan": {
       const plan = joinPosix(runDir, "plan.md");
       const adr = joinPosix(runDir, "adr-draft.md");
       const touchSet = joinPosix(runDir, "touch-set.json");
       const handoff = handoffPath(runDir);
-      return designSteps ? [uxSpecRel(featureId), plan, adr, touchSet, handoff] : [plan, adr, touchSet, handoff];
+      return [
+        productPlanRel(runDir),
+        productAcceptanceCriteriaRel(runDir),
+        designPlanRel(runDir),
+        designAcceptanceCriteriaRel(runDir),
+        uxSpecRel(featureId),
+        techPlanRel(runDir),
+        techAcceptanceCriteriaRel(runDir),
+        manualQaTestCasesRel(runDir),
+        plan,
+        adr,
+        touchSet,
+        handoff,
+      ];
     }
     case "implement": {
       return [joinPosix(runDir, "implementation-report.md")];
@@ -53,7 +89,7 @@ export function stageArtifactPathsForStage(
     }
     case "test": {
       const testReport = joinPosix(runDir, "test-report.md");
-      return designSteps ? [testReport, designQaReportRel(runDir)] : [testReport];
+      return [testReport, designQaReportRel(runDir)];
     }
     case "report": {
       return [joinPosix("lib", "memory", "features", featureId, "delivery-report.md")];

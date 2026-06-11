@@ -14,4 +14,14 @@ describe("CommandCenterRowOverflow", () => {
     expect(screen.getByText("Stage: implement")).toBeInTheDocument();
     expect(screen.getByText("Task id: demo-task")).toBeInTheDocument();
   });
+
+  it("dismisses the menu when Escape is pressed", () => {
+    render(<CommandCenterRowOverflow stageName="implement" taskId="demo-task" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Row actions" }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
 });

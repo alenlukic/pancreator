@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { SurfaceShellGate } from "@/components/command-center/layout/SurfaceShellGate";
-import { palette } from "@/services/theme";
+import { buildThemeStyleBlock } from "@/theme/theme";
 import "./globals.css";
+import "@/styles/surfaces.css";
 
 export const metadata = {
   title: "Command Center",
@@ -10,8 +11,11 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body style={{ backgroundColor: palette.eggshell, color: palette["midnight-violet"] }}>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: buildThemeStyleBlock() }} />
+      </head>
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <SurfaceShellGate>{children}</SurfaceShellGate>
       </body>
     </html>

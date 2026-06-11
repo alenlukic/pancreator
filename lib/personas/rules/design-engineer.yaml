@@ -1,5 +1,7 @@
 persona: design-engineer
-description: When the `feature-delivery` pipeline has design steps enabled and reaches the `plan` stage, the `design-engineer` SHALL emit `/lib/memory/features/<id>/ux-spec.md` as a companion to `tech-lead` before plan consolidation.
+description: When the `feature-delivery` pipeline reaches the `plan` stage, the `design-engineer` SHALL emit design-plan.md, design-acceptance-criteria.md, and ux-spec.md as design inputs for tech-lead consolidation.
 globs:
+  - .pan/work/**/design-plan.md
+  - .pan/work/**/design-acceptance-criteria.md
   - lib/memory/features/**/ux-spec.md
 alwaysApply: false

@@ -129,12 +129,11 @@ context is useful; otherwise perform the work directly and cite this section.
   last observed error. If the prompt also contains instructions specifically
   intended for the parent agent, the parent SHALL execute only those instructions
   and SHALL NOT expand them into adjacent unrequested work.
-- **Pipeline env (mandatory).** Before any `pnpm -w exec pan run`, `pan batch run`,
-  `pan advance`, or other pipeline invocation on the operator's behalf, agents
-  SHALL run `set -a && source .env && set +a` from repository root. Isolated git
-  worktrees under `.pan/worktrees/` do not inherit gitignored `.env`; this step
-  preserves credentials across worktrees. Human procedure: `OPERATION.md` §
-  Feature-delivery worktree isolation.
+- **Pipeline env (mandatory).** Before any `pnpm -w exec pan run`, `pan advance`,
+  or other pipeline invocation on the operator's behalf, agents SHALL run
+  `set -a && source .env && set +a` from repository root. Feature-delivery runs
+  execute as single runs from the main checkout; parallel delivery and batch
+  orchestration are disabled.
 - **Feature-delivery SDK progress in chat.** When an agent runs
   `pnpm -w exec pan run feature-delivery`, `pnpm -w exec pan feature new`,
   `pnpm -w exec pan advance`, or `pnpm -w exec pan repair-state` on the
@@ -278,7 +277,7 @@ scheduler wiring lands.
 /lib/internal/tools/             validation scripts
 /client/                         Command Center (Next.js; de-indexed)
 /tests/                          repository tests
-/.pan/{worktrees,scheduler}/     other control-plane state
+/.pan/scheduler/                 scheduler/intervention control-plane state
 /pancreator.yaml                 live policy and project_root
 /pancreator-defaults.yaml        risk-tier defaults (not live config)
 ```

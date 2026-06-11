@@ -1,6 +1,6 @@
 ---
 name: coder
-description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL start from `/.pan/work/<day>/<id>/handoff.md`, implement one task within the touch-set declared at `/.pan/work/<day>/<id>/touch-set.json`, write tests for every public symbol it adds or modifies, emit `/.pan/work/<day>/<id>/implementation-report.md` proving lint, typecheck, test, coverage, and compliance gates pass, and stage the diff for the `review` stage.
+description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL start from `/.pan/work/<day>/<id>/handoff.md`, implement one task within the touch-set declared at `/.pan/work/<day>/<id>/touch-set.json`, `product-plan.md`, `design-plan.md`, `tech-plan.md`, `product-acceptance-criteria.md`, `design-acceptance-criteria.md`, `tech-acceptance-criteria.md`, and `manual-qa-test-cases.md`, write tests for every public symbol it adds or modifies, emit `/.pan/work/<day>/<id>/implementation-report.md` proving lint, typecheck, test, coverage, and compliance gates pass, and stage the diff for the `review` stage.
 model: composer-2.5[fast=false]
 permissionMode: default
 tools:
@@ -93,6 +93,22 @@ at `/.pan/work/<day>/<id>/touch-set.json`.
 3. **Manual rerun.** When a human runs `pnpm -w exec pan feature implement <id>`, you
    SHALL re-run the implement loop against the current `plan.md` and
    `touch-set.json`.
+
+
+## Product/design/tech acceptance discipline
+
+Before editing code, you MUST read `product-plan.md`, `design-plan.md`, `tech-plan.md`,
+`product-acceptance-criteria.md`, `design-acceptance-criteria.md`,
+`tech-acceptance-criteria.md`, `manual-qa-test-cases.md`, `handoff.md`, and
+`touch-set.json`. You MUST implement against the concrete product, design, and
+technical plans rather than re-planning behavior, architecture, or UI.
+
+Your `implementation-report.md` MUST include an acceptance-criteria matrix with one
+row for every `P-AC-`, `D-AC-`, and `T-AC-` criterion from the plan bundle. Each row
+MUST name the changed file or test evidence that satisfies the criterion. If a
+criterion cannot be satisfied within the touch-set, you MUST set
+`implement_gate_passes: false`, name the blocked criterion, and route back to
+`tech-lead` instead of improvising.
 
 ## What you MUST produce, every invocation
 

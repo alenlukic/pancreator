@@ -19,9 +19,11 @@ export function CommandCenterGlobalHeader() {
         <p className="command-center-global-header-eyebrow">Command Center</p>
         <p className="command-center-global-header-title">Operator delivery surface</p>
       </div>
-      <Link href="/work-intake" className="command-center-global-header-cta">
-        Start feature delivery
-      </Link>
+      <div className="command-center-global-header-actions">
+        <Link href="/mission-control" className="command-center-global-header-cta">
+          Open Feature Delivery
+        </Link>
+      </div>
     </header>
   );
 }

@@ -29,6 +29,9 @@ external:
   - https://www.w3.org/WAI/standards-guidelines/wcag/
 related:
   - /lib/memory/handbook/engineering/index.md
+  - /lib/memory/handbook/engineering/design/design-system.md
+  - /lib/memory/handbook/engineering/design/component-standard.md
+  - /lib/memory/handbook/engineering/design/control-surface-ux.md
   - /lib/personas/design-engineer.md
   - /lib/personas/design-reviewer.md
   - /lib/memory/handbook/contract-templates/ux-spec.template.md

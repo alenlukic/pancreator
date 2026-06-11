@@ -41,7 +41,7 @@ policy requires a durable copy.
 
    Optional frontmatter overrides: `--owner <persona>`, `--feature-id <id>`.
    When omitted, title and feature id default to `<slug>` and owner defaults to
-   `intake-analyst`. The command writes
+   `product-engineer`. The command writes
    `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md` with
    `source_channel: cursor-build-mode` in YAML frontmatter.
 
@@ -77,24 +77,31 @@ auto-advances when validation passes—human gates are not paused between stages
 When `feature_delivery.design_steps: true` in `pancreator.yaml` (default off),
 or when the feature `spec.md` frontmatter sets `design_steps: true` (overrides
 the repo default), the plan and test stages add companion design delegation.
-`design-engineer` is the plan-stage peer of `tech-lead`; `design-reviewer` is the
-test-stage peer of `qa-tester`:
+`product-engineer`, `design-engineer`, and `tech-lead` are the plan-stage trio;
+`qa-tester` and `design-reviewer` are the test-stage pair:
 
-- **Plan:** delegate `/design-engineer` with `design-plan-prompt.md` first to
-  emit `lib/memory/features/<id>/ux-spec.md`, then delegate `/tech-lead` with
-  `next-prompt.md` to consolidate the ux-spec into the plan bundle.
-- **Test:** delegate `/qa-tester` and `/design-reviewer` in parallel (`next-prompt.md`
-  and `design-qa-prompt.md`). The test gate requires both `qa_passes: true` and
-  `design_qa_passes: true` before advance.
+- **Plan:** delegate `/product-engineer` with `product-plan-prompt.md` and
+  `/design-engineer` with `design-plan-prompt.md`, then delegate `/tech-lead`
+  with `next-prompt.md`. The plan gate requires product, design, and technical
+  implementation plans; product, design, and technical acceptance criteria; and
+  `manual-qa-test-cases.md` before implementation.
+- **Review:** delegate `/reviewer` after coder. Reviewer MUST gate final approval
+  on all product, design, and technical acceptance criteria. Unmet criteria return
+  to coder unless the plan itself is invalid.
+- **Test:** after review passes, delegate `/qa-tester` and `/design-reviewer` in
+  parallel (`next-prompt.md` and `design-qa-prompt.md`). The QA agent exercises the
+  planned manual QA cases; the design QA agent checks global UI/UX/design rules via
+  Chrome DevTools MCP and does not gate task-specific acceptance criteria. The test
+  gate requires both `qa_passes: true` and `design_qa_passes: true` before advance.
 
-SDK mode runs these companions automatically when design steps are on.
+SDK mode runs these companions automatically when enabled.
 
 Use this loop exactly:
 
 1. Put the request in `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
-2. Load repo-root credentials (worktrees do not inherit gitignored `.env`), then
-   start the run (path relative to `<project_root>/lib/inbox/in/` only; for embedded
-   installs with `project_root: ".pancreator"`, that is `.pancreator/lib/inbox/in/`):
+2. Load repo-root credentials, then start the run (path relative to
+   `<project_root>/lib/inbox/in/` only; for embedded installs with
+   `project_root: ".pancreator"`, that is `.pancreator/lib/inbox/in/`):
 
    ```bash
    set -a && source .env && set +a
@@ -127,7 +134,7 @@ Use this loop exactly:
 8. At `complete`, delegate the librarian `next-prompt.md` and run
    `pnpm -w exec pan close-artifacts <task-id>` once after final validation.
 
-`advance` runs after every accepted non-terminal stage: `intake`, `plan`,
+`advance` runs after every accepted non-terminal stage: `plan`,
 `implement`, `review`, `test`, `report`, `compliance`, `ship`, and `index`. Review has
 three branches: passing review advances to `test`; a qualifying spot fix uses
 `--event review_spot_fix` and stays in `review`; non-qualifying findings use
@@ -144,13 +151,12 @@ and return to `plan`. Do not run `advance` after the final `complete` state.
 ### Post-invocation state machine
 
 Invocation creates `.pan/work/<day>/<task-id>/state.json`, `handoff.md`,
-`next-prompt.md`, and `run.log.jsonl`. Initial state is `ready_for_intake_delegation`
-with `currentStage: intake`.
+`next-prompt.md`, and `run.log.jsonl`. Initial state is
+`ready_for_stage_delegation` with `currentStage: plan`.
 
 | State | Owner | Transition | Human gate |
 |---|---|---|---|
-| `intake` | `intake-analyst` | `human_approval` via advance on spec | Accept canonical spec |
-| `plan` | `tech-lead` | `human_approval` via advance on touch-set | Accept plan and scope |
+| `plan` | `product-engineer` ∥ `design-engineer` → `tech-lead` | `human_approval` via advance on touch-set | Accept product/design/tech plans, acceptance criteria, manual QA cases, and scope |
 | `implement` | `coder` | `implementation_complete` | Accept implementation report |
 | `review` | `reviewer` | `review_passes`, `review_spot_fix`, or `must_fix` | Pass (→ test), bounded spot-fix in-stage, or return to implement |
 | `test` | `qa-tester` | `qa_passes`, `qa_spot_fix`, `qa_fails`, or `qa_fails_plan_invalidating` | Pass (→ report), bounded spot-fix in-stage, or return to implement/plan |
@@ -310,94 +316,23 @@ does not reset other stages' counts.
 `full_model_string`, and per-fallback fields `fallback_model`, `fallback_reason`, and
 `outcome` (`success` or `chain_exhausted`).
 
-### Feature-delivery worktree isolation (mandatory)
+### Feature-delivery single-run discipline
 
-`pan run feature-delivery` and `pan batch run` **never** mutate the main checkout
-git index. Every run acquires an isolated git worktree under
-`.pan/worktrees/<task-id>/` with branch `pan/run/<task-id>` (single run) or
-`pan/batch-<batchId>/<task-id>` (batch). Failed or halted runs suspend the pool
-lease but keep the worktree for `repair-state` and `pan advance`. The CLI also
-**mirrors failure context onto the main checkout** (run directory, halt outbox
-day bucket, and `failure-preservation.json`) before suspending the lease.
+`pan run feature-delivery` and `pan feature new` run one feature-delivery task at a
+time from the main checkout. The repo no longer creates isolated parallel delivery
+checkouts, and `pan batch run` is intentionally disabled.
 
-**Operator rule:** do not delete `.pan/worktrees/<task-id>/`, `pan/batch-*`
-branches, or mirrored `.pan/work/<day>/<task-id>/` failure artifacts unless you
-have finished post-mortem review or explicitly chose to discard the run.
-Agents SHALL NOT run cleanup commands that remove these paths without operator
-instruction.
-
-**Forbidden:** multiple concurrent `pan run feature-delivery` invocations (including
-parallel supervisor Tasks). For `parallel_with` program slices, use exactly one
-`pan batch run --parallel N` command.
-
-Before any pipeline run (`pan run`, `pan batch run`, `pan advance`), load
-credentials (worktrees do not inherit gitignored `.env`):
+**Operator rule:** do not start multiple concurrent feature-delivery runs against the
+same checkout. Serialize work manually, finish or abort the active run, then start
+the next directive. Before any pipeline run (`pan run`, `pan feature new`,
+`pan advance`), load credentials from the repository root:
 
 ```bash
 set -a && source .env && set +a
 ```
 
-### Batch feature-delivery runs
-
-`pnpm -w exec pan batch run` orchestrates multiple inbox directives as isolated
-sub-runs on worktree branches. Each sub-run requires SDK mode
-(`runner.cursor.invocation: sdk`). The orchestrator copies gitignored inbox
-directives into each worktree, invokes `startFeatureDelivery`, runs librarian
-pre-close validation (`pnpm -w exec pan check`) and `close-artifacts` on
-successes, continues on failure, and merges successful branches into one
-integration branch in CLI argument order.
-
-Sequential (default):
-
-```bash
-pnpm -w exec pan batch run 172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md \
-  172970_06-05-26/71489_0408_other-feature.md
-```
-
-Parallel (operator-capped concurrency):
-
-```bash
-pnpm -w exec pan batch run --parallel 2 \
-  172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md \
-  172970_06-05-26/71489_0408_other-feature.md \
-  172970_06-05-26/71489_0408_third-feature.md
-```
-
-Dry-run (no git or worktree mutations):
-
-```bash
-pnpm -w exec pan batch run --dry-run lib/inbox/in/172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md
-```
-
-Flags:
-
-- `--parallel N` — maximum concurrent sub-runs (default `1`).
-- `--base <ref>` — base ref for run branches and merge branch (default: current `HEAD`).
-- `--merge-branch <name>` — integration branch (default: `pan/batch-<batchId>/integration`).
-- `--dry-run` — print planned branches, parallelism, and inbox order; exit zero without starting sub-runs.
-
-Batch ledger: `.pan/work/<day>/batch-<batchId>/batch.json`. Sub-run branches:
-`pan/batch-<batchId>/<task-id>`. Worktrees: `.pan/worktrees/<task-id>/`.
-
-On sub-run failure, the batch orchestrator copies gate artifacts from the
-worktree to the main checkout at `.pan/work/<day>/<task-id>/` (including
-`failure-preservation.json` with pointers to `review.md`, `test-report.md`, and
-halt outboxes under `lib/inbox/out/<day>/`), archives a recovery copy under
-`.pan/archive/recovery/batch-<batchId>/<task-id>/`, then commits failure context on
-the worktree branch when possible. Inspect `preservationManifest` and
-`recoveryArchiveDir` on each failed run entry in `batch.json`.
-
-**Operator rule:** do not delete worktrees, batch branches, or recovery archives
-until `failure-preservation.json` exists on main and the recovery copy is present.
-
-When `PAN_FD_PROGRESS=ndjson` is set, batch-level progress events
-(`batch_enter`, `batch_run_start`, `batch_run_complete`, `batch_run_failed`,
-`batch_slot_free`, `batch_merge_start`, `batch_complete`) emit on stderr with
-`batchId`, optional `taskId`, and RFC3339 `atIso`.
-
-**Env-collision caveat:** `--parallel` greater than `1` shares host environment
-variables and ports across concurrent SDK sub-runs. Full `EnvIsolation` is out
-of scope; cap parallelism or serialize runs that bind the same ports.
+`pan batch run` returns a deferred envelope explaining that batch/parallel delivery
+is disabled. Use one `pan run feature-delivery <inbox-entry>` invocation per task.
 
 ### Tasks outside feature-delivery
 
@@ -489,7 +424,7 @@ For adopting Pancreator into an existing repository with `project_root: ".pancre
 
 2. Verify `.pancreator/AGENTS.md` and `.pancreator/OPERATION.md` exist.
 3. Verify host `AGENTS.md` contains the Pancreator augment pointer block.
-4. Verify `.cursor/agents/` is populated (for example `.cursor/agents/intake-analyst.md` exists at the harness root) and `.cursor/rules/` is emitted from seeded `lib/personas/rules/`. These paths are local-only and are not committed to git.
+4. Verify `.cursor/agents/` is populated (for example `.cursor/agents/product-engineer.md` exists at the harness root) and `.cursor/rules/` is emitted from seeded `lib/personas/rules/`. These paths are local-only and are not committed to git.
 5. Open the harness root in Cursor.
 6. Run feature delivery in SDK mode (embedded `pancreator.yaml` defaults to `runner.cursor.invocation: sdk`):
 
@@ -520,13 +455,12 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 
 | Current stage | Delegate to | Required artifact | After acceptance |
 |---|---|---|---|
-| `intake` | `intake-analyst` | `lib/memory/features/<feature-id>/spec.md` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<feature-id>/spec.md` |
-| `plan` | `tech-lead` | `<runDir>/plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/touch-set.json` |
+| `plan` | `product-engineer` ∥ `design-engineer` → `tech-lead` | `<runDir>/product-plan.md`, `product-acceptance-criteria.md`, `design-plan.md`, `design-acceptance-criteria.md`, `tech-plan.md`, `tech-acceptance-criteria.md`, `manual-qa-test-cases.md`, `plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/touch-set.json` |
 | `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/implementation-report.md` |
 | `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/review.md` |
 | `review` (qualifying spot-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --event review_spot_fix --artifact <runDir>/review.md` |
 | `review` (must-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --event must_fix --artifact <runDir>/review.md` |
-| `test` (pass) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/test-report.md` |
+| `test` (pass) | `qa-tester` ∥ `design-reviewer` | `<runDir>/test-report.md` and `<runDir>/design-qa-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/test-report.md` |
 | `test` (qualifying spot-fix) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_spot_fix --artifact <runDir>/test-report.md` |
 | `test` (qa-fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails --artifact <runDir>/test-report.md` |
 | `test` (plan-invalidating fail) | `qa-tester` | `<runDir>/test-report.md` | `pnpm -w exec pan advance <task-id> --event qa_fails_plan_invalidating --artifact <runDir>/test-report.md` |

@@ -33,10 +33,16 @@ import {
 import {
   DESIGN_ENGINEER_PERSONA,
   DESIGN_REVIEWER_PERSONA,
+  PRODUCT_ENGINEER_PERSONA,
+  designAcceptanceCriteriaRel,
   designPlanPromptRel,
+  designPlanRel,
   designQaPromptRel,
   designQaReportRel,
   designStepsEnabled,
+  productAcceptanceCriteriaRel,
+  productPlanPromptRel,
+  productPlanRel,
   uxSpecRel,
   type FeatureDeliveryDesignOptions,
 } from "./design-steps.js";
@@ -150,9 +156,7 @@ export interface FeatureDeliveryRunnerLedger {
 export interface FeatureDeliveryTestHooks {
   sdkTransport?: CursorSdkTransport;
   progress?: FeatureDeliverySdkProgressReporter;
-  /** Test-only: allow startFeatureDelivery on a temp dir outside .pan/worktrees/. */
-  bypassWorktreeIsolation?: boolean;
-  worktreePool?: import("@pancreator/worktree").GitWorktreePool;
+  /** Test-only: injectable transport/progress hooks for SDK runner tests. */
 }
 
 export function ensureAutomationState(
@@ -409,11 +413,10 @@ async function invokePersonaStageWork(input: {
   return envelope;
 }
 
-function validateUxSpecCompanion(repoRoot: string, featureId: string): void {
-  const uxSpec = uxSpecRel(featureId);
-  const abs = resolveRepoPath(repoRoot, uxSpec);
-  if (!existsSync(abs)) {
-    throw new RunnerTransportError(`Design-plan companion incomplete: missing ${uxSpec}.`);
+function validateCompanionArtifacts(repoRoot: string, label: string, rels: readonly string[]): void {
+  const missing = rels.filter((rel) => !existsSync(resolveRepoPath(repoRoot, rel)));
+  if (missing.length > 0) {
+    throw new RunnerTransportError(`${label} companion incomplete: missing ${missing.join(", ")}.`);
   }
 }
 
@@ -463,23 +466,48 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const progress = input.progress ?? input.testHooks?.progress;
   const runDir = input.state.artifacts.runDir;
 
-  if (designStepsEnabled(input.state.options) && input.stageId === "plan") {
-    const uxSpec = uxSpecRel(input.state.featureId);
-    await invokePersonaStageWork({
-      repoRoot,
-      state: input.state,
-      stageId: input.stageId,
-      personaId: DESIGN_ENGINEER_PERSONA,
-      stagePromptPath: designPlanPromptRel(runDir),
-      artifactPath: uxSpec,
-      requiredArtifactPaths: [uxSpec],
-      runner,
-      stageInvocationIndex,
-      now,
-      progress,
-      companionLabel: `Execute design-plan companion for task ${input.state.taskId}.`,
-    });
-    validateUxSpecCompanion(repoRoot, input.state.featureId);
+  if (input.stageId === "plan") {
+    const productArtifacts = [productPlanRel(runDir), productAcceptanceCriteriaRel(runDir)];
+    const designArtifacts = [designPlanRel(runDir), designAcceptanceCriteriaRel(runDir), uxSpecRel(input.state.featureId)];
+    const companions: Promise<RunnerInvocationEnvelope>[] = [
+      invokePersonaStageWork({
+        repoRoot,
+        state: input.state,
+        stageId: input.stageId,
+        personaId: PRODUCT_ENGINEER_PERSONA,
+        stagePromptPath: productPlanPromptRel(runDir),
+        artifactPath: productPlanRel(runDir),
+        requiredArtifactPaths: productArtifacts,
+        runner,
+        stageInvocationIndex,
+        now,
+        progress,
+        companionLabel: `Execute product-plan companion for task ${input.state.taskId}.`,
+      }),
+    ];
+    if (designStepsEnabled(input.state.options)) {
+      companions.push(
+        invokePersonaStageWork({
+          repoRoot,
+          state: input.state,
+          stageId: input.stageId,
+          personaId: DESIGN_ENGINEER_PERSONA,
+          stagePromptPath: designPlanPromptRel(runDir),
+          artifactPath: uxSpecRel(input.state.featureId),
+          requiredArtifactPaths: designArtifacts,
+          runner,
+          stageInvocationIndex,
+          now,
+          progress,
+          companionLabel: `Execute design-plan companion for task ${input.state.taskId}.`,
+        }),
+      );
+    }
+    await Promise.all(companions);
+    validateCompanionArtifacts(repoRoot, "Product-plan", productArtifacts);
+    if (designStepsEnabled(input.state.options)) {
+      validateCompanionArtifacts(repoRoot, "Design-plan", designArtifacts);
+    }
   }
 
   if (designStepsEnabled(input.state.options) && input.stageId === "test") {
@@ -1111,7 +1139,7 @@ export async function trySdkAutoChainAfterStageWork(input: {
     }
   }
 
-  const agentRatifiedStages = ["intake", "plan", "implement", "report", "ship", "index"] as const;
+  const agentRatifiedStages = ["plan", "implement", "report", "ship", "index"] as const;
   if (agentRatifiedStages.includes(input.completedStageId as (typeof agentRatifiedStages)[number])) {
     if (input.completedStageId === "implement") {
       const history = input.state.advanceHistory ?? [];

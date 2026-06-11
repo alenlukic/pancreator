@@ -1,8 +1,8 @@
 import {
-  buildRecentActivityPreview,
   classifyHangingTask,
   compareBySeverity,
   featureDisplayLabel,
+  featureIdToDisplayLabel,
   hasRetryLimitFailure,
   humanGateSeverity,
   statusPillForActiveStage,
@@ -11,12 +11,12 @@ import {
   filterNonTerminalTasks,
   findActiveStage,
   formatLastEventTime,
-  inboxRunCommand,
   missionControlHref,
   newestRunEventTimestamp,
   taskLevelNextCommand,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
+import type { ShippedOutcome } from "@/services/run-state";
 import type { SeverityChipValue } from "../shared/SeverityChip";
 import type { StatusPillValue } from "../shared/StatusPill";
 import type {
@@ -25,6 +25,7 @@ import type {
   CommandCenterRowModel,
   CommandCenterSeverity,
 } from "./command-center-types";
+import { COMMAND_CENTER_MAX_ROWS_PER_REGION as MAX_ROWS } from "./command-center-types";
 
 function toSeverityChip(severity: CommandCenterSeverity): SeverityChipValue {
   return severity;
@@ -41,7 +42,18 @@ function truncateLabel(label: string, maxLength = 60): string {
   return `${label.slice(0, maxLength - 1)}…`;
 }
 
-function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): CommandCenterRowModel[] {
+function gateActionLabel(action: "approve" | "reject" | "revise", featureLabel: string): string {
+  const object = truncateLabel(featureLabel, 40);
+  if (action === "approve") {
+    return `Approve ${object}`;
+  }
+  if (action === "reject") {
+    return `Reject ${object}`;
+  }
+  return `Revise ${object}`;
+}
+
+function buildHumanGateRows(tasks: TaskRunStateEnvelope[], nowMs: number): CommandCenterRowModel[] {
   const rows: CommandCenterRowModel[] = [];
 
   for (const entry of collectHumanGateQueue(tasks)) {
@@ -57,7 +69,11 @@ function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comman
       ageIso: timestamp ?? new Date(nowMs).toISOString(),
       ageLabel: formatLastEventTime(timestamp, nowMs),
       primaryCta: {
-        label: "Open mission control",
+        label: gateActionLabel("approve", label),
+        href: missionControlHref(entry.taskId),
+      },
+      secondaryCta: {
+        label: gateActionLabel("reject", label),
         href: missionControlHref(entry.taskId),
       },
       overflow: {
@@ -66,9 +82,21 @@ function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comman
         inboxSource: entry.inboxSource,
         runCommand: task ? taskLevelNextCommand(task) : undefined,
         stageName: entry.stageName,
+        gateAction: "revise",
       },
     });
   }
+
+  rows.sort((left, right) => compareBySeverity(left, right));
+  return rows.slice(0, MAX_ROWS);
+}
+
+function buildAnomalyRows(
+  tasks: TaskRunStateEnvelope[],
+  complianceFindings: CommandCenterBuildInput["complianceFindings"],
+  nowMs: number,
+): CommandCenterRowModel[] {
+  const rows: CommandCenterRowModel[] = [];
 
   for (const task of tasks) {
     if (!hasRetryLimitFailure(task)) {
@@ -84,7 +112,7 @@ function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comman
       ageIso: timestamp ?? new Date(nowMs).toISOString(),
       ageLabel: formatLastEventTime(timestamp, nowMs),
       primaryCta: {
-        label: "Open mission control",
+        label: "Open run detail",
         href: missionControlHref(task.taskId),
       },
       overflow: {
@@ -97,8 +125,58 @@ function buildNeedsYouRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comman
     });
   }
 
+  for (const task of tasks) {
+    const classification = classifyHangingTask(task, nowMs);
+    if (!classification) {
+      continue;
+    }
+    const timestamp = newestRunEventTimestamp(task);
+    const metaHint =
+      classification.kind === "stale-heartbeat" ? "Stale heartbeat" : "Long-running stage";
+    rows.push({
+      id: `hanging:${task.taskId}`,
+      label: truncateLabel(featureDisplayLabel(task)),
+      status: "Blocked",
+      severity: "Warning",
+      ageIso: timestamp ?? new Date(nowMs).toISOString(),
+      ageLabel: formatLastEventTime(timestamp, nowMs),
+      metaHint,
+      primaryCta: {
+        label: "Open run detail",
+        href: missionControlHref(task.taskId),
+      },
+      overflow: {
+        taskId: task.taskId,
+        runDir: task.runDir,
+        inboxSource: task.inboxSource,
+        runCommand: taskLevelNextCommand(task),
+      },
+    });
+  }
+
+  for (const finding of complianceFindings) {
+    rows.push({
+      id: `compliance:${finding.id}`,
+      label: truncateLabel(finding.label),
+      status: "Failed",
+      severity: finding.blocks ? "Blocking" : toSeverityChip(finding.severity),
+      ageIso: new Date(nowMs).toISOString(),
+      ageLabel: truncateLabel(finding.excerpt, 40),
+      metaHint: finding.missingArtifact ? "Missing artifact" : undefined,
+      primaryCta: {
+        label: finding.missingArtifact ? "Run recovery for finding" : "Re-run compliance audit",
+        href: "/compliance",
+      },
+      overflow: {
+        runCommand: finding.missingArtifact
+          ? undefined
+          : `node lib/internal/tools/run-compliance.mjs ${finding.id}`,
+      },
+    });
+  }
+
   rows.sort((left, right) => compareBySeverity(left, right));
-  return rows;
+  return rows.slice(0, MAX_ROWS);
 }
 
 function buildRunningNowRows(tasks: TaskRunStateEnvelope[], nowMs: number): CommandCenterRowModel[] {
@@ -121,7 +199,7 @@ function buildRunningNowRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comm
       ageIso: timestamp ?? new Date(nowMs).toISOString(),
       ageLabel: formatLastEventTime(timestamp, nowMs),
       primaryCta: {
-        label: "Open mission control",
+        label: "Open run detail",
         href: missionControlHref(task.taskId),
       },
       overflow: {
@@ -134,187 +212,95 @@ function buildRunningNowRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comm
     });
   }
 
-  return rows;
+  return rows.slice(0, MAX_ROWS);
 }
 
-function buildComplianceRows(
-  findings: CommandCenterBuildInput["complianceFindings"],
-  nowMs: number,
-): CommandCenterRowModel[] {
-  return findings.map((finding) => ({
-    id: `compliance:${finding.id}`,
-    label: truncateLabel(finding.label),
-    status: "Failed",
-    severity: finding.blocks ? "Blocking" : toSeverityChip(finding.severity),
-    ageIso: new Date(nowMs).toISOString(),
-    ageLabel: truncateLabel(finding.excerpt, 40),
-    metaHint: finding.missingArtifact ? "Missing artifact" : undefined,
+function buildRecentOutcomeRows(shippedOutcomes: ShippedOutcome[], nowMs: number): CommandCenterRowModel[] {
+  return shippedOutcomes.slice(0, MAX_ROWS).map((outcome) => ({
+    id: `outcome:${outcome.taskId}`,
+    label: truncateLabel(outcome.title || featureIdToDisplayLabel(outcome.featureId)),
+    status: "Complete",
+    severity: "Info",
+    ageIso: outcome.indexedAt,
+    ageLabel: formatLastEventTime(outcome.indexedAt, nowMs),
     primaryCta: {
-      label: finding.missingArtifact ? "Run quick fix" : "Re-run compliance check",
-      href: "/compliance",
+      label: "Open shipped feature",
+      href: `/mission-control?task=${encodeURIComponent(outcome.taskId)}`,
     },
     overflow: {
-      runCommand: finding.missingArtifact
-        ? undefined
-        : `node lib/internal/tools/run-compliance.mjs ${finding.id}`,
+      taskId: outcome.taskId,
     },
   }));
 }
 
-function buildHangingTaskRows(tasks: TaskRunStateEnvelope[], nowMs: number): CommandCenterRowModel[] {
-  const rows: CommandCenterRowModel[] = [];
-
-  for (const task of tasks) {
-    const classification = classifyHangingTask(task, nowMs);
-    if (!classification) {
-      continue;
-    }
-    const timestamp = newestRunEventTimestamp(task);
-    const metaHint =
-      classification.kind === "stale-heartbeat" ? "Stale heartbeat" : "Long-running stage";
-    rows.push({
-      id: `hanging:${task.taskId}`,
-      label: truncateLabel(featureDisplayLabel(task)),
-      status: "Blocked",
-      severity: "Warning",
-      ageIso: timestamp ?? new Date(nowMs).toISOString(),
-      ageLabel: formatLastEventTime(timestamp, nowMs),
-      metaHint,
-      primaryCta: {
-        label: "Open mission control",
-        href: missionControlHref(task.taskId),
-      },
-      overflow: {
-        taskId: task.taskId,
-        runDir: task.runDir,
-        inboxSource: task.inboxSource,
-        runCommand: taskLevelNextCommand(task),
-      },
-    });
+function dataAgeForRegion(nowMs: number, fetchedAtMs?: number): number | undefined {
+  if (fetchedAtMs === undefined) {
+    return undefined;
   }
-
-  rows.sort((left, right) => compareBySeverity(left, right));
-  return rows;
+  return nowMs - fetchedAtMs;
 }
-
-function buildAutomationRows(
-  automationRows: CommandCenterBuildInput["automationRows"],
-  nowMs: number,
-): CommandCenterRowModel[] {
-  const sorted = [...automationRows].sort((left, right) => {
-    if (left.status === "failed" && right.status !== "failed") {
-      return -1;
-    }
-    if (right.status === "failed" && left.status !== "failed") {
-      return 1;
-    }
-    return 0;
-  });
-
-  return sorted.map((automation) => {
-    const failed = automation.status === "failed";
-    return {
-      id: `automation:${automation.automationId}`,
-      label: truncateLabel(automation.name),
-      status: failed ? "Failed" : automation.status === "paused" ? "Blocked" : "Running",
-      severity: failed ? "Critical" : "Info",
-      ageIso: automation.lastRunAt ?? new Date(nowMs).toISOString(),
-      ageLabel: automation.lastRunAt
-        ? formatLastEventTime(automation.lastRunAt, nowMs)
-        : automation.scheduleLabel,
-      metaHint: automation.scheduleLabel,
-      primaryCta: {
-        label: failed && automation.canRetry ? "Retry automation run" : "Open automations",
-        href: "/automations",
-      },
-      overflow: {
-        runCommand: failed ? `automation run ${automation.automationId}` : undefined,
-      },
-    };
-  });
-}
-
-function buildActivityRows(
-  events: CommandCenterBuildInput["activityEvents"],
-  nowMs: number,
-): CommandCenterRowModel[] {
-  const sorted = [...events].sort((left, right) => {
-    const severityOrder = compareBySeverity(left, right);
-    if (severityOrder !== 0) {
-      return severityOrder;
-    }
-    return Date.parse(right.timestamp) - Date.parse(left.timestamp);
-  });
-
-  return sorted.map((event) => ({
-    id: `activity:${event.id}`,
-    label: truncateLabel(`${event.label} · ${event.featureLabel}`),
-    status: toStatusPill(event.status),
-    severity: toSeverityChip(event.severity),
-    ageIso: event.timestamp,
-    ageLabel: formatLastEventTime(event.timestamp, nowMs),
-    metaHint: event.actor,
-    primaryCta: {
-      label: "Open activity log",
-      href: "/activity-log",
-    },
-    overflow: {
-      taskId: event.taskId,
-      stageName: event.stageName,
-    },
-  }));
-}
-
 
 export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandCenterCardModel[] {
   const nowMs = input.nowMs ?? Date.now();
-  const activityEvents =
-    input.activityEvents.length > 0
-      ? input.activityEvents
-      : buildRecentActivityPreview(input.tasks, 10);
+  const dataAgeMs = dataAgeForRegion(nowMs, input.dataFetchedAtMs);
+  const runStateDegraded = input.failedSources?.includes("run-state");
+  const complianceDegraded = input.failedSources?.includes("compliance");
+  const outcomesDegraded = input.failedSources?.includes("feature-index");
+  const archiveDegraded = input.failedSources?.includes("archive");
 
   return [
     {
-      region: "needs-you",
-      testId: "command-center-needs-you",
-      title: "Needs you",
-      emptyCopy: "No items need your attention",
-      rows: buildNeedsYouRows(input.tasks, nowMs),
+      region: "human-gates",
+      testId: "command-center-human-gates",
+      title: "Human Gates",
+      emptyCopy: "No human gates waiting for you",
+      emptyNextStep: { label: "Open Feature Delivery", href: "/mission-control" },
+      rows: buildHumanGateRows(input.tasks, nowMs),
+      overflowHref: "/mission-control",
+      dataAgeMs,
+      ...(runStateDegraded || archiveDegraded
+        ? { degradedSource: runStateDegraded ? "run-state" : "archive" }
+        : {}),
+    },
+    {
+      region: "anomalies",
+      testId: "command-center-anomalies",
+      title: "Anomalies",
+      emptyCopy: "No anomalies detected",
+      rows: buildAnomalyRows(input.tasks, input.complianceFindings, nowMs),
+      overflowHref: "/compliance",
+      dataAgeMs,
+      ...(runStateDegraded || archiveDegraded || complianceDegraded
+        ? {
+            degradedSource: runStateDegraded
+              ? "run-state"
+              : archiveDegraded
+                ? "archive"
+                : "compliance",
+          }
+        : {}),
     },
     {
       region: "running-now",
       testId: "command-center-running-now",
-      title: "Running now",
+      title: "Running Now",
       emptyCopy: "No feature-delivery runs in progress",
       rows: buildRunningNowRows(input.tasks, nowMs),
+      overflowHref: "/mission-control",
+      dataAgeMs,
+      ...(runStateDegraded || archiveDegraded
+        ? { degradedSource: runStateDegraded ? "run-state" : "archive" }
+        : {}),
     },
     {
-      region: "compliance-issues",
-      testId: "command-center-compliance-issues",
-      title: "Compliance issues",
-      emptyCopy: "No open compliance findings",
-      rows: buildComplianceRows(input.complianceFindings, nowMs),
-    },
-    {
-      region: "hanging-tasks",
-      testId: "command-center-hanging-tasks",
-      title: "Hanging tasks",
-      emptyCopy: "No hanging tasks detected",
-      rows: buildHangingTaskRows(input.tasks, nowMs),
-    },
-    {
-      region: "recent-automations",
-      testId: "command-center-recent-automations",
-      title: "Recent automations",
-      emptyCopy: "No recent automation runs",
-      rows: buildAutomationRows(input.automationRows, nowMs),
-    },
-    {
-      region: "recent-activity",
-      testId: "command-center-recent-activity",
-      title: "Recent activity",
-      emptyCopy: "No recent activity events",
-      rows: buildActivityRows(activityEvents, nowMs),
+      region: "recent-outcomes",
+      testId: "command-center-recent-outcomes",
+      title: "Recent Outcomes",
+      emptyCopy: "No recently shipped features",
+      rows: buildRecentOutcomeRows(input.shippedOutcomes, nowMs),
+      overflowHref: "/activity-log",
+      dataAgeMs,
+      ...(outcomesDegraded ? { degradedSource: "feature-index" } : {}),
     },
   ];
 }
@@ -352,4 +338,4 @@ export function mapComplianceResultsToFindings(
     });
 }
 
-export { inboxRunCommand };
+export { inboxRunCommand } from "@/services/run-state-shared";

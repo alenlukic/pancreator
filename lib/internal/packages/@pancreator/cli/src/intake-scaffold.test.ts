@@ -63,7 +63,7 @@ describe("intake-scaffold", () => {
     const fileText = buildBuildPlanIntakeMarkdown({
       title: "Build-mode inbox scaffolding",
       featureId: "build-mode-inbox-scaffolding",
-      owner: "intake-analyst",
+      owner: "product-engineer",
       createdIso: stamp.toISOString(),
       operatorPrompt: "implement build-mode inbox auto-create",
       planText: "## Steps\n\n1. Add CLI\n2. Update AGENTS.md",
@@ -91,7 +91,7 @@ describe("intake-scaffold", () => {
     const fileText = buildBuildPlanIntakeMarkdown({
       title: "Overwrite test",
       featureId: "overwrite-slug",
-      owner: "intake-analyst",
+      owner: "product-engineer",
       createdIso: stamp.toISOString(),
       operatorPrompt: "prompt",
       planText: "plan",
@@ -138,7 +138,7 @@ describe("intake-scaffold", () => {
       fileText: buildBuildPlanIntakeMarkdown({
         title: "Coexist",
         featureId: "coexist-slug",
-        owner: "intake-analyst",
+        owner: "product-engineer",
         createdIso: stamp.toISOString(),
         operatorPrompt: "prompt",
         planText: "plan",

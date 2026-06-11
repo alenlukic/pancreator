@@ -1,5 +1,6 @@
 "use client";
 
+import { MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export function CommandCenterRowOverflow({
@@ -22,6 +23,7 @@ export function CommandCenterRowOverflow({
 
   useEffect(() => {
     if (!open) {
+      setShowDetails(false);
       return undefined;
     }
     function onPointerDown(event: MouseEvent) {
@@ -29,9 +31,16 @@ export function CommandCenterRowOverflow({
         setOpen(false);
       }
     }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
     document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
 
@@ -65,7 +74,7 @@ export function CommandCenterRowOverflow({
         aria-haspopup="menu"
         onClick={() => setOpen((current) => !current)}
       >
-        ⋯
+        <MoreHorizontal aria-hidden="true" size={16} />
       </button>
       {open ? (
         <div className="command-center-overflow-menu" role="menu">
@@ -97,18 +106,18 @@ export function CommandCenterRowOverflow({
               Show technical details
             </button>
           ) : null}
+          {showDetails ? (
+            <div className="command-center-overflow-details" data-testid="overflow-technical-details">
+              {stageName ? <p>Stage: {stageName}</p> : null}
+              {taskId ? <p>Task id: {taskId}</p> : null}
+              {runDir ? <p>Run directory: {runDir}</p> : null}
+            </div>
+          ) : null}
           {copied ? (
             <span className="command-center-overflow-copied" aria-live="polite">
               Copied
             </span>
           ) : null}
-        </div>
-      ) : null}
-      {showDetails ? (
-        <div className="command-center-row-details">
-          {stageName ? <p>Stage: {stageName}</p> : null}
-          {taskId ? <p>Task id: {taskId}</p> : null}
-          {runDir ? <p>Run directory: {runDir}</p> : null}
         </div>
       ) : null}
     </div>

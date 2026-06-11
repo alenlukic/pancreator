@@ -10,46 +10,49 @@
 #   - When no valid model step exists, escalate via bracket qualifiers on the same
 #     family (effort=, reasoning=) per https://cursor.com/docs/models-and-pricing
 #   - Sparse tier keys are intentional: loopbacks may reuse the prior tier.
+#   - Design-critical and synthesis personas (sme-product, sme-design,
+#     product-design-lead, product-engineer, design-engineer, design-reviewer) MUST NOT resolve to
+#     `auto` or to a Composer-pool model in any config; every tier for these
+#     personas pins an explicit high-reasoning model.
 #
 # Pricing reference: https://cursor.com/docs/models-and-pricing (API output $/1M
 # as primary cost axis). Capability tie-break: LiveBench-2026-01-08.
 
-active_config: auto
+active_config: default
 
 configs:
   default:
     personas:
       # --- feature-delivery pipeline ---
 
-      intake-analyst:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       tech-lead:
         default: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       coder:
         default: composer-2.5[fast=false]
-        2: gpt-5.2-codex[reasoning=high,fast=false]
-        3: gpt-5.3-codex[reasoning=high,fast=false]
-        4: gpt-5.4[context=272k,reasoning=high,fast=false]
+        3: gpt-5.2-codex[reasoning=high,fast=false]
+        4: gpt-5.3-codex[reasoning=high,fast=false]
 
       reviewer:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        default: gpt-5.3-codex[reasoning=high,fast=false]
+        2: gpt-5.4[context=272k,reasoning=high,fast=false]
+        5: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       qa-tester:
         default: auto
         2: gpt-5.3-codex[reasoning=high,fast=false]
         4: gpt-5.4[context=272k,reasoning=high,fast=false]
-        5: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      product-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       design-engineer:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       design-reviewer:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        4: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       tech-writer:
         default: auto
@@ -58,13 +61,9 @@ configs:
 
       supervisor:
         default: auto
-        2: gpt-5.4[context=272k,reasoning=high,fast=false]
-        4: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       librarian:
         default: auto
-        3: gpt-5.4[context=272k,reasoning=high,fast=false]
-        5: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       # --- other MVP personas ---
 
@@ -72,34 +71,36 @@ configs:
         default: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
       compliance-auditor:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: gpt-5.5[context=272k,reasoning=high,fast=false]
+        default: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
       contract-writer:
         default: auto
-        2: gpt-5.4[context=272k,reasoning=high,fast=false]
-        4: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       pancreator-engineer:
         default: auto
-        1: gpt-5.4[context=272k,reasoning=high,fast=false]
-        3: gpt-5.5[context=272k,reasoning=high,fast=false]
 
       persona-designer:
         default: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       pr-writer:
         default: auto
-        1: gpt-5.4-mini
-        3: gpt-5.3-codex[reasoning=high,fast=false]
+
+      # --- experience-planning pipeline ---
+
+      sme-product:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      sme-design:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      product-design-lead:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
 
 
   complex:
     personas:
       # --- feature-delivery pipeline ---
 
-      intake-analyst:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       tech-lead:
         default: gpt-5.5[context=272k,reasoning=high,fast=false]
@@ -110,20 +111,22 @@ configs:
         4: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       reviewer:
-        default: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        3: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
 
       qa-tester:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: gpt-5.5[context=272k,reasoning=high,fast=false]
+        3: gpt-5.5[context=272k,reasoning=high,fast=false]
+
+      product-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
 
       design-engineer:
         default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        2: claude-fable-5[thinking=true,context=300k,effort=high]
 
       design-reviewer:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
 
       tech-writer:
         default: auto
@@ -146,8 +149,7 @@ configs:
         default: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
 
       compliance-auditor:
-        default: gpt-5.4[context=272k,reasoning=high,fast=false]
-        2: gpt-5.5[context=272k,reasoning=high,fast=false]
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
 
       contract-writer:
         default: auto
@@ -167,13 +169,25 @@ configs:
         1: gpt-5.4-mini
         3: gpt-5.3-codex[reasoning=high,fast=false]
 
+      # --- experience-planning pipeline ---
+
+      sme-product:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      sme-design:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-opus-4-8[thinking=true,context=200k,effort=high,fast=false]
+
+      product-design-lead:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+        2: claude-fable-5[thinking=true,context=300k,effort=high]
+
 
   auto:
     personas:
       # --- feature-delivery pipeline ---
 
-      intake-analyst:
-        default: auto
 
       tech-lead:
         default: auto
@@ -215,3 +229,94 @@ configs:
 
       pr-writer:
         default: auto
+
+      # --- experience-planning pipeline ---
+      # Design-critical and synthesis personas stay pinned even in the auto
+      # config; the ladder rules forbid `auto` for them.
+
+      product-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      design-engineer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      design-reviewer:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      sme-product:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      sme-design:
+        default: gpt-5.4[context=272k,reasoning=high,fast=false]
+
+      product-design-lead:
+        default: gpt-5.5[context=272k,reasoning=high,fast=false]
+    
+  fable:
+    personas:
+      # --- feature-delivery pipeline ---
+
+
+      tech-lead:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      coder:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      reviewer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      qa-tester:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      tech-writer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      supervisor:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      librarian:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      # --- other MVP personas ---
+
+      adopter:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      compliance-auditor:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      contract-writer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      pancreator-engineer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      persona-designer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      pr-writer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      # --- experience-planning pipeline ---
+      # Design-critical and synthesis personas stay pinned even in the auto
+      # config; the ladder rules forbid `auto` for them.
+
+      product-engineer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      design-engineer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      design-reviewer:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      sme-product:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      sme-design:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+
+      product-design-lead:
+        default: claude-fable-5[thinking=true,context=300k,effort=high]
+      

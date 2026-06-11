@@ -67,10 +67,10 @@ export async function executePanCommand(
   if (verb === "batch status") {
     return {
       stdout: "",
-      stderr: "Batch status subcommand not yet available. Use pan batch run until batch status ships.",
+      stderr: "Batch/parallel feature-delivery is disabled; run one feature-delivery task at a time.",
       exitCode: 125,
       deferred: true,
-      deferralMessage: "Batch status subcommand not yet available",
+      deferralMessage: "Batch/parallel feature-delivery is disabled",
     };
   }
 

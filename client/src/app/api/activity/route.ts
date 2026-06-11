@@ -1,6 +1,6 @@
-import { getActivityFeed } from "@/services/activity";
+import { getMutationReceipts } from "@/services/activity";
 
 export async function GET(): Promise<Response> {
-  const events = await getActivityFeed();
-  return Response.json(events);
+  const receipts = await getMutationReceipts();
+  return Response.json({ receipts });
 }

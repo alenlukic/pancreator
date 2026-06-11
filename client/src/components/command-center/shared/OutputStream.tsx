@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CopyCommandButton } from "./CopyCommandButton";
+import { EmptyState } from "./EmptyState";
 
 export type OutputLine = {
   stream: "stdout" | "stderr";
@@ -57,23 +58,32 @@ export function OutputStream({
         <h3>Output</h3>
         {copyCommand ? <CopyCommandButton command={copyCommand} /> : null}
       </div>
-      <pre
-        ref={containerRef}
-        className={`output-stream-log${prefersReducedMotion ? " output-stream-reduced-motion" : ""}`}
-        data-testid="output-stream-log"
-        onScroll={handleScroll}
-      >
-        {lines.map((entry, index) => (
-          <span
-            key={`${resetKey ?? "run"}-${index}`}
-            className={`output-stream-line output-stream-${entry.stream}`}
-          >
-            {entry.line}
-            {"\n"}
-          </span>
-        ))}
-        {inFlight ? <span className="output-stream-line">Running…</span> : null}
-      </pre>
+      {lines.length === 0 && !inFlight ? (
+        <div className="output-stream-empty" data-testid="output-stream-empty">
+          <EmptyState>
+            <p>Run a compliance audit or test suite above to stream command output here.</p>
+            <p>Results appear in this panel when a command finishes.</p>
+          </EmptyState>
+        </div>
+      ) : (
+        <pre
+          ref={containerRef}
+          className={`output-stream-log${prefersReducedMotion ? " output-stream-reduced-motion" : ""}`}
+          data-testid="output-stream-log"
+          onScroll={handleScroll}
+        >
+          {lines.map((entry, index) => (
+            <span
+              key={`${resetKey ?? "run"}-${index}`}
+              className={`output-stream-line output-stream-${entry.stream}`}
+            >
+              {entry.line}
+              {"\n"}
+            </span>
+          ))}
+          {inFlight ? <span className="output-stream-line">Running…</span> : null}
+        </pre>
+      )}
       {exitCode !== null ? (
         <p
           className={`output-stream-exit${exitClass}`}

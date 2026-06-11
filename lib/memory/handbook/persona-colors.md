@@ -42,6 +42,9 @@ allocation. Pick the next unused color when authoring a new persona; reserve
 | `teal` | `librarian`-class | guideline |
 | `orange` | scout-class | guideline |
 | `indigo` | `pr-writer` and communication/synthesis-class personas | used |
+| `magenta` | `sme-product` (product-strategy SME family) | used |
+| `pink` | `sme-design` (UX/design SME family) | used |
+| `gold` | `product-design-lead` and dual-expert synthesis leads | used |
 | `red` | `ombudsperson`, watchdog | reserved |
 
 > **Accessibility backlog item.** This palette has not yet been validated against

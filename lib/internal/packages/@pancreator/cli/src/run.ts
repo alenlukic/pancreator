@@ -19,6 +19,7 @@ import {
   repairFeatureDeliveryState,
   resolveFeatureDeliveryNext,
   runPanCheck,
+  startFeatureDelivery,
   validateArtifactsForTask,
   type PanCheckResult,
 } from "./feature-delivery-run.js";
@@ -36,15 +37,7 @@ import { runCursorSync } from "./cursor-sync.js";
 import { runCreatePancreator, runPanInit } from "./pan-init.js";
 
 import { quoteJsonString, stringifyCliJson } from "./canonical-json-io.js";
-import { runFeatureDeliveryBatch } from "./feature-delivery-batch.js";
-import {
-  resolveFeatureDeliveryCheckoutRoot,
-  runIsolatedFeatureDelivery,
-} from "./feature-delivery-worktree.js";
-import {
-  createFeatureDeliveryBatchProgressReporter,
-  createFeatureDeliverySdkProgressReporter,
-} from "./feature-delivery-sdk-progress.js";
+import { createFeatureDeliverySdkProgressReporter } from "./feature-delivery-sdk-progress.js";
 import {
   rewriteActiveMemoryFile,
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
@@ -96,8 +89,6 @@ export interface CliRunOptions {
   clock?: () => Date;
   /** Injectable Cursor SDK transport for feature-delivery runner tests. */
   testHooks?: import("./feature-delivery-runner.js").FeatureDeliveryTestHooks;
-  /** Injectable batch orchestration hooks for batch run tests. */
-  batchTestHooks?: import("./feature-delivery-batch.js").BatchRunTestHooks;
   /** Default output format when a command omits `--format`. */
   format?: OutputFormat;
 }
@@ -109,8 +100,8 @@ function resolveOutputFormat(commandFormat: string | undefined, defaultFormat?: 
   return raw === "text" ? "text" : "json";
 }
 
-async function featureDeliveryCheckoutRoot(mainRepoRoot: string, taskId: string): Promise<string> {
-  return await resolveFeatureDeliveryCheckoutRoot(mainRepoRoot, taskId);
+async function featureDeliveryCheckoutRoot(mainRepoRoot: string, _taskId: string): Promise<string> {
+  return mainRepoRoot;
 }
 
 function featureDeliverySdkProgress(options: CliRunOptions | undefined) {
@@ -371,64 +362,26 @@ export async function parseAndRun(
       );
     });
 
-  const batch = program.command("batch").description("Batch feature-delivery orchestration");
+  const batch = program.command("batch").description("Batch feature-delivery orchestration [disabled]");
 
   batch
     .command("run")
-    .description("Run multiple feature-delivery sub-runs on isolated worktree branches")
-    .argument("<inboxEntries...>", "Inbox entries relative to lib/inbox/in/")
-    .option("--parallel <n>", "Maximum concurrent sub-runs (default 1)", "1")
-    .option("--base <ref>", "Base ref for run branches and merge branch")
-    .option("--merge-branch <name>", "Integration branch name for successful run merges")
-    .option("--dry-run", "Print planned branches and inbox order without git mutations", false)
+    .description("Disabled: feature-delivery runs are single-run only; no parallel delivery")
+    .argument("[inboxEntries...]", "Ignored while batch delivery is disabled")
+    .option("--parallel <n>", "Ignored while batch delivery is disabled", "1")
+    .option("--base <ref>", "Ignored while batch delivery is disabled")
+    .option("--merge-branch <name>", "Ignored while batch delivery is disabled")
+    .option("--dry-run", "Ignored while batch delivery is disabled", false)
     .option("--format <format>", "Output format: json (default) or text")
-    .action(
-      async (
-        inboxEntries: string[],
-        opts: {
-          parallel?: string;
-          base?: string;
-          mergeBranch?: string;
-          dryRun?: boolean;
-          format?: string;
-        },
-      ) => {
-        const format = resolveOutputFormat(opts.format, options?.format);
-        const parallel = Number.parseInt(opts.parallel ?? "1", 10);
-        if (!Number.isFinite(parallel) || parallel < 1) {
-          throw new Error("--parallel must be a positive integer.");
-        }
-        const writeErr = options?.writeErr ?? ((chunk: string) => process.stderr.write(chunk));
-        const result = await runFeatureDeliveryBatch({
-          repoRoot,
-          args: {
-            inboxEntries,
-            parallel,
-            baseRef: opts.base,
-            mergeBranch: opts.mergeBranch,
-            dryRun: Boolean(opts.dryRun),
-          },
-          clock: options?.clock,
-          testHooks: options?.batchTestHooks,
-          progress: createFeatureDeliveryBatchProgressReporter({ writeErr }),
-          writeOut,
-          writeErr,
-        });
-        if (format === "text") {
-          writeOut(
-            `${[
-              `batch: ${result.batchId}`,
-              `status: ${result.status}`,
-              `ledger: ${result.ledgerPath}`,
-              `merge: ${result.mergeStatus}`,
-              `success: ${result.successCount}`,
-              `failed: ${result.failureCount}`,
-            ].join("\n")}\n`,
-          );
-        }
-        exit.code = result.exitCode;
-      },
-    );
+    .action(async () => {
+      emitDeferredEnvelope(writeOut, repoRoot, {
+        verb: "pan batch run",
+        milestone: "M2",
+        manual_workaround:
+          "Batch and parallel feature-delivery runs are disabled. Run one `pan run feature-delivery <inbox-entry>` task at a time in the main checkout.",
+      });
+      exit.code = PAN_DEFERRED_EXIT_CODE;
+    });
 
   program
     .command("run")
@@ -456,7 +409,7 @@ export async function parseAndRun(
       emitPayload(
         writeOut,
         repoRoot,
-        await runIsolatedFeatureDelivery(
+        await startFeatureDelivery(
           {
             repoRoot,
             inboxEntry,
@@ -497,7 +450,7 @@ export async function parseAndRun(
       emit(
         writeOut,
         repoRoot,
-        await runIsolatedFeatureDelivery(
+        await startFeatureDelivery(
           {
             repoRoot,
             inboxEntry,
@@ -853,7 +806,7 @@ export async function parseAndRun(
     .argument("<slug>", "Semantic basename suffix (lowercase slug with hyphens)")
     .description("Emit a templated inbox directive with canonical timestamp prefixes")
     .option("--title <text>", "Directive title shown in Markdown heading and YAML frontmatter", "")
-    .option("--owner <persona>", "Owner recorded in YAML frontmatter", "intake-analyst")
+    .option("--owner <persona>", "Owner recorded in YAML frontmatter", "product-engineer")
     .option("--feature-id <id>", "Feature id retained in YAML frontmatter")
     .option("--from-template <name>", "Use lib/memory/handbook/contract-templates/<name>.template.md as the Markdown body scaffold")
     .action(
@@ -864,7 +817,7 @@ export async function parseAndRun(
         assertIntakeSlug(slugArg);
         const now = options?.clock !== undefined ? options.clock() : new Date();
         const title = cmdOpts.title && cmdOpts.title.length > 0 ? cmdOpts.title : slugArg;
-        const owner = cmdOpts.owner ?? "intake-analyst";
+        const owner = cmdOpts.owner ?? "product-engineer";
         const featureId = cmdOpts.featureId ?? slugArg;
         const createdIso = now.toISOString();
         let fileText: string;
@@ -884,7 +837,7 @@ export async function parseAndRun(
             "---",
             `title: ${quoteJsonString(title)}`,
             `feature_id: ${quoteJsonString(featureId)}`,
-            "stage: intake",
+            "stage: plan",
             `owner: ${quoteJsonString(owner)}`,
             "status: open",
             `created_at: ${quoteJsonString(createdIso)}`,
@@ -914,7 +867,7 @@ export async function parseAndRun(
       "Emit an inbox directive from a Cursor Build-mode operator prompt and completed plan snapshot",
     )
     .option("--title <text>", "Directive title shown in Markdown heading and YAML frontmatter", "")
-    .option("--owner <persona>", "Owner recorded in YAML frontmatter", "intake-analyst")
+    .option("--owner <persona>", "Owner recorded in YAML frontmatter", "product-engineer")
     .option("--feature-id <id>", "Feature id retained in YAML frontmatter")
     .option("--operator-prompt <text>", "Verbatim operator prompt from Cursor Build mode")
     .option("--prompt-file <path>", "Read operator prompt from a repo-relative or absolute file")
@@ -952,7 +905,7 @@ export async function parseAndRun(
         }
         const now = options?.clock !== undefined ? options.clock() : new Date();
         const title = cmdOpts.title && cmdOpts.title.length > 0 ? cmdOpts.title : slugArg;
-        const owner = cmdOpts.owner ?? "intake-analyst";
+        const owner = cmdOpts.owner ?? "product-engineer";
         const featureId = cmdOpts.featureId ?? slugArg;
         const fileText = buildBuildPlanIntakeMarkdown({
           title,

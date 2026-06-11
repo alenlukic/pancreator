@@ -264,7 +264,7 @@ describe("StageDetailPanel", () => {
     const output = screen.getByTestId("expand-stage-output");
     expect(output).toBeInTheDocument();
     fireEvent.click(output);
-    expect(screen.getByText("Collapse stage output")).toBeInTheDocument();
+    expect(screen.getByText("Show summary only")).toBeInTheDocument();
   });
 
   it("summarizes internal runner events for operators", () => {
@@ -434,6 +434,22 @@ describe("MissionControlModule", () => {
     expect(blockingRow).toHaveClass("mc-artifact-blocking");
     expect(within(blockingRow).getByText("Missing artifact")).toBeInTheDocument();
     expect(within(blockingRow).getByTestId("preview-artifact-implementation-report.md")).toBeDisabled();
+  });
+
+  it("renders run list and intervention strip for active runs", async () => {
+    mockFetch();
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("multi-run-table")).toBeInTheDocument();
+      expect(screen.getByTestId("mission-control-intervention-strip")).toBeInTheDocument();
+      expect(screen.getByTestId("mc-intervention-pause")).toHaveTextContent("Pause");
+      expect(screen.getByTestId("mc-intervention-steer")).toHaveTextContent("Steer");
+      expect(screen.getByTestId("mc-intervention-abort")).toHaveTextContent("Abort");
+    });
+
+    const detailColumn = screen.getByTestId("mission-control-stage-rail").closest(".mc-run-detail-column");
+    expect(detailColumn).not.toBeNull();
   });
 
   it("shows stub toast when remediation action is activated", async () => {

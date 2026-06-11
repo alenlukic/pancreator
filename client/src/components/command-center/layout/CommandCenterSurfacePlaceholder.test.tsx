@@ -14,9 +14,9 @@ describe("CommandCenterSurfacePlaceholder", () => {
     expect(screen.getByTestId("severity-chip-needs-attention")).toHaveTextContent("Needs attention");
   });
 
-  it("renders kickoff stub copy on work intake", () => {
-    const workIntake = COMMAND_CENTER_SURFACES.find((surface) => surface.id === "work-intake")!;
-    render(<CommandCenterSurfacePlaceholder surface={workIntake} isKickoffStub />);
+  it("renders kickoff stub copy when flagged", () => {
+    const featureDelivery = COMMAND_CENTER_SURFACES.find((surface) => surface.id === "mission-control")!;
+    render(<CommandCenterSurfacePlaceholder surface={featureDelivery} isKickoffStub />);
     expect(screen.getByText("Kickoff flow coming soon")).toBeInTheDocument();
     expect(screen.getByText("Open command center")).toBeInTheDocument();
   });
