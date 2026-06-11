@@ -38,10 +38,16 @@ test("pan cursor-sync applies active escalation default models before agent proj
     escalationYaml.replace(/^active_config:\s*auto/mu, "active_config: default"),
     "utf8",
   );
-  const personaSrc = path.join(REPO_ROOT, "lib/personas/intake-analyst.md");
+  const personaSrc = path.join(REPO_ROOT, "lib/personas/product-engineer.md");
   await mkdir(path.join(root, "lib/personas"), { recursive: true });
-  await cp(personaSrc, path.join(root, "lib/personas/intake-analyst.md"));
-  const beforePersona = await readFile(path.join(root, "lib/personas/intake-analyst.md"), "utf8");
+  const personaDest = path.join(root, "lib/personas/product-engineer.md");
+  const canonicalPersona = await readFile(personaSrc, "utf8");
+  await writeFile(
+    personaDest,
+    canonicalPersona.replace(/^model:\s*.*/mu, "model: old-model"),
+    "utf8",
+  );
+  const beforePersona = await readFile(personaDest, "utf8");
 
   const result = runPan(["cursor-sync"], root);
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -49,13 +55,13 @@ test("pan cursor-sync applies active escalation default models before agent proj
   assert.equal(payload.activeEscalationConfig, "default");
   assert.ok(payload.personaModelsSynced >= 1);
   assert.ok(
-    payload.written.some((entry) => entry.path === "lib/personas/intake-analyst.md"),
+    payload.written.some((entry) => entry.path === "lib/personas/product-engineer.md"),
   );
 
-  const afterPersona = await readFile(path.join(root, "lib/personas/intake-analyst.md"), "utf8");
+  const afterPersona = await readFile(personaDest, "utf8");
   assert.notEqual(afterPersona, beforePersona);
   assert.match(afterPersona, /model:\s*gpt-5\.4\[context=272k,reasoning=high,fast=false\]/u);
-  const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
+  const projection = await readFile(path.join(root, ".cursor/agents/product-engineer.md"), "utf8");
   assert.match(projection, /^model:\s*gpt-5\.4\[context=272k,reasoning=high,fast=false\]/m);
 });
 
