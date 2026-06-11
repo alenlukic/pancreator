@@ -10,6 +10,7 @@ import {
   type RunLogEvent,
 } from "./run-state-shared";
 import { parseRunLogFile } from "./run-state";
+import { stageArtifactPathsForStage } from "./stage-artifact-contract";
 
 export type MutationReceipt = {
   id: string;
@@ -53,7 +54,37 @@ function writeLogToReceipts(entries: WriteLogEntry[], nowMs: number): MutationRe
   }));
 }
 
-function runEventToReceipt(event: RunLogEvent, taskId: string, featureLabel: string, nowMs: number): MutationReceipt {
+type RunReceiptContext = {
+  dayBucket: string;
+  featureId?: string;
+  designSteps?: boolean;
+};
+
+function runEventArtifactLink(
+  event: RunLogEvent,
+  taskId: string,
+  context: RunReceiptContext,
+): string | undefined {
+  if (!event.stageId) {
+    return undefined;
+  }
+  const runDir = `.pan/work/${context.dayBucket}/${taskId}`;
+  const featureId = context.featureId ?? taskId.replace(/^\d+_\d+_/u, "");
+  const paths = stageArtifactPathsForStage(
+    { featureId, runDir, designSteps: context.designSteps },
+    event.stageId,
+  );
+  const runScoped = paths.find((candidate) => candidate.startsWith(`${runDir}/`));
+  return runScoped ?? paths[0] ?? `${runDir}/run.log.jsonl`;
+}
+
+function runEventToReceipt(
+  event: RunLogEvent,
+  taskId: string,
+  featureLabel: string,
+  nowMs: number,
+  context: RunReceiptContext,
+): MutationReceipt {
   const verb = runEventDisplayLabel(event);
   return {
     id: `run:${taskId}:${event.timestamp}:${event.event}`,
@@ -62,7 +93,7 @@ function runEventToReceipt(event: RunLogEvent, taskId: string, featureLabel: str
     actor: runEventActorLabel(event),
     verb,
     object: featureLabel,
-    artifactLink: event.stageId ? `.pan/work/${taskId}/${event.stageId}` : undefined,
+    artifactLink: runEventArtifactLink(event, taskId, context),
     surfaceHref: `/mission-control?task=${encodeURIComponent(taskId)}`,
   };
 }
@@ -92,8 +123,28 @@ async function collectRunLogReceipts(repoRoot: string, nowMs: number): Promise<M
       }
       const events = await parseRunLogFile(runLogPath);
       const featureLabel = taskEntry.name.replace(/^\d+_\d+_/u, "").replace(/-/gu, " ");
+      const statePath = path.join(dayPath, taskEntry.name, "state.json");
+      let featureId: string | undefined;
+      let designSteps: boolean | undefined;
+      if (fs.existsSync(statePath)) {
+        try {
+          const state = JSON.parse(await fsp.readFile(statePath, "utf8")) as {
+            featureId?: string;
+            options?: { designSteps?: boolean };
+          };
+          featureId = state.featureId;
+          designSteps = state.options?.designSteps;
+        } catch {
+          // skip unreadable state
+        }
+      }
+      const receiptContext: RunReceiptContext = {
+        dayBucket: dayEntry.name,
+        featureId,
+        designSteps,
+      };
       for (const event of events.slice(0, 5)) {
-        receipts.push(runEventToReceipt(event, taskEntry.name, featureLabel, nowMs));
+        receipts.push(runEventToReceipt(event, taskEntry.name, featureLabel, nowMs, receiptContext));
       }
     }
   }

@@ -31,7 +31,7 @@ describe("CommandCenterNavRail", () => {
     window.sessionStorage.clear();
   });
 
-  it("renders six shipped destinations without Coming soon chrome", () => {
+  it("renders five shipped destinations without Coming soon chrome", () => {
     render(<CommandCenterNavRail />);
     expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
     expect(screen.getByTestId("rail-item-command-center")).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("CommandCenterShell", () => {
     expect(screen.getByTestId("layout-child")).toBeInTheDocument();
   });
 
-  it("renders inspector slot on non-command-center routes", () => {
+  it("does not render inspector placeholder on non-command-center routes", () => {
     mockPathname.mockReturnValue("/mission-control");
     render(
       <CommandCenterShell>
@@ -100,7 +100,7 @@ describe("CommandCenterShell", () => {
       </CommandCenterShell>,
     );
 
-    expect(screen.getByTestId("command-center-shell")).not.toHaveClass("command-center-shell-no-inspector");
-    expect(screen.getByTestId("command-center-inspector-slot")).toBeInTheDocument();
+    expect(screen.getByTestId("command-center-shell")).toHaveClass("command-center-shell-no-inspector");
+    expect(screen.queryByTestId("command-center-inspector-slot")).not.toBeInTheDocument();
   });
 });

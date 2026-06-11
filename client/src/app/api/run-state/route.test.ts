@@ -610,6 +610,58 @@ describe("GET /api/run-state", () => {
     expect(filtered.map((task) => task.taskId)).toEqual(["88888_0101_active"]);
   });
 
+  it("returns attention tasks when archive load fails", async () => {
+    writeState(tempRoot, "172973_06-02-26", "65766_0543_demo-feature");
+    const archivePath = path.join(tempRoot, ".pan", "archive", "work");
+    fs.mkdirSync(path.dirname(archivePath), { recursive: true });
+    fs.writeFileSync(archivePath, "not-a-directory");
+
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(new Request("http://localhost/api/run-state?view=attention"));
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        tasks: Array<{ taskId: string }>;
+        reconciliation: {
+          archivedTaskIds: unknown[];
+          errors?: Record<string, string>;
+        };
+      };
+      expect(payload.tasks.some((task) => task.taskId === "65766_0543_demo-feature")).toBe(true);
+      expect(payload.reconciliation.archivedTaskIds).toEqual([]);
+      expect(payload.reconciliation.errors?.archive).toContain("archived task ids");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("returns attention tasks when feature-index load fails", async () => {
+    writeState(tempRoot, "172973_06-02-26", "65766_0543_demo-feature");
+    const featuresPath = path.join(tempRoot, "lib", "memory", "features");
+    fs.mkdirSync(path.dirname(featuresPath), { recursive: true });
+    fs.writeFileSync(featuresPath, "not-a-directory");
+
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(new Request("http://localhost/api/run-state?view=attention"));
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        tasks: Array<{ taskId: string }>;
+        reconciliation: {
+          shippedOutcomes: unknown[];
+          errors?: Record<string, string>;
+        };
+      };
+      expect(payload.tasks.some((task) => task.taskId === "65766_0543_demo-feature")).toBe(true);
+      expect(payload.reconciliation.shippedOutcomes).toEqual([]);
+      expect(payload.reconciliation.errors?.["feature-index"]).toContain("feature-index");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
   it("loads shipped outcomes from indexed feature folders", async () => {
     const featureDir = path.join(tempRoot, "lib", "memory", "features", "demo-feature");
     fs.mkdirSync(featureDir, { recursive: true });

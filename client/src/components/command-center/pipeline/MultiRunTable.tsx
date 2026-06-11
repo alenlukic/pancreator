@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useMemo, useState, type MouseEvent } from "react";
 import {
+  featureDisplayLabel,
   findActiveStage,
   formatLastEventTime,
   hasActiveHumanApprovalGate,
   newestRunEventTimestamp,
   sortTasksForMultiRunTable,
-  taskDisplayLabel,
   type MultiRunSortMode,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
@@ -45,6 +46,11 @@ export function MultiRunTable({
       }
       return next;
     });
+  }
+
+  async function copyTaskId(taskId: string, event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    await navigator.clipboard.writeText(taskId);
   }
 
   return (
@@ -91,7 +97,7 @@ export function MultiRunTable({
                   data-testid={`multi-run-select-${task.taskId}`}
                   onClick={() => onSelectTask(task.taskId)}
                 >
-                  <span className="multi-run-row-label">{taskDisplayLabel(task)}</span>
+                  <span className="multi-run-row-label">{featureDisplayLabel(task)}</span>
                   <span className="multi-run-row-stage">{activeStage?.name ?? "—"}</span>
                   {hasActiveHumanApprovalGate(task) ? (
                     <span className="multi-run-gate-badge">human_approval</span>
@@ -100,13 +106,26 @@ export function MultiRunTable({
                 </button>
                 <button
                   type="button"
+                  className="multi-run-copy-id"
+                  data-testid={`multi-run-copy-id-${task.taskId}`}
+                  aria-label="Copy run id"
+                  onClick={(event) => void copyTaskId(task.taskId, event)}
+                >
+                  Copy run id
+                </button>
+                <button
+                  type="button"
                   className="multi-run-expand-toggle"
                   data-testid={`multi-run-expand-${task.taskId}`}
                   aria-expanded={isExpanded}
-                  aria-label={`${isExpanded ? "Collapse" : "Expand"} stage grid for ${task.taskId}`}
+                  aria-label={`${isExpanded ? "Collapse" : "Expand"} stage grid for ${featureDisplayLabel(task)}`}
                   onClick={() => toggleExpanded(task.taskId)}
                 >
-                  {isExpanded ? "▾" : "▸"}
+                  {isExpanded ? (
+                    <ChevronDown aria-hidden="true" size={16} />
+                  ) : (
+                    <ChevronRight aria-hidden="true" size={16} />
+                  )}
                 </button>
               </div>
               {isExpanded ? (

@@ -246,6 +246,7 @@ export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandC
   const runStateDegraded = input.failedSources?.includes("run-state");
   const complianceDegraded = input.failedSources?.includes("compliance");
   const outcomesDegraded = input.failedSources?.includes("feature-index");
+  const archiveDegraded = input.failedSources?.includes("archive");
 
   return [
     {
@@ -253,10 +254,13 @@ export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandC
       testId: "command-center-human-gates",
       title: "Human Gates",
       emptyCopy: "No human gates waiting for you",
+      emptyNextStep: { label: "Open Feature Delivery", href: "/mission-control" },
       rows: buildHumanGateRows(input.tasks, nowMs),
       overflowHref: "/mission-control",
       dataAgeMs,
-      ...(runStateDegraded ? { degradedSource: "run-state" } : {}),
+      ...(runStateDegraded || archiveDegraded
+        ? { degradedSource: runStateDegraded ? "run-state" : "archive" }
+        : {}),
     },
     {
       region: "anomalies",
@@ -266,8 +270,14 @@ export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandC
       rows: buildAnomalyRows(input.tasks, input.complianceFindings, nowMs),
       overflowHref: "/compliance",
       dataAgeMs,
-      ...(runStateDegraded || complianceDegraded
-        ? { degradedSource: runStateDegraded ? "run-state" : "compliance" }
+      ...(runStateDegraded || archiveDegraded || complianceDegraded
+        ? {
+            degradedSource: runStateDegraded
+              ? "run-state"
+              : archiveDegraded
+                ? "archive"
+                : "compliance",
+          }
         : {}),
     },
     {
@@ -278,7 +288,9 @@ export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandC
       rows: buildRunningNowRows(input.tasks, nowMs),
       overflowHref: "/mission-control",
       dataAgeMs,
-      ...(runStateDegraded ? { degradedSource: "run-state" } : {}),
+      ...(runStateDegraded || archiveDegraded
+        ? { degradedSource: runStateDegraded ? "run-state" : "archive" }
+        : {}),
     },
     {
       region: "recent-outcomes",

@@ -35,7 +35,7 @@ export function CommandCenterCard({
           </span>
         ) : null}
         {card.overflowHref && card.rows.length >= 5 ? (
-          <Link href={card.overflowHref} className="command-center-card-overflow">
+          <Link href={card.overflowHref} className="command-center-row-cta command-center-card-overflow">
             View all
           </Link>
         ) : null}
@@ -58,7 +58,14 @@ export function CommandCenterCard({
             <div className="command-center-skeleton-row" />
           </div>
         ) : card.rows.length === 0 ? (
-          <p className="command-center-empty">{card.emptyCopy}</p>
+          <div className="command-center-empty">
+            <p>{card.emptyCopy}</p>
+            {card.emptyNextStep ? (
+              <Link href={card.emptyNextStep.href} className="command-center-row-cta">
+                {card.emptyNextStep.label}
+              </Link>
+            ) : null}
+          </div>
         ) : (
           card.rows.map((row) => <CommandCenterRow key={row.id} row={row} />)
         )}

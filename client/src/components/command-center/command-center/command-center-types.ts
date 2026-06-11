@@ -48,6 +48,7 @@ export type CommandCenterCardModel = {
   testId: string;
   title: string;
   emptyCopy: string;
+  emptyNextStep?: { label: string; href: string };
   rows: CommandCenterRowModel[];
   overflowHref?: string;
   dataAgeMs?: number;

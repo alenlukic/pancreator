@@ -7,10 +7,12 @@ import {
   compareBySeverity,
   featureDisplayLabel,
   featureIdToDisplayLabel,
+  formatLastEventTime,
   hasRetryLimitFailure,
   humanGateSeverity,
   runEventActorLabel,
   runEventDisplayLabel,
+  taskDisplayLabel,
   type RunLogEvent,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
@@ -70,6 +72,14 @@ describe("featureDisplayLabel", () => {
       "Command Center Operational State Surface",
     );
     expect(featureDisplayLabel(makeTask())).toBe("Demo Feature");
+  });
+});
+
+describe("taskDisplayLabel", () => {
+  it("matches featureDisplayLabel and omits raw task id from default text", () => {
+    const task = makeTask();
+    expect(taskDisplayLabel(task)).toBe("Demo Feature");
+    expect(taskDisplayLabel(task)).not.toContain(task.taskId);
   });
 });
 
@@ -345,5 +355,49 @@ describe("buildCommandCenterRows operational cards", () => {
     const humanGates = cards.find((card) => card.region === "human-gates");
     expect(humanGates?.rows.every((row) => row.metaHint === undefined)).toBe(true);
     expect(humanGates?.rows[0]?.overflow.stageName).toBe("plan");
+  });
+
+  it("marks attention regions degraded when archive reconciliation fails", () => {
+    const cards = buildCommandCenterRows({
+      tasks: [makeTask()],
+      complianceFindings: [],
+      shippedOutcomes: [],
+      activityEvents: [],
+      nowMs: Date.parse("2026-06-02T13:00:00.000Z"),
+      failedSources: ["archive"],
+    });
+
+    expect(cards.find((card) => card.region === "human-gates")?.degradedSource).toBe("archive");
+    expect(cards.find((card) => card.region === "anomalies")?.degradedSource).toBe("archive");
+    expect(cards.find((card) => card.region === "running-now")?.degradedSource).toBe("archive");
+    expect(cards.find((card) => card.region === "recent-outcomes")?.degradedSource).toBeUndefined();
+  });
+
+  it("provides a Human Gates empty-state next step", () => {
+    const cards = buildCommandCenterRows({
+      tasks: [],
+      complianceFindings: [],
+      shippedOutcomes: [],
+      activityEvents: [],
+    });
+
+    expect(cards.find((card) => card.region === "human-gates")?.emptyNextStep).toEqual({
+      label: "Open Feature Delivery",
+      href: "/mission-control",
+    });
+  });
+});
+
+describe("formatLastEventTime", () => {
+  it("uses relative age instead of ISO dates for events older than one day", () => {
+    const nowMs = Date.parse("2026-06-10T12:00:00.000Z");
+    expect(formatLastEventTime("2026-06-09T10:00:00.000Z", nowMs)).toBe("1d ago");
+  });
+
+  it("formats week-old timestamps as human-readable dates", () => {
+    const nowMs = Date.parse("2026-06-10T12:00:00.000Z");
+    const label = formatLastEventTime("2026-06-01T10:00:00.000Z", nowMs);
+    expect(label).not.toMatch(/\d{4}-\d{2}-\d{2}/u);
+    expect(label).toMatch(/Jun/u);
   });
 });

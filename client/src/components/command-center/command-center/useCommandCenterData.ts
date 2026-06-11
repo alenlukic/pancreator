@@ -45,6 +45,7 @@ type AttentionRunStatePayload = {
     archivedTaskIds: string[];
     shippedOutcomes: ShippedOutcome[];
     shippedTaskIds: string[];
+    errors?: Record<string, string>;
   };
 };
 
@@ -99,11 +100,13 @@ export function useCommandCenterData() {
   const [complianceError, setComplianceError] = useState<string | null>(null);
   const [shippedOutcomes, setShippedOutcomes] = useState<ShippedOutcome[]>([]);
   const [outcomesError, setOutcomesError] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [dataFetchedAtMs, setDataFetchedAtMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const loadRunState = useCallback(async () => {
     setRunStateError(null);
     setOutcomesError(null);
+    setArchiveError(null);
     try {
       const response = await fetch("/api/run-state?view=attention");
       if (!response.ok) {
@@ -115,6 +118,9 @@ export function useCommandCenterData() {
       const data = (await response.json()) as AttentionRunStatePayload;
       setTasks(data.tasks);
       setShippedOutcomes(data.reconciliation.shippedOutcomes);
+      const reconciliationErrors = data.reconciliation.errors ?? {};
+      setOutcomesError(reconciliationErrors["feature-index"] ?? null);
+      setArchiveError(reconciliationErrors.archive ?? null);
       setDataFetchedAtMs(Date.now());
       return data.tasks;
     } catch {
@@ -184,8 +190,11 @@ export function useCommandCenterData() {
     if (outcomesError) {
       sources.push("feature-index");
     }
+    if (archiveError) {
+      sources.push("archive");
+    }
     return sources;
-  }, [complianceError, outcomesError, runStateError]);
+  }, [archiveError, complianceError, outcomesError, runStateError]);
 
   const cards = useMemo(
     () =>
@@ -221,6 +230,7 @@ export function useCommandCenterData() {
     runStateError,
     complianceError,
     outcomesError,
+    archiveError,
     isGlobalEmpty,
     isDataStale,
     dataFetchedAtMs,

@@ -49,6 +49,14 @@ function operatorFacingEventText(event: RunLogEvent): string {
   return event.message;
 }
 
+function stageStatusSummary(runEvents: RunLogEvent[], stageName: string): string {
+  const newest = newestStageEvent(runEvents, stageName);
+  if (newest === null) {
+    return "No stage activity recorded yet.";
+  }
+  return operatorFacingEventText(newest);
+}
+
 function stageOutputExcerpt(runEvents: RunLogEvent[], stageName: string): string {
   const matching = stageEvents(runEvents, stageName);
   if (matching.length === 0) {
@@ -72,8 +80,9 @@ export function StageDetailPanel({
   const [expanded, setExpanded] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const newest = newestStageEvent(runEvents, stage.name);
-  const output = stageOutputExcerpt(runEvents, stage.name);
-  const displayOutput = expanded ? output : output.slice(0, 280);
+  const summary = stageStatusSummary(runEvents, stage.name);
+  const chronology = stageOutputExcerpt(runEvents, stage.name);
+  const displayOutput = expanded ? chronology : summary;
   const modelLabel = newest ? runEventActorLabel(newest) : "—";
   const startTime = formatLastEventTime(
     stageEvents(runEvents, stage.name).at(-1)?.timestamp ?? null,
@@ -123,15 +132,18 @@ export function StageDetailPanel({
         </div>
       ) : null}
       <div className="mc-stage-detail-output-wrap">
-        <pre className="mc-stage-detail-output">{displayOutput}</pre>
-        {output.length > 280 ? (
+        <p className="mc-stage-detail-summary">{displayOutput}</p>
+        {!expanded && chronology !== summary ? (
+          <p className="mc-stage-detail-log-hint">Open run logs for full chronology.</p>
+        ) : null}
+        {chronology !== summary ? (
           <button
             type="button"
             className="mc-expand-output-btn"
             data-testid="expand-stage-output"
             onClick={() => setExpanded((current) => !current)}
           >
-            {expanded ? "Collapse stage output" : "Expand stage output"}
+            {expanded ? "Show summary only" : "Show stage chronology"}
           </button>
         ) : null}
       </div>

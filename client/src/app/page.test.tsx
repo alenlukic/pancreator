@@ -534,7 +534,7 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("stage-grid")).toBeInTheDocument();
       expect(screen.getByTestId("task-command-center-65766_0543_demo-feature")).toHaveTextContent(
-        "65766_0543_demo-feature (2026-06-02 05:43 UTC)",
+        "Demo Feature",
       );
       expect(screen.getByTestId("stage-cell-intake")).toHaveTextContent("Intake ratified");
       expect(screen.getByTestId("stage-cell-plan")).toHaveTextContent("tech-lead");
@@ -1191,7 +1191,7 @@ describe("DashboardPage", () => {
     });
 
     const rowLabels = [...screen.getAllByTestId(/multi-run-row-/u)].map((row) =>
-      row.textContent?.includes("65766_0543_demo-feature") ? "first" : "second",
+      row.textContent?.includes("Demo Feature") ? "first" : "second",
     );
     expect(rowLabels[0]).toBe("first");
 
@@ -1199,7 +1199,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       const rowsAfterGateSort = [...screen.getAllByTestId(/multi-run-row-/u)];
-      expect(rowsAfterGateSort[0]).toHaveTextContent("65766_0543_demo-feature");
+      expect(rowsAfterGateSort[0]).toHaveTextContent("Demo Feature");
     });
   });
 

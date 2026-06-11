@@ -52,10 +52,12 @@ export type TaskRunStateEnvelope = {
 };
 
 export function taskDisplayLabel(
-  task: Pick<TaskRunStateEnvelope, "taskId" | "decodedTimestamp" | "decodedTimestampDiagnostic">,
+  task: Pick<
+    TaskRunStateEnvelope,
+    "taskId" | "featureId" | "decodedTimestamp" | "decodedTimestampDiagnostic"
+  >,
 ): string {
-  const suffix = task.decodedTimestamp ?? task.decodedTimestampDiagnostic;
-  return suffix ? `${task.taskId} (${suffix})` : task.taskId;
+  return featureDisplayLabel(task);
 }
 
 export type HumanGateQueueEntry = {
@@ -663,24 +665,38 @@ export function sortTasksForMultiRunTable(
   return sorted;
 }
 
+function formatHumanDate(eventMs: number): string {
+  return new Date(eventMs).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function formatLastEventTime(timestamp: string | null, nowMs: number = Date.now()): string {
   if (timestamp === null) {
     return "—";
   }
   const eventMs = Date.parse(timestamp);
   if (Number.isNaN(eventMs)) {
+    if (/^\d{4}-\d{2}-\d{2}/u.test(timestamp)) {
+      const parsed = Date.parse(timestamp.slice(0, 10));
+      if (!Number.isNaN(parsed)) {
+        return formatHumanDate(parsed);
+      }
+    }
     return timestamp;
   }
   const elapsedMs = Math.max(0, nowMs - eventMs);
+  if (elapsedMs < 60 * 60 * 1000) {
+    const minutes = Math.max(1, Math.floor(elapsedMs / (60 * 1000)));
+    return `${minutes}m ago`;
+  }
   if (elapsedMs < 24 * 60 * 60 * 1000) {
     const hours = Math.floor(elapsedMs / (60 * 60 * 1000));
-    if (hours < 1) {
-      const minutes = Math.floor(elapsedMs / (60 * 1000));
-      return `${minutes}m ago`;
-    }
     return `${hours}h ago`;
   }
-  return timestamp.slice(0, 10);
+  const days = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
+  if (days < 7) {
+    return `${days}d ago`;
+  }
+  return formatHumanDate(eventMs);
 }
 
 export type PanExecuteResult = {

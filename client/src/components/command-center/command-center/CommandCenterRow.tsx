@@ -7,7 +7,7 @@ import { CommandCenterRowOverflow } from "./CommandCenterRowOverflow";
 import type { CommandCenterRowModel } from "./command-center-types";
 
 export function CommandCenterRow({ row }: { row: CommandCenterRowModel }) {
-  const ctaClass = "command-center-row-cta";
+  const ctaClass = "command-center-row-cta-quiet";
 
   return (
     <article className="command-center-row" data-testid="command-center-row">

@@ -225,6 +225,74 @@ describe("CommandCenterSurface", () => {
     });
   });
 
+  it("renders archive degraded banner when reconciliation reports archive error", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(
+          stringifyCompactJson({
+            tasks: mockRunState,
+            reconciliation: {
+              archivedTaskIds: [],
+              shippedTaskIds: [],
+              shippedOutcomes: [],
+              errors: {
+                archive: "Unable to load archived task ids",
+              },
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+
+    render(<CommandCenterSurface />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Degraded data from archive").length).toBeGreaterThan(0);
+      expect(screen.getByText("Unable to load archived task ids")).toBeInTheDocument();
+    });
+  });
+
+  it("renders feature-index degraded banner when reconciliation reports feature-index error", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(
+          stringifyCompactJson({
+            tasks: mockRunState,
+            reconciliation: {
+              archivedTaskIds: [],
+              shippedTaskIds: [],
+              shippedOutcomes: [],
+              errors: {
+                "feature-index": "Unable to load shipped outcomes from feature-index",
+              },
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+
+    render(<CommandCenterSurface />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Degraded data from feature-index").length).toBeGreaterThan(0);
+      expect(
+        screen.getByText("Unable to load shipped outcomes from feature-index"),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("exposes human-gate approve and reject CTAs on rows", async () => {
     mockCommandCenterFetch();
 

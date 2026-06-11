@@ -12,11 +12,29 @@ export async function GET(request?: Request): Promise<Response> {
     request !== undefined ? new URL(request.url).searchParams.get("view") : null;
 
   if (view === "attention") {
-    const [tasks, archivedTaskIds, shippedOutcomes] = await Promise.all([
-      getActiveRunState(repoRoot),
+    const tasks = await getActiveRunState(repoRoot);
+
+    const reconciliationErrors: Record<string, string> = {};
+
+    const [archiveResult, shippedResult] = await Promise.allSettled([
       loadArchivedTaskIds(repoRoot),
       loadShippedOutcomes(repoRoot),
     ]);
+
+    let archivedTaskIds = new Set<string>();
+    if (archiveResult.status === "fulfilled") {
+      archivedTaskIds = archiveResult.value;
+    } else {
+      reconciliationErrors.archive = "Unable to load archived task ids";
+    }
+
+    let shippedOutcomes: Awaited<ReturnType<typeof loadShippedOutcomes>> = [];
+    if (shippedResult.status === "fulfilled") {
+      shippedOutcomes = shippedResult.value;
+    } else {
+      reconciliationErrors["feature-index"] = "Unable to load shipped outcomes from feature-index";
+    }
+
     const shippedTaskIds = shippedOutcomes.map((outcome) => outcome.taskId);
     const reconciledTasks = excludeReconciledAttentionTasks(
       tasks,
@@ -30,6 +48,7 @@ export async function GET(request?: Request): Promise<Response> {
         archivedTaskIds: [...archivedTaskIds],
         shippedTaskIds,
         shippedOutcomes,
+        ...(Object.keys(reconciliationErrors).length > 0 ? { errors: reconciliationErrors } : {}),
       },
     });
   }

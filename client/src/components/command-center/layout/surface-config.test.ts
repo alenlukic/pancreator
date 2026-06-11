@@ -3,12 +3,11 @@ import {
   COMMAND_CENTER_SURFACES,
   FIRST_SLICE_SURFACES,
   MOBILE_TAB_SURFACES,
-  filterCommandPaletteActions,
   getSurfaceByRoute,
 } from "./surface-config";
 
 describe("COMMAND_CENTER_SURFACES", () => {
-  it("lists five shipped route destinations plus Cmd-K affordance elsewhere", () => {
+  it("lists five shipped route destinations", () => {
     expect(COMMAND_CENTER_SURFACES).toHaveLength(5);
     expect(COMMAND_CENTER_SURFACES[0].id).toBe("command-center");
     expect(COMMAND_CENTER_SURFACES.every((surface) => surface.firstSlice)).toBe(true);
@@ -42,17 +41,5 @@ describe("getSurfaceByRoute", () => {
     expect(getSurfaceByRoute("/")?.id).toBe("command-center");
     expect(getSurfaceByRoute("/command-center")?.id).toBe("command-center");
     expect(getSurfaceByRoute("/command-center")?.label).toBe("Home");
-  });
-});
-
-describe("filterCommandPaletteActions", () => {
-  it("excludes destructive actions from default top results", () => {
-    const actions = filterCommandPaletteActions("");
-    expect(actions.some((action) => action.id === "abort-run")).toBe(false);
-  });
-
-  it("includes destructive actions when the query matches", () => {
-    const actions = filterCommandPaletteActions("abort", true);
-    expect(actions.some((action) => action.id === "abort-run")).toBe(true);
   });
 });

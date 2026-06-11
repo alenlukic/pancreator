@@ -28,6 +28,7 @@ export function CommandCenterSurface() {
     runStateError,
     complianceError,
     outcomesError,
+    archiveError,
     isGlobalEmpty,
     isDataStale,
     dataFetchedAtMs,
@@ -85,6 +86,11 @@ export function CommandCenterSurface() {
       {complianceError ? (
         <AttentionBanner title="Degraded data from compliance">
           <p>{complianceError}</p>
+        </AttentionBanner>
+      ) : null}
+      {archiveError ? (
+        <AttentionBanner title="Degraded data from archive">
+          <p>{archiveError}</p>
         </AttentionBanner>
       ) : null}
       {outcomesError ? (
