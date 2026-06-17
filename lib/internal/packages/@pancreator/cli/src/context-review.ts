@@ -132,7 +132,7 @@ It does **not** require a feature-delivery task id or \`state.json\`.
 
 ## Read order
 
-1. \`AGENTS.md\` §4–§5 only when this prompt omits a required operating rule.
+1. \`AGENTS.md\` as the global thin index and operating-card route map.
 2. \`lib/personas/context-reviewer.md\` for output shape and constraints.
 3. Operator context paths (read when present; skip missing files and record the gap):
 ${contextLines}

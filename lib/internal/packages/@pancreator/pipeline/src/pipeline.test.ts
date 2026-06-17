@@ -154,7 +154,6 @@ describe("MVP pipeline structural checks", () => {
   const mvpIds = [
     "feature-delivery",
     "adopt",
-    "chat-with-persona",
     "init-greenfield",
     "knowledge-curation",
   ];

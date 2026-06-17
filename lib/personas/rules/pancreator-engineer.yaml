@@ -20,7 +20,6 @@ globs:
   - tests/**/*.mjs
   - tests/**/*.ts
   - lib/internal/tools/**/*.mjs
-  - pancreator-defaults.yaml
   - pancreator.yaml
   - lib/personas/rules/*.yaml
 alwaysApply: false

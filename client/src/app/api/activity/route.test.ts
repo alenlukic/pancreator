@@ -73,7 +73,7 @@ describe("GET /api/activity feed ordering", () => {
 
       const receipts = await getMutationReceipts(tempRoot);
       const planReceipt = receipts.find((receipt) => receipt.id.startsWith(`run:${taskId}:`));
-      expect(planReceipt?.artifactLink).toBe(`.pan/work/${dayBucket}/${taskId}/product-plan.md`);
+      expect(planReceipt?.artifactLink).toBe(`.pan/work/${dayBucket}/${taskId}/product/plan.md`);
     },
   );
 

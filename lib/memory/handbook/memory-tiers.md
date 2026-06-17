@@ -92,6 +92,16 @@ performs the move; agents MUST NOT manually `mv` active runs during the index
 stage. Update references after closure and leave only a small pointer in
 `lib/memory/active/runs.md` when useful.
 
+## Private SME memory
+
+When an agent names **private SME memory**, the agent SHALL treat
+`lib/memory/smes/<name>/` as long-lived, persona-scoped notes owned by the named
+SME.
+
+Only the owning SME persona and explicitly routed follow-on work SHOULD read or
+extend that directory by default. Other agents SHALL treat SME memory as
+explicit-read only and SHALL NOT sweep all SME trees for general context.
+
 ## Durable memory
 
 When an agent names **durable-memory**, the agent SHALL treat the tier as
@@ -145,6 +155,17 @@ the handbook route, persona spec, skill, or rule the task names.
 
 When an agent expands context broadly, the agent SHALL NOT sweep entire
 handbook or persona trees without task-specific justification.
+
+## Runtime checkpoints
+
+When an agent names **runtime checkpoints**, the agent SHALL treat
+`lib/memory/checkpoints/<task-id>/<seq>.json` as transient generated machine
+artifacts emitted at stage boundaries, not as authored handbook or durable
+memory.
+
+The checkpoint store MAY be empty between runs and is expected to churn during
+active pipeline execution. Agents SHALL NOT hand-edit checkpoint JSON except in
+an explicit runtime-repair task.
 
 ## Generated machine artifacts
 

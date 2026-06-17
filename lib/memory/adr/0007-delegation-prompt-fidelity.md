@@ -8,20 +8,14 @@ supersedes: null
 superseded-by: null
 feature_id: delegation-prompt-fidelity
 references:
-  - kind: lines
+  - kind: file
     path: AGENTS.md
-    range: [119, 141]
-    contentHash: b953d77
-    note: AGENTS §5 delegation policy clause amended by this decision.
-  - kind: lines
+    note: AGENTS §2 now carries the repo-wide delegation authority and prompt-fidelity rules ratified by this ADR.
+  - kind: file
     path: lib/memory/handbook/context-economy.md
-    range: [188, 197]
-    contentHash: 22e87bf
     note: Planning/execution handoff discipline carries the mirrored prompt-fidelity norm.
-  - kind: lines
+  - kind: file
     path: lib/memory/handbook/agents-md-authoring.md
-    range: [103, 117]
-    contentHash: c8d8a82
     note: AGENTS change-control workflow requires inbox authorization and ADR for policy-significant edits.
   - kind: lines
     path: lib/inbox/in/172975_05-31-26/30025_1539_delegation-prompt-fidelity-no-editorializing.md
@@ -32,10 +26,10 @@ references:
 
 ## Context
 
-The `AGENTS.md` §5 delegation policy governs delegation invocation mechanics: when
-the parent invokes a named subagent, how long it waits, the 2-minute heartbeat,
-the three-attempt retry, and the result report. The prior wording said the parent
-invokes "with the remainder of the prompt as the delegated task" but did not
+The `AGENTS.md` §2 delegation authority rules govern delegation invocation
+mechanics: how parent agents hand off bounded scope to named personas and which
+repo-wide rules survive that handoff. The prior wording said the parent invokes
+"with the remainder of the prompt as the delegated task" but did not
 require that remainder to pass through unchanged, and its closing sentence granted
 open-ended discretion over parent-agent instructions.
 
@@ -56,7 +50,7 @@ under-specified at the contract layer.
 When a parent agent invokes a named subagent, the parent agent SHALL forward the
 delegated remainder verbatim and SHALL NOT paraphrase, summarize, translate,
 reorder, or rewrite it. Citation:
-`{kind: lines, path: AGENTS.md, range: [121, 123], contentHash: b953d77}`.
+`{kind: file, path: AGENTS.md, note: "AGENTS §2 delegation authority requires verbatim prompt pass-through."}`.
 
 When a parent agent constructs a delegated prompt, the parent agent SHALL NOT
 inject interpretation, inferred intent, assumptions, background context,
@@ -65,24 +59,25 @@ prompt or a generated `.pan/work/<day>/<task-id>/next-prompt.md` names that exac
 artifact. When the parent agent adds an operationally required reference, the
 parent agent SHALL label it parent-supplied and SHALL keep it to the minimal
 pointer the subagent needs to start. Citation:
-`{kind: lines, path: AGENTS.md, range: [123, 129], contentHash: b953d77}`.
+`{kind: file, path: AGENTS.md, note: "AGENTS §2 forbids injected interpretation, broad context, and unsolicited adjacent work unless explicitly named."}`.
 
 When a delegation prompt carries no instructions specifically intended for the
 parent agent, the parent agent SHALL perform no repository reads, edits, or other
 actions beyond invoking the subagent, SHALL wait for completion, and SHALL report
 the delegated result without editorializing the subagent output. Citation:
-`{kind: lines, path: AGENTS.md, range: [129, 134], contentHash: b953d77}`.
+`{kind: file, path: AGENTS.md, note: "AGENTS §2 limits pure-passthrough delegations to invoke-and-report behavior."}`.
 
 When a delegation prompt also carries instructions specifically intended for the
 parent agent, the parent agent SHALL execute only those instructions, SHALL
 sequence them relative to delegation as the instructions require, and SHALL NOT
 expand them into adjacent unrequested work. Citation:
-`{kind: lines, path: AGENTS.md, range: [137, 141], contentHash: b953d77}`.
+`{kind: file, path: AGENTS.md, note: "AGENTS §2 limits parent-side work to the instructions explicitly addressed to the parent."}`.
 
 When a parent agent invokes an executor on the planning/execution path, the
 parent agent SHALL apply the same verbatim-fidelity and no-injection norm and
-SHALL treat `AGENTS.md` §5 as the governing source. Citation:
-`{kind: lines, path: lib/memory/handbook/context-economy.md, range: [188, 197], contentHash: b953d77}`.
+SHALL treat `AGENTS.md` §2 as the governing source, with
+`lib/memory/handbook/context-economy.md` mirroring that rule for the
+planning/execution handoff path.
 
 ## Consequences
 
@@ -100,5 +95,5 @@ SHALL treat `AGENTS.md` §5 as the governing source. Citation:
 
 This ADR is `proposed` on 2026-05-31 (UTC) pending `LocalUserAuthorizer`
 ratification, per the AGENTS change-control workflow at
-`{kind: lines, path: lib/memory/handbook/agents-md-authoring.md, range: [103, 117], contentHash: c8d8a82}`.
+`{kind: file, path: lib/memory/handbook/agents-md-authoring.md, note: "AGENTS change-control workflow."}`.
 On ratification the author SHALL set `status: accepted`.

@@ -175,8 +175,8 @@ applies_to:
 
 ### 3.5 — `pancreator-config`
 
-For clauses that gate a value inside `pancreator.yaml`,
-`pancreator-defaults.yaml`, or a per-feature `policy.yaml`.
+For clauses that gate a value inside `pancreator.yaml` (including its nested
+`defaults:` block) or a per-feature `policy.yaml`.
 
 ```yaml
 applies_to:

@@ -195,7 +195,7 @@ into the executor prompt. The parent SHALL NOT paste full PRD sections, handbook
 pages, archival artifacts, feature specs, prior chat transcripts, broad directory
 listings, or planner scratch notes into the executor prompt unless the generated
 prompt names the exact file. This handoff fidelity requirement mirrors the
-`AGENTS.md` §5 delegation policy.
+delegation authority rules in `AGENTS.md` §2.
 
 When an agent runs SDK-mode feature-delivery CLI commands from chat on the
 operator's behalf, the agent SHALL relay stderr progress to the operator chat
@@ -205,10 +205,26 @@ events, and post concise status on each `stage_enter`, `stage_transition`,
 `AGENTS.md` §5. Operators in a TTY receive `[pan fd] …` on stderr automatically;
 see `OPERATION.md` § SDK mode.
 
-When execution finds ambiguity that changes scope, touch-set, acceptance
-criteria, or validation strategy, the executor SHALL stop and delegate back to
+When execution finds ambiguity that changes acceptance criteria, validation
+strategy, or broad feature scope, the executor SHALL stop and delegate back to
 `tech-lead`, `reviewer`, or `supervisor` rather than extending a local repair
 loop.
+
+When execution needs one low-risk path that is obviously implied by an existing
+touch-set entry, the executor MAY record a bounded scope amendment instead of
+halting immediately. Auto-amendable examples include a co-located test,
+snapshot, or fixture for an already-declared source file, or a sibling file
+inside an already-declared directory when a declared symbol change requires it.
+
+When an executor records a bounded scope amendment, the executor SHALL update
+the run's `touch-set.json`, SHALL echo the same amendment in the stage output
+manifest, and SHALL present the amendment for owner ratification at the next
+gate.
+
+When execution needs a new top-level directory, a new package, a production
+dependency, a public API surface, or any file under a change-controlled
+governance tree, the executor MUST NOT self-amend the scope and MUST delegate
+upstream.
 
 When a reviewer sends work back to implementation, the reviewer SHALL emit a
 compact must-fix list and the supervisor SHALL choose one bounded re-entry target.

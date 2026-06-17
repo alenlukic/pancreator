@@ -29,7 +29,10 @@ describe("feature-delivery-stage-artifacts", () => {
     const contract = stageArtifactContract(sampleState, "plan");
     expect(contract.primaryArtifact).toMatch(/touch-set\.json$/u);
     expect(contract.requiredAfterStageWork).toEqual(
-      planStageRequiredArtifactRels(sampleState.artifacts.runDir, sampleState.featureId),
+      planStageRequiredArtifactRels(
+        sampleState.artifacts.runDir,
+        sampleState.featureId,
+      ),
     );
     expect(contract.acceptedAdvanceArtifacts).toEqual([
       ".pan/work/172996_05-10-26/38670_1315_demo-feature/plan.md",
@@ -46,7 +49,9 @@ describe("feature-delivery-stage-artifacts", () => {
       },
       "plan",
     );
-    expect(contract.requiredAfterStageWork).toContain(".pan/work/172996_05-10-26/38670_1315_demo-feature/ux-spec.md");
+    expect(contract.requiredAfterStageWork).toContain(
+      ".pan/work/172996_05-10-26/38670_1315_demo-feature/ux-spec.md",
+    );
   });
 
   it("test stage requires design-qa-report when design steps are on", () => {
@@ -69,23 +74,41 @@ describe("feature-delivery-stage-artifacts", () => {
     await mkdir(runAbs, { recursive: true });
     await writeFile(
       path.join(runAbs, "touch-set.json"),
-      stringifyCompactJson({ paths: [], tests: [], shared_paths: [], integration_prerequisites: [], acceptance_criteria: [], manual_qa_test_cases: [] }),
+      stringifyCompactJson({
+        paths: [],
+        tests: [],
+        shared_paths: [],
+        integration_prerequisites: [],
+        acceptance_criteria: [],
+        manual_qa_test_cases: [],
+      }),
       "utf8",
     );
 
-    const validation = validateStageCompletionArtifacts(root, sampleState, "plan");
+    const validation = validateStageCompletionArtifacts(
+      root,
+      sampleState,
+      "plan",
+    );
     expect(validation.ok).toBe(false);
     expect(validation.warningCount).toBe(0);
     expect(validation.missing).toEqual(
-      planStageRequiredArtifactRels(sampleState.artifacts.runDir, sampleState.featureId).filter(
-        (rel) => !rel.endsWith("/touch-set.json"),
-      ),
+      planStageRequiredArtifactRels(
+        sampleState.artifacts.runDir,
+        sampleState.featureId,
+      ).filter((rel) => !rel.endsWith("/touch-set.json")),
     );
   });
 
   it("assertAdvanceArtifacts rejects advance when adr-draft.md is missing", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-advance-adr-"));
-    await seedPlanStageAdvanceArtifacts(root, sampleState.artifacts.runDir, sampleState.featureId);
+    const root = await mkdtemp(
+      path.join(os.tmpdir(), "pan-stage-advance-adr-"),
+    );
+    await seedPlanStageAdvanceArtifacts(
+      root,
+      sampleState.artifacts.runDir,
+      sampleState.featureId,
+    );
     const { unlink } = await import("node:fs/promises");
     await unlink(path.join(root, sampleState.artifacts.runDir, "adr-draft.md"));
 
@@ -122,9 +145,17 @@ describe("feature-delivery-stage-artifacts", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-content-"));
     const runAbs = path.join(root, sampleState.artifacts.runDir);
     await mkdir(runAbs, { recursive: true });
-    await writeFile(path.join(runAbs, "review.md"), "# review\n\nno verdict line\n", "utf8");
+    await writeFile(
+      path.join(runAbs, "review.md"),
+      "# review\n\nno verdict line\n",
+      "utf8",
+    );
 
-    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    const validation = validateStageCompletionArtifacts(
+      root,
+      sampleState,
+      "review",
+    );
     expect(validation.missing).toEqual([]);
     expect(validation.warningCount).toBe(1);
     expect(validation.warnings[0]?.code).toBe("review_passes_unparseable");
@@ -134,9 +165,17 @@ describe("feature-delivery-stage-artifacts", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-ac-p7-malformed-"));
     const runAbs = path.join(root, sampleState.artifacts.runDir);
     await mkdir(runAbs, { recursive: true });
-    await writeFile(path.join(runAbs, "review.md"), "# review\n\nno verdict line\n", "utf8");
+    await writeFile(
+      path.join(runAbs, "review.md"),
+      "# review\n\nno verdict line\n",
+      "utf8",
+    );
 
-    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    const validation = validateStageCompletionArtifacts(
+      root,
+      sampleState,
+      "review",
+    );
     expect(validation.warningCount).toBe(1);
     expect(validation.missing).toEqual([]);
   });
@@ -145,9 +184,17 @@ describe("feature-delivery-stage-artifacts", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-ac-p7-valid-"));
     const runAbs = path.join(root, sampleState.artifacts.runDir);
     await mkdir(runAbs, { recursive: true });
-    await writeFile(path.join(runAbs, "review.md"), "review_passes: true\n", "utf8");
+    await writeFile(
+      path.join(runAbs, "review.md"),
+      "review_passes: true\nscope_amendments_ratified: true\n\n## Output manifest\n\n- persona_contract: PERSONA.REVIEWER\n- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST\n- consulted_docs: AGENTS.md, lib/memory/handbook/agent-document-registry.md\n- definition_of_done: pass\n- gate_decision: advance\n",
+      "utf8",
+    );
 
-    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    const validation = validateStageCompletionArtifacts(
+      root,
+      sampleState,
+      "review",
+    );
     expect(validation.warningCount).toBe(0);
   });
 
@@ -155,9 +202,17 @@ describe("feature-delivery-stage-artifacts", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-content-ok-"));
     const runAbs = path.join(root, sampleState.artifacts.runDir);
     await mkdir(runAbs, { recursive: true });
-    await writeFile(path.join(runAbs, "review.md"), "review_passes: true\n", "utf8");
+    await writeFile(
+      path.join(runAbs, "review.md"),
+      "review_passes: true\nscope_amendments_ratified: true\n\n## Output manifest\n\n- persona_contract: PERSONA.REVIEWER\n- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST\n- consulted_docs: AGENTS.md, lib/memory/handbook/agent-document-registry.md\n- definition_of_done: pass\n- gate_decision: advance\n",
+      "utf8",
+    );
 
-    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    const validation = validateStageCompletionArtifacts(
+      root,
+      sampleState,
+      "review",
+    );
     expect(validation.warningCount).toBe(0);
   });
 
@@ -172,25 +227,34 @@ describe("feature-delivery-stage-artifacts", () => {
       "ship",
       "index",
     ]) {
-      expect(requiredArtifactsAfterStageWork(sampleState, stage).length).toBeGreaterThan(0);
+      expect(
+        requiredArtifactsAfterStageWork(sampleState, stage).length,
+      ).toBeGreaterThan(0);
     }
   });
 
   it("compliance stage contract supports pass, fail, and spot-fix events", () => {
-    expect(stageArtifactContract(sampleState, "compliance", "compliance_passes").primaryArtifact).toMatch(
-      /compliance-result\.json$/u,
-    );
-    expect(stageArtifactContract(sampleState, "compliance", "compliance_fails").primaryArtifact).toMatch(
-      /compliance-result\.json$/u,
-    );
-    expect(stageArtifactContract(sampleState, "compliance", "compliance_spot_fix").primaryArtifact).toMatch(
-      /compliance-result\.json$/u,
-    );
+    expect(
+      stageArtifactContract(sampleState, "compliance", "compliance_passes")
+        .primaryArtifact,
+    ).toMatch(/compliance-result\.json$/u);
+    expect(
+      stageArtifactContract(sampleState, "compliance", "compliance_fails")
+        .primaryArtifact,
+    ).toMatch(/compliance-result\.json$/u);
+    expect(
+      stageArtifactContract(sampleState, "compliance", "compliance_spot_fix")
+        .primaryArtifact,
+    ).toMatch(/compliance-result\.json$/u);
   });
 
   it("assertAdvanceArtifacts rejects plan advance without acceptance criteria", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-plan-gate-"));
-    await seedPlanStageAdvanceArtifacts(root, sampleState.artifacts.runDir, sampleState.featureId);
+    await seedPlanStageAdvanceArtifacts(
+      root,
+      sampleState.artifacts.runDir,
+      sampleState.featureId,
+    );
     await writeFile(
       path.join(root, sampleState.artifacts.runDir, "touch-set.json"),
       stringifyCompactJson({
@@ -218,7 +282,11 @@ describe("feature-delivery-stage-artifacts", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-spot-"));
     const runAbs = path.join(root, sampleState.artifacts.runDir);
     await mkdir(runAbs, { recursive: true });
-    await writeFile(path.join(runAbs, "review.md"), "review_passes: false\nspot_fixable: true\n", "utf8");
+    await writeFile(
+      path.join(runAbs, "review.md"),
+      "review_passes: false\nspot_fixable: true\n",
+      "utf8",
+    );
 
     expect(() =>
       assertAdvanceArtifacts(
@@ -239,12 +307,19 @@ describe("feature-delivery-stage-artifacts", () => {
       path.join(runAbs, "implementation-report.md"),
       [
         "implement_gate_passes: false",
+        "scope_amendments: none",
         "## Automated checks",
         "pnpm lint",
         "pnpm typecheck",
         "pnpm test",
         "## Coverage delta",
         "statement: 0%",
+        "## Output manifest",
+        "- persona_contract: PERSONA.CODER",
+        "- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST",
+        "- consulted_docs: AGENTS.md, lib/memory/handbook/agent-document-registry.md",
+        "- definition_of_done: fail",
+        "- gate_decision: hold",
       ].join("\n"),
       "utf8",
     );
@@ -274,6 +349,8 @@ describe("feature-delivery-stage-artifacts", () => {
     );
     expect(verdict.passes).toBe(true);
     expect(verdict.finalGateObserved).toBe(true);
-    expect(verdict.failingFinalGateCommands).toContain("node --test tests/*.test.mjs");
+    expect(verdict.failingFinalGateCommands).toContain(
+      "node --test tests/*.test.mjs",
+    );
   });
 });

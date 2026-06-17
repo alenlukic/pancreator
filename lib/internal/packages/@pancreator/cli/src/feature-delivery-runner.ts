@@ -1046,10 +1046,13 @@ export async function trySdkAutoChainAfterStageWork(input: {
     }
     const content = await readFile(reviewAbs, "utf8");
     const verdict = parseReviewGateOutcome(content);
-    if (verdict.passes === true) {
+    if (verdict.passes === true && verdict.scopeAmendmentsRatified) {
       return attemptChain("review_passes", reviewRel);
     }
     if (verdict.passes === false) {
+      if (verdict.coreReentryRequired) {
+        return attemptChain("review_core_reentry", reviewRel);
+      }
       const spotFix = parseSpotFixJustificationFromMarkdown(content);
       const spotFixValid =
         validateSpotFixJustification("review_spot_fix", spotFix) === null &&
@@ -1245,6 +1248,7 @@ export async function applySdkRetrySideEffects(input: {
 }): Promise<string | null> {
   if (
     input.event !== "must_fix" &&
+    input.event !== "review_core_reentry" &&
     input.event !== "qa_fails" &&
     input.event !== "qa_fails_plan_invalidating" &&
     input.event !== "compliance_fails" &&

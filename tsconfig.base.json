@@ -16,8 +16,6 @@
       "@pancreator/checkpointer-fs": ["lib/internal/packages/@pancreator/checkpointer-fs/src/index.ts"],
       "@pancreator/cli": ["lib/internal/packages/@pancreator/cli/src/index.ts"],
       "@pancreator/contract": ["lib/internal/packages/@pancreator/contract/src/index.ts"],
-      "@pancreator/contract-runner-llm-judge": ["lib/internal/packages/@pancreator/contract-runner-llm-judge/src/index.ts"],
-      "@pancreator/contract-runner-rego": ["lib/internal/packages/@pancreator/contract-runner-rego/src/index.ts"],
       "@pancreator/contract-style": ["lib/internal/packages/@pancreator/contract-style/src/index.ts"],
       "@pancreator/core": ["lib/internal/packages/@pancreator/core/src/index.ts"],
       "@pancreator/env-isolation": ["lib/internal/packages/@pancreator/env-isolation/src/index.ts"],

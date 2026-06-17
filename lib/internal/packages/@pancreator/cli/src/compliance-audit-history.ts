@@ -120,6 +120,41 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
+function artifactIndexPath(artifactIndex: Record<string, unknown> | null, ...keys: string[]): string | null {
+  if (artifactIndex === null) {
+    return null;
+  }
+  for (const key of keys) {
+    const direct = artifactIndex[key];
+    if (typeof direct === "string") {
+      const trimmed = asString(direct);
+      if (trimmed !== null) {
+        return trimmed;
+      }
+    }
+    const nested = asRecord(direct);
+    if (nested !== null) {
+      const nestedPath = asString(nested.path);
+      if (nestedPath !== null) {
+        return nestedPath;
+      }
+    }
+  }
+  const pipelineArtifacts = asRecord(artifactIndex.pipeline_artifacts);
+  if (pipelineArtifacts !== null) {
+    for (const key of keys) {
+      const legacy = asRecord(pipelineArtifacts[key]);
+      if (legacy !== null) {
+        const nestedPath = asString(legacy.path);
+        if (nestedPath !== null) {
+          return nestedPath;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function maybeIso(value: unknown): string | null {
   const raw = asString(value);
   if (raw === null) {
@@ -513,16 +548,15 @@ async function buildBackfillEntries(repoRoot: string): Promise<ComplianceAuditHi
       const featureId = asString(parsedIndex.feature_id) ?? featureDir;
       const taskIdFromIndex = asString(parsedIndex.task_id);
       const artifactIndex = asRecord(parsedIndex.artifact_index);
-      const pipelineArtifacts = asRecord(artifactIndex?.pipeline_artifacts);
       const complianceResultRel = relFromFeatureIndex(
         indexRel,
-        asString(asRecord(pipelineArtifacts?.compliance_result)?.path),
+        artifactIndexPath(artifactIndex, "compliance_result"),
       );
       const complianceAuditRel = relFromFeatureIndex(
         indexRel,
-        asString(asRecord(pipelineArtifacts?.compliance_audit)?.path),
+        artifactIndexPath(artifactIndex, "compliance_audit_history", "compliance_audit"),
       );
-      const runDirRel = relFromFeatureIndex(indexRel, asString(asRecord(pipelineArtifacts?.work_dir)?.path));
+      const runDirRel = relFromFeatureIndex(indexRel, artifactIndexPath(artifactIndex, "run_dir", "work_dir"));
       const candidateRel = complianceResultRel ?? complianceAuditRel;
       if (candidateRel === null) {
         continue;

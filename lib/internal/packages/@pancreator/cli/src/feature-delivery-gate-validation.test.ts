@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   touchSetAllowsPath,
+  validateImplementationScopeAmendments,
   validateImplementationReport,
   validatePlanMarkdown,
   validateReviewMarkdownForAdvance,
+  validateScopeAmendments,
   validateSpotFixJustification,
   validateTouchSetJson,
   parseSpotFixJustificationFromMarkdown,
@@ -31,16 +33,18 @@ Summary.
 `;
 
 const validTouchSet = stringifyCompactJson({
-  paths: ["client/foo.ts"],
+  paths: [{ path: "client/foo.ts", status: "existing" }],
   symbols: [],
   tests: [{ kind: "command", command: "pnpm test" }],
   shared_paths: ["client/globals.css"],
   integration_prerequisites: [],
   acceptance_criteria: [{ id: "AC-1", criterion: "API returns 200", validation_owner: "qa-tester" }],
   manual_qa_test_cases: [{ id: "MQA-1", steps: ["Open the affected surface"], expected: "Behavior matches AC-1" }],
+  amendments: [],
 });
 
 const validImplementationReport = `implement_gate_passes: true
+scope_amendments: none
 
 ## Acceptance criteria
 
@@ -82,9 +86,17 @@ describe("feature-delivery-gate-validation", () => {
 
   it("requires repo-wide tests for review_passes advance", () => {
     expect(
-      validateReviewMarkdownForAdvance("review_passes: true\nrepo_wide_tests_pass: true\n", "review_passes"),
+      validateReviewMarkdownForAdvance(
+        "review_passes: true\nrepo_wide_tests_pass: true\nscope_amendments_ratified: true\n",
+        "review_passes",
+      ),
     ).toBeNull();
-    expect(validateReviewMarkdownForAdvance("review_passes: true\n", "review_passes")).toContain(
+    expect(
+      validateReviewMarkdownForAdvance(
+        "review_passes: true\nscope_amendments_ratified: true\n",
+        "review_passes",
+      ),
+    ).toContain(
       "repo_wide_tests_pass",
     );
   });
@@ -113,12 +125,92 @@ describe("feature-delivery-gate-validation", () => {
     expect(validateSpotFixJustification("review_spot_fix", justification)).toBeNull();
   });
 
-  it("classifies shared_paths separately from undeclared edits", () => {
+  it("classifies touch-set paths, shared_paths, and undeclared edits", () => {
     const allowed = touchSetAllowsPath(validTouchSet, "client/globals.css");
     expect(allowed.allowed).toBe(true);
     expect(allowed.category).toBe("shared_paths");
+    const inPaths = touchSetAllowsPath(validTouchSet, "client/foo.ts");
+    expect(inPaths.allowed).toBe(true);
+    expect(inPaths.category).toBe("paths");
     const undeclared = touchSetAllowsPath(validTouchSet, "client/secret.ts");
     expect(undeclared.allowed).toBe(false);
     expect(undeclared.category).toBe("undeclared");
+  });
+
+  it("accepts bounded paired-test amendments and requires implementation-report parity", () => {
+    const amendedTouchSet = stringifyCompactJson({
+      paths: [
+        {
+          path: "client/src/components/command-center/layout/surface-config.ts",
+          status: "existing",
+        },
+        {
+          path: "client/src/components/command-center/layout/surface-config.test.ts",
+          status: "existing",
+        },
+      ],
+      symbols: [],
+      tests: [{ kind: "command", command: "pnpm test" }],
+      shared_paths: ["client/globals.css"],
+      integration_prerequisites: [],
+      acceptance_criteria: [{ id: "AC-1", criterion: "API returns 200", validation_owner: "qa-tester" }],
+      manual_qa_test_cases: [{ id: "MQA-1", steps: ["Open the affected surface"], expected: "Behavior matches AC-1" }],
+      amendments: [
+        {
+          path: "client/src/components/command-center/layout/surface-config.test.ts",
+          status: "existing",
+          kind: "paired-test",
+          reason:
+            "Required regression test for declared source client/src/components/command-center/layout/surface-config.ts",
+        },
+      ],
+    });
+    expect(validateTouchSetJson(amendedTouchSet)).toBeNull();
+    expect(
+      validateScopeAmendments(amendedTouchSet, [
+        "client/src/components/command-center/layout/surface-config.ts",
+        "client/src/components/command-center/layout/surface-config.test.ts",
+      ]),
+    ).toBeNull();
+    const amendedReport = validImplementationReport.replace(
+      "scope_amendments: none",
+      "scope_amendments: client/src/components/command-center/layout/surface-config.test.ts(paired-test:Required regression test for declared source client/src/components/command-center/layout/surface-config.ts)",
+    );
+    expect(
+      validateImplementationScopeAmendments(
+        amendedTouchSet,
+        amendedReport,
+        [
+          "client/src/components/command-center/layout/surface-config.ts",
+          "client/src/components/command-center/layout/surface-config.test.ts",
+        ],
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects undeclared changed paths and malformed amendment classes", () => {
+    const amendedTouchSet = stringifyCompactJson({
+      paths: [{ path: "client/foo.ts", status: "existing" }],
+      symbols: [],
+      tests: [{ kind: "command", command: "pnpm test" }],
+      shared_paths: [],
+      integration_prerequisites: [],
+      acceptance_criteria: [{ id: "AC-1", criterion: "API returns 200", validation_owner: "qa-tester" }],
+      manual_qa_test_cases: [{ id: "MQA-1", steps: ["Open the affected surface"], expected: "Behavior matches AC-1" }],
+      amendments: [
+        {
+          path: "client/elsewhere/bar.ts",
+          status: "existing",
+          kind: "declared-dir-sibling",
+          reason: "not actually a sibling",
+        },
+      ],
+    });
+    expect(
+      validateScopeAmendments(amendedTouchSet, ["client/foo.ts", "client/elsewhere/bar.ts"]),
+    ).toContain("bounded declared-dir-sibling policy");
+    expect(
+      validateScopeAmendments(validTouchSet, ["client/foo.ts", "client/secret.ts"]),
+    ).toContain("absent from touch-set.json");
   });
 });

@@ -379,18 +379,6 @@
           "path": "lib/memory/features/platform-substrate/pancreator-contract/index.json"
         },
         {
-          "feature_id": "pancreator-contract-runner-llm-judge",
-          "title": "Engineering Spec - @pancreator/contract-runner-llm-judge",
-          "status": "indexed",
-          "path": "lib/memory/features/platform-substrate/pancreator-contract-runner-llm-judge/index.json"
-        },
-        {
-          "feature_id": "pancreator-contract-runner-rego",
-          "title": "Engineering Spec - @pancreator/contract-runner-rego",
-          "status": "indexed",
-          "path": "lib/memory/features/platform-substrate/pancreator-contract-runner-rego/index.json"
-        },
-        {
           "feature_id": "pancreator-contract-style",
           "title": "Engineering Spec - @pancreator/contract-style",
           "status": "indexed",

@@ -122,16 +122,14 @@ test("operator-facing root keeps implementation under internal while de-indexed 
 });
 
 
-test("pancreator.yaml declares embedded project root without bootstrap tracking", async () => {
+test("pancreator.yaml declares embedded project root and bundled defaults without bootstrap tracking", async () => {
   const config = read("pancreator.yaml");
   assert.match(config, /^project_root:\s+"\."$/m);
 
   const doc = yaml.parse(config);
   assert.equal(doc?.bootstrap, undefined);
-
-  const defaults = read("pancreator-defaults.yaml");
-  assert.doesNotMatch(defaults, /^bootstrap:\s*$/m);
-  assert.match(defaults, /introduced during Bootstrap Phase 2/);
+  assert.equal(doc?.defaults?.medium?.risk_tier, "medium");
+  assert.equal(doc?.defaults?.high?.gates?.security?.new_cves_max?.value, 0);
 });
 
 test("configuration docs route project_root through adopter and handbook", () => {
@@ -326,10 +324,6 @@ test("pan deferral emits JSON envelopes without stub payloads", async () => {
   const batchTracking =
     "lib/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md";
   const matrix = [
-    { argv: ["approve"], tracking: batchTracking },
-    { argv: ["memory"], tracking: batchTracking },
-    { argv: ["contracts"], tracking: batchTracking },
-    { argv: ["lint"], tracking: batchTracking },
     { argv: ["run", "not-a-pipeline"], tracking: batchTracking },
     { argv: ["status"], tracking: batchTracking },
   ];

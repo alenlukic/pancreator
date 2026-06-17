@@ -6,6 +6,10 @@ import path from "node:path";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
 import {
+  archiveInboxPathForSource,
+  pruneEmptyQueueParents,
+} from "./inbox-archive.js";
+import {
   FEATURE_DELIVERY_STATE_SCHEMA_VERSION,
   type FeatureDeliveryState,
 } from "./feature-delivery-run.js";
@@ -57,16 +61,6 @@ function parseRunDir(runDirRel: string): { dayDir: string; taskId: string } {
   return { dayDir: dayDir!, taskId: taskId! };
 }
 
-function archiveInboxPathForSource(sourceRel: string, dayDir: string, taskId: string): string {
-  const prefix = "lib/inbox/in/";
-  if (!sourceRel.startsWith(prefix)) {
-    throw new Error(`inbox source MUST be under ${prefix}; got ${sourceRel}.`);
-  }
-  const tail = sourceRel.slice(prefix.length);
-  const basename = path.posix.basename(tail);
-  return path.posix.join(".pan/archive", "inbox", "in", dayDir, taskId, basename);
-}
-
 async function assertExistingDirectory(abs: string, rel: string): Promise<void> {
   if (!existsSync(abs)) {
     throw new Error(`Required directory is missing: ${rel}.`);
@@ -76,21 +70,6 @@ async function assertExistingDirectory(abs: string, rel: string): Promise<void> 
 async function assertPathMissing(abs: string, rel: string): Promise<void> {
   if (existsSync(abs)) {
     throw new Error(`Path already exists: ${rel}.`);
-  }
-}
-
-async function removeEmptyDirectoryIfPresent(abs: string, rel: string): Promise<void> {
-  try {
-    const { readdir, rmdir } = await import("node:fs/promises");
-    const entries = await readdir(abs);
-    if (entries.length === 0) {
-      await rmdir(abs);
-    }
-  } catch (error) {
-    const err = error as NodeJS.ErrnoException;
-    if (err.code !== "ENOENT" && err.code !== "ENOTDIR") {
-      throw new Error(`Failed to remove empty directory ${rel}: ${err.message}`);
-    }
   }
 }
 
@@ -190,18 +169,19 @@ export async function closeOutOfBandWorkspace(input: CloseOutOfBandInput): Promi
 
   let inboxArchivedPath: string | undefined;
   const inboxSourceAbs = resolveRepoPath(repoRoot, inboxSourceRel);
-  const inboxArchiveRel = archiveInboxPathForSource(inboxSourceRel, dayDir, taskId);
+  const inboxArchiveRel = archiveInboxPathForSource(inboxSourceRel, dayDir);
   const inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
   if (existsSync(inboxSourceAbs) && !existsSync(inboxArchiveAbs)) {
     await mkdir(path.dirname(inboxArchiveAbs), { recursive: true });
     await rename(inboxSourceAbs, inboxArchiveAbs);
     inboxArchivedPath = inboxArchiveRel;
     state.source.inboxPath = inboxSourceRel;
+    await pruneEmptyQueueParents(repoRoot, path.posix.dirname(inboxSourceRel), "lib/inbox/in");
   }
 
   await mkdir(path.dirname(archiveRunAbs), { recursive: true });
   await rename(activeRunAbs, archiveRunAbs);
-  await removeEmptyDirectoryIfPresent(path.dirname(activeRunAbs), path.posix.dirname(runDirRel));
+  await pruneEmptyQueueParents(repoRoot, path.posix.dirname(runDirRel), ".pan/work");
 
   state.status = "closed";
   state.artifacts = {

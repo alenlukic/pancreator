@@ -1,6 +1,6 @@
 /**
  * Canonical threshold-policy document shape for `pan upgrade --apply` consumers.
- * Version 1 aligns loosely with `pancreator.yaml` / `pancreator-defaults.yaml` keys.
+ * Version 1 aligns loosely with `pancreator.yaml` keys, including nested `defaults:`.
  */
 export interface PolicyBootstrapMeta {
   phase?: string;

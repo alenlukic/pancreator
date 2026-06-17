@@ -1,7 +1,7 @@
 # Pancreator Config
 
 `pancreator.yaml` is the live operator-facing configuration file for this repository.
-`pancreator-defaults.yaml` contains default policy values; it is not the live config file.
+It also carries the bundled threshold-policy defaults under a top-level `defaults:` block.
 
 ## `project_root`
 
@@ -178,5 +178,5 @@ When changing `pancreator.yaml`:
 - update bootstrap phase tracking only after checking `.docs/BOOTSTRAP.md`,
 - apply phase ratification as one atomic change across `phase`, `status`, and
   `completed_phases` per the invariants above,
-- keep defaults in `pancreator-defaults.yaml` separate from live tracking,
+- keep reusable threshold-policy presets under the top-level `defaults:` block,
 - route adoption-related changes through `lib/personas/adopter.md` and `lib/personas/skills/adopt-existing-repo/SKILL.md`.

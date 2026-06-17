@@ -27,8 +27,7 @@ metadata:
   pancreator-pipeline-stages: [intake]
   pancreator-bootstrap-only: false
   pancreator-stability: experimental
-  pancreator-handbook-anchors: []
-  pancreator-checklist: []
+  pancreator-required-docs: []
 ---
 
 # Body

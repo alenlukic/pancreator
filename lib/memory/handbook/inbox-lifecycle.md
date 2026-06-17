@@ -121,8 +121,8 @@ State transitions SHOULD be monotonic in this order:
 
 ## 3 - Minimum manual procedure (current mechanism)
 
-Until runtime/CLI automation lands, operators MUST use this procedure for each
-completed inbound item:
+Until a standalone `pan inbox archive` verb lands, operators MUST use this
+procedure for each completed inbound item **outside** feature-delivery closure:
 
 1. Confirm the inbound request has reached `responded` state by verifying the
    corresponding response artifact exists in `/lib/inbox/out/`.
@@ -135,6 +135,17 @@ completed inbound item:
    `/.pan/archive/inbox/in/`.
 
 Operators SHALL execute archival moves only after the response artifact exists.
+
+### 3.0 — Feature-delivery automated archival (`pan close-artifacts`)
+
+When a feature-delivery run reaches `complete`, `pnpm -w exec pan close-artifacts <task-id>`
+SHALL archive the source inbox directive recorded in `state.json` (`source.inboxPath`):
+
+- **Source:** `lib/inbox/in/<day-bucket>/<basename>` (or a flat `lib/inbox/in/<basename>` when no day bucket is present in the path; closure uses the run day bucket as fallback).
+- **Destination:** `/.pan/archive/inbox/in/<day-bucket>/<basename>` — the same day-bucket leaf layout as the active queue (no per-task subdirectory).
+- **Hygiene:** closure MUST prune empty parent directories under `lib/inbox/in/` after the move (including directories that contain only `.gitkeep`, `.DS_Store`, or `Thumbs.db`).
+
+Manual Section 3 steps 3–4 are satisfied by this command for feature-delivery runs; operators MUST NOT duplicate the move manually after successful closure.
 
 ## 3a - Responding to outbox artifacts
 
@@ -209,8 +220,10 @@ under the affected queue. Pruning MUST NOT remove queue roots that still contain
 artifacts.
 
 The migration tool `lib/internal/tools/migrate-inbox-convention.mjs` SHALL run
-empty-directory pruning automatically after every inbox write pass. Operators and
-agents MAY also run a standalone hygiene pass:
+empty-directory pruning automatically after every inbox write pass. Feature-delivery
+closure (`pnpm -w exec pan close-artifacts`) and out-of-band closure
+(`pnpm -w exec pan close-out-of-band`) SHALL prune empty inbox parents after
+archiving source directives. Operators and agents MAY also run a standalone hygiene pass:
 
 ```bash
 node lib/internal/tools/migrate-inbox-convention.mjs --prune-empty-dirs --dry-run
@@ -223,15 +236,18 @@ apply time. Pruning MUST NOT traverse or modify `/lib/inbox/notes/`.
 
 ## 4 - Future automated mechanism
 
-The runtime SHOULD expose an explicit archival operation (`pan inbox archive`
-or equivalent) that:
+Feature-delivery runs already archive source inbox directives via
+`pnpm -w exec pan close-artifacts <task-id>` at `complete` (see Section 3.0).
+
+The runtime SHOULD additionally expose a standalone archival operation
+(`pan inbox archive` or equivalent) for non-feature-delivery inbound items that:
 
 - validates `responded` preconditions,
 - performs the move from `/lib/inbox/in/` to `/.pan/archive/inbox/in/`, and
 - emits a run-log event with source and destination paths.
 
-Until this automation is implemented, manual procedure in Section 3 remains
-required.
+Until that standalone verb is implemented, manual procedure in Section 3 remains
+required for inbound items outside feature-delivery closure.
 
 ## 5 - Stability
 

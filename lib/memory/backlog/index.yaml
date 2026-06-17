@@ -258,7 +258,7 @@ items:
       - /lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md
       - /lib/memory/handbook/contract-style.md
     evidence: "Phase 4 dogfood librarian-stage citation-rot scan flagged 19 warn-severity off-by-one citation ranges across compliance-tests artifacts, the bootstrap-phase-0a-closure delivery report, the documentation-impact-contract handbook page, the compliance-auditor persona and Cursor mirror, and the timestamp-naming-conventions delivery-report and review."
-    notes: "Realignment is deterministic maintenance per AGENTS.md §3 and SHOULD batch with bootstrap-content-hash-refresh to avoid double-scan churn."
+    notes: "Realignment is deterministic maintenance under the repo-wide operating rules in AGENTS.md and SHOULD batch with bootstrap-content-hash-refresh to avoid double-scan churn."
 
   - id: spec-contract-runner-panel-wiring
     title: Wire Spec Contract runner panel for end-to-end contract execution
@@ -444,7 +444,7 @@ items:
       - /lib/memory/features/memory-context/cursor-token-economy/index.json
       - /lib/inbox/out/172991_05-15-26/50909_1005_cursor-token-economy-delivery-report.md
       - /.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
-    evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, .docs/PRD.summary.md plus .docs/PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to lib/inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring is not implemented per AGENTS.md \u00a78."
+    evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, .docs/PRD.summary.md plus .docs/PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to lib/inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring was not yet implemented in the current AGENTS/OPERATION contract."
     notes: "Closed in the same operator session that shipped pass-2 because pass-2 extends pass-1 deferred scope (extends_relationship: extends-deferred-scope per lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json)."
 
   - id: active-memory-context-economy-pass-2-shipped
@@ -564,10 +564,9 @@ items:
     opened_at: "2026-05-27T00:00:00Z"
     links:
       - /.docs/PRD.md
-      - /lib/pipelines/chat-with-persona.yaml
       - /lib/memory/backlog/index.yaml
-    evidence: "Operator scope trim 2026-05-27 removed chat-with-persona from the M1 path. Bootstrap retains lib/pipelines/chat-with-persona.yaml as a loadable skeleton only."
-    notes: "Wire pan chat, /lib/inbox/threads/<thread-id>/ persistence, and /end --emit artifact promotion when US-2 lights up at M2. Persona Ensemble runtime may still land at M4 per PRD §13."
+    evidence: "Operator scope trim 2026-05-27 removed chat-with-persona from the M1 path. Lean pass 2026-06-15 removed the lib/pipelines/chat-with-persona.yaml skeleton; the runtime is tracked here as a pure backlog idea until US-2 lights up."
+    notes: "Wire pan chat, /lib/inbox/threads/<thread-id>/ persistence, and /end --emit artifact promotion when US-2 lights up at M2. Author lib/pipelines/chat-with-persona.yaml fresh at that point rather than carrying a loadable skeleton in the meantime."
 
   - id: m1-substrate-runtime-batch
     title: M1 substrate runtime batch — superseded intake skeleton (relocated from features)

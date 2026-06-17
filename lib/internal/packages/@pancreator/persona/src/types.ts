@@ -24,8 +24,7 @@ export interface PersonaMetadata {
   "pancreator-pipeline-stages": string[];
   "pancreator-bootstrap-only": boolean;
   "pancreator-stability": "experimental" | "stable" | "deprecated";
-  "pancreator-checklist": string[];
-  "pancreator-handbook-anchors"?: string[];
+  "pancreator-required-docs"?: string[];
   [key: string]: unknown;
 }
 

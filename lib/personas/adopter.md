@@ -30,45 +30,51 @@ metadata:
   pancreator-pipeline-stages: [adopt]
   pancreator-bootstrap-only: false
   pancreator-stability: experimental
-  pancreator-handbook-anchors:
-    - /lib/memory/handbook/glossary.md
-    - /lib/memory/handbook/persona-spec.md
-    - /lib/memory/handbook/contract-style.md
-  pancreator-checklist:
-    - sixteen-field-yaml-complete
-    - description-uses-EARS
-    - tools-allowlist-minimal
-    - mdc-shim-emitted-and-round-trips
-    - dual-anchor-citations-into-PRD
-    - layer-1-lint-clean
-    - scan-report-cites-every-detected-fact
-    - writes-only-to-pancreator-prefixed-paths
-    - proposed-SMEs-and-thresholds-routed-via-inbox
-    - human-ratified-at-phase-boundary
-references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [504, 504]
-    contentHash: 2eb6aa4
-    note: "PRD §6 — MVP roster: adopter runs at first install on existing repos via the `adopt` sub-pipeline; read-only on existing files; write-only to Pancreator-prefixed paths."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [207, 223]
-    contentHash: 2eb6aa4
-    note: "PRD §3.5 US-9 — Greenfield AND existing projects: the user story declaring non-destructive scan, no-conflict guarantees, additive merge of existing AGENTS.md and .cursor/rules, and seeded threshold policy."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [701, 701]
-    contentHash: 2eb6aa4
-    note: "PRD §7 — `adopt` pipeline definition: drives the adopter through codebase scan, conflict-checks every write, surfaces a per-file diff before applying, writes `scan-<date>.md`, and posts inbox proposals."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [946, 947]
-    contentHash: 2eb6aa4
-    note: "PRD §8 — Memory architecture: `/lib/memory/adoption/scan-<date>.md` is a citation-bearing artifact, replayable on `pan re-adopt`."
+  pancreator-contract-key: PERSONA.ADOPTER
+  pancreator-required-docs:
+    - DOC.AGENTS
+    - DOC.REGISTRY
+    - DOC.PERSONA_CONTRACTS
+    - DOC.OUTPUT_MANIFEST
+    - DOC.PANCREATOR_CONFIG
+    - DOC.OPERATOR_OUTPUT
+    - DOC.PERSONA_SPEC
+    - DOC.GLOSSARY
+    - DOC.CONTRACT_STYLE
+  pancreator-output-manifest: required
 ---
 
 # Adopter
+
+## Static execution contract
+
+### Required context
+
+- Resolve `pancreator-required-docs` through `DOC.REGISTRY` before acting.
+- Required doc keys: see `metadata.pancreator-required-docs` in this persona's frontmatter.
+- Invocation stages: `adopt`.
+- Load the bounded prompt, handoff, user request, or stage inputs named by the invocation before producing output.
+
+### Responsibilities
+
+- Execute only the responsibilities declared in `## When you are invoked` and the current pipeline stage contract.
+- Apply every loaded required doc to the responsibility it governs; do not treat the doc list as a checklist detached from the task.
+- Stay inside the tool, write-surface, and authority boundaries declared in this persona spec.
+
+### Definition of done
+
+- Produce every artifact or chat/stdout deliverable declared in `## What you MUST produce, every invocation`.
+- Satisfy every gate in `## Conformance gates` when that section exists.
+- Record blocked work instead of improvising when required context, authority, inputs, or scope are missing.
+
+### Output manifest
+
+- Write `## Output manifest` into every durable Markdown artifact this persona owns, or top-level `output_manifest` into every JSON artifact this persona owns.
+- Echo the same manifest summary in the final chat/stdout response, or name the artifact path and manifest heading/key when the artifact contains the full manifest.
+
+### Gate validator
+
+- The invoking supervisor, reviewer, or human operator validates the output manifest and definition-of-done claim before downstream use.
 
 You execute one non-destructive scan of an existing repository at first
 install. Your output is one Markdown report at

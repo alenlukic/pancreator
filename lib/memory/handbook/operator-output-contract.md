@@ -10,11 +10,9 @@ purpose: |
   a bounded task completes, enumerating what the operator can or should do
   next with explicit what/how guidance and read-only versus mutating actions.
 references:
-  - kind: lines
+  - kind: file
     path: AGENTS.md
-    range: [91, 174]
-    contentHash: b953d77
-    note: "AGENTS §5 working agreement binds all agents to this contract at task completion."
+    note: "AGENTS §6 binds operator-facing completion output to this contract."
   - kind: lines
     path: lib/memory/handbook/persona-spec.md
     range: [124, 140]
@@ -122,7 +120,7 @@ or agent may touch.
 
 When a step delegates to a persona, the **How** clause MUST state the Cursor
 invocation (`/reviewer`, `/tech-lead`, etc.) and the file the
-operator pastes (`.pan/work/<day>/<task-id>/next-prompt.md` only per AGENTS §4).
+operator pastes (`.pan/work/<day>/<task-id>/next-prompt.md` only per AGENTS.md §2 delegated scope rules).
 
 ### 3.2a — `feature-delivery` inbox entry paths
 

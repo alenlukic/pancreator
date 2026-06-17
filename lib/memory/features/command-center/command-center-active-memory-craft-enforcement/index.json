@@ -59,5 +59,10 @@
     "lib/memory/features/command-center-active-memory-craft-enforcement/spec.md",
     "lib/memory/features/command-center-active-memory-craft-enforcement/ux-spec.md"
   ],
-  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction.",
+  "archived_inbox_source": ".pan/archive/inbox/in/172966_06-09-26/82800_0059_cockpit-v2-active-memory-craft-enforcement.md",
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172966_06-09-26/82800_0059_cockpit-v2-active-memory-craft-enforcement.md",
+    "prior_path": "lib/inbox/in/172966_06-09-26/82800_0059_cockpit-v2-active-memory-craft-enforcement.md"
+  }
 }

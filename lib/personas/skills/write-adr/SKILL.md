@@ -96,8 +96,8 @@ references:
 ```
 
 The `status` field MUST start at `proposed` and SHALL transition to
-`accepted` only after human ratification through inbox per AGENTS.md §5
-bullet 2. Supersession routes through a new ADR with the prior `seq` listed
+`accepted` only after human ratification through inbox per
+`lib/memory/handbook/agents-md-authoring.md`. Supersession routes through a new ADR with the prior `seq` listed
 in `supersedes:` per PRD §8 line 1010; you MUST NOT edit a prior ADR's body.
 
 ### Step 3 — Author the four-section body

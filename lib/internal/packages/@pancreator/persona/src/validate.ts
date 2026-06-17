@@ -121,15 +121,15 @@ export function assertPersonaSpec(data: Record<string, unknown>): PersonaSpec {
     throw err("`metadata.pancreator-stability` MUST be `experimental`, `stable`, or `deprecated`.");
   }
 
-  const checklist = metadata["pancreator-checklist"];
-  if (!Array.isArray(checklist) || !checklist.every((c) => typeof c === "string")) {
-    throw err("`metadata.pancreator-checklist` MUST be a string array.");
-  }
-
-  const anchors = metadata["pancreator-handbook-anchors"];
-  if (anchors !== undefined) {
-    if (!Array.isArray(anchors) || !anchors.every((a) => typeof a === "string")) {
-      throw err("`metadata.pancreator-handbook-anchors` MUST be a string array when present.");
+  const requiredDocs = metadata["pancreator-required-docs"];
+  if (requiredDocs !== undefined) {
+    if (
+      !Array.isArray(requiredDocs) ||
+      !requiredDocs.every((doc) => typeof doc === "string")
+    ) {
+      throw err(
+        "`metadata.pancreator-required-docs` MUST be a string array when present.",
+      );
     }
   }
 

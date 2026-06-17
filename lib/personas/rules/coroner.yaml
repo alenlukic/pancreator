@@ -1,0 +1,5 @@
+persona: coroner
+description: When an operator invokes `/coroner` or delegates `pan persona`, the `coroner` SHALL inspect one named workflow, diagnose structural and governance pain points from evidence, and emit one advisory post-mortem plan without executing fixes.
+globs:
+  - .pan/sandboxes/**/post-mortem.md
+alwaysApply: false

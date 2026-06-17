@@ -42,7 +42,7 @@ describe("resolveArchivedInboxPointer", () => {
     expect(await resolveArchivedInboxPointer(root, rec)).toBe(archived);
   });
 
-  it("resolves stale lib/inbox/in paths via task_id under .pan/archive", async () => {
+  it("resolves stale lib/inbox/in paths via task_id under .pan/archive (legacy nested layout)", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-archived-resolve-"));
     const taskId = "966_2343_demo";
     const archived = `.pan/archive/inbox/in/172980_05-26-26/${taskId}/2597_demo.md`;
@@ -51,6 +51,18 @@ describe("resolveArchivedInboxPointer", () => {
     await writeFile(path.join(root, archived), "# batch\n", "utf8");
     const rec = {
       task_id: taskId,
+      source_inbox_item: { path: stale },
+    };
+    expect(await resolveArchivedInboxPointer(root, rec)).toBe(archived);
+  });
+
+  it("resolves stale lib/inbox/in paths via canonical day-bucket archive layout", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-archived-resolve-canonical-"));
+    const archived = ".pan/archive/inbox/in/172980_05-26-26/2597_demo.md";
+    const stale = "lib/inbox/in/172980_05-26-26/2597_demo.md";
+    await mkdir(path.join(root, ...archived.split("/").slice(0, -1)), { recursive: true });
+    await writeFile(path.join(root, archived), "# batch\n", "utf8");
+    const rec = {
       source_inbox_item: { path: stale },
     };
     expect(await resolveArchivedInboxPointer(root, rec)).toBe(archived);
@@ -100,7 +112,7 @@ describe("patchFeatureIndexArchivedInbox", () => {
     expect(raw).toMatch(/"depends_on": \["P5", "P6"\]/);
   });
 
-  it("backfills archived_inbox_source and source_inbox_item.path", async () => {
+  it("backfills source_inbox_item and source_inbox_item_prior", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-archived-patch-"));
     const featureId = "demo-feature";
     const indexAbs = path.join(root, "lib", "memory", "features", featureId, "index.json");
@@ -120,8 +132,9 @@ describe("patchFeatureIndexArchivedInbox", () => {
 
     await patchFeatureIndexArchivedInbox(root, featureId, archived, prior);
     const parsed = JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>;
-    expect(parsed["archived_inbox_source"]).toBe(archived);
-    expect((parsed["source_inbox_item"] as Record<string, unknown>)["path"]).toBe(archived);
+    expect(parsed["source_inbox_item"]).toBe(archived);
+    expect(parsed["source_inbox_item_prior"]).toBe(prior);
+    expect(parsed["archived_inbox_source"]).toBeUndefined();
     expect((parsed["intake"] as Record<string, unknown>)["source_inbox_item"]).toBe(archived);
   });
 });

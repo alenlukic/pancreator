@@ -107,6 +107,9 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
 - **Gate** — a verification step that blocks stage advance until the named
   predicate passes. Common gates: `human_approval`, `review_passes`,
   `qa_passes`, `contracts:from_feature`.
+- **Remediation route** — the named owner or human checkpoint that receives a
+  blocked stage when its gate fails. Pipeline contracts declare the route with
+  `remediation.default_owner` and, when needed, `plan_invalidating_owner`.
 - **Threshold Policy** — the per-pipeline numeric and categorical thresholds
   declared in `pancreator.yaml`. Lowered to Conftest + OPA Rego at evaluation
   time. See PRD §7 for the YAML schema.
@@ -116,6 +119,11 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
 - **Touch-set** — the declared set of paths and symbols a coder task MAY write
   to. The Conflict Planner uses touch-sets to fan out parallel work without
   silent collisions.
+- **Scope amendment** — a bounded path addition recorded after planning when an
+  executor discovers one obviously implied file that the initial touch-set did
+  not enumerate. A scope amendment MUST stay inside the policy's auto-amendable
+  classes, MUST update `touch-set.json`, and MUST be ratified by the owning
+  gate before stage advance.
 - **Planning/execution boundary** — the pipeline transition where a planning
   persona stops expanding context, emits a bounded handoff card, and delegates
   execution to the next persona.
@@ -271,6 +279,10 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   consecutive weeks.
 - **Goodhart guard** — the convention that a verification step records what
   failed, not just the pass-rate. Mitigates metric-gaming.
+- **Circuit-breaker** — a forced halt that stops a repair loop after a declared
+  retry, iteration, token, or consecutive-tool-failure budget is exhausted. The
+  breaker routes the run to human or owner remediation instead of allowing
+  indefinite churn.
 
 ## 5 — Memory, artifacts, and the inbox
 
