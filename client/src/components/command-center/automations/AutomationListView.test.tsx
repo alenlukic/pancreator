@@ -95,13 +95,9 @@ describe("AutomationListView", () => {
     expect(screen.getByTestId("automation-row-failed-dispatch")).toHaveClass("automation-row-failed");
   });
 
-  it("requires pause confirm before disabling an enabled automation", async () => {
+  it("pauses an enabled automation without extra confirmation", async () => {
     const { onToggleEnabled } = renderList();
     fireEvent.click(screen.getByTestId("automation-toggle-hourly-coder"));
-    expect(screen.getByTestId("automation-pause-confirm")).toBeInTheDocument();
-    expect(onToggleEnabled).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByTestId("automation-pause-confirm-button"));
 
     await waitFor(() => {
       expect(onToggleEnabled).toHaveBeenCalledWith(
@@ -109,6 +105,7 @@ describe("AutomationListView", () => {
         false,
       );
     });
+    expect(screen.queryByTestId("automation-pause-confirm")).not.toBeInTheDocument();
   });
 
   it("resumes a paused automation without confirm", async () => {

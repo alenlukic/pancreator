@@ -21,6 +21,8 @@ export type CommandCenterRowOverflow = {
   runCommand?: string;
   stageName?: string;
   gateAction?: "approve" | "reject" | "revise";
+  secondaryLabel?: string;
+  secondaryHref?: string;
 };
 
 export type CommandCenterRowCta = {

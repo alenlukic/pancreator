@@ -7,25 +7,24 @@ import {
 } from "./surface-config";
 
 describe("COMMAND_CENTER_SURFACES", () => {
-  it("lists five shipped route destinations", () => {
-    expect(COMMAND_CENTER_SURFACES).toHaveLength(5);
+  it("lists four top-level route destinations", () => {
+    expect(COMMAND_CENTER_SURFACES).toHaveLength(4);
     expect(COMMAND_CENTER_SURFACES[0].id).toBe("command-center");
     expect(COMMAND_CENTER_SURFACES.every((surface) => surface.firstSlice)).toBe(true);
     expect(COMMAND_CENTER_SURFACES.every((surface) => surface.operatorJob.length > 0)).toBe(true);
   });
 
-  it("marks all shipped route destinations as first-slice", () => {
-    expect(FIRST_SLICE_SURFACES).toHaveLength(5);
+  it("marks all top-level route destinations as first-slice", () => {
+    expect(FIRST_SLICE_SURFACES).toHaveLength(4);
     expect(FIRST_SLICE_SURFACES.every((surface) => surface.firstSlice)).toBe(true);
   });
 
-  it("orders mobile tabs across shipped destinations", () => {
+  it("orders mobile tabs across top-level destinations", () => {
     expect(MOBILE_TAB_SURFACES.map((surface) => surface.id)).toEqual([
       "command-center",
       "mission-control",
       "compliance",
       "automations",
-      "activity-log",
     ]);
   });
 

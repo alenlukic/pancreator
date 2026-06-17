@@ -72,10 +72,6 @@ function buildHumanGateRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comma
         label: gateActionLabel("approve", label),
         href: missionControlHref(entry.taskId),
       },
-      secondaryCta: {
-        label: gateActionLabel("reject", label),
-        href: missionControlHref(entry.taskId),
-      },
       overflow: {
         taskId: entry.taskId,
         runDir: entry.runDir,
@@ -83,6 +79,8 @@ function buildHumanGateRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comma
         runCommand: task ? taskLevelNextCommand(task) : undefined,
         stageName: entry.stageName,
         gateAction: "revise",
+        secondaryLabel: gateActionLabel("reject", label),
+        secondaryHref: missionControlHref(entry.taskId),
       },
     });
   }
@@ -247,15 +245,16 @@ export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandC
   const complianceDegraded = input.failedSources?.includes("compliance");
   const outcomesDegraded = input.failedSources?.includes("feature-index");
   const archiveDegraded = input.failedSources?.includes("archive");
+  const activeTasks = filterNonTerminalTasks(input.tasks);
 
   return [
     {
       region: "human-gates",
       testId: "command-center-human-gates",
-      title: "Human Gates",
+      title: "Blocked on human",
       emptyCopy: "No human gates waiting for you",
       emptyNextStep: { label: "Open Feature Delivery", href: "/mission-control" },
-      rows: buildHumanGateRows(input.tasks, nowMs),
+      rows: buildHumanGateRows(activeTasks, nowMs),
       overflowHref: "/mission-control",
       dataAgeMs,
       ...(runStateDegraded || archiveDegraded
@@ -267,7 +266,7 @@ export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandC
       testId: "command-center-anomalies",
       title: "Anomalies",
       emptyCopy: "No anomalies detected",
-      rows: buildAnomalyRows(input.tasks, input.complianceFindings, nowMs),
+      rows: buildAnomalyRows(activeTasks, input.complianceFindings, nowMs),
       overflowHref: "/compliance",
       dataAgeMs,
       ...(runStateDegraded || archiveDegraded || complianceDegraded
@@ -283,9 +282,9 @@ export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandC
     {
       region: "running-now",
       testId: "command-center-running-now",
-      title: "Running Now",
+      title: "Running work",
       emptyCopy: "No feature-delivery runs in progress",
-      rows: buildRunningNowRows(input.tasks, nowMs),
+      rows: buildRunningNowRows(activeTasks, nowMs),
       overflowHref: "/mission-control",
       dataAgeMs,
       ...(runStateDegraded || archiveDegraded
@@ -298,7 +297,7 @@ export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandC
       title: "Recent Outcomes",
       emptyCopy: "No recently shipped features",
       rows: buildRecentOutcomeRows(input.shippedOutcomes, nowMs),
-      overflowHref: "/activity-log",
+      overflowHref: "/mission-control",
       dataAgeMs,
       ...(outcomesDegraded ? { degradedSource: "feature-index" } : {}),
     },

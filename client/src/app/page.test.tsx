@@ -891,7 +891,7 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       const drawer = screen.getByTestId("artifact-drawer");
-      expect(within(drawer).getByText("plan.md")).toBeInTheDocument();
+      expect(within(drawer).getAllByText("plan.md").length).toBeGreaterThan(0);
       expect(within(drawer).getAllByText("Missing").length).toBeGreaterThan(0);
     });
 
@@ -933,12 +933,16 @@ describe("DashboardPage", () => {
     });
 
     const drawer = screen.getByTestId("artifact-drawer");
+    let enabledPlanButton: HTMLButtonElement | undefined;
     await waitFor(() => {
-      const planButton = within(drawer).getByText("plan.md").closest("button");
-      expect(planButton).not.toBeNull();
-      expect(planButton).not.toBeDisabled();
+      const planButtons = within(drawer)
+        .getAllByText("plan.md")
+        .map((node) => node.closest("button"))
+        .filter((node): node is HTMLButtonElement => node instanceof HTMLButtonElement);
+      enabledPlanButton = planButtons.find((button) => !button.disabled);
+      expect(enabledPlanButton).toBeDefined();
     });
-    fireEvent.click(within(drawer).getByText("plan.md"));
+    fireEvent.click(enabledPlanButton!);
 
     await waitFor(() => {
       expect(screen.getByTestId("file-modal")).toBeInTheDocument();
@@ -1528,12 +1532,15 @@ describe("Command Center default landing", () => {
     render(<CommandCenterPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("No active deliveries")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
-        "href",
-        "/mission-control",
-      );
+      expect(screen.getByTestId("command-center-human-gates")).toBeInTheDocument();
+      expect(screen.getByText("No human gates waiting for you")).toBeInTheDocument();
     });
+
+    expect(screen.queryByText("No active deliveries")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
+      "href",
+      "/mission-control",
+    );
   });
 
   it("suppresses global empty when anomaly rows exist without active runs", async () => {
