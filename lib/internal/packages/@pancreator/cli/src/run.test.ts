@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { copyFile, mkdir, mkdtemp, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 import {
   buildSdkPrompt,
@@ -166,6 +167,28 @@ stages:
 `,
     "utf8",
   );
+}
+
+function gitInTestRepo(root: string, args: string[]): void {
+  const result = spawnSync("git", ["-C", root, ...args], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: "Test Runner",
+      GIT_AUTHOR_EMAIL: "test@example.com",
+      GIT_COMMITTER_NAME: "Test Runner",
+      GIT_COMMITTER_EMAIL: "test@example.com",
+    },
+  });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
+  }
+}
+
+function initCommittedGitRepo(root: string): void {
+  gitInTestRepo(root, ["init"]);
+  gitInTestRepo(root, ["add", "-A"]);
+  gitInTestRepo(root, ["commit", "-m", "seed"]);
 }
 
 async function completeFeatureDeliveryRunForClose(
@@ -1920,6 +1943,108 @@ describe("parseAndRun", () => {
       writeErr: () => {},
     });
     expect(code).toBe(1);
+  });
+
+  it("auto-records paired-test amendments during implement advance", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-auto-amend-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await runCli(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId } = JSON.parse(out.join("")) as { taskId: string };
+    const runDirRel = `.pan/work/172996_05-10-26/${taskId}`;
+    const runDir = path.join(root, runDirRel);
+    await seedPlanStageAdvanceArtifacts(root, runDirRel);
+    await mkdir(path.join(root, "client"), { recursive: true });
+    await writeFile(path.join(root, "client", "foo.ts"), "export const foo = 1;\n", "utf8");
+    await runCli(["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    initCommittedGitRepo(root);
+
+    await writeFile(path.join(root, "client", "foo.ts"), "export const foo = 2;\n", "utf8");
+    await writeFile(path.join(root, "client", "foo.test.ts"), "it('works', () => {});\n", "utf8");
+    await writeFile(
+      path.join(runDir, "implementation-report.md"),
+      VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+      "utf8",
+    );
+
+    const code = await runCli(["advance", taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+      writeErr: () => undefined,
+    });
+    expect(code).toBe(0);
+
+    const touchSet = JSON.parse(await readFile(path.join(runDir, "touch-set.json"), "utf8")) as {
+      amendments?: Array<{ path?: string; kind?: string; reason?: string }>;
+    };
+    expect(touchSet.amendments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "client/foo.test.ts",
+          kind: "paired-test",
+        }),
+      ]),
+    );
+    const implementationReport = await readFile(
+      path.join(runDir, "implementation-report.md"),
+      "utf8",
+    );
+    expect(implementationReport).toContain("client/foo.test.ts(paired-test:");
+  });
+
+  it("blocks review advance when undeclared repo-wide changes remain in the local diff", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-scope-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await runCli(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const { taskId } = JSON.parse(out.join("")) as { taskId: string };
+    const runDirRel = `.pan/work/172996_05-10-26/${taskId}`;
+    const runDir = path.join(root, runDirRel);
+    await seedPlanStageAdvanceArtifacts(root, runDirRel);
+    await mkdir(path.join(root, "client"), { recursive: true });
+    await mkdir(path.join(root, "lib", "memory"), { recursive: true });
+    await writeFile(path.join(root, "client", "foo.ts"), "export const foo = 1;\n", "utf8");
+    await runCli(["advance", taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+    initCommittedGitRepo(root);
+
+    await writeFile(path.join(root, "client", "foo.ts"), "export const foo = 2;\n", "utf8");
+    await writeFile(
+      path.join(runDir, "implementation-report.md"),
+      VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+      "utf8",
+    );
+    await runCli(["advance", taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+      repoRoot: root,
+      writeOut: () => undefined,
+    });
+
+    await writeFile(path.join(root, "lib", "memory", "unexpected.md"), "# unexpected\n", "utf8");
+    await writeFile(path.join(runDir, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+    const reviewOut: string[] = [];
+    const reviewErr: string[] = [];
+    const code = await runCli(["advance", taskId, "--artifact", `${runDirRel}/review.md`], {
+      repoRoot: root,
+      writeOut: (c) => reviewOut.push(c),
+      writeErr: (c) => reviewErr.push(c),
+    });
+    expect(code).toBe(1);
+    expect(`${reviewOut.join("")}\n${reviewErr.join("")}`).toContain("absent from touch-set.json");
   });
 });
 

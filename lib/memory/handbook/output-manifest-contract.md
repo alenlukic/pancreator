@@ -101,6 +101,12 @@ definition of done without evidence required by the persona spec, routes
 remediation to an owner not declared by the pipeline, or when `consulted_docs`
 does not cover every key in the contract's `required_docs`.
 
+Validators MUST also reject manifests that omit any shape field shown in
+`## Markdown shape` / `## JSON shape`, use file paths in `required_docs` or
+`consulted_docs` instead of `DOC.*` / `PIPE.*` / `PERSONA.*` keys, or declare a
+stage-specific `stage_contract` / `required_docs` set that does not match the
+owning pipeline contract.
+
 When a stage validator also checks local diff or touch-set compliance, it MUST
 block advancement when a changed path is absent from the declared touch-set and
 its recorded `scope_amendments`, or when a recorded amendment falls outside the

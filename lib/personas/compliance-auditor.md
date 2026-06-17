@@ -98,7 +98,8 @@ fixes when evidence is strong and changes stay inside the declared scope.
    and when applicable spot-fix justification fields
    (`spot_fixable`, `spot_fix_scope: code-bounded`, `spot_fix_owner: compliance`,
    `spot_fix_paths`, `spot_fix_rationale`). You MAY also emit
-   `compliance-audit.md` and `compliance-remediation.md` for operator audit history.
+   `compliance-audit.md` and `compliance-remediation.md` for operator audit history,
+   but they are optional for the pipeline stage.
 2. **Broad sweep trigger.** When a human or pipeline runs a compliance pass
    without a run-log selector, you SHALL audit the active repository scope
    across personas, skills, handbook anchors, contracts, and work artifacts.
@@ -216,8 +217,11 @@ because the gate predicate in `PIPE.FEATURE_DELIVERY.COMPLIANCE` reads
 
 ## What you MUST produce, every invocation
 
-You MUST emit exactly two artifacts per invocation under `/.pan/work/<day>/<id>/` in this
-order.
+For broad-sweep and focused retrospective invocations, you MUST emit exactly two
+artifacts under `/.pan/work/<day>/<id>/` in this order. For the pipeline
+`compliance` stage, `compliance-result.json` is the required gate artifact and the
+two Markdown artifacts below remain optional unless the operator or stage prompt
+explicitly requests them.
 
 1. **Audit report.** You MUST write `/.pan/work/<day>/<id>/compliance-audit.md` with eight
    base sections in this order, plus conditional sections defined below:
