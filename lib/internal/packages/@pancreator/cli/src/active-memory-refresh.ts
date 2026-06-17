@@ -137,6 +137,9 @@ function readDeliverySectionObject(rec: Record<string, unknown>): Record<string,
 }
 
 function readDeliveryReportPath(rec: Record<string, unknown>): string {
+  if (typeof rec["delivery_report"] === "string") {
+    return rec["delivery_report"] as string;
+  }
   const top = readDeliverySectionObject(rec);
   if (top !== undefined && typeof top["path"] === "string") return top["path"] as string;
   const handoff = rec["handoff"];
@@ -247,6 +250,7 @@ export function readExplicitArchivedInboxPointer(rec: Record<string, unknown>): 
 function collectInboxSourceCandidates(rec: Record<string, unknown>): string[] {
   const candidates: string[] = [];
   pushInboxPathCandidate(candidates, rec["source_inbox_item"]);
+  pushInboxPathCandidate(candidates, rec["source_inbox_item_prior"]);
   const intake = rec["intake"];
   if (intake && typeof intake === "object") {
     pushInboxPathCandidate(candidates, (intake as Record<string, unknown>)["source_inbox_item"]);
@@ -362,43 +366,15 @@ export async function patchFeatureIndexArchivedInbox(
     return;
   }
   const parsed = JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>;
-  parsed["archived_inbox_source"] = archivedInboxRel;
-
-  const sourceInbox = parsed["source_inbox_item"];
-  if (sourceInbox !== undefined && typeof sourceInbox === "object") {
-    (sourceInbox as Record<string, unknown>)["path"] = archivedInboxRel;
-    if (typeof (sourceInbox as Record<string, unknown>)["prior_path"] !== "string") {
-      (sourceInbox as Record<string, unknown>)["prior_path"] = priorInboxSourceRel;
-    }
-  } else {
-    parsed["source_inbox_item"] = {
-      path: archivedInboxRel,
-      prior_path: priorInboxSourceRel,
-    };
-  }
+  delete parsed["archived_inbox_source"];
+  parsed["source_inbox_item"] = archivedInboxRel;
+  parsed["source_inbox_item_prior"] = priorInboxSourceRel;
 
   const intake = parsed["intake"];
   if (intake && typeof intake === "object") {
     const intakeRec = intake as Record<string, unknown>;
     if (typeof intakeRec["source_inbox_item"] === "string") {
       intakeRec["source_inbox_item"] = archivedInboxRel;
-    }
-  }
-
-  const delivery = parsed["delivery_report"];
-  if (delivery && typeof delivery === "object") {
-    (delivery as Record<string, unknown>)["archived_inbox_source"] = archivedInboxRel;
-  }
-
-  const artifactIndex = parsed["artifact_index"];
-  if (artifactIndex && typeof artifactIndex === "object") {
-    const lineage = (artifactIndex as Record<string, unknown>)["lineage"];
-    if (lineage && typeof lineage === "object") {
-      const lineageRec = lineage as Record<string, unknown>;
-      const src = lineageRec["source_inbox_item"];
-      if (src !== undefined && typeof src === "object") {
-        (src as Record<string, unknown>)["path"] = archivedInboxRel;
-      }
     }
   }
 
@@ -418,16 +394,8 @@ export async function patchFeatureIndexReopenedInbox(
   const parsed = JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>;
   delete parsed["archived_inbox_source"];
 
-  const sourceInbox = parsed["source_inbox_item"];
-  if (sourceInbox !== undefined && typeof sourceInbox === "object") {
-    const rec = sourceInbox as Record<string, unknown>;
-    rec["path"] = activeInboxRel;
-    if (rec["prior_path"] === activeInboxRel) {
-      delete rec["prior_path"];
-    }
-  } else {
-    parsed["source_inbox_item"] = { path: activeInboxRel };
-  }
+  parsed["source_inbox_item"] = activeInboxRel;
+  delete parsed["source_inbox_item_prior"];
 
   const intake = parsed["intake"];
   if (intake && typeof intake === "object") {
@@ -435,11 +403,6 @@ export async function patchFeatureIndexReopenedInbox(
     if (typeof intakeRec["source_inbox_item"] === "string") {
       intakeRec["source_inbox_item"] = activeInboxRel;
     }
-  }
-
-  const delivery = parsed["delivery_report"];
-  if (delivery && typeof delivery === "object") {
-    delete (delivery as Record<string, unknown>)["archived_inbox_source"];
   }
 
   await writeFile(indexAbs, stringifyCliJson(repoRoot, parsed), "utf8");

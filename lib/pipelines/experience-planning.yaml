@@ -41,13 +41,6 @@ metadata:
         PRD §3.5 US-5 — long-lived SME personas with private memory consult on
         operator-initiated work.
     - kind: lines
-      path: lib/pipelines/command-center-design-audit-delivery.yaml
-      range: [42, 66]
-      contentHash: 76c9f11
-      note: >-
-        Supervisor-driven pre-feature-delivery stage shape this pipeline
-        follows.
-    - kind: lines
       path: lib/memory/handbook/engineering/design/control-surface-ux.md
       range: [1, 40]
       contentHash: 3c08445

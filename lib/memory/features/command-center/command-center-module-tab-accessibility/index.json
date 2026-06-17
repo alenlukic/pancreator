@@ -54,5 +54,10 @@
     "lib/memory/features/command-center-module-tab-accessibility/index.json",
     "lib/memory/features/command-center-module-tab-accessibility/spec.md"
   ],
-  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction.",
+  "archived_inbox_source": ".pan/archive/inbox/in/172967_06-08-26/9443_2122_cockpit-v2-tab-a11y.md",
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172967_06-08-26/9443_2122_cockpit-v2-tab-a11y.md",
+    "prior_path": "lib/inbox/in/172967_06-08-26/9443_2122_cockpit-v2-tab-a11y.md"
+  }
 }

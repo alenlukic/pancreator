@@ -13,14 +13,19 @@ export interface FeatureDeliveryDesignOptions {
   designStepsSource?: "pancreator_yaml" | "spec_frontmatter";
 }
 
-export function designStepsEnabled(_options: FeatureDeliveryDesignOptions | undefined): boolean {
+export function designStepsEnabled(
+  _options: FeatureDeliveryDesignOptions | undefined,
+): boolean {
   // Feature-delivery now treats product/design/technical planning and design QA
   // as core flow. The option is retained only as state provenance for older
   // ledgers and config compatibility.
   return true;
 }
 
-function readYamlBoolean(record: Record<string, unknown>, key: string): boolean | undefined {
+function readYamlBoolean(
+  record: Record<string, unknown>,
+  key: string,
+): boolean | undefined {
   const value = record[key];
   return typeof value === "boolean" ? value : undefined;
 }
@@ -41,19 +46,42 @@ async function readOptionalText(pathAbs: string): Promise<string | null> {
   }
 }
 
-export async function resolveDesignStepsConfig(repoRoot: string, featureId: string): Promise<Required<FeatureDeliveryDesignOptions>> {
-  const pancreatorYaml = await readOptionalText(resolveProjectPath(repoRoot, "pancreator.yaml"));
+export async function resolveDesignStepsConfig(
+  repoRoot: string,
+  featureId: string,
+): Promise<Required<FeatureDeliveryDesignOptions>> {
+  const pancreatorYaml = await readOptionalText(
+    resolveProjectPath(repoRoot, "pancreator.yaml"),
+  );
   let designSteps = false;
-  let source: Required<FeatureDeliveryDesignOptions>["designStepsSource"] = "pancreator_yaml";
+  let source: Required<FeatureDeliveryDesignOptions>["designStepsSource"] =
+    "pancreator_yaml";
   if (pancreatorYaml !== null) {
     const parsed = parseSimpleYaml(pancreatorYaml) as Record<string, unknown>;
     const featureDelivery = parsed.feature_delivery;
-    if (featureDelivery !== null && typeof featureDelivery === "object" && !Array.isArray(featureDelivery)) {
-      designSteps = readYamlBoolean(featureDelivery as Record<string, unknown>, "design_steps") ?? designSteps;
+    if (
+      featureDelivery !== null &&
+      typeof featureDelivery === "object" &&
+      !Array.isArray(featureDelivery)
+    ) {
+      designSteps =
+        readYamlBoolean(
+          featureDelivery as Record<string, unknown>,
+          "design_steps",
+        ) ?? designSteps;
     }
   }
 
-  const spec = await readOptionalText(resolveProjectPath(repoRoot, "lib", "memory", "features", featureId, "spec.md"));
+  const spec = await readOptionalText(
+    resolveProjectPath(
+      repoRoot,
+      "lib",
+      "memory",
+      "features",
+      featureId,
+      "spec.md",
+    ),
+  );
   if (spec !== null) {
     const frontmatter = parseFrontmatter(spec);
     const specDesignSteps = readYamlBoolean(frontmatter, "design_steps");
@@ -69,12 +97,16 @@ export function uxSpecRel(runDir: string): string {
   return path.posix.join(runDir, "ux-spec.md");
 }
 
+function disciplineDirRel(runDir: string, discipline: "product" | "design" | "tech"): string {
+  return path.posix.join(runDir, discipline);
+}
+
 export function productPlanPromptRel(runDir: string): string {
-  return path.posix.join(runDir, "product-plan-prompt.md");
+  return path.posix.join(disciplineDirRel(runDir, "product"), "plan-prompt.md");
 }
 
 export function designPlanPromptRel(runDir: string): string {
-  return path.posix.join(runDir, "design-plan-prompt.md");
+  return path.posix.join(disciplineDirRel(runDir, "design"), "plan-prompt.md");
 }
 
 export function designQaPromptRel(runDir: string): string {
@@ -86,31 +118,44 @@ export function designQaReportRel(runDir: string): string {
 }
 
 export function productPlanRel(runDir: string): string {
-  return path.posix.join(runDir, "product-plan.md");
+  return path.posix.join(disciplineDirRel(runDir, "product"), "plan.md");
 }
 
 export function productAcceptanceCriteriaRel(runDir: string): string {
-  return path.posix.join(runDir, "product-acceptance-criteria.md");
+  return path.posix.join(
+    disciplineDirRel(runDir, "product"),
+    "acceptance-criteria.md",
+  );
 }
 
 export function designPlanRel(runDir: string): string {
-  return path.posix.join(runDir, "design-plan.md");
+  return path.posix.join(disciplineDirRel(runDir, "design"), "plan.md");
 }
 
 export function designAcceptanceCriteriaRel(runDir: string): string {
-  return path.posix.join(runDir, "design-acceptance-criteria.md");
+  return path.posix.join(
+    disciplineDirRel(runDir, "design"),
+    "acceptance-criteria.md",
+  );
 }
 
 export function techPlanRel(runDir: string): string {
-  return path.posix.join(runDir, "tech-plan.md");
+  return path.posix.join(disciplineDirRel(runDir, "tech"), "plan.md");
 }
 
 export function techAcceptanceCriteriaRel(runDir: string): string {
-  return path.posix.join(runDir, "tech-acceptance-criteria.md");
+  return path.posix.join(
+    disciplineDirRel(runDir, "tech"),
+    "acceptance-criteria.md",
+  );
 }
 
 export function manualQaTestCasesRel(runDir: string): string {
   return path.posix.join(runDir, "manual-qa-test-cases.md");
+}
+
+function staticContractPromptLine(artifactKind: string): string {
+  return `Before authoring ${artifactKind}, follow the persona spec's \`## Static execution contract\`; resolve required \`DOC.*\` keys through \`lib/memory/handbook/agent-document-registry.md\`; load the docs named by \`pancreator-required-docs\`; and write an \`## Output manifest\` section per \`lib/memory/handbook/output-manifest-contract.md\`. Do not invent an ad-hoc execution contract.`;
 }
 
 export function renderProductPlanPrompt(input: {
@@ -122,7 +167,9 @@ export function renderProductPlanPrompt(input: {
 }): string {
   return `# Product-plan companion prompt — ${input.featureId}
 
-You are \`${PRODUCT_ENGINEER_PERSONA}\`. Read \`lib/personas/product-engineer.md\`, the source directive at \`${input.sourcePath}\`, active state at \`${path.posix.join(input.runDir, "state.json")}\`${input.specPath ? `, and \`${input.specPath}\` when present` : ""}.
+You are \`${PRODUCT_ENGINEER_PERSONA}\`. Read \`lib/personas/product-engineer.md\`, then \`AGENTS.md\` as the global thin index, then \`lib/memory/handbook/persona-contracts.md\`, then the source directive at \`${input.sourcePath}\`, active state at \`${path.posix.join(input.runDir, "state.json")}\`${input.specPath ? `, and \`${input.specPath}\` when present` : ""}. Use \`AGENTS.md\` to route to any task-relevant handbook pages before authoring product artifacts.
+
+${staticContractPromptLine("product planning artifacts")}
 
 Emit exactly these artifacts:
 
@@ -142,7 +189,9 @@ export function renderDesignPlanPrompt(input: {
 }): string {
   return `# Design-plan companion prompt — ${input.featureId}
 
-You are \`${DESIGN_ENGINEER_PERSONA}\`. Read \`lib/personas/design-engineer.md\`, \`lib/memory/handbook/engineering/design-craft.md\`, the source directive at \`${input.sourcePath}\`${input.specPath ? `, \`${input.specPath}\` when present` : ""}, active state at \`${path.posix.join(input.runDir, "state.json")}\`, and \`${productPlanRel(input.runDir)}\` when present.
+You are \`${DESIGN_ENGINEER_PERSONA}\`. Read \`lib/personas/design-engineer.md\`, then \`AGENTS.md\` as the global thin index, then \`lib/memory/handbook/persona-contracts.md\`, then \`lib/memory/handbook/engineering/design-craft.md\`, the source directive at \`${input.sourcePath}\`${input.specPath ? `, \`${input.specPath}\` when present` : ""}, active state at \`${path.posix.join(input.runDir, "state.json")}\`, and \`${productPlanRel(input.runDir)}\` when present.
+
+${staticContractPromptLine("design planning artifacts")}
 
 Emit exactly these artifacts:
 
@@ -161,7 +210,9 @@ export function renderDesignQaPrompt(input: {
 }): string {
   return `# Design-QA companion prompt — ${input.featureId}
 
-You are \`${DESIGN_REVIEWER_PERSONA}\`. Read \`lib/personas/design-reviewer.md\`, \`lib/memory/handbook/engineering/design-craft.md\`, \`${uxSpecRel(input.runDir)}\`, \`${designPlanRel(input.runDir)}\`, \`${designAcceptanceCriteriaRel(input.runDir)}\`, \`${path.posix.join(input.runDir, "review.md")}\`, and the current local diff.
+You are \`${DESIGN_REVIEWER_PERSONA}\`. Read \`lib/personas/design-reviewer.md\`, then \`AGENTS.md\` as the global thin index, then \`lib/memory/handbook/persona-contracts.md\`, then \`lib/memory/handbook/engineering/design-craft.md\`, \`${uxSpecRel(input.runDir)}\`, \`${designPlanRel(input.runDir)}\`, \`${designAcceptanceCriteriaRel(input.runDir)}\`, \`${path.posix.join(input.runDir, "review.md")}\`, and the current local diff.
+
+${staticContractPromptLine("design QA artifacts")}
 
 Run global UI/UX/design rules QA with the Chrome DevTools MCP server. Your gate enforces holistic craft bar, spacing, hierarchy, interaction states, accessibility basics, responsive behavior, copy clarity, and global UI/UX/design rules. Do NOT gate task-specific product/design/technical acceptance criteria; reviewer and qa-tester own those. Use the plan only to locate affected surfaces.
 

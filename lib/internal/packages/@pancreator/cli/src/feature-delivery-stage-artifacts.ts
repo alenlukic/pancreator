@@ -3,7 +3,10 @@ import { resolveRepoPath } from "@pancreator/core";
 import path from "node:path";
 import { existsSync } from "node:fs";
 
-import { OPERATOR_VERIFICATION_FILENAME, validateOperatorVerificationMarkdown } from "./operator-verification.js";
+import {
+  OPERATOR_VERIFICATION_FILENAME,
+  validateOperatorVerificationMarkdown,
+} from "./operator-verification.js";
 
 import {
   designAcceptanceCriteriaRel,
@@ -40,30 +43,62 @@ export interface FeatureDeliveryArtifactState {
 }
 
 function handoffPath(state: FeatureDeliveryArtifactState): string {
-  return state.artifacts.handoffFile ?? path.posix.join(state.artifacts.runDir, "handoff.md");
+  return (
+    state.artifacts.handoffFile ??
+    path.posix.join(state.artifacts.runDir, "handoff.md")
+  );
 }
 
 export function durableFeatureCategory(featureId: string): string {
-  if (featureId.startsWith("command-center-") || featureId.startsWith("surface-opt-p9") || featureId.startsWith("surface-opt-p10") || featureId.startsWith("v0-ui-dashboard")) {
+  if (
+    featureId.startsWith("command-center-") ||
+    featureId.startsWith("surface-opt-p9") ||
+    featureId.startsWith("surface-opt-p10") ||
+    featureId.startsWith("v0-ui-dashboard")
+  ) {
     return "command-center";
   }
-  if (featureId.startsWith("active-memory") || featureId.includes("token-economy") || featureId.includes("memory")) {
+  if (
+    featureId.startsWith("active-memory") ||
+    featureId.includes("token-economy") ||
+    featureId.includes("memory")
+  ) {
     return "memory-context";
   }
-  if (featureId.startsWith("pancreator-") || featureId.startsWith("m1-substrate-runtime")) {
+  if (
+    featureId.startsWith("pancreator-") ||
+    featureId.startsWith("m1-substrate-runtime")
+  ) {
     return "platform-substrate";
   }
-  if (featureId.includes("compliance") || featureId.includes("json-formatting") || featureId.includes("timestamp") || featureId.includes("verification")) {
+  if (
+    featureId.includes("compliance") ||
+    featureId.includes("json-formatting") ||
+    featureId.includes("timestamp") ||
+    featureId.includes("verification")
+  ) {
     return "quality-governance";
   }
-  if (featureId.includes("pipeline") || featureId.includes("inbox") || featureId.includes("dogfood") || featureId.includes("sdk")) {
+  if (
+    featureId.includes("pipeline") ||
+    featureId.includes("inbox") ||
+    featureId.includes("dogfood") ||
+    featureId.includes("sdk")
+  ) {
     return "delivery-pipeline";
   }
   return "bootstrap-repo-ops";
 }
 
 export function durableFeatureIndexRel(featureId: string): string {
-  return path.posix.join("lib", "memory", "features", durableFeatureCategory(featureId), featureId, "index.json");
+  return path.posix.join(
+    "lib",
+    "memory",
+    "features",
+    durableFeatureCategory(featureId),
+    featureId,
+    "index.json",
+  );
 }
 
 export function deliveryReportRel(runDir: string): string {
@@ -106,7 +141,10 @@ const STAGE_IDS = [
 
 export type FeatureDeliveryStageId = (typeof STAGE_IDS)[number];
 
-const SHIP_RATIFICATION_REQUIRED_KEYS = ["task_id", "human_ratified_diff"] as const;
+const SHIP_RATIFICATION_REQUIRED_KEYS = [
+  "task_id",
+  "human_ratified_diff",
+] as const;
 
 export const COMPLIANCE_STAGE_EXIT_COMMANDS = [
   "pnpm lint",
@@ -115,11 +153,106 @@ export const COMPLIANCE_STAGE_EXIT_COMMANDS = [
   "node --test tests/*.test.mjs",
 ] as const;
 
-export function isFeatureDeliveryStageId(stage: string): stage is FeatureDeliveryStageId {
+const MARKDOWN_OUTPUT_MANIFEST_REQUIRED_BASENAMES = new Set([
+  "plan.md",
+  "acceptance-criteria.md",
+  "manual-qa-test-cases.md",
+  "adr-draft.md",
+  "handoff.md",
+  "implementation-report.md",
+  "review.md",
+  "test-report.md",
+  "design-qa-report.md",
+  "ux-spec.md",
+  "delivery-report.md",
+]);
+
+function artifactParentDir(rel: string): string {
+  return path.posix.basename(path.posix.dirname(rel));
+}
+
+function isCompanionDisciplineArtifact(rel: string): boolean {
+  const parent = artifactParentDir(rel);
+  return parent === "product" || parent === "design" || parent === "tech";
+}
+
+function validateMarkdownOutputManifest(
+  rel: string,
+  base: string,
+  content: string,
+): ArtifactContentWarning | null {
+  if (!MARKDOWN_OUTPUT_MANIFEST_REQUIRED_BASENAMES.has(base)) {
+    return null;
+  }
+  if (!/^##\s+Output manifest\b/imu.test(content)) {
+    return {
+      path: rel,
+      code: "output_manifest_missing",
+      message: `${base} must include ## Output manifest per DOC.OUTPUT_MANIFEST.`,
+    };
+  }
+  for (const field of [
+    "persona_contract",
+    "required_docs",
+    "consulted_docs",
+    "definition_of_done",
+    "gate_decision",
+  ] as const) {
+    if (!new RegExp(`^-\\s*${field}:`, "imu").test(content)) {
+      return {
+        path: rel,
+        code: "output_manifest_incomplete",
+        message: `${base} ## Output manifest must include ${field}.`,
+      };
+    }
+  }
+  return null;
+}
+
+function validateJsonOutputManifest(
+  rel: string,
+  record: Record<string, unknown>,
+): ArtifactContentWarning | null {
+  const manifest = record.output_manifest;
+  if (
+    manifest === null ||
+    typeof manifest !== "object" ||
+    Array.isArray(manifest)
+  ) {
+    return {
+      path: rel,
+      code: "output_manifest_missing",
+      message: `${path.posix.basename(rel)} must include top-level output_manifest per DOC.OUTPUT_MANIFEST.`,
+    };
+  }
+  const manifestRecord = manifest as Record<string, unknown>;
+  for (const field of [
+    "persona_contract",
+    "required_docs",
+    "consulted_docs",
+    "definition_of_done",
+    "gate_decision",
+  ] as const) {
+    if (!(field in manifestRecord)) {
+      return {
+        path: rel,
+        code: "output_manifest_incomplete",
+        message: `${path.posix.basename(rel)} output_manifest must include ${field}.`,
+      };
+    }
+  }
+  return null;
+}
+
+export function isFeatureDeliveryStageId(
+  stage: string,
+): stage is FeatureDeliveryStageId {
   return (STAGE_IDS as readonly string[]).includes(stage);
 }
 
-export function parseReviewPassesVerdict(reviewMarkdown: string): boolean | null {
+export function parseReviewPassesVerdict(
+  reviewMarkdown: string,
+): boolean | null {
   const match = reviewMarkdown.match(/review_passes:\s*(true|false)/iu);
   if (match === null) {
     return null;
@@ -130,12 +263,16 @@ export function parseReviewPassesVerdict(reviewMarkdown: string): boolean | null
 export function parseReviewGateOutcome(reviewMarkdown: string): {
   passes: boolean | null;
   coreReentryRequired: boolean;
+  scopeAmendmentsRatified: boolean;
   spotFixable: boolean;
   excludedFromGate: boolean;
 } {
   return {
     passes: parseReviewPassesVerdict(reviewMarkdown),
     coreReentryRequired: /core_reentry_required:\s*true/iu.test(reviewMarkdown),
+    scopeAmendmentsRatified: /scope_amendments_ratified:\s*true/iu.test(
+      reviewMarkdown,
+    ),
     spotFixable: /spot_fixable:\s*true/iu.test(reviewMarkdown),
     excludedFromGate: /excluded_from_gate:\s*true/iu.test(reviewMarkdown),
   };
@@ -152,7 +289,8 @@ export function parseQaVerdict(testMarkdown: string): {
   const planMatch = testMarkdown.match(/plan_invalidating:\s*(true|false)/iu);
   return {
     passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
-    planInvalidating: planMatch !== null && planMatch[1].toLowerCase() === "true",
+    planInvalidating:
+      planMatch !== null && planMatch[1].toLowerCase() === "true",
     coreReentryRequired: /core_reentry_required:\s*true/iu.test(testMarkdown),
     spotFixable: /spot_fixable:\s*true/iu.test(testMarkdown),
     excludedFromGate: /excluded_from_gate:\s*true/iu.test(testMarkdown),
@@ -166,12 +304,19 @@ export function parseDesignQaVerdict(designQaMarkdown: string): {
   spotFixable: boolean;
   excludedFromGate: boolean;
 } {
-  const passMatch = designQaMarkdown.match(/design_qa_passes:\s*(true|false)/iu);
-  const planMatch = designQaMarkdown.match(/plan_invalidating:\s*(true|false)/iu);
+  const passMatch = designQaMarkdown.match(
+    /design_qa_passes:\s*(true|false)/iu,
+  );
+  const planMatch = designQaMarkdown.match(
+    /plan_invalidating:\s*(true|false)/iu,
+  );
   return {
     passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
-    planInvalidating: planMatch !== null && planMatch[1].toLowerCase() === "true",
-    coreReentryRequired: /core_reentry_required:\s*true/iu.test(designQaMarkdown),
+    planInvalidating:
+      planMatch !== null && planMatch[1].toLowerCase() === "true",
+    coreReentryRequired: /core_reentry_required:\s*true/iu.test(
+      designQaMarkdown,
+    ),
     spotFixable: /spot_fixable:\s*true/iu.test(designQaMarkdown),
     excludedFromGate: /excluded_from_gate:\s*true/iu.test(designQaMarkdown),
   };
@@ -220,14 +365,15 @@ export function mergedTestStageVerdict(input: {
   return { ...qa, passes: null };
 }
 
-function readBool(record: Record<string, unknown>, key: string): boolean | null {
+function readBool(
+  record: Record<string, unknown>,
+  key: string,
+): boolean | null {
   const value = record[key];
   return typeof value === "boolean" ? value : null;
 }
 
-function parseFinalGateExitCodes(
-  value: unknown,
-): {
+function parseFinalGateExitCodes(value: unknown): {
   observed: boolean;
   exitCodes: Map<string, number | null>;
 } {
@@ -288,10 +434,12 @@ function parseComplianceVerdictFromRecord(record: Record<string, unknown>): {
   const missingFinalGateCommands = COMPLIANCE_STAGE_EXIT_COMMANDS.filter(
     (command) => !finalGate.exitCodes.has(command),
   );
-  const failingFinalGateCommands = COMPLIANCE_STAGE_EXIT_COMMANDS.filter((command) => {
-    const exitCode = finalGate.exitCodes.get(command);
-    return typeof exitCode === "number" && exitCode !== 0;
-  });
+  const failingFinalGateCommands = COMPLIANCE_STAGE_EXIT_COMMANDS.filter(
+    (command) => {
+      const exitCode = finalGate.exitCodes.get(command);
+      return typeof exitCode === "number" && exitCode !== 0;
+    },
+  );
   return {
     passes,
     planInvalidating: readBool(record, "plan_invalidating") ?? false,
@@ -316,17 +464,27 @@ export function parseComplianceVerdict(complianceContent: string): {
 } {
   try {
     const parsed = JSON.parse(complianceContent) as unknown;
-    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parseComplianceVerdictFromRecord(parsed as Record<string, unknown>);
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+    ) {
+      return parseComplianceVerdictFromRecord(
+        parsed as Record<string, unknown>,
+      );
     }
   } catch {
     // markdown fallback below
   }
-  const passMatch = complianceContent.match(/compliance_passes:\s*(true|false)/iu);
+  const passMatch = complianceContent.match(
+    /compliance_passes:\s*(true|false)/iu,
+  );
   return {
     passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
     planInvalidating: /plan_invalidating:\s*true/iu.test(complianceContent),
-    coreReentryRequired: /core_reentry_required:\s*true/iu.test(complianceContent),
+    coreReentryRequired: /core_reentry_required:\s*true/iu.test(
+      complianceContent,
+    ),
     spotFixable: /spot_fixable:\s*true/iu.test(complianceContent),
     excludedFromGate: /excluded_from_gate:\s*true/iu.test(complianceContent),
     finalGateObserved: false,
@@ -346,7 +504,11 @@ function validateMarkdownBody(
   const lines = content.split(/\r?\n/u);
   const hasH2 = lines.some((line) => /^##\s+\S/u.test(line));
   if (!hasH2) {
-    return { path: rel, code: "missing_h2", message: "markdown must include at least one ## heading" };
+    return {
+      path: rel,
+      code: "missing_h2",
+      message: "markdown must include at least one ## heading",
+    };
   }
   const hasBodyLine = lines.some((line) => {
     const t = line.trim();
@@ -370,7 +532,10 @@ function readRepoText(repoRoot: string, rel: string): string | null {
   return readFileSync(abs, "utf8");
 }
 
-function gateValidationErrorToWarning(rel: string, message: string): ArtifactContentWarning {
+function gateValidationErrorToWarning(
+  rel: string,
+  message: string,
+): ArtifactContentWarning {
   return { path: rel, code: "gate_contract_violation", message };
 }
 
@@ -385,12 +550,15 @@ function validateArtifactContent(
     return null;
   }
 
-  if (base === "plan.md") {
+  if (base === "plan.md" && !isCompanionDisciplineArtifact(rel)) {
     const planError = validatePlanMarkdown(content);
     if (planError !== null) {
       return gateValidationErrorToWarning(rel, planError);
     }
-    return validateMarkdownBody(rel, content);
+    return (
+      validateMarkdownBody(rel, content) ??
+      validateMarkdownOutputManifest(rel, base, content)
+    );
   }
 
   if (base === "handoff.md") {
@@ -398,7 +566,10 @@ function validateArtifactContent(
     if (handoffError !== null) {
       return gateValidationErrorToWarning(rel, handoffError);
     }
-    return validateMarkdownBody(rel, content);
+    return (
+      validateMarkdownBody(rel, content) ??
+      validateMarkdownOutputManifest(rel, base, content)
+    );
   }
 
   if (base === "touch-set.json") {
@@ -414,7 +585,10 @@ function validateArtifactContent(
     if (implementError !== null) {
       return gateValidationErrorToWarning(rel, implementError);
     }
-    return validateMarkdownBody(rel, content);
+    return (
+      validateMarkdownBody(rel, content) ??
+      validateMarkdownOutputManifest(rel, base, content)
+    );
   }
 
   if (base === "review.md") {
@@ -422,16 +596,20 @@ function validateArtifactContent(
       return {
         path: rel,
         code: "review_passes_unparseable",
-        message: "review.md must contain review_passes: true or review_passes: false",
+        message:
+          "review.md must contain review_passes: true or review_passes: false",
       };
     }
     if (event !== undefined) {
-      const reviewAdvanceError = validateReviewMarkdownForAdvance(content, event);
+      const reviewAdvanceError = validateReviewMarkdownForAdvance(
+        content,
+        event,
+      );
       if (reviewAdvanceError !== null) {
         return gateValidationErrorToWarning(rel, reviewAdvanceError);
       }
     }
-    return null;
+    return validateMarkdownOutputManifest(rel, base, content);
   }
 
   if (base === "test-report.md") {
@@ -439,7 +617,8 @@ function validateArtifactContent(
       return {
         path: rel,
         code: "qa_passes_unparseable",
-        message: "test-report.md must contain qa_passes: true or qa_passes: false",
+        message:
+          "test-report.md must contain qa_passes: true or qa_passes: false",
       };
     }
     if (event !== undefined) {
@@ -448,7 +627,7 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, testAdvanceError);
       }
     }
-    return null;
+    return validateMarkdownOutputManifest(rel, base, content);
   }
 
   if (base === "design-qa-report.md") {
@@ -456,7 +635,8 @@ function validateArtifactContent(
       return {
         path: rel,
         code: "design_qa_passes_unparseable",
-        message: "design-qa-report.md must contain design_qa_passes: true or design_qa_passes: false",
+        message:
+          "design-qa-report.md must contain design_qa_passes: true or design_qa_passes: false",
       };
     }
     if (event !== undefined) {
@@ -465,11 +645,14 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, designAdvanceError);
       }
     }
-    return null;
+    return validateMarkdownOutputManifest(rel, base, content);
   }
 
   if (base === "ux-spec.md") {
-    return validateMarkdownBody(rel, content);
+    return (
+      validateMarkdownBody(rel, content) ??
+      validateMarkdownOutputManifest(rel, base, content)
+    );
   }
 
   if (base === "ship-ratification.json") {
@@ -488,7 +671,8 @@ function validateArtifactContent(
         return {
           path: rel,
           code: "ship_ratification_not_ratified",
-          message: "ship-ratification.json must set human_ratified_diff to true",
+          message:
+            "ship-ratification.json must set human_ratified_diff to true",
         };
       }
     } catch {
@@ -507,23 +691,38 @@ function validateArtifactContent(
       return {
         path: rel,
         code: "compliance_passes_unparseable",
-        message: "compliance-result.json must include compliance_passes: true or compliance_passes: false",
+        message:
+          "compliance-result.json must include compliance_passes: true or compliance_passes: false",
       };
     }
     if (!verdict.finalGateObserved) {
       return {
         path: rel,
         code: "compliance_final_gate_missing",
-        message: "compliance-result.json must include final_gate results for the compliance exit bundle",
+        message:
+          "compliance-result.json must include final_gate results for the compliance exit bundle",
       };
     }
     if (event !== undefined) {
-      const complianceAdvanceError = validateComplianceForAdvance(content, event);
+      const complianceAdvanceError = validateComplianceForAdvance(
+        content,
+        event,
+      );
       if (complianceAdvanceError !== null) {
         return gateValidationErrorToWarning(rel, complianceAdvanceError);
       }
     }
-    return null;
+    try {
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      return validateJsonOutputManifest(rel, parsed);
+    } catch {
+      return null;
+    }
+  }
+
+  const manifestWarning = validateMarkdownOutputManifest(rel, base, content);
+  if (manifestWarning !== null) {
+    return manifestWarning;
   }
 
   if (base === OPERATOR_VERIFICATION_FILENAME) {
@@ -568,7 +767,11 @@ export function stageArtifactContract(
         touchSet,
         handoff,
         ...(designStepsEnabled(state.options)
-          ? [designPlanRel(run), designAcceptanceCriteriaRel(run), uxSpecRel(run)]
+          ? [
+              designPlanRel(run),
+              designAcceptanceCriteriaRel(run),
+              uxSpecRel(run),
+            ]
           : []),
       ];
       const acceptedAdvanceArtifacts = [plan, touchSet, handoff];
@@ -588,8 +791,15 @@ export function stageArtifactContract(
     }
     case "review": {
       const review = path.posix.join(run, "review.md");
-      if (event !== "review_passes" && event !== "must_fix" && event !== "review_spot_fix") {
-        throw new Error(`Review stage only supports review_passes, must_fix, or review_spot_fix, got ${event}.`);
+      if (
+        event !== "review_passes" &&
+        event !== "must_fix" &&
+        event !== "review_spot_fix" &&
+        event !== "review_core_reentry"
+      ) {
+        throw new Error(
+          `Review stage only supports review_passes, must_fix, review_spot_fix, or review_core_reentry, got ${event}.`,
+        );
       }
       return {
         primaryArtifact: review,
@@ -682,14 +892,9 @@ export function requiredArtifactsAfterStageWork(
 }
 
 const CONTENT_VALIDATED_BASENAMES = new Set([
-  "product-plan.md",
-  "product-acceptance-criteria.md",
-  "design-plan.md",
-  "design-acceptance-criteria.md",
-  "tech-plan.md",
-  "tech-acceptance-criteria.md",
-  "manual-qa-test-cases.md",
   "plan.md",
+  "acceptance-criteria.md",
+  "manual-qa-test-cases.md",
   "handoff.md",
   "touch-set.json",
   "implementation-report.md",
@@ -742,17 +947,26 @@ function assertAdvanceGateContent(
   event: string,
 ): void {
   const advanceArtifacts = [artifact];
-  if (stage === "test" && event === "qa_passes" && designStepsEnabled(state.options)) {
+  if (
+    stage === "test" &&
+    event === "qa_passes" &&
+    designStepsEnabled(state.options)
+  ) {
     advanceArtifacts.push(designQaReportRel(state.artifacts.runDir));
   }
   for (const rel of advanceArtifacts) {
     const warning = validateArtifactContent(repoRoot, rel, event);
     if (warning !== null) {
-      throw new Error(`Cannot advance ${stage} on ${event}; ${warning.message}`);
+      throw new Error(
+        `Cannot advance ${stage} on ${event}; ${warning.message}`,
+      );
     }
   }
   if (stage === "implement" && event === "implementation_complete") {
-    const reportRel = path.posix.join(state.artifacts.runDir, "implementation-report.md");
+    const reportRel = path.posix.join(
+      state.artifacts.runDir,
+      "implementation-report.md",
+    );
     const content = readRepoText(repoRoot, reportRel);
     if (content !== null && !/implement_gate_passes:\s*true/iu.test(content)) {
       throw new Error(
@@ -770,7 +984,9 @@ function assertAdvanceGateContent(
   }
 }
 
-function contractPlanGateArtifacts(state: FeatureDeliveryArtifactState): string[] {
+function contractPlanGateArtifacts(
+  state: FeatureDeliveryArtifactState,
+): string[] {
   return [...stageArtifactContract(state, "plan").requiredAfterStageWork];
 }
 
@@ -789,7 +1005,9 @@ export function assertAdvanceArtifacts(
   }
   for (const required of contract.requiredAfterStageWork) {
     if (!existsSync(resolveRepoPath(repoRoot, required))) {
-      throw new Error(`Cannot advance ${stage}; required artifact is missing: ${required}.`);
+      throw new Error(
+        `Cannot advance ${stage}; required artifact is missing: ${required}.`,
+      );
     }
   }
   assertAdvanceGateContent(repoRoot, state, stage, artifact, event);

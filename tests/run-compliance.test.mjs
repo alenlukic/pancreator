@@ -37,16 +37,16 @@ test("validateDescriptorStructure rejects missing schema_ref", () => {
   assert.ok(errors.some((e) => e.includes("schema_ref")));
 });
 
-test("discoverDescriptorFiles finds six canonical descriptors", () => {
+test("discoverDescriptorFiles finds eight canonical descriptors", () => {
   const files = discoverDescriptorFiles();
-  assert.equal(files.length, 6);
+  assert.equal(files.length, 8);
 });
 
 test("runCompliance passes all bootstrap descriptors", async () => {
   const { exitCode, report } = await runCompliance();
   assert.equal(exitCode, 0);
   assert.equal(report.status, "pass");
-  assert.equal(report.descriptorsRun, 6);
+  assert.equal(report.descriptorsRun, 8);
 });
 
 test("runDescriptorAssertion uses pluggable adapter registry", async () => {

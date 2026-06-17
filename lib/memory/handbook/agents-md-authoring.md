@@ -5,159 +5,82 @@ stability: experimental
 bootstrap-only: false
 phase: 0b
 owners: [supervisor, librarian, tech-lead]
-purpose: |
-  Canonical authoring and change-control guidance for `/AGENTS.md`, the
-  primary cross-tool contract for this repository. This guide defines required
-  shape, update triggers, governance workflow, mirror policy, and pre-merge
-  quality checks for AGENTS changes.
+purpose: Defines how to keep /AGENTS.md high-signal while static persona, pipeline, and manifest contracts carry execution detail.
 references:
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [57, 71]
-    contentHash: b788753
-    note: "Phase 0b requires `/lib/memory/handbook/agents-md-authoring.md` as a handbook seed."
-  - kind: lines
+  - kind: file
     path: AGENTS.md
-    range: [3, 5]
-    contentHash: b953d77
-    note: "AGENTS defines itself as the internal agent operating card and external surface split."
-  - kind: lines
-    path: AGENTS.md
-    range: [19, 44]
-    contentHash: b953d77
-    note: "AGENTS canon table defines mandatory handbook references."
-  - kind: lines
-    path: AGENTS.md
-    range: [67, 89]
-    contentHash: b953d77
-    note: "AGENTS delegation rule defines when work is delegated versus performed directly."
-  - kind: lines
-    path: AGENTS.md
-    range: [91, 174]
-    contentHash: b953d77
-    note: "AGENTS working agreement defines non-negotiable operating constraints."
-  - kind: lines
-    path: AGENTS.md
-    range: [265, 269]
-    contentHash: b953d77
-    note: "AGENTS changes require inbox item plus explicit human ratification."
+    note: "Root operating card; intentionally thin index into static contract keys."
+  - kind: file
+    path: lib/memory/handbook/agent-document-registry.md
+    note: "Stable DOC.*, PIPE.*, and PERSONA.* key registry referenced by AGENTS."
+  - kind: file
+    path: lib/memory/handbook/persona-contracts.md
+    note: "Persona specs own execution contracts; AGENTS must not duplicate them."
+  - kind: file
+    path: lib/memory/handbook/output-manifest-contract.md
+    note: "Output manifest double-write and transition validation contract."
 related:
   - /AGENTS.md
-  - /.docs/BOOTSTRAP.md
-  - /lib/memory/handbook/glossary.md
-  - /lib/memory/handbook/constitution.md
-  - /lib/memory/handbook/documentation-impact-contract.md
+  - /lib/memory/handbook/agent-document-registry.md
+  - /lib/memory/handbook/persona-contracts.md
+  - /lib/memory/handbook/pipeline-state-contract.md
+  - /lib/memory/handbook/output-manifest-contract.md
 ---
 
 # AGENTS.md Authoring Guide
 
-## 1 - Purpose and scope
+## Purpose
 
-`/AGENTS.md` is the repository's primary cross-tool contract. It SHALL define
-operator and agent obligations that apply across runtimes, personas, skills,
-and workflow surfaces.
+`/AGENTS.md` is the repo-level operating card. It is not the place to enumerate
+every handbook path, persona responsibility, pipeline artifact, or gate rule.
+Those obligations belong in keyed static contracts that can be validated and
+updated independently.
 
-This guide governs authoring and edits for `/AGENTS.md` only. Persona-specific
-behavior belongs in `lib/personas/<name>.md` and `.cursor/rules/<name>.mdc`.
-Pipeline-step execution behavior belongs in pipeline and persona artifacts, not
-in ad-hoc AGENTS prose.
+## Required shape
 
-## 2 - Required AGENTS shape
+`/AGENTS.md` SHOULD stay short and MUST include only cross-cutting rules that are
+binding for every agent invocation:
 
-An AGENTS file in this repo MUST include, at minimum, the sections below in
-stable numbered form:
+1. startup order and repo-wide precedence over persona-local contracts;
+2. stable global contract keys, especially `DOC.REGISTRY`,
+   `DOC.PERSONA_CONTRACTS`, `DOC.OUTPUT_MANIFEST`, `DOC.PIPELINE_STATE`, and
+   `PIPE.FEATURE_DELIVERY`;
+3. persona and pipeline authority boundaries;
+4. output manifest and gate-validation obligations;
+5. context discipline; and
+6. repo operating rules that are genuinely global.
 
-1. **What this repo is.** Scope and bootstrap state.
-2. **Where the canon lives.** Canon table listing required handbook and spec
-   references.
-3. **Where the agents live.** Persona/rule/skill locations and roster notes.
-4. **Pipeline-step delegation rule.** Delegation obligation and fallback mode.
-5. **Working agreement.** Non-negotiable operating constraints.
-6. **How to discover what to do next.** Operator queue and navigation order.
-7. **Workspace map.** Canonical top-level path map.
-8. **Runtime defaults.** Live `pancreator.yaml` policy and routing expectations.
-9. **Stability.** Change authority and promotion path.
+AGENTS MUST NOT become a noisy routing table. When a doc path or rule only
+applies to one persona, stage, or responsibility, put it in the persona spec or
+pipeline contract and reference it through a stable key in `DOC.REGISTRY`.
 
-Section numbering MAY increase when new mandatory sections are ratified. A
-change MUST NOT silently reorder or remove an existing mandatory section.
+## Update triggers
 
-## 3 - Update triggers
+Update `/AGENTS.md` when a repo-wide operating invariant changes, or when the set
+of stable global keys that every agent needs changes. Do not update AGENTS for
+narrow persona behavior, stage inputs, stage outputs, or local acceptance
+criteria unless the change also alters the global contract model.
 
-Authors SHALL update `/AGENTS.md` when any trigger below occurs:
+When AGENTS changes, update these dependent artifacts in the same patch when
+relevant:
 
-1. **Canon drift.** A required handbook page is added, removed, renamed, or has
-   a changed normative purpose.
-2. **Path drift.** A top-level path in the workspace map changes.
-3. **Governance drift.** Human-gate, ratification, or non-negotiable workflow
-   obligations change.
-4. **Delegation drift.** Pipeline delegation rules, fallback mode, or persona
-   ownership boundaries change.
-5. **Bootstrap-state drift.** The live status no longer matches repository
-   reality.
-6. **Cross-file contradiction.** AGENTS text conflicts with `.docs/PRD.md`,
-   `.docs/BOOTSTRAP.md`, or handbook canon.
+- `lib/memory/handbook/agent-document-registry.md`
+- `lib/memory/handbook/persona-contracts.md`
+- `lib/memory/handbook/output-manifest-contract.md`
+- `lib/memory/handbook/pipeline-state-contract.md`
+- `lib/memory/handbook/index.md`
+- generated projection code in `lib/internal/packages/@pancreator/cli/src/cursor-sync.ts`
 
-When a trigger fires, the author SHALL update AGENTS in the same change set as
-the source change, or SHALL record a deferral with backlog linkage.
+## Reference policy
 
-## 4 - Change-control workflow
+Prefer stable `kind: file` references for AGENTS in durable docs. Avoid citing
+AGENTS line ranges unless the exact wording is the subject of the artifact; line
+ranges become stale whenever the operating card is compressed or reorganized.
 
-AGENTS changes are governance changes and SHALL follow this sequence:
+## Anti-patterns
 
-1. Open or reference an inbox directive under `/lib/inbox/in/` that authorizes the
-   update scope.
-2. When the change is policy-significant, create or update an ADR under
-   `/lib/memory/adr/` before ratification.
-3. Stage AGENTS and dependent canonical docs together to keep references
-   coherent.
-4. Request explicit human ratification before treating new AGENTS rules as
-   active policy.
-5. If any required update is deferred, record rationale and backlog linkage in
-   `/lib/memory/backlog/index.yaml` per documentation-impact policy.
-
-## 5 - Link policy
-
-`/AGENTS.md` is the single canonical root operating card.
-
-Authors MUST NOT add `.github/copilot-instructions.md`, root `CLAUDE.md`, or
-other duplicate mirrors of AGENTS content. Any tool that expects a separate
-Copilot instruction file SHALL be configured to read `AGENTS.md` when the
-product allows it.
-
-Authors MUST NOT maintain duplicate static copies of AGENTS narrative in any
-mirror surface without an inbox-authorized exception and backlog linkage.
-
-## 6 - Quality checks before merge
-
-Before merge, the author SHALL verify:
-
-1. **Repo reality alignment.** AGENTS claims match actual directories, active
-   bootstrap state, and current roster.
-2. **Canon table integrity.** Every listed file exists and each purpose line is
-   precise and current.
-3. **Reference integrity.** Frontmatter references use dual-anchor shape with
-   `contentHash` populated or explicitly `TBD-on-commit`.
-4. **Policy coherence.** AGENTS introduces no contradiction with `.docs/PRD.md`,
-   `.docs/BOOTSTRAP.md`, constitution, glossary, and handbook contracts.
-5. **Delegation coherence.** Delegation rules in AGENTS remain consistent with
-   persona metadata ownership boundaries.
-6. **Entrypoint integrity.** The repository root exposes only `/AGENTS.md` as
-   the operating card; no duplicate instruction symlinks or parallel static
-   copies.
-
-## 7 - Author checklist (compact)
-
-- [ ] Trigger identified and scoped.
-- [ ] Inbox directive linked; ADR linked when policy-significant.
-- [ ] Required AGENTS sections preserved and coherent.
-- [ ] Canon table updated for any handbook/spec drift.
-- [ ] Entrypoint policy validated (`AGENTS.md` only at repo root for the operating card).
-- [ ] Cross-file contradiction check passed (`.docs/PRD.md`, `.docs/BOOTSTRAP.md`, handbook).
-- [ ] Deferrals, if any, recorded with backlog linkage.
-- [ ] Human ratification requested before policy activation.
-
-## 8 - Stability
-
-This guide is a Phase 0b handbook seed and is currently `experimental`.
-Promotion to `stable` SHALL follow repeated dogfood validation that AGENTS
-changes remain coherent, ratifiable, and contradiction-free across phases.
+- Long tables of handbook paths in AGENTS.
+- Duplicating persona-specific required docs in AGENTS.
+- Duplicating pipeline stage inputs, outputs, or gates in AGENTS.
+- Asking agents to invent per-run contracts instead of following static specs.
+- Treating a path list as proof that required docs were read or applied.

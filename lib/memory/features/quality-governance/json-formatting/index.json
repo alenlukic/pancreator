@@ -41,5 +41,10 @@
     "lib/memory/features/json-formatting/index.json",
     "lib/memory/features/json-formatting/spec.md"
   ],
-  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction.",
+  "archived_inbox_source": ".pan/archive/inbox/in/172983_05-23-26/74280_0322_json-formatting.md",
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172983_05-23-26/74280_0322_json-formatting.md",
+    "prior_path": "lib/inbox/in/json_formatting.md"
+  }
 }

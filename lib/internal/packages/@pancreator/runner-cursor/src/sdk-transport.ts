@@ -87,6 +87,19 @@ export interface CursorSdkInvokeResult {
 
 export type CursorSdkTransport = (params: CursorSdkInvokeParams) => Promise<CursorSdkInvokeResult>;
 
+function buildChromeDevtoolsSafetyLines(persona: RunnerPersonaInput): string[] {
+  if (!persona.mcpServers.includes("chrome-devtools")) {
+    return [];
+  }
+  return [
+    "Browser hygiene for chrome-devtools:",
+    "- Use `new_page` with a unique `isolatedContext` for the current run.",
+    "- Keep all state in a disposable automation context or profile and do not attach to the operator's regular browsing session.",
+    "- Do not modify macOS LaunchServices, default-browser handlers, Chrome preferences, extensions, or any other host-level browser configuration.",
+    "- Close every task-owned page before finishing and verify teardown (for example via `list_pages`). If cleanup cannot be verified, treat the task as blocked instead of reporting success.",
+  ];
+}
+
 /** Builds the SDK user message with persona contract, inline prompt, and full artifact set. */
 export function buildSdkPrompt(params: CursorSdkInvokeParams): string {
   const lines = [
@@ -104,6 +117,7 @@ export function buildSdkPrompt(params: CursorSdkInvokeParams): string {
     lines.push(
       `MCP setting sources: ${PERSONA_MCP_SETTING_SOURCES.join(", ")} (loaded from the operator Cursor environment)`,
     );
+    lines.push(...buildChromeDevtoolsSafetyLines(params.persona));
   }
   if (params.requiredArtifactPaths !== undefined && params.requiredArtifactPaths.length > 0) {
     lines.push("Required output artifacts (all MUST exist on disk before finishing):");

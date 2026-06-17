@@ -4,6 +4,5 @@ globs:
   - lib/memory/features/**/contract*.{md,yaml,yml,rego}
   - lib/memory/features/**/contracts/**/*
   - pancreator.yaml
-  - pancreator-defaults.yaml
   - lib/memory/handbook/contract-templates/**/*.md
 alwaysApply: false

@@ -7,19 +7,19 @@
   "stagePrompt": "# Plan stage\nEmit consolidated planning artifacts.",
   "writesOnSuccess": [
     {
-      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/product-plan.md",
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/product/plan.md",
       "content": "# Product plan\n\n## Scope\n\nDemo.\n"
     },
     {
-      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/product-acceptance-criteria.md",
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/product/acceptance-criteria.md",
       "content": "# Acceptance criteria\n\n## Criteria\n\n- P-AC-1: verified.\n"
     },
     {
-      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/design-plan.md",
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/design/plan.md",
       "content": "# Design plan\n\n## Layout\n\nDemo.\n"
     },
     {
-      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/design-acceptance-criteria.md",
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/design/acceptance-criteria.md",
       "content": "# Acceptance criteria\n\n## Criteria\n\n- D-AC-1: verified.\n"
     },
     {
@@ -33,11 +33,11 @@
   ],
   "writesOnRemediation": [
     {
-      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/tech-plan.md",
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/tech/plan.md",
       "content": "# Tech plan\n\n## Approach\n\nDemo.\n"
     },
     {
-      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/tech-acceptance-criteria.md",
+      "path": ".pan/work/172996_05-10-26/38670_1315_demo-feature/tech/acceptance-criteria.md",
       "content": "# Acceptance criteria\n\n## Criteria\n\n- T-AC-1: verified.\n"
     },
     {

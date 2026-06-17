@@ -37,6 +37,7 @@ automation and automatic structure-change execution remain deferred.
 | Testing infrastructure | Run compliance tests after testing infrastructure add/modify/delete. |
 | Operator interface | Run compliance tests after operator interface add/modify/delete. |
 | Milestone ratification artifact | Run compliance tests after milestone-ratification artifact add/modify/delete. |
+| Feature memory index | Run compliance tests after feature `index.json` or librarian index contract add/modify/delete. |
 
 ## Manual Execution Protocol
 

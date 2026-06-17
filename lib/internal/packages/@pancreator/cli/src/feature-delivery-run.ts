@@ -1,6 +1,15 @@
-import { asTaskId, resolveProjectPath, resolveRepoPath, type TaskId } from "@pancreator/core";
+import {
+  asTaskId,
+  resolveProjectPath,
+  resolveRepoPath,
+  type TaskId,
+} from "@pancreator/core";
 import type { InterventionState } from "@pancreator/intervention";
-import { loadPipelineYaml, type PipelineDefinition, type PipelineStage } from "@pancreator/pipeline";
+import {
+  loadPipelineYaml,
+  type PipelineDefinition,
+  type PipelineStage,
+} from "@pancreator/pipeline";
 import {
   appendRunLogRecord,
   newSpanId,
@@ -10,7 +19,14 @@ import {
 } from "@pancreator/run-logger";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, rmdir, stat, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
@@ -67,7 +83,11 @@ import {
   type FeatureDeliverySdkProgressReporter,
 } from "./feature-delivery-sdk-progress.js";
 import { assertDeliveryReportCitationFormat } from "./delivery-report-citation-lint.js";
-import { ensurePipelineCloseDoc, PIPELINE_CLOSE_FILENAME, pipelineCloseRel } from "./feature-delivery-pipeline-close.js";
+import {
+  ensurePipelineCloseDoc,
+  PIPELINE_CLOSE_FILENAME,
+  pipelineCloseRel,
+} from "./feature-delivery-pipeline-close.js";
 import {
   ensureOperatorVerificationDoc,
   OPERATOR_VERIFICATION_FILENAME,
@@ -82,7 +102,16 @@ import {
   validateStageCompletionArtifacts,
   type ArtifactContentWarning,
 } from "./feature-delivery-stage-artifacts.js";
-import { decodeCountdownTimestamp, parseRunDirParts } from "./timestamp-decode.js";
+import {
+  decodeCountdownTimestamp,
+  parseRunDirParts,
+} from "./timestamp-decode.js";
+import {
+  archiveInboxPathForSource,
+  findExistingArchivedInboxPath,
+  pruneEmptyQueueParents,
+} from "./inbox-archive.js";
+import { validateImplementationScopeAmendments } from "./feature-delivery-gate-validation.js";
 import {
   formatWorkArchiveHygieneRemediation,
   listCanonicalWorkDayDirs,
@@ -113,6 +142,72 @@ function resolveFeatureDeliveryProgress(input: {
   return input.progress ?? input.testHooks?.progress;
 }
 
+function listGitPaths(repoRoot: string, args: readonly string[]): string[] {
+  const result = spawnSync("git", ["-C", repoRoot, ...args], { encoding: "utf8" });
+  if (result.status !== 0) {
+    const stderr = result.stderr.trim();
+    throw new Error(
+      `Unable to inspect local diff for touch-set validation: git ${args.join(" ")} failed${stderr.length > 0 ? ` (${stderr})` : "."}`,
+    );
+  }
+  return result.stdout
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function currentLocalDiffPaths(repoRoot: string): string[] {
+  if (!existsSync(path.join(repoRoot, ".git"))) {
+    return [];
+  }
+  const combined = new Set<string>();
+  for (const rel of listGitPaths(repoRoot, ["diff", "--name-only", "--relative"])) {
+    combined.add(rel);
+  }
+  for (const rel of listGitPaths(repoRoot, ["diff", "--cached", "--name-only", "--relative", "HEAD"])) {
+    combined.add(rel);
+  }
+  for (const rel of listGitPaths(repoRoot, ["ls-files", "--others", "--exclude-standard"])) {
+    combined.add(rel);
+  }
+  return [...combined].sort((a, b) => a.localeCompare(b));
+}
+
+function assertImplementStageTouchSetScope(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+): void {
+  const runDir = state.artifacts.runDir;
+  const touchSetRel = path.posix.join(runDir, "touch-set.json");
+  const reportRel = path.posix.join(runDir, "implementation-report.md");
+  const touchSetContent = readFileSync(resolveRepoPath(repoRoot, touchSetRel), "utf8");
+  const implementationReportContent = readFileSync(
+    resolveRepoPath(repoRoot, reportRel),
+    "utf8",
+  );
+  const allowedRunArtifacts = new Set([touchSetRel, reportRel]);
+  const featureDiffPaths: string[] = [];
+  for (const rel of currentLocalDiffPaths(repoRoot)) {
+    if (rel.startsWith(`${runDir}/`)) {
+      if (!allowedRunArtifacts.has(rel)) {
+        throw new Error(
+          `Cannot advance implement; ${rel} is not a stage-owned implement artifact. Only ${touchSetRel} and ${reportRel} may change under ${runDir} during implement.`,
+        );
+      }
+      continue;
+    }
+    featureDiffPaths.push(rel);
+  }
+  const error = validateImplementationScopeAmendments(
+    touchSetContent,
+    implementationReportContent,
+    featureDiffPaths,
+  );
+  if (error !== null) {
+    throw new Error(`Cannot advance implement; ${error}`);
+  }
+}
+
 type FeatureDeliveryStageId = (typeof FEATURE_DELIVERY_STAGES)[number];
 type FeatureDeliveryCurrentStage =
   | FeatureDeliveryStageId
@@ -120,7 +215,12 @@ type FeatureDeliveryCurrentStage =
   | "aborted"
   | "paused";
 
-export type StageStatus = "ready" | "pending" | "complete" | "blocked" | "skipped";
+export type StageStatus =
+  | "ready"
+  | "pending"
+  | "complete"
+  | "blocked"
+  | "skipped";
 export type PipelineStatus =
   | "ready_for_stage_delegation"
   | "waiting_for_human_gate"
@@ -224,7 +324,11 @@ export interface ValidateArtifactsResult {
   present: string[];
 }
 
-export type { FeatureDeliveryAutomationState, FeatureDeliveryTestHooks, FeatureDeliverySdkProgressReporter };
+export type {
+  FeatureDeliveryAutomationState,
+  FeatureDeliveryTestHooks,
+  FeatureDeliverySdkProgressReporter,
+};
 
 export interface StartFeatureDeliveryInput {
   repoRoot: string;
@@ -385,16 +489,30 @@ export async function startFeatureDelivery(
   const repoRoot = path.resolve(input.repoRoot);
   const now = input.clock?.() ?? new Date();
   const inboxRel = assertInboxInRelativePath(input.inboxEntry, "inbox entry");
-  const inboxPath = resolveProjectPath(repoRoot, "lib", "inbox", "in", ...inboxRel.split("/"));
+  const inboxPath = resolveProjectPath(
+    repoRoot,
+    "lib",
+    "inbox",
+    "in",
+    ...inboxRel.split("/"),
+  );
   const directive = await readFile(inboxPath, "utf8");
-  const pipelinePath = resolveProjectPath(repoRoot, "lib", "pipelines", "feature-delivery.yaml");
+  const pipelinePath = resolveProjectPath(
+    repoRoot,
+    "lib",
+    "pipelines",
+    "feature-delivery.yaml",
+  );
   const pipeline = loadPipelineYaml(pipelinePath);
   if (pipeline.id !== "feature-delivery") {
-    throw new Error(`Expected feature-delivery pipeline at ${pipelinePath}; found ${pipeline.id}.`);
+    throw new Error(
+      `Expected feature-delivery pipeline at ${pipelinePath}; found ${pipeline.id}.`,
+    );
   }
 
   const featureId = sanitizeSlug(
-    input.featureId ?? deriveFeatureId(path.posix.basename(inboxRel), directive),
+    input.featureId ??
+      deriveFeatureId(path.posix.basename(inboxRel), directive),
   );
   const taskId = sanitizeTaskId(input.taskId ?? makeTaskId(now, featureId));
   const dayDir = makeDayDir(now);
@@ -435,7 +553,7 @@ export async function startFeatureDelivery(
     stages: buildStageStates(pipeline, invocation),
     transitions: featureDeliveryTransitions(pipeline),
     nextHumanAction:
-      "Delegate product-plan-prompt.md to product-engineer and design-plan-prompt.md to design-engineer, then delegate next-prompt.md to tech-lead for consolidated planning.",
+      "Delegate product/plan-prompt.md to product-engineer and design/plan-prompt.md to design-engineer, then delegate next-prompt.md to tech-lead for consolidated planning.",
     options: {
       designSteps: true,
       designStepsSource: designConfig.designStepsSource,
@@ -443,11 +561,27 @@ export async function startFeatureDelivery(
   };
 
   ensureAutomationState(state, invocation);
-  state.nextHumanAction = nextHumanActionForStage(state, "plan", undefined, invocation);
+  state.nextHumanAction = nextHumanActionForStage(
+    state,
+    "plan",
+    undefined,
+    invocation,
+  );
 
   await mkdir(runDir, { recursive: true });
-  await writeFile(handoffFile, renderHandoff(repoRoot, state, pipeline, directive), "utf8");
-  await writeFile(nextPromptFile, renderNextPrompt(repoRoot, state, pipeline), "utf8");
+  await mkdir(path.join(runDir, "product"), { recursive: true });
+  await mkdir(path.join(runDir, "design"), { recursive: true });
+  await mkdir(path.join(runDir, "tech"), { recursive: true });
+  await writeFile(
+    handoffFile,
+    renderHandoff(repoRoot, state, pipeline, directive),
+    "utf8",
+  );
+  await writeFile(
+    nextPromptFile,
+    renderNextPrompt(repoRoot, state, pipeline),
+    "utf8",
+  );
   await writeFile(stateFile, stringifyCliJson(repoRoot, state), "utf8");
   await persistDesignCompanionPrompts(repoRoot, state);
 
@@ -469,7 +603,8 @@ export async function startFeatureDelivery(
   await appendRunLogRecord(runLogFile, makeInvocationRecord(state, now));
 
   if (invocation === "sdk") {
-    const compiledForChain = compiled ?? (await compileFeatureDeliveryPipeline(repoRoot, pipeline));
+    const compiledForChain =
+      compiled ?? (await compileFeatureDeliveryPipeline(repoRoot, pipeline));
     await trySdkAutoChainAfterStageWork({
       repoRoot,
       state,
@@ -575,14 +710,16 @@ export async function resolveFeatureDeliveryTaskId(
     return sanitizeTaskId(rawTaskId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes("task id MUST match <seconds-to-midnight>_<HHMM>_<slug>.")) {
+    if (
+      !message.includes(
+        "task id MUST match <seconds-to-midnight>_<HHMM>_<slug>.",
+      )
+    ) {
       throw error;
     }
     const suggestion = await suggestTaskIdFromSlug(repoRoot, rawTaskId);
     throw new Error(
-      suggestion === null
-        ? message
-        : `${message} Did you mean ${suggestion}?`,
+      suggestion === null ? message : `${message} Did you mean ${suggestion}?`,
     );
   }
 }
@@ -596,13 +733,22 @@ export async function advanceFeatureDelivery(
   const stateFile = await findStateFile(repoRoot, taskId);
   const state = await readFeatureDeliveryState(stateFile.abs);
   const pipeline = loadFeatureDeliveryPipeline(repoRoot);
-  const artifact = await assertRepoRelativeExistingFile(repoRoot, input.artifact, "artifact");
+  const artifact = await assertRepoRelativeExistingFile(
+    repoRoot,
+    input.artifact,
+    "artifact",
+  );
 
   if (state.currentStage === TERMINAL_STAGE) {
     throw new Error(`Task ${taskId} is already complete; refusing to advance.`);
   }
 
-  const reentry = await tryResolveReviewReentryAdvance(repoRoot, state, artifact.rel, input.event);
+  const reentry = await tryResolveReviewReentryAdvance(
+    repoRoot,
+    state,
+    artifact.rel,
+    input.event,
+  );
   if (reentry !== null) {
     return advanceReviewReentryFromImplement({
       repoRoot,
@@ -632,11 +778,23 @@ export async function advanceFeatureDelivery(
     return reportApproval;
   }
 
-  const requestedEvent = input.event ?? defaultEventForStage(state.currentStage);
-  const testResolvedEvent = await resolveTestStageAdvanceEvent(repoRoot, state, requestedEvent, artifact.rel);
-  const event = await resolveComplianceStageAdvanceEvent(repoRoot, state, testResolvedEvent, artifact.rel);
+  const requestedEvent =
+    input.event ?? defaultEventForStage(state.currentStage);
+  const testResolvedEvent = await resolveTestStageAdvanceEvent(
+    repoRoot,
+    state,
+    requestedEvent,
+    artifact.rel,
+  );
+  const event = await resolveComplianceStageAdvanceEvent(
+    repoRoot,
+    state,
+    testResolvedEvent,
+    artifact.rel,
+  );
   const transition = state.transitions.find(
-    (candidate) => candidate.from === state.currentStage && candidate.on === event,
+    (candidate) =>
+      candidate.from === state.currentStage && candidate.on === event,
   );
   if (transition === undefined) {
     throw new Error(`No transition from ${state.currentStage} on ${event}.`);
@@ -645,6 +803,9 @@ export async function advanceFeatureDelivery(
     await assertDeliveryReportCitationFormat(repoRoot, artifact.rel);
   }
   assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
+  if (state.currentStage === "implement" && event === "implementation_complete") {
+    assertImplementStageTouchSetScope(repoRoot, state);
+  }
 
   if (state.currentStage === "compliance") {
     await persistComplianceAuditHistoryForResult({
@@ -658,19 +819,38 @@ export async function advanceFeatureDelivery(
     });
   }
 
-  const contentWarnings = collectStageContentWarnings(repoRoot, state, state.currentStage);
-  if ((state.currentStage === "ship" || state.currentStage === "compliance") && contentWarnings.length > 0) {
+  const contentWarnings = collectStageContentWarnings(
+    repoRoot,
+    state,
+    state.currentStage,
+  );
+  if (
+    (state.currentStage === "ship" || state.currentStage === "compliance") &&
+    contentWarnings.length > 0
+  ) {
     const details = contentWarnings
       .map((warning) => `${warning.path}: ${warning.code} (${warning.message})`)
       .join("; ");
-    throw new Error(`Cannot advance ${state.currentStage}; blocking content warnings remain: ${details}`);
+    throw new Error(
+      `Cannot advance ${state.currentStage}; blocking content warnings remain: ${details}`,
+    );
   }
 
   delete state.nextCommand;
-  const applied = applyFeatureDeliveryTransition(state, transition, event, artifact.rel, now);
+  const applied = applyFeatureDeliveryTransition(
+    state,
+    transition,
+    event,
+    artifact.rel,
+    now,
+  );
   if (applied.toStage === TERMINAL_STAGE) {
     await ensurePipelineCloseDoc(repoRoot, state, now);
-    const verificationRel = await ensureOperatorVerificationDoc(repoRoot, state, now);
+    const verificationRel = await ensureOperatorVerificationDoc(
+      repoRoot,
+      state,
+      now,
+    );
     state.artifacts.operatorVerificationFile = verificationRel;
   }
   const invocation = await readCursorInvocationForState(repoRoot, state);
@@ -698,7 +878,9 @@ export async function advanceFeatureDelivery(
           { contentWarnings },
         ),
       );
-      const haltError = new Error(`Feature-delivery retry limit halt: ${haltSummary}`) as Error & {
+      const haltError = new Error(
+        `Feature-delivery retry limit halt: ${haltSummary}`,
+      ) as Error & {
         haltSummary: string;
       };
       haltError.haltSummary = haltSummary;
@@ -707,17 +889,24 @@ export async function advanceFeatureDelivery(
 
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
     if (applied.toStage !== TERMINAL_STAGE) {
-      prepareStageInvocationIndexForSdkEntry(state, applied.toStage, invocation);
+      prepareStageInvocationIndexForSdkEntry(
+        state,
+        applied.toStage,
+        invocation,
+      );
       await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
-      emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
-        taskId,
-        featureId: state.featureId,
-        fromStage: applied.fromStage,
-        toStage: applied.toStage,
-        event: applied.event,
-        persona: personaForStage(pipeline, applied.toStage) ?? undefined,
-        now,
-      });
+      emitFeatureDeliveryStageTransition(
+        resolveFeatureDeliveryProgress(input),
+        {
+          taskId,
+          featureId: state.featureId,
+          fromStage: applied.fromStage,
+          toStage: applied.toStage,
+          event: applied.event,
+          persona: personaForStage(pipeline, applied.toStage) ?? undefined,
+          now,
+        },
+      );
       await invokeFeatureDeliveryEnteringStage({
         repoRoot,
         state,
@@ -800,13 +989,19 @@ export async function repairFeatureDeliveryState(
   const targetStage = assertFeatureDeliveryStage(input.stage);
   const reason = input.reason.trim();
   if (reason.length < 12) {
-    throw new Error("repair-state requires a concrete --reason with at least 12 characters.");
+    throw new Error(
+      "repair-state requires a concrete --reason with at least 12 characters.",
+    );
   }
 
   const stateFile = await findStateFile(repoRoot, taskId);
   const state = await readFeatureDeliveryState(stateFile.abs);
   const pipeline = loadFeatureDeliveryPipeline(repoRoot);
-  const artifact = await assertRepoRelativeExistingFile(repoRoot, input.artifact, "artifact");
+  const artifact = await assertRepoRelativeExistingFile(
+    repoRoot,
+    input.artifact,
+    "artifact",
+  );
   const previousStage = state.currentStage;
 
   state.currentStage = targetStage;
@@ -815,7 +1010,8 @@ export async function repairFeatureDeliveryState(
     state,
     targetStage,
     `Manual state repair: ${reason}`,
-    state.automation?.runnerInvocation ?? (await readCursorInvocationMode(repoRoot)),
+    state.automation?.runnerInvocation ??
+      (await readCursorInvocationMode(repoRoot)),
   );
   state.stages = repairStageStatuses(state.stages, targetStage);
   state.advanceHistory = [
@@ -865,7 +1061,14 @@ export async function repairFeatureDeliveryState(
   await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
   await appendRunLogRecord(
     resolveRepoPath(repoRoot, state.artifacts.runLogFile),
-    makeRepairRecord(state, now, previousStage, targetStage, artifact.rel, reason),
+    makeRepairRecord(
+      state,
+      now,
+      previousStage,
+      targetStage,
+      artifact.rel,
+      reason,
+    ),
   );
 
   return {
@@ -913,7 +1116,10 @@ export async function refreshFeatureDeliveryPrompt(
 export async function loadFeatureDeliveryStateForTask(
   repoRoot: string,
   taskId: string,
-): Promise<{ state: FeatureDeliveryState; stateFile: { abs: string; rel: string } }> {
+): Promise<{
+  state: FeatureDeliveryState;
+  stateFile: { abs: string; rel: string };
+}> {
   const stateFile = await findStateFile(repoRoot, sanitizeTaskId(taskId));
   const state = await readFeatureDeliveryState(stateFile.abs);
   return { state, stateFile };
@@ -933,7 +1139,9 @@ export async function closeFeatureDeliveryArtifacts(
     if (state.currentStage === TERMINAL_STAGE && state.status === "closed") {
       throw new Error(`Task ${taskId} is already closed.`);
     }
-    throw new Error(`Task ${taskId} must be complete before artifact closure; got ${state.currentStage}/${state.status}.`);
+    throw new Error(
+      `Task ${taskId} must be complete before artifact closure; got ${state.currentStage}/${state.status}.`,
+    );
   }
 
   const closure = finalClosurePaths(state);
@@ -942,10 +1150,21 @@ export async function closeFeatureDeliveryArtifacts(
   const inboxSourceAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
   let inboxArchiveRel = closure.inboxArchiveRel;
   let inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
-  const shipRatificationRelActive = path.posix.join(closure.runDirRel, "ship-ratification.json");
-  const shipRatificationRelArchive = path.posix.join(closure.workArchiveRel, "ship-ratification.json");
+  const shipRatificationRelActive = path.posix.join(
+    closure.runDirRel,
+    "ship-ratification.json",
+  );
+  const shipRatificationRelArchive = path.posix.join(
+    closure.workArchiveRel,
+    "ship-ratification.json",
+  );
   const indexRel = durableFeatureIndexRel(state.featureId);
-  const activeMemoryRel = path.posix.join("lib", "memory", "active", "current.md");
+  const activeMemoryRel = path.posix.join(
+    "lib",
+    "memory",
+    "active",
+    "current.md",
+  );
 
   const activeRunExists = existsSync(activeRunDirAbs);
   const archiveRunExists = existsSync(archiveRunDirAbs);
@@ -953,7 +1172,11 @@ export async function closeFeatureDeliveryArtifacts(
   let inboxArchiveExists = existsSync(inboxArchiveAbs);
   if (!inboxSourceExists && !inboxArchiveExists) {
     const run = parseWorkRunDir(closure.runDirRel, taskId);
-    const siblingArchive = await findSiblingArchivedInboxPath(repoRoot, closure.inboxSourceRel, run.dayDir);
+    const siblingArchive = await findExistingArchivedInboxPath(
+      repoRoot,
+      closure.inboxSourceRel,
+      run.dayDir,
+    );
     if (siblingArchive !== null) {
       inboxArchiveRel = siblingArchive.rel;
       inboxArchiveAbs = siblingArchive.abs;
@@ -968,8 +1191,12 @@ export async function closeFeatureDeliveryArtifacts(
   }
 
   const alreadyArchived = !activeRunExists && archiveRunExists;
-  const runDirRel = alreadyArchived ? closure.workArchiveRel : closure.runDirRel;
-  const shipRatificationRel = alreadyArchived ? shipRatificationRelArchive : shipRatificationRelActive;
+  const runDirRel = alreadyArchived
+    ? closure.workArchiveRel
+    : closure.runDirRel;
+  const shipRatificationRel = alreadyArchived
+    ? shipRatificationRelArchive
+    : shipRatificationRelActive;
 
   if (!alreadyArchived) {
     await assertExistingDirectory(activeRunDirAbs, closure.runDirRel);
@@ -978,14 +1205,23 @@ export async function closeFeatureDeliveryArtifacts(
     await assertExistingDirectory(archiveRunDirAbs, closure.workArchiveRel);
   }
 
-  await assertExistingFile(resolveRepoPath(repoRoot, shipRatificationRel), shipRatificationRel);
+  await assertExistingFile(
+    resolveRepoPath(repoRoot, shipRatificationRel),
+    shipRatificationRel,
+  );
   await assertExistingFile(resolveRepoPath(repoRoot, indexRel), indexRel);
   await assertExistingFile(
-    resolveRepoPath(repoRoot, path.posix.join(runDirRel, PIPELINE_CLOSE_FILENAME)),
+    resolveRepoPath(
+      repoRoot,
+      path.posix.join(runDirRel, PIPELINE_CLOSE_FILENAME),
+    ),
     path.posix.join(runDirRel, PIPELINE_CLOSE_FILENAME),
   );
   await assertExistingFile(
-    resolveRepoPath(repoRoot, path.posix.join(runDirRel, OPERATOR_VERIFICATION_FILENAME)),
+    resolveRepoPath(
+      repoRoot,
+      path.posix.join(runDirRel, OPERATOR_VERIFICATION_FILENAME),
+    ),
     path.posix.join(runDirRel, OPERATOR_VERIFICATION_FILENAME),
   );
 
@@ -1021,12 +1257,18 @@ export async function closeFeatureDeliveryArtifacts(
     resolveRepoPath(repoRoot, path.posix.join(runDirRel, "run.log.jsonl")),
     "utf8",
   );
-  const indexSnapshot = await readFile(resolveRepoPath(repoRoot, indexRel), "utf8");
+  const indexSnapshot = await readFile(
+    resolveRepoPath(repoRoot, indexRel),
+    "utf8",
+  );
   const activeMemoryAbs = resolveRepoPath(repoRoot, activeMemoryRel);
   const activeMemorySnapshot = existsSync(activeMemoryAbs)
     ? await readFile(activeMemoryAbs, "utf8")
     : null;
-  const complianceAuditHistoryAbs = resolveRepoPath(repoRoot, COMPLIANCE_AUDIT_HISTORY_REL);
+  const complianceAuditHistoryAbs = resolveRepoPath(
+    repoRoot,
+    COMPLIANCE_AUDIT_HISTORY_REL,
+  );
   const complianceAuditHistorySnapshot = existsSync(complianceAuditHistoryAbs)
     ? await readFile(complianceAuditHistoryAbs, "utf8")
     : null;
@@ -1047,16 +1289,30 @@ export async function closeFeatureDeliveryArtifacts(
       if (!inboxAlreadyArchivedForRun) {
         await rename(inboxSourceAbs, inboxArchiveAbs);
         inboxArchived = true;
+        await pruneEmptyQueueParents(
+          repoRoot,
+          path.posix.dirname(closure.inboxSourceRel),
+          "lib/inbox/in",
+        );
       } else {
         inboxArchived = true;
       }
       await rename(activeRunDirAbs, archiveRunDirAbs);
       runArchived = true;
       await assertExistingDirectory(archiveRunDirAbs, closure.workArchiveRel);
-      await removeEmptyDirectoryIfPresent(path.dirname(activeRunDirAbs), path.posix.dirname(closure.runDirRel));
+      await pruneEmptyQueueParents(
+        repoRoot,
+        path.posix.dirname(closure.runDirRel),
+        ".pan/work",
+      );
     } else if (inboxSourceExists && !inboxArchiveExists) {
       await rename(inboxSourceAbs, inboxArchiveAbs);
       inboxArchived = true;
+      await pruneEmptyQueueParents(
+        repoRoot,
+        path.posix.dirname(closure.inboxSourceRel),
+        "lib/inbox/in",
+      );
     }
 
     const previousRunDir = state.artifacts.runDir;
@@ -1066,7 +1322,10 @@ export async function closeFeatureDeliveryArtifacts(
       handoffFile: path.posix.join(closure.workArchiveRel, "handoff.md"),
       runLogFile: path.posix.join(closure.workArchiveRel, "run.log.jsonl"),
       nextPromptFile: path.posix.join(closure.workArchiveRel, "next-prompt.md"),
-      operatorVerificationFile: path.posix.join(closure.workArchiveRel, OPERATOR_VERIFICATION_FILENAME),
+      operatorVerificationFile: path.posix.join(
+        closure.workArchiveRel,
+        OPERATOR_VERIFICATION_FILENAME,
+      ),
     };
     state.status = "closed";
     state.nextHumanAction =
@@ -1088,23 +1347,42 @@ export async function closeFeatureDeliveryArtifacts(
 
     const persistedRunDirRel = closure.workArchiveRel;
     await writeFile(
-      resolveRepoPath(repoRoot, path.posix.join(persistedRunDirRel, "state.json")),
+      resolveRepoPath(
+        repoRoot,
+        path.posix.join(persistedRunDirRel, "state.json"),
+      ),
       stringifyCliJson(repoRoot, state),
       "utf8",
     );
     await writeFile(
-      resolveRepoPath(repoRoot, path.posix.join(persistedRunDirRel, "handoff.md")),
+      resolveRepoPath(
+        repoRoot,
+        path.posix.join(persistedRunDirRel, "handoff.md"),
+      ),
       renderHandoff(repoRoot, state, pipeline),
       "utf8",
     );
     await writeFile(
-      resolveRepoPath(repoRoot, path.posix.join(persistedRunDirRel, "next-prompt.md")),
+      resolveRepoPath(
+        repoRoot,
+        path.posix.join(persistedRunDirRel, "next-prompt.md"),
+      ),
       `# Generated by pan close-artifacts\n\n${renderNextPrompt(repoRoot, state, pipeline)}`,
       "utf8",
     );
     await appendRunLogRecord(
-      resolveRepoPath(repoRoot, path.posix.join(persistedRunDirRel, "run.log.jsonl")),
-      makeCloseRecord(state, now, previousRunDir, closure.workArchiveRel, closure.inboxSourceRel, inboxArchiveRel),
+      resolveRepoPath(
+        repoRoot,
+        path.posix.join(persistedRunDirRel, "run.log.jsonl"),
+      ),
+      makeCloseRecord(
+        state,
+        now,
+        previousRunDir,
+        closure.workArchiveRel,
+        closure.inboxSourceRel,
+        inboxArchiveRel,
+      ),
     );
 
     await patchFeatureIndexArchivedInbox(
@@ -1120,10 +1398,13 @@ export async function closeFeatureDeliveryArtifacts(
       toRunDir: closure.workArchiveRel,
     });
 
-    const activeMemoryRefresh = await applyActiveMemoryRefreshOnArtifactClosure(repoRoot, {
-      archivedInboxSourceRel: closure.inboxSourceRel,
-      clock: input.clock,
-    });
+    const activeMemoryRefresh = await applyActiveMemoryRefreshOnArtifactClosure(
+      repoRoot,
+      {
+        archivedInboxSourceRel: closure.inboxSourceRel,
+        clock: input.clock,
+      },
+    );
 
     return {
       command: "close-artifacts",
@@ -1140,61 +1421,116 @@ export async function closeFeatureDeliveryArtifacts(
       runLogFile: state.artifacts.runLogFile,
       nextPromptFile: requireNextPromptFile(state),
       nextHumanAction: state.nextHumanAction,
-      operatorVerificationFile: state.artifacts.operatorVerificationFile ?? path.posix.join(closure.workArchiveRel, OPERATOR_VERIFICATION_FILENAME),
+      operatorVerificationFile:
+        state.artifacts.operatorVerificationFile ??
+        path.posix.join(closure.workArchiveRel, OPERATOR_VERIFICATION_FILENAME),
       ...(alreadyArchived ? { alreadyArchived: true } : {}),
     };
   } catch (error) {
     const rollbackFailures: string[] = [];
     const activeRunStateAbs = resolveRepoPath(repoRoot, closure.runDirRel);
-    const archiveRunStateAbs = resolveRepoPath(repoRoot, closure.workArchiveRel);
-    const activeInboxStateAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
-    const archiveInboxStateAbs = resolveRepoPath(repoRoot, closure.inboxArchiveRel);
+    const archiveRunStateAbs = resolveRepoPath(
+      repoRoot,
+      closure.workArchiveRel,
+    );
+    const activeInboxStateAbs = resolveRepoPath(
+      repoRoot,
+      closure.inboxSourceRel,
+    );
+    const archiveInboxStateAbs = resolveRepoPath(
+      repoRoot,
+      closure.inboxArchiveRel,
+    );
 
-    if (runArchived && existsSync(archiveRunStateAbs) && !existsSync(activeRunStateAbs)) {
+    if (
+      runArchived &&
+      existsSync(archiveRunStateAbs) &&
+      !existsSync(activeRunStateAbs)
+    ) {
       try {
         await mkdir(path.dirname(activeRunStateAbs), { recursive: true });
         await rename(archiveRunStateAbs, activeRunStateAbs);
       } catch (rollbackError) {
-        rollbackFailures.push(`restore run directory (${formatError(rollbackError)})`);
+        rollbackFailures.push(
+          `restore run directory (${formatError(rollbackError)})`,
+        );
       }
     }
-    if (inboxArchived && existsSync(archiveInboxStateAbs) && !existsSync(activeInboxStateAbs)) {
+    if (
+      inboxArchived &&
+      existsSync(archiveInboxStateAbs) &&
+      !existsSync(activeInboxStateAbs)
+    ) {
       try {
         await mkdir(path.dirname(activeInboxStateAbs), { recursive: true });
         await rename(archiveInboxStateAbs, activeInboxStateAbs);
       } catch (rollbackError) {
-        rollbackFailures.push(`restore inbox directive (${formatError(rollbackError)})`);
+        rollbackFailures.push(
+          `restore inbox directive (${formatError(rollbackError)})`,
+        );
       }
     }
 
     if (existsSync(activeRunStateAbs)) {
       try {
-        await writeFile(path.join(activeRunStateAbs, "state.json"), stateSnapshot, "utf8");
-        await writeFile(path.join(activeRunStateAbs, "handoff.md"), handoffSnapshot, "utf8");
-        await writeFile(path.join(activeRunStateAbs, "next-prompt.md"), nextPromptSnapshot, "utf8");
-        await writeFile(path.join(activeRunStateAbs, "run.log.jsonl"), runLogSnapshot, "utf8");
+        await writeFile(
+          path.join(activeRunStateAbs, "state.json"),
+          stateSnapshot,
+          "utf8",
+        );
+        await writeFile(
+          path.join(activeRunStateAbs, "handoff.md"),
+          handoffSnapshot,
+          "utf8",
+        );
+        await writeFile(
+          path.join(activeRunStateAbs, "next-prompt.md"),
+          nextPromptSnapshot,
+          "utf8",
+        );
+        await writeFile(
+          path.join(activeRunStateAbs, "run.log.jsonl"),
+          runLogSnapshot,
+          "utf8",
+        );
       } catch (rollbackError) {
-        rollbackFailures.push(`restore active run files (${formatError(rollbackError)})`);
+        rollbackFailures.push(
+          `restore active run files (${formatError(rollbackError)})`,
+        );
       }
     }
 
     try {
-      await writeFile(resolveRepoPath(repoRoot, indexRel), indexSnapshot, "utf8");
+      await writeFile(
+        resolveRepoPath(repoRoot, indexRel),
+        indexSnapshot,
+        "utf8",
+      );
     } catch (rollbackError) {
-      rollbackFailures.push(`restore feature index (${formatError(rollbackError)})`);
+      rollbackFailures.push(
+        `restore feature index (${formatError(rollbackError)})`,
+      );
     }
     if (activeMemorySnapshot !== null) {
       try {
         await writeFile(activeMemoryAbs, activeMemorySnapshot, "utf8");
       } catch (rollbackError) {
-        rollbackFailures.push(`restore active memory (${formatError(rollbackError)})`);
+        rollbackFailures.push(
+          `restore active memory (${formatError(rollbackError)})`,
+        );
       }
     }
     if (complianceAuditHistorySnapshot !== null) {
       try {
-        await writeFile(complianceAuditHistoryAbs, complianceAuditHistorySnapshot, "utf8");
+        await writeFile(
+          complianceAuditHistoryAbs,
+          complianceAuditHistorySnapshot,
+          "utf8",
+        );
       } catch (rollbackError) {
-        rollbackFailures.push(`restore compliance audit history (${formatError(rollbackError)})`);
+        rollbackFailures.push(
+          `restore compliance audit history (${formatError(rollbackError)})`,
+        );
       }
     }
 
@@ -1242,14 +1578,18 @@ export async function reopenFeatureDelivery(
   const now = input.clock?.() ?? new Date();
   const reason = input.reason.trim();
   if (reason.length < 12) {
-    throw new Error("reopen requires a concrete --reason with at least 12 characters.");
+    throw new Error(
+      "reopen requires a concrete --reason with at least 12 characters.",
+    );
   }
 
   const stateFile = await findStateFile(repoRoot, taskId);
   const state = await readFeatureDeliveryState(stateFile.abs);
 
   if (state.status !== "closed") {
-    throw new Error(`Task ${taskId} must be closed before reopen; got status ${state.status}.`);
+    throw new Error(
+      `Task ${taskId} must be closed before reopen; got status ${state.status}.`,
+    );
   }
 
   const targetStageInput = input.stage?.trim();
@@ -1258,7 +1598,9 @@ export async function reopenFeatureDelivery(
     targetStage = "plan";
   } else {
     if (targetStageInput === TERMINAL_STAGE || targetStageInput === "closed") {
-      throw new Error(`reopen MUST NOT target terminal stage ${targetStageInput}.`);
+      throw new Error(
+        `reopen MUST NOT target terminal stage ${targetStageInput}.`,
+      );
     }
     targetStage = assertFeatureDeliveryStage(targetStageInput);
   }
@@ -1273,7 +1615,9 @@ export async function reopenFeatureDelivery(
     );
   }
   if (!existsSync(archiveRunDirAbs)) {
-    throw new Error(`Archived run directory is missing: ${closure.workArchiveRel}.`);
+    throw new Error(
+      `Archived run directory is missing: ${closure.workArchiveRel}.`,
+    );
   }
 
   const inboxSourceAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
@@ -1282,7 +1626,11 @@ export async function reopenFeatureDelivery(
 
   await mkdir(path.dirname(activeRunDirAbs), { recursive: true });
   await rename(archiveRunDirAbs, activeRunDirAbs);
-  await removeEmptyDirectoryIfPresent(path.dirname(archiveRunDirAbs), path.posix.dirname(closure.workArchiveRel));
+  await pruneEmptyQueueParents(
+    repoRoot,
+    path.posix.dirname(closure.workArchiveRel),
+    ".pan/archive/work",
+  );
 
   if (existsSync(inboxArchiveAbs) && !existsSync(inboxSourceAbs)) {
     await mkdir(path.dirname(inboxSourceAbs), { recursive: true });
@@ -1301,7 +1649,8 @@ export async function reopenFeatureDelivery(
       state,
       targetStage,
       `Operator reopen: ${reason}`,
-      state.automation?.runnerInvocation ?? (await readCursorInvocationMode(repoRoot)),
+      state.automation?.runnerInvocation ??
+        (await readCursorInvocationMode(repoRoot)),
     );
     state.advanceHistory = [
       ...(state.advanceHistory ?? []),
@@ -1316,7 +1665,11 @@ export async function reopenFeatureDelivery(
       },
     ];
     state.status = "reopened";
-    ensureAutomationState(state, state.automation?.runnerInvocation ?? (await readCursorInvocationMode(repoRoot)));
+    ensureAutomationState(
+      state,
+      state.automation?.runnerInvocation ??
+        (await readCursorInvocationMode(repoRoot)),
+    );
     if (state.automation !== undefined) {
       state.automation.cumulativeRetryCount = 0;
     }
@@ -1325,7 +1678,11 @@ export async function reopenFeatureDelivery(
       resolveRepoPath(repoRoot, state.artifacts.runLogFile),
       makeReopenRecord(state, now, previousStage, targetStage, reason),
     );
-    await patchFeatureIndexReopenedInbox(repoRoot, state.featureId, closure.inboxSourceRel);
+    await patchFeatureIndexReopenedInbox(
+      repoRoot,
+      state.featureId,
+      closure.inboxSourceRel,
+    );
     await applyActiveMemoryRefreshOnReopen(repoRoot, {
       activeInboxSourceRel: closure.inboxSourceRel,
       clock: input.clock,
@@ -1337,21 +1694,26 @@ export async function reopenFeatureDelivery(
       toRunDir: closure.runDirRel,
     });
 
-    const invocation = state.automation?.runnerInvocation ?? (await readCursorInvocationMode(repoRoot));
+    const invocation =
+      state.automation?.runnerInvocation ??
+      (await readCursorInvocationMode(repoRoot));
     if (invocation === "sdk") {
       state.status = "ready_for_stage_delegation";
       const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
       prepareStageInvocationIndexForSdkEntry(state, targetStage, invocation);
       await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
-      emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
-        taskId,
-        featureId: state.featureId,
-        fromStage: previousStage,
-        toStage: targetStage,
-        event: "operator_reopen",
-        persona: personaForStage(pipeline, targetStage) ?? undefined,
-        now,
-      });
+      emitFeatureDeliveryStageTransition(
+        resolveFeatureDeliveryProgress(input),
+        {
+          taskId,
+          featureId: state.featureId,
+          fromStage: previousStage,
+          toStage: targetStage,
+          event: "operator_reopen",
+          persona: personaForStage(pipeline, targetStage) ?? undefined,
+          now,
+        },
+      );
       await invokeFeatureDeliveryEnteringStage({
         repoRoot,
         state,
@@ -1387,7 +1749,10 @@ export async function reopenFeatureDelivery(
   state.status = "reopened";
   state.pipelineId = "feature-delivery";
   const pipeline = loadFeatureDeliveryPipeline(repoRoot);
-  state.stages = buildStageStates(pipeline, state.automation?.runnerInvocation ?? "manual");
+  state.stages = buildStageStates(
+    pipeline,
+    state.automation?.runnerInvocation ?? "manual",
+  );
   state.transitions = featureDeliveryTransitions(pipeline);
   state.stages = repairStageStatuses(state.stages, targetStage);
   state.nextHumanAction = nextHumanActionForStage(
@@ -1410,7 +1775,11 @@ export async function reopenFeatureDelivery(
   ];
   await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
   if (inboxRestored) {
-    await patchFeatureIndexReopenedInbox(repoRoot, state.featureId, closure.inboxSourceRel);
+    await patchFeatureIndexReopenedInbox(
+      repoRoot,
+      state.featureId,
+      closure.inboxSourceRel,
+    );
     await applyActiveMemoryRefreshOnReopen(repoRoot, {
       activeInboxSourceRel: closure.inboxSourceRel,
       clock: input.clock,
@@ -1435,14 +1804,20 @@ export async function reopenFeatureDelivery(
   };
 }
 
-function rewriteActiveWorkArtifactPaths(state: FeatureDeliveryState, activeRunDirRel: string): void {
+function rewriteActiveWorkArtifactPaths(
+  state: FeatureDeliveryState,
+  activeRunDirRel: string,
+): void {
   state.artifacts = {
     runDir: activeRunDirRel,
     stateFile: path.posix.join(activeRunDirRel, "state.json"),
     handoffFile: path.posix.join(activeRunDirRel, "handoff.md"),
     runLogFile: path.posix.join(activeRunDirRel, "run.log.jsonl"),
     nextPromptFile: path.posix.join(activeRunDirRel, "next-prompt.md"),
-    operatorVerificationFile: path.posix.join(activeRunDirRel, OPERATOR_VERIFICATION_FILENAME),
+    operatorVerificationFile: path.posix.join(
+      activeRunDirRel,
+      OPERATOR_VERIFICATION_FILENAME,
+    ),
   };
 }
 
@@ -1481,7 +1856,9 @@ function sanitizeSlug(raw: string): string {
     .replace(/^-+|-+$/gu, "")
     .slice(0, 80);
   if (slug.length === 0) {
-    throw new Error("feature id MUST contain at least one alphanumeric character.");
+    throw new Error(
+      "feature id MUST contain at least one alphanumeric character.",
+    );
   }
   return slug;
 }
@@ -1497,7 +1874,10 @@ function sanitizeTaskId(raw: string): string {
   return taskId;
 }
 
-async function suggestTaskIdFromSlug(repoRoot: string, rawTaskId: string): Promise<string | null> {
+async function suggestTaskIdFromSlug(
+  repoRoot: string,
+  rawTaskId: string,
+): Promise<string | null> {
   const slug = taskIdSlugCandidate(rawTaskId);
   if (slug === null) {
     return null;
@@ -1566,7 +1946,10 @@ function taskIdSlugCandidate(rawTaskId: string): string | null {
   if (segments.length < 2) {
     return null;
   }
-  const slug = segments.length >= 3 ? segments.slice(2).join("_") : segments.slice(1).join("_");
+  const slug =
+    segments.length >= 3
+      ? segments.slice(2).join("_")
+      : segments.slice(1).join("_");
   if (!/^[a-z0-9][a-z0-9_-]*$/u.test(slug)) {
     return null;
   }
@@ -1601,17 +1984,26 @@ function makeTaskId(now: Date, featureId: string): string {
     0,
   );
   const nextDayStart = dayStart + 86400000;
-  const secondsToMidnight = Math.max(0, Math.floor((nextDayStart - now.getTime()) / 1000));
+  const secondsToMidnight = Math.max(
+    0,
+    Math.floor((nextDayStart - now.getTime()) / 1000),
+  );
   const hh = String(now.getUTCHours()).padStart(2, "0");
   const mm = String(now.getUTCMinutes()).padStart(2, "0");
   return `${secondsToMidnight}_${hh}${mm}_${featureId}`;
 }
 
-function pipelineIncludesStage(pipeline: PipelineDefinition | undefined, stageId: string): boolean {
+function pipelineIncludesStage(
+  pipeline: PipelineDefinition | undefined,
+  stageId: string,
+): boolean {
   return pipeline?.stages.some((stage) => stage.id === stageId) ?? true;
 }
 
-function stateIncludesStage(state: FeatureDeliveryState, stageId: string): boolean {
+function stateIncludesStage(
+  state: FeatureDeliveryState,
+  stageId: string,
+): boolean {
   return state.stages.some((stage) => stage.id === stageId);
 }
 
@@ -1645,12 +2037,14 @@ function stageGate(
       case "index":
         return {
           humanGate: "agent_ratification",
-          humanAttention: "The handing-off persona validates stage artifacts before the runtime advances.",
+          humanAttention:
+            "The handing-off persona validates stage artifacts before the runtime advances.",
         };
       case "implement":
         return {
           humanGate: "operator_intervention_available",
-          humanAttention: "Use pan pause/resume/abort if implementation drifts; SDK auto-advances when artifacts pass validation.",
+          humanAttention:
+            "Use pan pause/resume/abort if implementation drifts; SDK auto-advances when artifacts pass validation.",
         };
       case "review":
         return {
@@ -1678,12 +2072,14 @@ function stageGate(
     case "plan":
       return {
         humanGate: "human_approval",
-        humanAttention: "Ratify product, design, and technical plans, acceptance criteria, manual QA cases, ADR draft, touch-set, and handoff before execution.",
+        humanAttention:
+          "Ratify product, design, and technical plans, acceptance criteria, manual QA cases, ADR draft, touch-set, and handoff before execution.",
       };
     case "implement":
       return {
         humanGate: "operator_intervention_available",
-        humanAttention: "Use pan pause/resume/abort if implementation drifts, loops, or exceeds scope.",
+        humanAttention:
+          "Use pan pause/resume/abort if implementation drifts, loops, or exceeds scope.",
       };
     case "review":
       return {
@@ -1706,26 +2102,31 @@ function stageGate(
     case "ship":
       return {
         humanGate: "local_stage_only",
-        humanAttention: "Review the local diff and delivery report; no agent may push or open the PR unaudited.",
+        humanAttention:
+          "Review the local diff and delivery report; no agent may push or open the PR unaudited.",
       };
     case "index":
       return {
         humanGate: "archive_and_index_audit",
-        humanAttention: "Verify feature index artifacts; after index is accepted, the generated complete-stage prompt gives the human operator exact archival closure commands.",
+        humanAttention:
+          "Verify feature index artifacts; after index is accepted, the generated complete-stage prompt gives the human operator exact archival closure commands.",
       };
     default:
       return {};
   }
 }
 
-function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliveryTransition[] {
+function featureDeliveryTransitions(
+  pipeline?: PipelineDefinition,
+): FeatureDeliveryTransition[] {
   const includeCompliance = pipelineIncludesStage(pipeline, "compliance");
   const transitions: FeatureDeliveryTransition[] = [
     {
       from: "created",
       on: "invoke",
       to: "plan",
-      humanAttention: "Operator delegates product, design, and technical planning prompts.",
+      humanAttention:
+        "Operator delegates product, design, and technical planning prompts.",
     },
     {
       from: "plan",
@@ -1737,7 +2138,8 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
       from: "implement",
       on: "pause",
       to: "paused",
-      humanAttention: "Use pan pause <task-id> to stop at the next safe boundary.",
+      humanAttention:
+        "Use pan pause <task-id> to stop at the next safe boundary.",
     },
     {
       from: "paused",
@@ -1749,13 +2151,15 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
       from: "implement",
       on: "abort",
       to: "aborted",
-      humanAttention: "Use pan abort <task-id> --reason <text> for failed or superseded runs.",
+      humanAttention:
+        "Use pan abort <task-id> --reason <text> for failed or superseded runs.",
     },
     {
       from: "implement",
       on: "implementation_complete",
       to: "review",
-      humanAttention: "Reviewer receives only the handoff, touch-set, diff, and validation output.",
+      humanAttention:
+        "Reviewer receives only the handoff, touch-set, diff, and validation output.",
     },
     {
       from: "review",
@@ -1765,21 +2169,31 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
     },
     {
       from: "review",
+      on: "review_core_reentry",
+      to: "plan",
+      humanAttention:
+        "Touch-set or plan invalidation routes back to tech-lead before implementation continues.",
+    },
+    {
+      from: "review",
       on: "review_spot_fix",
       to: "review",
-      humanAttention: "Only issues that satisfy the spot-fix complexity bar may stay in review; rerun review after the bounded remediation.",
+      humanAttention:
+        "Only issues that satisfy the spot-fix complexity bar may stay in review; rerun review after the bounded remediation.",
     },
     {
       from: "review",
       on: "review_passes",
       to: "test",
-      humanAttention: "Human should still inspect review output before qa-tester runs.",
+      humanAttention:
+        "Human should still inspect review output before qa-tester runs.",
     },
     {
       from: "test",
       on: "qa_passes",
       to: "report",
-      humanAttention: "Human should inspect test-report.md before report/compliance.",
+      humanAttention:
+        "Human should inspect test-report.md before report/compliance.",
     },
     {
       from: "test",
@@ -1791,31 +2205,36 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
       from: "test",
       on: "qa_spot_fix",
       to: "test",
-      humanAttention: "Only issues that satisfy the spot-fix complexity bar may stay in test; rerun QA after the bounded remediation.",
+      humanAttention:
+        "Only issues that satisfy the spot-fix complexity bar may stay in test; rerun QA after the bounded remediation.",
     },
     {
       from: "test",
       on: "qa_fails_plan_invalidating",
       to: "plan",
-      humanAttention: "Plan-invalidating QA failure; re-plan before re-implementing.",
+      humanAttention:
+        "Plan-invalidating QA failure; re-plan before re-implementing.",
     },
     {
       from: "report",
       on: "report_ready",
       to: "compliance",
-      humanAttention: "Delivery report must be useful to the operator, not just a changelog.",
+      humanAttention:
+        "Delivery report must be useful to the operator, not just a changelog.",
     },
     {
       from: "compliance",
       on: "compliance_passes",
       to: "ship",
-      humanAttention: "Compliance gate is green; continue to ship ratification.",
+      humanAttention:
+        "Compliance gate is green; continue to ship ratification.",
     },
     {
       from: "compliance",
       on: "compliance_spot_fix",
       to: "compliance",
-      humanAttention: "Only issues that satisfy the spot-fix complexity bar may stay in compliance; rerun the gate after the bounded remediation.",
+      humanAttention:
+        "Only issues that satisfy the spot-fix complexity bar may stay in compliance; rerun the gate after the bounded remediation.",
     },
     {
       from: "compliance",
@@ -1827,7 +2246,8 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
       from: "compliance",
       on: "compliance_fails_plan_invalidating",
       to: "plan",
-      humanAttention: "Plan-invalidating compliance issue routes back to planning.",
+      humanAttention:
+        "Plan-invalidating compliance issue routes back to planning.",
     },
     {
       from: "ship",
@@ -1846,19 +2266,24 @@ function featureDeliveryTransitions(pipeline?: PipelineDefinition): FeatureDeliv
     return transitions;
   }
   return transitions
-    .filter((transition) => transition.from !== "compliance" && transition.to !== "compliance")
+    .filter(
+      (transition) =>
+        transition.from !== "compliance" && transition.to !== "compliance",
+    )
     .map((transition) => {
       if (transition.from === "report" && transition.on === "report_ready") {
         return {
           ...transition,
           to: "ship",
-          humanAttention: "Delivery report ratified; continue to ship ratification.",
+          humanAttention:
+            "Delivery report ratified; continue to ship ratification.",
         };
       }
       if (transition.from === "test" && transition.on === "qa_passes") {
         return {
           ...transition,
-          humanAttention: "Human should inspect test-report.md before report and ship.",
+          humanAttention:
+            "Human should inspect test-report.md before report and ship.",
         };
       }
       return transition;
@@ -1935,13 +2360,94 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 ## Re-entry rule
 
 If scope changes, validation repeatedly fails, or the touch-set is incomplete, stop and delegate back to supervisor, tech-lead, or reviewer instead of extending the executor loop.
-${excerpt === undefined || excerpt.length === 0 ? "" : `
+${
+  excerpt === undefined || excerpt.length === 0
+    ? ""
+    : `
 ## Directive excerpt
 
 \`\`\`markdown
 ${excerpt}
 \`\`\`
-`}`;
+`
+}`;
+}
+
+function stageGovernancePaths(stage: string): string[] {
+  const core = [
+    "lib/memory/handbook/agent-document-registry.md",
+    "lib/memory/handbook/persona-contracts.md",
+    "lib/memory/handbook/output-manifest-contract.md",
+    "lib/memory/handbook/pipeline-state-contract.md",
+    "lib/pipelines/feature-delivery.yaml",
+  ];
+  switch (stage) {
+    case "plan":
+      return [
+        ...core,
+        "lib/memory/handbook/engineering/software-engineering.md",
+        "lib/memory/handbook/engineering/typescript.md",
+      ];
+    case "implement":
+    case "review":
+      return [
+        ...core,
+        "lib/memory/handbook/engineering/software-engineering.md",
+        "lib/memory/handbook/engineering/typescript.md",
+        "lib/memory/handbook/compliance-runs.md",
+      ];
+    case "test":
+      return [
+        ...core,
+        "lib/memory/handbook/engineering/software-engineering.md",
+        "lib/memory/handbook/engineering/typescript.md",
+        "lib/memory/handbook/engineering/design-craft.md",
+        "lib/memory/handbook/compliance-runs.md",
+      ];
+    case "report":
+      return [
+        ...core,
+        "lib/memory/handbook/operator-output-contract.md",
+        "lib/memory/handbook/run-log-schema.md",
+      ];
+    case "compliance":
+      return [
+        ...core,
+        "lib/memory/handbook/compliance-runs.md",
+        "lib/memory/handbook/run-log-schema.md",
+      ];
+    case "ship":
+      return [...core, "lib/memory/handbook/operator-output-contract.md"];
+    case "index":
+    case "complete":
+      return [
+        ...core,
+        "lib/memory/handbook/operator-output-contract.md",
+        "lib/memory/handbook/run-log-schema.md",
+        "lib/memory/handbook/memory-tiers.md",
+      ];
+    default:
+      return [...core, "lib/memory/handbook/index.md"];
+  }
+}
+
+function renderGovernancePathList(stage: string): string {
+  return stageGovernancePaths(stage)
+    .map((p) => `- ${p}`)
+    .join("\n");
+}
+
+function renderStaticContractStagePrompt(stage: string): string {
+  const manifestEvidence =
+    stage === "compliance" || stage === "ship"
+      ? "JSON artifacts MUST include top-level `output_manifest` per DOC.OUTPUT_MANIFEST."
+      : "Markdown artifacts MUST include `## Output manifest` per DOC.OUTPUT_MANIFEST.";
+  return `Static contract requirement:
+- Follow the owning persona spec's \`## Static execution contract\` and the ${stage} stage contract in \`lib/pipelines/feature-delivery.yaml\`, but treat repo-wide rules in \`AGENTS.md\` as authoritative when they conflict with persona-local wording.
+- Resolve required \`DOC.*\`, \`PIPE.*\`, and \`PERSONA.*\` keys through \`lib/memory/handbook/agent-document-registry.md\`.
+- Load the docs named by the persona and stage contracts before producing artifacts.
+- ${manifestEvidence}
+- Do not invent an ad-hoc execution contract or treat a path list as compliance.`;
 }
 
 function renderNextPrompt(
@@ -1970,11 +2476,24 @@ Manual mode: delegate \`/qa-tester\` with this prompt AND \`/design-reviewer\` w
 Use subagent/persona: ${persona}
 ${designCompanionNote}
 Read first, in this order:
-1. AGENTS.md
-2. ${state.artifacts.handoffFile}
-3. The stage input paths listed below
+1. lib/personas/${persona}.md
+2. AGENTS.md
+3. lib/memory/handbook/agent-document-registry.md
+4. lib/memory/handbook/persona-contracts.md
+5. lib/memory/handbook/output-manifest-contract.md
+6. lib/memory/handbook/pipeline-state-contract.md
+7. ${state.artifacts.handoffFile}
+8. Relevant governance paths listed below
+9. The stage input paths listed below
 
-Do not read broad archives, full PRD/bootstrap docs, lib/inbox/notes/**, or unrelated .pan/work/** paths unless the handoff explicitly requires it.
+When AGENTS.md conflicts with persona-local wording in the persona spec, generated projection, or bounded prompt, follow AGENTS.md.
+
+Relevant governance paths for this stage:
+${renderGovernancePathList(stage)}
+
+Do not read broad archives, full PRD/bootstrap docs, lib/inbox/notes/**, or unrelated .pan/work/** paths unless AGENTS.md, the handoff, or a stage-specific governance path explicitly requires it.
+
+${renderStaticContractStagePrompt(stage)}
 
 ${stageContractMarkdown(repoRoot, state, stage)}
 
@@ -1986,7 +2505,11 @@ ${
 `;
 }
 
-function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, stage: string): string {
+function stageContractMarkdown(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+  stage: string,
+): string {
   const advanceLine = (forStage: string, event?: string): string => {
     if (forStage !== state.currentStage) {
       return staticAdvanceLineForStage(state, forStage, event);
@@ -1995,7 +2518,10 @@ function stageContractMarkdown(repoRoot: string, state: FeatureDeliveryState, st
     if (step.nextCommand !== null) {
       return step.nextCommand;
     }
-    return step.reason ?? "No advance command is available for the current ledger state.";
+    return (
+      step.reason ??
+      "No advance command is available for the current ledger state."
+    );
   };
 
   switch (stage) {
@@ -2006,7 +2532,9 @@ Design companion: ${designPlanPromptRel(state.artifacts.runDir)} → ${designPla
 Outputs: ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}
 Plan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria, manual_qa_test_cases; handoff.md MUST include ## Validation commands.
 Advance after ${
-        state.automation?.runnerInvocation === "sdk" ? "agent validates product/design/tech plan artifacts" : "human ratification"
+        state.automation?.runnerInvocation === "sdk"
+          ? "agent validates product/design/tech plan artifacts"
+          : "human ratification"
       }: ${advanceLine("plan")}`;
     case "implement": {
       const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}\nOutput: ${state.artifacts.runDir}/implementation-report.md\nImplement gate: set implement_gate_passes: true only after lint, typecheck, tests, coverage thresholds, applicable compliance checks, and every product/design/technical acceptance criterion pass.\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
@@ -2017,7 +2545,7 @@ Advance after ${
       return base;
     }
     case "review":
-      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, repo_wide_tests_pass, lint_typecheck_rerun_required, core_reentry_required, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run repo-wide pnpm test and node --test tests/*.test.mjs before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, repo_wide_tests_pass, lint_typecheck_rerun_required, core_reentry_required, scope_amendments_ratified, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run repo-wide pnpm test and node --test tests/*.test.mjs before review_passes: true; ratify bounded scope amendments before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan. Amendments are allowed only when touch-set.json and implementation-report.md record the same bounded scope amendment.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nTouch-set or plan invalidation (return to plan): pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
         ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
@@ -2035,13 +2563,17 @@ Advance after ${
     case "index":
       return `Inputs: delivery report and accepted ship artifacts\nOutputs: ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not .pan/archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\nDo NOT mv .pan/work/ to .pan/archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
-      return state.status === "closed" ? closedContractMarkdown(state) : finalClosureContractMarkdown(state);
+      return state.status === "closed"
+        ? closedContractMarkdown(state)
+        : finalClosureContractMarkdown(state);
     default:
       return `No stage contract is defined for ${stage}.`;
   }
 }
 
-function complianceScopePathsForFeatureState(state: FeatureDeliveryState): string[] {
+function complianceScopePathsForFeatureState(
+  state: FeatureDeliveryState,
+): string[] {
   return [
     path.posix.join(state.artifacts.runDir, "touch-set.json"),
     path.posix.join(state.artifacts.runDir, "review.md"),
@@ -2050,7 +2582,10 @@ function complianceScopePathsForFeatureState(state: FeatureDeliveryState): strin
   ];
 }
 
-function complianceAuditFocusContract(repoRoot: string, state: FeatureDeliveryState): string {
+function complianceAuditFocusContract(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+): string {
   const promptContext = complianceAuditPromptContext({
     repoRoot,
     defaultScopePaths: complianceScopePathsForFeatureState(state),
@@ -2082,9 +2617,14 @@ function staticAdvanceLineForStage(
   if (stage === "review" && resolvedEvent === "review_spot_fix") {
     return `pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${contract.primaryArtifact}`;
   }
+  if (stage === "review" && resolvedEvent === "review_core_reentry") {
+    return `pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${contract.primaryArtifact}`;
+  }
   if (
     stage === "test" &&
-    (resolvedEvent === "qa_fails" || resolvedEvent === "qa_fails_plan_invalidating" || resolvedEvent === "qa_spot_fix")
+    (resolvedEvent === "qa_fails" ||
+      resolvedEvent === "qa_fails_plan_invalidating" ||
+      resolvedEvent === "qa_spot_fix")
   ) {
     return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
   }
@@ -2138,7 +2678,12 @@ export function resolveNextStep(
   const event = options?.event ?? defaultEventForStage(stage);
   try {
     const contract = stageArtifactContract(state, stage, event);
-    const nextCommand = buildAdvanceCommand(state.taskId, contract.primaryArtifact, stage, event);
+    const nextCommand = buildAdvanceCommand(
+      state.taskId,
+      contract.primaryArtifact,
+      stage,
+      event,
+    );
     return {
       event,
       artifact: contract.primaryArtifact,
@@ -2169,13 +2714,25 @@ function parsePersistedAdvanceCommand(nextCommand: string): {
   };
 }
 
-function buildAdvanceCommand(taskId: string, artifact: string, stage: string, event: string): string {
-  if (stage === "review" && (event === "must_fix" || event === "review_spot_fix")) {
+function buildAdvanceCommand(
+  taskId: string,
+  artifact: string,
+  stage: string,
+  event: string,
+): string {
+  if (
+    stage === "review" &&
+    (event === "must_fix" ||
+      event === "review_spot_fix" ||
+      event === "review_core_reentry")
+  ) {
     return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
   }
   if (
     stage === "test" &&
-    (event === "qa_fails" || event === "qa_fails_plan_invalidating" || event === "qa_spot_fix")
+    (event === "qa_fails" ||
+      event === "qa_fails_plan_invalidating" ||
+      event === "qa_spot_fix")
   ) {
     return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
   }
@@ -2216,12 +2773,19 @@ function resolveImplementMustFixReentry(
   return {
     event: "review_passes",
     artifact: reviewArtifact,
-    nextCommand: buildAdvanceCommand(state.taskId, reviewArtifact, "review", "review_passes"),
+    nextCommand: buildAdvanceCommand(
+      state.taskId,
+      reviewArtifact,
+      "review",
+      "review_passes",
+    ),
     source: "derived",
   };
 }
 
-function isNonTerminalFeatureDeliveryState(state: FeatureDeliveryState): boolean {
+function isNonTerminalFeatureDeliveryState(
+  state: FeatureDeliveryState,
+): boolean {
   return (
     state.status !== "halted" &&
     state.status !== "closed" &&
@@ -2234,14 +2798,23 @@ function enrichFeatureDeliveryEnvelope<T extends Record<string, unknown>>(
   repoRoot: string,
   state: FeatureDeliveryState,
   payload: T,
-): T & { nextCommand?: string | null; event?: string | null; artifact?: string | null } {
+): T & {
+  nextCommand?: string | null;
+  event?: string | null;
+  artifact?: string | null;
+} {
   type Enriched = T & {
     nextCommand?: string | null;
     event?: string | null;
     artifact?: string | null;
   };
   if (!isNonTerminalFeatureDeliveryState(state)) {
-    return { ...payload, nextCommand: null, event: null, artifact: null } as Enriched;
+    return {
+      ...payload,
+      nextCommand: null,
+      event: null,
+      artifact: null,
+    } as Enriched;
   }
   const step = resolveNextStep(state, { repoRoot });
   const enriched = {
@@ -2388,76 +2961,44 @@ function finalClosurePaths(state: FeatureDeliveryState): {
 } {
   const run = parseWorkRunDir(state.artifacts.runDir, state.taskId);
   const activeRunDirRel = path.posix.join(".pan/work", run.dayDir, run.taskId);
-  const workArchiveRel = path.posix.join(".pan/archive", "work", run.dayDir, run.taskId);
-  const inboxSourceRel = state.source.inboxPath.replace(/\\/gu, "/").replace(/^\/+/, "");
+  const workArchiveRel = path.posix.join(
+    ".pan/archive",
+    "work",
+    run.dayDir,
+    run.taskId,
+  );
+  const inboxSourceRel = state.source.inboxPath
+    .replace(/\\/gu, "/")
+    .replace(/^\/+/, "");
   return {
     runDirRel: activeRunDirRel,
     workArchiveRel,
     inboxSourceRel,
-    inboxArchiveRel: archiveInboxPathForSource(inboxSourceRel, run.dayDir, run.taskId),
+    inboxArchiveRel: archiveInboxPathForSource(inboxSourceRel, run.dayDir),
   };
 }
 
-function parseWorkRunDir(runDirRel: string, expectedTaskId: string): { dayDir: string; taskId: string } {
+function parseWorkRunDir(
+  runDirRel: string,
+  expectedTaskId: string,
+): { dayDir: string; taskId: string } {
   let norm = runDirRel.replace(/\\/gu, "/").replace(/^\/+/, "");
   if (norm.startsWith(".pan/archive/work/")) {
     norm = `.pan/work/${norm.slice(".pan/archive/work/".length)}`;
   }
   const parts = norm.split("/");
   if (parts.length !== 4 || parts[0] !== ".pan" || parts[1] !== "work") {
-    throw new Error(`feature-delivery runDir must be .pan/work/<day>/<task-id> or .pan/archive/work/<day>/<task-id>; got ${runDirRel}.`);
+    throw new Error(
+      `feature-delivery runDir must be .pan/work/<day>/<task-id> or .pan/archive/work/<day>/<task-id>; got ${runDirRel}.`,
+    );
   }
   const [, , dayDir, taskId] = parts;
   if (taskId !== expectedTaskId) {
-    throw new Error(`feature-delivery runDir task id ${taskId} does not match state task id ${expectedTaskId}.`);
+    throw new Error(
+      `feature-delivery runDir task id ${taskId} does not match state task id ${expectedTaskId}.`,
+    );
   }
   return { dayDir, taskId };
-}
-
-function archiveInboxPathForSource(sourceRel: string, dayDir: string, taskId: string): string {
-  const prefix = "lib/inbox/in/";
-  if (!sourceRel.startsWith(prefix)) {
-    throw new Error(`feature-delivery source inbox path must be under ${prefix}; got ${sourceRel}.`);
-  }
-  const tail = sourceRel.slice(prefix.length);
-  if (tail.length === 0 || tail.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) {
-    throw new Error(`feature-delivery source inbox path has an invalid relative tail: ${sourceRel}.`);
-  }
-  const parts = tail.split("/");
-  const alreadyNested = parts.length >= 3 && isWorkStyleDayDir(parts[0]) && parts[1] === taskId;
-  const archiveTail = alreadyNested ? tail : path.posix.join(dayDir, taskId, path.posix.basename(tail));
-  return path.posix.join(".pan/archive", "inbox", "in", archiveTail);
-}
-
-/**
- * When a superseded run shares an inbox directive archived under a sibling task id,
- * locate the existing .pan/archive/inbox/in/<day>/<peer-task>/<basename> path.
- */
-async function findSiblingArchivedInboxPath(
-  repoRoot: string,
-  inboxSourceRel: string,
-  dayDir: string,
-): Promise<{ rel: string; abs: string } | null> {
-  const basename = path.posix.basename(inboxSourceRel);
-  const dayArchiveRoot = resolveProjectPath(repoRoot, ".pan/archive", "inbox", "in", dayDir);
-  if (!existsSync(dayArchiveRoot)) {
-    return null;
-  }
-  for (const peerTaskId of await safeReaddir(dayArchiveRoot)) {
-    const candidateAbs = path.join(dayArchiveRoot, peerTaskId, basename);
-    if (!existsSync(candidateAbs)) {
-      continue;
-    }
-    return {
-      rel: path.posix.join(".pan/archive", "inbox", "in", dayDir, peerTaskId, basename),
-      abs: candidateAbs,
-    };
-  }
-  return null;
-}
-
-function isWorkStyleDayDir(value: string): boolean {
-  return /^\d{6}_\d{2}-\d{2}-\d{2}$/u.test(value);
 }
 
 function makeInterventionRecord(
@@ -2500,7 +3041,10 @@ function makeInterventionRecord(
   };
 }
 
-function makeInvocationRecord(state: FeatureDeliveryState, now: Date): RunLogRecord {
+function makeInvocationRecord(
+  state: FeatureDeliveryState,
+  now: Date,
+): RunLogRecord {
   return {
     ts: rfc3339UtcMs(now),
     trace_id: newTraceId(),
@@ -2684,16 +3228,26 @@ function makeStateRecord(
   };
 }
 
-async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: string; rel: string }> {
+async function findStateFile(
+  repoRoot: string,
+  taskId: string,
+): Promise<{ abs: string; rel: string }> {
   const roots = [
-    { abs: resolveProjectPath(repoRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
+    {
+      abs: resolveProjectPath(repoRoot, ".pan/work"),
+      rel: path.posix.join(".pan/work"),
+    },
     {
       abs: resolveProjectPath(repoRoot, ".pan/archive", "work"),
       rel: path.posix.join(".pan/archive", "work"),
     },
   ];
 
-  const matches: Array<{ abs: string; rel: string; rootKind: ".pan/work" | ".pan/archive" }> = [];
+  const matches: Array<{
+    abs: string;
+    rel: string;
+    rootKind: ".pan/work" | ".pan/archive";
+  }> = [];
 
   for (const root of roots) {
     const dayDirs = await safeReaddir(root.abs);
@@ -2720,7 +3274,9 @@ async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: s
   }
 
   const workMatch = matches.find((match) => match.rootKind === ".pan/work");
-  const archiveMatch = matches.find((match) => match.rootKind === ".pan/archive");
+  const archiveMatch = matches.find(
+    (match) => match.rootKind === ".pan/archive",
+  );
 
   if (workMatch !== undefined && archiveMatch !== undefined) {
     const workState = await readFeatureDeliveryState(workMatch.abs);
@@ -2733,21 +3289,34 @@ async function findStateFile(repoRoot: string, taskId: string): Promise<{ abs: s
   return matches[0]!;
 }
 
-async function readFeatureDeliveryState(stateFile: string): Promise<FeatureDeliveryState> {
-  const parsed = JSON.parse(await readFile(stateFile, "utf8")) as FeatureDeliveryState;
+async function readFeatureDeliveryState(
+  stateFile: string,
+): Promise<FeatureDeliveryState> {
+  const parsed = JSON.parse(
+    await readFile(stateFile, "utf8"),
+  ) as FeatureDeliveryState;
   if (parsed.pipelineId !== "feature-delivery") {
-    throw new Error(`Expected feature-delivery state file; found ${parsed.pipelineId}.`);
+    throw new Error(
+      `Expected feature-delivery state file; found ${parsed.pipelineId}.`,
+    );
   }
   if (parsed.artifacts.nextPromptFile === undefined) {
-    parsed.artifacts.nextPromptFile = path.posix.join(parsed.artifacts.runDir, "next-prompt.md");
+    parsed.artifacts.nextPromptFile = path.posix.join(
+      parsed.artifacts.runDir,
+      "next-prompt.md",
+    );
   }
   return parsed;
 }
 
 function loadFeatureDeliveryPipeline(repoRoot: string): PipelineDefinition {
-  const pipeline = loadPipelineYaml(resolveProjectPath(repoRoot, "lib", "pipelines", "feature-delivery.yaml"));
+  const pipeline = loadPipelineYaml(
+    resolveProjectPath(repoRoot, "lib", "pipelines", "feature-delivery.yaml"),
+  );
   if (pipeline.id !== "feature-delivery") {
-    throw new Error(`Expected feature-delivery pipeline; found ${pipeline.id}.`);
+    throw new Error(
+      `Expected feature-delivery pipeline; found ${pipeline.id}.`,
+    );
   }
   return pipeline;
 }
@@ -2756,7 +3325,10 @@ async function refreshDesignStepsOptions(
   repoRoot: string,
   state: FeatureDeliveryState,
 ): Promise<void> {
-  const designConfig = await resolveDesignStepsConfig(repoRoot, state.featureId);
+  const designConfig = await resolveDesignStepsConfig(
+    repoRoot,
+    state.featureId,
+  );
   state.options = {
     designSteps: designConfig.designSteps,
     designStepsSource: designConfig.designStepsSource,
@@ -2768,7 +3340,13 @@ async function persistDesignCompanionPrompts(
   state: FeatureDeliveryState,
 ): Promise<void> {
   const runDir = state.artifacts.runDir;
-  const specPath = path.posix.join("lib", "memory", "features", state.featureId, "spec.md");
+  const specPath = path.posix.join(
+    "lib",
+    "memory",
+    "features",
+    state.featureId,
+    "spec.md",
+  );
   if (state.currentStage === "plan") {
     await writeFile(
       resolveRepoPath(repoRoot, productPlanPromptRel(runDir)),
@@ -2817,16 +3395,25 @@ async function persistStateAndPrompts(
   const statePath = resolveRepoPath(repoRoot, state.artifacts.stateFile);
   let existing: Record<string, unknown> = {};
   try {
-    existing = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
+    existing = JSON.parse(await readFile(statePath, "utf8")) as Record<
+      string,
+      unknown
+    >;
   } catch {
     existing = {};
   }
-  const serialized = JSON.parse(stringifyCliJson(repoRoot, state)) as Record<string, unknown>;
+  const serialized = JSON.parse(stringifyCliJson(repoRoot, state)) as Record<
+    string,
+    unknown
+  >;
   if (existing.schemaVersion !== undefined) {
     serialized.schemaVersion = existing.schemaVersion;
   }
   const merged = { ...existing, ...serialized };
-  if (state.nextCommand === undefined || state.nextCommand.trim().length === 0) {
+  if (
+    state.nextCommand === undefined ||
+    state.nextCommand.trim().length === 0
+  ) {
     delete merged.nextCommand;
   }
   if (state.currentStage === "plan" || state.currentStage === "test") {
@@ -2868,7 +3455,8 @@ function applyFeatureDeliveryTransition(
   const fromStage = state.currentStage;
   const toStage = transition.to as FeatureDeliveryCurrentStage;
   state.currentStage = toStage;
-  state.status = toStage === TERMINAL_STAGE ? "complete" : "ready_for_stage_delegation";
+  state.status =
+    toStage === TERMINAL_STAGE ? "complete" : "ready_for_stage_delegation";
   state.nextHumanAction = nextHumanActionForStage(
     state,
     toStage,
@@ -2925,7 +3513,10 @@ async function tryResolveReviewReentryAdvance(
     return null;
   }
 
-  const reviewContent = await readFile(resolveRepoPath(repoRoot, reviewArtifact), "utf8");
+  const reviewContent = await readFile(
+    resolveRepoPath(repoRoot, reviewArtifact),
+    "utf8",
+  );
   const verdict = parseReviewPassesVerdict(reviewContent);
   if (verdict !== true) {
     throw new Error(
@@ -2936,7 +3527,10 @@ async function tryResolveReviewReentryAdvance(
     );
   }
 
-  const implementationReport = path.posix.join(state.artifacts.runDir, "implementation-report.md");
+  const implementationReport = path.posix.join(
+    state.artifacts.runDir,
+    "implementation-report.md",
+  );
   if (!existsSync(resolveRepoPath(repoRoot, implementationReport))) {
     throw new Error(
       `Cannot advance ${state.taskId} with ${reviewArtifact} from implement after must_fix: ` +
@@ -2961,12 +3555,18 @@ async function tryAdvanceFromReportApproval(input: {
   if (!input.artifactRel.startsWith("lib/inbox/out/")) {
     return null;
   }
-  const content = await readFile(resolveRepoPath(input.repoRoot, input.artifactRel), "utf8");
+  const content = await readFile(
+    resolveRepoPath(input.repoRoot, input.artifactRel),
+    "utf8",
+  );
   const decision = parseReportApprovalArtifact(content);
   if (decision === null) {
     return null;
   }
-  if (input.state.automation?.reportApprovalPending !== true && input.state.status !== "waiting_for_human_gate") {
+  if (
+    input.state.automation?.reportApprovalPending !== true &&
+    input.state.status !== "waiting_for_human_gate"
+  ) {
     throw new Error(
       `Artifact ${input.artifactRel} is a report-approval decision but task ${input.taskId} is not awaiting report approval.`,
     );
@@ -2974,10 +3574,13 @@ async function tryAdvanceFromReportApproval(input: {
 
   if (decision.decision === "approve") {
     const transition = input.state.transitions.find(
-      (candidate) => candidate.from === "report" && candidate.on === "report_ready",
+      (candidate) =>
+        candidate.from === "report" && candidate.on === "report_ready",
     );
     if (transition === undefined) {
-      throw new Error("feature-delivery pipeline is missing report → report_ready transition.");
+      throw new Error(
+        "feature-delivery pipeline is missing report → report_ready transition.",
+      );
     }
     const applied = applyFeatureDeliveryTransition(
       input.state,
@@ -2987,7 +3590,10 @@ async function tryAdvanceFromReportApproval(input: {
       input.now,
     );
     input.state.automation = {
-      ...(input.state.automation ?? { runnerInvocation: "sdk", cumulativeRetryCount: 0 }),
+      ...(input.state.automation ?? {
+        runnerInvocation: "sdk",
+        cumulativeRetryCount: 0,
+      }),
       reportApprovalPending: false,
     };
     return finishAdvanceAfterTransition({
@@ -2997,7 +3603,9 @@ async function tryAdvanceFromReportApproval(input: {
   }
 
   if (decision.requiredChanges.trim().length === 0) {
-    throw new Error("needs_changes report approval requires non-empty required_changes.");
+    throw new Error(
+      "needs_changes report approval requires non-empty required_changes.",
+    );
   }
   const targetStage = decision.targetStage ?? "implement";
   assertFeatureDeliveryStage(targetStage);
@@ -3029,7 +3637,10 @@ async function tryAdvanceFromReportApproval(input: {
     artifact: input.artifactRel,
   };
   input.state.automation = {
-    ...(input.state.automation ?? { runnerInvocation: "sdk", cumulativeRetryCount: 0 }),
+    ...(input.state.automation ?? {
+      runnerInvocation: "sdk",
+      cumulativeRetryCount: 0,
+    }),
     reportApprovalPending: false,
   };
   return finishAdvanceAfterTransition({
@@ -3050,19 +3661,41 @@ async function finishAdvanceAfterTransition(input: {
   progress?: FeatureDeliverySdkProgressReporter;
 }): Promise<AdvanceFeatureDeliveryResult> {
   delete input.state.nextCommand;
-  const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
-  let compiled: Awaited<ReturnType<typeof compileFeatureDeliveryPipeline>> | undefined;
-  if (invocation === "sdk" && input.state.status !== "halted" && input.state.currentStage !== TERMINAL_STAGE) {
-    compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
-    prepareStageInvocationIndexForSdkEntry(input.state, input.state.currentStage, invocation);
-    await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+  const invocation = await readCursorInvocationForState(
+    input.repoRoot,
+    input.state,
+  );
+  let compiled:
+    | Awaited<ReturnType<typeof compileFeatureDeliveryPipeline>>
+    | undefined;
+  if (
+    invocation === "sdk" &&
+    input.state.status !== "halted" &&
+    input.state.currentStage !== TERMINAL_STAGE
+  ) {
+    compiled = await compileFeatureDeliveryPipeline(
+      input.repoRoot,
+      input.pipeline,
+    );
+    prepareStageInvocationIndexForSdkEntry(
+      input.state,
+      input.state.currentStage,
+      invocation,
+    );
+    await persistStateAndPrompts(
+      input.repoRoot,
+      input.state,
+      input.pipeline,
+      "advance",
+    );
     emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
       taskId: input.taskId,
       featureId: input.state.featureId,
       fromStage: input.applied.fromStage,
       toStage: input.applied.toStage,
       event: input.applied.event,
-      persona: personaForStage(input.pipeline, input.state.currentStage) ?? undefined,
+      persona:
+        personaForStage(input.pipeline, input.state.currentStage) ?? undefined,
       now: input.now,
     });
     await invokeFeatureDeliveryEnteringStage({
@@ -3076,7 +3709,12 @@ async function finishAdvanceAfterTransition(input: {
       progress: resolveFeatureDeliveryProgress(input),
     });
   }
-  await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+  await persistStateAndPrompts(
+    input.repoRoot,
+    input.state,
+    input.pipeline,
+    "advance",
+  );
   if (invocation === "sdk" && compiled !== undefined) {
     const chained = await trySdkAutoChainAfterStageWork({
       repoRoot: input.repoRoot,
@@ -3097,7 +3735,9 @@ async function finishAdvanceAfterTransition(input: {
         }),
     });
     if (chained) {
-      const refreshed = await readFeatureDeliveryState(resolveRepoPath(input.repoRoot, input.state.artifacts.stateFile));
+      const refreshed = await readFeatureDeliveryState(
+        resolveRepoPath(input.repoRoot, input.state.artifacts.stateFile),
+      );
       Object.assign(input.state, refreshed);
     }
   }
@@ -3140,13 +3780,18 @@ async function advanceReviewReentryFromImplement(input: {
   testHooks?: FeatureDeliveryTestHooks;
   progress?: FeatureDeliverySdkProgressReporter;
 }): Promise<AdvanceFeatureDeliveryResult> {
-  const { repoRoot, taskId, state, pipeline, stateFileRel, reentry, now } = input;
+  const { repoRoot, taskId, state, pipeline, stateFileRel, reentry, now } =
+    input;
   delete state.nextCommand;
   const implementTransition = state.transitions.find(
-    (candidate) => candidate.from === "implement" && candidate.on === "implementation_complete",
+    (candidate) =>
+      candidate.from === "implement" &&
+      candidate.on === "implementation_complete",
   );
   if (implementTransition === undefined) {
-    throw new Error("feature-delivery pipeline is missing implement → review transition.");
+    throw new Error(
+      "feature-delivery pipeline is missing implement → review transition.",
+    );
   }
   assertStageArtifact(
     repoRoot,
@@ -3156,7 +3801,11 @@ async function advanceReviewReentryFromImplement(input: {
     "implementation_complete",
   );
 
-  const contentWarnings = collectStageContentWarnings(repoRoot, state, "implement");
+  const contentWarnings = collectStageContentWarnings(
+    repoRoot,
+    state,
+    "implement",
+  );
 
   const first = applyFeatureDeliveryTransition(
     state,
@@ -3179,12 +3828,21 @@ async function advanceReviewReentryFromImplement(input: {
   );
 
   const reviewTransition = state.transitions.find(
-    (candidate) => candidate.from === "review" && candidate.on === "review_passes",
+    (candidate) =>
+      candidate.from === "review" && candidate.on === "review_passes",
   );
   if (reviewTransition === undefined) {
-    throw new Error("feature-delivery pipeline is missing review → test transition.");
+    throw new Error(
+      "feature-delivery pipeline is missing review → test transition.",
+    );
   }
-  assertStageArtifact(repoRoot, state, "review", reentry.reviewArtifact, "review_passes");
+  assertStageArtifact(
+    repoRoot,
+    state,
+    "review",
+    reentry.reviewArtifact,
+    "review_passes",
+  );
 
   const second = applyFeatureDeliveryTransition(
     state,
@@ -3209,7 +3867,11 @@ async function advanceReviewReentryFromImplement(input: {
   const invocation = await readCursorInvocationForState(repoRoot, state);
   if (invocation === "sdk") {
     const compiled = await compileFeatureDeliveryPipeline(repoRoot, pipeline);
-    prepareStageInvocationIndexForSdkEntry(state, state.currentStage, invocation);
+    prepareStageInvocationIndexForSdkEntry(
+      state,
+      state.currentStage,
+      invocation,
+    );
     await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
     emitFeatureDeliveryStageTransition(resolveFeatureDeliveryProgress(input), {
       taskId,
@@ -3326,6 +3988,19 @@ function applyStageStatuses(
       return stage;
     });
   }
+  if (event === "review_core_reentry") {
+    const planIndex = FEATURE_DELIVERY_STAGES.indexOf("plan");
+    return stages.map((stage) => {
+      const index = FEATURE_DELIVERY_STAGES.indexOf(
+        stage.id as FeatureDeliveryStageId,
+      );
+      if (index < 0) return stage;
+      if (stage.id === "review") return { ...stage, status: "blocked" };
+      if (index < planIndex) return { ...stage, status: "complete" };
+      if (stage.id === "plan") return { ...stage, status: "ready" };
+      return { ...stage, status: "pending" };
+    });
+  }
   if (event === "qa_fails") {
     return stages.map((stage) => {
       if (stage.id === "test") return { ...stage, status: "blocked" };
@@ -3336,7 +4011,9 @@ function applyStageStatuses(
   if (event === "qa_fails_plan_invalidating") {
     const planIndex = FEATURE_DELIVERY_STAGES.indexOf("plan");
     return stages.map((stage) => {
-      const index = FEATURE_DELIVERY_STAGES.indexOf(stage.id as FeatureDeliveryStageId);
+      const index = FEATURE_DELIVERY_STAGES.indexOf(
+        stage.id as FeatureDeliveryStageId,
+      );
       if (index < 0) return stage;
       if (stage.id === "test") return { ...stage, status: "blocked" };
       if (index < planIndex) return { ...stage, status: "complete" };
@@ -3360,7 +4037,9 @@ function applyStageStatuses(
   if (event === "compliance_fails_plan_invalidating") {
     const planIndex = FEATURE_DELIVERY_STAGES.indexOf("plan");
     return stages.map((stage) => {
-      const index = FEATURE_DELIVERY_STAGES.indexOf(stage.id as FeatureDeliveryStageId);
+      const index = FEATURE_DELIVERY_STAGES.indexOf(
+        stage.id as FeatureDeliveryStageId,
+      );
       if (index < 0) return stage;
       if (stage.id === "compliance") return { ...stage, status: "blocked" };
       if (index < planIndex) return { ...stage, status: "complete" };
@@ -3387,7 +4066,9 @@ function repairStageStatuses(
 ): FeatureDeliveryStageState[] {
   const targetIndex = FEATURE_DELIVERY_STAGES.indexOf(targetStage);
   return stages.map((stage) => {
-    const index = FEATURE_DELIVERY_STAGES.indexOf(stage.id as FeatureDeliveryStageId);
+    const index = FEATURE_DELIVERY_STAGES.indexOf(
+      stage.id as FeatureDeliveryStageId,
+    );
     if (index < 0) return stage;
     if (index < targetIndex) return { ...stage, status: "complete" };
     if (index === targetIndex) return { ...stage, status: "ready" };
@@ -3427,11 +4108,11 @@ function nextHumanActionForStage(
   }
   switch (stage) {
     case "plan":
-      return `${prefix}Delegate product-plan-prompt.md to product-engineer and design-plan-prompt.md to design-engineer, then delegate next-prompt.md to tech-lead. Ratify product/design/tech plans, acceptance criteria, manual QA cases, plan.md, touch-set.json, and handoff.md before advancing.`;
+      return `${prefix}Delegate product/plan-prompt.md to product-engineer and design/plan-prompt.md to design-engineer, then delegate next-prompt.md to tech-lead. Ratify product/design/tech plans, acceptance criteria, manual QA cases, plan.md, touch-set.json, and handoff.md before advancing.`;
     case "implement":
       return `${prefix}Delegate next-prompt.md to coder; monitor drift and require ${state.artifacts.runDir}/implementation-report.md before review.`;
     case "review":
-      return `${prefix}Delegate next-prompt.md to reviewer; inspect ${state.artifacts.runDir}/review.md and choose pass or must-fix.`;
+      return `${prefix}Delegate next-prompt.md to reviewer; inspect ${state.artifacts.runDir}/review.md and choose pass, must-fix, or review-core-reentry.`;
     case "test":
       return `${prefix}Delegate next-prompt.md to qa-tester and design-qa-prompt.md to design-reviewer in parallel; inspect test-report.md plus design-qa-report.md and choose pass or qa-fail.`;
     case "report":
@@ -3453,15 +4134,22 @@ function nextHumanActionForStage(
   }
 }
 
-function personaForStage(pipeline: PipelineDefinition, stage: string): string | null {
+function personaForStage(
+  pipeline: PipelineDefinition,
+  stage: string,
+): string | null {
   if (stage === TERMINAL_STAGE) return "librarian";
-  return pipeline.stages.find((candidate) => candidate.id === stage)?.persona ?? null;
+  return (
+    pipeline.stages.find((candidate) => candidate.id === stage)?.persona ?? null
+  );
 }
 
 function assertFeatureDeliveryStage(value: string): FeatureDeliveryStageId {
   const stage = value as FeatureDeliveryStageId;
   if (!FEATURE_DELIVERY_STAGES.includes(stage)) {
-    throw new Error(`stage MUST be one of: ${FEATURE_DELIVERY_STAGES.join(", ")}.`);
+    throw new Error(
+      `stage MUST be one of: ${FEATURE_DELIVERY_STAGES.join(", ")}.`,
+    );
   }
   return stage;
 }
@@ -3472,7 +4160,11 @@ async function assertRepoRelativeExistingFile(
   label: string,
 ): Promise<{ abs: string; rel: string }> {
   const rel = value.replace(/\\/gu, "/").replace(/^\/+/, "");
-  if (rel === "" || rel.includes("\0") || rel.split("/").some((part) => part === ".." || part === ".")) {
+  if (
+    rel === "" ||
+    rel.includes("\0") ||
+    rel.split("/").some((part) => part === ".." || part === ".")
+  ) {
     throw new Error(`${label} MUST be a safe repo-relative path.`);
   }
   const abs = resolveRepoPath(repoRoot, rel);
@@ -3485,21 +4177,6 @@ async function assertRepoRelativeExistingFile(
     throw new Error(`${label} MUST point to a file: ${rel}.`);
   }
   return { abs, rel };
-}
-
-async function removeEmptyDirectoryIfPresent(abs: string, rel: string): Promise<void> {
-  try {
-    await rmdir(abs);
-  } catch (error) {
-    const err = error as NodeJS.ErrnoException;
-    if (err.code === "ENOENT" || err.code === "ENOTEMPTY" || err.code === "EEXIST") {
-      return;
-    }
-    if (err.code === "ENOTDIR") {
-      throw new Error(`Expected directory while cleaning closure residue: ${rel}.`);
-    }
-    throw error;
-  }
 }
 
 async function assertExistingFile(abs: string, rel: string): Promise<void> {
@@ -3517,11 +4194,16 @@ async function assertExistingFile(abs: string, rel: string): Promise<void> {
   }
 }
 
-async function assertExistingDirectory(abs: string, rel: string): Promise<void> {
+async function assertExistingDirectory(
+  abs: string,
+  rel: string,
+): Promise<void> {
   try {
     const info = await stat(abs);
     if (!info.isDirectory()) {
-      throw new Error(`Expected directory but found non-directory path: ${rel}.`);
+      throw new Error(
+        `Expected directory but found non-directory path: ${rel}.`,
+      );
     }
   } catch (error) {
     const err = error as NodeJS.ErrnoException;
@@ -3546,7 +4228,9 @@ async function assertPathMissing(abs: string, rel: string): Promise<void> {
 }
 
 function requireNextPromptFile(state: FeatureDeliveryState): string {
-  const nextPromptFile = state.artifacts.nextPromptFile ?? path.posix.join(state.artifacts.runDir, "next-prompt.md");
+  const nextPromptFile =
+    state.artifacts.nextPromptFile ??
+    path.posix.join(state.artifacts.runDir, "next-prompt.md");
   state.artifacts.nextPromptFile = nextPromptFile;
   return nextPromptFile;
 }
@@ -3599,21 +4283,36 @@ export const PAN_CHECK_REPO_CHECK_IDS = [
 ] as const;
 
 export function panCheckRegistry(): readonly string[] {
-  return [...PAN_CHECK_SHELL_CHECKS.map((spec) => spec.id), ...PAN_CHECK_REPO_CHECK_IDS];
+  return [
+    ...PAN_CHECK_SHELL_CHECKS.map((spec) => spec.id),
+    ...PAN_CHECK_REPO_CHECK_IDS,
+  ];
 }
 
 /** @deprecated Renamed to {@link panCheckRegistry}. */
 export const panDoctorCheckRegistry = panCheckRegistry;
 
-const PAN_CHECK_SHELL_CHECKS: ReadonlyArray<{ id: string; label: string; command: string }> = [
+const PAN_CHECK_SHELL_CHECKS: ReadonlyArray<{
+  id: string;
+  label: string;
+  command: string;
+}> = [
   { id: "build", label: "pnpm run build", command: "pnpm run build" },
   { id: "lint", label: "pnpm lint", command: "pnpm lint" },
-  { id: "lint-deps", label: "pnpm run lint:deps", command: "pnpm run lint:deps" },
+  {
+    id: "lint-deps",
+    label: "pnpm run lint:deps",
+    command: "pnpm run lint:deps",
+  },
   { id: "typecheck", label: "pnpm typecheck", command: "pnpm typecheck" },
   { id: "attw", label: "pnpm run attw", command: "pnpm run attw" },
   { id: "publint", label: "pnpm run publint", command: "pnpm run publint" },
   { id: "test", label: "pnpm test", command: "pnpm test" },
-  { id: "tests-mjs", label: "node --test tests/*.test.mjs", command: "node --test tests/*.test.mjs" },
+  {
+    id: "tests-mjs",
+    label: "node --test tests/*.test.mjs",
+    command: "node --test tests/*.test.mjs",
+  },
   {
     id: "compliance",
     label: "node lib/internal/tools/run-compliance.mjs",
@@ -3636,10 +4335,21 @@ const PAN_CHECK_SHELL_CHECKS: ReadonlyArray<{ id: string; label: string; command
   },
 ];
 
-const COMPLIANCE_EXIT_CHECK_IDS = new Set(["lint", "typecheck", "test", "tests-mjs"]);
+const COMPLIANCE_EXIT_CHECK_IDS = new Set([
+  "lint",
+  "typecheck",
+  "test",
+  "tests-mjs",
+]);
 
-export function complianceStageExitCheckBundle(): ReadonlyArray<{ id: string; label: string; command: string }> {
-  return PAN_CHECK_SHELL_CHECKS.filter((spec) => COMPLIANCE_EXIT_CHECK_IDS.has(spec.id));
+export function complianceStageExitCheckBundle(): ReadonlyArray<{
+  id: string;
+  label: string;
+  command: string;
+}> {
+  return PAN_CHECK_SHELL_CHECKS.filter((spec) =>
+    COMPLIANCE_EXIT_CHECK_IDS.has(spec.id),
+  );
 }
 
 export function complianceStageExitCommands(): readonly string[] {
@@ -3658,7 +4368,13 @@ function runShellCheck(
   });
   const exitCode = result.status ?? 1;
   if (exitCode === 0) {
-    return { id: spec.id, label: spec.label, command: spec.command, status: "pass", exitCode: 0 };
+    return {
+      id: spec.id,
+      label: spec.label,
+      command: spec.command,
+      status: "pass",
+      exitCode: 0,
+    };
   }
   return {
     id: spec.id,
@@ -3692,9 +4408,15 @@ function countShippedLedgerDataRows(currentMd: string): number {
 
 async function listActiveFeatureDeliveryStates(
   repoRoot: string,
-): Promise<Array<{ taskId: string; stage: string; state: FeatureDeliveryState }>> {
+): Promise<
+  Array<{ taskId: string; stage: string; state: FeatureDeliveryState }>
+> {
   const workRoot = resolveProjectPath(repoRoot, ".pan/work");
-  const active: Array<{ taskId: string; stage: string; state: FeatureDeliveryState }> = [];
+  const active: Array<{
+    taskId: string;
+    stage: string;
+    state: FeatureDeliveryState;
+  }> = [];
   const dayDirs = await listCanonicalWorkDayDirs(workRoot);
   for (const dayDir of dayDirs) {
     const dayAbs = path.join(workRoot, dayDir);
@@ -3717,9 +4439,13 @@ async function listActiveFeatureDeliveryStates(
   return active;
 }
 
-export async function runPanCheck(repoRootInput: string): Promise<PanCheckResult> {
+export async function runPanCheck(
+  repoRootInput: string,
+): Promise<PanCheckResult> {
   const repoRoot = path.resolve(repoRootInput);
-  const checks: PanCheckEntry[] = PAN_CHECK_SHELL_CHECKS.map((spec) => runShellCheck(repoRoot, spec));
+  const checks: PanCheckEntry[] = PAN_CHECK_SHELL_CHECKS.map((spec) =>
+    runShellCheck(repoRoot, spec),
+  );
 
   const activeRuns = await listActiveFeatureDeliveryStates(repoRoot);
   if (activeRuns.length === 0) {
@@ -3733,13 +4459,21 @@ export async function runPanCheck(repoRootInput: string): Promise<PanCheckResult
   } else {
     const artifactIssues: string[] = [];
     for (const run of activeRuns) {
-      const validation = validateStageCompletionArtifacts(repoRoot, run.state, run.stage);
+      const validation = validateStageCompletionArtifacts(
+        repoRoot,
+        run.state,
+        run.stage,
+      );
       for (const missing of validation.missing) {
-        artifactIssues.push(`${run.taskId}/${run.stage}: missing required artifact ${missing}`);
+        artifactIssues.push(
+          `${run.taskId}/${run.stage}: missing required artifact ${missing}`,
+        );
       }
       if (validation.warningCount > 0) {
         for (const warning of validation.warnings) {
-          artifactIssues.push(`${run.taskId}/${run.stage}: ${warning.path} — ${warning.message}`);
+          artifactIssues.push(
+            `${run.taskId}/${run.stage}: ${warning.path} — ${warning.message}`,
+          );
         }
       }
     }
@@ -3783,7 +4517,13 @@ export async function runPanCheck(repoRootInput: string): Promise<PanCheckResult
     });
   }
 
-  const currentPath = resolveProjectPath(repoRoot, "lib", "memory", "active", "current.md");
+  const currentPath = resolveProjectPath(
+    repoRoot,
+    "lib",
+    "memory",
+    "active",
+    "current.md",
+  );
   if (!existsSync(currentPath)) {
     checks.push({
       id: "shipped-ledger-cap",

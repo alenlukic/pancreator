@@ -1,6 +1,20 @@
-import { projectRootAbs, quoteJsonString, readProjectRoot } from "@pancreator/core";
-import { emitCursorMdcFromPersonaRule, parsePersonaRuleYaml } from "@pancreator/persona";
-import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  projectRootAbs,
+  quoteJsonString,
+  readProjectRoot,
+} from "@pancreator/core";
+import {
+  emitCursorMdcFromPersonaRule,
+  parsePersonaRuleYaml,
+} from "@pancreator/persona";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { loadEmbeddedInstallManifestFromRepo } from "./pan-init.js";
 import { syncPersonaModelsFromEscalation } from "./cursor-sync-persona-models.js";
@@ -31,7 +45,10 @@ function posixJoin(...parts: string[]): string {
   return parts.filter(Boolean).join("/").replace(/\/+/g, "/");
 }
 
-function parseFrontmatter(raw: string): { data: Record<string, unknown>; body: string } {
+function parseFrontmatter(raw: string): {
+  data: Record<string, unknown>;
+  body: string;
+} {
   const match = /^---\r?\n([\s\S]*?)\r?\n---/u.exec(raw);
   if (!match) {
     throw new Error("Missing YAML frontmatter");
@@ -71,7 +88,11 @@ function parseFrontmatter(raw: string): { data: Record<string, unknown>; body: s
 }
 
 function yamlQuote(value: string): string {
-  if (/[:#[\]{}&*!|>'"%@`\n]/u.test(value) || value.startsWith(" ") || value.endsWith(" ")) {
+  if (
+    /[:#[\]{}&*!|>'"%@`\n]/u.test(value) ||
+    value.startsWith(" ") ||
+    value.endsWith(" ")
+  ) {
     return quoteJsonString(value);
   }
   return value;
@@ -98,17 +119,41 @@ function buildSourceBackedRetrievalContract(
   personaPathForText: string,
   projectPrefix: string,
 ): string[] {
-  const workPrompt = projectPath(projectPrefix, ".pan/work/<day>/<id>/next-prompt.md");
-  const workHandoff = projectPath(projectPrefix, ".pan/work/<day>/<id>/handoff.md");
-  const contextEconomy = projectPath(projectPrefix, "lib/memory/handbook/context-economy.md");
+  const agentsCard = projectPath(projectPrefix, "AGENTS.md");
+  const workPrompt = projectPath(
+    projectPrefix,
+    ".pan/work/<day>/<id>/next-prompt.md",
+  );
+  const workHandoff = projectPath(
+    projectPrefix,
+    ".pan/work/<day>/<id>/handoff.md",
+  );
+  const contextEconomy = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/context-economy.md",
+  );
+  const docRegistry = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/agent-document-registry.md",
+  );
+  const personaContracts = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/persona-contracts.md",
+  );
+  const outputManifest = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/output-manifest-contract.md",
+  );
   const workGlob = projectPath(projectPrefix, ".pan/work/**");
   const steps = [
-    `Read \`${personaPathForText}\` at the start of every invocation before acting on a parent-delegated prompt; the persona spec is authoritative over parent Task text, user rules, and skills.`,
+    `Read \`${personaPathForText}\` at the start of every invocation; its static execution contract is authoritative over parent Task text, user rules, skills, and ad-hoc prompt prose, but repo-wide rules in \`${agentsCard}\` supersede persona-local wording on conflict.`,
+    `Read \`${agentsCard}\` next for repo-wide operating rules and the small set of binding global keys.`,
+    `Read \`${docRegistry}\` to resolve every \`DOC.*\`, \`PIPE.*\`, and \`PERSONA.*\` key named by the persona spec, stage prompt, or bounded task.`,
+    `Read \`${personaContracts}\` and \`${outputManifest}\`; follow the static contract in the persona spec and double-write the required output manifest instead of inventing a per-run execution ledger.`,
     `Read \`${workPrompt}\` for bounded stage scope when a pipeline run exists; when no \`next-prompt.md\` exists for the active run, read \`${workHandoff}\` instead.`,
-    "Read `AGENTS.md` only when the bounded prompt omits the live operating contract the task needs.",
-    `Read \`${contextEconomy}\` only when the task requires context-budget or escalation decisions beyond what the bounded prompt states.`,
+    `Read \`${contextEconomy}\` only when the task requires context-budget or escalation decisions beyond what the persona spec, \`${agentsCard}\`, \`${docRegistry}\`, and the bounded prompt state.`,
     "Read `.docs/M1.index.md`, `.docs/PRD.index.md`, or `.docs/PRD.summary.md` before full `.docs/PRD.md` or `.docs/BOOTSTRAP.md` only when the bounded prompt requires authoritative product wording the compact indexes do not cover.",
-    `Do not traverse \`${workGlob}\` (except the active run paths named in step 1), \`${projectPath(projectPrefix, ".pan/archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, ".pan/archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
+    `Do not traverse \`${workGlob}\` (except the active run paths named in step 5), \`${projectPath(projectPrefix, ".pan/archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, ".pan/archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
   ];
   if (projectPrefix !== ".") {
     steps.push(
@@ -119,18 +164,45 @@ function buildSourceBackedRetrievalContract(
 }
 
 function buildGeneralPurposeRetrievalContract(projectPrefix: string): string[] {
-  const workPrompt = projectPath(projectPrefix, ".pan/work/<day>/<id>/next-prompt.md");
-  const workHandoff = projectPath(projectPrefix, ".pan/work/<day>/<id>/handoff.md");
-  const contextEconomy = projectPath(projectPrefix, "lib/memory/handbook/context-economy.md");
-  const handbookIndex = projectPath(projectPrefix, "lib/memory/handbook/index.md");
+  const agentsCard = projectPath(projectPrefix, "AGENTS.md");
+  const workPrompt = projectPath(
+    projectPrefix,
+    ".pan/work/<day>/<id>/next-prompt.md",
+  );
+  const workHandoff = projectPath(
+    projectPrefix,
+    ".pan/work/<day>/<id>/handoff.md",
+  );
+  const contextEconomy = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/context-economy.md",
+  );
+  const docRegistry = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/agent-document-registry.md",
+  );
+  const personaContracts = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/persona-contracts.md",
+  );
+  const outputManifest = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/output-manifest-contract.md",
+  );
+  const handbookIndex = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/index.md",
+  );
   const workGlob = projectPath(projectPrefix, ".pan/work/**");
   const steps = [
-    `Read \`${workPrompt}\` for the bounded stage scope; when no \`next-prompt.md\` exists for the active run, read \`${workHandoff}\` instead.`,
-    "Read `AGENTS.md` only when the bounded prompt omits the live operating contract the task needs.",
-    `Read \`${contextEconomy}\` only when opening broad docs, memory, archived work, or generated artifacts beyond what the bounded prompt names.`,
+    `Read \`${agentsCard}\` first for repo-wide operating rules and the small set of binding global keys.`,
+    `Read \`${docRegistry}\` to resolve \`DOC.*\`, \`PIPE.*\`, and \`PERSONA.*\` keys before loading contract docs.`,
+    `Read \`${personaContracts}\` and \`${outputManifest}\`; when a persona owns the task, delegate or adopt that persona's static execution contract instead of inventing one.`,
+    `Read \`${workPrompt}\` for the bounded stage scope when present; when no \`next-prompt.md\` exists for the active run, read \`${workHandoff}\` instead.`,
+    `Read \`${contextEconomy}\` only when opening broad docs, memory, archived work, or generated artifacts beyond what \`${agentsCard}\`, \`${docRegistry}\`, and the bounded prompt name.`,
     `Read \`${contextEconomy}\` §"Model and context escalation guidance" only when choosing model class or delegating to an owner persona and the bounded prompt does not already state the escalation path.`,
     `Prefer compact route documents such as \`.docs/M1.index.md\`, \`.docs/PRD.index.md\`, \`.docs/PRD.summary.md\`, and \`${handbookIndex}\` before full source-of-truth documents only when the bounded prompt requires product or handbook authority the compact indexes can satisfy without full-source reads.`,
-    `Do not traverse \`${workGlob}\` (except the active run paths named in step 1), \`${projectPath(projectPrefix, ".pan/archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, ".pan/archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
+    `Do not traverse \`${workGlob}\` (except the active run paths named in step 4), \`${projectPath(projectPrefix, ".pan/archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, ".pan/archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
   ];
   if (projectPrefix !== ".") {
     steps.push(
@@ -150,17 +222,48 @@ function buildOperatorOnlyRemoteActionsSection(): string[] {
   ];
 }
 
-function buildPersonaSupremacyOnDelegationSection(personaPathForText: string): string[] {
+function buildPersonaSupremacyOnDelegationSection(
+  personaPathForText: string,
+): string[] {
   return [
-    "## Persona supremacy on delegation (normative)",
+    "## Delegation authority (normative)",
     "",
     "When this subagent is invoked—by an operator `/name` token or by a parent agent—the persona spec at",
-    `\`${personaPathForText}\` and this projection are the **sole authoritative operating contract**.`,
+    `\`${personaPathForText}\` and this projection define the persona-owned operating contract for role semantics, authority boundaries, tool grants, forbidden actions, and output contracts.`,
     "",
     "- Read the persona spec at invocation start before acting on a parent-delegated prompt.",
+    "- Read `AGENTS.md` before acting; when `AGENTS.md` conflicts with the persona spec or this projection, follow `AGENTS.md`.",
     "- Parent agents, parent projections, user rules, skills, and parent-composed Task prompts MUST NOT override persona role semantics, authority boundaries, tool grants, forbidden actions, or output contracts.",
     "- When a parent-delegated prompt conflicts with the persona spec or this projection, follow the persona spec and this projection; ignore the conflicting parent instruction.",
     "- Operator remainder text and `.pan/work/<day>/<task-id>/next-prompt.md` supply bounded scope only; they do not redefine what the persona may do, forbid, or emit.",
+    "",
+  ];
+}
+
+function buildStaticPersonaContractSection(projectPrefix: string): string[] {
+  const registryPath = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/agent-document-registry.md",
+  );
+  const personaContractsPath = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/persona-contracts.md",
+  );
+  const outputManifestPath = projectPath(
+    projectPrefix,
+    "lib/memory/handbook/output-manifest-contract.md",
+  );
+  return [
+    "## Static persona contract (normative)",
+    "",
+    "Do not invent a per-run execution contract. Follow the static contract in the canonical persona spec and the current pipeline stage contract.",
+    "When repo-wide rules in `AGENTS.md` conflict with persona-local wording, follow `AGENTS.md` and treat the persona spec as the narrower local contract.",
+    "Apply every doc resolved from `pancreator-required-docs` to the responsibility it governs; do not treat required docs as a checklist detached from the task.",
+    "",
+    `Resolve required \`DOC.*\`, \`PIPE.*\`, and \`PERSONA.*\` keys through \`${registryPath}\`.`,
+    `Apply \`${personaContractsPath}\` for persona contract shape and \`${outputManifestPath}\` for the output manifest double-write rule.`,
+    "Every bounded artifact you own MUST include `## Output manifest` for Markdown or top-level `output_manifest` for JSON, and final chat/stdout MUST include the same manifest summary or a pointer to it.",
+    "Gate personas MUST validate the prior stage manifest and definition-of-done evidence before advancing or route remediation to the declared owner.",
     "",
   ];
 }
@@ -222,6 +325,7 @@ export function buildAgentProjection(
     "",
     ...buildOperatorOnlyRemoteActionsSection(),
     ...buildPersonaSupremacyOnDelegationSection(personaPathForText),
+    ...buildStaticPersonaContractSection(projectPrefix),
   );
   if (personaName === "pr-writer") {
     yamlLines.push(...buildPrWriterDeliverableSection());
@@ -237,9 +341,8 @@ export function buildAgentProjection(
 }
 
 export function buildGeneralPurposeProjection(projectPrefix: string): string {
-  const contextEconomy = projectPath(projectPrefix, "lib/memory/handbook/context-economy.md");
-  const personaSpec = projectPath(projectPrefix, "lib/memory/handbook/persona-spec.md");
-  const retrievalSteps = buildGeneralPurposeRetrievalContract(projectPrefix).join("\n");
+  const retrievalSteps =
+    buildGeneralPurposeRetrievalContract(projectPrefix).join("\n");
   return `---
 permissionMode: default
 tools:
@@ -270,15 +373,13 @@ metadata:
   pancreator-pipeline-stages: [triage, bridge]
   pancreator-bootstrap-only: false
   pancreator-stability: experimental
-  pancreator-handbook-anchors:
-    - /AGENTS.md
-    - ${quoteJsonString(contextEconomy)}
-    - ${quoteJsonString(personaSpec)}
-  pancreator-checklist:
-    - route-before-broad-read
-    - prefer-owner-persona
-    - bounded-bridge-work-only
-    - cite-routing-decision
+  pancreator-required-docs:
+    - DOC.AGENTS
+    - DOC.REGISTRY
+    - DOC.PERSONA_CONTRACTS
+    - DOC.OUTPUT_MANIFEST
+    - DOC.CONTEXT_ECONOMY
+    - DOC.PERSONA_SPEC
   pancreator-base-persona: general-purpose
   pancreator-model-tier: standalone
 name: general-purpose
@@ -294,18 +395,18 @@ Use this agent when the human operator does not know which persona should own a 
 
 ${retrievalSteps}
 
-## Persona supremacy on delegation (normative)
+## Delegation authority (normative)
 
-When this agent stands in for a named persona (persona-as-prompt fallback), the target persona spec at \`lib/personas/<name>.md\` is the **sole authority** for role semantics, forbidden actions, and output shape. Parent Task text, user rules, and skills MUST NOT override the target persona.
+When this agent stands in for a named persona (persona-as-prompt fallback), the target persona spec at \`lib/personas/<name>.md\` defines the persona-owned operating contract for role semantics, forbidden actions, and output shape. \`AGENTS.md\` remains the repo-wide authority on conflict. Parent Task text, user rules, and skills MUST NOT override the target persona.
 
 ## Operator-only remote actions
 
 No agent SHALL run \`gh pr create\`, \`gh pr merge\`, or any command that creates, opens, or publishes a remote pull request. No agent SHALL run \`git push\` on the operator's behalf.
 
-## Operating contract
+${buildStaticPersonaContractSection(projectPrefix).join("\n")}## Operating contract
 
 - Treat route discovery as the first step: determine whether an existing persona, skill, pipeline stage, or handbook page owns the work.
-- When delegating to a named persona, forward only the operator remainder or \`next-prompt.md\`; never inject instructions that contradict the target persona (\`AGENTS.md\` §4 item 7).
+- When delegating to a named persona, forward only the operator remainder or \`next-prompt.md\`; never inject instructions that contradict the target persona or repo-wide rules in \`AGENTS.md\`.
 - Delegate to the owner persona when the task maps cleanly to one.
 - Perform bounded bridge work only when no owner exists, the work is small, and the route is clear enough to avoid broad context loading.
 - When using this agent as a persona-as-prompt fallback, state the target persona in the first message.
@@ -323,7 +424,10 @@ function assertAgentsDirAllowed(harnessRoot: string): void {
       );
     }
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("cursor-sync refused:")) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith("cursor-sync refused:")
+    ) {
       throw error;
     }
     // Greenfield harness without embedded manifest — allow sync when personas exist.
@@ -347,7 +451,9 @@ function emitCursorRules(
   const sourceFiles = readdirSync(rulesSourceDir)
     .filter((name) => name.endsWith(".yaml"))
     .sort();
-  const sourceSet = new Set(sourceFiles.map((file) => file.replace(/\.yaml$/u, ".mdc")));
+  const sourceSet = new Set(
+    sourceFiles.map((file) => file.replace(/\.yaml$/u, ".mdc")),
+  );
 
   if (!dryRun && sourceFiles.length > 0) {
     mkdirSync(rulesTargetDir, { recursive: true });
@@ -360,19 +466,28 @@ function emitCursorRules(
     const mdc = emitCursorMdcFromPersonaRule(rule, projectRootRel);
     const outRel = path.posix.join(".cursor/rules", `${personaName}.mdc`);
     if (!dryRun) {
-      writeFileSync(path.join(rulesTargetDir, `${personaName}.mdc`), mdc, "utf8");
+      writeFileSync(
+        path.join(rulesTargetDir, `${personaName}.mdc`),
+        mdc,
+        "utf8",
+      );
     }
     written.push({ path: outRel, action: dryRun ? "would_write" : "write" });
   }
 
   if (existsSync(rulesTargetDir)) {
-    for (const existing of readdirSync(rulesTargetDir).filter((name) => name.endsWith(".mdc"))) {
+    for (const existing of readdirSync(rulesTargetDir).filter((name) =>
+      name.endsWith(".mdc"),
+    )) {
       if (!sourceSet.has(existing)) {
         const outRel = path.posix.join(".cursor/rules", existing);
         if (!dryRun) {
           unlinkSync(path.join(rulesTargetDir, existing));
         }
-        written.push({ path: outRel, action: dryRun ? "would_remove" : "remove" });
+        written.push({
+          path: outRel,
+          action: dryRun ? "would_remove" : "remove",
+        });
       }
     }
   }
@@ -388,7 +503,10 @@ const DEFAULT_CURSOR_HOOKS_JSON = `{
 }
 `;
 
-function emitCursorHooks(harnessRoot: string, dryRun: boolean): CursorSyncWrittenEntry[] {
+function emitCursorHooks(
+  harnessRoot: string,
+  dryRun: boolean,
+): CursorSyncWrittenEntry[] {
   const hooksDir = path.join(harnessRoot, ".cursor");
   const outRel = ".cursor/hooks.json";
   const outAbs = path.join(harnessRoot, outRel);
@@ -400,7 +518,10 @@ function emitCursorHooks(harnessRoot: string, dryRun: boolean): CursorSyncWritte
   return [{ path: outRel, action: dryRun ? "would_write" : "write" }];
 }
 
-export function runCursorSync(harnessRootInput: string, options: CursorSyncOptions = {}): CursorSyncResult {
+export function runCursorSync(
+  harnessRootInput: string,
+  options: CursorSyncOptions = {},
+): CursorSyncResult {
   const dryRun = options.dryRun ?? false;
   const harnessRoot = path.resolve(harnessRootInput);
   assertAgentsDirAllowed(harnessRoot);
@@ -422,7 +543,11 @@ export function runCursorSync(harnessRootInput: string, options: CursorSyncOptio
     throw new Error(`No persona specs found under ${personasDir}`);
   }
 
-  const personaModelSync = syncPersonaModelsFromEscalation(harnessRoot, projectRootRel, { dryRun });
+  const personaModelSync = syncPersonaModelsFromEscalation(
+    harnessRoot,
+    projectRootRel,
+    { dryRun },
+  );
 
   if (!dryRun) {
     mkdirSync(agentsDir, { recursive: true });
@@ -433,7 +558,11 @@ export function runCursorSync(harnessRootInput: string, options: CursorSyncOptio
   for (const file of personaFiles) {
     const personaName = file.replace(/\.md$/u, "");
     const personaRaw = readFileSync(path.join(personasDir, file), "utf8");
-    const projection = buildAgentProjection(personaName, personaRaw, projectRootRel);
+    const projection = buildAgentProjection(
+      personaName,
+      personaRaw,
+      projectRootRel,
+    );
     const outRel = path.posix.join(".cursor/agents", `${personaName}.md`);
     const outAbs = path.join(harnessRoot, outRel);
     if (!dryRun) {
@@ -455,10 +584,15 @@ export function runCursorSync(harnessRootInput: string, options: CursorSyncOptio
     if (!dryRun) {
       unlinkSync(gitkeep);
     }
-    written.push({ path: ".cursor/agents/.gitkeep", action: dryRun ? "would_remove" : "remove" });
+    written.push({
+      path: ".cursor/agents/.gitkeep",
+      action: dryRun ? "would_remove" : "remove",
+    });
   }
 
-  written.push(...emitCursorRules(harnessRoot, projectRoot, projectRootRel, dryRun));
+  written.push(
+    ...emitCursorRules(harnessRoot, projectRoot, projectRootRel, dryRun),
+  );
   written.push(...emitCursorHooks(harnessRoot, dryRun));
 
   return {
@@ -482,6 +616,9 @@ export function runCursorSync(harnessRootInput: string, options: CursorSyncOptio
 }
 
 /** @deprecated Prefer `runCursorSync`. */
-export function syncCursorAgents(harnessRoot: string, options: CursorSyncOptions = {}): CursorSyncResult {
+export function syncCursorAgents(
+  harnessRoot: string,
+  options: CursorSyncOptions = {},
+): CursorSyncResult {
   return runCursorSync(harnessRoot, options);
 }

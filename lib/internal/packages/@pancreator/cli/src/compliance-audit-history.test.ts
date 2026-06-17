@@ -34,6 +34,36 @@ describe("compliance-audit-history", () => {
     }
   });
 
+  it("backfills history from flat artifact_index paths", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-audit-history-backfill-flat-"));
+    const resultRel = ".pan/archive/work/172996_05-10-26/38670_1315_demo-feature/compliance-result.json";
+    await writeJson(root, path.join(root, resultRel), {
+      taskId: "38670_1315_demo-feature",
+      featureId: "demo-feature-flat",
+      auditedAt: "2026-05-10T14:10:00.000Z",
+      compliance_passes: true,
+      findings: [{ severity: "minor" }],
+      scope: {
+        inputsAudited: [
+          ".pan/work/172996_05-10-26/38670_1315_demo-feature/touch-set.json",
+          "lib/memory/features/demo-feature/delivery-report.md",
+        ],
+      },
+    });
+    await writeJson(root, path.join(root, durableFeatureIndexRel("demo-feature-flat")), {
+      feature_id: "demo-feature-flat",
+      task_id: "38670_1315_demo-feature",
+      indexed_at: "2026-05-10T14:20:00.000Z",
+      artifact_index: {
+        compliance_result: resultRel,
+        run_dir: ".pan/archive/work/172996_05-10-26/38670_1315_demo-feature",
+      },
+    });
+
+    const history = await ensureComplianceAuditHistoryBackfilled(root);
+    expect(history.entries.some((entry) => entry.feature_id === "demo-feature-flat")).toBe(true);
+  });
+
   it("backfills history from indexed compliance artifacts", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-audit-history-backfill-"));
     const resultRel = ".pan/archive/work/172996_05-10-26/38670_1315_demo-feature/compliance-result.json";

@@ -151,6 +151,12 @@
           "path": "lib/memory/features/command-center/command-center-pipeline-command-center-and-human-gate-queue/index.json"
         },
         {
+          "feature_id": "command-center-post-ship-remediation",
+          "title": "Command Center — post-ship remediation",
+          "status": "indexed",
+          "path": "lib/memory/features/command-center/command-center-post-ship-remediation/index.json"
+        },
+        {
           "feature_id": "command-center-rebuild",
           "title": "Command Center rebuild",
           "status": "indexed",
@@ -371,18 +377,6 @@
           "title": "Engineering Spec - @pancreator/contract",
           "status": "indexed",
           "path": "lib/memory/features/platform-substrate/pancreator-contract/index.json"
-        },
-        {
-          "feature_id": "pancreator-contract-runner-llm-judge",
-          "title": "Engineering Spec - @pancreator/contract-runner-llm-judge",
-          "status": "indexed",
-          "path": "lib/memory/features/platform-substrate/pancreator-contract-runner-llm-judge/index.json"
-        },
-        {
-          "feature_id": "pancreator-contract-runner-rego",
-          "title": "Engineering Spec - @pancreator/contract-runner-rego",
-          "status": "indexed",
-          "path": "lib/memory/features/platform-substrate/pancreator-contract-runner-rego/index.json"
         },
         {
           "feature_id": "pancreator-contract-style",

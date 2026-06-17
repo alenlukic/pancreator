@@ -66,7 +66,7 @@ software-engineering standard first, then the language- or domain-specific page.
 ## Enforcement
 
 1. Personas that write or review code SHALL list the applicable standards pages in
-   `metadata.pancreator-handbook-anchors` and SHALL apply them at invocation.
+   `metadata.pancreator-required-docs` using `DOC.*` keys and SHALL apply them at invocation.
 2. `reviewer` SHALL treat an unmet standard in scope of the change as a `must fix`
    finding when the standard is correctness- or security-bearing, and as a
    `consider` finding for craft or polish.
@@ -79,7 +79,7 @@ A new language or domain guide MAY be added under
 `/lib/memory/handbook/engineering/`. The author SHALL add the new page to the
 Applicability and Standards-corpus tables in the same change set, SHALL add a
 routing row to `/lib/memory/handbook/index.md`, and SHALL wire the page into the
-`metadata.pancreator-handbook-anchors` of every persona the standard governs.
+`metadata.pancreator-required-docs` of every persona the standard governs.
 
 ## Stability
 

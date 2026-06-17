@@ -23,8 +23,6 @@
     "@pancreator/checkpointer-fs": "workspace:*",
     "@pancreator/cli": "workspace:*",
     "@pancreator/contract": "workspace:*",
-    "@pancreator/contract-runner-llm-judge": "workspace:*",
-    "@pancreator/contract-runner-rego": "workspace:*",
     "@pancreator/contract-style": "workspace:*",
     "@pancreator/core": "workspace:*",
     "@pancreator/env-isolation": "workspace:*",

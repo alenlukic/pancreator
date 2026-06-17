@@ -52,8 +52,12 @@ policy requires a durable copy.
    requires human review outside the feature-delivery ledger.
 
 4. Archive and thread semantics follow `lib/memory/handbook/inbox-lifecycle.md`.
-   Runtime archive automation remains backlog-deferred; move responded items manually
-   to `.pan/archive/inbox/in/` when policy requires archival.
+   Feature-delivery runs archive their source inbox directive automatically when
+   you run `pnpm -w exec pan close-artifacts <task-id>` at `complete`; the archived
+   copy lands at `.pan/archive/inbox/in/<day-bucket>/<basename>` (same day-bucket
+   leaf layout as the active queue). Empty day buckets under `lib/inbox/in/` are
+   pruned during closure. For non-feature-delivery work, move responded items
+   manually to `.pan/archive/inbox/in/` when policy requires archival.
 
 ## Feature delivery loop
 
@@ -80,8 +84,8 @@ the repo default), the plan and test stages add companion design delegation.
 `product-engineer`, `design-engineer`, and `tech-lead` are the plan-stage trio;
 `qa-tester` and `design-reviewer` are the test-stage pair:
 
-- **Plan:** delegate `/product-engineer` with `product-plan-prompt.md` and
-  `/design-engineer` with `design-plan-prompt.md`, then delegate `/tech-lead`
+- **Plan:** delegate `/product-engineer` with `product/plan-prompt.md` and
+  `/design-engineer` with `design/plan-prompt.md`, then delegate `/tech-lead`
   with `next-prompt.md`. The plan gate requires product, design, and technical
   implementation plans; product, design, and technical acceptance criteria; and
   `manual-qa-test-cases.md` before implementation.
@@ -133,6 +137,10 @@ Use this loop exactly:
 7. Repeat until `currentStage` becomes `complete`.
 8. At `complete`, delegate the librarian `next-prompt.md` and run
    `pnpm -w exec pan close-artifacts <task-id>` once after final validation.
+   That command archives the active run to `.pan/archive/work/`, moves the source
+   inbox directive from `lib/inbox/in/` to `.pan/archive/inbox/in/<day-bucket>/<basename>`,
+   prunes empty inbox day buckets, refreshes active memory, and backfills the
+   feature index archived-inbox pointer.
 
 `advance` runs after every accepted non-terminal stage: `plan`,
 `implement`, `review`, `test`, `report`, `compliance`, `ship`, and `index`. Review has
@@ -341,7 +349,7 @@ For ad-hoc work that does not use the feature-delivery ledger:
 1. Check `lib/memory/active/current.md` for active pointers.
 2. Put requests in `lib/inbox/in/` when they need org tracking.
 3. Separate planning from execution: use `.pan/work/<day>/<task-id>/handoff.md`,
-   then delegate to the owning persona (see `AGENTS.md` §4).
+   then delegate to the owning persona (see `AGENTS.md` §2).
 4. Stage local diffs and ratify at phase boundaries before commit.
 
 ### Out-of-band context review
@@ -455,7 +463,7 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 
 | Current stage | Delegate to | Required artifact | After acceptance |
 |---|---|---|---|
-| `plan` | `product-engineer` ∥ `design-engineer` → `tech-lead` | `<runDir>/product-plan.md`, `product-acceptance-criteria.md`, `design-plan.md`, `design-acceptance-criteria.md`, `tech-plan.md`, `tech-acceptance-criteria.md`, `manual-qa-test-cases.md`, `plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/touch-set.json` |
+| `plan` | `product-engineer` ∥ `design-engineer` → `tech-lead` | `<runDir>/product/plan.md`, `product/acceptance-criteria.md`, `design/plan.md`, `design/acceptance-criteria.md`, `tech/plan.md`, `tech/acceptance-criteria.md`, `manual-qa-test-cases.md`, `plan.md`, `touch-set.json`, `handoff.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/touch-set.json` |
 | `implement` | `coder` | `<runDir>/implementation-report.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/implementation-report.md` |
 | `review` (pass) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/review.md` |
 | `review` (qualifying spot-fix) | `reviewer` | `<runDir>/review.md` | `pnpm -w exec pan advance <task-id> --event review_spot_fix --artifact <runDir>/review.md` |

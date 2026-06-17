@@ -49,5 +49,10 @@
     "lib/memory/features/repository-layout-restructure-and-archive-migration/index.json",
     "lib/memory/features/repository-layout-restructure-and-archive-migration/spec.md"
   ],
-  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction.",
+  "archived_inbox_source": ".pan/archive/inbox/in/172976_05-30-26/65996_0540_repo-layout-restructure.md",
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172976_05-30-26/65996_0540_repo-layout-restructure.md",
+    "prior_path": "lib/inbox/in/172976_05-30-26/65996_0540_repo-layout-restructure.md"
+  }
 }

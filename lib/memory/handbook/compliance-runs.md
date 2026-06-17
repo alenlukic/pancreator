@@ -10,11 +10,9 @@ purpose: |
   `tests/compliance/` and how first-slice manual execution differs from
   deferred scheduler automation.
 references:
-  - kind: lines
+  - kind: file
     path: AGENTS.md
-    range: [203, 208]
-    contentHash: b953d77
-    note: "AGENTS §6.2 binds agents to compliance-run triggers after structure changes."
+    note: "AGENTS §5 binds agents to run compliance descriptors when this handbook says the touched surface requires them."
   - kind: lines
     path: lib/memory/features/quality-governance/compliance-tests/manual-runbook.md
     range: [1, 52]

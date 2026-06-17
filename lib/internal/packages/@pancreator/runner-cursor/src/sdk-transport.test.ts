@@ -84,6 +84,16 @@ describe("sdk-transport prompt and verification helpers", () => {
     });
     expect(prompt).toContain("MCP servers: chrome-devtools");
     expect(prompt).toContain("MCP setting sources: user, project, plugins");
+    expect(prompt).toContain("Browser hygiene for chrome-devtools:");
+    expect(prompt).toContain("Do not modify macOS LaunchServices, default-browser handlers");
+  });
+
+  it("buildSdkPrompt omits chrome-devtools hygiene when no browser MCP is declared", () => {
+    const prompt = buildSdkPrompt({
+      message: "run plan",
+      persona,
+    });
+    expect(prompt).not.toContain("Browser hygiene for chrome-devtools:");
   });
 
   it("buildSdkAgentCreateOptions wires persona MCP dependencies into Agent.create options", () => {

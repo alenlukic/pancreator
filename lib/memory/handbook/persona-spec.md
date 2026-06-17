@@ -11,25 +11,12 @@ purpose: |
   (`.cursor/agents/<name>.md` compact projection plus standard/complex variants
   and `.cursor/rules/<name>.mdc` rule-layer projection where required). The canonical reference for `persona-designer` and the
   `author-persona` skill.
-references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [460, 500]
-    contentHash: 2eb6aa4
-    note: "PRD §6 — Subagent Persona Roster: header + 16-field example."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [278, 278]
-    contentHash: 2eb6aa4
-    note: "PRD §4 glossary — Persona Spec Format definition."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [462, 462]
-    contentHash: 2eb6aa4
-    note: "PRD §6 — Anthropic Claude Agent SDK subagents reference URL."
 related:
   - /lib/memory/handbook/glossary.md
   - /lib/memory/handbook/contract-style.md
+  - /lib/memory/handbook/persona-contracts.md
+  - /lib/memory/handbook/output-manifest-contract.md
+  - /lib/memory/handbook/agent-document-registry.md
   - /lib/personas/skills/author-persona/SKILL.md
 external:
   - https://code.claude.com/docs/en/subagents
@@ -68,24 +55,24 @@ delimiters. The body MUST follow the closing fence.
 The fields are defined by the Anthropic Claude Agent SDK subagent format. The
 table records each field's domain and Pancreator default.
 
-| # | Field | Type | Pancreator default | Notes |
-|---|---|---|---|---|
-| 1 | `name` | string | required | Lowercase-kebab-case, unique across `lib/personas/`. |
-| 2 | `description` | string | required | EARS one-liner; at most 50 words; shown to other agents at routing time. |
-| 3 | `model` | enum | `inherit` | Pin only when `pancreator-risk-tier: high`. |
-| 4 | `permissionMode` | enum | `default` | `read-only` for review-only personas. |
-| 5 | `tools` | string[] | required | Minimal allowlist; most-restrictive Bash scope. |
-| 6 | `disallowedTools` | string[] | required | MUST include `Bash(rm:*)`, `Bash(git push:*)`, `Bash(git commit:*)` for every persona except `supervisor`. |
-| 7 | `mcpServers` | string[] | `[]` | List only servers the persona uses. |
-| 8 | `maxTurns` | integer | `30` | Raise only with documented justification. |
-| 9 | `skills` | string[] | `[]` | Each entry MUST resolve to an existing `lib/personas/skills/<name>/SKILL.md`. |
-| 10 | `isolation` | enum | `worktree` | `none` only for read-only personas. |
-| 11 | `memory` | enum | `project` | `private` for SMEs writing to `/lib/memory/smes/<name>/`. |
-| 12 | `effort` | enum | `medium` | `{low, medium, high}`. Maps to the model's reasoning budget. |
-| 13 | `color` | enum | required | UX hint; pick from the unused palette in §6 below. |
-| 14 | `hooks` | object | omit | Per-event scripts; omit when no value applies. |
-| 15 | `initialPrompt` | string | omit | One-shot bootstrap prompt; omit when no value applies. |
-| 16 | `background` | string | omit | Long-form persona backstory; omit when no value applies. |
+| #   | Field             | Type     | Pancreator default | Notes                                                                                                      |
+| --- | ----------------- | -------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| 1   | `name`            | string   | required           | Lowercase-kebab-case, unique across `lib/personas/`.                                                       |
+| 2   | `description`     | string   | required           | EARS one-liner; at most 50 words; shown to other agents at routing time.                                   |
+| 3   | `model`           | enum     | `inherit`          | Pin only when `pancreator-risk-tier: high`.                                                                |
+| 4   | `permissionMode`  | enum     | `default`          | `read-only` for review-only personas.                                                                      |
+| 5   | `tools`           | string[] | required           | Minimal allowlist; most-restrictive Bash scope.                                                            |
+| 6   | `disallowedTools` | string[] | required           | MUST include `Bash(rm:*)`, `Bash(git push:*)`, `Bash(git commit:*)` for every persona except `supervisor`. |
+| 7   | `mcpServers`      | string[] | `[]`               | List only servers the persona uses.                                                                        |
+| 8   | `maxTurns`        | integer  | `30`               | Raise only with documented justification.                                                                  |
+| 9   | `skills`          | string[] | `[]`               | Each entry MUST resolve to an existing `lib/personas/skills/<name>/SKILL.md`.                              |
+| 10  | `isolation`       | enum     | `worktree`         | `none` only for read-only personas.                                                                        |
+| 11  | `memory`          | enum     | `project`          | `private` for SMEs writing to `/lib/memory/smes/<name>/`.                                                  |
+| 12  | `effort`          | enum     | `medium`           | `{low, medium, high}`. Maps to the model's reasoning budget.                                               |
+| 13  | `color`           | enum     | required           | UX hint; pick from the unused palette in §6 below.                                                         |
+| 14  | `hooks`           | object   | omit               | Per-event scripts; omit when no value applies.                                                             |
+| 15  | `initialPrompt`   | string   | omit               | One-shot bootstrap prompt; omit when no value applies.                                                     |
+| 16  | `background`      | string   | omit               | Long-form persona backstory; omit when no value applies.                                                   |
 
 `model`, `permissionMode`, `isolation`, `memory`, and `effort` carry closed
 enums. Values outside the enum cause the parser to reject the file.
@@ -97,15 +84,19 @@ persona:
 
 ```yaml
 metadata:
-  pancreator-risk-tier: medium                  # low | medium | high | any
-  pancreator-pipeline-stages: [intake]          # array of stage IDs the persona is invoked in
-  pancreator-bootstrap-only: false              # true if the persona retires after bootstrap
-  pancreator-stability: experimental            # experimental | stable | deprecated
-  pancreator-handbook-anchors:                  # files the persona reads at invocation
-    - /lib/memory/handbook/glossary.md
-  pancreator-checklist:                         # named conformance checks the reviewer runs
-    - sixteen-field-yaml-complete
-    - description-uses-EARS
+  pancreator-risk-tier: medium # low | medium | high | any
+  pancreator-pipeline-stages: [intake] # array of stage IDs the persona is invoked in
+  pancreator-bootstrap-only: false # true if the persona retires after bootstrap
+  pancreator-stability: experimental # experimental | stable | deprecated
+  pancreator-contract-key: PERSONA.INTAKE_ANALYST
+  pancreator-required-docs: # DOC.* / PIPE.* keys resolved through DOC.REGISTRY
+    - DOC.AGENTS
+    - DOC.REGISTRY
+    - DOC.PERSONA_CONTRACTS
+    - DOC.OUTPUT_MANIFEST
+    - DOC.GLOSSARY
+    - DOC.CONTRACT_STYLE
+  pancreator-output-manifest: required # required | forbidden
 ```
 
 Optional keys:
@@ -123,20 +114,29 @@ not declared in §7; the warning escalates to error in M3.
 
 ## 4 — Body prose discipline
 
-The body MUST contain three sections:
+The body MUST contain four sections:
 
-1. **When you are invoked.** Trigger conditions in EARS form.
-2. **What you MUST produce, every invocation.** The artifacts the persona
+1. **Static execution contract.** Required context, responsibilities, definition
+   of done, output manifest, and gate validator. This section is mandatory and
+   MUST NOT ask the agent to invent a new per-run contract.
+2. **When you are invoked.** Trigger conditions in EARS form.
+3. **What you MUST produce, every invocation.** The artifacts the persona
    emits, with paths and shape. On every bounded task completion, the
-   operator-visible response MUST also end with a `## Next operator steps`
-   section per `/lib/memory/handbook/operator-output-contract.md` (single-option
-   or multi-option layout, explicit **What** / **How**, read-only labeling,
-   and **When to choose** / **Impact** when multiple options exist). Runnable
-   `pan` commands in **How** MUST use `pnpm -w exec pan …` per
+   operator-visible response MUST also include or reference the `## Output
+manifest` required by `/lib/memory/handbook/output-manifest-contract.md`.
+   Operator-facing responses MUST also end with a `## Next operator steps`
+   section per `/lib/memory/handbook/operator-output-contract.md` unless the
+   persona contract explicitly forbids operator next steps. Runnable `pan`
+   commands in **How** MUST use `pnpm -w exec pan …` per
    `/lib/memory/handbook/pancreator-config.md`. Shell **How** clauses MUST use
    fully formed copy-paste command blocks per
    `/lib/memory/handbook/operator-output-contract.md` §3.4.
-3. **What you MUST NOT do.** Negative obligations and self-protection clauses.
+4. **What you MUST NOT do.** Negative obligations and self-protection clauses.
+
+Persona bodies MUST follow `/lib/memory/handbook/persona-contracts.md` and
+`/lib/memory/handbook/output-manifest-contract.md`. Required docs MUST be named
+as global keys in `metadata.pancreator-required-docs`; do not add
+`pancreator-handbook-anchors` to new or edited personas.
 
 Personas with conformance gates MUST add a fourth section, **Conformance
 gates**. Personas with non-trivial failure modes MUST add a fifth section,
@@ -187,11 +187,11 @@ Author tool-agnostic persona rule specs at `lib/personas/rules/<name>.yaml`.
 Required YAML fields:
 
 ```yaml
-persona: <name>           # MUST match lib/personas/<name>.md and the file basename
-description: <string>     # activation description for the rule layer
-globs:                    # non-empty string array of path globs
+persona: <name> # MUST match lib/personas/<name>.md and the file basename
+description: <string> # activation description for the rule layer
+globs: # non-empty string array of path globs
   - <glob>
-alwaysApply: false        # true reserved for priority rules only
+alwaysApply: false # true reserved for priority rules only
 ```
 
 The Cursor `.mdc` projection uses Cursor's per-rule format (`description`, `globs`,
@@ -231,18 +231,18 @@ The `color` field is a UX hint shown in pipeline timelines. Pick from the
 unused palette below. Reserve `red` for `ombudsperson`-class personas to
 preserve operator legibility.
 
-| Color | Reserved for | Status |
-|---|---|---|
-| `violet` | `persona-designer` | used |
-| `amber` | `contract-writer` | used |
-| `blue` | review-class personas (`reviewer`, `appsec`) | guideline |
-| `green` | implementation-class personas (`coder`, `frontend-eng`) | guideline |
-| `cyan` | planning-class personas (`tech-lead`, `intake-analyst`) | guideline |
+| Color    | Reserved for                                                            | Status    |
+| -------- | ----------------------------------------------------------------------- | --------- |
+| `violet` | `persona-designer`                                                      | used      |
+| `amber`  | `contract-writer`                                                       | used      |
+| `blue`   | review-class personas (`reviewer`, `appsec`)                            | guideline |
+| `green`  | implementation-class personas (`coder`, `frontend-eng`)                 | guideline |
+| `cyan`   | planning-class personas (`tech-lead`, `intake-analyst`)                 | guideline |
 | `purple` | pm, backlog, and pipeline orchestration (`pm`, `groomer`, `supervisor`) | guideline |
-| `teal` | librarian-class | guideline |
-| `slate` | tech-writer-class | guideline |
-| `orange` | scout-class | guideline |
-| `red` | ombudsperson, watchdog | reserved |
+| `teal`   | librarian-class                                                         | guideline |
+| `slate`  | tech-writer-class                                                       | guideline |
+| `orange` | scout-class                                                             | guideline |
+| `red`    | ombudsperson, watchdog                                                  | reserved  |
 
 When the palette runs out, append a row here; do not improvise.
 
@@ -256,9 +256,9 @@ warning to an error.
 - `pancreator-pipeline-stages` — required.
 - `pancreator-bootstrap-only` — required.
 - `pancreator-stability` — required.
-- `pancreator-handbook-anchors` — required when the persona reads the handbook.
-- `pancreator-checklist` — required. Every persona checklist SHOULD include
-  `next-operator-steps-on-completion` unless a ratified exception is recorded.
+- `pancreator-contract-key` — required.
+- `pancreator-required-docs` — required for every persona; names the binding `DOC.*`, `PIPE.*`, and `PERSONA.*` keys the persona MUST resolve and apply.
+- `pancreator-output-manifest` — required.
 - `pancreator-allowed-kinds-mvp` / `-m2` / `-m3plus` — milestone allowlists.
 - `pancreator-cost-ceiling-usd` — per-invocation cost cap.
 - `pancreator-base-persona` — specialization parent.
@@ -300,17 +300,13 @@ metadata:
   pancreator-pipeline-stages: [example]
   pancreator-bootstrap-only: false
   pancreator-stability: experimental
-  pancreator-handbook-anchors:
-    - /lib/memory/handbook/glossary.md
-  pancreator-checklist:
-    - sixteen-field-yaml-complete
-    - description-uses-EARS
-references:
-  - kind: lines
-    path: /lib/memory/handbook/persona-spec.md
-    range: [1, 1]
-    contentHash: 2a072e0
-    note: "Persona Spec Format reference."
+  pancreator-contract-key: PERSONA.EXAMPLE
+  pancreator-required-docs:
+    - DOC.AGENTS
+    - DOC.REGISTRY
+    - DOC.OUTPUT_MANIFEST
+    - DOC.GLOSSARY
+  pancreator-output-manifest: required
 ---
 
 # Example Persona

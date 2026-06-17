@@ -43,6 +43,7 @@ import {
   PAN_ACTIVE_MEMORY_CONFLICT_EXIT_CODE,
 } from "./active-memory-refresh.js";
 import { runTokenEconomySampleAudit } from "./commands/token-economy-sample-audit.js";
+import { runPanLint, runPanTest, type PanValidationHooks } from "./pan-validation.js";
 import { abortSchedulerRunByTaskId } from "@pancreator/scheduler";
 import { runSchedulerTick } from "./scheduler-tick.js";
 import {
@@ -89,6 +90,8 @@ export interface CliRunOptions {
   clock?: () => Date;
   /** Injectable Cursor SDK transport for feature-delivery runner tests. */
   testHooks?: import("./feature-delivery-runner.js").FeatureDeliveryTestHooks;
+  /** Injectable shell runners for `pan lint` and `pan test`. */
+  validationHooks?: PanValidationHooks;
   /** Default output format when a command omits `--format`. */
   format?: OutputFormat;
 }
@@ -262,18 +265,6 @@ interface ExitState {
   code: number;
 }
 
-function deferredVerbAction(
-  repoRoot: string,
-  writeOut: (chunk: string) => void,
-  exit: ExitState,
-  cfg: DeferredVerbConfig,
-  trackingOverride?: string,
-): () => Promise<void> {
-  return async () => {
-    emitDeferredEnvelope(writeOut, repoRoot, cfg, trackingOverride);
-    exit.code = PAN_DEFERRED_EXIT_CODE;
-  };
-}
 
 /**
  * Parses CLI arguments and runs the matching handler. The argv parameter MUST omit
@@ -360,27 +351,6 @@ export async function parseAndRun(
           clock: options?.clock,
         }),
       );
-    });
-
-  const batch = program.command("batch").description("Batch feature-delivery orchestration [disabled]");
-
-  batch
-    .command("run")
-    .description("Disabled: feature-delivery runs are single-run only; no parallel delivery")
-    .argument("[inboxEntries...]", "Ignored while batch delivery is disabled")
-    .option("--parallel <n>", "Ignored while batch delivery is disabled", "1")
-    .option("--base <ref>", "Ignored while batch delivery is disabled")
-    .option("--merge-branch <name>", "Ignored while batch delivery is disabled")
-    .option("--dry-run", "Ignored while batch delivery is disabled", false)
-    .option("--format <format>", "Output format: json (default) or text")
-    .action(async () => {
-      emitDeferredEnvelope(writeOut, repoRoot, {
-        verb: "pan batch run",
-        milestone: "M2",
-        manual_workaround:
-          "Batch and parallel feature-delivery runs are disabled. Run one `pan run feature-delivery <inbox-entry>` task at a time in the main checkout.",
-      });
-      exit.code = PAN_DEFERRED_EXIT_CODE;
     });
 
   program
@@ -601,24 +571,34 @@ export async function parseAndRun(
   };
 
   program
+    .command("lint")
+    .description("Run pnpm lint and pnpm typecheck")
+    .action(async () => {
+      const result = runPanLint(repoRoot, options?.validationHooks);
+      emit(writeOut, repoRoot, result);
+      if (result.status === "fail") {
+        exit.code = result.exitCode;
+      }
+    });
+
+  program
+    .command("test")
+    .description("Run pnpm test and node --test tests/*.test.mjs")
+    .action(async () => {
+      const result = runPanTest(repoRoot, options?.validationHooks);
+      emit(writeOut, repoRoot, result);
+      if (result.status === "fail") {
+        exit.code = result.exitCode;
+      }
+    });
+
+  program
     .command("check")
     .description(
       "Run read-only pre-close validation checks (reports pass/fail; does not modify the repository)",
     )
     .option("--format <format>", "Output format: json (default) or text")
     .action(async (opts: { format?: string }) => {
-      await emitPanCheck(opts);
-    });
-
-  program
-    .command("doctor")
-    .description("Deprecated alias for pan check")
-    .option("--format <format>", "Output format: json (default) or text")
-    .action(async (opts: { format?: string }) => {
-      const writeErr = options?.writeErr ?? ((chunk: string) => process.stderr.write(chunk));
-      writeErr(
-        "pan doctor is deprecated; use `pnpm -w exec pan check` (read-only validation, no auto-fix).\n",
-      );
       await emitPanCheck(opts);
     });
 
@@ -748,54 +728,6 @@ export async function parseAndRun(
         }),
       );
     });
-
-  program
-    .command("approve")
-    .description("Approve a gated action [deferred: M3]")
-    .action(
-      deferredVerbAction(repoRoot, writeOut, exit, {
-        verb: "pan approve",
-        milestone: "M3",
-        manual_workaround:
-          "Approve human gates through the supervising operator workflow until `LocalUserAuthorizer` automation lands under .docs/PRD.md §10.",
-      }),
-    );
-
-  program
-    .command("memory")
-    .description("Inspect Memory tier indexes [deferred: M2]")
-    .action(
-      deferredVerbAction(repoRoot, writeOut, exit, {
-        verb: "pan memory",
-        milestone: "M2",
-        manual_workaround:
-          "Orient with `lib/memory/handbook/context-economy.md` and read explicit memory files until MemoryRouter CLI surfaces harden.",
-      }),
-    );
-
-  program
-    .command("contracts")
-    .description("List or evaluate Spec Contracts [deferred: M2]")
-    .action(
-      deferredVerbAction(repoRoot, writeOut, exit, {
-        verb: "pan contracts",
-        milestone: "M2",
-        manual_workaround:
-          "Run targeted descriptors under `tests/compliance/` until the consolidated contract runner ships as a CLI verb.",
-      }),
-    );
-
-  program
-    .command("lint")
-    .description("Run repository lint and policy gates [deferred: M1]")
-    .action(
-      deferredVerbAction(repoRoot, writeOut, exit, {
-        verb: "pan lint",
-        milestone: "M1",
-        manual_workaround:
-          "Use `pnpm lint` and `pnpm run check:phase0a` locally until pan wraps the bundles.",
-      }),
-    );
 
   const intakeCmd = program
     .command("intake")

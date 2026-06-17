@@ -22,7 +22,6 @@ describe("assertPersonaSpec", () => {
           "pancreator-pipeline-stages": ["a"],
           "pancreator-bootstrap-only": false,
           "pancreator-stability": "experimental",
-          "pancreator-checklist": ["x"],
         },
       } as Record<string, unknown>),
     ).toThrow(/name/);

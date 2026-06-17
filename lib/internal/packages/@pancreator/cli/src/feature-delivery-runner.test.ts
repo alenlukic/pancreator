@@ -209,6 +209,39 @@ describe("feature-delivery-runner automation", () => {
     expect(state.status).not.toBe("waiting_for_human_gate");
   });
 
+  it("trySdkAutoChainAfterStageWork routes review core re-entry to plan", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-core-reentry-"));
+    const state = sampleLedger({ currentStage: "review" });
+    const reviewRel = path.posix.join(state.artifacts.runDir, "review.md");
+    const reviewAbs = path.join(root, reviewRel);
+    await mkdir(path.dirname(reviewAbs), { recursive: true });
+    await writeFile(
+      reviewAbs,
+      "review_passes: false\nrepo_wide_tests_pass: false\ncore_reentry_required: true\nscope_amendments_ratified: false\n",
+      "utf8",
+    );
+
+    const chainedEvents: string[] = [];
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "review" }, { id: "plan" }, { id: "implement" }],
+    };
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: root,
+      state,
+      pipeline,
+      completedStageId: "review",
+      now: new Date("2026-05-10T14:05:00.000Z"),
+      advanceFn: async (event) => {
+        chainedEvents.push(event);
+        return {};
+      },
+    });
+
+    expect(chained).toBe(true);
+    expect(chainedEvents).toEqual(["review_core_reentry"]);
+  });
+
   it("invokeFeatureDeliveryEnteringStage invokes runner for the requested stage, not the pipeline entry", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-stage-slice-"));
     await seedEscalationConfig(root);

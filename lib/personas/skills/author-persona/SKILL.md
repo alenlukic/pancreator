@@ -14,17 +14,6 @@ metadata:
   pancreator-emits:
     - lib/personas/<name>.md
     - .cursor/rules/<name>.mdc
-references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [793, 950]
-    contentHash: 2eb6aa4
-    note: "PRD §6 — Subagent Persona Roster + reviewer.md exemplar + ensemble pattern"
-  - kind: lines
-    path: .docs/PRD.md
-    range: [302, 305]
-    contentHash: 2eb6aa4
-    note: "PRD §4 glossary — Persona Spec Format definition"
 ---
 
 # Skill — `author-persona`
@@ -106,11 +95,10 @@ Required extensions:
   bootstrap; `false` (default) means it persists.
 - `pancreator-stability` ∈ `{experimental, stable, deprecated}`; new personas land
   as `experimental` and promote on green dogfood usage for 4 consecutive weeks.
-- `pancreator-handbook-anchors` — array of paths the persona reads at invocation.
-  Every persona SHOULD anchor `/lib/memory/handbook/operator-output-contract.md`
-  when the persona emits operator-visible chat output.
-- `pancreator-checklist` — array of named conformance checks the reviewer step runs.
-  Every checklist MUST include `next-operator-steps-on-completion`.
+- `pancreator-required-docs` — array of `DOC.*`, `PIPE.*`, or `PERSONA.*` keys
+  resolved through `lib/memory/handbook/agent-document-registry.md`. This is the
+  binding required-docs contract the persona MUST apply and abide by, not a read-only
+  hint. Use it instead of `pancreator-handbook-anchors`, which is retired.
 
 ### Step 5 — Author the body prose
 
@@ -130,7 +118,9 @@ produce", and "What you MUST NOT do". The "What you MUST produce" section MUST
 require a `## Next operator steps` block on bounded task completion per
 `/lib/memory/handbook/operator-output-contract.md`. Personas with conformance
 gates MUST add a fourth section, "Conformance gates"; personas with non-trivial
-failure modes MUST add a fifth, "Failure-handling".
+failure modes MUST add a fifth, "Failure-handling". The Static execution
+contract MUST state that the persona applies and abides by every loaded required
+doc to the responsibility it governs.
 
 ### Step 6 — Emit the Cursor `.mdc` shim
 
@@ -146,12 +136,8 @@ that package lands (Phase 3 step 5).
 
 Before handing off, the persona-designer MUST:
 
-1. Run the `pancreator-checklist` items as a hand-checklist; fix violations.
-2. Verify every dual-anchor citation resolves against the cited file's current
-   content hash. When a hash mismatches, refresh the citation; when a path is gone,
-   open an inbox item rather than guess the new location.
-3. Stage the two emitted files; do not commit.
-4. Open an inbox item to the human (Phases 0–1) or to `reviewer` (M1+) summarizing
+1. Stage the two emitted files; do not commit.
+2. Open an inbox item to the human (Phases 0–1) or to `reviewer` (M1+) summarizing
    the persona's scope, the skills it depends on, and any open questions.
 
 ## Stop conditions
