@@ -1,7 +1,0 @@
-{
-  "version": 1,
-  "minPort": 6000,
-  "maxPort": 6003,
-  "allocations": {}
-}
-

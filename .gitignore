@@ -67,6 +67,7 @@ pancreator/.docs/
 # --- Ephemeral runtime workspaces ---
 
 pancreator/lib/memory/checkpoints/
+pancreator/lib/internal/packages/@pancreator/env-isolation/src/.tmp-ports-*/
 
 # Operator-local calibration traces (CI uses baselines/findings/raw only)
 pancreator/tests/compliance/context-usage/calibration/traces/**

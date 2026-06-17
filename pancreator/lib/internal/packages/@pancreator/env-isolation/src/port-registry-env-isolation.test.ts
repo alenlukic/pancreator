@@ -1,6 +1,6 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { asTaskId, stringifyRepoJson } from "@pancreator/core";
 import { describe, expect, it } from "vitest";
@@ -9,10 +9,8 @@ import { PortRegistryCollisionError } from "./errors.js";
 import { PortRegistryEnvIsolation } from "./port-registry-env-isolation.js";
 import { readRegistryState } from "./registry-state.js";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-
 async function tmpRepo(): Promise<{ repoRoot: string; cleanup: () => Promise<void> }> {
-  const repoRoot = path.join(here, `.tmp-ports-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const repoRoot = await mkdtemp(path.join(os.tmpdir(), "pancreator-env-isolation-"));
   await mkdir(path.join(repoRoot, ".pan", "sandboxes"), { recursive: true });
   return {
     repoRoot,
