@@ -5,15 +5,135 @@ import path from "node:path";
 
 import { stringifyCliJson, stringifyCompactJson } from "./canonical-json-io.js";
 
-const VALID_OUTPUT_MANIFEST_MARKDOWN = [
-  "## Output manifest",
-  "",
-  "- persona_contract: PERSONA.TEST",
-  "- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST",
-  "- consulted_docs: AGENTS.md, lib/memory/handbook/agent-document-registry.md",
-  "- definition_of_done: pass",
-  "- gate_decision: advance",
-].join("\n");
+function buildOutputManifestMarkdown(input: {
+  personaContract: string;
+  stageContract?: string;
+  requiredDocs?: string[];
+  consultedDocs?: string[];
+  producedArtifacts?: string;
+  scopeAmendments?: string;
+  validation?: string;
+  definitionOfDone?: string;
+  gateDecision?: string;
+  remediationRoute?: string;
+}): string {
+  return [
+    "## Output manifest",
+    "",
+    `- persona_contract: ${input.personaContract}`,
+    `- stage_contract: ${input.stageContract ?? "none"}`,
+    `- required_docs: ${(input.requiredDocs ?? ["DOC.AGENTS", "DOC.REGISTRY", "DOC.OUTPUT_MANIFEST"]).join(", ")}`,
+    `- consulted_docs: ${(input.consultedDocs ?? ["DOC.AGENTS", "DOC.REGISTRY", "DOC.OUTPUT_MANIFEST"]).join(", ")}`,
+    `- produced_artifacts: ${input.producedArtifacts ?? "none"}`,
+    `- scope_amendments: ${input.scopeAmendments ?? "none"}`,
+    `- validation: ${input.validation ?? "none"}`,
+    `- definition_of_done: ${input.definitionOfDone ?? "pass"}`,
+    `- gate_decision: ${input.gateDecision ?? "advance"}`,
+    `- remediation_route: ${input.remediationRoute ?? "none"}`,
+  ].join("\n");
+}
+
+const VALID_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
+  personaContract: "PERSONA.TEST",
+});
+
+const VALID_IMPLEMENT_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
+  personaContract: "PERSONA.CODER",
+  stageContract: "PIPE.FEATURE_DELIVERY.IMPLEMENT",
+  requiredDocs: [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.COMPLIANCE_RUNS",
+  ],
+  consultedDocs: [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.COMPLIANCE_RUNS",
+  ],
+});
+
+const VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
+  personaContract: "PERSONA.REVIEWER",
+  stageContract: "PIPE.FEATURE_DELIVERY.REVIEW",
+  requiredDocs: [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.COMPLIANCE_RUNS",
+  ],
+  consultedDocs: [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.COMPLIANCE_RUNS",
+  ],
+});
+
+const VALID_TEST_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
+  personaContract: "PERSONA.QA_TESTER",
+  stageContract: "PIPE.FEATURE_DELIVERY.TEST",
+  requiredDocs: [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.DESIGN_CRAFT",
+    "DOC.COMPLIANCE_RUNS",
+  ],
+  consultedDocs: [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.DESIGN_CRAFT",
+    "DOC.COMPLIANCE_RUNS",
+  ],
+});
+
+const VALID_REPORT_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
+  personaContract: "PERSONA.TECH_WRITER",
+  stageContract: "PIPE.FEATURE_DELIVERY.REPORT",
+  requiredDocs: [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.OPERATOR_OUTPUT",
+    "DOC.RUN_LOG_SCHEMA",
+  ],
+  consultedDocs: [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.OPERATOR_OUTPUT",
+    "DOC.RUN_LOG_SCHEMA",
+  ],
+});
 
 export const VALID_PLAN_MARKDOWN = [
   "# Plan",
@@ -77,11 +197,11 @@ export const VALID_IMPLEMENTATION_REPORT_MARKDOWN = [
   "",
   "statement: 85%",
   "",
-  VALID_OUTPUT_MANIFEST_MARKDOWN,
+  VALID_IMPLEMENT_OUTPUT_MANIFEST_MARKDOWN,
 ].join("\n");
 
-export const VALID_REVIEW_MARKDOWN = `review_passes: true\nrepo_wide_tests_pass: true\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
-export const VALID_REVIEW_FAIL_MARKDOWN = `review_passes: false\nrepo_wide_tests_pass: false\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
+export const VALID_REVIEW_MARKDOWN = `review_passes: true\nrepo_wide_tests_pass: true\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
+export const VALID_REVIEW_FAIL_MARKDOWN = `review_passes: false\nrepo_wide_tests_pass: false\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
 
 export const VALID_ADR_MARKDOWN = `# ADR\n\n## Decision\n\nBody.\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
 
@@ -92,7 +212,7 @@ export const VALID_COMPANION_PLAN_MARKDOWN = `# Plan\n\n## Plan\n\nSteps.\n\n${V
 export const VALID_ACCEPTANCE_CRITERIA_MARKDOWN = `# Acceptance criteria\n\n## Criteria\n\n- AC-1: verified.\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
 
 export const VALID_MANUAL_QA_MARKDOWN = `# Manual QA test cases\n\n## MQA-1\n\nSteps and expected result.\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
-export const VALID_DELIVERY_REPORT_MARKDOWN = `# Delivery report\n\n## Summary\n\nShipped.\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
+export const VALID_DELIVERY_REPORT_MARKDOWN = `# Delivery report\n\n## Summary\n\nShipped.\n\n${VALID_REPORT_OUTPUT_MANIFEST_MARKDOWN}\n`;
 
 export function validComplianceResultJson(repoRoot: string): string {
   return stringifyCliJson(repoRoot, {
@@ -105,10 +225,31 @@ export function validComplianceResultJson(repoRoot: string): string {
     },
     output_manifest: {
       persona_contract: "PERSONA.COMPLIANCE_AUDITOR",
-      required_docs: ["DOC.AGENTS", "DOC.REGISTRY", "DOC.OUTPUT_MANIFEST"],
-      consulted_docs: ["AGENTS.md", "lib/memory/handbook/agent-document-registry.md"],
+      stage_contract: "PIPE.FEATURE_DELIVERY.COMPLIANCE",
+      required_docs: [
+        "DOC.AGENTS",
+        "DOC.REGISTRY",
+        "DOC.PERSONA_CONTRACTS",
+        "DOC.OUTPUT_MANIFEST",
+        "DOC.PIPELINE_STATE",
+        "DOC.COMPLIANCE_RUNS",
+        "DOC.RUN_LOG_SCHEMA",
+      ],
+      consulted_docs: [
+        "DOC.AGENTS",
+        "DOC.REGISTRY",
+        "DOC.PERSONA_CONTRACTS",
+        "DOC.OUTPUT_MANIFEST",
+        "DOC.PIPELINE_STATE",
+        "DOC.COMPLIANCE_RUNS",
+        "DOC.RUN_LOG_SCHEMA",
+      ],
+      produced_artifacts: [".pan/work/day/task/compliance-result.json"],
+      scope_amendments: [],
+      validation: [{ name: "gate", result: "pass" }],
       definition_of_done: "pass",
       gate_decision: "advance",
+      remediation_route: "none",
     },
   });
 }
@@ -208,7 +349,7 @@ export async function seedTestStageAdvanceArtifacts(
   const runDir = path.join(root, runDirRel);
   await writeFile(
     path.join(runDir, "test-report.md"),
-    `qa_passes: true\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`,
+    `qa_passes: true\n\n${VALID_TEST_OUTPUT_MANIFEST_MARKDOWN}\n`,
     "utf8",
   );
   await writeFile(
@@ -228,7 +369,7 @@ export function gateFixtureBody(repoRoot: string, rel: string): string {
   if (base === "review.md") return VALID_REVIEW_MARKDOWN;
   if (base === "delivery-report.md") return VALID_DELIVERY_REPORT_MARKDOWN;
   if (base === "test-report.md")
-    return `qa_passes: true\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
+    return `qa_passes: true\n\n${VALID_TEST_OUTPUT_MANIFEST_MARKDOWN}\n`;
   if (base === "design-qa-report.md")
     return `design_qa_passes: true\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
   if (base === "manual-qa-test-cases.md") return VALID_MANUAL_QA_MARKDOWN;

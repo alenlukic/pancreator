@@ -128,6 +128,11 @@ export interface StageArtifactValidation {
   warningCount: number;
 }
 
+interface OutputManifestExpectation {
+  stageContract?: string;
+  requiredDocs?: readonly string[];
+}
+
 const STAGE_IDS = [
   "plan",
   "implement",
@@ -167,6 +172,170 @@ const MARKDOWN_OUTPUT_MANIFEST_REQUIRED_BASENAMES = new Set([
   "delivery-report.md",
 ]);
 
+const OUTPUT_MANIFEST_REQUIRED_FIELDS = [
+  "persona_contract",
+  "stage_contract",
+  "required_docs",
+  "consulted_docs",
+  "produced_artifacts",
+  "scope_amendments",
+  "validation",
+  "definition_of_done",
+  "gate_decision",
+  "remediation_route",
+] as const;
+
+const CONTRACT_KEY_PATTERN = /^(DOC|PIPE|PERSONA)\.[A-Z0-9_]+(?:\.[A-Z0-9_]+)*$/u;
+
+const OUTPUT_MANIFEST_EXPECTATIONS: Record<string, OutputManifestExpectation> = {
+  "implementation-report.md": {
+    stageContract: "PIPE.FEATURE_DELIVERY.IMPLEMENT",
+    requiredDocs: [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.ENG_SOFTWARE",
+      "DOC.ENG_TYPESCRIPT",
+      "DOC.COMPLIANCE_RUNS",
+    ],
+  },
+  "review.md": {
+    stageContract: "PIPE.FEATURE_DELIVERY.REVIEW",
+    requiredDocs: [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.ENG_SOFTWARE",
+      "DOC.ENG_TYPESCRIPT",
+      "DOC.COMPLIANCE_RUNS",
+    ],
+  },
+  "test-report.md": {
+    stageContract: "PIPE.FEATURE_DELIVERY.TEST",
+    requiredDocs: [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.ENG_SOFTWARE",
+      "DOC.ENG_TYPESCRIPT",
+      "DOC.DESIGN_CRAFT",
+      "DOC.COMPLIANCE_RUNS",
+    ],
+  },
+  "delivery-report.md": {
+    stageContract: "PIPE.FEATURE_DELIVERY.REPORT",
+    requiredDocs: [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.OPERATOR_OUTPUT",
+      "DOC.RUN_LOG_SCHEMA",
+    ],
+  },
+  "compliance-result.json": {
+    stageContract: "PIPE.FEATURE_DELIVERY.COMPLIANCE",
+    requiredDocs: [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.COMPLIANCE_RUNS",
+      "DOC.RUN_LOG_SCHEMA",
+    ],
+  },
+};
+
+function parseManifestList(raw: string | null): string[] {
+  if (raw === null) {
+    return [];
+  }
+  if (raw.trim().toLowerCase() === "none") {
+    return [];
+  }
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function isContractKey(value: string): boolean {
+  return CONTRACT_KEY_PATTERN.test(value);
+}
+
+function outputManifestExpectation(base: string): OutputManifestExpectation | null {
+  return OUTPUT_MANIFEST_EXPECTATIONS[base] ?? null;
+}
+
+function validateManifestContractKeys(input: {
+  rel: string;
+  base: string;
+  stageContract: string | null;
+  requiredDocs: string[];
+  consultedDocs: string[];
+}): ArtifactContentWarning | null {
+  if (input.requiredDocs.some((value) => !isContractKey(value))) {
+    return {
+      path: input.rel,
+      code: "output_manifest_noncompliant",
+      message: `${input.base} output manifest required_docs must use DOC.*/PIPE.*/PERSONA.* keys only.`,
+    };
+  }
+  if (input.consultedDocs.some((value) => !isContractKey(value))) {
+    return {
+      path: input.rel,
+      code: "output_manifest_noncompliant",
+      message: `${input.base} output manifest consulted_docs must use DOC.*/PIPE.*/PERSONA.* keys only.`,
+    };
+  }
+  if (!input.consultedDocs.includes("DOC.OUTPUT_MANIFEST")) {
+    return {
+      path: input.rel,
+      code: "output_manifest_noncompliant",
+      message: `${input.base} output manifest consulted_docs must include DOC.OUTPUT_MANIFEST.`,
+    };
+  }
+  for (const required of input.requiredDocs) {
+    if (!input.consultedDocs.includes(required)) {
+      return {
+        path: input.rel,
+        code: "output_manifest_noncompliant",
+        message: `${input.base} output manifest consulted_docs must cover required_docs including ${required}.`,
+      };
+    }
+  }
+  const expectation = outputManifestExpectation(input.base);
+  if (expectation?.stageContract !== undefined && input.stageContract !== expectation.stageContract) {
+    return {
+      path: input.rel,
+      code: "output_manifest_noncompliant",
+      message: `${input.base} output manifest stage_contract must be ${expectation.stageContract}.`,
+    };
+  }
+  for (const required of expectation?.requiredDocs ?? []) {
+    if (!input.requiredDocs.includes(required)) {
+      return {
+        path: input.rel,
+        code: "output_manifest_noncompliant",
+        message: `${input.base} output manifest required_docs must include ${required}.`,
+      };
+    }
+  }
+  return null;
+}
+
+function readMarkdownManifestField(content: string, field: string): string | null {
+  const match = content.match(new RegExp(`^-\\s*${field}:\\s*(.+)$`, "imu"));
+  return match === null ? null : match[1].trim();
+}
+
 function artifactParentDir(rel: string): string {
   return path.posix.basename(path.posix.dirname(rel));
 }
@@ -191,13 +360,7 @@ function validateMarkdownOutputManifest(
       message: `${base} must include ## Output manifest per DOC.OUTPUT_MANIFEST.`,
     };
   }
-  for (const field of [
-    "persona_contract",
-    "required_docs",
-    "consulted_docs",
-    "definition_of_done",
-    "gate_decision",
-  ] as const) {
+  for (const field of OUTPUT_MANIFEST_REQUIRED_FIELDS) {
     if (!new RegExp(`^-\\s*${field}:`, "imu").test(content)) {
       return {
         path: rel,
@@ -206,7 +369,13 @@ function validateMarkdownOutputManifest(
       };
     }
   }
-  return null;
+  return validateManifestContractKeys({
+    rel,
+    base,
+    stageContract: readMarkdownManifestField(content, "stage_contract"),
+    requiredDocs: parseManifestList(readMarkdownManifestField(content, "required_docs")),
+    consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+  });
 }
 
 function validateJsonOutputManifest(
@@ -226,13 +395,7 @@ function validateJsonOutputManifest(
     };
   }
   const manifestRecord = manifest as Record<string, unknown>;
-  for (const field of [
-    "persona_contract",
-    "required_docs",
-    "consulted_docs",
-    "definition_of_done",
-    "gate_decision",
-  ] as const) {
+  for (const field of OUTPUT_MANIFEST_REQUIRED_FIELDS) {
     if (!(field in manifestRecord)) {
       return {
         path: rel,
@@ -241,7 +404,24 @@ function validateJsonOutputManifest(
       };
     }
   }
-  return null;
+  return validateManifestContractKeys({
+    rel,
+    base: path.posix.basename(rel),
+    stageContract:
+      typeof manifestRecord.stage_contract === "string"
+        ? manifestRecord.stage_contract.trim()
+        : null,
+    requiredDocs: Array.isArray(manifestRecord.required_docs)
+      ? manifestRecord.required_docs.filter(
+          (value): value is string => typeof value === "string" && value.trim().length > 0,
+        )
+      : [],
+    consultedDocs: Array.isArray(manifestRecord.consulted_docs)
+      ? manifestRecord.consulted_docs.filter(
+          (value): value is string => typeof value === "string" && value.trim().length > 0,
+        )
+      : [],
+  });
 }
 
 export function isFeatureDeliveryStageId(
@@ -524,6 +704,58 @@ function validateMarkdownBody(
   return null;
 }
 
+function readMarkdownBoolSeries(content: string, field: string): boolean[] {
+  const matches = content.matchAll(new RegExp(`${field}:\\s*(true|false)`, "giu"));
+  const values: boolean[] = [];
+  for (const match of matches) {
+    values.push(match[1]?.toLowerCase() === "true");
+  }
+  return values;
+}
+
+function validateVerdictConsistency(
+  rel: string,
+  content: string,
+  verdictField: string,
+): ArtifactContentWarning | null {
+  const values = readMarkdownBoolSeries(content, verdictField);
+  if (values.length > 1 && values.some((value) => value !== values[0])) {
+    return {
+      path: rel,
+      code: "verdict_conflict",
+      message: `${path.posix.basename(rel)} contains conflicting ${verdictField} verdicts.`,
+    };
+  }
+  if (values[0] !== true) {
+    return null;
+  }
+  const gateDecision = readMarkdownManifestField(content, "gate_decision")?.toLowerCase() ?? null;
+  const remediationRoute =
+    readMarkdownManifestField(content, "remediation_route")?.toLowerCase() ?? null;
+  if (gateDecision === "remediate") {
+    return {
+      path: rel,
+      code: "verdict_conflict",
+      message: `${path.posix.basename(rel)} cannot pair ${verdictField}: true with gate_decision: remediate.`,
+    };
+  }
+  if (remediationRoute !== null && remediationRoute !== "none") {
+    return {
+      path: rel,
+      code: "verdict_conflict",
+      message: `${path.posix.basename(rel)} cannot pair ${verdictField}: true with remediation_route: ${remediationRoute}.`,
+    };
+  }
+  if (/\bP1\b/u.test(content)) {
+    return {
+      path: rel,
+      code: "verdict_conflict",
+      message: `${path.posix.basename(rel)} cannot pair ${verdictField}: true with unresolved P1 findings.`,
+    };
+  }
+  return null;
+}
+
 function readRepoText(repoRoot: string, rel: string): string | null {
   const abs = resolveRepoPath(repoRoot, rel);
   if (!existsSync(abs)) {
@@ -587,6 +819,7 @@ function validateArtifactContent(
     }
     return (
       validateMarkdownBody(rel, content) ??
+      validateVerdictConsistency(rel, content, "implement_gate_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
     );
   }
@@ -609,7 +842,10 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, reviewAdvanceError);
       }
     }
-    return validateMarkdownOutputManifest(rel, base, content);
+    return (
+      validateVerdictConsistency(rel, content, "review_passes") ??
+      validateMarkdownOutputManifest(rel, base, content)
+    );
   }
 
   if (base === "test-report.md") {
@@ -627,7 +863,10 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, testAdvanceError);
       }
     }
-    return validateMarkdownOutputManifest(rel, base, content);
+    return (
+      validateVerdictConsistency(rel, content, "qa_passes") ??
+      validateMarkdownOutputManifest(rel, base, content)
+    );
   }
 
   if (base === "design-qa-report.md") {
@@ -645,7 +884,10 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, designAdvanceError);
       }
     }
-    return validateMarkdownOutputManifest(rel, base, content);
+    return (
+      validateVerdictConsistency(rel, content, "design_qa_passes") ??
+      validateMarkdownOutputManifest(rel, base, content)
+    );
   }
 
   if (base === "ux-spec.md") {

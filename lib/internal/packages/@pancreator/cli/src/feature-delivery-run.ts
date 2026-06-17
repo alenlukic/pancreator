@@ -18,7 +18,7 @@ import {
   type RunLogRecord,
 } from "@pancreator/run-logger";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import {
   mkdir,
   readFile,
@@ -49,6 +49,7 @@ import {
   designAcceptanceCriteriaRel,
   designPlanPromptRel,
   designPlanRel,
+  designQaReportRel,
   designQaPromptRel,
   designStepsEnabled,
   manualQaTestCasesRel,
@@ -111,7 +112,13 @@ import {
   findExistingArchivedInboxPath,
   pruneEmptyQueueParents,
 } from "./inbox-archive.js";
-import { validateImplementationScopeAmendments } from "./feature-delivery-gate-validation.js";
+import {
+  parseTouchSetPaths,
+  type ScopeAmendmentEntry,
+  touchSetAllowsPath,
+  validateImplementationScopeAmendments,
+  validateScopeAmendments,
+} from "./feature-delivery-gate-validation.js";
 import {
   formatWorkArchiveHygieneRemediation,
   listCanonicalWorkDayDirs,
@@ -173,6 +180,128 @@ function currentLocalDiffPaths(repoRoot: string): string[] {
   return [...combined].sort((a, b) => a.localeCompare(b));
 }
 
+function dirname(rel: string): string {
+  return rel.split("/").slice(0, -1).join("/");
+}
+
+function isChangeControlledPath(rel: string): boolean {
+  return [
+    ".github/",
+    "lib/memory/",
+    "lib/personas/",
+    "lib/pipelines/",
+    ".cursor/rules/",
+    "pancreator.yaml",
+  ].some((prefix) => rel === prefix.replace(/\/$/u, "") || rel.startsWith(prefix));
+}
+
+function findDeclaredSourceForSibling(
+  changedPath: string,
+  declaredPaths: readonly string[],
+): string | null {
+  const changedDir = dirname(changedPath);
+  const parentDir = changedDir.split("/").slice(0, -1).join("/");
+  for (const declared of declaredPaths) {
+    const declaredDir = dirname(declared);
+    if (declaredDir === changedDir || declaredDir === parentDir) {
+      return declared;
+    }
+  }
+  return null;
+}
+
+function inferAutoAmendment(
+  changedPath: string,
+  declaredPaths: readonly string[],
+): ScopeAmendmentEntry | null {
+  if (isChangeControlledPath(changedPath)) {
+    return null;
+  }
+  const sourcePath = findDeclaredSourceForSibling(changedPath, declaredPaths);
+  if (sourcePath === null) {
+    return null;
+  }
+  if (/(?:^|\/)__tests__\/|(?:^|\/)[^/]+\.(?:test|spec)\.[^/]+$/u.test(changedPath)) {
+    return {
+      path: changedPath,
+      kind: "paired-test",
+      reason: `Required regression test for declared source ${sourcePath}`,
+    };
+  }
+  if (/(?:^|\/)__fixtures__\/|(?:^|\/)[^/]+\.fixture\.[^/]+$/u.test(changedPath)) {
+    return {
+      path: changedPath,
+      kind: "paired-fixture",
+      reason: `Required fixture for declared source ${sourcePath}`,
+    };
+  }
+  if (dirname(changedPath) === dirname(sourcePath)) {
+    return {
+      path: changedPath,
+      kind: "declared-dir-sibling",
+      reason: `Required sibling file for declared source ${sourcePath}`,
+    };
+  }
+  return null;
+}
+
+function serializeScopeAmendments(entries: readonly ScopeAmendmentEntry[]): string {
+  if (entries.length === 0) {
+    return "none";
+  }
+  return entries.map((entry) => `${entry.path}(${entry.kind}:${entry.reason})`).join(", ");
+}
+
+function maybeAutoRecordImplementationAmendments(
+  repoRoot: string,
+  touchSetRel: string,
+  implementationReportRel: string,
+  changedPaths: readonly string[],
+): void {
+  const touchSetAbs = resolveRepoPath(repoRoot, touchSetRel);
+  const implementationReportAbs = resolveRepoPath(repoRoot, implementationReportRel);
+  const touchSetRaw = readFileSync(touchSetAbs, "utf8");
+  const parsedTouchSetJson = JSON.parse(touchSetRaw) as Record<string, unknown>;
+  const parsedTouchSet = parseTouchSetPaths(touchSetRaw);
+  const undeclaredPaths = changedPaths.filter((changedPath) => !touchSetAllowsPath(touchSetRaw, changedPath).allowed);
+  if (undeclaredPaths.length === 0) {
+    return;
+  }
+  const declaredPaths = [...parsedTouchSet.paths, ...parsedTouchSet.sharedPaths];
+  const inferred = undeclaredPaths
+    .map((changedPath) => inferAutoAmendment(changedPath, declaredPaths))
+    .filter((entry): entry is ScopeAmendmentEntry => entry !== null);
+  if (inferred.length !== undeclaredPaths.length) {
+    return;
+  }
+  const existingEntries = parsedTouchSet.amendments.map((entry) => `${entry.path}|${entry.kind}|${entry.reason}`);
+  const nextAmendments = [...parsedTouchSet.amendments];
+  let changed = false;
+  for (const entry of inferred) {
+    const key = `${entry.path}|${entry.kind}|${entry.reason}`;
+    if (existingEntries.includes(key)) {
+      continue;
+    }
+    nextAmendments.push({
+      ...entry,
+      status: existsSync(resolveRepoPath(repoRoot, entry.path)) ? "existing" : "new",
+    });
+    changed = true;
+  }
+  if (!changed) {
+    return;
+  }
+  parsedTouchSetJson.amendments = nextAmendments;
+  writeFileSync(touchSetAbs, `${stringifyCliJson(repoRoot, parsedTouchSetJson)}\n`, "utf8");
+
+  const implementationReport = readFileSync(implementationReportAbs, "utf8");
+  const nextScopeLine = `scope_amendments: ${serializeScopeAmendments(nextAmendments)}`;
+  const updatedReport = implementationReport.match(/^scope_amendments:\s*.+$/mu)
+    ? implementationReport.replace(/^scope_amendments:\s*.+$/mu, nextScopeLine)
+    : implementationReport.replace(/^implement_gate_passes:\s*(true|false)\s*$/mu, (match) => `${match}\n${nextScopeLine}`);
+  writeFileSync(implementationReportAbs, updatedReport, "utf8");
+}
+
 function assertImplementStageTouchSetScope(
   repoRoot: string,
   state: FeatureDeliveryState,
@@ -180,11 +309,6 @@ function assertImplementStageTouchSetScope(
   const runDir = state.artifacts.runDir;
   const touchSetRel = path.posix.join(runDir, "touch-set.json");
   const reportRel = path.posix.join(runDir, "implementation-report.md");
-  const touchSetContent = readFileSync(resolveRepoPath(repoRoot, touchSetRel), "utf8");
-  const implementationReportContent = readFileSync(
-    resolveRepoPath(repoRoot, reportRel),
-    "utf8",
-  );
   const allowedRunArtifacts = new Set([touchSetRel, reportRel]);
   const featureDiffPaths: string[] = [];
   for (const rel of currentLocalDiffPaths(repoRoot)) {
@@ -198,13 +322,96 @@ function assertImplementStageTouchSetScope(
     }
     featureDiffPaths.push(rel);
   }
+  maybeAutoRecordImplementationAmendments(
+    repoRoot,
+    touchSetRel,
+    reportRel,
+    featureDiffPaths,
+  );
+  const refreshedTouchSetContent = readFileSync(resolveRepoPath(repoRoot, touchSetRel), "utf8");
+  const refreshedImplementationReportContent = readFileSync(
+    resolveRepoPath(repoRoot, reportRel),
+    "utf8",
+  );
   const error = validateImplementationScopeAmendments(
-    touchSetContent,
-    implementationReportContent,
+    refreshedTouchSetContent,
+    refreshedImplementationReportContent,
     featureDiffPaths,
   );
   if (error !== null) {
     throw new Error(`Cannot advance implement; ${error}`);
+  }
+}
+
+function touchSetScopePaths(repoRoot: string, runDir: string): string[] {
+  const touchSetRel = path.posix.join(runDir, "touch-set.json");
+  const touchSetAbs = resolveRepoPath(repoRoot, touchSetRel);
+  if (!existsSync(touchSetAbs)) {
+    return [];
+  }
+  const parsed = parseTouchSetPaths(readFileSync(touchSetAbs, "utf8"));
+  return [...parsed.paths, ...parsed.sharedPaths, ...parsed.amendments.map((entry) => entry.path)];
+}
+
+function featureDiffPathsWithinTouchSet(
+  repoRoot: string,
+  runDir: string,
+): { touchSetContent: string; changedPaths: string[] } {
+  const touchSetRel = path.posix.join(runDir, "touch-set.json");
+  const touchSetContent = readFileSync(resolveRepoPath(repoRoot, touchSetRel), "utf8");
+  const changedPaths = currentLocalDiffPaths(repoRoot).filter(
+    (rel) =>
+      !rel.startsWith(`${runDir}/`) &&
+      touchSetAllowsPath(touchSetContent, rel).allowed,
+  );
+  return { touchSetContent, changedPaths };
+}
+
+function assertReviewStageTouchSetScope(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+): void {
+  const runDir = state.artifacts.runDir;
+  const { touchSetContent } = featureDiffPathsWithinTouchSet(repoRoot, runDir);
+  const reviewDiffPaths: string[] = [];
+  for (const rel of currentLocalDiffPaths(repoRoot)) {
+    if (rel.startsWith(`${runDir}/`)) {
+      continue;
+    }
+    reviewDiffPaths.push(rel);
+  }
+  const error = validateScopeAmendments(touchSetContent, reviewDiffPaths);
+  if (error !== null) {
+    throw new Error(`Cannot advance review; ${error}`);
+  }
+}
+
+function assertIndexImplementationSurfaces(
+  repoRoot: string,
+  state: FeatureDeliveryState,
+): void {
+  const indexRel = durableFeatureIndexRel(state.featureId);
+  const raw = readFileSync(resolveRepoPath(repoRoot, indexRel), "utf8");
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+  const implementationSurfaces = Array.isArray(parsed.implementation_surfaces)
+    ? parsed.implementation_surfaces.filter(
+        (value): value is string => typeof value === "string" && value.trim().length > 0,
+      )
+    : [];
+  const expected = featureDiffPathsWithinTouchSet(repoRoot, state.artifacts.runDir).changedPaths.sort((a, b) =>
+    a.localeCompare(b),
+  );
+  const recorded = [...new Set(implementationSurfaces)].sort((a, b) => a.localeCompare(b));
+  const missing = expected.filter((rel) => !recorded.includes(rel));
+  const extra = recorded.filter((rel) => !expected.includes(rel));
+  if (missing.length > 0 || extra.length > 0) {
+    const details = [
+      missing.length > 0 ? `missing from implementation_surfaces: ${missing.join(", ")}` : null,
+      extra.length > 0 ? `not present in current feature diff: ${extra.join(", ")}` : null,
+    ]
+      .filter((value): value is string => value !== null)
+      .join("; ");
+    throw new Error(`Cannot advance index; ${indexRel} implementation_surfaces must enumerate the current feature diff (${details}).`);
   }
 }
 
@@ -806,6 +1013,12 @@ export async function advanceFeatureDelivery(
   if (state.currentStage === "implement" && event === "implementation_complete") {
     assertImplementStageTouchSetScope(repoRoot, state);
   }
+  if (state.currentStage === "review" && event === "review_passes") {
+    assertReviewStageTouchSetScope(repoRoot, state);
+  }
+  if (state.currentStage === "index" && event === "artifacts_indexed") {
+    assertIndexImplementationSurfaces(repoRoot, state);
+  }
 
   if (state.currentStage === "compliance") {
     await persistComplianceAuditHistoryForResult({
@@ -814,7 +1027,7 @@ export async function advanceFeatureDelivery(
       featureId: state.featureId,
       runDir: state.artifacts.runDir,
       complianceResultRel: artifact.rel,
-      defaultScopePaths: complianceScopePathsForFeatureState(state),
+      defaultScopePaths: complianceScopePathsForFeatureState(repoRoot, state),
       now,
     });
   }
@@ -2548,8 +2761,8 @@ Advance after ${
       return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, repo_wide_tests_pass, lint_typecheck_rerun_required, core_reentry_required, scope_amendments_ratified, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run repo-wide pnpm test and node --test tests/*.test.mjs before review_passes: true; ratify bounded scope amendments before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan. Amendments are allowed only when touch-set.json and implementation-report.md record the same bounded scope amendment.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nTouch-set or plan invalidation (return to plan): pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
-        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
-        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required, spot_fixable, and excluded_from_gate\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
+        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: ${deliveryReportRel(state.artifacts.runDir)}\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
@@ -2572,14 +2785,21 @@ Advance after ${
 }
 
 function complianceScopePathsForFeatureState(
+  repoRoot: string,
   state: FeatureDeliveryState,
 ): string[] {
-  return [
+  const scopedPaths = touchSetScopePaths(repoRoot, state.artifacts.runDir);
+  return [...new Set([
     path.posix.join(state.artifacts.runDir, "touch-set.json"),
+    path.posix.join(state.artifacts.runDir, "implementation-report.md"),
     path.posix.join(state.artifacts.runDir, "review.md"),
     path.posix.join(state.artifacts.runDir, "test-report.md"),
+    ...(designStepsEnabled(state.options)
+      ? [designQaReportRel(state.artifacts.runDir)]
+      : []),
     deliveryReportRel(state.artifacts.runDir),
-  ];
+    ...scopedPaths,
+  ])];
 }
 
 function complianceAuditFocusContract(
@@ -2588,7 +2808,7 @@ function complianceAuditFocusContract(
 ): string {
   const promptContext = complianceAuditPromptContext({
     repoRoot,
-    defaultScopePaths: complianceScopePathsForFeatureState(state),
+    defaultScopePaths: complianceScopePathsForFeatureState(repoRoot, state),
   });
   if (promptContext === null) {
     return "Saved audits: none yet (history will initialize on first persisted compliance result). Default baseline: none. Effective delta focus: current compliance scope.";

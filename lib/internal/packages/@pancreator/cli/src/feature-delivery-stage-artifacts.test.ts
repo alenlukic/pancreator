@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import {
   planStageRequiredArtifactRels,
   seedPlanStageAdvanceArtifacts,
+  VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+  VALID_REVIEW_MARKDOWN,
 } from "./feature-delivery-gate-fixtures.js";
 import {
   assertAdvanceArtifacts,
@@ -186,7 +188,7 @@ describe("feature-delivery-stage-artifacts", () => {
     await mkdir(runAbs, { recursive: true });
     await writeFile(
       path.join(runAbs, "review.md"),
-      "review_passes: true\nscope_amendments_ratified: true\n\n## Output manifest\n\n- persona_contract: PERSONA.REVIEWER\n- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST\n- consulted_docs: AGENTS.md, lib/memory/handbook/agent-document-registry.md\n- definition_of_done: pass\n- gate_decision: advance\n",
+      VALID_REVIEW_MARKDOWN,
       "utf8",
     );
 
@@ -204,7 +206,7 @@ describe("feature-delivery-stage-artifacts", () => {
     await mkdir(runAbs, { recursive: true });
     await writeFile(
       path.join(runAbs, "review.md"),
-      "review_passes: true\nscope_amendments_ratified: true\n\n## Output manifest\n\n- persona_contract: PERSONA.REVIEWER\n- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST\n- consulted_docs: AGENTS.md, lib/memory/handbook/agent-document-registry.md\n- definition_of_done: pass\n- gate_decision: advance\n",
+      VALID_REVIEW_MARKDOWN,
       "utf8",
     );
 
@@ -305,22 +307,10 @@ describe("feature-delivery-stage-artifacts", () => {
     await mkdir(runAbs, { recursive: true });
     await writeFile(
       path.join(runAbs, "implementation-report.md"),
-      [
-        "implement_gate_passes: false",
-        "scope_amendments: none",
-        "## Automated checks",
-        "pnpm lint",
-        "pnpm typecheck",
-        "pnpm test",
-        "## Coverage delta",
-        "statement: 0%",
-        "## Output manifest",
-        "- persona_contract: PERSONA.CODER",
-        "- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST",
-        "- consulted_docs: AGENTS.md, lib/memory/handbook/agent-document-registry.md",
-        "- definition_of_done: fail",
-        "- gate_decision: hold",
-      ].join("\n"),
+      VALID_IMPLEMENTATION_REPORT_MARKDOWN
+        .replace("implement_gate_passes: true", "implement_gate_passes: false")
+        .replace("- definition_of_done: pass", "- definition_of_done: fail")
+        .replace("- gate_decision: advance", "- gate_decision: hold"),
       "utf8",
     );
 
@@ -333,6 +323,110 @@ describe("feature-delivery-stage-artifacts", () => {
         "implementation_complete",
       ),
     ).toThrow(/implement_gate_passes: true/u);
+  });
+
+  it("validateStageCompletionArtifacts rejects path-style consulted_docs in compliance-result.json", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-compliance-manifest-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(
+      path.join(runAbs, "compliance-result.json"),
+      stringifyCompactJson({
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+          "node --test tests/*.test.mjs": 0,
+        },
+        output_manifest: {
+          persona_contract: "PERSONA.COMPLIANCE_AUDITOR",
+          stage_contract: "PIPE.FEATURE_DELIVERY.COMPLIANCE",
+          required_docs: [
+            "DOC.AGENTS",
+            "DOC.REGISTRY",
+            "DOC.PERSONA_CONTRACTS",
+            "DOC.OUTPUT_MANIFEST",
+            "DOC.PIPELINE_STATE",
+            "DOC.COMPLIANCE_RUNS",
+            "DOC.RUN_LOG_SCHEMA",
+          ],
+          consulted_docs: ["AGENTS.md"],
+          produced_artifacts: [".pan/work/day/task/compliance-result.json"],
+          scope_amendments: [],
+          validation: [{ name: "gate", result: "pass" }],
+          definition_of_done: "pass",
+          gate_decision: "advance",
+          remediation_route: "none",
+        },
+      }),
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(
+      root,
+      sampleState,
+      "compliance",
+    );
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("output_manifest_noncompliant");
+  });
+
+  it("validateStageCompletionArtifacts rejects conflicting implementation verdicts", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-implement-conflict-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(
+      path.join(runAbs, "implementation-report.md"),
+      `${VALID_IMPLEMENTATION_REPORT_MARKDOWN}\nimplement_gate_passes: false\n`,
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(
+      root,
+      sampleState,
+      "implement",
+    );
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("verdict_conflict");
+  });
+
+  it("validateStageCompletionArtifacts rejects pass verdicts paired with remediate manifests", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-design-qa-conflict-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(
+      path.join(runAbs, "design-qa-report.md"),
+      [
+        "design_qa_passes: true",
+        "",
+        "## Findings",
+        "",
+        "- P1: duplicate primary CTA remains",
+        "",
+        "## Output manifest",
+        "",
+        "- persona_contract: PERSONA.DESIGN_REVIEWER",
+        "- stage_contract: PIPE.FEATURE_DELIVERY.TEST",
+        "- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST",
+        "- consulted_docs: DOC.AGENTS, DOC.REGISTRY, DOC.OUTPUT_MANIFEST",
+        "- produced_artifacts: .pan/work/day/task/design-qa-report.md",
+        "- scope_amendments: none",
+        "- validation: none",
+        "- definition_of_done: pass",
+        "- gate_decision: remediate",
+        "- remediation_route: PERSONA.CODER",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(
+      root,
+      sampleState,
+      "test",
+    );
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("verdict_conflict");
   });
 
   it("parseComplianceVerdict reads final gate command statuses", () => {

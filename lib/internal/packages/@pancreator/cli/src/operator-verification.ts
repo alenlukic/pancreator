@@ -49,6 +49,36 @@ function extractSpecAcceptanceBullets(specMarkdown: string | null): string[] {
   return bullets.slice(0, 8);
 }
 
+function extractTouchSetAcceptanceBullets(touchSetJson: string | null): string[] {
+  if (touchSetJson === null) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(touchSetJson) as Record<string, unknown>;
+    const criteria = parsed.acceptance_criteria;
+    if (!Array.isArray(criteria)) {
+      return [];
+    }
+    return criteria
+      .map((entry) => {
+        if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+          return null;
+        }
+        const record = entry as Record<string, unknown>;
+        const id = typeof record.id === "string" ? record.id.trim() : "";
+        const criterion = typeof record.criterion === "string" ? record.criterion.trim() : "";
+        if (criterion.length === 0) {
+          return null;
+        }
+        return id.length > 0 ? `${id}: ${criterion}` : criterion;
+      })
+      .filter((value): value is string => value !== null)
+      .slice(0, 8);
+  } catch {
+    return [];
+  }
+}
+
 function extractManualVerificationBullets(testReport: string | null): string[] {
   if (testReport === null) {
     return [];
@@ -67,6 +97,44 @@ function extractManualVerificationBullets(testReport: string | null): string[] {
   return bullets.slice(0, 6);
 }
 
+function extractTouchSetManualQaBullets(touchSetJson: string | null): string[] {
+  if (touchSetJson === null) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(touchSetJson) as Record<string, unknown>;
+    const cases = parsed.manual_qa_test_cases;
+    if (!Array.isArray(cases)) {
+      return [];
+    }
+    return cases
+      .map((entry) => {
+        if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+          return null;
+        }
+        const record = entry as Record<string, unknown>;
+        const id = typeof record.id === "string" ? record.id.trim() : "";
+        const expected = typeof record.expected === "string" ? record.expected.trim() : "";
+        const steps = Array.isArray(record.steps)
+          ? record.steps.filter((step): step is string => typeof step === "string" && step.trim().length > 0)
+          : [];
+        if (id.length === 0 && steps.length === 0 && expected.length === 0) {
+          return null;
+        }
+        const parts = [
+          id.length > 0 ? id : null,
+          steps[0] ?? null,
+          expected.length > 0 ? `Expected: ${expected}` : null,
+        ].filter((value): value is string => value !== null);
+        return parts.join(" — ");
+      })
+      .filter((value): value is string => value !== null)
+      .slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
 export function renderOperatorVerificationScaffold(
   state: OperatorVerificationState,
   repoRoot: string,
@@ -76,9 +144,18 @@ export function renderOperatorVerificationScaffold(
   const deliveryRel = path.posix.join(state.artifacts.runDir, "delivery-report.md");
   const testReportRel = path.posix.join(state.artifacts.runDir, "test-report.md");
   const touchSetRel = path.posix.join(state.artifacts.runDir, "touch-set.json");
+  const touchSetContent = readOptionalFile(repoRoot, touchSetRel);
+  const touchSetCriteria = extractTouchSetAcceptanceBullets(touchSetContent);
+  const touchSetManual = extractTouchSetManualQaBullets(touchSetContent);
 
-  const specBullets = extractSpecAcceptanceBullets(readOptionalFile(repoRoot, specRel));
-  const manualBullets = extractManualVerificationBullets(readOptionalFile(repoRoot, testReportRel));
+  const specBullets =
+    touchSetCriteria.length > 0
+      ? touchSetCriteria
+      : extractSpecAcceptanceBullets(readOptionalFile(repoRoot, specRel));
+  const manualBullets =
+    touchSetManual.length > 0
+      ? touchSetManual
+      : extractManualVerificationBullets(readOptionalFile(repoRoot, testReportRel));
   const hasDelivery = existsSync(resolveRepoPath(repoRoot, deliveryRel));
   const hasTouchSet = existsSync(resolveRepoPath(repoRoot, touchSetRel));
 

@@ -99,11 +99,13 @@ function parseTouchSetRecord(content: string): Record<string, unknown> | null {
   }
 }
 
-function parseTouchSetPaths(content: string): {
+export interface ParsedTouchSetPaths {
   paths: string[];
   sharedPaths: string[];
   amendments: ScopeAmendmentEntry[];
-} {
+}
+
+export function parseTouchSetPaths(content: string): ParsedTouchSetPaths {
   const parsed = parseTouchSetRecord(content);
   if (parsed === null) {
     return { paths: [], sharedPaths: [], amendments: [] };

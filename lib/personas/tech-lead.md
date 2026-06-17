@@ -131,7 +131,9 @@ criteria` and `## Shared-layer impact`.
    `acceptance_criteria` array MUST mirror every
    `P-AC-`, `D-AC-`, and `T-AC-` criterion, including a `discipline` value of
    `product`, `design`, or `tech`. The `manual_qa_test_cases` array MUST mirror
-   every `MQA-` case.
+   every `MQA-` case. `tests` commands MUST be runnable from the command's working
+   directory as written; when the command runs inside the `client` workspace, file
+   arguments MUST use `src/...` paths rather than `client/src/...`.
 7. **Handoff card.** Overwrite `handoff.md` with Feature id, executor persona,
    upstream artifact paths, in-scope paths, explicit non-goals, a `## Validation
 commands` section naming gate commands and owning personas, known pre-existing
