@@ -31,14 +31,14 @@ describe("CommandCenterNavRail", () => {
     window.sessionStorage.clear();
   });
 
-  it("renders five shipped destinations without Coming soon chrome", () => {
+  it("renders four top-level destinations without Activity Log in navigation", () => {
     render(<CommandCenterNavRail />);
     expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
     expect(screen.getByTestId("rail-item-command-center")).toBeInTheDocument();
     expect(screen.getByTestId("rail-item-mission-control")).toBeInTheDocument();
     expect(screen.getByTestId("rail-item-compliance")).toBeInTheDocument();
     expect(screen.getByTestId("rail-item-automations")).toBeInTheDocument();
-    expect(screen.getByTestId("rail-item-activity-log")).toBeInTheDocument();
+    expect(screen.queryByTestId("rail-item-activity-log")).not.toBeInTheDocument();
   });
 
   it("marks command center active for /command-center route", () => {
@@ -65,11 +65,11 @@ describe("CommandCenterMobileTabs", () => {
     mockPathname.mockReturnValue("/command-center");
   });
 
-  it("renders six mobile tabs with Home selected", () => {
+  it("renders four mobile tabs with Home selected", () => {
     render(<CommandCenterMobileTabs />);
     expect(screen.getByTestId("mobile-tab-command-center")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("mobile-tab-mission-control")).toHaveAttribute("aria-selected", "false");
-    expect(screen.getByTestId("mobile-tab-activity-log")).toBeInTheDocument();
+    expect(screen.queryByTestId("mobile-tab-activity-log")).not.toBeInTheDocument();
   });
 });
 

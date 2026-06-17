@@ -5,6 +5,7 @@ import {
   COMMAND_CENTER_LONG_RUNNING_STAGE_MS,
   COMMAND_CENTER_STALE_HEARTBEAT_MS,
   compareBySeverity,
+  filterNonTerminalTasks,
   featureDisplayLabel,
   featureIdToDisplayLabel,
   formatLastEventTime,
@@ -305,6 +306,42 @@ describe("buildRecentActivityPreview", () => {
 });
 
 describe("buildCommandCenterRows operational cards", () => {
+  it("excludes terminal pipeline statuses from attention regions", () => {
+    const terminalStatuses = [
+      "canceled",
+      "closed",
+      "complete",
+      "superseded",
+      "shipped",
+      "archived",
+    ] as const;
+    const terminalTasks = terminalStatuses.map((status, index) =>
+      makeTask({
+        taskId: `terminal-${status}-${index}`,
+        pipelineStatus: status,
+      }),
+    );
+    const activeTask = makeTask({
+      taskId: "active-task",
+      pipelineStatus: "ready_for_stage_delegation",
+    });
+
+    const cards = buildCommandCenterRows({
+      tasks: [activeTask, ...terminalTasks],
+      complianceFindings: [],
+      shippedOutcomes: [],
+      activityEvents: [],
+      nowMs: Date.parse("2026-06-02T13:00:00.000Z"),
+    });
+
+    const humanGates = cards.find((card) => card.region === "human-gates");
+    expect(humanGates?.rows).toHaveLength(1);
+    expect(humanGates?.rows[0]?.id).toContain(activeTask.taskId);
+
+    const filtered = filterNonTerminalTasks([activeTask, ...terminalTasks]);
+    expect(filtered.map((task) => task.taskId)).toEqual([activeTask.taskId]);
+  });
+
   it("renders recent outcomes from shipped feature indexes", () => {
     const cards = buildCommandCenterRows({
       tasks: [],

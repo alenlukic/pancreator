@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { AttentionRegion } from "../shared/AttentionRegion";
 import { AttentionBanner } from "../shared/AttentionBanner";
-import { CommandCenterCard } from "./CommandCenterCard";
 import type { CommandCenterCardModel } from "./command-center-types";
 import { useCommandCenterData } from "./useCommandCenterData";
 
@@ -29,26 +28,16 @@ export function CommandCenterSurface() {
     complianceError,
     outcomesError,
     archiveError,
-    isGlobalEmpty,
     isDataStale,
     dataFetchedAtMs,
     retry,
   } = useCommandCenterData();
 
-  if (isGlobalEmpty) {
-    return (
-      <div className="command-center-page" data-testid="command-center-page">
-        <h1 className="command-center-page-title">Home</h1>
-        <div className="command-center-page-empty">
-          <h2>No active deliveries</h2>
-          <p>Open Feature Delivery when you are ready to supervise a run.</p>
-          <Link href="/mission-control" className="command-center-row-cta">
-            Open Feature Delivery
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const degradedSources = [
+    archiveError ? { source: "archive", message: archiveError } : null,
+    outcomesError ? { source: "feature-index", message: outcomesError } : null,
+    complianceError ? { source: "compliance", message: complianceError } : null,
+  ].filter((entry): entry is { source: string; message: string } => entry !== null);
 
   return (
     <div className="command-center-page" data-testid="command-center-page">
@@ -58,7 +47,7 @@ export function CommandCenterSurface() {
         <div className="command-center-error-banner" role="alert">
           <p>{runStateError}</p>
           <button type="button" className="command-center-row-cta" onClick={() => void retry()}>
-            Retry fetch
+            Refresh home state
           </button>
         </div>
       ) : null}
@@ -72,32 +61,25 @@ export function CommandCenterSurface() {
         </AttentionBanner>
       ) : null}
 
+      {degradedSources.map((entry) => (
+        <AttentionBanner key={entry.source} title={`Degraded data from ${entry.source}`}>
+          <p>{entry.message}</p>
+          <button type="button" className="command-center-row-cta" onClick={() => void retry()}>
+            Refresh home state
+          </button>
+        </AttentionBanner>
+      ))}
+
       <div
-        className="command-center-grid command-center-grid-four"
-        data-testid={loading ? "command-center-loading" : "command-center-grid"}
+        className="command-center-regions-column"
+        data-testid={loading ? "command-center-loading" : "command-center-regions"}
         aria-busy={loading || undefined}
       >
-        <CommandCenterCard card={cardByRegion(cards, "human-gates")} loading={loading} />
-        <CommandCenterCard card={cardByRegion(cards, "anomalies")} loading={loading} />
-        <CommandCenterCard card={cardByRegion(cards, "running-now")} loading={loading} />
-        <CommandCenterCard card={cardByRegion(cards, "recent-outcomes")} loading={loading} />
+        <AttentionRegion card={cardByRegion(cards, "human-gates")} loading={loading} />
+        <AttentionRegion card={cardByRegion(cards, "anomalies")} loading={loading} />
+        <AttentionRegion card={cardByRegion(cards, "running-now")} loading={loading} />
+        <AttentionRegion card={cardByRegion(cards, "recent-outcomes")} loading={loading} />
       </div>
-
-      {complianceError ? (
-        <AttentionBanner title="Degraded data from compliance">
-          <p>{complianceError}</p>
-        </AttentionBanner>
-      ) : null}
-      {archiveError ? (
-        <AttentionBanner title="Degraded data from archive">
-          <p>{archiveError}</p>
-        </AttentionBanner>
-      ) : null}
-      {outcomesError ? (
-        <AttentionBanner title="Degraded data from feature-index">
-          <p>{outcomesError}</p>
-        </AttentionBanner>
-      ) : null}
     </div>
   );
 }

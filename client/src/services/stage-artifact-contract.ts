@@ -59,32 +59,48 @@ function uxSpecRel(runDir: string): string {
   return joinPosix(runDir, "ux-spec.md");
 }
 
+function disciplineDirRel(
+  runDir: string,
+  discipline: "product" | "design" | "tech",
+): string {
+  return joinPosix(runDir, discipline);
+}
+
 function deliveryReportRel(runDir: string): string {
   return joinPosix(runDir, "delivery-report.md");
 }
 
 function productPlanRel(runDir: string): string {
-  return joinPosix(runDir, "product-plan.md");
+  return joinPosix(disciplineDirRel(runDir, "product"), "plan.md");
 }
 
 function productAcceptanceCriteriaRel(runDir: string): string {
-  return joinPosix(runDir, "product-acceptance-criteria.md");
+  return joinPosix(
+    disciplineDirRel(runDir, "product"),
+    "acceptance-criteria.md",
+  );
 }
 
 function designPlanRel(runDir: string): string {
-  return joinPosix(runDir, "design-plan.md");
+  return joinPosix(disciplineDirRel(runDir, "design"), "plan.md");
 }
 
 function designAcceptanceCriteriaRel(runDir: string): string {
-  return joinPosix(runDir, "design-acceptance-criteria.md");
+  return joinPosix(
+    disciplineDirRel(runDir, "design"),
+    "acceptance-criteria.md",
+  );
 }
 
 function techPlanRel(runDir: string): string {
-  return joinPosix(runDir, "tech-plan.md");
+  return joinPosix(disciplineDirRel(runDir, "tech"), "plan.md");
 }
 
 function techAcceptanceCriteriaRel(runDir: string): string {
-  return joinPosix(runDir, "tech-acceptance-criteria.md");
+  return joinPosix(
+    disciplineDirRel(runDir, "tech"),
+    "acceptance-criteria.md",
+  );
 }
 
 function manualQaTestCasesRel(runDir: string): string {

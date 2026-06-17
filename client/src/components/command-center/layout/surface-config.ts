@@ -16,7 +16,7 @@ export type CommandCenterSurfaceConfig = {
   operatorJob: string;
 };
 
-/** Five shipped destinations per command-center-rebuild ux-spec. */
+/** Top-level Command Center destinations (Activity Log remains a deep-link route only). */
 export const COMMAND_CENTER_SURFACES: CommandCenterSurfaceConfig[] = [
   {
     id: "command-center",
@@ -58,27 +58,28 @@ export const COMMAND_CENTER_SURFACES: CommandCenterSurfaceConfig[] = [
     description: "Scheduled agent runs and cron automations.",
     operatorJob: "Manage automation lifecycle and run history.",
   },
-  {
-    id: "activity-log",
-    label: "Activity Log",
-    shortLabel: "Activity",
-    route: "/activity-log",
-    firstSlice: true,
-    iconLabel: "AL",
-    description: "Mutation receipts for operator and pipeline actions.",
-    operatorJob: "Audit state mutations with actor, verb, object, and artifact links.",
-  },
 ];
+
+/** Deep-link surface kept for evidence routes; not exposed in top-level navigation. */
+export const ACTIVITY_LOG_SURFACE: CommandCenterSurfaceConfig = {
+  id: "activity-log",
+  label: "Activity Log",
+  shortLabel: "Activity",
+  route: "/activity-log",
+  firstSlice: false,
+  iconLabel: "AL",
+  description: "Mutation receipts for operator and pipeline actions.",
+  operatorJob: "Audit state mutations with actor, verb, object, and artifact links.",
+};
 
 export const FIRST_SLICE_SURFACES = COMMAND_CENTER_SURFACES.filter((surface) => surface.firstSlice);
 
-/** Mobile tab bar mirrors the five shipped destinations. */
+/** Mobile tab bar mirrors the four top-level destinations. */
 const MOBILE_TAB_ORDER: CommandCenterSurfaceId[] = [
   "command-center",
   "mission-control",
   "compliance",
   "automations",
-  "activity-log",
 ];
 
 export const MOBILE_TAB_SURFACES = MOBILE_TAB_ORDER.map(
@@ -87,5 +88,9 @@ export const MOBILE_TAB_SURFACES = MOBILE_TAB_ORDER.map(
 
 export function getSurfaceByRoute(pathname: string): CommandCenterSurfaceConfig | undefined {
   const normalized = pathname === "/" ? "/command-center" : pathname;
-  return COMMAND_CENTER_SURFACES.find((surface) => surface.route === normalized);
+  const topLevel = COMMAND_CENTER_SURFACES.find((surface) => surface.route === normalized);
+  if (topLevel !== undefined) {
+    return topLevel;
+  }
+  return ACTIVITY_LOG_SURFACE.route === normalized ? ACTIVITY_LOG_SURFACE : undefined;
 }

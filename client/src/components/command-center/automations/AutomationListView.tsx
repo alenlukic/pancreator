@@ -70,16 +70,11 @@ export function AutomationListView({
   const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [confirmPauseAutomation, setConfirmPauseAutomation] = useState<AutomationSummary | null>(
-    null,
-  );
   const [openOverflowId, setOpenOverflowId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<AutomationStatusFilter>("all");
   const deleteDialogRef = useRef<HTMLDivElement>(null);
-  const pauseDialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(confirmDeleteId !== null, deleteDialogRef);
-  useFocusTrap(confirmPauseAutomation !== null, pauseDialogRef);
 
   const filteredAutomations = useMemo(
     () =>
@@ -112,10 +107,6 @@ export function AutomationListView({
   }
 
   function requestToggle(automation: AutomationSummary, enabled: boolean): void {
-    if (!enabled && automation.enabled) {
-      setConfirmPauseAutomation(automation);
-      return;
-    }
     void handleToggle(automation, enabled);
   }
 
@@ -363,40 +354,6 @@ export function AutomationListView({
         </ul>
       )}
 
-      {confirmPauseAutomation ? (
-        <div
-          ref={pauseDialogRef}
-          className="automation-pause-confirm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="automation-pause-confirm-title"
-          data-testid="automation-pause-confirm"
-        >
-          <p id="automation-pause-confirm-title">
-            Pause automation {confirmPauseAutomation.name}?
-          </p>
-          <button
-            type="button"
-            className="command-center-action-button"
-            onClick={() => setConfirmPauseAutomation(null)}
-            data-testid="automation-pause-cancel"
-          >
-            Keep automation enabled
-          </button>
-          <button
-            type="button"
-            className="command-center-action-button command-center-action-cta"
-            onClick={() => {
-              const target = confirmPauseAutomation;
-              setConfirmPauseAutomation(null);
-              void handleToggle(target, false);
-            }}
-            data-testid="automation-pause-confirm-button"
-          >
-            Pause automation
-          </button>
-        </div>
-      ) : null}
     </section>
   );
 }

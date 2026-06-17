@@ -35,29 +35,22 @@ read per `lib/memory/handbook/context-economy.md`.
 
 ## Active Feature
 
-- `command-center-rebuild-governance` — governance infra shipped to staging:
-  design canon (`lib/memory/handbook/engineering/design/`), SME personas
-  (`sme-product`, `sme-design`, `product-design-lead`), `experience-planning`
-  pipeline, and model-escalation pins. Source directive:
-  `lib/inbox/in/172965_06-10-26/59490_0728_command-center-rebuild-governance.md`.
-- `command-center-rebuild` — requirements brief drafted and awaiting an
-  `experience-planning` run. Source directive:
-  `lib/inbox/in/172965_06-10-26/58671_0742_command-center-rebuild.md`.
+- `(none)`
 
 ## Most recent shipped Features
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
-| `command-center-rebuild` | [indexed] (`2026-06-10T21:20:00.000Z`) | `lib/memory/features/command-center/command-center-rebuild/index.json` | `—` | `.pan/archive/inbox/in/172965_06-10-26/52276_0928_command-center-rebuild/28722_1601_command-center-rebuild-spec-theme-ref…` |
-| `command-center-feature-delivery-mission-control-run-detail` | [indexed] (`2026-06-09T11:30:00.000Z`) | `lib/memory/features/command-center/command-center-feature-delivery-mission-control-run-detail/index.json` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-feature-delivery-mission-control-run-detail/63490_0621_c…` |
-| `command-center-command-center-operational-state-surface` | [indexed] (`2026-06-09T11:05:00.000Z`) | `lib/memory/features/command-center/command-center-command-center-operational-state-surface/index.json` | `—` | `.pan/archive/inbox/in/172966_06-09-26/50770_0953_command-center-command-center-operational-state-surface/63491_0621_comm…` |
-| `command-center-app-shell-navigation-rail-and-operator-theme-tokens` | [indexed] (`2026-06-09T06:52:30.000Z`) | `—` | `—` | `.pan/archive/inbox/in/172966_06-09-26/63441_0622_command-center-app-shell-navigation-rail-and-operator-theme-tokens/6360…` |
-| `command-center-ux-philosophy-information-architecture-and-user-stories` | [indexed] (`2026-06-09T05:50:00.000Z`) | `lib/memory/features/command-center/command-center-ux-philosophy-information-architecture-and-user-stories/index.json` | `—` | `—` |
-| `command-center-active-memory-operator-craft-revalidation` | [indexed] (`2026-06-09T02:44:44.002Z`) | `lib/memory/features/command-center/command-center-active-memory-operator-craft-revalidation/index.json` | `—` | `.pan/archive/inbox/in/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/81282_0125_com…` |
-| `command-center-active-memory-craft-enforcement` | [indexed] (`2026-06-09T01:40:00.000Z`) | `lib/memory/features/command-center/command-center-active-memory-craft-enforcement/index.json` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/82800_0059_command-cente…` |
-| `command-center-active-memory-operator-readability` | [indexed] (`2026-06-09T01:00:00.000Z`) | `lib/memory/features/command-center/command-center-active-memory-operator-readability/index.json` | `—` | `.pan/archive/inbox/in/172967_06-08-26/919_2344_command-center-active-memory-operator-readability/945_2344_command-center…` |
-| `command-center-module-tab-accessibility` | [indexed] (`2026-06-08T23:05:00.000Z`) | `lib/memory/features/command-center/command-center-module-tab-accessibility/index.json` | `—` | `.pan/archive/inbox/in/172967_06-08-26/4426_2246_command-center-module-tab-accessibility/9443_2122_command-center-tab-a11…` |
-| `command-center-craft-polish-pass` | [indexed] (`2026-06-08T21:48:00.000Z`) | `lib/memory/features/command-center/command-center-craft-polish-pass/index.json` | `—` | `.pan/archive/inbox/in/172967_06-08-26/8919_2131_command-center-craft-polish-pass/8947_2130_command-center-craft-polish-p…` |
+| `batch-feature-delivery-runs-sequential-parallel` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md` |
+| `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172980_05-26-26/71700_0612_bootstrap-cruft-cleanup-batch.md` |
+| `bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md` |
+| `bootstrap-phase-5-m1-exit-close-docs-bootstrap` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172976_05-30-26/60751_0707_bootstrap-phase-5-m1-exit.md` |
+| `build-mode-inbox-scaffolding` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172970_06-05-26/19570_1833_build-mode-inbox-scaffolding.md` |
+| `ci-best-practices-batch` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172980_05-26-26/71701_0613_ci-best-practices-batch.md` |
+| `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md` |
+| `command-center-active-memory-craft-enforcement` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82800_0059_cockpit-v2-active-memory-craft-enforcement.md` |
+| `command-center-active-memory-inbox-triage-multi-run-view` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md` |
+| `command-center-active-memory-operator-craft-revalidation` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172966_06-09-26/81282_0125_cockpit-v2-active-memory-operator-craft-revalidation.md` |
 
 ## Risks and blockers
 
@@ -72,9 +65,13 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-10T20:20:10.637Z`
+- Active-memory refreshed (UTC): `2026-06-16T21:34:38.535Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
+
+
+
 
 
 
