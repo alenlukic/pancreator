@@ -1,0 +1,56 @@
+id: knowledge-curation
+version: "1"
+metadata:
+  pancreator-bootstrap-only: false
+  description: >-
+    PRD §11 MVP pipeline. Librarian-driven anti-rot loop: scan handbook seeds,
+    refresh stale citations, and flag drift. Cron cadence wires in M4 per
+    BOOTSTRAP §6.1; until then, agents trigger this pipeline on demand.
+  cron_seed:
+    default_cadence: daily
+    fallback_cadence: weekly
+    trigger_mode: operator-on-demand
+    operator_trigger: >-
+      Operator SHALL run the seed procedure at least daily during active bootstrap
+      work and at least weekly during quiet periods. Invoke the librarian persona
+      against the scan → curate → report stages using a dedicated inbox directive
+      or the refresh commands below when no directive is queued.
+    operator_commands:
+      - pnpm -w exec pan refresh-active-memory --dry-run
+      - node lib/internal/tools/format/refresh-citations.mjs
+      - node lib/internal/tools/compliance/run-compliance.mjs
+    artifact_destinations:
+      drift_report: lib/inbox/out/<timestamp>-knowledge-curation-drift-report.md
+      feature_citation_scan: lib/memory/curation/<feature-id>-citation-rot-scan.md
+      compliance_result: .pan/work/<day>/<task-id>/compliance-result.json
+    anti_rot_loop:
+      owner_persona: librarian
+      stages: [scan, curate, report]
+      handoff_expectation: >-
+        Librarian emits drift findings to lib/inbox/out and records deferrals with
+        backlog linkage when automation is not yet available.
+      scheduler_deferral:
+        owner: pancreator-engineer
+        milestone: M4
+        rationale: LangGraph scheduler wiring lands M4; M1 uses manual operator cadence only.
+  references:
+    - kind: lines
+      path: AGENTS.md
+      range: [124, 134]
+      contentHash: b953d77
+      note: §6.1 Compliance-run trigger guidance covers manual on-demand cadence.
+    - kind: lines
+      path: .docs/BOOTSTRAP.md
+      range: [256, 263]
+      contentHash: b788753
+      note: Phase 5 deliverable cluster for knowledge-curation cron seed and KPI baseline.
+stages:
+  - id: scan
+    persona: librarian
+    label: Scan handbook seeds and citations
+  - id: curate
+    persona: librarian
+    label: Refresh stale citations and emit drift report
+  - id: report
+    persona: tech-writer
+    label: Stage curation summary to lib/inbox/out

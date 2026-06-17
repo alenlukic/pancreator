@@ -1,7 +1,6 @@
 packages:
-  - "client"
-  - "lib/internal/packages/*"
-  - "lib/internal/packages/@pancreator/*"
+  - "pancreator/client"
+  - "pancreator/lib/internal/packages/@pancreator/*"
 catalog:
   commander: "^12.1.0"
   "@arethetypeswrong/cli": "^0.17.0"

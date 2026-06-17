@@ -1,0 +1,55 @@
+{
+  "feature_id": "context-usage-test-harness",
+  "title": "Context Usage Test Harness",
+  "category": "memory-context",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "15493_1941_context-usage-test-harness",
+  "summary": "The context-usage-test-harness Feature ships a manual-only runtime probe under tests/context-usage/ that copies a synthetic eight-tier sandbox fixture, runs a frozen five-read agent task through @cursor/sdk@1.0.13, verifies Layer A routing policy via imported classifyExclusiveTier(), aggregates eight token metrics…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, accepted ship artifacts, and active work paths. After human accepts this index artifact, run pan advance to complete, then delegate the generated complete-stage prompt for…",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: No contracts/ directory under feature folder; review used behavioral delta coverage only.",
+    "intake.human_approval_note: Spec ratified at plan advance per state.json advanceHistory intake→plan event."
+  ],
+  "implementation_surfaces": [
+    "tests/context-usage/",
+    "tests/context-usage/README.md",
+    "tests/context-usage/context-usage.unit.test.mjs",
+    "tests/context-usage/fixtures/tier-sandbox/",
+    "package.json",
+    "lib/internal/tools/context/context-budget-report.mjs"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true
+      }
+    }
+  ],
+  "open_followups": [
+    "compare-to-baseline-prompt-version",
+    "run-live-output-on-baseline-fail",
+    "live-baseline-calibration",
+    "sdk-transport-usage-deferral"
+  ],
+  "compressed_from": [
+    "lib/memory/features/context-usage-test-harness/delivery-report.md",
+    "lib/memory/features/context-usage-test-harness/index.json",
+    "lib/memory/features/context-usage-test-harness/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction.",
+  "archived_inbox_source": ".pan/archive/inbox/in/172973_06-02-26/15509_1941_context-usage-test.md",
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172973_06-02-26/15509_1941_context-usage-test.md",
+    "prior_path": "lib/inbox/in/172973_06-02-26/15509_1941_context-usage-test.md"
+  }
+}

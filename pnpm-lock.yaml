@@ -87,13 +87,13 @@ importers:
         version: 9.39.4
       '@pancreator/cli':
         specifier: workspace:*
-        version: link:lib/internal/packages/@pancreator/cli
+        version: link:pancreator/lib/internal/packages/@pancreator/cli
       '@pancreator/mcp-server':
         specifier: workspace:*
-        version: link:lib/internal/packages/@pancreator/mcp-server
+        version: link:pancreator/lib/internal/packages/@pancreator/mcp-server
       '@pancreator/runner-cursor':
         specifier: workspace:*
-        version: link:lib/internal/packages/@pancreator/runner-cursor
+        version: link:pancreator/lib/internal/packages/@pancreator/runner-cursor
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
@@ -116,7 +116,7 @@ importers:
         specifier: 'catalog:'
         version: 2.8.3
 
-  client:
+  pancreator/client:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -216,7 +216,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/adopter-scan:
+  pancreator/lib/internal/packages/@pancreator/adopter-scan:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -241,7 +241,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/checkpointer-fs:
+  pancreator/lib/internal/packages/@pancreator/checkpointer-fs:
     dependencies:
       '@langchain/core':
         specifier: ^0.3.0
@@ -275,7 +275,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/cli:
+  pancreator/lib/internal/packages/@pancreator/cli:
     dependencies:
       '@langchain/core':
         specifier: ^0.3.0
@@ -333,7 +333,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/contract:
+  pancreator/lib/internal/packages/@pancreator/contract:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -355,7 +355,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/contract-runner-llm-judge:
+  pancreator/lib/internal/packages/@pancreator/contract-style:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -377,51 +377,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/contract-runner-rego:
-    dependencies:
-      '@pancreator/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@arethetypeswrong/cli':
-        specifier: 'catalog:'
-        version: 0.17.4
-      publint:
-        specifier: 'catalog:'
-        version: 0.2.12
-      tsup:
-        specifier: 'catalog:'
-        version: 8.5.1(jiti@1.21.7)(postcss@8.5.12)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-      vitest:
-        specifier: 'catalog:'
-        version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
-
-  lib/internal/packages/@pancreator/contract-style:
-    dependencies:
-      '@pancreator/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@arethetypeswrong/cli':
-        specifier: 'catalog:'
-        version: 0.17.4
-      publint:
-        specifier: 'catalog:'
-        version: 0.2.12
-      tsup:
-        specifier: 'catalog:'
-        version: 8.5.1(jiti@1.21.7)(postcss@8.5.12)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-      vitest:
-        specifier: 'catalog:'
-        version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
-
-  lib/internal/packages/@pancreator/core:
+  pancreator/lib/internal/packages/@pancreator/core:
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -439,7 +395,7 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
-  lib/internal/packages/@pancreator/env-isolation:
+  pancreator/lib/internal/packages/@pancreator/env-isolation:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -464,7 +420,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/inbox:
+  pancreator/lib/internal/packages/@pancreator/inbox:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -489,7 +445,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/intervention:
+  pancreator/lib/internal/packages/@pancreator/intervention:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -514,7 +470,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/mcp-server:
+  pancreator/lib/internal/packages/@pancreator/mcp-server:
     dependencies:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
@@ -557,7 +513,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/memory:
+  pancreator/lib/internal/packages/@pancreator/memory:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -582,7 +538,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/notifier:
+  pancreator/lib/internal/packages/@pancreator/notifier:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -607,7 +563,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/persona:
+  pancreator/lib/internal/packages/@pancreator/persona:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -635,7 +591,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/pipeline:
+  pancreator/lib/internal/packages/@pancreator/pipeline:
     dependencies:
       '@langchain/core':
         specifier: ^1.1.44
@@ -672,7 +628,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/policy:
+  pancreator/lib/internal/packages/@pancreator/policy:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -700,7 +656,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/run-logger:
+  pancreator/lib/internal/packages/@pancreator/run-logger:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -725,7 +681,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/runner-cursor:
+  pancreator/lib/internal/packages/@pancreator/runner-cursor:
     dependencies:
       '@cursor/sdk':
         specifier: 1.0.13
@@ -772,11 +728,20 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/scheduler:
+  pancreator/lib/internal/packages/@pancreator/scheduler:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
         version: link:../core
+      '@pancreator/intervention':
+        specifier: workspace:*
+        version: link:../intervention
+      '@pancreator/persona':
+        specifier: workspace:*
+        version: link:../persona
+      '@pancreator/runner-cursor':
+        specifier: workspace:*
+        version: link:../runner-cursor
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -800,7 +765,7 @@ importers:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
 
-  lib/internal/packages/@pancreator/worktree:
+  pancreator/lib/internal/packages/@pancreator/worktree:
     dependencies:
       '@pancreator/core':
         specifier: workspace:*
@@ -824,82 +789,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/node@22.19.17)(jiti@1.21.7)(jsdom@26.1.0)(yaml@2.8.3)
-
-  lib/internal/packages/pancreator:
-    dependencies:
-      '@pancreator/adopter-scan':
-        specifier: workspace:*
-        version: link:../@pancreator/adopter-scan
-      '@pancreator/checkpointer-fs':
-        specifier: workspace:*
-        version: link:../@pancreator/checkpointer-fs
-      '@pancreator/cli':
-        specifier: workspace:*
-        version: link:../@pancreator/cli
-      '@pancreator/contract':
-        specifier: workspace:*
-        version: link:../@pancreator/contract
-      '@pancreator/contract-runner-llm-judge':
-        specifier: workspace:*
-        version: link:../@pancreator/contract-runner-llm-judge
-      '@pancreator/contract-runner-rego':
-        specifier: workspace:*
-        version: link:../@pancreator/contract-runner-rego
-      '@pancreator/contract-style':
-        specifier: workspace:*
-        version: link:../@pancreator/contract-style
-      '@pancreator/core':
-        specifier: workspace:*
-        version: link:../@pancreator/core
-      '@pancreator/env-isolation':
-        specifier: workspace:*
-        version: link:../@pancreator/env-isolation
-      '@pancreator/inbox':
-        specifier: workspace:*
-        version: link:../@pancreator/inbox
-      '@pancreator/intervention':
-        specifier: workspace:*
-        version: link:../@pancreator/intervention
-      '@pancreator/mcp-server':
-        specifier: workspace:*
-        version: link:../@pancreator/mcp-server
-      '@pancreator/memory':
-        specifier: workspace:*
-        version: link:../@pancreator/memory
-      '@pancreator/notifier':
-        specifier: workspace:*
-        version: link:../@pancreator/notifier
-      '@pancreator/persona':
-        specifier: workspace:*
-        version: link:../@pancreator/persona
-      '@pancreator/pipeline':
-        specifier: workspace:*
-        version: link:../@pancreator/pipeline
-      '@pancreator/policy':
-        specifier: workspace:*
-        version: link:../@pancreator/policy
-      '@pancreator/run-logger':
-        specifier: workspace:*
-        version: link:../@pancreator/run-logger
-      '@pancreator/runner-cursor':
-        specifier: workspace:*
-        version: link:../@pancreator/runner-cursor
-      '@pancreator/worktree':
-        specifier: workspace:*
-        version: link:../@pancreator/worktree
-    devDependencies:
-      '@arethetypeswrong/cli':
-        specifier: 'catalog:'
-        version: 0.17.4
-      publint:
-        specifier: 'catalog:'
-        version: 0.2.12
-      tsup:
-        specifier: 'catalog:'
-        version: 8.5.1(jiti@1.21.7)(postcss@8.5.12)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
 
 packages:
 

@@ -3,18 +3,18 @@
 # Explicit @-mentions and intentional reads still reach excluded paths.
 
 # Active and archived run artifacts
-.pan/work/**
-.pan/archive/work/**
-lib/inbox/**
-.pan/archive/inbox/**
+pancreator/.pan/work/**
+pancreator/.pan/archive/work/**
+pancreator/lib/inbox/**
+pancreator/.pan/archive/inbox/**
 
 # Internal product and self-development surfaces (entire .docs/ tree, including .docs/README.md)
-.docs/**
-.docs/README.md
+pancreator/.docs/**
+pancreator/.docs/README.md
 AGENTS.md
-lib/memory/adr/**
-lib/memory/backlog/**
-lib/memory/research/**
+pancreator/lib/memory/adr/**
+pancreator/lib/memory/backlog/**
+pancreator/lib/memory/research/**
 
 # Generated manifests / bulky machine outputs
 **/migration-manifest*.json
@@ -23,17 +23,17 @@ lib/memory/research/**
 **/*.write.json
 
 # Generated or low-signal durable indexes/reports
-lib/memory/**/*.json
-lib/memory/**/delivery-report.md
-lib/memory/**/index.json
+pancreator/lib/memory/**/*.json
+pancreator/lib/memory/**/delivery-report.md
+pancreator/lib/memory/**/index.json
 
 # Lockfile rarely needed for semantic repo reasoning
 pnpm-lock.yaml
 
 # Internal operating content: narrow default semantic sweeps; route reads via handbook index and personas when needed.
-lib/memory/handbook/**
-lib/personas/**
-lib/personas/skills/**
+pancreator/lib/memory/handbook/**
+pancreator/lib/personas/**
+pancreator/lib/personas/skills/**
 .cursor/rules/**
 
 # Cursor-native mirrors are runtime surfaces, not semantic source of truth.

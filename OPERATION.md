@@ -3,16 +3,16 @@
 Procedure for inbox workflow, feature delivery, the `pan` CLI, and pre-close
 validation. This file is for **human operators** only. Agent operating
 instructions live in `AGENTS.md` (self-host) or `.pancreator/AGENTS.md`
-(embedded). Product spec and bootstrap history: `.docs/` (internal; explicit-read).
+(embedded). Product spec and bootstrap history: `pancreator/.docs/` (internal; explicit-read).
 
 ## Inbox lifecycle
 
-`lib/inbox/` is gitignored local storage for transient operator ↔ org comms.
+`pancreator/lib/inbox/` is gitignored local storage for transient operator ↔ org comms.
 Fresh workspaces materialize queue directories on first use (`pan init` or
-`pan intake new`). Archive completed inbound items to `.pan/archive/inbox/in/` when
+`pan intake new`). Archive completed inbound items to `pancreator/.pan/archive/inbox/in/` when
 policy requires a durable copy.
 
-1. Author new directives under `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
+1. Author new directives under `pancreator/lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
    Scaffold with:
 
    ```bash
@@ -42,22 +42,22 @@ policy requires a durable copy.
    Optional frontmatter overrides: `--owner <persona>`, `--feature-id <id>`.
    When omitted, title and feature id default to `<slug>` and owner defaults to
    `product-engineer`. The command writes
-   `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md` with
+   `pancreator/lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md` with
    `source_channel: cursor-build-mode` in YAML frontmatter.
 
-2. Do **not** use `lib/inbox/notes/` for agent work; it is human-only scratch space.
-   Promote drafts from notes into `lib/inbox/in/` before any agent acts on them.
+2. Do **not** use `pancreator/lib/inbox/notes/` for agent work; it is human-only scratch space.
+   Promote drafts from notes into `pancreator/lib/inbox/in/` before any agent acts on them.
 
-3. Place delivery reports and status responses in `lib/inbox/out/` when the task
+3. Place delivery reports and status responses in `pancreator/lib/inbox/out/` when the task
    requires human review outside the feature-delivery ledger.
 
-4. Archive and thread semantics follow `lib/memory/handbook/inbox-lifecycle.md`.
+4. Archive and thread semantics follow `pancreator/lib/memory/handbook/inbox-lifecycle.md`.
    Feature-delivery runs archive their source inbox directive automatically when
    you run `pnpm -w exec pan close-artifacts <task-id>` at `complete`; the archived
-   copy lands at `.pan/archive/inbox/in/<day-bucket>/<basename>` (same day-bucket
-   leaf layout as the active queue). Empty day buckets under `lib/inbox/in/` are
+   copy lands at `pancreator/.pan/archive/inbox/in/<day-bucket>/<basename>` (same day-bucket
+   leaf layout as the active queue). Empty day buckets under `pancreator/lib/inbox/in/` are
    pruned during closure. For non-feature-delivery work, move responded items
-   manually to `.pan/archive/inbox/in/` when policy requires archival.
+   manually to `pancreator/.pan/archive/inbox/in/` when policy requires archival.
 
 ## Feature delivery loop
 
@@ -102,7 +102,7 @@ SDK mode runs these companions automatically when enabled.
 
 Use this loop exactly:
 
-1. Put the request in `lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
+1. Put the request in `pancreator/lib/inbox/in/<day-bucket>/<SID>_<HHMM>_<slug>.md`.
 2. Load repo-root credentials, then start the run (path relative to
    `<project_root>/lib/inbox/in/` only; for embedded installs with
    `project_root: ".pancreator"`, that is `.pancreator/lib/inbox/in/`):
@@ -137,8 +137,8 @@ Use this loop exactly:
 7. Repeat until `currentStage` becomes `complete`.
 8. At `complete`, delegate the librarian `next-prompt.md` and run
    `pnpm -w exec pan close-artifacts <task-id>` once after final validation.
-   That command archives the active run to `.pan/archive/work/`, moves the source
-   inbox directive from `lib/inbox/in/` to `.pan/archive/inbox/in/<day-bucket>/<basename>`,
+   That command archives the active run to `pancreator/.pan/archive/work/`, moves the source
+   inbox directive from `pancreator/lib/inbox/in/` to `pancreator/.pan/archive/inbox/in/<day-bucket>/<basename>`,
    prunes empty inbox day buckets, refreshes active memory, and backfills the
    feature index archived-inbox pointer.
 
@@ -158,7 +158,7 @@ and return to `plan`. Do not run `advance` after the final `complete` state.
 
 ### Post-invocation state machine
 
-Invocation creates `.pan/work/<day>/<task-id>/state.json`, `handoff.md`,
+Invocation creates `pancreator/.pan/work/<day>/<task-id>/state.json`, `handoff.md`,
 `next-prompt.md`, and `run.log.jsonl`. Initial state is
 `ready_for_stage_delegation` with `currentStage: plan`.
 
@@ -174,7 +174,7 @@ Invocation creates `.pan/work/<day>/<task-id>/state.json`, `handoff.md`,
 | `index` | `librarian` | `artifacts_indexed` | Accept feature index |
 | `complete` | `librarian` | `artifacts_closed` via close-artifacts | Validate closure |
 
-Interventions journal under `.pan/scheduler/interventions/<task-id>.jsonl`.
+Interventions journal under `pancreator/.pan/scheduler/interventions/<task-id>.jsonl`.
 Use `pnpm -w exec pan repair-state` only after explicit out-of-band work.
 
 ### Spot-fix complexity bar
@@ -272,8 +272,8 @@ Undeclared shared-layer edits route back to `plan`, not repeated `must_fix` loop
    separate operator `advance` for that branch.
 5. When cumulative `must_fix`, `qa_fails`, and `compliance_fails` retries exceed 5, the run halts with
    `status: halted` and one timestamp-prefixed file under
-   `lib/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
-6. When the run reaches `complete`, the runtime writes `.pan/work/<day>/<task-id>/pipeline-close.md`
+   `pancreator/lib/inbox/out/<day-bucket>/` (basename `{SID}_{HHMM}_feature-delivery-retry-halt.md`).
+6. When the run reaches `complete`, the runtime writes `pancreator/.pan/work/<day>/<task-id>/pipeline-close.md`
    (outcome summary, residual issues, operator next steps) and
    `operator-verification.md` (acceptance criteria and manual test flows scaffold).
    Review both files before archival closure.
@@ -346,9 +346,9 @@ is disabled. Use one `pan run feature-delivery <inbox-entry>` invocation per tas
 
 For ad-hoc work that does not use the feature-delivery ledger:
 
-1. Check `lib/memory/active/current.md` for active pointers.
-2. Put requests in `lib/inbox/in/` when they need org tracking.
-3. Separate planning from execution: use `.pan/work/<day>/<task-id>/handoff.md`,
+1. Check `pancreator/lib/memory/active/current.md` for active pointers.
+2. Put requests in `pancreator/lib/inbox/in/` when they need org tracking.
+3. Separate planning from execution: use `pancreator/.pan/work/<day>/<task-id>/handoff.md`,
    then delegate to the owning persona (see `AGENTS.md` §2).
 4. Stage local diffs and ratify at phase boundaries before commit.
 
@@ -365,30 +365,30 @@ docs, commit messages, agent transcripts) **outside** feature-delivery gates:
 
    Optional flags:
 
-   - `--workspace .pan/sandboxes/<slug>` — output directory (default: `.pan/sandboxes/context-review`)
+   - `--workspace .pan/sandboxes/<slug>` — output directory (default: `pancreator/.pan/sandboxes/context-review`)
    - `--scope-path <repo-path>` — repeat for diff scope
    - `--context-path <repo-path>` — repeat for plan/spec/ADR docs to read
    - `--run-dir .pan/work/<day>/<slug>` — optionally pull touch-set and run artifacts when that directory exists
 
-2. Delegate `/context-reviewer` with `.pan/sandboxes/<slug>/context-review-prompt.md`
+2. Delegate `/context-reviewer` with `pancreator/.pan/sandboxes/<slug>/context-review-prompt.md`
    (or operator-authored scope in chat).
-3. Read `.pan/sandboxes/<slug>/context-review.md` (advisory only).
+3. Read `pancreator/.pan/sandboxes/<slug>/context-review.md` (advisory only).
 
 The SDK and `pan advance` never auto-invoke context review. In-band review and
 QA remain the `reviewer` and `qa-tester` pipeline stages.
 
-### Operator sandboxes (`.pan/sandboxes/`)
+### Operator sandboxes (`pancreator/.pan/sandboxes/`)
 
-`.pan/sandboxes/` is gitignored scratch space under the local control plane for
+`pancreator/.pan/sandboxes/` is gitignored scratch space under the local control plane for
 manual QA, exploratory testing, out-of-band context review, and env-isolation
-state (for example `port-registry.json`). It is distinct from `lib/inbox/notes/`
+state (for example `port-registry.json`). It is distinct from `pancreator/lib/inbox/notes/`
 (human-only; agents must not read).
 
 Recommended layouts:
 
-- `.pan/sandboxes/context-review/` — default out-of-band review workspace
-- `.pan/sandboxes/<slug>/` — ad-hoc QA or review passes
-- `.pan/sandboxes/<task-id>/` — optional copy of an in-flight run touch-set
+- `pancreator/.pan/sandboxes/context-review/` — default out-of-band review workspace
+- `pancreator/.pan/sandboxes/<slug>/` — ad-hoc QA or review passes
+- `pancreator/.pan/sandboxes/<task-id>/` — optional copy of an in-flight run touch-set
 
 Prepare a sandbox copy from an in-flight run touch-set (optional convenience):
 
@@ -396,18 +396,18 @@ Prepare a sandbox copy from an in-flight run touch-set (optional convenience):
 pnpm -w exec pan sandbox prepare <task-id>
 ```
 
-This writes `.pan/sandboxes/<task-id>/manifest.json` listing copied paths. Use the
+This writes `pancreator/.pan/sandboxes/<task-id>/manifest.json` listing copied paths. Use the
 sandbox tree for destructive checks, browser flows, or one-off scripts instead
 of mutating the main worktree.
 
 Pancreator self-development (internal surface only): read root `AGENTS.md`, then
-route through `.docs/PRD.summary.md` and `.docs/PRD.index.md` before full
-`.docs/PRD.md` or `.docs/BOOTSTRAP.md`. The entire `.docs/` tree, including
-`.docs/README.md`, is explicit-read and excluded from default semantic indexing.
+route through `pancreator/.docs/PRD.summary.md` and `pancreator/.docs/PRD.index.md` before full
+`pancreator/.docs/PRD.md` or `pancreator/.docs/BOOTSTRAP.md`. The entire `pancreator/.docs/` tree, including
+`pancreator/.docs/README.md`, is explicit-read and excluded from default semantic indexing.
 
 ## Self-host developer setup
 
-When developing Pancreator in this repository (`project_root: "."`), materialize
+When developing Pancreator in this repository (`project_root: "pancreator"`), materialize
 the local Cursor runtime after clone or when persona or rule sources change:
 
 ```bash
@@ -415,10 +415,10 @@ pnpm install
 pnpm -w exec pan cursor-sync
 ```
 
-The `.cursor/` directory is gitignored. Canonical sources are `lib/personas/`
+The `.cursor/` directory is gitignored. Canonical sources are `pancreator/lib/personas/`
 (agents and rules). Verify Cursor discovers
 custom agents under `.cursor/agents/` after sync per
-`lib/memory/handbook/context-economy.md`.
+`pancreator/lib/memory/handbook/context-economy.md`.
 
 ## Embedded install checklist
 
@@ -432,7 +432,7 @@ For adopting Pancreator into an existing repository with `project_root: ".pancre
 
 2. Verify `.pancreator/AGENTS.md` and `.pancreator/OPERATION.md` exist.
 3. Verify host `AGENTS.md` contains the Pancreator augment pointer block.
-4. Verify `.cursor/agents/` is populated (for example `.cursor/agents/product-engineer.md` exists at the harness root) and `.cursor/rules/` is emitted from seeded `lib/personas/rules/`. These paths are local-only and are not committed to git.
+4. Verify `.cursor/agents/` is populated (for example `.cursor/agents/product-engineer.md` exists at the harness root) and `.cursor/rules/` is emitted from seeded `pancreator/lib/personas/rules/`. These paths are local-only and are not committed to git.
 5. Open the harness root in Cursor.
 6. Run feature delivery in SDK mode (embedded `pancreator.yaml` defaults to `runner.cursor.invocation: sdk`):
 
@@ -443,9 +443,9 @@ For adopting Pancreator into an existing repository with `project_root: ".pancre
 
 ### Manual agent sync
 
-When persona specs or rule specs under `lib/personas/rules/` change, or
+When persona specs or rule specs under `pancreator/lib/personas/rules/` change, or
 cursor agents were not emitted during init, regenerate the local `.cursor/` tree.
-When `pancreator-model-escalation.yaml` is present, `cursor-sync` first copies each listed persona's `default` tier model from the active escalation config (resolved like SDK runs: `PAN_MODEL_ESCALATION_CONFIG`, then `runner.cursor.model_escalation.config` in `pancreator.yaml`, then the file-level `active_config`) into `lib/personas/<slug>.md`, then mirrors personas to `.cursor/agents/` and emits rules from `lib/personas/rules/` to `.cursor/rules/`. Personas omitted from the active config are left unchanged.
+When `pancreator-model-escalation.yaml` is present, `cursor-sync` first copies each listed persona's `default` tier model from the active escalation config (resolved like SDK runs: `PAN_MODEL_ESCALATION_CONFIG`, then `runner.cursor.model_escalation.config` in `pancreator.yaml`, then the file-level `active_config`) into `pancreator/lib/personas/<slug>.md`, then mirrors personas to `.cursor/agents/` and emits rules from `pancreator/lib/personas/rules/` to `.cursor/rules/`. Personas omitted from the active config are left unchanged.
 
 ```bash
 pnpm -w exec pan cursor-sync [--dry-run] [harnessRoot]
@@ -478,7 +478,7 @@ Every runnable operator command uses `pnpm -w exec pan …` from the repository 
 | `compliance` (major fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails --artifact <runDir>/compliance-result.json` |
 | `compliance` (plan-invalidating fail) | `compliance-auditor` | `<runDir>/compliance-result.json` | `pnpm -w exec pan advance <task-id> --event compliance_fails_plan_invalidating --artifact <runDir>/compliance-result.json` |
 | `ship` | `supervisor` | `<runDir>/ship-ratification.json` | `pnpm -w exec pan advance <task-id> --artifact <runDir>/ship-ratification.json` |
-| `index` | `librarian` | `lib/memory/features/<category>/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact lib/memory/features/<category>/<feature-id>/index.json` |
+| `index` | `librarian` | `pancreator/lib/memory/features/<category>/<feature-id>/index.json` | `pnpm -w exec pan advance <task-id> --artifact pancreator/lib/memory/features/<category>/<feature-id>/index.json` |
 | `complete` | `librarian` | ship-ratification + index + operator-verification | `pnpm -w exec pan close-artifacts <task-id>` |
 
 Ad-hoc and recovery verbs:
@@ -492,7 +492,7 @@ Ad-hoc and recovery verbs:
 
 Compliance audit history contract (feature-delivery compliance stage):
 
-- Saved audit ledger: `lib/memory/features/quality-governance/compliance-tests/audit-history.json`
+- Saved audit ledger: `pancreator/lib/memory/features/quality-governance/compliance-tests/audit-history.json`
 - Retention: newest 5 audits
 - Default baseline: previous saved audit entry
 - Optional baseline override: set `baseline_audit_id` in `<runDir>/compliance-result.json` to one of the saved audit IDs
@@ -542,19 +542,19 @@ Example **launchd** `ProgramArguments` fragment (hourly at minute 0):
 <string>cd /path/to/daedaline && pnpm -w exec pan scheduler tick</string>
 ```
 
-Run history is append-only JSONL under `.pan/scheduler/runs/<automation-id>.jsonl`.
+Run history is append-only JSONL under `pancreator/.pan/scheduler/runs/<automation-id>.jsonl`.
 Command Center Run now calls the same tick primitive for a single id via
 `POST /api/automations/<id>/run`.
 
 ## Active memory refresh
 
-- Set **Active Feature** in `lib/memory/active/current.md` explicitly when work starts.
+- Set **Active Feature** in `pancreator/lib/memory/active/current.md` explicitly when work starts.
 - Run `pnpm -w exec pan refresh-active-memory [--dry-run]` when shipped-feature rows
   or the managed operator-notes stamp drift from indexed artifacts.
 - `pnpm -w exec pan close-artifacts <task-id>` refreshes shipped rows and clears Active
   Feature to `(none)` when it matched the archived inbox source.
-- `lib/memory/features/index.md` is the retrieval map for shipped feature context.
-- `lib/memory/features/<category>/<feature-id>/index.json` remain the compact indexed source of truth for features.
+- `pancreator/lib/memory/features/index.md` is the retrieval map for shipped feature context.
+- `pancreator/lib/memory/features/<category>/<feature-id>/index.json` remain the compact indexed source of truth for features.
 
 ## Version control and optional PR drafting
 
@@ -563,7 +563,7 @@ Command Center Run now calls the same tick primitive for a single id via
 - **Agents never open pull requests.** No agent or subagent runs `gh pr create`,
   `git push`, or otherwise publishes a remote PR; those steps are human-operator
   actions only.
-- Optional: invoke `/pr-writer` with a feature ID or `.pan/work/<day>/<task-id>/` path to
+- Optional: invoke `/pr-writer` with a feature ID or `pancreator/.pan/work/<day>/<task-id>/` path to
   draft a GitHub PR body from pipeline artifacts and the current git worktree.
   Output is one fenced Markdown block in chat for operator paste into
   `gh pr create --body-file`; the agent does not run `gh` on your behalf.
@@ -584,11 +584,11 @@ pnpm typecheck
 pnpm run attw
 pnpm run publint
 pnpm test
-node --test tests/*.test.mjs
-node lib/internal/tools/run-compliance.mjs
-node lib/internal/tools/check-phase-0a-scaffold.mjs
-node lib/internal/tools/context-budget-report.mjs
-node lib/internal/tools/check-operator-output.mjs
+node --test pancreator/tests/*.test.mjs
+node pancreator/lib/internal/tools/compliance/run-compliance.mjs
+node pancreator/lib/internal/tools/checks/check-workspace-contracts.mjs
+node pancreator/lib/internal/tools/context/context-budget-report.mjs
+node pancreator/lib/internal/tools/checks/check-operator-output.mjs
 ```
 
 When a check fails for reasons outside the closing task touch-set, open or link
@@ -605,13 +605,13 @@ local quality gates for this repository.
 | `advance` rejects missing artifact | Stage work incomplete | Finish artifact; do not edit `state.json` manually |
 | Ledger behind out-of-band work | Skipped `advance` | `pnpm -w exec pan repair-state` with evidence artifact |
 | Wrong persona in prompt | Stale `next-prompt.md` | `pnpm -w exec pan refresh-prompt <task-id>` |
-| Bare `pan` command fails | CLI not on PATH | Use `pnpm -w exec pan …` per `lib/memory/handbook/pancreator-config.md` |
+| Bare `pan` command fails | CLI not on PATH | Use `pnpm -w exec pan …` per `pancreator/lib/memory/handbook/pancreator-config.md` |
 | Active memory drift | Skipped refresh | `pnpm -w exec pan refresh-active-memory --dry-run` then apply |
-| Operator-output lint fails | Bare `pan` in runnable block | Run `node lib/internal/tools/check-operator-output.mjs` and fix cited paths |
-| `close-artifacts` fails: missing operator-verification.md | Verification pack not authored at complete | Finalize `.pan/work/<day>/<task-id>/operator-verification.md` (scaffold lands at `complete`); then rerun `pnpm -w exec pan close-artifacts <task-id>`. |
-| `close-artifacts` fails: active run directory missing or archive already exists | Librarian archived `.pan/work/` during index instead of waiting for `close-artifacts` | Do not manually `mv` work directories; run `pnpm -w exec pan close-artifacts <task-id>` only at `complete`. When work is already under `.pan/archive/work/`, closure finalizes state idempotently. |
-| Completed runs still under `.pan/work/` while peers are in `.pan/archive/work/` | `close-artifacts` skipped after `complete`, or superseded retry task dirs left behind | Run `pnpm -w exec pan check` and resolve `work-archive-hygiene` findings: `close-artifacts` each `complete` run (canonical task first when duplicates share a feature); superseded duplicates MAY close after inbox is already archived. |
-| `advance` rejects delivery-report citation lint | JS-literal or compact inline citations in `delivery-report.md` | Run `node lib/internal/tools/reformat-markdown-citations.mjs` and follow `lib/memory/handbook/contract-templates/delivery-report.template.md` |
+| Operator-output lint fails | Bare `pan` in runnable block | Run `node pancreator/lib/internal/tools/checks/check-operator-output.mjs` and fix cited paths |
+| `close-artifacts` fails: missing operator-verification.md | Verification pack not authored at complete | Finalize `pancreator/.pan/work/<day>/<task-id>/operator-verification.md` (scaffold lands at `complete`); then rerun `pnpm -w exec pan close-artifacts <task-id>`. |
+| `close-artifacts` fails: active run directory missing or archive already exists | Librarian archived `pancreator/.pan/work/` during index instead of waiting for `close-artifacts` | Do not manually `mv` work directories; run `pnpm -w exec pan close-artifacts <task-id>` only at `complete`. When work is already under `pancreator/.pan/archive/work/`, closure finalizes state idempotently. |
+| Completed runs still under `pancreator/.pan/work/` while peers are in `pancreator/.pan/archive/work/` | `close-artifacts` skipped after `complete`, or superseded retry task dirs left behind | Run `pnpm -w exec pan check` and resolve `work-archive-hygiene` findings: `close-artifacts` each `complete` run (canonical task first when duplicates share a feature); superseded duplicates MAY close after inbox is already archived. |
+| `advance` rejects delivery-report citation lint | JS-literal or compact inline citations in `delivery-report.md` | Run `node pancreator/lib/internal/tools/format/reformat-markdown-citations.mjs` and follow `pancreator/lib/memory/handbook/contract-templates/delivery-report.template.md` |
 
 For deferred CLI verbs, read the JSON envelope (`milestone`, `tracking_intake`,
 `manual_workaround`) and follow the documented manual workaround.

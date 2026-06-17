@@ -7,19 +7,19 @@
 ## 1 — Start here
 
 Every agent invocation MUST read this card before acting. Source-backed
-subagents MAY read their own `lib/personas/<name>.md` persona spec first to
+subagents MAY read their own `pancreator/lib/personas/<name>.md` persona spec first to
 resolve persona-local role semantics, but `AGENTS.md` remains the repo-wide
 authority on conflict and MUST be read before they act.
 
 Agents MUST NOT treat path enumeration as compliance. Binding work rules come
 from static repo artifacts with stable global keys:
 
-- `DOC.REGISTRY` → `lib/memory/handbook/agent-document-registry.md`
-- `DOC.PERSONA_SPEC` → `lib/memory/handbook/persona-spec.md`
-- `DOC.PERSONA_CONTRACTS` → `lib/memory/handbook/persona-contracts.md`
-- `DOC.OUTPUT_MANIFEST` → `lib/memory/handbook/output-manifest-contract.md`
-- `DOC.PIPELINE_STATE` → `lib/memory/handbook/pipeline-state-contract.md`
-- `PIPE.FEATURE_DELIVERY` → `lib/pipelines/feature-delivery.yaml`
+- `DOC.REGISTRY` → `pancreator/lib/memory/handbook/agent-document-registry.md`
+- `DOC.PERSONA_SPEC` → `pancreator/lib/memory/handbook/persona-spec.md`
+- `DOC.PERSONA_CONTRACTS` → `pancreator/lib/memory/handbook/persona-contracts.md`
+- `DOC.OUTPUT_MANIFEST` → `pancreator/lib/memory/handbook/output-manifest-contract.md`
+- `DOC.PIPELINE_STATE` → `pancreator/lib/memory/handbook/pipeline-state-contract.md`
+- `PIPE.FEATURE_DELIVERY` → `pancreator/lib/pipelines/feature-delivery.yaml`
 
 When a persona spec, pipeline stage, or prompt names a `DOC.*`, `PIPE.*`, or
 `PERSONA.*` key, agents MUST resolve that key through `DOC.REGISTRY`, load the
@@ -29,7 +29,7 @@ persona spec and pipeline definition.
 
 ## 2 — Persona and pipeline authority
 
-Canonical persona specs live at `lib/personas/<name>.md`. Each persona spec MUST
+Canonical persona specs live at `pancreator/lib/personas/<name>.md`. Each persona spec MUST
 own its static execution contract: responsibilities, required docs, required
 inputs, output artifacts, output manifest shape, definition of done, and gate
 validator. Cursor projections under `.cursor/agents/` are generated local files;
@@ -39,12 +39,12 @@ When this card conflicts with a persona spec or generated projection, this card
 wins. Persona specs and generated projections provide narrower local contracts
 inside that repo-wide boundary.
 
-Pipeline definitions live under `lib/pipelines/*.yaml`. A pipeline stage MUST name
+Pipeline definitions live under `pancreator/lib/pipelines/*.yaml`. A pipeline stage MUST name
 its owner persona, required docs, required inputs, required outputs, transition
 gates, and remediation route. The runtime and supervising personas enforce stage
 transitions from those declarations.
 
-Delegated scope (`.pan/work/<day>/<task-id>/next-prompt.md`, `handoff.md`, or an
+Delegated scope (`pancreator/.pan/work/<day>/<task-id>/next-prompt.md`, `handoff.md`, or an
 operator `/persona` remainder) bounds what to work on. It does not redefine a
 persona's role, tools, forbidden actions, output contract, or definition of done.
 When delegated scope conflicts with the target persona spec, the target persona
@@ -76,13 +76,13 @@ to the stage owner declared by the pipeline.
 Load the narrowest binding artifact that can answer the contract question. Start
 with `DOC.REGISTRY` and the persona/pipeline keys before opening broad handbook,
 PRD, archive, inbox history, or prior run context. Use
-`lib/memory/handbook/context-economy.md` only when a task requires context-budget,
+`pancreator/lib/memory/handbook/context-economy.md` only when a task requires context-budget,
 model escalation, memory-tier, or archival retrieval decisions not already named
 by the static contract.
 
-Active feature-delivery work is under `.pan/work/<day>/<task-id>/`. Do not scan
-unrelated `.pan/work/**`, `.pan/archive/**`, `lib/inbox/out/**`, or
-`lib/inbox/threads/**` unless the static contract, bounded prompt, or operator
+Active feature-delivery work is under `pancreator/.pan/work/<day>/<task-id>/`. Do not scan
+unrelated `pancreator/.pan/work/**`, `pancreator/.pan/archive/**`, `pancreator/lib/inbox/out/**`, or
+`pancreator/lib/inbox/threads/**` unless the static contract, bounded prompt, or operator
 request explicitly names archival reconstruction as the task.
 
 ## 5 — Repo operating rules
@@ -105,11 +105,11 @@ request explicitly names archival reconstruction as the task.
 - If agent documentation references a non-transient repository directory that is
   absent, create the directory with an appropriate tracked placeholder or update
   the docs in the same change.
-- Run compliance descriptors under `tests/compliance/` when
-  `lib/memory/handbook/compliance-runs.md` says the touched surface requires it.
-- After editing any persona under `lib/personas/`, regenerate the gitignored
+- Run compliance descriptors under `pancreator/tests/compliance/` when
+  `pancreator/lib/memory/handbook/compliance-runs.md` says the touched surface requires it.
+- After editing any persona under `pancreator/lib/personas/`, regenerate the gitignored
   Cursor projections with `pnpm -w exec pan cursor-sync` and verify them with
-  `node lib/internal/tools/check-cursor-projection-drift.mjs`; stale projections
+  `node pancreator/lib/internal/tools/checks/check-cursor-projection-drift.mjs`; stale projections
   are not caught by tracked-file CI.
 - When the persona/registry/pipeline/escalation surface changes, run the
   framework gates: `pnpm governance:test` (registry integrity + escalation
@@ -119,7 +119,7 @@ request explicitly names archival reconstruction as the task.
 ## 6 — Human/operator output
 
 Operator-facing completion output MUST follow
-`lib/memory/handbook/operator-output-contract.md`. For repo-change tasks, report
+`pancreator/lib/memory/handbook/operator-output-contract.md`. For repo-change tasks, report
 what changed, validation actually run, validation not run, and any patch/script
 artifacts produced. Do not claim a file was modified, moved, deleted, or tested
 unless the current repo state proves it.
