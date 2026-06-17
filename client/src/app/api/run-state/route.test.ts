@@ -426,13 +426,13 @@ describe("GET /api/run-state", () => {
       runDir: ".pan/work/day/task",
     };
     expect(stageArtifactPathsForStage(input, "plan")).toEqual([
-      ".pan/work/day/task/product-plan.md",
-      ".pan/work/day/task/product-acceptance-criteria.md",
-      ".pan/work/day/task/design-plan.md",
-      ".pan/work/day/task/design-acceptance-criteria.md",
+      ".pan/work/day/task/product/plan.md",
+      ".pan/work/day/task/product/acceptance-criteria.md",
+      ".pan/work/day/task/design/plan.md",
+      ".pan/work/day/task/design/acceptance-criteria.md",
       ".pan/work/day/task/ux-spec.md",
-      ".pan/work/day/task/tech-plan.md",
-      ".pan/work/day/task/tech-acceptance-criteria.md",
+      ".pan/work/day/task/tech/plan.md",
+      ".pan/work/day/task/tech/acceptance-criteria.md",
       ".pan/work/day/task/manual-qa-test-cases.md",
       ".pan/work/day/task/plan.md",
       ".pan/work/day/task/adr-draft.md",
@@ -595,27 +595,55 @@ describe("GET /api/run-state", () => {
     }
   });
 
-  it("excludes archived and shipped tasks from attention reconciliation", () => {
-    const envelopes = [
-      {
-        taskId: "65766_0543_demo-feature",
-        runDir: ".pan/work/demo/65766_0543_demo-feature",
-        stages: [{ name: "complete", ownerPersona: "librarian", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "complete" as const }],
-        runEvents: [],
-      },
-      {
-        taskId: "88888_0101_active",
-        runDir: ".pan/work/demo/88888_0101_active",
-        stages: [{ name: "plan", ownerPersona: "tech-lead", humanGate: "", nextHumanAction: "", nextCommand: "", humanAttention: "", status: "active" as const }],
-        runEvents: [],
-      },
-    ];
+  it("excludes archived, shipped, and terminal tasks from attention reconciliation", () => {
+    const terminalStatuses = [
+      "canceled",
+      "closed",
+      "complete",
+      "superseded",
+      "shipped",
+      "archived",
+    ] as const;
+    const terminalTasks = terminalStatuses.map((status, index) => ({
+      taskId: `terminal-${status}-${index}`,
+      pipelineStatus: status,
+      runDir: `.pan/work/demo/terminal-${status}-${index}`,
+      stages: [
+        {
+          name: "plan",
+          ownerPersona: "tech-lead",
+          humanGate: "human_approval",
+          nextHumanAction: "",
+          nextCommand: "",
+          humanAttention: "",
+          status: "active" as const,
+        },
+      ],
+      runEvents: [],
+    }));
+    const activeTask = {
+      taskId: "88888_0101_active",
+      pipelineStatus: "ready_for_stage_delegation",
+      runDir: ".pan/work/demo/88888_0101_active",
+      stages: [
+        {
+          name: "plan",
+          ownerPersona: "tech-lead",
+          humanGate: "",
+          nextHumanAction: "",
+          nextCommand: "",
+          humanAttention: "",
+          status: "active" as const,
+        },
+      ],
+      runEvents: [],
+    };
     const filtered = excludeReconciledAttentionTasks(
-      envelopes,
-      new Set(["65766_0543_demo-feature"]),
-      new Set(["88888_0101_other"]),
+      [activeTask, ...terminalTasks],
+      new Set(["terminal-archived-5"]),
+      new Set(["terminal-shipped-4"]),
     );
-    expect(filtered.map((task) => task.taskId)).toEqual(["88888_0101_active"]);
+    expect(filtered.map((task) => task.taskId)).toEqual([activeTask.taskId]);
   });
 
   it("returns attention tasks when archive load fails", async () => {

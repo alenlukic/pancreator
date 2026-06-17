@@ -177,10 +177,10 @@ describe("RunContextHeader", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Command Center Feature Delivery Mission Control Run Detail",
     );
-    expect(screen.queryByTestId("run-context-technical-details")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("run-context-metadata-panel")).not.toBeInTheDocument();
   });
 
-  it("reveals task id behind technical details disclosure", () => {
+  it("reveals task id behind metadata disclosure", () => {
     render(
       <RunContextHeader
         task={mockRunState[0]}
@@ -190,8 +190,8 @@ describe("RunContextHeader", () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId("toggle-technical-details"));
-    expect(screen.getByTestId("run-context-technical-details")).toHaveTextContent(
+    fireEvent.click(screen.getByRole("button", { name: /Show technical details/u }));
+    expect(screen.getByTestId("run-context-metadata-panel")).toHaveTextContent(
       mockRunState[0].taskId,
     );
   });

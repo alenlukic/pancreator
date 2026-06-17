@@ -41,11 +41,6 @@ export function CommandCenterRow({ row }: { row: CommandCenterRowModel }) {
             {row.primaryCta.label}
           </button>
         )}
-        {row.secondaryCta?.href ? (
-          <Link href={row.secondaryCta.href} className="command-center-row-cta-secondary">
-            {row.secondaryCta.label}
-          </Link>
-        ) : null}
         <CommandCenterRowOverflow {...row.overflow} />
       </div>
     </article>

@@ -42,6 +42,7 @@ export type StageTelemetryChip = {
 export type TaskRunStateEnvelope = {
   taskId: string;
   featureId?: string;
+  pipelineStatus?: string;
   decodedTimestamp?: string;
   decodedTimestampDiagnostic?: string;
   runDir: string;
@@ -58,6 +59,20 @@ export function taskDisplayLabel(
   >,
 ): string {
   return featureDisplayLabel(task);
+}
+
+const TERMINAL_PIPELINE_STATUSES = new Set([
+  "complete",
+  "closed",
+  "canceled",
+  "cancelled",
+  "shipped",
+  "superseded",
+  "archived",
+]);
+
+export function isTerminalPipelineStatus(status: string): boolean {
+  return TERMINAL_PIPELINE_STATUSES.has(status);
 }
 
 export type HumanGateQueueEntry = {
@@ -613,6 +628,9 @@ export function statusPillForActiveStage(stage: StageCell): CommandCenterStatusP
 }
 
 export function isNonTerminalTask(task: TaskRunStateEnvelope): boolean {
+  if (task.pipelineStatus && isTerminalPipelineStatus(task.pipelineStatus)) {
+    return false;
+  }
   const completeStage = task.stages.find((stage) => stage.name === "complete");
   return completeStage?.status !== "complete";
 }

@@ -1,5 +1,5 @@
 import type React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CommandCenterSurface } from "./CommandCenterSurface";
 import { stringifyCompactJson } from "@/lib/json-io";
@@ -185,20 +185,17 @@ describe("CommandCenterSurface", () => {
     expect(screen.queryByText(".pan/work/")).not.toBeInTheDocument();
   });
 
-  it("renders global empty state when no operational rows exist", async () => {
+  it("renders guided empty states when no operational rows exist", async () => {
     mockCommandCenterFetch({ runState: [] });
 
     render(<CommandCenterSurface />);
 
     await waitFor(() => {
-      expect(screen.getByText("No active deliveries")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
-        "href",
-        "/mission-control",
-      );
+      expect(screen.getByTestId("command-center-human-gates")).toBeInTheDocument();
+      expect(screen.getByText("No human gates waiting for you")).toBeInTheDocument();
     });
 
-    expect(screen.queryByTestId("command-center-human-gates")).not.toBeInTheDocument();
+    expect(screen.queryByText("No active deliveries")).not.toBeInTheDocument();
   });
 
   it("shows loading skeleton with aria-busy", async () => {
@@ -214,14 +211,15 @@ describe("CommandCenterSurface", () => {
     expect(screen.getByTestId("command-center-loading")).toHaveAttribute("aria-busy", "true");
   });
 
-  it("renders run-state error with retry fetch", async () => {
+  it("renders run-state error with refresh action", async () => {
     mockCommandCenterFetch({ runStateOk: false });
 
     render(<CommandCenterSurface />);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent("run-state unavailable");
-      expect(screen.getByRole("button", { name: "Retry fetch" })).toBeInTheDocument();
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent("run-state unavailable");
+      expect(within(alert).getByRole("button", { name: "Refresh home state" })).toBeInTheDocument();
     });
   });
 
@@ -293,7 +291,7 @@ describe("CommandCenterSurface", () => {
     });
   });
 
-  it("exposes human-gate approve and reject CTAs on rows", async () => {
+  it("exposes human-gate approve CTA on rows with reject in overflow", async () => {
     mockCommandCenterFetch();
 
     render(<CommandCenterSurface />);
@@ -301,7 +299,6 @@ describe("CommandCenterSurface", () => {
     await waitFor(() => {
       const approve = screen.getAllByRole("link", { name: /Approve /u })[0];
       expect(approve).toHaveAttribute("href", "/mission-control?task=65766_0543_demo-feature");
-      expect(screen.getAllByRole("link", { name: /Reject /u })[0]).toBeInTheDocument();
     });
 
     fireEvent.focus(screen.getAllByRole("link", { name: /Approve /u })[0]!);

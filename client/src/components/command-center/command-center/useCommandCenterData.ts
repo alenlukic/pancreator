@@ -58,37 +58,51 @@ async function fetchFileContent(path: string): Promise<string | null> {
   return payload.content ?? null;
 }
 
-async function loadComplianceFindings(): Promise<ComplianceFindingRow[]> {
+async function loadComplianceFindings(): Promise<{
+  findings: ComplianceFindingRow[];
+  error: string | null;
+}> {
   const historyContent = await fetchFileContent(AUDIT_HISTORY_PATH);
   if (!historyContent) {
-    return [];
+    return { findings: [], error: null };
   }
   let history: AuditHistoryFile;
   try {
     history = JSON.parse(historyContent) as AuditHistoryFile;
   } catch {
-    return [];
+    return { findings: [], error: null };
   }
   if (!history.entries?.length) {
-    return [];
+    return { findings: [], error: null };
   }
   const latest = history.entries[0];
   if (latest?.stage_status === "passed") {
-    return [];
+    return { findings: [], error: null };
   }
   const compliancePath = latest?.artifact_paths?.compliance_result;
   if (!compliancePath) {
-    return [];
+    return { findings: [], error: null };
   }
   const resultContent = await fetchFileContent(compliancePath);
   if (!resultContent) {
-    return [];
+    return {
+      findings: mapComplianceResultsToFindings([
+        {
+          id: "compliance-result",
+          pass: false,
+          severity: "high",
+          blocks: true,
+          detail: `Missing artifact ${compliancePath}`,
+        },
+      ]),
+      error: `compliance-result unavailable at ${compliancePath}`,
+    };
   }
   try {
     const parsed = JSON.parse(resultContent) as ComplianceResultFile;
-    return mapComplianceResultsToFindings(parsed.results ?? []);
+    return { findings: mapComplianceResultsToFindings(parsed.results ?? []), error: null };
   } catch {
-    return [];
+    return { findings: [], error: "Unable to parse compliance-result.json" };
   }
 }
 
@@ -133,8 +147,11 @@ export function useCommandCenterData() {
   const loadSupplementary = useCallback(async () => {
     setComplianceError(null);
     try {
-      const findings = await loadComplianceFindings();
+      const { findings, error } = await loadComplianceFindings();
       setComplianceFindings(findings);
+      if (error) {
+        setComplianceError(error);
+      }
     } catch {
       setComplianceError("Unable to load compliance findings");
     }
@@ -210,13 +227,6 @@ export function useCommandCenterData() {
     [complianceFindings, dataFetchedAtMs, failedSources, nowMs, shippedOutcomes, tasks],
   );
 
-  const hasOperationalRows = useMemo(
-    () => cards.some((card) => card.rows.length > 0),
-    [cards],
-  );
-
-  const isGlobalEmpty = !loading && runStateError === null && !hasOperationalRows;
-
   const isDataStale = useMemo(() => {
     if (dataFetchedAtMs === null) {
       return false;
@@ -231,7 +241,6 @@ export function useCommandCenterData() {
     complianceError,
     outcomesError,
     archiveError,
-    isGlobalEmpty,
     isDataStale,
     dataFetchedAtMs,
     retry: refresh,

@@ -10,6 +10,7 @@ import {
   type StageCell,
   type StageCellStatus,
   type TaskRunStateEnvelope,
+  isTerminalPipelineStatus,
 } from "./run-state-shared";
 import { decodeCountdownTimestamp, parseRunDirParts } from "./timestamp-decode";
 
@@ -22,6 +23,7 @@ export {
   detectRetryLimitFailure,
   findActiveStage,
   formatElapsedDuration,
+  isTerminalPipelineStatus,
   isRetryTransitionEvent,
   missionControlHref,
   newestStageTelemetryChip,
@@ -89,10 +91,25 @@ function decodedTimestampFields(
   return { decodedTimestampDiagnostic: decoded.diagnostic };
 }
 
-const TERMINAL_PIPELINE_STATUSES = new Set(["complete", "closed"]);
+export type RunStateTimingMarker = {
+  phase: "getActiveRunState" | "archiveReconciliation" | "shippedOutcomes";
+  durationMs: number;
+};
+
+const runStateTimingMarkers: RunStateTimingMarker[] = [];
+
+export function consumeRunStateTimingMarkers(): RunStateTimingMarker[] {
+  const snapshot = [...runStateTimingMarkers];
+  runStateTimingMarkers.length = 0;
+  return snapshot;
+}
+
+function recordTiming(phase: RunStateTimingMarker["phase"], startedAt: number): void {
+  runStateTimingMarkers.push({ phase, durationMs: Date.now() - startedAt });
+}
 
 function isNonTerminalStatus(status: string): boolean {
-  return !TERMINAL_PIPELINE_STATUSES.has(status);
+  return !isTerminalPipelineStatus(status);
 }
 
 function resolveEffectiveCurrentStage(
@@ -402,6 +419,7 @@ async function buildTaskEnvelope(
   return {
     taskId: state.taskId,
     ...(state.featureId !== undefined ? { featureId: state.featureId } : {}),
+    pipelineStatus: state.status,
     decodedTimestamp: panResult.envelope?.decodedTimestamp ?? localDecoded.decodedTimestamp,
     decodedTimestampDiagnostic:
       panResult.envelope?.decodedTimestampDiagnostic ?? localDecoded.decodedTimestampDiagnostic,
@@ -416,6 +434,7 @@ async function buildTaskEnvelope(
 export async function getActiveRunState(
   repoRoot: string = findRepoRoot(),
 ): Promise<TaskRunStateEnvelope[]> {
+  const startedAt = Date.now();
   const stateFiles = await discoverActiveStateFiles(repoRoot);
   const envelopes: TaskRunStateEnvelope[] = [];
 
@@ -423,6 +442,7 @@ export async function getActiveRunState(
     envelopes.push(await buildTaskEnvelope(repoRoot, stateFile));
   }
 
+  recordTiming("getActiveRunState", startedAt);
   return envelopes.sort((left, right) => left.taskId.localeCompare(right.taskId));
 }
 
@@ -443,9 +463,11 @@ type FeatureIndexRecord = {
 };
 
 export async function loadArchivedTaskIds(repoRoot: string = findRepoRoot()): Promise<Set<string>> {
+  const startedAt = Date.now();
   const archiveRoot = path.join(repoRoot, ".pan", "archive", "work");
   const archived = new Set<string>();
   if (!fs.existsSync(archiveRoot)) {
+    recordTiming("archiveReconciliation", startedAt);
     return archived;
   }
 
@@ -461,6 +483,7 @@ export async function loadArchivedTaskIds(repoRoot: string = findRepoRoot()): Pr
       }
     }
   }
+  recordTiming("archiveReconciliation", startedAt);
   return archived;
 }
 
@@ -468,8 +491,10 @@ export async function loadShippedOutcomes(
   repoRoot: string = findRepoRoot(),
   limit = 5,
 ): Promise<ShippedOutcome[]> {
+  const startedAt = Date.now();
   const featuresRoot = path.join(repoRoot, "lib", "memory", "features");
   if (!fs.existsSync(featuresRoot)) {
+    recordTiming("shippedOutcomes", startedAt);
     return [];
   }
 
@@ -501,6 +526,7 @@ export async function loadShippedOutcomes(
     }
   }
 
+  recordTiming("shippedOutcomes", startedAt);
   return outcomes
     .sort((left, right) => Date.parse(right.indexedAt) - Date.parse(left.indexedAt))
     .slice(0, limit);
@@ -512,6 +538,9 @@ export function excludeReconciledAttentionTasks(
   shippedTaskIds: Set<string>,
 ): TaskRunStateEnvelope[] {
   return tasks.filter((task) => {
+    if (task.pipelineStatus && isTerminalPipelineStatus(task.pipelineStatus)) {
+      return false;
+    }
     if (archivedTaskIds.has(task.taskId)) {
       return false;
     }
@@ -524,4 +553,10 @@ export function excludeReconciledAttentionTasks(
     }
     return true;
   });
+}
+
+export function sortShippedOutcomes(outcomes: ShippedOutcome[]): ShippedOutcome[] {
+  return [...outcomes].sort(
+    (left, right) => Date.parse(right.indexedAt) - Date.parse(left.indexedAt),
+  );
 }

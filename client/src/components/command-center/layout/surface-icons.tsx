@@ -2,15 +2,15 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   Bot,
-  Home,
+  House,
+  Rocket,
   ShieldCheck,
-  Workflow,
 } from "lucide-react";
 import type { CommandCenterSurfaceId } from "./surface-config";
 
 const SURFACE_ICONS: Record<CommandCenterSurfaceId, LucideIcon> = {
-  "command-center": Home,
-  "mission-control": Workflow,
+  "command-center": House,
+  "mission-control": Rocket,
   compliance: ShieldCheck,
   automations: Bot,
   "activity-log": Activity,

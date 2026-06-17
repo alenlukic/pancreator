@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { COMMAND_CENTER_SURFACES, getSurfaceByRoute, type CommandCenterSurfaceConfig } from "./surface-config";
 import { getSurfaceIcon } from "./surface-icons";
 
 const RAIL_COLLAPSE_KEY = "command-center-rail-collapsed";
-const DESKTOP_RAIL_QUERY = "(min-width: 1280px)";
+const DESKTOP_RAIL_QUERY = "(min-width: 960px)";
 
 export function CommandCenterNavRail() {
   const pathname = usePathname();
@@ -72,9 +73,15 @@ export function CommandCenterNavRail() {
         type="button"
         className="command-center-rail-collapse-toggle"
         data-testid="rail-collapse-toggle"
+        aria-label={railCollapsed ? "Expand navigation" : "Collapse navigation"}
+        title={railCollapsed ? "Expand navigation" : "Collapse navigation"}
         onClick={toggleCollapsed}
       >
-        {railCollapsed ? "Expand navigation" : "Collapse navigation"}
+        {railCollapsed ? (
+          <PanelLeftOpen size={20} strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <PanelLeftClose size={20} strokeWidth={1.75} aria-hidden="true" />
+        )}
       </button>
       <ul ref={listRef} className="command-center-nav-rail-list">
         {COMMAND_CENTER_SURFACES.map((surface, index) => (

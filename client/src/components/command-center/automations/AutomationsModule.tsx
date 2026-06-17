@@ -6,6 +6,7 @@ import type { AutomationRecord, AutomationSummary } from "@/services/automations
 import type { RunRecord } from "@/services/scheduler-runs";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
+import { ActivityReceiptFeed, type ActivityReceipt } from "../shared/ActivityReceiptFeed";
 import { AutomationListView } from "./AutomationListView";
 import { AutomationRunHistory } from "./AutomationRunHistory";
 import { AutomationWizardShell } from "./AutomationWizard/Shell";
@@ -26,6 +27,7 @@ export function AutomationsModule() {
   const [runsLoading, setRunsLoading] = useState(false);
   const [runsError, setRunsError] = useState<string | null>(null);
   const [runningAutomationIds, setRunningAutomationIds] = useState<Set<string>>(new Set());
+  const [mutationReceipts, setMutationReceipts] = useState<ActivityReceipt[]>([]);
   const [latestRunsByAutomationId, setLatestRunsByAutomationId] = useState<
     Record<string, RunRecord | undefined>
   >({});
@@ -138,6 +140,13 @@ export function AutomationsModule() {
   const selectedAutomationName = selectedAutomation?.name ?? null;
   const selectedAutomationEnabled = selectedAutomation?.enabled ?? false;
 
+  function appendReceipt(receipt: Omit<ActivityReceipt, "id">): void {
+    setMutationReceipts((current) => [
+      { ...receipt, id: `${Date.now()}-${current.length}` },
+      ...current,
+    ].slice(0, 20));
+  }
+
   async function handleToggleEnabled(
     automation: AutomationSummary,
     enabled: boolean,
@@ -172,6 +181,12 @@ export function AutomationsModule() {
     setAutomations((current) =>
       current.map((item) => (item.id === updated.id ? updated : item)),
     );
+    appendReceipt({
+      actor: "operator",
+      verb: enabled ? "enabled" : "paused",
+      object: automation.name,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   async function handleDelete(automation: AutomationSummary): Promise<void> {
@@ -186,6 +201,12 @@ export function AutomationsModule() {
     if (selectedAutomationId === automation.id) {
       setSelectedAutomationId(null);
     }
+    appendReceipt({
+      actor: "operator",
+      verb: "deleted",
+      object: automation.name,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   async function openEdit(automationId: string): Promise<void> {
@@ -221,6 +242,12 @@ export function AutomationsModule() {
       }
       setSelectedAutomationId(automation.id);
       await loadRunHistory(automation.id);
+      appendReceipt({
+        actor: "operator",
+        verb: "ran",
+        object: automation.name,
+        timestamp: new Date().toISOString(),
+      });
       requestAnimationFrame(() => {
         newestRunRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
@@ -264,6 +291,7 @@ export function AutomationsModule() {
           onDelete={handleDelete}
           onRunNow={handleRunNow}
         />
+        <ActivityReceiptFeed receipts={mutationReceipts} testId="automations-receipt-feed" />
         <AutomationRunHistory
           selectedAutomationId={selectedAutomationId}
           selectedAutomationName={selectedAutomationName}
