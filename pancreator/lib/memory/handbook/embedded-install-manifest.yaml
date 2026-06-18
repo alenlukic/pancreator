@@ -6,6 +6,7 @@ allow:
   - OPERATION.md
   - pancreator.yaml
   - pancreator-model-escalation.yaml
+  - lib/commands/
   - lib/personas/
   - lib/personas/skills/
   - lib/pipelines/
@@ -25,6 +26,7 @@ allow:
 
 harness_root_allow:
   - .cursor/agents/
+  - .cursor/commands/
 
 deny_prefixes:
   - .pan/archive/

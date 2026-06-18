@@ -73,6 +73,7 @@ test("pan cursor-sync --dry-run emits envelope without writing files", async () 
     path.join(root, "pancreator-model-escalation.yaml"),
   );
   await cp(path.join(REPO_ROOT, "pancreator/lib/personas"), path.join(root, "lib/personas"), { recursive: true });
+  await cp(path.join(REPO_ROOT, "pancreator/lib/commands"), path.join(root, "lib/commands"), { recursive: true });
   await mkdir(path.join(root, ".cursor/agents"), { recursive: true });
   await writeFile(path.join(root, ".cursor/agents/.gitkeep"), "", "utf8");
 
@@ -86,14 +87,19 @@ test("pan cursor-sync --dry-run emits envelope without writing files", async () 
   assert.ok(Array.isArray(payload.written));
   assert.ok(payload.written.length > 0);
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/agents/intake-analyst.md"));
+  assert.ok(payload.written.some((entry) => entry.path === ".cursor/commands/introspect.md"));
   const afterAgents = await readdir(path.join(root, ".cursor/agents"));
   assert.deepEqual(afterAgents.sort(), beforeAgents.sort());
+  assert.equal(existsSync(path.join(root, ".cursor/commands")), false);
 });
 
 test("pan cursor-sync writes projections for project_root dot", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cursor-sync-dot-"));
   await writeFile(path.join(root, "pancreator.yaml"), 'project_root: "."\n', "utf8");
   await cp(path.join(REPO_ROOT, "pancreator/lib/personas"), path.join(root, "lib/personas"), { recursive: true });
+  await cp(path.join(REPO_ROOT, "pancreator/lib/commands"), path.join(root, "lib/commands"), { recursive: true });
+  await mkdir(path.join(root, ".cursor/commands"), { recursive: true });
+  await writeFile(path.join(root, ".cursor/commands/.gitkeep"), "", "utf8");
 
   const result = runPan(["cursor-sync"], root);
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -105,6 +111,12 @@ test("pan cursor-sync writes projections for project_root dot", async () => {
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/rules/coder.mdc"));
   assert.ok(existsSync(path.join(root, ".cursor/hooks.json")));
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/hooks.json"));
+  assert.ok(existsSync(path.join(root, ".cursor/commands/introspect.md")));
+  assert.equal(existsSync(path.join(root, ".cursor/commands/.gitkeep")), false);
+  assert.ok(payload.written.some((entry) => entry.path === ".cursor/commands/introspect.md"));
+  const commandProjection = await readFile(path.join(root, ".cursor/commands/introspect.md"), "utf8");
+  assert.match(commandProjection, /# Introspect/u);
+  assert.match(commandProjection, /lib\/inbox\/in/u);
   const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
   assert.match(projection, /lib\/personas\/intake-analyst\.md/);
   const { frontmatter, body } = splitAgentProjection(projection);
@@ -129,9 +141,14 @@ test("pan cursor-sync writes projections for project_root .pancreator", async ()
     "utf8",
   );
   await mkdir(path.join(root, ".pancreator", "lib", "personas"), { recursive: true });
+  await mkdir(path.join(root, ".pancreator", "lib", "commands"), { recursive: true });
   await cp(
     path.join(REPO_ROOT, "pancreator/lib/personas/intake-analyst.md"),
     path.join(root, ".pancreator/lib/personas/intake-analyst.md"),
+  );
+  await cp(
+    path.join(REPO_ROOT, "pancreator/lib/commands/introspect.md"),
+    path.join(root, ".pancreator/lib/commands/introspect.md"),
   );
 
   const result = runPan(["cursor-sync"], root);
@@ -140,6 +157,8 @@ test("pan cursor-sync writes projections for project_root .pancreator", async ()
   assert.equal(payload.projectRootRel, ".pancreator");
   const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
   assert.match(projection, /\.pancreator\/lib\/personas\/intake-analyst\.md/);
+  assert.ok(existsSync(path.join(root, ".cursor/commands/introspect.md")));
+  assert.ok(payload.written.some((entry) => entry.path === ".cursor/commands/introspect.md"));
 });
 
 test("pan cursor-sync exits 1 when no persona specs exist", async () => {
@@ -172,6 +191,7 @@ test("sync-cursor-agents.mjs bridge delegates to pan cursor-sync", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cursor-sync-bridge-"));
   await writeFile(path.join(root, "pancreator.yaml"), 'project_root: "."\n', "utf8");
   await cp(path.join(REPO_ROOT, "pancreator/lib/personas"), path.join(root, "lib/personas"), { recursive: true });
+  await cp(path.join(REPO_ROOT, "pancreator/lib/commands"), path.join(root, "lib/commands"), { recursive: true });
 
   const bridgeScript = path.join(REPO_ROOT, "pancreator/lib/internal/tools/cursor/sync-cursor-agents.mjs");
   const result = spawnSync(process.execPath, [bridgeScript], {
@@ -187,4 +207,5 @@ test("sync-cursor-agents.mjs bridge delegates to pan cursor-sync", async () => {
   const payload = parseJsonStdout(result.stdout);
   assert.equal(payload.command, "cursor-sync");
   assert.ok(existsSync(path.join(root, ".cursor/agents/intake-analyst.md")));
+  assert.ok(existsSync(path.join(root, ".cursor/commands/introspect.md")));
 });

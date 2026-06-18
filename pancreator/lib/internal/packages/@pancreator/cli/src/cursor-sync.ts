@@ -115,6 +115,15 @@ function projectPath(projectPrefix: string, relPath: string): string {
   return posixJoin(projectPrefix, relPath);
 }
 
+function readMarkdownFiles(dir: string): string[] {
+  if (!existsSync(dir)) {
+    return [];
+  }
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(".md"))
+    .sort();
+}
+
 function buildSourceBackedRetrievalContract(
   personaPathForText: string,
   projectPrefix: string,
@@ -415,12 +424,16 @@ ${buildStaticPersonaContractSection(projectPrefix).join("\n")}## Operating contr
 `;
 }
 
-function assertAgentsDirAllowed(harnessRoot: string): void {
+function assertCursorProjectionTargetsAllowed(harnessRoot: string): void {
   try {
     const manifest = loadEmbeddedInstallManifestFromRepo(harnessRoot);
-    if (!manifest.harness_root_allow.includes(".cursor/agents/")) {
+    const requiredTargets = [".cursor/agents/", ".cursor/commands/"];
+    const missingTargets = requiredTargets.filter(
+      (target) => !manifest.harness_root_allow.includes(target),
+    );
+    if (missingTargets.length > 0) {
       throw new Error(
-        "cursor-sync refused: embedded install manifest harness_root_allow does not include .cursor/agents/",
+        `cursor-sync refused: embedded install manifest harness_root_allow does not include ${missingTargets.join(", ")}`,
       );
     }
   } catch (error) {
@@ -495,6 +508,48 @@ function emitCursorRules(
   return written;
 }
 
+function emitCursorCommands(
+  harnessRoot: string,
+  projectRoot: string,
+  commandFiles: string[],
+  dryRun: boolean,
+): CursorSyncWrittenEntry[] {
+  const written: CursorSyncWrittenEntry[] = [];
+  const commandsSourceDir = path.join(projectRoot, "lib", "commands");
+  const commandsTargetDir = path.join(harnessRoot, ".cursor", "commands");
+
+  if (commandFiles.length === 0) {
+    return written;
+  }
+
+  if (!dryRun) {
+    mkdirSync(commandsTargetDir, { recursive: true });
+  }
+
+  for (const file of commandFiles) {
+    const commandRaw = readFileSync(path.join(commandsSourceDir, file), "utf8");
+    const outRel = path.posix.join(".cursor/commands", file);
+    const outAbs = path.join(harnessRoot, outRel);
+    if (!dryRun) {
+      writeFileSync(outAbs, commandRaw, "utf8");
+    }
+    written.push({ path: outRel, action: dryRun ? "would_write" : "write" });
+  }
+
+  const gitkeep = path.join(commandsTargetDir, ".gitkeep");
+  if (existsSync(gitkeep)) {
+    if (!dryRun) {
+      unlinkSync(gitkeep);
+    }
+    written.push({
+      path: ".cursor/commands/.gitkeep",
+      action: dryRun ? "would_remove" : "remove",
+    });
+  }
+
+  return written;
+}
+
 const DEFAULT_CURSOR_HOOKS_JSON = `{
   "version": 1,
   "hooks": {
@@ -524,20 +579,20 @@ export function runCursorSync(
 ): CursorSyncResult {
   const dryRun = options.dryRun ?? false;
   const harnessRoot = path.resolve(harnessRootInput);
-  assertAgentsDirAllowed(harnessRoot);
+  assertCursorProjectionTargetsAllowed(harnessRoot);
 
   const projectRootRel = readProjectRoot(harnessRoot);
   const projectRoot = projectRootAbs(harnessRoot, projectRootRel);
   const personasDir = path.join(projectRoot, "lib", "personas");
+  const commandsDir = path.join(projectRoot, "lib", "commands");
   const agentsDir = path.join(harnessRoot, ".cursor", "agents");
 
   if (!existsSync(personasDir)) {
     throw new Error(`Missing persona roster at ${personasDir}`);
   }
 
-  const personaFiles = readdirSync(personasDir)
-    .filter((name) => name.endsWith(".md"))
-    .sort();
+  const personaFiles = readMarkdownFiles(personasDir);
+  const commandFiles = readMarkdownFiles(commandsDir);
 
   if (personaFiles.length === 0) {
     throw new Error(`No persona specs found under ${personasDir}`);
@@ -590,6 +645,7 @@ export function runCursorSync(
     });
   }
 
+  written.push(...emitCursorCommands(harnessRoot, projectRoot, commandFiles, dryRun));
   written.push(
     ...emitCursorRules(harnessRoot, projectRoot, projectRootRel, dryRun),
   );
@@ -601,7 +657,7 @@ export function runCursorSync(
     dryRun,
     harnessRoot,
     projectRootRel,
-    count: personaFiles.length + 1,
+    count: personaFiles.length + 1 + commandFiles.length,
     written,
     ...(personaModelSync.activeConfigName !== undefined
       ? { activeEscalationConfig: personaModelSync.activeConfigName }
