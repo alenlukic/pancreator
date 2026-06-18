@@ -72,7 +72,7 @@ sections and validate only agent-section content.
 {
   "$pancreator_section_index": {
     "format": "operator-agent-v1",
-    "agent_section_start_line": 10
+    "agent_section_start_line": 7
   },
   "$operator": "⚙️ no human content",
   "output_manifest": {
