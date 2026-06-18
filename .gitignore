@@ -54,9 +54,6 @@ pancreator/client/out/
 
 # --- Local control plane ---
 
-# Stray runtime workspace when project_root != harness root (see pancreator/.pan/).
-.pan/
-
 pancreator/.pan/
 
 # --- Local inbox ---
