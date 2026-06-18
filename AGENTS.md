@@ -1,3 +1,15 @@
+---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 13
+---
+# Operator section
+- 👀 **In this file:** Repo-wide agent operating card: where agents start, how they resolve contracts, and how they report work.
+- ⚖️ **Why it matters:** This is the highest-priority behavior contract for every Pancreator agent invocation.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
+  - pancreator/lib/memory/handbook/operator-output-contract.md
 # AGENTS.md — Pancreator agent operating card
 
 > Internal agent entry surface. Human operator procedures live in `OPERATION.md`.
@@ -15,9 +27,11 @@ Agents MUST NOT treat path enumeration as compliance. Binding work rules come
 from static repo artifacts with stable global keys:
 
 - `DOC.REGISTRY` → `pancreator/lib/memory/handbook/agent-document-registry.md`
+- `DOC.OPERATOR_AGENT_FORMAT` → `pancreator/lib/memory/handbook/operator-agent-artifact-format.md`
 - `DOC.PERSONA_SPEC` → `pancreator/lib/memory/handbook/persona-spec.md`
 - `DOC.PERSONA_CONTRACTS` → `pancreator/lib/memory/handbook/persona-contracts.md`
 - `DOC.OUTPUT_MANIFEST` → `pancreator/lib/memory/handbook/output-manifest-contract.md`
+- `DOC.OPERATOR_OUTPUT` → `pancreator/lib/memory/handbook/operator-output-contract.md`
 - `DOC.PIPELINE_STATE` → `pancreator/lib/memory/handbook/pipeline-state-contract.md`
 - `PIPE.FEATURE_DELIVERY` → `pancreator/lib/pipelines/feature-delivery.yaml`
 
@@ -26,6 +40,11 @@ When a persona spec, pipeline stage, or prompt names a `DOC.*`, `PIPE.*`, or
 resolved artifact, and follow its obligations. Agents MUST NOT invent an
 ad-hoc execution contract for the current run; the contract is static in the
 persona spec and pipeline definition.
+
+When a sectioned document/artifact carries a `pancreator-section-index` or
+`$pancreator_section_index` prefix, agents MUST treat the indexed line as the
+first line of agent-readable content and MUST ignore all operator-only content
+before that line.
 
 ## 2 — Persona and pipeline authority
 
@@ -70,8 +89,9 @@ the correct explicit model.
 
 Every bounded persona invocation MUST emit an output manifest per
 `DOC.OUTPUT_MANIFEST`. When an invocation writes a durable artifact, the manifest
-MUST be written inside that artifact. The final chat/stdout response MUST also
-include the same manifest summary or point to the artifact section containing it.
+MUST be written inside the artifact's agent section. The final chat/stdout
+response MUST also include the same manifest summary or point to the artifact
+section containing it.
 
 Review, QA, compliance, supervisor, and other gate personas MUST validate the
 previous stage's declared outputs and output manifest before advancing. Missing
@@ -124,10 +144,37 @@ request explicitly names archival reconstruction as the task.
   completeness) and `pnpm governance:projection-drift`. Use `pnpm
   governance:audit` to re-measure governance usage and friction.
 
-## 6 — Human/operator output
+## 6 — Sectioned document and artifact format
+
+Permanent documents and transient artifacts SHOULD use the operator/agent split
+defined by `DOC.OPERATOR_AGENT_FORMAT` unless a file-specific parser cannot yet
+tolerate the prefix. `.cursor` projections MUST NOT receive the section prefix;
+they remain generated, compact runtime surfaces.
+
+For Markdown and YAML, the `pancreator-section-index` YAML-style prefix MUST be
+the first bytes in the file and MUST name the 1-indexed line where the agent
+section starts. Any existing file frontmatter belongs to the agent section and
+therefore comes after the prefix and operator summary. For JSON, the first
+top-level key MUST be `$pancreator_section_index`, followed by `$operator`.
+
+The operator section MUST come before the agent section. Agents MUST NOT consult,
+quote, summarize, validate, or reason from the operator section unless the human
+explicitly asks about operator-facing readability. If the file has no useful
+human content, the operator section MUST be a single-line `⚙️ no human content`
+banner.
+
+Human-readable sections MUST include these bullets with emoji prefixes:
+
+- 👀 **In this file:** what the file contains.
+- ⚖️ **Why it matters:** why the operator should care.
+- 🧭 **See also:** newline-separated related files, or `N/A`.
+
+## 7 — Human/operator output
 
 Operator-facing completion output MUST follow
-`pancreator/lib/memory/handbook/operator-output-contract.md`. For repo-change tasks, report
-what changed, validation actually run, validation not run, and any patch/script
-artifacts produced. Do not claim a file was modified, moved, deleted, or tested
-unless the current repo state proves it.
+`pancreator/lib/memory/handbook/operator-output-contract.md`. For every chat
+completion, report action status, brief summary, added/changed files with
+clickable links, deleted files, and next operator actions. Use `N/A` for any
+empty field. For repo-change tasks, report what changed, validation actually
+run, validation not run, and any patch/script artifacts produced. Do not claim a
+file was modified, moved, deleted, or tested unless the current repo state proves it.
