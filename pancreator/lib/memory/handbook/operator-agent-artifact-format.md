@@ -77,7 +77,7 @@ Markdown files MUST use a YAML-style prefix before any other frontmatter:
 ---
 pancreator-section-index:
   format: operator-agent-v1
-  agent_section_start_line: 12
+  agent_section_start_line: 11
 ---
 # Operator section
 - 👀 **In this file:** <one sentence>
@@ -118,7 +118,7 @@ section starts at the second YAML document:
 ---
 pancreator-section-index:
   format: operator-agent-v1
-  agent_section_start_line: 13
+  agent_section_start_line: 10
 operator:
   in_this_file: "<one sentence>"
   why_it_matters: "<one sentence>"
@@ -140,7 +140,7 @@ frontmatter, so the first agent-readable key begins at the indexed line:
 {
   "$pancreator_section_index": {
     "format": "operator-agent-v1",
-    "agent_section_start_line": 12
+    "agent_section_start_line": 11
   },
   "$operator": {
     "in_this_file": "<one sentence>",
