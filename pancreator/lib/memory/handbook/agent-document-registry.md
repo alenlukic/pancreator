@@ -1,4 +1,16 @@
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 13
+---
+# Operator section
+- 👀 **In this file:** Stable lookup table for `DOC.*`, `PIPE.*`, and `PERSONA.*` keys.
+- ⚖️ **Why it matters:** Agents use these keys to load binding docs without guessing paths or copying stale context.
+- 🧭 **See also:**
+  - AGENTS.md
+  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
+  - pancreator/lib/memory/handbook/operator-output-contract.md
+---
 title: Agent Document Registry
 slug: agent-document-registry
 stability: experimental
@@ -8,9 +20,11 @@ owners: [librarian, supervisor]
 purpose: Stable global keys for agent contracts, handbook docs, persona specs, and pipelines.
 related:
   - /AGENTS.md
+  - /lib/memory/handbook/operator-agent-artifact-format.md
   - /lib/memory/handbook/persona-spec.md
   - /lib/memory/handbook/persona-contracts.md
   - /lib/memory/handbook/output-manifest-contract.md
+  - /lib/memory/handbook/operator-output-contract.md
   - /lib/memory/handbook/pipeline-state-contract.md
 ---
 
@@ -32,19 +46,20 @@ copying broad path tables into `AGENTS.md`.
 
 ## Core documents
 
-| Key                     | Path                                              | Binding use                                                                   |
-| ----------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `DOC.AGENTS`            | `AGENTS.md`                                       | Thin agent entry card and repo-wide operating rules.                          |
-| `DOC.REGISTRY`          | `lib/memory/handbook/agent-document-registry.md`  | Resolves global keys to artifacts.                                            |
-| `DOC.PERSONA_SPEC`      | `lib/memory/handbook/persona-spec.md`             | Persona spec schema and authoring rules.                                      |
-| `DOC.PERSONA_CONTRACTS` | `lib/memory/handbook/persona-contracts.md`        | Static persona contract requirements.                                         |
-| `DOC.OUTPUT_MANIFEST`   | `lib/memory/handbook/output-manifest-contract.md` | Required output manifest shape and double-write rule.                         |
-| `DOC.PIPELINE_STATE`    | `lib/memory/handbook/pipeline-state-contract.md`  | Pipeline state machine, gates, and transition validation.                     |
-| `DOC.CONTEXT_ECONOMY`   | `lib/memory/handbook/context-economy.md`          | Context budget, retrieval depth, memory-tier, and model escalation decisions. |
-| `DOC.OPERATOR_OUTPUT`   | `lib/memory/handbook/operator-output-contract.md` | Operator-facing completion and next-step format.                              |
-| `DOC.COMPLIANCE_RUNS`   | `lib/memory/handbook/compliance-runs.md`          | Compliance descriptor triggers and validation cadence.                        |
-| `DOC.RUN_LOG_SCHEMA`    | `lib/memory/handbook/run-log-schema.md`           | Run-log fields and telemetry interpretation.                                  |
-| `DOC.MEMORY_TIERS`      | `lib/memory/handbook/memory-tiers.md`             | Active/durable/archive memory routing.                                        |
+| Key                         | Path                                                   | Binding use                                                                   |
+| --------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `DOC.AGENTS`                | `AGENTS.md`                                            | Thin agent entry card and repo-wide operating rules.                          |
+| `DOC.REGISTRY`              | `lib/memory/handbook/agent-document-registry.md`       | Resolves global keys to artifacts.                                            |
+| `DOC.OPERATOR_AGENT_FORMAT` | `lib/memory/handbook/operator-agent-artifact-format.md` | Operator/agent section split for permanent docs and transient artifacts.       |
+| `DOC.PERSONA_SPEC`          | `lib/memory/handbook/persona-spec.md`                  | Persona spec schema and authoring rules.                                      |
+| `DOC.PERSONA_CONTRACTS`     | `lib/memory/handbook/persona-contracts.md`             | Static persona contract requirements.                                         |
+| `DOC.OUTPUT_MANIFEST`       | `lib/memory/handbook/output-manifest-contract.md`      | Required output manifest shape and double-write rule.                         |
+| `DOC.PIPELINE_STATE`        | `lib/memory/handbook/pipeline-state-contract.md`       | Pipeline state machine, gates, and transition validation.                     |
+| `DOC.CONTEXT_ECONOMY`       | `lib/memory/handbook/context-economy.md`               | Context budget, retrieval depth, memory-tier, and model escalation decisions. |
+| `DOC.OPERATOR_OUTPUT`       | `lib/memory/handbook/operator-output-contract.md`      | Operator-facing completion and next-step format.                              |
+| `DOC.COMPLIANCE_RUNS`       | `lib/memory/handbook/compliance-runs.md`               | Compliance descriptor triggers and validation cadence.                        |
+| `DOC.RUN_LOG_SCHEMA`        | `lib/memory/handbook/run-log-schema.md`                | Run-log fields and telemetry interpretation.                                  |
+| `DOC.MEMORY_TIERS`          | `lib/memory/handbook/memory-tiers.md`                  | Active/durable/archive memory routing.                                        |
 
 ## Engineering documents
 
@@ -60,18 +75,18 @@ copying broad path tables into `AGENTS.md`.
 
 ## Contract and documentation documents
 
-| Key                     | Path                                                   | Binding use                                    |
-| ----------------------- | ------------------------------------------------------ | ---------------------------------------------- |
-| `DOC.CONTRACT_STYLE`    | `lib/memory/handbook/contract-style.md`                | RFC 2119/EARS/noun discipline and lint rules.  |
-| `DOC.CONTRACT_FORMAT`   | `lib/memory/handbook/contract-format.md`               | Contract wrapper schema and kind registry.     |
-| `DOC.CONTRACT_TEMPLATES` | `lib/memory/handbook/contract-templates/`             | Contract template directory for kind-specific authoring. |
-| `DOC.UX_SPEC_TEMPLATE`  | `lib/memory/handbook/contract-templates/ux-spec.template.md` | Canonical UX-spec template for design authoring and review. |
-| `DOC.DELIVERY_REPORT_TEMPLATE` | `lib/memory/handbook/contract-templates/delivery-report.template.md` | Canonical delivery-report template for report-stage authoring. |
-| `DOC.DOC_IMPACT`        | `lib/memory/handbook/documentation-impact-contract.md` | Required documentation updates and deferrals.  |
-| `DOC.AGENTS_AUTHORING`  | `lib/memory/handbook/agents-md-authoring.md`           | `AGENTS.md` change-control rules.              |
-| `DOC.GLOSSARY`          | `lib/memory/handbook/glossary.md`                      | Domain noun definitions.                       |
-| `DOC.INBOX_LIFECYCLE`   | `lib/memory/handbook/inbox-lifecycle.md`               | Inbox queue and archive lifecycle.             |
-| `DOC.PANCREATOR_CONFIG` | `lib/memory/handbook/pancreator-config.md`             | `pancreator.yaml` and CLI invocation contract. |
+| Key                            | Path                                                                 | Binding use                                                   |
+| ------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `DOC.CONTRACT_STYLE`           | `lib/memory/handbook/contract-style.md`                              | RFC 2119/EARS/noun discipline and lint rules.                 |
+| `DOC.CONTRACT_FORMAT`          | `lib/memory/handbook/contract-format.md`                             | Contract wrapper schema and kind registry.                    |
+| `DOC.CONTRACT_TEMPLATES`       | `lib/memory/handbook/contract-templates/`                            | Contract template directory for kind-specific authoring.      |
+| `DOC.UX_SPEC_TEMPLATE`         | `lib/memory/handbook/contract-templates/ux-spec.template.md`         | Canonical UX-spec template for design authoring and review.   |
+| `DOC.DELIVERY_REPORT_TEMPLATE` | `lib/memory/handbook/contract-templates/delivery-report.template.md` | Canonical delivery-report template for report-stage authoring.|
+| `DOC.DOC_IMPACT`               | `lib/memory/handbook/documentation-impact-contract.md`               | Required documentation updates and deferrals.                 |
+| `DOC.AGENTS_AUTHORING`         | `lib/memory/handbook/agents-md-authoring.md`                         | `AGENTS.md` change-control rules.                             |
+| `DOC.GLOSSARY`                 | `lib/memory/handbook/glossary.md`                                    | Domain noun definitions.                                      |
+| `DOC.INBOX_LIFECYCLE`          | `lib/memory/handbook/inbox-lifecycle.md`                             | Inbox queue and archive lifecycle.                            |
+| `DOC.PANCREATOR_CONFIG`        | `lib/memory/handbook/pancreator-config.md`                           | `pancreator.yaml` and CLI invocation contract.                |
 
 ## Product authority documents
 
