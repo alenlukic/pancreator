@@ -14,7 +14,7 @@ an `id`, an optional `version`, an ordered list of `stages` with optional
 | `knowledge-curation.yaml` | `knowledge-curation` | `librarian` → `librarian` → `tech-writer` |
 | `init-greenfield.yaml` | `init-greenfield` | scaffold → `intake-analyst` → `tech-lead` |
 | `adopt.yaml` | `adopt` | `adopter` → human ratification |
-| `experience-planning.yaml` | `experience-planning` | `intake-analyst` → `sme-product` ∥ `sme-design` → human review gate → `product-design-lead` → optional `supervisor` deliver |
+| `experience-planning.yaml` | `experience-planning` | `intake-analyst` → `sme-product` ∥ `sme-design` → supervisor review record (no human gate) → `product-design-lead` → optional `supervisor` deliver |
 
 ## Bootstrap status
 

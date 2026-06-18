@@ -72,6 +72,7 @@ metadata:
 
 - Write `## Output manifest` into every durable Markdown artifact this persona owns, or top-level `output_manifest` into every JSON artifact this persona owns.
 - Echo the same manifest summary in the final chat/stdout response, or name the artifact path and manifest heading/key when the artifact contains the full manifest.
+- Every Markdown manifest you emit MUST use the full `DOC.OUTPUT_MANIFEST` shape with `persona_contract`, `stage_contract`, `required_docs`, `consulted_docs`, `produced_artifacts`, `scope_amendments`, `validation`, `definition_of_done`, `gate_decision`, and `remediation_route`.
 
 ### Gate validator
 

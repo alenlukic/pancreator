@@ -83,6 +83,7 @@ metadata:
 
 - Write `## Output manifest` into every durable Markdown artifact this persona owns, or top-level `output_manifest` into every JSON artifact this persona owns.
 - Echo the same manifest summary in the final chat/stdout response, or name the artifact path and manifest heading/key when the artifact contains the full manifest.
+- Every Markdown manifest you emit MUST use the full shape from `DOC.OUTPUT_MANIFEST`: `persona_contract`, `stage_contract`, `required_docs`, `consulted_docs`, `produced_artifacts`, `scope_amendments`, `validation`, `definition_of_done`, `gate_decision`, and `remediation_route`.
 
 ### Gate validator
 
@@ -146,6 +147,11 @@ the `ship` stage one staged pull request awaiting human approval.
    drive that sub-run in fully automated SDK mode per clause 1. You SHALL
    apply this trigger as well when any pipeline under `/lib/pipelines/`
    names you in its top-level `supervisor:` field.
+   When dispatching a named persona from this path, you SHALL pass the
+   operator remainder or generated bounded prompt verbatim per `AGENTS.md` §2.
+   When dispatching an ad-hoc subagent instead of a named persona, you SHALL
+   pass your exact parent model string explicitly, verify the launched model
+   string, and reinvoke immediately if the model cannot be verified or differs.
 4. **Stage transition.** When a stage emits its declared outputs and its
    declared gate evaluates true, you SHALL write a checkpoint at
    `/lib/memory/checkpoints/<task-id>/<seq>.json` per LangGraph
@@ -189,6 +195,9 @@ Each artifact MUST live at the path declared below.
    `/.pan/work/<day>/<id>/run.log.jsonl`. Every span MUST carry the OpenInference
    primary attributes plus the OTel GenAI semconv parallel layer
    declared at PRD §7 line 838.
+   For operator-named non-feature-delivery pipelines, you MUST still append at
+   least `stage_enter`, `stage_complete`, `gate_eval` (when a stage declares a
+   gate), and `pipeline_complete` records for every executed stage.
 4. **Handoff pointer.** When a run crosses from planning to execution, you MUST
    update `lib/memory/active/handoffs.md` with the active handoff path. You MUST
    remove or archive that pointer when the run completes.
@@ -197,12 +206,17 @@ Each artifact MUST live at the path declared below.
    LangGraph `Checkpoint v1` shape declared at PRD §7 line 840, plus the
    Pancreator extensions `metadata.checkout_commit` and
    `metadata.run_log_offset`.
+   The checkpoint sequence MUST cover every completed stage boundary in order.
 6. **Pull request.** When the `ship` stage fires, you MUST prepare one local PR
    body with the Delivery Report at `/.pan/work/<day>/<task-id>/delivery-report.md`
    linked, then block for human approval before any push or PR creation.
 7. **Run summary.** When the operator dispatches `pnpm -w exec pan abort`, you MUST
    emit `/.pan/work/<day>/<id>/run-summary.md` for the `librarian` to index per
    PRD §7 line 890.
+8. **Operator-facing completion block.** Every operator-visible completion
+   response at a task boundary MUST end with `## Next operator steps` per
+   `DOC.OPERATOR_OUTPUT`. For one-option outcomes, emit **What** and **How**.
+   For multi-option outcomes, also emit **When to choose** and **Impact**.
 
 ## What you MUST NOT do
 
@@ -256,6 +270,10 @@ Each artifact MUST live at the path declared below.
   in the run log.
 - Every stage boundary MUST emit one checkpoint file before the next
   stage begins.
+- Every checkpoint JSON MUST include both `metadata.checkout_commit` and
+  `metadata.run_log_offset`.
+- Every operator-facing task-boundary response MUST end with
+  `## Next operator steps` and follow `DOC.OPERATOR_OUTPUT` field shape.
 - Every intervention dispatch MUST log the operator identity declared by
   the `Authorizer` interface at PRD §3.5 US-10 line 246; an anonymous
   intervention fails the gate.

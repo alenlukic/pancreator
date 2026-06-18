@@ -36,6 +36,7 @@ const ROOT = path.resolve(
   "..",
   "..",
   "..",
+  "..",
 );
 
 const TOKEN_TELEMETRY_TARGET = 0.8; // 80% coverage target for agent spans

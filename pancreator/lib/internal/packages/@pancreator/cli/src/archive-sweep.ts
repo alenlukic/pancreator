@@ -7,6 +7,10 @@ import path from "node:path";
 import { stringifyCliJson } from "./canonical-json-io.js";
 import { closeOutOfBandWorkspace } from "./close-out-of-band.js";
 import {
+  archiveExperiencePlanningForClosedFeatureDelivery,
+  sweepExperiencePlanningWorkRetention,
+} from "./experience-planning-archival.js";
+import {
   archiveInboxPathForSource,
   pruneEmptyInboxQueueTree,
   pruneEmptyQueueParents,
@@ -51,6 +55,7 @@ export interface ArchiveSweepResult {
   status: "ok" | "partial";
   closed: string[];
   archived: string[];
+  removed: string[];
   skipped: ArchiveSweepSkip[];
   errors: ArchiveSweepError[];
 }
@@ -363,6 +368,7 @@ export async function runArchiveSweep(
   const now = options?.clock?.() ?? new Date();
   const closed: string[] = [];
   const archived: string[] = [];
+  const removed: string[] = [];
   const skipped: ArchiveSweepSkip[] = [];
   const errors: ArchiveSweepError[] = [];
 
@@ -399,6 +405,9 @@ export async function runArchiveSweep(
       if (result.archivedInboxPath) {
         archived.push(result.archivedInboxPath);
       }
+      if (result.archivedExperiencePlanningRuns) {
+        archived.push(...result.archivedExperiencePlanningRuns);
+      }
     } catch (error) {
       errors.push({
         path: run.runDirRel,
@@ -417,6 +426,12 @@ export async function runArchiveSweep(
       const archiveRunRel = await archiveAbortedFeatureDeliveryRun(repoRoot, state, now);
       closed.push(run.taskId);
       archived.push(archiveRunRel);
+      const epArchived = await archiveExperiencePlanningForClosedFeatureDelivery(
+        repoRoot,
+        normalizeRel(state.source.inboxPath),
+        now,
+      );
+      archived.push(...epArchived);
     } catch (error) {
       errors.push({
         path: run.runDirRel,
@@ -488,11 +503,25 @@ export async function runArchiveSweep(
     }
   }
 
+  try {
+    const retention = await sweepExperiencePlanningWorkRetention(repoRoot, {
+      clock: () => now,
+    });
+    archived.push(...retention.archived);
+    removed.push(...retention.removed);
+  } catch (error) {
+    errors.push({
+      path: ".pan/work",
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+
   return {
     command: "archive-sweep",
     status: errors.length > 0 ? "partial" : "ok",
     closed,
     archived: [...new Set(archived)],
+    removed: [...new Set(removed)],
     skipped,
     errors,
   };

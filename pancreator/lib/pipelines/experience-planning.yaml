@@ -9,9 +9,9 @@ metadata:
     prose the supervisor scaffolds into one), the intake-analyst and the
     contract-writer SHALL refine the brief into a canonical planning brief in
     at most 5 clarifying-question rounds; the sme-product and the sme-design
-    SHALL then produce parallel recommendation artifacts; the operator SHALL
-    review the recommendations at a human gate with bounded loop-back to
-    refinement; the product-design-lead SHALL synthesize the approved
+    SHALL then produce parallel recommendation artifacts; the supervisor SHALL
+    record recommendation alignment and hand off directly to synthesis without a
+    human approval gate; the product-design-lead SHALL synthesize the
     recommendations into one feature-delivery-ready intake directive with
     drafted spec frontmatter design_steps enabled; the supervisor MAY then run
     feature-delivery on that directive in fully automated SDK mode. This
@@ -22,9 +22,6 @@ metadata:
     - id: deliver
       label: When false, the supervisor SHALL stop after synthesis and leave the drafted directive for manual kickoff
       default: "false"
-    - id: max-review-loops
-      label: Maximum operator-review loop-backs to sme-consult before the supervisor SHALL halt and escalate via inbox
-      default: "2"
   references:
     - kind: lines
       path: .docs/PRD.md
@@ -51,6 +48,29 @@ stages:
   - id: brief-intake
     persona: intake-analyst
     label: Refine the operator brief into a canonical planning brief through at most 5 clarifying-question rounds, delegating gate-clause normalization to contract-writer when the brief names machine-checkable outcomes
+    contract:
+      key: PIPE.EXPERIENCE_PLANNING.BRIEF_INTAKE
+      persona_contract: PERSONA.INTAKE_ANALYST
+      required_docs:
+        [
+          DOC.AGENTS,
+          DOC.REGISTRY,
+          DOC.PERSONA_CONTRACTS,
+          DOC.OUTPUT_MANIFEST,
+          DOC.PIPELINE_STATE,
+          DOC.INBOX_LIFECYCLE,
+        ]
+      definition_of_done:
+        - planning-brief.md exists and captures problem, goal, scope, and acceptance criteria
+        - planning-brief.md includes a contract-shaped output manifest section
+      gate:
+        validator: PERSONA.SUPERVISOR
+        predicate: "planning_brief_ready: true and output_manifest_valid: true"
+        pass_event: brief_intake_pass
+        fail_event: brief_intake_remediation
+      remediation:
+        default_owner: PERSONA.INTAKE_ANALYST
+        plan_invalidating_owner: PERSONA.SUPERVISOR
     inputs:
       - "arg:brief"
       - lib/memory/handbook/inbox-lifecycle.md
@@ -59,6 +79,31 @@ stages:
   - id: sme-consult
     persona: sme-product
     label: Produce parallel product and design recommendation artifacts against the planning brief; the supervisor SHALL delegate sme-design concurrently with sme-product and both artifacts gate this stage
+    contract:
+      key: PIPE.EXPERIENCE_PLANNING.SME_CONSULT
+      persona_contract: PERSONA.SME_PRODUCT
+      required_docs:
+        [
+          DOC.AGENTS,
+          DOC.REGISTRY,
+          DOC.PERSONA_CONTRACTS,
+          DOC.OUTPUT_MANIFEST,
+          DOC.PIPELINE_STATE,
+          DOC.CONTROL_SURFACE_UX,
+          DOC.DESIGN_SYSTEM,
+          DOC.COMPONENT_STANDARD,
+        ]
+      definition_of_done:
+        - product-recommendations.md and design-recommendations.md both exist
+        - both recommendation artifacts include contract-shaped output manifest sections
+      gate:
+        validator: PERSONA.SUPERVISOR
+        predicate: "sme_consult_outputs_ready: true and output_manifest_valid: true"
+        pass_event: sme_consult_pass
+        fail_event: sme_consult_remediation
+      remediation:
+        default_owner: PERSONA.SME_PRODUCT
+        plan_invalidating_owner: PERSONA.SUPERVISOR
     inputs:
       - .pan/work/<day>/<task-id>/planning-brief.md
       - lib/memory/handbook/engineering/design/control-surface-ux.md
@@ -69,17 +114,62 @@ stages:
       - .pan/work/<day>/<task-id>/design-recommendations.md
   - id: operator-review
     persona: supervisor
-    label: Present both recommendation artifacts to the operator through an inbox thread round and record the approve or revise decision; on revise, loop back to sme-consult at most arg max-review-loops times before halting via inbox escalation
-    gate: human_approval
+    label: Record recommendation alignment and synthesis handoff context in an inbox thread round without a human approval gate
+    contract:
+      key: PIPE.EXPERIENCE_PLANNING.OPERATOR_REVIEW
+      persona_contract: PERSONA.SUPERVISOR
+      required_docs:
+        [
+          DOC.AGENTS,
+          DOC.REGISTRY,
+          DOC.PERSONA_CONTRACTS,
+          DOC.OUTPUT_MANIFEST,
+          DOC.PIPELINE_STATE,
+          DOC.OPERATOR_OUTPUT,
+        ]
+      definition_of_done:
+        - operator-review-round.md records recommendation alignment and synthesis handoff context
+        - operator-review-round.md includes a contract-shaped output manifest section
+      gate:
+        validator: PERSONA.SUPERVISOR
+        predicate: "operator_review_recorded: true and output_manifest_valid: true"
+        pass_event: operator_review_recorded
+        fail_event: operator_review_remediation
+      remediation:
+        default_owner: PERSONA.SUPERVISOR
     inputs:
       - .pan/work/<day>/<task-id>/product-recommendations.md
       - .pan/work/<day>/<task-id>/design-recommendations.md
     outputs:
       - lib/inbox/threads/<day>/<feature-slug>/operator-review-round.md
-    loop: "operator revise decision returns the pipeline to sme-consult; arg:max-review-loops bounds the loop count"
   - id: synthesis
     persona: product-design-lead
     label: Merge the approved recommendations and operator feedback into one feature-delivery-ready intake directive with drafted spec frontmatter design_steps true and an explicit Tradeoffs resolved section
+    contract:
+      key: PIPE.EXPERIENCE_PLANNING.SYNTHESIS
+      persona_contract: PERSONA.PRODUCT_DESIGN_LEAD
+      required_docs:
+        [
+          DOC.AGENTS,
+          DOC.REGISTRY,
+          DOC.PERSONA_CONTRACTS,
+          DOC.OUTPUT_MANIFEST,
+          DOC.PIPELINE_STATE,
+          DOC.OPERATOR_OUTPUT,
+          PIPE.FEATURE_DELIVERY,
+        ]
+      definition_of_done:
+        - synthesized intake directive exists under lib/inbox/in/<day-bucket>/
+        - synthesized directive includes drafted frontmatter design_steps: true
+        - synthesized directive includes a contract-shaped output manifest section
+      gate:
+        validator: PERSONA.SUPERVISOR
+        predicate: "synthesis_output_ready: true and output_manifest_valid: true"
+        pass_event: synthesis_pass
+        fail_event: synthesis_remediation
+      remediation:
+        default_owner: PERSONA.PRODUCT_DESIGN_LEAD
+        plan_invalidating_owner: PERSONA.SUPERVISOR
     inputs:
       - .pan/work/<day>/<task-id>/product-recommendations.md
       - .pan/work/<day>/<task-id>/design-recommendations.md

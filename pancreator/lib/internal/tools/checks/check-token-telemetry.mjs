@@ -34,6 +34,7 @@ const ROOT = path.resolve(
   "..",
   "..",
   "..",
+  "..",
 );
 
 const argv = process.argv.slice(2);

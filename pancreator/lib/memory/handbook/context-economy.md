@@ -253,10 +253,20 @@ work, the agent SHALL cite at least one of these triggers:
 When an agent escalates model class or context breadth, the agent MUST state the
 escalation rationale in the same operator-visible response.
 
-When an agent documents model policy here, the agent MUST NOT assume runtime
-dynamic model selection for Cursor subagents. Each persona has one canonical
-projection at `.cursor/agents/<name>.md`; model class is set in that file's
-frontmatter unless the operator overrides it in the invocation.
+When an agent documents model policy here, the agent MUST distinguish named
+persona invocations from ad-hoc subagent invocations. Named personas continue
+to use the canonical `.cursor/agents/<name>.md` projection unless the operator
+overrides the invocation.
+
+When an agent launches an ad-hoc subagent through the tool surface, the agent
+MUST pass the parent's own exact model string explicitly in the invocation and
+MUST NOT leave the model parameter blank.
+
+After launching an ad-hoc subagent, the parent agent MUST verify that the
+running subagent resolved to that same model string. If the subagent is using a
+different model, or if the parent cannot verify the model string, the parent
+MUST terminate that subagent immediately and reinvoke it with the correct
+explicit model.
 
 ## Generated manifests and machine outputs
 

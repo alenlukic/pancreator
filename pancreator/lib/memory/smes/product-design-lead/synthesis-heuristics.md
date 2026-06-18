@@ -24,15 +24,20 @@ stability: experimental
 - When design recommends new rail, layout, or motion tokens, record them as
   extension candidates in the intake and require the feature-delivery plan to
   resolve token support before implementation.
+- For Command Center Home remediation, resolve healthy-refresh visibility in
+  favor of silence: hide freshness under the accepted age threshold, surface one
+  degraded-data banner only on reconciliation failure, and keep the nav rail as
+  the only persistent destination entry for Feature Delivery.
 
 ## Output manifest
 
 - persona_contract: PERSONA.PRODUCT_DESIGN_LEAD
-- stage_contract: none
+- stage_contract: PIPE.EXPERIENCE_PLANNING.SYNTHESIS
 - required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.PERSONA_CONTRACTS, DOC.OUTPUT_MANIFEST, PIPE.FEATURE_DELIVERY, DOC.PRD_SUMMARY, DOC.PRD_INDEX, DOC.DESIGN_CRAFT, DOC.GLOSSARY, DOC.CONTRACT_STYLE, DOC.OPERATOR_OUTPUT, DOC.INBOX_LIFECYCLE, DOC.DESIGN_SYSTEM, DOC.COMPONENT_STANDARD, DOC.CONTROL_SURFACE_UX
-- consulted_docs: DOC.AGENTS, DOC.REGISTRY, DOC.PERSONA_CONTRACTS, DOC.OUTPUT_MANIFEST, PIPE.FEATURE_DELIVERY, DOC.PRD_SUMMARY, DOC.PRD_INDEX, DOC.DESIGN_CRAFT, DOC.GLOSSARY, DOC.CONTRACT_STYLE, DOC.OPERATOR_OUTPUT, DOC.INBOX_LIFECYCLE, DOC.DESIGN_SYSTEM, DOC.COMPONENT_STANDARD, DOC.CONTROL_SURFACE_UX
-- produced_artifacts: lib/inbox/in/172959_06-16-26/62115_0644_command-center-post-ship-remediation.md, lib/memory/smes/product-design-lead/synthesis-heuristics.md
-- validation: durable synthesis learning persisted for Command Center post-ship remediation
+- consulted_docs: DOC.AGENTS, DOC.REGISTRY, DOC.PERSONA_CONTRACTS, DOC.OUTPUT_MANIFEST, PIPE.FEATURE_DELIVERY, PIPE.EXPERIENCE_PLANNING.SYNTHESIS, DOC.PRD_SUMMARY, DOC.PRD_INDEX, DOC.DESIGN_CRAFT, DOC.GLOSSARY, DOC.CONTRACT_STYLE, DOC.OPERATOR_OUTPUT, DOC.INBOX_LIFECYCLE, DOC.DESIGN_SYSTEM, DOC.COMPONENT_STANDARD, DOC.CONTROL_SURFACE_UX
+- produced_artifacts: lib/inbox/in/172957_06-18-26/72063_0358_command-center-home-ux-remediation-fd.md, lib/memory/smes/product-design-lead/synthesis-heuristics.md
+- scope_amendments: none
+- validation: durable synthesis learning persisted for Command Center Home remediation
 - definition_of_done: pass
-- gate_decision: not_applicable
+- gate_decision: advance
 - remediation_route: none

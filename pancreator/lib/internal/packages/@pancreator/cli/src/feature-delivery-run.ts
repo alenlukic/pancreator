@@ -85,6 +85,9 @@ import {
 } from "./feature-delivery-sdk-progress.js";
 import { assertDeliveryReportCitationFormat } from "./delivery-report-citation-lint.js";
 import {
+  archiveExperiencePlanningForClosedFeatureDelivery,
+} from "./experience-planning-archival.js";
+import {
   ensurePipelineCloseDoc,
   PIPELINE_CLOSE_FILENAME,
   pipelineCloseRel,
@@ -685,6 +688,8 @@ export interface CloseFeatureDeliveryArtifactsResult {
   nextPromptFile: string;
   nextHumanAction: string;
   operatorVerificationFile: string;
+  /** Experience-planning work directories archived because this run originated from one. */
+  archivedExperiencePlanningRuns?: string[];
   /** True when the run was already under .pan/archive/work/ and closure finalized state only. */
   alreadyArchived?: boolean;
 }
@@ -1619,6 +1624,13 @@ export async function closeFeatureDeliveryArtifacts(
       },
     );
 
+    const archivedExperiencePlanningRuns =
+      await archiveExperiencePlanningForClosedFeatureDelivery(
+        repoRoot,
+        inboxArchiveRel,
+        now,
+      );
+
     return {
       command: "close-artifacts",
       status: "ok",
@@ -1637,6 +1649,7 @@ export async function closeFeatureDeliveryArtifacts(
       operatorVerificationFile:
         state.artifacts.operatorVerificationFile ??
         path.posix.join(closure.workArchiveRel, OPERATOR_VERIFICATION_FILENAME),
+      archivedExperiencePlanningRuns,
       ...(alreadyArchived ? { alreadyArchived: true } : {}),
     };
   } catch (error) {

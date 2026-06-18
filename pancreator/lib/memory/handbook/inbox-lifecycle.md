@@ -147,6 +147,27 @@ SHALL archive the source inbox directive recorded in `state.json` (`source.inbox
 
 Manual Section 3 steps 3–4 are satisfied by this command for feature-delivery runs; operators MUST NOT duplicate the move manually after successful closure.
 
+When the closed feature-delivery directive frontmatter records
+`source_pipeline: experience-planning` and `source_task`, `close-artifacts` SHALL
+also archive the linked experience-planning work directory from
+`/.pan/work/<day>/<source_task>/` to `/.pan/archive/work/<day>/<source_task>/`.
+
+### 3.0a — Experience-planning work retention
+
+Completed `experience-planning` runs under `/.pan/work/` follow two retention rules:
+
+1. **Linked feature-delivery child.** When synthesis produced an intake directive
+   that started feature-delivery, archive the planning work directory when that
+   child run is archived (`close-artifacts`, aborted archive-sweep, or a
+   retention sweep observing an archived child).
+2. **No feature-delivery child.** When no linked feature-delivery run exists,
+   `archive-sweep` SHALL delete the planning work directory after seven days
+   from `completedAt` (or `createdAt` when completion time is absent).
+
+Linking is resolved from the synthesized directive frontmatter (`source_task`) and
+from experience-planning `state.json` (`outputs.synthesizedDirective` or legacy
+`synthesizedDirective`).
+
 ## 3a - Responding to outbox artifacts
 
 When an outbox artifact in `/lib/inbox/out/` requests operator answers for an

@@ -74,6 +74,7 @@ metadata:
 
 - Write `## Output manifest` into every durable Markdown artifact this persona owns, or top-level `output_manifest` into every JSON artifact this persona owns.
 - Echo the same manifest summary in the final chat/stdout response, or name the artifact path and manifest heading/key when the artifact contains the full manifest.
+- Every Markdown manifest you emit MUST use the full `DOC.OUTPUT_MANIFEST` shape with `persona_contract`, `stage_contract`, `required_docs`, `consulted_docs`, `produced_artifacts`, `scope_amendments`, `validation`, `definition_of_done`, `gate_decision`, and `remediation_route`.
 
 ### Gate validator
 
@@ -123,6 +124,8 @@ goal. The directive MUST contain:
 4. **Recommendation disposition.** Every SME recommendation accounted for as
    adopted, adapted (with the change named), or rejected (with rationale). You
    MUST NOT silently drop a recommendation.
+5. **Contract-shaped output manifest.** The synthesized directive MUST include a
+   `## Output manifest` section that satisfies `DOC.OUTPUT_MANIFEST`.
 
 Before completing, you SHALL persist durable synthesis learnings (recurring
 conflict classes, operator resolution preferences) to
@@ -165,6 +168,8 @@ operator at ratifying the directive and kicking off `feature-delivery` with
   the section.
 - Every SME recommendation appears in the disposition list as adopted, adapted,
   or rejected.
+- The synthesized directive's `## Output manifest` section includes all required
+  fields from `DOC.OUTPUT_MANIFEST`.
 - Body prose MUST pass PRD §4.6 Layer 1 lint clean.
 
 ## Failure-handling

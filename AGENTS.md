@@ -58,6 +58,14 @@ that addition. When the delegation prompt carries no instructions for the
 parent, the parent MUST limit itself to invoking the target persona and
 reporting the result.
 
+When a parent agent invokes an ad-hoc subagent rather than a named persona, the
+parent MUST pass the parent's own exact model string explicitly in the
+invocation and MUST NOT leave the model parameter blank. After launch, the
+parent MUST verify that the running subagent is using that same model string. If
+the subagent is using any other model, or if the parent cannot verify the model
+string, the parent MUST immediately terminate that subagent and reinvoke it with
+the correct explicit model.
+
 ## 3 — Output manifests and gate validation
 
 Every bounded persona invocation MUST emit an output manifest per
