@@ -1,324 +1,201 @@
 ---
-title: Operator Output Contract — Next Operator Steps
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 13
+---
+# Operator section
+- 👀 **In this file:** Canonical chat/output shape every agent uses when returning work to a human operator.
+- ⚖️ **Why it matters:** It makes completion status, touched files, deletions, and next steps scannable without reading raw agent logs.
+- 🧭 **See also:**
+  - AGENTS.md
+  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
+  - pancreator/lib/memory/handbook/output-manifest-contract.md
+---
+title: Operator Output Contract — Chat Completion Shape
 slug: operator-output-contract
 stability: experimental
 bootstrap-only: false
 phase: bootstrap
 owners: [supervisor, tech-writer, librarian]
 purpose: |
-  The canonical format every agent SHALL append to operator-visible output when
-  a bounded task completes, enumerating what the operator can or should do
-  next with explicit what/how guidance and read-only versus mutating actions.
+  The canonical format every agent SHALL use for operator-visible chat/stdout
+  output when a bounded task completes.
 references:
   - kind: file
     path: AGENTS.md
-    note: "AGENTS §6 binds operator-facing completion output to this contract."
-  - kind: lines
-    path: lib/memory/handbook/persona-spec.md
-    range: [124, 140]
-    contentHash: 2a072e0
-    note: "Persona body discipline extends to operator-visible completion output."
-  - kind: lines
-    path: lib/memory/handbook/inbox-lifecycle.md
-    range: [114, 128]
-    contentHash: 29f20be
-    note: "Manual inbox archival and ratification are common next-step targets."
+    note: "AGENTS §7 binds operator-facing completion output to this contract."
+  - kind: file
+    path: lib/memory/handbook/operator-agent-artifact-format.md
+    note: "Defines the file-level operator/agent section split."
 related:
   - /AGENTS.md
+  - /lib/memory/handbook/operator-agent-artifact-format.md
+  - /lib/memory/handbook/output-manifest-contract.md
   - /lib/memory/handbook/pancreator-config.md
-  - /lib/memory/handbook/persona-spec.md
-  - /lib/memory/handbook/inbox-lifecycle.md
-  - /lib/memory/handbook/documentation-impact-contract.md
-  - /lib/memory/active/handoffs.md
 ---
 
-# Operator Output Contract — Next Operator Steps
+# Operator Output Contract — Chat Completion Shape
 
-This page defines the standardized **Next operator steps** block that every
-agent SHALL append to the end of operator-visible output when a bounded task
-completes.
+Every operator-visible agent response at a bounded task boundary MUST use the
+shape in this document. The goal is fast human triage: status first, summary
+second, changed surfaces third, and exact next actions last.
 
-## 1 — When the block is required
+## 1 — Required fields
 
-An agent SHALL append **Next operator steps** when all conditions below are
-true:
+Every completion response MUST include these fields in this order:
 
-- The agent reached a task boundary (deliverable produced, gate outcome
-  recorded, explicit blocker reported, or delegated work returned to the parent).
-- The operator is the intended audience for the response (chat reply, inbox
-  outbox artifact body, delivery report section, or parent-agent summary).
-- At least one plausible follow-up action exists for the operator (verify,
-  ratify, advance pipeline, pick up inbox item, commit, delegate next persona).
+1. **Action status**
+2. **Brief summary**
+3. **Files added or changed**
+4. **Deleted files**
+5. **Next operator actions**
 
-An agent MAY omit the block only when the response is a single factual answer
-with no follow-up action (for example "the file exists at `<path>`") and the
-operator did not request next-step guidance.
+Use `N/A` as the value when a field has no content. Do not omit the field.
 
-Parent agents that summarize a delegated subagent result SHALL still append
-**Next operator steps** for the operator; the parent MUST NOT assume the
-subagent block was visible in the parent chat surface.
+## 2 — Canonical Markdown shape
 
-## 2 — Section heading and placement
+```markdown
+✅ **Action status:** Success | Partial Success | Fail
 
-- The block MUST use the level-2 heading exactly: `## Next operator steps`.
-- The block MUST be the final section of the operator-visible response unless
-  the harness appends system metadata after agent prose.
-- Earlier sections MAY summarize work performed; this block MUST contain only
-  forward-looking operator actions.
+🧾 **Brief summary:** <one to three sentences>
 
-## 2.1 — Automated conformance check
+📝 **Files added or changed:**
+- [path/or/directory](<clickable link>)
+- [path/or/directory](<clickable link>)
 
-Maintainers SHALL run `node lib/internal/tools/checks/check-operator-output.mjs` from the
-repository root before commits that touch operator-visible surfaces.
-The checker scans runnable fenced code blocks in `AGENTS.md`, `README.md`,
-`OPERATION.md`, `lib/personas/`, `.cursor/agents/`, `.cursor/rules/`, and
-`lib/memory/handbook/` and exits non-zero when a line invokes bare `pan …`
-without the `pnpm -w exec pan …` prefix. Repository tests include
-`tests/operator-output-contract.test.mjs`.
+🗑️ **Deleted files:** N/A
 
-## 3 — Action entry shape
+🧭 **Next operator actions:**
+- <brief action summary>
+  ```bash
+  <exact command with exact syntax and arguments>
+  ```
+- <brief agent invocation>
+  ```text
+  /persona-name <exact prompt>
+  ```
+```
 
-Each step MUST be one numbered list item. Every item MUST include:
+Agents MAY add short supporting sections before this block only when the operator
+needs context to interpret the result. The canonical fields above MUST remain
+present and easy to scan.
 
-| Field | Required | Content |
-|---|---|---|
-| **What** | always | One imperative sentence: the outcome the operator pursues. |
-| **How** | always | Concrete procedure: exact command with arguments, exact file path(s), persona invocation token, or manual UI action. |
-| **Read-only** | when applicable | Prefix or tag `Read-only:` when the step inspects artifacts without mutating the repo, inbox, or run state. |
-| **When to choose** | multi-option only | One or two sentences: scenario that makes this option the right choice. |
-| **Impact** | multi-option only | One sentence: what changes in repo state, pipeline stage, or risk if the operator selects this option. |
+## 3 — Action status values
 
-Agents MUST NOT use vague verbs ("review as needed", "check things") without
-naming the path, command, or gate.
+`Action status` MUST be exactly one of:
 
-### 3.1 — `pan` CLI invocation prefix
+- `Success` — requested work completed and validation did not reveal a blocker.
+- `Partial Success` — useful work was completed, but some requested scope,
+  migration, validation, or external action remains incomplete.
+- `Fail` — no useful requested work was completed or the result should not be used.
 
-This workspace does not expose bare `pan` on the shell `PATH`. When a step
-invokes the CLI, the **How** clause MUST use the workspace exec form from the
-repository root:
+Agents MUST NOT use synonyms such as "done", "blocked", "mostly done", or
+"warning". Put nuance in the brief summary and next actions.
+
+## 4 — Brief summary
+
+The brief summary MUST be one to three sentences. It SHOULD state:
+
+- what changed;
+- any material limitation; and
+- the validation outcome when validation ran.
+
+Do not paste raw logs. Link or name the artifact when details are available in a
+file.
+
+## 5 — Files added or changed
+
+`Files added or changed` MUST list repo paths as clickable Markdown links when
+the output medium supports links.
+
+Rules:
+
+- List each changed file unless every file in a directory was changed.
+- If every file in a directory was changed, list only that directory.
+- Prefer branch-aware links for GitHub-backed work.
+- Use repo-relative link labels.
+- Use `N/A` when no files were added or changed.
+- Do not list deleted files here; use **Deleted files**.
+
+Example:
+
+```markdown
+📝 **Files added or changed:**
+- [AGENTS.md](https://github.com/alenlukic/pancreator/blob/<branch>/AGENTS.md)
+- [pancreator/lib/memory/handbook/](https://github.com/alenlukic/pancreator/tree/<branch>/pancreator/lib/memory/handbook)
+```
+
+## 6 — Deleted files
+
+`Deleted files` MUST list repo paths as newline-separated bullets, preferably
+with clickable links to the deletion diff or compare view when available. Use
+`N/A` when no files were deleted.
+
+## 7 — Next operator actions
+
+`Next operator actions` MUST be a bullet list. Each bullet MUST contain:
+
+- a brief action summary; and
+- exact steps to take.
+
+When commands are involved, include the exact command in a fenced `bash` block.
+When agent invocation is involved, include the persona name and exact prompt in a
+fenced `text` block.
+
+### 7.1 — Command specificity
+
+This workspace does not expose bare `pan` on the shell `PATH`. Runnable `pan`
+commands MUST use this workspace form from the repository root:
 
 ```bash
 pnpm -w exec pan <subcommand> [arguments...]
 ```
 
-Agents MUST NOT tell the operator to run bare `pan …` in copy-paste commands.
-Prose MAY name the logical verb (`pan advance`) when explaining behavior; only
-runnable shell lines require the prefix. See
-`/lib/memory/handbook/pancreator-config.md` §“CLI invocation in this workspace”.
+Every `git add`, `git commit`, `pnpm`, and `pan` line MUST list exact paths,
+flags, and arguments. Agents MUST NOT say "stage the touched files", "run the
+usual tests", "commit the changes", or "etc." when exact commands can be known.
 
-### 3.2 — Command and path specificity
+When a command needs environment variables, include them in the command block.
 
-When a step invokes the CLI, the **How** clause MUST state the full invocation,
-for example:
+### 7.2 — Agent invocation specificity
 
-```bash
-pnpm -w exec pan advance 67055_0522_json-formatting --artifact .pan/work/172983_05-23-26/67055_0522_json-formatting/review.md
+Agent invocation steps MUST name the persona and include the prompt:
+
+```text
+/reviewer Review pancreator/.pan/work/<day>/<task-id>/implementation.md against PERSONA.REVIEWER and DOC.OUTPUT_MANIFEST.
 ```
 
-When a step edits files, the **How** clause MUST list every path the operator
-or agent may touch.
+Do not tell the operator to "ask the reviewer" without a copy-pasteable prompt.
 
-When a step delegates to a persona, the **How** clause MUST state the Cursor
-invocation (`/reviewer`, `/tech-lead`, etc.) and the file the
-operator pastes (`.pan/work/<day>/<task-id>/next-prompt.md` only per AGENTS.md §2 delegated scope rules).
+## 8 — Repo-change completion requirements
 
-### 3.2a — `feature-delivery` inbox entry paths
+For repo-change tasks, the completion MUST state:
 
-`pnpm -w exec pan run feature-delivery` and `pnpm -w exec pan feature new`
-take `<inbox-entry>` relative to `lib/inbox/in/` (day bucket + filename). **How**
-clauses MUST NOT prefix `lib/inbox/in/` on that argument—the CLI prepends it.
+- what changed;
+- validation actually run;
+- validation not run; and
+- any patch, script, branch, or PR artifact produced.
 
-Canonical example:
+If validation could not run because the agent was using the GitHub connector or
+another non-local tool, say so directly. Do not imply tests ran.
 
-```bash
-pnpm -w exec pan run feature-delivery 172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md
-```
+## 9 — Relationship to output manifests
 
-See `/lib/memory/handbook/pancreator-config.md` §“`feature-delivery` inbox entry
-argument”.
+`DOC.OUTPUT_MANIFEST` remains the machine-checkable receipt inside durable
+artifacts. This contract governs operator-visible chat/stdout output. When both
+are present, the chat output MAY summarize the manifest, but it MUST still include
+the five fields required by this document.
 
-### 3.3 — Read-only versus mutating actions
+## 10 — Prohibited content
 
-- **Read-only** steps MUST be labeled `Read-only:` at the start of the **How**
-  clause or in the item title.
-- Mutating steps (commit, `pnpm -w exec pan advance`, inbox promotion, file edit) MUST NOT
-  use the read-only label.
-- Steps that only open or read files for human judgment (diff review, delivery
-  report read, compliance audit read) are read-only even when the operator
-  later chooses to act.
+Operator output MUST NOT:
 
-### 3.4 — Copy-paste commands (fully formed)
-
-When a step is automatable with a shell command, the **How** clause MUST give
-the operator a **fully formed, copy-paste-ready** command block. The operator
-MUST be able to run the step without inventing paths, flags, or file lists.
-
-Rules:
-
-1. **Fenced `bash` blocks.** Put runnable commands in a fenced code block on
-   their own lines. Inline backticks are for single paths or flags inside
-   prose, not for multi-command procedures.
-2. **Complete invocations.** Every `git add`, `git commit`, `pnpm`, and `pan`
-   line MUST list explicit paths and arguments. The operator MUST NOT need to
-   infer "and the other touched files" or "etc."
-3. **No manual assembly steps.** Phrases such as "stage the changed files",
-   "commit the updates", or "run the usual .tests" are **disallowed** when the
-   agent can enumerate the exact paths from the task diff or touch-set.
-4. **Do the work in-task when policy allows.** If the completing agent has
-   authority and tooling to run an action (write files, run `pnpm test`, run
-   `git add` for verification), the agent SHALL perform it during the task
-   and MUST NOT punt it to **Next operator steps** unless repository policy
-   reserves the action for the operator (for example human-only `git commit`
-   per AGENTS §5).
-5. **Operator-reserved actions still get full commands.** When only the
-   operator may commit, push, or ratify, **Next operator steps** MUST still
-   supply the complete `git add …` and `git commit -m "$(cat <<'EOF' … EOF)"`
-   (or equivalent) with every path and the full message body—never a prose
-   shopping list of filenames.
-
-**Disallowed example:**
-
-```markdown
-**How:** Stage `AGENTS.md`, `lib/memory/handbook/pancreator-config.md`,
-`lib/memory/handbook/operator-output-contract.md`, and the other touched
-handbook/persona files, then `git commit` with a message describing the change.
-```
-
-**Allowed example (operator-visible **How** embeds a fence like this):**
-
-**What:** Commit the governance updates when satisfied.
-
-**How:** From the repository root:
-
-```bash
-git add AGENTS.md \
-  lib/memory/handbook/pancreator-config.md \
-  lib/memory/handbook/operator-output-contract.md
-
-git commit -m "$(cat <<'EOF'
-Document copy-paste next-step command policy.
-
-EOF
-)"
-```
-
-When the file set is long (>15 paths), the agent MAY split into (a) a
-read-only `git status` / `git diff --stat` verification step with exact
-commands and (b) a `git add` block generated from the actual changed-path
-list—still fully enumerated, never "other touched files".
-
-## 4 — Single-option layout
-
-When exactly one sensible follow-up exists, the block MUST contain one numbered
-item. Do not invent optional branches.
-
-**Template:**
-
-```markdown
-## Next operator steps
-
-1. **What:** <imperative outcome>.
-   **How:** <exact command, path, or procedure>.
-```
-
-If the step is read-only, prefix **How** with `Read-only:`.
-
-**Example (single mutating step):**
-
-```markdown
-## Next operator steps
-
-1. **What:** Record the accepted review artifact and advance the feature-delivery run to the report stage.
-   **How:** Run `pnpm -w exec pan advance 67055_0522_json-formatting --artifact .pan/work/172983_05-23-26/67055_0522_json-formatting/review.md`. Confirm `.pan/work/172983_05-23-26/67055_0522_json-formatting/state.json` shows `current_stage: report` before delegating `tech-writer`.
-```
-
-**Example (single read-only step):**
-
-```markdown
-## Next operator steps
-
-1. **What:** Confirm the compliance audit gate recommendation before merging.
-   **How:** Read-only: open `.pan/archive/work/172981_05-25-26/69180_0447_broad-sweep-compliance/compliance-audit.md` section 7 and verify `compliance_passes: true`.
-```
-
-## 5 — Multi-option layout
-
-When two or more distinct follow-ups exist, the block MUST contain one numbered
-item per option. Each item MUST include **When to choose** and **Impact** after
-**How**.
-
-**Template:**
-
-```markdown
-## Next operator steps
-
-1. **What:** <option A outcome>.
-   **How:** <procedure A>.
-   **When to choose:** <scenario A>.
-   **Impact:** <state change A>.
-
-2. **What:** <option B outcome>.
-   **How:** <procedure B>.
-   **When to choose:** <scenario B>.
-   **Impact:** <state change B>.
-```
-
-Order options from lowest blast radius to highest unless a pipeline gate
-requires a strict sequence; when sequence matters, state that in option 1
-**Impact** ("blocks all later options until complete").
-
-**Example (ratify versus defer):**
-
-```markdown
-## Next operator steps
-
-1. **What:** Ratify the plan and delegate implementation to the coder persona.
-   **How:** Reply on the inbox thread with approval, then paste `.pan/work/172983_05-23-26/67055_0522_json-formatting/next-prompt.md` into `/coder`.
-   **When to choose:** Scope, touch-set, and ADR draft match your intent.
-   **Impact:** The run advances to `implement`; the coder may modify paths listed in `touch-set.json` only.
-
-2. **What:** Send the plan back for revision without advancing the run.
-   **How:** Add a new thread round under `lib/inbox/threads/<day>/<feature-slug>/` with required edits; do not run `pnpm -w exec pan advance …` until a superseding plan artifact exists.
-   **When to choose:** The touch-set is incomplete or the ADR draft misses a constraint.
-   **Impact:** The run stays at `plan`; no implementation work should start.
-```
-
-## 6 — Common step patterns
-
-Agents SHOULD reuse these patterns when they apply; adapt paths and IDs to the
-active task.
-
-| Situation | What (typical) | How (typical) |
-|---|---|---|
-| Pipeline stage complete | Advance to next stage | `pnpm -w exec pan advance <task-id> --artifact <path>` |
-| Human gate | Ratify or reject | Read-only: inspect artifact; mutating: reply in inbox thread or run `pnpm -w exec pan approve <task-id>` when wired |
-| Delegate next persona | Hand off execution | Paste `.pan/work/<day>/<task-id>/next-prompt.md` into `/<persona>` |
-| Pick up inbox work | Start next feature | Read-only: `ls lib/inbox/in/`; mutating: `pnpm -w exec pan run feature-delivery <day-bucket>/<file>.md` |
-| Verify only | Confirm artifact | Read-only: open cited path(s) and check acceptance criteria |
-| Local commit | Stage and commit (operator) | Full `git add <every-path>` then `git commit -m "$(cat <<'EOF' … EOF)"` |
-| Optional PR body | Draft description before `gh pr create` | Invoke `/pr-writer` with feature ID or `.pan/work/<day>/<task-id>/` path; paste fenced output into `gh pr create --body-file` |
-| Run tests before commit | Verify green | `pnpm test` (or the exact `pnpm` script named in `package.json`) |
-| Close run | Archive after acceptance | `pnpm -w exec pan close-artifacts <task-id>` after human validates index |
-| Blocked task | Unblock or escalate | State owner persona and the file the operator must edit or the ratification required |
-
-## 7 — Prohibited content
-
-The **Next operator steps** block MUST NOT:
-
-- Repeat the full task summary (that belongs in earlier sections).
-- List options the agent cannot support with a concrete **How** clause.
-- Suggest `git push` or bypass human gates.
-- Reference `lib/inbox/notes/` as an action target.
-- Tell the operator to paste PRD, bootstrap docs, or full chat transcripts into
-  subagents (per AGENTS §4).
-- Use underspecified file lists ("stage the touched files", "and other
-  handbook/persona files", "etc.") instead of a complete `git add` or copy-paste
-  command block (§3.4).
-- Offload automatable shell work to the operator when the completing agent could
-  have run the same command during the task (§3.4 item 4).
-
-## 8 — Stability
-
-This page is bootstrap-canonical for operator-facing agent output. Promotion to
-`stability: stable` follows Phase 5 dogfood validation that operators receive
-consistent blocks across personas.
+- omit a required field;
+- use non-clickable file names when clickable links are available;
+- hide failed or skipped validation;
+- claim a file was changed, deleted, moved, or tested unless current repo state
+  proves it;
+- offload automatable shell work to the operator when the completing agent could
+  perform it during the task; or
+- suggest `git push`, `git commit --no-verify`, `gh pr create`, or merge actions
+  unless an explicit persona contract and operator ratification allow it.
