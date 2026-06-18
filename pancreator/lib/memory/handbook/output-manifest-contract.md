@@ -1,4 +1,16 @@
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 13
+---
+# Operator section
+- 👀 **In this file:** Machine-checkable output manifest shape for bounded persona work.
+- ⚖️ **Why it matters:** Gates use this receipt to verify required docs, artifacts, validation, and remediation routing before a pipeline advances.
+- 🧭 **See also:**
+  - AGENTS.md
+  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
+  - pancreator/lib/memory/handbook/operator-output-contract.md
+---
 title: Output Manifest Contract
 slug: output-manifest-contract
 stability: experimental
@@ -8,6 +20,8 @@ owners: [supervisor, compliance-auditor, tech-writer]
 purpose: Defines the output manifest every bounded persona invocation emits and gate validators check.
 related:
   - /AGENTS.md
+  - /lib/memory/handbook/operator-agent-artifact-format.md
+  - /lib/memory/handbook/operator-output-contract.md
   - /lib/memory/handbook/agent-document-registry.md
   - /lib/memory/handbook/persona-contracts.md
   - /lib/memory/handbook/pipeline-state-contract.md
@@ -24,10 +38,16 @@ persona's definition of done passed.
 
 For bounded work, the persona MUST write the manifest twice:
 
-1. **Artifact copy.** Durable artifacts MUST include `## Output manifest` for
-   Markdown or top-level `output_manifest` for JSON.
+1. **Artifact copy.** Durable artifacts MUST include `## Output manifest` in the
+   artifact's agent section for Markdown or top-level `output_manifest` in the
+   agent section for JSON.
 2. **Operator copy.** Final chat/stdout MUST include the same manifest summary or
-   the path and heading/key where the artifact copy lives.
+   the path and heading/key where the artifact copy lives, and MUST follow
+   `/lib/memory/handbook/operator-output-contract.md`.
+
+The operator section defined by `/lib/memory/handbook/operator-agent-artifact-format.md`
+MUST NOT contain the only copy of the manifest. Gate validators ignore operator
+sections and validate only agent-section content.
 
 ## Markdown shape
 
@@ -50,6 +70,11 @@ For bounded work, the persona MUST write the manifest twice:
 
 ```json
 {
+  "$pancreator_section_index": {
+    "format": "operator-agent-v1",
+    "agent_section_start_line": 10
+  },
+  "$operator": "⚙️ no human content",
   "output_manifest": {
     "persona_contract": "PERSONA.NAME",
     "stage_contract": "PIPE.FEATURE_DELIVERY.STAGE",
@@ -95,11 +120,11 @@ MUST appear in `consulted_docs`; additional consulted keys are allowed.
 
 ## Gate rule
 
-A transition validator MUST block advancement when the manifest is missing,
-names the wrong persona contract, omits a required artifact, declares a passing
-definition of done without evidence required by the persona spec, routes
-remediation to an owner not declared by the pipeline, or when `consulted_docs`
-does not cover every key in the contract's `required_docs`.
+A transition validator MUST block advancement when the manifest is missing from
+the agent section, names the wrong persona contract, omits a required artifact,
+declares a passing definition of done without evidence required by the persona
+spec, routes remediation to an owner not declared by the pipeline, or when
+`consulted_docs` does not cover every key in the contract's `required_docs`.
 
 Validators MUST also reject manifests that omit any shape field shown in
 `## Markdown shape` / `## JSON shape`, use file paths in `required_docs` or
