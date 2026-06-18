@@ -1,0 +1,46 @@
+{
+  "feature_id": "bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout",
+  "title": "Bootstrap de-hacking pass — simplify ops, docs, and memory layout",
+  "category": "bootstrap-repo-ops",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "16224_1929_bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout",
+  "summary": "This pass centralized operator workflow into OPERATION.md, routed the repo's entry points to that guide, tightened operator-output conformance, consolidated backlog-backed debt handling, narrowed default phase-0a CI, and added a librarian pre-close validation duty. The reviewer accepted the remediation pass, so the…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, active-work pipeline artifacts, and implementation surface. After human accepts this index artifact, run pan advance to complete, then delegate the generated complete-stage prompt…",
+    "handoff.decision: index-complete",
+    "intake.human_approval_note: Spec ratified at plan advance per state.json advanceHistory intake→plan event."
+  ],
+  "implementation_surfaces": [
+    "OPERATION.md",
+    "lib/internal/tools/checks/check-operator-output.mjs",
+    "tests/operator-output-contract.test.mjs"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    }
+  ],
+  "open_followups": [
+    "prd-summary-routing-deferral",
+    "global-features-index-m1-row",
+    "handbook-deferred-verb-prose",
+    "node-test-git-noise-nit"
+  ],
+  "compressed_from": [
+    "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/delivery-report.md",
+    "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/index.json",
+    "lib/memory/features/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction.",
+  "archived_inbox_source": ".pan/archive/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md",
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md",
+    "prior_path": "lib/inbox/in/172979_05-27-26/16605_1923_bootstrap-de-hacking-pass.md"
+  }
+}

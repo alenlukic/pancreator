@@ -32,10 +32,10 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# --- Next.js (client/) ---
+# --- Next.js (pancreator/client/) ---
 
-.next/
-out/
+pancreator/client/.next/
+pancreator/client/out/
 
 # --- IDE (local overrides) ---
 
@@ -54,28 +54,29 @@ out/
 
 # --- Local control plane ---
 
-.pan/
+pancreator/.pan/
 
 # --- Local inbox ---
 
-lib/inbox/
+pancreator/lib/inbox/
 
 # --- Internal product docs (local-only; explicit-read; not in git index) ---
 
-.docs/
+pancreator/.docs/
 
 # --- Ephemeral runtime workspaces ---
 
-lib/memory/checkpoints/
+pancreator/lib/memory/checkpoints/
+pancreator/lib/internal/packages/@pancreator/env-isolation/src/.tmp-ports-*/
 
 # Operator-local calibration traces (CI uses baselines/findings/raw only)
-tests/compliance/context-usage/calibration/traces/**
-!tests/compliance/context-usage/calibration/traces/.gitkeep
+pancreator/tests/compliance/context-usage/calibration/traces/**
+!pancreator/tests/compliance/context-usage/calibration/traces/.gitkeep
 
 # Committed prototype fixtures (negate global .work/archive ignores)
-!tests/compliance/context-usage/fixtures/task-low/work/
-!tests/compliance/context-usage/fixtures/task-low/work/**
-!tests/compliance/context-usage/fixtures/task-high/work/
-!tests/compliance/context-usage/fixtures/task-high/work/**
+!pancreator/tests/compliance/context-usage/fixtures/task-low/work/
+!pancreator/tests/compliance/context-usage/fixtures/task-low/work/**
+!pancreator/tests/compliance/context-usage/fixtures/task-high/work/
+!pancreator/tests/compliance/context-usage/fixtures/task-high/work/**
 
 

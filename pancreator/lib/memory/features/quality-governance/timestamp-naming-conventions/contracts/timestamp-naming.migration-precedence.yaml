@@ -1,0 +1,27 @@
+id: pancreator.features.timestamp_naming.migration_precedence
+kind: tests
+severity: block
+applies_to:
+  kind: file-path
+  glob: "lib/internal/tools/migrations/migrate-timestamp-naming.mjs"
+owner: coder
+description: |
+  When the migration derives a timestamp for an in-scope artifact, the migration SHALL select the git oldest-add timestamp before `created_at` frontmatter before filesystem `mtime` before an operator override, matching the ratified precedence order.
+references:
+  - kind: lines
+    path: lib/memory/features/quality-governance/timestamp-naming-conventions/spec.md
+    range: [123, 129]
+    contentHash: 294422f
+    note: "Deferral note closed in plan; precedence encoded in migration tooling."
+  - kind: lines
+    path: lib/internal/tools/migrations/migrate-timestamp-naming.mjs
+    range: [163, 193]
+    contentHash: 02eadfb
+    note: "chooseTimestamp implements the ratified precedence (git, frontmatter, mtime, override)."
+runtime:
+  entry: "lib/internal/tools/migrations/migrate-timestamp-naming.mjs"
+  exported_symbol: "chooseTimestamp"
+metadata:
+  pancreator.contract_id: pancreator.features.timestamp_naming.migration_precedence
+  pancreator.applies_to: "file-path:lib/internal/tools/migrations/migrate-timestamp-naming.mjs"
+  pancreator-bootstrap-only: false

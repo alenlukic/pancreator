@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
-import pancreatorPlugin from "./lib/internal/tools/eslint-rules/no-horizontal-primitive-deps.mjs";
+import pancreatorPlugin from "./pancreator/lib/internal/tools/lint/eslint-rules/no-horizontal-primitive-deps.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -12,10 +12,10 @@ export default tseslint.config(
       "**/dist",
       "**/node_modules",
       "pnpm-lock.yaml",
-      "lib/internal/tools/**/*.mjs",
-      "client/**",
+      "pancreator/lib/internal/tools/**/*.mjs",
+      "pancreator/client/**",
       "**/next-env.d.ts",
-      ".pan/**",
+      "pancreator/.pan/**",
     ],
   },
   js.configs.recommended,
@@ -29,7 +29,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["tests/**/*.mjs", "*.config.mjs"],
+    files: ["pancreator/tests/**/*.mjs", "*.config.mjs"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -44,7 +44,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["lib/internal/packages/@pancreator/**/bin/*.js"],
+    files: ["pancreator/lib/internal/packages/@pancreator/**/bin/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -56,8 +56,7 @@ export default tseslint.config(
   },
   {
     files: [
-      "lib/internal/packages/pancreator/lib/**/*.ts",
-      "lib/internal/packages/@pancreator/**/*.ts",
+      "pancreator/lib/internal/packages/@pancreator/**/*.ts",
     ],
     languageOptions: {
       parser: tseslint.parser,

@@ -1,0 +1,50 @@
+{
+  "feature_id": "json-formatting",
+  "title": "Canonical JSON formatting policy",
+  "category": "quality-governance",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "67055_0522_json-formatting",
+  "summary": "The json-formatting feature ships a canonical JSON formatting policy across all Round-02 R1 surfaces: repository .json artifacts, Markdown-embedded JSON, terminal/CLI output from pan, and agent-chat JSON sketches. A shared canonical formatter module (lib/internal/tools/format/canonical-json-format.mjs) provides…",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, ship artifacts, and migration evidence. After human accepts this index artifact, run pan close-artifacts for archival closure per complete-stage prompt.",
+    "handoff.decision: index-complete",
+    "intake.scope_correction_note: Operator scope correction on 2026-05-23 re-ratified spec to cover all R1 JSON surfaces (repository .json, Markdown-embedded JSON, terminal/CLI JSON, agent-chat JSON), not repository .json only."
+  ],
+  "implementation_surfaces": [
+    "lib/internal/tools/format/canonical-json-format.mjs",
+    "lib/internal/tools/migrations/migrate-json-formatting.mjs",
+    "lib/internal/tools/format/reformat-markdown-citations.mjs",
+    "tests/compliance/json-formatting.yaml",
+    "tests/migrate-json-formatting.test.mjs",
+    "tests/repo-structure.test.mjs",
+    "lib/internal/packages/@pancreator/cli/lib/canonical-json-io.ts",
+    "lib/internal/packages/@pancreator/cli/lib/feature-delivery-run.ts",
+    "lib/internal/packages/@pancreator/cli/lib/run.ts",
+    "lib/internal/packages/@pancreator/cli/lib/run.test.ts",
+    "tests/fixtures/json-formatting/agent-chat-payload-expectation.json",
+    "tests/fixtures/json-formatting/forbidden-inline-citation-snippet.raw"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "block_findings": 0,
+        "must_fix_count": 0
+      }
+    }
+  ],
+  "open_followups": ["json-formatting-citation-verifier-prefix", "json-formatting-markdown-corpus-scan"],
+  "compressed_from": [
+    "lib/memory/features/json-formatting/delivery-report.md",
+    "lib/memory/features/json-formatting/index.json",
+    "lib/memory/features/json-formatting/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction.",
+  "archived_inbox_source": ".pan/archive/inbox/in/172983_05-23-26/74280_0322_json-formatting.md",
+  "source_inbox_item": {
+    "path": ".pan/archive/inbox/in/172983_05-23-26/74280_0322_json-formatting.md",
+    "prior_path": "lib/inbox/in/json_formatting.md"
+  }
+}

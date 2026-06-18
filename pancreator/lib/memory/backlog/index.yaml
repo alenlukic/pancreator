@@ -1,0 +1,699 @@
+metadata:
+  schema_version: 1
+  generated_at: "2026-05-30T16:51:24Z"
+  owners: [tech-lead, librarian]
+  source_of_truth: /lib/memory/backlog/index.yaml
+  schema_ref: /lib/memory/handbook/backlog-format.md
+
+items:
+  - id: bootstrap-prd-eng-spec-reconcile
+    title: Reconcile eng-spec.md versus spec.md references in PRD
+    source: bootstrap-chat
+    owner: tech-writer
+    milestone: phase-1
+    status: open
+    priority: high
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /.docs/PRD.md
+      - /lib/memory/adr/0001-backlog-tracking.md
+    evidence: "Bootstrap notes flagged naming drift between eng-spec.md and spec.md mentions."
+    notes: "Resolve canonical term in PRD and update dependent docs."
+
+  - id: bootstrap-content-hash-refresh
+    title: Replace TBD-on-commit citation hashes across seeded artifacts
+    source: lib/memory/adr/0001-backlog-tracking.md
+    owner: librarian
+    milestone: phase-5
+    status: open
+    priority: high
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /lib/memory/adr/0001-backlog-tracking.md
+      - /AGENTS.md
+      - /lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md
+    evidence: "Phase 4 dogfood librarian-stage citation-rot scan empirically observed 501 TBD-on-commit placeholders across the Memory tier as of commit b4332c8. Earlier seeded handbook, persona, and ADR references remain on the same backlog item."
+    notes: "Run one repository-wide pass that recomputes contentHash for every dual-anchor citation against committed file content. Batch with citation-range-realignment-pass to avoid drift and re-runs."
+
+  - id: bootstrap-supervisor-pr-body-shape
+    title: Define supervisor PR-body authoring shape and canonical path
+    source: bootstrap-chat
+    owner: supervisor
+    milestone: phase-1
+    status: open
+    priority: medium
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /lib/personas/supervisor.md
+      - /lib/personas/skills/write-rfc/SKILL.md
+    evidence: "Current bootstrap context requests explicit PR-body structure ownership."
+    notes: "Ratify where PR-body templates live and who maintains them."
+
+  - id: bootstrap-inbox-archive-automation
+    title: Implement explicit inbox archive automation command
+    source: lib/memory/adr/0003-inbox-lifecycle-and-archival.md
+    owner: coder
+    milestone: phase-3
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-25T23:27:00Z"
+    links:
+      - /lib/memory/adr/0003-inbox-lifecycle-and-archival.md
+      - /lib/memory/handbook/inbox-lifecycle.md
+      - /lib/inbox/in/
+      - /.pan/archive/inbox/in/
+    evidence: "ADR-0003 ratifies manual archival now and requires a future runtime/CLI archive mechanism."
+    notes: "Add `pan inbox archive` (or equivalent) that validates responded state and performs deterministic move."
+
+  - id: bootstrap-doc-impact-check-enforcement
+    title: Add automated enforcement for documentation impact checks
+    source: lib/memory/adr/0004-documentation-impact-contract.md
+    owner: coder
+    milestone: phase-3
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-25T23:39:00Z"
+    links:
+      - /lib/memory/adr/0004-documentation-impact-contract.md
+      - /lib/memory/handbook/documentation-impact-contract.md
+      - /AGENTS.md
+    evidence: "ADR-0004 requires per-task documentation-impact decisions; the n=1 harness records them in audit artifacts and operator output rather than commit-time gates."
+    notes: "Revisit only if multi-operator or CI enforcement is required; governed-commit hooks were retired in favor of operator-owned version control."
+
+  - id: bootstrap-artifact-changelog-unification
+    title: Define and implement unified artifact changelog contract
+    source: bootstrap-chat
+    owner: librarian
+    milestone: phase-3
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-26T00:09:00Z"
+    links:
+      - /.docs/PRD.md
+      - /lib/memory/handbook/documentation-impact-contract.md
+      - /lib/memory/handbook/inbox-lifecycle.md
+      - /lib/memory/backlog/index.yaml
+    evidence: "Current artifact-history surfaces are fragmented across run-log, ADRs, feature index, inbox lifecycle, and debt/SME histories; no single unified artifact changelog contract exists."
+    notes: "Author ADR + handbook spec for a cross-artifact changelog model and backlog-track automation/enforcement in a future phase."
+
+  - id: bootstrap-coder-skills-array-hardening
+    title: Harden coder skills array constraints
+    source: bootstrap-chat
+    owner: coder
+    milestone: phase-5
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /lib/personas/coder.md
+      - /lib/memory/handbook/persona-spec.md
+    evidence: "Hardening work is explicitly deferred to a later bootstrap phase."
+    notes: "Enforce stricter skills allowlist and validation behavior in phase-5."
+
+  - id: bootstrap-librarian-stale-adr-alignment
+    title: Align optional stale-ADR invocation clause for librarian
+    source: bootstrap-chat
+    owner: librarian
+    milestone: phase-2
+    status: deferred
+    priority: low
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /lib/personas/librarian.md
+      - /lib/memory/adr/0001-backlog-tracking.md
+    evidence: "Optional invocation clause remains unratified and requires wording alignment."
+    notes: "Keep deferred unless review flow requires stale-ADR sweeps earlier."
+
+  - id: bootstrap-colorblind-safe-palette-migration
+    title: Migrate persona color palette to colorblind-safe set
+    source: bootstrap-chat
+    owner: persona-designer
+    milestone: m2
+    status: deferred
+    priority: low
+    opened_at: "2026-04-25T22:55:00Z"
+    links:
+      - /lib/memory/handbook/persona-spec.md
+      - /lib/personas/
+    evidence: "Accessibility follow-up was captured for a future milestone."
+    notes: "Prepare migration plan and update persona color assignments in one batch."
+
+  - id: ratification-q21-ensemble-runtime-comparative-eval
+    title: Run Q21 comparative ensemble-runtime evaluation before M4 lock
+    source: lib/memory/adr/0001-q-ratification.md
+    owner: tech-lead
+    milestone: m4
+    status: deferred
+    priority: high
+    opened_at: "2026-04-26T02:16:00Z"
+    links:
+      - /lib/memory/adr/0001-q-ratification.md
+      - /.docs/PRD.md
+    evidence: "Q21 ratification defers default selection pending comparative quality/cost evaluation of AutoGen, CrewAI, and LangGraph supervisor."
+    notes: "Produce comparative report before M4 scope lock and submit ratification delta for LocalUserAuthorizer review."
+
+  - id: ratification-q17-persona-projection-complete
+    title: Record Q17 persona projection implementation completion
+    source: lib/memory/adr/0001-q-ratification.md
+    owner: tech-lead
+    milestone: phase-1
+    status: done
+    priority: high
+    opened_at: "2026-04-26T05:59:39Z"
+    links:
+      - /.docs/PRD.md
+      - /lib/memory/adr/0001-q-ratification.md
+      - /AGENTS.md
+      - /.cursor/agents/
+    evidence: "Q17 ratified personas as canonical with required Cursor mirror projections, and implementation now includes .cursor/agents mirrors for all current personas."
+    notes: "Backlog item is closed to reflect completed implementation and policy conformance."
+
+  - id: ratification-q22-a2a-default-posture-brief
+    title: Publish Q22 A2A default-posture decision brief
+    source: lib/memory/adr/0001-q-ratification.md
+    owner: tech-lead
+    milestone: m7
+    status: open
+    priority: high
+    opened_at: "2026-04-26T02:16:00Z"
+    links:
+      - /lib/memory/adr/0001-q-ratification.md
+      - /.docs/PRD.md
+    evidence: "Q22 remains open and requires an explicit decision brief on threat model, default exposure posture, and operator UX trade-offs."
+    notes: "Draft decision brief before framework-mode A2A lands; route to LocalUserAuthorizer for final default-posture ratification."
+
+  - id: compliance-tests-automation-wiring
+    title: Automate compliance scheduler and structure-change triggers
+    source: .pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md
+    owner: coder
+    milestone: phase-3
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-26T20:30:00Z"
+    links:
+      - /.pan/archive/work/173009_04-27-26/68576_0457_compliance-tests/plan.md
+      - /lib/memory/features/quality-governance/compliance-tests/manual-runbook.md
+      - /lib/memory/features/quality-governance/compliance-tests/index.json
+    evidence: "Current compliance-tests slice is manual-first and defers default 4-hour scheduler enforcement plus structure-change auto-trigger wiring."
+    notes: "Implement runtime automation that enforces the default 4-hour cadence when no schedule override exists and runs compliance checks on qualifying structure changes."
+
+  - id: migration-script-rename-before-reference-update-bug
+    title: Fix migrate-timestamp-naming rename-before-reference-update ordering
+    source: .pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-write.stderr.log
+    owner: coder
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-04-27T20:25:00Z"
+    delivered_at: "2026-05-25T04:14:00Z"
+    links:
+      - /lib/internal/tools/migrations/migrate-timestamp-naming.mjs
+      - /.pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-write.stderr.log
+      - /lib/memory/adr/0005-timestamp-naming-conventions.md
+    evidence: "Migration writers now apply manifest reference updates before renames, so updates run against manifest-authoritative pre-rename paths and no longer fail with ENOENT during write."
+    notes: "Closed by reordering write flow in lib/internal/tools/migrations/migrate-timestamp-naming.mjs and lib/internal/tools/migrations/migrate-inbox-convention.mjs, then validating with a guarded write and clean post-write dry-runs."
+
+  - id: migration-script-inbox-stem-idempotency-bug
+    title: Make migrate-timestamp-naming inbox stem derivation idempotent
+    source: .pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.post-write.json
+    owner: coder
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-04-27T20:25:00Z"
+    delivered_at: "2026-05-25T04:14:00Z"
+    links:
+      - /lib/internal/tools/migrations/migrate-timestamp-naming.mjs
+      - /.pan/archive/work/173009_04-27-26/18676_1848_timestamp-naming-conventions-migration-write/migration-manifest.post-write.json
+      - /lib/memory/adr/0005-timestamp-naming-conventions.md
+    evidence: "Inbox stem derivation now strips an existing ratified `{SID}_{HHMM}_` (and optional collision counter) prefix before semantic derivation, preventing repeat-prefix writes on reruns."
+    notes: "Closed by prefix-strip handling in migrateTargetForInboxPath and planner stem normalization, then validated by post-write dry-runs reporting zero planned inbox renames."
+
+  - id: policy-compliance-hook-legacy-shape-removal
+    title: Drop legacy two-level path branch from policy-compliance hook
+    source: .pan/archive/work/173009_04-27-26/18990_1843_policy-compliance-hook-three-level-fix/policy-compliance.json
+    owner: coder
+    milestone: phase-5
+    status: done
+    priority: medium
+    opened_at: "2026-04-27T20:25:00Z"
+    delivered_at: "2026-05-10T00:00:00Z"
+    links:
+      - /.cursor/hooks/enforce-policy-compliance.sh
+      - /lib/memory/adr/0005-timestamp-naming-conventions.md
+      - /.pan/archive/work/173009_04-27-26/18990_1843_policy-compliance-hook-three-level-fix/policy-compliance.json
+      - /.pan/archive/work/172996_05-10-26/14989_1950_compliance-auditor-structural-audit/compliance-audit.md
+    evidence: "Commit d1d68d2 temporarily admitted both the legacy .pan/work/<task>/policy-compliance.json shape and the ADR-0005 .pan/work/<day>/<task>/policy-compliance.json shape. The compliance-auditor structural audit removed the legacy two-level regex branch and updated the denial message to require .pan/work/<day>/<task-id>/policy-compliance.json."
+    notes: "Closed by the compliance-auditor structural audit patch. The repo-structure test now rejects the legacy two-level hook regex and stale two-level work placeholders in live normative surfaces."
+
+  - id: citation-range-realignment-pass
+    title: Realign 19 off-by-one dual-anchor citation ranges across the corpus
+    source: lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md
+    owner: librarian
+    milestone: phase-5
+    status: open
+    priority: medium
+    opened_at: "2026-04-27T20:25:00Z"
+    links:
+      - /lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md
+      - /lib/memory/handbook/contract-style.md
+    evidence: "Phase 4 dogfood librarian-stage citation-rot scan flagged 19 warn-severity off-by-one citation ranges across compliance-tests artifacts, the bootstrap-phase-0a-closure delivery report, the documentation-impact-contract handbook page, the compliance-auditor persona and Cursor mirror, and the timestamp-naming-conventions delivery-report and review."
+    notes: "Realignment is deterministic maintenance under the repo-wide operating rules in AGENTS.md and SHOULD batch with bootstrap-content-hash-refresh to avoid double-scan churn."
+
+  - id: spec-contract-runner-panel-wiring
+    title: Wire Spec Contract runner panel for end-to-end contract execution
+    source: lib/memory/features/timestamp-naming-conventions/contracts/
+    owner: tech-lead
+    milestone: phase-5
+    status: open
+    priority: high
+    opened_at: "2026-04-27T20:25:00Z"
+    links:
+      - /lib/internal/packages/@pancreator/contract-runner-rego/
+      - /lib/internal/packages/@pancreator/contract-runner-llm-judge/
+      - /lib/memory/handbook/contract-format.md
+      - /lib/memory/features/timestamp-naming-conventions/contracts/
+    evidence: "Phase 3 and Phase 4 slice policy-compliance.json artifacts repeatedly record a 'spec-contract-runner-not-wired' deferral; Spec Contracts ship structurally but cannot execute end-to-end without a runner panel."
+    notes: "Wire contract-runner-rego (structural) and contract-runner-llm-judge (qualitative) into a single panel and reserve the runner adapter against the wrapper schema. First dogfood is the timestamp-naming-conventions contracts."
+
+  - id: bootstrap-external-observability-phoenix-langfuse
+    title: Wire run.log.jsonl into Phoenix or Langfuse for dogfood ratification
+    source: .docs/BOOTSTRAP.md
+    owner: coder
+    milestone: m2
+    status: deferred
+    priority: medium
+    opened_at: "2026-04-27T20:25:00Z"
+    links:
+      - /.docs/BOOTSTRAP.md
+      - /lib/memory/handbook/run-log-schema.md
+      - /lib/internal/packages/@pancreator/run-log/
+    evidence: ".docs/BOOTSTRAP.md Phase 4 names a clean run-log trace in Phoenix or Langfuse as part of the Phase-4 dogfood exit criterion. Operator deferred external observability to M2 during Phase 3 exit ratification."
+    notes: "Wire run.log.jsonl emission into Phoenix or Langfuse and re-run the timestamp-naming-conventions dogfood as the ratification trace. Track alongside M2 contract-corpus work."
+
+  - id: bootstrap-pause-resume-dogfood-exercise
+    title: Empirically exercise pan pause/resume/abort against a feature dogfood
+    source: .docs/BOOTSTRAP.md
+    owner: coder
+    milestone: phase-5
+    status: open
+    priority: medium
+    opened_at: "2026-04-27T20:25:00Z"
+    links:
+      - /.docs/BOOTSTRAP.md
+      - /lib/internal/packages/@pancreator/intervention/
+      - /lib/internal/packages/@pancreator/cli/
+    evidence: ".docs/BOOTSTRAP.md Phase 4 calls for manually exercising pan pause mid-implement, pan resume, and pan abort on a second feature-delivery run. The Phase 4 dogfood used direct subagent delegation rather than runtime persona dispatch, so in-flight pause and resume against a real feature is not yet exercised empirically."
+    notes: "Land runtime persona dispatch first; rerun the dogfood with pause-resume-abort scripted; persist the trace as the ratification artifact."
+
+  - id: timestamp-naming-post-2500-rollover-rule
+    title: Ratify post-2500 days-to-FDS rollover successor rule
+    source: lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
+    owner: tech-lead
+    milestone: m7
+    status: deferred
+    priority: low
+    opened_at: "2026-04-27T20:25:00Z"
+    links:
+      - /lib/memory/features/quality-governance/timestamp-naming-conventions/index.json
+      - /lib/memory/adr/0005-timestamp-naming-conventions.md
+      - /lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
+      - /lib/internal/tools/migrations/migrate-timestamp-naming.mjs
+    evidence: "Operator deferred the days-to-FDS=000000 rollover rule during round-1 intake clarifications with the rationale that the boundary is unlikely to surface in practice. Migration script daysToFds helper currently throws FDS_PLUS_ONE as a fail-loud guard for any timestamp at or beyond 2500-01-01T00:00:00Z."
+    notes: "Ratify a successor rule at least one calendar year before 2500-01-01T00:00:00Z. Until then the fail-loud guard is the contract."
+
+  - id: handbook-index-decisions-family-route
+    title: Add Decisions family route to handbook index for ADR routing
+    source: lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md
+    owner: librarian
+    milestone: phase-5
+    status: open
+    priority: low
+    opened_at: "2026-04-27T20:25:00Z"
+    links:
+      - /lib/memory/handbook/index.md
+      - /lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md
+      - /lib/memory/adr/0005-timestamp-naming-conventions.md
+    evidence: "Phase 4 dogfood librarian-stage citation-rot scan flagged that lib/memory/handbook/index.md exposes no Decisions family route for ADR-style entries, and ADR 0005 was authored without a corresponding handbook routing entry."
+    notes: "Author a Decisions family route in lib/memory/handbook/index.md before the next ADR ships; backfill ADR 0001 through 0005 in the same change."
+
+  - id: librarian-backlog-promotion-duty
+    title: Add backlog-promotion duty to librarian persona scope
+    source: .pan/archive/work/173009_04-27-26/12905_2024_backlog-curation-post-phase-4-dogfood/policy-compliance.json
+    owner: persona-designer
+    milestone: phase-5
+    status: open
+    priority: medium
+    opened_at: "2026-04-27T20:25:00Z"
+    links:
+      - /lib/personas/librarian.md
+      - /.cursor/agents/librarian.md
+      - /lib/memory/handbook/inbox-lifecycle.md
+      - /lib/memory/backlog/index.yaml
+    evidence: "Phase 4 dogfood revealed that deferrals recorded inside policy-compliance.json deferred_items[] and per-feature index.json open_followups[] were never promoted into /lib/memory/backlog/index.yaml. The librarian's index-stage scope included citation-rot scans but did not include backlog-promotion, so 10 deferrals accumulated unbacklogged across Phase 3 and Phase 4."
+    notes: "Update the librarian persona spec (and Cursor mirror) to require backlog-parity scans on every index-stage run, with explicit promotion rules for policy-compliance deferred_items and feature index open_followups. Treat this as a process gate before the next feature-delivery run."
+
+  - id: cursor-token-economy-persona-designer-glob-review
+    title: Ratify narrowing persona-designer Cursor rule globs after mirror review
+    source: .pan/archive/work/172997_05-09-26/50909_1000_cursor-token-economy/rule-audit.md
+    owner: persona-designer
+    milestone: phase-1
+    status: open
+    priority: medium
+    opened_at: "2026-05-09T12:00:00Z"
+    links:
+      - /.cursor/rules/persona-designer.mdc
+      - /lib/personas/persona-designer.md
+      - /lib/memory/features/memory-context/cursor-token-economy/index.json
+    evidence: "Context-economy rule audit deferred narrowing persona-designer.mdc because it spans persona specs and Cursor mirrors."
+    notes: "If glob tightening is desired, update persona spec and .mdc together with explicit human ratification."
+
+  - id: cursor-token-economy-cursorignore-future-slice
+    title: Evaluate root .cursorignore after proving explicit-read access for excluded paths
+    source: lib/memory/features/memory-context/cursor-token-economy/index.json
+    owner: tech-lead
+    milestone: phase-2
+    status: open
+    priority: low
+    opened_at: "2026-05-09T12:00:00Z"
+    links:
+      - /lib/memory/handbook/context-economy.md
+      - /.cursorindexingignore
+    evidence: "Engineering Spec lists .cursorignore as out of scope until explicit-read guarantees exist."
+    notes: "Ship a follow-up slice that proves @-attachment and editor reads still reach every excluded path before adding .cursorignore rules."
+
+  - id: active-memory-physical-tier-migration
+    title: Plan safe physical migration for memory and work tiers
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+    owner: tech-lead
+    milestone: phase-2
+    status: deferred
+    priority: high
+    opened_at: "2026-05-09T22:55:00Z"
+    links:
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+      - /.pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
+      - /lib/memory/adr/0005-timestamp-naming-conventions.md
+    evidence: "Pass-2 plan confirms physical migration of .pan/work/** and existing lib/memory/** requires shims, tests, manifest, reference updates, and rollback notes."
+    notes: "Prepare a dedicated migration slice before moving any historical path."
+
+  - id: active-memory-budget-warning-tool
+    title: Add active-memory soft-budget warning tooling
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+    owner: coder
+    milestone: phase-2
+    status: deferred
+    priority: medium
+    opened_at: "2026-05-09T22:55:00Z"
+    links:
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+      - /lib/internal/tools/context/context-budget-report.mjs
+      - /lib/memory/active/
+    evidence: "Pass-2 plan ships documented active-memory budgets and tier reporting while deferring executable threshold warnings."
+    notes: "Extend the budget report or add a small checker that warns when any active-memory file exceeds 1000 words or the tier exceeds 5000 words."
+
+  - id: active-memory-rule-glob-ratification
+    title: Ratify any unsafe Cursor rule glob narrowing
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+    owner: persona-designer
+    milestone: phase-1
+    status: deferred
+    priority: medium
+    opened_at: "2026-05-09T22:55:00Z"
+    links:
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+      - /.cursor/rules/persona-designer.mdc
+      - /.cursor/rules/pancreator-engineer.mdc
+      - /.pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
+      - /.pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/rule-audit.md
+    evidence: "Implement pass 2 narrowed six mirrored Cursor rule files per rule-audit.md; supervisor.mdc stayed unchanged after audit. This backlog item remains the ratification umbrella when a rule owner must still approve a proposed glob or when mirror parity risk is not closed in review."
+    notes: "Close this item only after persona-designer (or delegate) records explicit ratification for any rule the audit flagged, or after review confirms no remaining activation-risk gap."
+
+  - id: cursor-token-economy-shipped
+    title: Cursor token economy and default context budget pass 1 delivered
+    source: lib/memory/features/memory-context/cursor-token-economy/index.json
+    owner: librarian
+    milestone: phase-1
+    status: done
+    priority: high
+    opened_at: "2026-05-10T03:16:00Z"
+    delivered_at: "2026-05-10T03:16:00Z"
+    links:
+      - /lib/memory/features/memory-context/cursor-token-economy/index.json
+      - /lib/memory/features/memory-context/cursor-token-economy/index.json
+      - /lib/memory/features/memory-context/cursor-token-economy/index.json
+      - /lib/inbox/out/172991_05-15-26/50909_1005_cursor-token-economy-delivery-report.md
+      - /.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy.md
+    evidence: "Pass-1 shipped under operator override authority. Initial Cursor token-economy pass landed .cursorindexingignore, .docs/PRD.summary.md plus .docs/PRD.index.md, the first context-economy handbook page, the context-budget-report tool, and a first round of Cursor rule narrowing. Pre-existing review verdict was approve and the delivery report was staged to lib/inbox/out/ on 2026-05-09. The feature index sat at pipeline_state awaiting_supervisor until this close-out because runtime ship-stage wiring was not yet implemented in the current AGENTS/OPERATION contract."
+    notes: "Closed in the same operator session that shipped pass-2 because pass-2 extends pass-1 deferred scope (extends_relationship: extends-deferred-scope per lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json)."
+
+  - id: active-memory-context-economy-pass-2-shipped
+    title: Active memory separation and Cursor context economy pass 2 delivered
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+    owner: librarian
+    milestone: phase-1
+    status: done
+    priority: high
+    opened_at: "2026-05-10T03:02:00Z"
+    delivered_at: "2026-05-10T03:02:00Z"
+    links:
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+      - /lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+      - /lib/memory/adr/0006-active-vs-archival-memory.md
+      - /lib/inbox/out/172991_05-15-26/81300_0125_active-memory-context-economy-pass-2-delivery-report.md
+      - /.pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
+    evidence: "Feature shipped under operator override authority. Active-memory tier created, ADR-0006 promoted, AGENTS.md slimmed (1458 to 1178 raw words; 900 prose-only), six Cursor rules narrowed, .cursorindexingignore aligned with the new tier model, context-budget reporter emits the seven tier groups, all six verification gates green, reviewer verdict approve at 20 pass / 0 concern / 0 fail across acceptance criteria, delivery report staged to lib/inbox/out/, inbound source archived to .pan/archive/inbox/in/."
+    notes: "Operator manually executed the librarian post_run actions because runtime feature-delivery ship/index automation was not yet implemented at delivery time. Active-memory rotation also performed under operator override; see follow-up backlog item active-memory-post-ship-ownership for the underlying ownership gap."
+
+  - id: active-memory-post-ship-ownership
+    title: Define owner for lib/memory/active/** post-ship rotation
+    source: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
+    owner: persona-designer
+    milestone: phase-1
+    status: open
+    priority: medium
+    opened_at: "2026-05-10T03:02:00Z"
+    links:
+      - /lib/memory/active/current.md
+      - /lib/memory/active/runs.md
+      - /lib/personas/librarian.md
+      - /lib/memory/handbook/inbox-lifecycle.md
+      - /.docs/PRD.md
+    evidence: "The active-memory tier landed in pass-2 without naming an owner for post-ship rotation. Librarian's write scope explicitly excludes lib/memory/active/** per lib/personas/librarian.md lines 117 to 120, and the PRD \u00a77 feature-delivery post_run block does not contain an active-memory rotation action. The pass-2 ship cycle therefore required operator override to keep the tier from going stale immediately after the first Feature shipped."
+    notes: "Pick one of: extend librarian write scope plus add a fourth post_run action rotate_active_memory; add a manual operator step to lib/memory/handbook/inbox-lifecycle.md \u00a73; or assign tech-lead an explicit rotation obligation at the start of each plan stage. Inbox-lifecycle handbook update is the lowest-risk first move while runtime remains unwired."
+
+  - id: pancreator-config-schema-validation
+    title: Validate project_root and bootstrap tracking in config loader
+    source: pancreator.yaml
+    owner: coder
+    milestone: phase-4
+    status: open
+    priority: medium
+    opened_at: "2026-05-10T13:15:00Z"
+    links:
+      - /pancreator.yaml
+      - /lib/memory/handbook/pancreator-config.md
+      - /lib/internal/packages/@pancreator/policy/lib/config-v1.ts
+      - /lib/personas/adopter.md
+      - /lib/personas/skills/adopt-existing-repo/SKILL.md
+    evidence: "The config now records project_root and live bootstrap tracking, and the policy upgrade helper preserves those fields. Runtime validation should still reject empty project roots, malformed phase states, and paths that resolve outside the operator-approved boundary."
+    notes: "Add schema-level validation when @pancreator/policy grows its Conftest/Rego-backed config loader. Adoption should set project_root during init/adopt after human ratification or in config-write mode."
+
+  - id: json-formatting-shipped
+    title: Canonical JSON formatting policy delivered
+    source: lib/memory/features/quality-governance/json-formatting/index.json
+    owner: librarian
+    milestone: phase-4
+    status: done
+    priority: high
+    opened_at: "2026-05-24T00:00:00Z"
+    delivered_at: "2026-05-24T00:00:00Z"
+    links:
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/internal/tools/format/canonical-json-format.mjs
+      - /lib/internal/tools/migrations/migrate-json-formatting.mjs
+      - /.pan/work/172983_05-23-26/67055_0522_json-formatting/review.md
+    evidence: "Feature shipped canonical JSON formatting across Round-02 R1 surfaces: repository .json, Markdown-embedded JSON, pan terminal/CLI output, and agent-chat JSON sketches. Shared formatter module, CLI emitters, compliance descriptor, glossary alignment, and migration idempotency evidence (candidates=144, wouldRewrite=0, two write passes each files rewritten=0) all passed review verdict pass with 71/71 tests green."
+    notes: "Deferred companion work tracked as json-formatting-citation-verifier-prefix and json-formatting-markdown-corpus-scan. Work directory remains under .pan/work/ until complete-stage close-artifacts runs."
+
+  - id: json-formatting-citation-verifier-prefix
+    title: Update citation verifier for abbreviated contentHash prefix comparison
+    source: lib/memory/features/quality-governance/json-formatting/index.json
+    owner: tech-lead
+    milestone: phase-5
+    status: open
+    priority: medium
+    opened_at: "2026-05-23T00:00:00Z"
+    links:
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/internal/tools/migrations/migrate-json-formatting.mjs
+      - /lib/memory/handbook/glossary.md
+    evidence: "json-formatting shipped abbreviated contentHash storage in JSON and Markdown surfaces, and spec Deferrals explicitly defers verifier prefix comparison to a companion feature. The feature index already listed this id under deferred_companion_features, but the phase-4 deferral promotion gap left it untracked in backlog."
+    notes: "Verifier MUST compare abbreviated SHA-256 prefixes against stored citation values and MUST NOT regress full-digest verification paths for out-of-scope artifacts until migration completes. Batch with bootstrap-content-hash-refresh where practical."
+
+  - id: json-formatting-markdown-corpus-scan
+    title: Repo-wide Markdown dual-anchor citation layout compliance pass
+    source: lib/memory/features/quality-governance/json-formatting/index.json
+    owner: pancreator-engineer
+    milestone: phase-5
+    status: open
+    priority: medium
+    opened_at: "2026-05-23T00:00:00Z"
+    links:
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/memory/features/quality-governance/json-formatting/index.json
+      - /lib/internal/tools/format/canonical-json-format.mjs
+      - /lib/internal/tools/format/reformat-markdown-citations.mjs
+      - /tests/migrate-json-formatting.test.mjs
+      - /lib/memory/handbook/glossary.md
+    evidence: "json-formatting R1 policy covers Markdown-embedded JSON across handbook, inbox threads, work-stage markdown, and delivery reports. The slice reformatted feature delivery reports and tech-writer conformance, while tests currently scan delivery reports and tech-writer only."
+    notes: "Extend markdown citation compliance scan (or add scan-markdown-json-citations.mjs) to cover configured globs and run reformat-markdown-citations.mjs (or equivalent) for violations, with allowlisted normative anti-pattern examples only. Surfaces still out of current automated scan scope include lib/memory/handbook/**, lib/inbox/threads/**, .docs/**, other personas, and archived work markdown. SHOULD batch with bootstrap-content-hash-refresh and citation-range-realignment-pass to avoid triple corpus churn."
+
+  - id: chat-with-persona-pipeline-runtime
+    title: Implement chat-with-persona pipeline runtime and pan chat (US-2)
+    source: .docs/PRD.md
+    owner: coder
+    milestone: m2
+    status: deferred
+    priority: medium
+    opened_at: "2026-05-27T00:00:00Z"
+    links:
+      - /.docs/PRD.md
+      - /lib/memory/backlog/index.yaml
+    evidence: "Operator scope trim 2026-05-27 removed chat-with-persona from the M1 path. Lean pass 2026-06-15 removed the lib/pipelines/chat-with-persona.yaml skeleton; the runtime is tracked here as a pure backlog idea until US-2 lights up."
+    notes: "Wire pan chat, /lib/inbox/threads/<thread-id>/ persistence, and /end --emit artifact promotion when US-2 lights up at M2. Author lib/pipelines/chat-with-persona.yaml fresh at that point rather than carrying a loadable skeleton in the meantime."
+
+  - id: m1-substrate-runtime-batch
+    title: M1 substrate runtime batch — superseded intake skeleton (relocated from features)
+    source: lib/memory/backlog/drafts/m1-substrate-runtime-batch.md
+    owner: tech-lead
+    milestone: m1
+    status: cancelled
+    priority: low
+    opened_at: "2026-05-27T19:30:00Z"
+    links:
+      - /lib/memory/backlog/drafts/m1-substrate-runtime-batch.md
+      - /lib/memory/features/m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo/
+    evidence: "Intake skeleton relocated to backlog; implementation shipped under m1-substrate-runtime-batch-harness-loop-install-paths-library-mode-phoenix-confo."
+    notes: "Draft preserved at lib/memory/backlog/drafts/m1-substrate-runtime-batch.md. Library-distribution scope from this draft is deferred to milestone M9."
+
+  - id: bootstrap-ci-narrow-paths-re-enable
+    title: Re-enable GitHub Actions CI when runtime stabilizes
+    source: lib/memory/features/bootstrap-repo-ops/bootstrap-de-hacking-pass-simplify-ops-docs-and-memory-layout/index.json
+    owner: pancreator-engineer
+    milestone: phase-5
+    status: cancelled
+    priority: low
+    opened_at: "2026-05-27T19:30:00Z"
+    links:
+      - /OPERATION.md
+      - /lib/personas/qa-tester.md
+      - /lib/personas/librarian.md
+    evidence: "GitHub workflow files under .github/workflows/ were removed; qa-tester and OPERATION.md librarian pre-close validation cover the former CI gate locally."
+    notes: "Reintroduce .github/workflows/ only when unattended push/PR validation is worth the latency cost."
+
+  - id: bootstrap-us7-tech-debt-scan
+    title: US-7 tech-debt-scan pipeline and groomer backlog integration
+    source: .docs/PRD.md
+    owner: groomer
+    milestone: m3
+    status: deferred
+    priority: medium
+    opened_at: "2026-05-27T19:30:00Z"
+    tags: [debt]
+    links:
+      - /.docs/PRD.md
+      - /lib/memory/backlog/index.yaml
+      - /lib/memory/handbook/backlog-format.md
+    evidence: "PRD US-7 defines tech-debt-scan; debt tracking consolidated into backlog items with tags: [debt]."
+    notes: "Implement cron pipeline and groomer persona when M3 lights up; no lib/memory/debt/ tree."
+
+  - id: examples-apps-deferred
+    title: Optional examples/ apps for US-8, US-9, and MCP conformance proofs
+    source: .docs/PRD.md
+    owner: tech-lead
+    milestone: m9
+    status: deferred
+    priority: low
+    opened_at: "2026-05-27T00:00:00Z"
+    links:
+      - /.docs/PRD.md
+      - /.docs/BOOTSTRAP.md
+      - /lib/memory/backlog/index.yaml
+    evidence: "Operator scope trim 2026-05-27 removed standalone examples/ apps from the M1 path as low signal. M1 US-8 proof remains package-boundary enforcement and CI conformance; library-distribution examples are deferred to M9."
+    notes: "Candidate paths when revived: examples/greenfield-react-app/, examples/existing-monorepo/, examples/library-script/, examples/library-mcp-driven/. Treat this as M9 work, not an M1 or M2 routing surface."
+
+  - id: repository-layout-restructure-and-archive-migration-shipped
+    title: Repository layout restructure and archive migration delivered
+    source: lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json
+    owner: librarian
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-05-30T05:49:00Z"
+    delivered_at: "2026-05-30T07:00:00Z"
+    links:
+      - /lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json
+      - /lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json
+      - /lib/memory/features/bootstrap-repo-ops/repository-layout-restructure-and-archive-migration/index.json
+    evidence: "One-shot migration consolidated archives under .pan/archive/, active work under .pan/work/, and source under lib/; retired agent tier variants; validation gates green per delivery-report.md and test-report.md."
+    notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure."
+
+  - id: bootstrap-phase-5-m1-exit-close-docs-bootstrap-shipped
+    title: Bootstrap Phase 5 M1 exit close docs bootstrap delivered
+    source: lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
+    owner: librarian
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-05-30T16:13:35Z"
+    delivered_at: "2026-05-30T16:53:12Z"
+    links:
+      - /lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
+      - /lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
+      - /lib/memory/features/bootstrap-repo-ops/bootstrap-phase-5-m1-exit-close-docs-bootstrap/index.json
+      - /lib/internal/tools/checks/evaluate-greenfield-evidence.mjs
+      - /lib/pipelines/knowledge-curation.yaml
+    evidence: "Feature shipped WP1 greenfield evidence kit, deterministic evaluator, WP2 knowledge-curation cron-seed guidance, and WP3 KPI baseline evidence; review and qa gates passed per delivery-report.md; WP5 state-transition docs intentionally deferred per plan decision D4."
+    notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure. Deferred follow-ons tracked in index.json open_followups and policy-compliance.json deferred_items."
+
+  - id: embedded-harness-install-project-root-pancreator-and-fresh-install-manifest-shipped
+    title: Embedded harness install — project_root .pancreator and fresh-install manifest delivered
+    source: lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
+    owner: librarian
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-05-30T20:20:56Z"
+    delivered_at: "2026-05-30T21:05:00Z"
+    links:
+      - /lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-harness-install-project-root-pancreator-and-fresh-install-manifest/index.json
+      - /lib/internal/packages/@pancreator/core/src/project-root.ts
+      - /lib/memory/handbook/embedded-install-manifest.yaml
+    evidence: "Feature shipped shared project-root resolver, CLI path prefixing, embedded pan init scaffold, allow/deny manifest, US-9 kit updates, and regression tests; review and qa gates passed per delivery-report.md."
+    notes: "Feature index emitted at index stage; operator runs pan advance then close-artifacts for archival closure. Ten stale spec citations flagged for bootstrap-content-hash-refresh follow-up."
+
+  - id: embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs-shipped
+    title: Embedded install — cursor agent sync, init content seeding, and inbox path bugs delivered
+    source: lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
+    owner: librarian
+    milestone: phase-5
+    status: done
+    priority: high
+    opened_at: "2026-05-31T03:47:56Z"
+    delivered_at: "2026-05-31T04:30:00Z"
+    links:
+      - /lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
+      - /lib/memory/features/bootstrap-repo-ops/embedded-install-cursor-agent-sync-init-content-seeding-and-inbox-path-bugs/index.json
+      - /lib/internal/packages/@pancreator/cli/src/cursor-sync.ts
+      - /lib/internal/packages/@pancreator/cli/src/pan-init.ts
+    evidence: "Feature shipped pan cursor-sync CLI verb, embedded init persona/handbook seeding with post-init sync, project_root inbox path fixes, embedded SDK default, and operator docs; review and qa gates passed per delivery-report.md and test-report.md."
+    notes: "Feature index emitted at index stage; archival closure complete. AC2 and AC8 xeremia manual smokes passed 2026-05-31 per xeremia-ac8-smoke-evidence.json and bootstrap-phase-5-m1-exit-close-docs-bootstrap index."

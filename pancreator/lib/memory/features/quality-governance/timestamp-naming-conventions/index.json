@@ -1,0 +1,45 @@
+{
+  "feature_id": "timestamp-naming-conventions",
+  "title": "Timestamp naming conventions",
+  "category": "quality-governance",
+  "status": "intake-closed",
+  "current_stage": "delivered",
+  "summary": "The Feature defines a UTC-only naming policy for in-scope temporal artifacts, migrates existing paths with a dry-run-first workflow, and rewrites references that name migrated paths. It also updates lib/memory/handbook/inbox-lifecycle.md so human-generated inbox artifacts use the same two time-prefix segments before…",
+  "planning_context": [
+    "handoff.handoff_note: When the migration-write follow-up starts, the tech-lead MUST plan an implement task that preserves the dry-run manifest and requires PANCREATOR_MIGRATION_GO=1 before any rename write occurs.",
+    "handoff.decision: index-complete",
+    "handoff.verdict: pass-with-conditions",
+    "review.verdict: pass-with-conditions"
+  ],
+  "implementation_surfaces": [
+    "tests/compliance/timestamp-naming-conventions.yaml",
+    "lib/internal/tools/migrations/migrate-timestamp-naming.mjs",
+    "tests/migrate-timestamp-naming.test.mjs"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass-with-conditions",
+        "block_findings": 0
+      }
+    }
+  ],
+  "open_followups": ["migration-write", "contenthash-mix", "runner-not-wired", "post-2500-rollover"],
+  "retained_artifacts": [
+    "contracts/.gitkeep",
+    "contracts/timestamp-naming.migration-precedence.yaml",
+    "contracts/timestamp-naming.policy-descriptor.yaml",
+    "contracts/timestamp-naming.reference-update-audit.yaml"
+  ],
+  "compressed_from": [
+    "lib/memory/features/timestamp-naming-conventions/citation-rot-scan.md",
+    "lib/memory/features/timestamp-naming-conventions/contracts/.gitkeep",
+    "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.migration-precedence.yaml",
+    "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.policy-descriptor.yaml",
+    "lib/memory/features/timestamp-naming-conventions/contracts/timestamp-naming.reference-update-audit.yaml",
+    "lib/memory/features/timestamp-naming-conventions/delivery-report.md",
+    "lib/memory/features/timestamp-naming-conventions/index.json",
+    "lib/memory/features/timestamp-naming-conventions/spec.md"
+  ],
+  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
+}
