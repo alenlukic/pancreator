@@ -54,7 +54,7 @@ Use `N/A` as the value when a field has no content. Do not omit the field.
 
 ## 2 — Canonical Markdown shape
 
-```markdown
+````markdown
 ✅ **Action status:** Success | Partial Success | Fail
 
 🧾 **Brief summary:** <one to three sentences>
@@ -74,7 +74,7 @@ Use `N/A` as the value when a field has no content. Do not omit the field.
   ```text
   /persona-name <exact prompt>
   ```
-```
+````
 
 Agents MAY add short supporting sections before this block only when the operator
 needs context to interpret the result. The canonical fields above MUST remain
