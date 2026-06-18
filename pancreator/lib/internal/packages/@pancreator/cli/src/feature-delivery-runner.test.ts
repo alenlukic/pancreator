@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { copyFile, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -389,6 +390,38 @@ describe("feature-delivery-runner automation", () => {
       complianceRel,
     );
     expect(resolved).toBe("compliance_spot_fix");
+  });
+
+  it("resolveComplianceStageAdvanceEvent reads compliance artifacts under project_root", async () => {
+    const harness = await mkdtemp(path.join(os.tmpdir(), "pan-runner-nested-compliance-"));
+    const project = path.join(harness, "pancreator");
+    await mkdir(project, { recursive: true });
+    await writeFile(path.join(project, "pancreator.yaml"), 'project_root: "pancreator"\n', "utf8");
+    const state = sampleLedger({ currentStage: "compliance" });
+    const complianceRel = path.posix.join(state.artifacts.runDir, "compliance-result.json");
+    const complianceAbs = path.join(project, ...complianceRel.split("/"));
+    await mkdir(path.dirname(complianceAbs), { recursive: true });
+    await writeFile(
+      complianceAbs,
+      stringifyCompactJson({
+        compliance_passes: true,
+        final_gate: {
+          "pnpm lint": 0,
+          "pnpm typecheck": 0,
+          "pnpm test": 0,
+        },
+      }),
+      "utf8",
+    );
+
+    const resolved = await resolveComplianceStageAdvanceEvent(
+      harness,
+      state,
+      "compliance_passes",
+      complianceRel,
+    );
+    expect(resolved).toBe("compliance_passes");
+    expect(existsSync(path.join(harness, ".pan"))).toBe(false);
   });
 
   it("prepareStageInvocationIndexForSdkEntry tracks per-stage visit counts independently", () => {

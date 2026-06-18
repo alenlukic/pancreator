@@ -1,4 +1,4 @@
-import { asTaskId, resolveRepoPath } from "@pancreator/core";
+import { asTaskId, projectRootAbs, resolveRepoPath } from "@pancreator/core";
 import { stringifyCliJson } from "./canonical-json-io.js";
 import {
   compilePipeline,
@@ -283,7 +283,7 @@ function createCursorRunner(
   return new CursorRunner({
     invocation,
     repoRoot,
-    cwd: repoRoot,
+    cwd: projectRootAbs(repoRoot),
     apiKey: process.env.CURSOR_API_KEY,
     sdkTransport: testHooks?.sdkTransport,
     appendEscalationLog: async (record) => {
@@ -808,7 +808,7 @@ async function remediateStageArtifacts(input: {
       stagePromptPath: input.stagePromptPath,
       requiredArtifactPaths: input.requiredArtifactPaths,
     });
-    const remediationAbs = path.join(input.repoRoot, remediationPromptRel);
+    const remediationAbs = resolveRepoPath(input.repoRoot, remediationPromptRel);
     await mkdir(path.dirname(remediationAbs), { recursive: true });
     await writeFile(remediationAbs, remediationBody, "utf8");
 
@@ -843,7 +843,7 @@ async function remediateStageArtifacts(input: {
     });
 
     await appendRunLogRecord(
-      path.join(input.repoRoot, input.state.artifacts.runLogFile),
+      resolveRepoPath(input.repoRoot, input.state.artifacts.runLogFile),
       runLogRecordFromRunnerEnvelope(envelope, input.state, input.now),
     );
 
@@ -942,7 +942,7 @@ export async function writeRetryLimitHaltArtifact(input: {
   const dayBucket = makeDayDir(input.now);
   const basename = makeOutboxBasename(input.now, "feature-delivery-retry-halt");
   const rel = path.posix.join("lib", "inbox", "out", dayBucket, `${basename}.md`);
-  const abs = path.join(input.repoRoot, rel);
+  const abs = resolveRepoPath(input.repoRoot, rel);
   await mkdir(path.dirname(abs), { recursive: true });
   const body = [
     "---",
@@ -1040,7 +1040,7 @@ export async function trySdkAutoChainAfterStageWork(input: {
   };
   if (input.completedStageId === "review") {
     const reviewRel = path.posix.join(runDir, "review.md");
-    const reviewAbs = path.join(input.repoRoot, reviewRel);
+    const reviewAbs = resolveRepoPath(input.repoRoot, reviewRel);
     if (!existsSync(reviewAbs)) {
       return false;
     }
@@ -1067,7 +1067,7 @@ export async function trySdkAutoChainAfterStageWork(input: {
 
   if (input.completedStageId === "test") {
     const testRel = path.posix.join(runDir, "test-report.md");
-    const testAbs = path.join(input.repoRoot, testRel);
+    const testAbs = resolveRepoPath(input.repoRoot, testRel);
     if (!existsSync(testAbs)) {
       return false;
     }
@@ -1075,7 +1075,7 @@ export async function trySdkAutoChainAfterStageWork(input: {
     let designContent: string | undefined;
     if (designStepsEnabled(input.state.options)) {
       const designRel = designQaReportRel(runDir);
-      const designAbs = path.join(input.repoRoot, designRel);
+      const designAbs = resolveRepoPath(input.repoRoot, designRel);
       if (!existsSync(designAbs)) {
         return false;
       }
@@ -1107,7 +1107,7 @@ export async function trySdkAutoChainAfterStageWork(input: {
     input.pipeline.stages.some((stage) => stage.id === "compliance")
   ) {
     const complianceRel = path.posix.join(runDir, "compliance-result.json");
-    const complianceAbs = path.join(input.repoRoot, complianceRel);
+    const complianceAbs = resolveRepoPath(input.repoRoot, complianceRel);
     if (!existsSync(complianceAbs)) {
       return false;
     }

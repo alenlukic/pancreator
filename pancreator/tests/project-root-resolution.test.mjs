@@ -47,6 +47,13 @@ test("resolveRepoPath keeps harness-root pancreator.yaml", async () => {
   assert.equal(resolveRepoPath(harness, ".pan/work/day/task/state.json"), path.join(harness, ".pan/work", "day", "task", "state.json"));
 });
 
+test("resolveProjectPath nests .pan under project_root pancreator", () => {
+  assert.equal(
+    resolveProjectPath(REPO_ROOT, ".pan", "work"),
+    path.join(REPO_ROOT, "pancreator", ".pan", "work"),
+  );
+});
+
 test("resolveDeliveryOperatingCardRel returns AGENTS.md on self-host", () => {
   assert.equal(resolveDeliveryOperatingCardRel(REPO_ROOT), "AGENTS.md");
 });

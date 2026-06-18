@@ -1,5 +1,5 @@
 import type React from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CommandCenterSurface } from "./CommandCenterSurface";
 import { stringifyCompactJson } from "@/lib/json-io";
@@ -130,11 +130,19 @@ function mockCommandCenterFetch(options: {
   runState?: unknown[];
   runStateOk?: boolean;
   shippedOutcomes?: unknown[];
+  reconciliationErrors?: Record<string, string>;
 } = {}) {
+  let callCount = 0;
   return vi.spyOn(global, "fetch").mockImplementation(async (input) => {
     const url = String(input);
     if (url.includes("/api/run-state")) {
-      if (options.runStateOk === false) {
+      callCount += 1;
+      if (options.runStateOk === false && callCount > 1) {
+        return new Response(stringifyCompactJson({ error: "run-state unavailable" }), {
+          status: 500,
+        });
+      }
+      if (options.runStateOk === false && callCount === 1) {
         return new Response(stringifyCompactJson({ error: "run-state unavailable" }), {
           status: 500,
         });
@@ -146,6 +154,7 @@ function mockCommandCenterFetch(options: {
             archivedTaskIds: [],
             shippedTaskIds: [],
             shippedOutcomes: options.shippedOutcomes ?? [],
+            errors: options.reconciliationErrors,
           },
         }),
         { status: 200 },
@@ -167,13 +176,14 @@ describe("CommandCenterSurface", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders four orientation regions with operational rows", async () => {
+  it("renders four orientation regions with operational rows and passive summary", async () => {
     mockCommandCenterFetch();
 
     render(<CommandCenterSurface />);
 
     await waitFor(() => {
       expect(screen.getByTestId("command-center-page")).toBeInTheDocument();
+      expect(screen.getByTestId("command-center-summary-row")).toBeInTheDocument();
       expect(screen.getByTestId("command-center-human-gates")).toBeInTheDocument();
       expect(screen.getByTestId("command-center-anomalies")).toBeInTheDocument();
       expect(screen.getByTestId("command-center-running-now")).toBeInTheDocument();
@@ -182,7 +192,9 @@ describe("CommandCenterSurface", () => {
       expect(screen.getAllByTestId("command-center-row").length).toBeGreaterThan(0);
     });
 
+    expect(screen.getByTestId("command-center-summary-human-gates-count")).toHaveTextContent("1");
     expect(screen.queryByText(".pan/work/")).not.toBeInTheDocument();
+    expect(screen.queryByText("Operator delivery surface")).not.toBeInTheDocument();
   });
 
   it("renders guided empty states when no operational rows exist", async () => {
@@ -192,13 +204,18 @@ describe("CommandCenterSurface", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("command-center-human-gates")).toBeInTheDocument();
-      expect(screen.getByText("No human gates waiting for you")).toBeInTheDocument();
+      expect(screen.getByText("No approval requests yet.")).toBeInTheDocument();
     });
 
-    expect(screen.queryByText("No active deliveries")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Approval requests appear after a Feature Delivery run reaches a human gate.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open Feature Delivery" })).not.toBeInTheDocument();
   });
 
-  it("shows loading skeleton with aria-busy", async () => {
+  it("shows loading skeleton with aria-busy inside parent shell", async () => {
     vi.spyOn(global, "fetch").mockImplementation(
       () =>
         new Promise(() => {
@@ -209,86 +226,91 @@ describe("CommandCenterSurface", () => {
     render(<CommandCenterSurface />);
 
     expect(screen.getByTestId("command-center-loading")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByTestId("command-center-loading")).toHaveClass("command-center-attention-shell");
   });
 
-  it("renders run-state error with refresh action", async () => {
+  it("renders one degraded banner with retry on run-state failure before first success", async () => {
     mockCommandCenterFetch({ runStateOk: false });
 
     render(<CommandCenterSurface />);
 
     await waitFor(() => {
-      const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent("run-state unavailable");
-      expect(within(alert).getByRole("button", { name: "Refresh home state" })).toBeInTheDocument();
-    });
-  });
-
-  it("renders archive degraded banner when reconciliation reports archive error", async () => {
-    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.includes("/api/run-state")) {
-        return new Response(
-          stringifyCompactJson({
-            tasks: mockRunState,
-            reconciliation: {
-              archivedTaskIds: [],
-              shippedTaskIds: [],
-              shippedOutcomes: [],
-              errors: {
-                archive: "Unable to load archived task ids",
-              },
-            },
-          }),
-          { status: 200 },
-        );
-      }
-      if (url.includes("/api/file")) {
-        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
-      }
-      return new Response(stringifyCompactJson({}), { status: 404 });
-    });
-
-    render(<CommandCenterSurface />);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Degraded data from archive").length).toBeGreaterThan(0);
-      expect(screen.getByText("Unable to load archived task ids")).toBeInTheDocument();
-    });
-  });
-
-  it("renders feature-index degraded banner when reconciliation reports feature-index error", async () => {
-    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.includes("/api/run-state")) {
-        return new Response(
-          stringifyCompactJson({
-            tasks: mockRunState,
-            reconciliation: {
-              archivedTaskIds: [],
-              shippedTaskIds: [],
-              shippedOutcomes: [],
-              errors: {
-                "feature-index": "Unable to load shipped outcomes from feature-index",
-              },
-            },
-          }),
-          { status: 200 },
-        );
-      }
-      if (url.includes("/api/file")) {
-        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
-      }
-      return new Response(stringifyCompactJson({}), { status: 404 });
-    });
-
-    render(<CommandCenterSurface />);
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Degraded data from feature-index").length).toBeGreaterThan(0);
+      expect(screen.getByRole("status", { name: "Home data is temporarily degraded" })).toBeInTheDocument();
       expect(
-        screen.getByText("Unable to load shipped outcomes from feature-index"),
+        screen.getByRole("button", { name: "Retry Home refresh" }),
       ).toBeInTheDocument();
+      expect(screen.getByText("No approval requests yet.")).toBeInTheDocument();
     });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Attention data is stale")).not.toBeInTheDocument();
+  });
+
+  it("renders one degraded banner when reconciliation reports archive error", async () => {
+    mockCommandCenterFetch({
+      reconciliationErrors: {
+        archive: "Unable to load archived task ids",
+      },
+    });
+
+    render(<CommandCenterSurface />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("status", { name: "Home data is temporarily degraded" })).toBeInTheDocument();
+      expect(screen.getByText(/archive reconnects/u)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Retry Home refresh" })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText("Degraded data from archive")).not.toBeInTheDocument();
+  });
+
+  it("retains last good rows after post-success reconciliation failure", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let callCount = 0;
+
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        callCount += 1;
+        if (callCount > 1) {
+          return new Response(stringifyCompactJson({ error: "run-state unavailable" }), {
+            status: 500,
+          });
+        }
+        return new Response(
+          stringifyCompactJson({
+            tasks: mockRunState,
+            reconciliation: {
+              archivedTaskIds: [],
+              shippedTaskIds: [],
+              shippedOutcomes: [],
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/api/file")) {
+        return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+
+    render(<CommandCenterSurface />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Demo Feature").length).toBeGreaterThan(0);
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("status", { name: "Home data is temporarily degraded" })).toBeInTheDocument();
+      expect(screen.getAllByText("Demo Feature").length).toBeGreaterThan(0);
+    });
+
+    vi.useRealTimers();
   });
 
   it("exposes human-gate approve CTA on rows with reject in overflow", async () => {

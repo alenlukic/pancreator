@@ -14,6 +14,12 @@ export type CommandCenterCardRegion =
   | "running-now"
   | "recent-outcomes";
 
+export type CommandCenterRegionIconKey =
+  | "Hand"
+  | "TriangleAlert"
+  | "LoaderCircle"
+  | "CheckCircle2";
+
 export type CommandCenterRowOverflow = {
   taskId?: string;
   runDir?: string;
@@ -49,12 +55,15 @@ export type CommandCenterCardModel = {
   region: CommandCenterCardRegion;
   testId: string;
   title: string;
+  summaryLabel: string;
   emptyCopy: string;
-  emptyNextStep?: { label: string; href: string };
+  emptyGuidance: string;
+  overflowLabel: string;
+  iconKey: CommandCenterRegionIconKey;
+  totalCount: number;
   rows: CommandCenterRowModel[];
   overflowHref?: string;
   dataAgeMs?: number;
-  degradedSource?: string;
 };
 
 export type ComplianceFindingRow = {

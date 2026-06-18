@@ -12,18 +12,20 @@ export function CommandCenterRow({ row }: { row: CommandCenterRowModel }) {
   return (
     <article className="command-center-row" data-testid="command-center-row">
       <div className="command-center-row-main">
+        <div className="command-center-row-status-group">
+          <StatusPill status={row.status} />
+          <SeverityChip severity={row.severity} />
+        </div>
         <p className="command-center-row-label" title={row.label}>
           {row.label}
         </p>
         <div className="command-center-row-meta">
-          <StatusPill status={row.status} />
-          <SeverityChip severity={row.severity} />
-          <time className="command-center-row-age" dateTime={row.ageIso}>
-            {row.ageLabel}
-          </time>
           {row.metaHint ? (
             <span className="command-center-row-meta-hint">{row.metaHint}</span>
           ) : null}
+          <time className="command-center-row-age" dateTime={row.ageIso}>
+            {row.ageLabel}
+          </time>
         </div>
       </div>
       <div className="command-center-row-actions">

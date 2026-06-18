@@ -8,6 +8,7 @@ import { stringifyCliJson } from "./canonical-json-io.js";
 import { closeOutOfBandWorkspace } from "./close-out-of-band.js";
 import {
   archiveExperiencePlanningForClosedFeatureDelivery,
+  listActiveExperiencePlanningProtectedInboxPaths,
   sweepExperiencePlanningWorkRetention,
 } from "./experience-planning-archival.js";
 import {
@@ -130,6 +131,10 @@ async function archiveAllInboxQueues(
   await pruneEmptyInboxQueueTree(repoRoot, "lib/inbox/out");
 
   for (const fileRel of await listInboxFiles(repoRoot, INBOX_THREADS_PREFIX)) {
+    const norm = normalizeRel(fileRel);
+    if (activeInboxPaths.has(norm)) {
+      continue;
+    }
     await archiveInboxFile(repoRoot, fileRel, ARCHIVE_INBOX_THREADS_PREFIX, archived);
   }
   await pruneEmptyInboxQueueTree(repoRoot, "lib/inbox/threads");
@@ -373,6 +378,9 @@ export async function runArchiveSweep(
   const errors: ArchiveSweepError[] = [];
 
   const { activeTaskIds, activeInboxPaths, terminalRuns, orphanDirs } = await collectTerminalRuns(repoRoot);
+  for (const inboxPath of await listActiveExperiencePlanningProtectedInboxPaths(repoRoot)) {
+    activeInboxPaths.add(inboxPath);
+  }
 
   for (const taskId of activeTaskIds) {
     skipped.push({

@@ -1,59 +1,69 @@
 "use client";
 
 import Link from "next/link";
-import { AttentionBanner } from "./AttentionBanner";
+import { CheckCircle2, Hand, LoaderCircle, TriangleAlert } from "lucide-react";
 import { CommandCenterRow } from "../command-center/CommandCenterRow";
-import type { CommandCenterCardModel } from "../command-center/command-center-types";
-import { COMMAND_CENTER_STALE_DATA_MS } from "../command-center/command-center-types";
+import type { CommandCenterCardModel, CommandCenterRegionIconKey } from "../command-center/command-center-types";
+import { formatSectionFreshness } from "../command-center/command-center-data";
+import { COMMAND_CENTER_MAX_ROWS_PER_REGION } from "../command-center/command-center-types";
+
+const REGION_ICONS: Record<
+  CommandCenterRegionIconKey,
+  typeof Hand
+> = {
+  Hand,
+  TriangleAlert,
+  LoaderCircle,
+  CheckCircle2,
+};
 
 export function AttentionRegion({
   card,
   loading = false,
+  isFirst = false,
 }: {
   card: CommandCenterCardModel;
   loading?: boolean;
+  isFirst?: boolean;
 }) {
-  const showDataAge =
-    card.dataAgeMs !== undefined && card.dataAgeMs > COMMAND_CENTER_STALE_DATA_MS && !loading;
+  const Icon = REGION_ICONS[card.iconKey];
+  const freshnessLabel =
+    card.dataAgeMs !== undefined ? formatSectionFreshness(card.dataAgeMs) : "";
+  const showFreshness = freshnessLabel.length > 0 && !loading;
+  const showOverflow =
+    card.overflowHref !== undefined && card.totalCount > COMMAND_CENTER_MAX_ROWS_PER_REGION;
 
   return (
     <section
-      className="attention-region"
+      className={`attention-region${isFirst ? " attention-region-first" : ""}`}
       data-testid={card.testId}
       aria-labelledby={`${card.testId}-title`}
     >
       <header className="attention-region-header">
         <h2 className="attention-region-title" id={`${card.testId}-title`}>
+          <Icon aria-hidden="true" className="attention-region-icon" size={16} />
           {card.title}
           <span className="attention-region-count" data-testid={`${card.testId}-count`}>
-            {card.rows.length}
+            {card.totalCount}
           </span>
         </h2>
-        {showDataAge ? (
-          <span className="attention-region-data-age" data-testid={`${card.testId}-data-age`}>
-            Data age {Math.floor(card.dataAgeMs! / 1000)}s
-          </span>
-        ) : null}
-        {card.overflowHref && card.rows.length >= 5 ? (
-          <Link
-            href={card.overflowHref}
-            className="command-center-row-cta attention-region-overflow"
-          >
-            View all
-          </Link>
-        ) : null}
+        <div className="attention-region-meta">
+          {showFreshness ? (
+            <span className="attention-region-freshness" data-testid={`${card.testId}-freshness`}>
+              {freshnessLabel}
+            </span>
+          ) : null}
+          {showOverflow ? (
+            <Link
+              href={card.overflowHref!}
+              className="attention-region-overflow"
+              data-testid={`${card.testId}-overflow`}
+            >
+              {card.overflowLabel}
+            </Link>
+          ) : null}
+        </div>
       </header>
-
-      {card.degradedSource ? (
-        <AttentionBanner title={`Degraded data from ${card.degradedSource}`}>
-          <p>
-            Attention data from <strong>{card.degradedSource}</strong> failed to refresh.
-          </p>
-          <button type="button" className="command-center-row-cta">
-            Refresh home state
-          </button>
-        </AttentionBanner>
-      ) : null}
 
       <div className="attention-region-body">
         {loading ? (
@@ -63,12 +73,8 @@ export function AttentionRegion({
           </div>
         ) : card.rows.length === 0 ? (
           <div className="attention-region-empty">
-            <p>{card.emptyCopy}</p>
-            {card.emptyNextStep ? (
-              <Link href={card.emptyNextStep.href} className="command-center-row-cta">
-                {card.emptyNextStep.label}
-              </Link>
-            ) : null}
+            <p className="attention-region-empty-lead">{card.emptyCopy}</p>
+            <p className="attention-region-empty-guidance">{card.emptyGuidance}</p>
           </div>
         ) : (
           card.rows.map((row) => <CommandCenterRow key={row.id} row={row} />)

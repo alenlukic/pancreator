@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   findActiveStage,
   type TaskRunStateEnvelope,
@@ -10,10 +10,7 @@ import {
   mapComplianceResultsToFindings,
 } from "./command-center-data";
 import type { ComplianceFindingRow } from "./command-center-types";
-import {
-  COMMAND_CENTER_ACTIVE_REVALIDATE_MS,
-  COMMAND_CENTER_STALE_DATA_MS,
-} from "./command-center-types";
+import { COMMAND_CENTER_ACTIVE_REVALIDATE_MS } from "./command-center-types";
 import type { ShippedOutcome } from "@/services/run-state";
 
 const AUDIT_HISTORY_PATH = "lib/memory/features/quality-governance/compliance-tests/audit-history.json";
@@ -47,6 +44,13 @@ type AttentionRunStatePayload = {
     shippedTaskIds: string[];
     errors?: Record<string, string>;
   };
+};
+
+type SuccessfulSnapshot = {
+  tasks: TaskRunStateEnvelope[];
+  shippedOutcomes: ShippedOutcome[];
+  complianceFindings: ComplianceFindingRow[];
+  dataFetchedAtMs: number;
 };
 
 async function fetchFileContent(path: string): Promise<string | null> {
@@ -117,6 +121,9 @@ export function useCommandCenterData() {
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [dataFetchedAtMs, setDataFetchedAtMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [hasLastSuccessfulSnapshot, setHasLastSuccessfulSnapshot] = useState(false);
+  const lastSuccessfulSnapshot = useRef<SuccessfulSnapshot | null>(null);
+
   const loadRunState = useCallback(async () => {
     setRunStateError(null);
     setOutcomesError(null);
@@ -125,7 +132,6 @@ export function useCommandCenterData() {
       const response = await fetch("/api/run-state?view=attention");
       if (!response.ok) {
         const data = (await response.json()) as { error?: string };
-        setTasks([]);
         setRunStateError(data.error ?? "Unable to load run state");
         return null;
       }
@@ -135,10 +141,10 @@ export function useCommandCenterData() {
       const reconciliationErrors = data.reconciliation.errors ?? {};
       setOutcomesError(reconciliationErrors["feature-index"] ?? null);
       setArchiveError(reconciliationErrors.archive ?? null);
-      setDataFetchedAtMs(Date.now());
-      return data.tasks;
+      const fetchedAt = Date.now();
+      setDataFetchedAtMs(fetchedAt);
+      return { tasks: data.tasks, shippedOutcomes: data.reconciliation.shippedOutcomes, fetchedAt };
     } catch {
-      setTasks([]);
       setRunStateError("Unable to load run state");
       return null;
     }
@@ -152,15 +158,26 @@ export function useCommandCenterData() {
       if (error) {
         setComplianceError(error);
       }
+      return findings;
     } catch {
       setComplianceError("Unable to load compliance findings");
+      return [];
     }
   }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      await Promise.all([loadRunState(), loadSupplementary()]);
+      const [runStateResult, findings] = await Promise.all([loadRunState(), loadSupplementary()]);
+      if (runStateResult) {
+        lastSuccessfulSnapshot.current = {
+          tasks: runStateResult.tasks,
+          shippedOutcomes: runStateResult.shippedOutcomes,
+          complianceFindings: findings,
+          dataFetchedAtMs: runStateResult.fetchedAt,
+        };
+        setHasLastSuccessfulSnapshot(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -180,12 +197,23 @@ export function useCommandCenterData() {
       return undefined;
     }
     const pollTimer = window.setInterval(() => {
-      void loadRunState();
+      void (async () => {
+        const runStateResult = await loadRunState();
+        if (runStateResult) {
+          lastSuccessfulSnapshot.current = {
+            tasks: runStateResult.tasks,
+            shippedOutcomes: runStateResult.shippedOutcomes,
+            complianceFindings,
+            dataFetchedAtMs: runStateResult.fetchedAt,
+          };
+          setHasLastSuccessfulSnapshot(true);
+        }
+      })();
     }, COMMAND_CENTER_ACTIVE_REVALIDATE_MS);
     return () => {
       window.clearInterval(pollTimer);
     };
-  }, [hasActiveStage, loadRunState]);
+  }, [complianceFindings, hasActiveStage, loadRunState]);
 
   useEffect(() => {
     const elapsedTimer = window.setInterval(() => {
@@ -213,36 +241,40 @@ export function useCommandCenterData() {
     return sources;
   }, [archiveError, complianceError, outcomesError, runStateError]);
 
+  const displaySnapshot = useMemo(() => {
+    const hasFailure = failedSources.length > 0;
+    const lastGood = lastSuccessfulSnapshot.current;
+    if (hasFailure && lastGood) {
+      return lastGood;
+    }
+    return {
+      tasks,
+      shippedOutcomes,
+      complianceFindings,
+      dataFetchedAtMs: dataFetchedAtMs ?? undefined,
+    };
+  }, [complianceFindings, dataFetchedAtMs, failedSources.length, hasLastSuccessfulSnapshot, shippedOutcomes, tasks]);
+
   const cards = useMemo(
     () =>
       buildCommandCenterRows({
-        tasks,
-        complianceFindings,
-        shippedOutcomes,
+        tasks: displaySnapshot.tasks,
+        complianceFindings: displaySnapshot.complianceFindings,
+        shippedOutcomes: displaySnapshot.shippedOutcomes,
         activityEvents: [],
         nowMs,
-        dataFetchedAtMs: dataFetchedAtMs ?? undefined,
+        dataFetchedAtMs: displaySnapshot.dataFetchedAtMs,
         failedSources,
       }),
-    [complianceFindings, dataFetchedAtMs, failedSources, nowMs, shippedOutcomes, tasks],
+    [displaySnapshot, failedSources, nowMs],
   );
-
-  const isDataStale = useMemo(() => {
-    if (dataFetchedAtMs === null) {
-      return false;
-    }
-    return nowMs - dataFetchedAtMs > COMMAND_CENTER_STALE_DATA_MS;
-  }, [dataFetchedAtMs, nowMs]);
 
   return {
     cards,
     loading,
-    runStateError,
-    complianceError,
-    outcomesError,
-    archiveError,
-    isDataStale,
-    dataFetchedAtMs,
+    failedSources,
+    hasLastSuccessfulSnapshot,
+    dataFetchedAtMs: displaySnapshot.dataFetchedAtMs ?? null,
     retry: refresh,
   };
 }

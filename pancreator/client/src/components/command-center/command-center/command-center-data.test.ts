@@ -17,7 +17,7 @@ import {
   type RunLogEvent,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
-import { buildCommandCenterRows, mapComplianceResultsToFindings } from "./command-center-data";
+import { buildCommandCenterRows, formatFailedSourceLabel, formatSectionFreshness, mapComplianceResultsToFindings } from "./command-center-data";
 
 const baseStages = [
   "intake",
@@ -195,7 +195,57 @@ describe("buildCommandCenterRows", () => {
 
     const anomalies = cards.find((card) => card.region === "anomalies");
     expect(anomalies?.rows[0]?.severity).toBe("Critical");
-    expect(anomalies?.rows[0]?.primaryCta.label).toBe("Open run detail");
+    expect(anomalies?.rows[0]?.primaryCta.label).toBe("Open failed run");
+  });
+
+  it("uses approved empty copy and overflow labels without empty-state CTA", () => {
+    const cards = buildCommandCenterRows({
+      tasks: [],
+      complianceFindings: [],
+      shippedOutcomes: [],
+      activityEvents: [],
+    });
+
+    const humanGates = cards.find((card) => card.region === "human-gates");
+    expect(humanGates?.emptyCopy).toBe("No approval requests yet.");
+    expect(humanGates?.emptyGuidance).toContain("human gate");
+    expect(humanGates?.overflowLabel).toBe("Open all approval requests");
+    expect(humanGates?.totalCount).toBe(0);
+
+    const outcomes = cards.find((card) => card.region === "recent-outcomes");
+    expect(outcomes?.title).toBe("Recent outcomes");
+    expect(outcomes?.emptyCopy).toBe("No recent shipped work.");
+  });
+
+  it("caps visible rows at five while preserving total count", () => {
+    const tasks = Array.from({ length: 7 }, (_, index) =>
+      makeTask({
+        taskId: `gate-${index}`,
+        featureId: `feature-${index}`,
+        stages: baseStages.map((stage) =>
+          stage.name === "plan"
+            ? {
+                ...stage,
+                humanGate: "human_approval",
+                status: "active" as const,
+                nextHumanAction: "Ratify plan",
+              }
+            : stage,
+        ),
+      }),
+    );
+
+    const cards = buildCommandCenterRows({
+      tasks,
+      complianceFindings: [],
+      shippedOutcomes: [],
+      activityEvents: [],
+      nowMs: Date.parse("2026-06-02T13:00:00.000Z"),
+    });
+
+    const humanGates = cards.find((card) => card.region === "human-gates");
+    expect(humanGates?.rows).toHaveLength(5);
+    expect(humanGates?.totalCount).toBe(7);
   });
 
   it("maps failed compliance results to findings rows", () => {
@@ -207,9 +257,23 @@ describe("buildCommandCenterRows", () => {
         blocks: true,
         detail: "Missing artifact in touch-set",
       },
+      {
+        id: "lint-clean",
+        pass: false,
+        severity: "medium",
+        detail: "Lint drift detected",
+      },
+      {
+        id: "docs-index",
+        pass: false,
+        severity: "low",
+        detail: "Docs index stale",
+      },
     ]);
     expect(findings[0]?.missingArtifact).toBe(true);
     expect(findings[0]?.severity).toBe("Blocking");
+    expect(findings[1]?.severity).toBe("Warning");
+    expect(findings[2]?.severity).toBe("Info");
   });
 });
 
@@ -360,7 +424,7 @@ describe("buildCommandCenterRows operational cards", () => {
 
     const outcomes = cards.find((card) => card.region === "recent-outcomes");
     expect(outcomes?.rows[0]?.label).toBe("Command Center rebuild");
-    expect(outcomes?.rows[0]?.primaryCta.label).toBe("Open shipped feature");
+    expect(outcomes?.rows[0]?.primaryCta.label).toBe("Open shipped outcome");
   });
 
   it("keeps pipeline stage slugs out of default row meta for operational cards", () => {
@@ -394,7 +458,7 @@ describe("buildCommandCenterRows operational cards", () => {
     expect(humanGates?.rows[0]?.overflow.stageName).toBe("plan");
   });
 
-  it("marks attention regions degraded when archive reconciliation fails", () => {
+  it("does not attach per-region degraded metadata", () => {
     const cards = buildCommandCenterRows({
       tasks: [makeTask()],
       complianceFindings: [],
@@ -404,24 +468,39 @@ describe("buildCommandCenterRows operational cards", () => {
       failedSources: ["archive"],
     });
 
-    expect(cards.find((card) => card.region === "human-gates")?.degradedSource).toBe("archive");
-    expect(cards.find((card) => card.region === "anomalies")?.degradedSource).toBe("archive");
-    expect(cards.find((card) => card.region === "running-now")?.degradedSource).toBe("archive");
-    expect(cards.find((card) => card.region === "recent-outcomes")?.degradedSource).toBeUndefined();
+    for (const card of cards) {
+      expect(card).not.toHaveProperty("degradedSource");
+    }
+  });
+});
+
+describe("formatFailedSourceLabel", () => {
+  it("returns attention data when no sources are provided", () => {
+    expect(formatFailedSourceLabel([])).toBe("attention data");
   });
 
-  it("provides a Human Gates empty-state next step", () => {
-    const cards = buildCommandCenterRows({
-      tasks: [],
-      complianceFindings: [],
-      shippedOutcomes: [],
-      activityEvents: [],
-    });
+  it("joins two sources with and", () => {
+    expect(formatFailedSourceLabel(["run-state", "archive"])).toBe("run state and archive");
+  });
 
-    expect(cards.find((card) => card.region === "human-gates")?.emptyNextStep).toEqual({
-      label: "Open Feature Delivery",
-      href: "/mission-control",
-    });
+  it("joins three or more sources with Oxford comma formatting", () => {
+    expect(formatFailedSourceLabel(["run-state", "archive", "compliance"])).toBe(
+      "run state, archive, and compliance audit",
+    );
+  });
+});
+
+describe("formatSectionFreshness", () => {
+  it("hides freshness at 60 seconds or less", () => {
+    expect(formatSectionFreshness(60_000)).toBe("");
+    expect(formatSectionFreshness(30_000)).toBe("");
+  });
+
+  it("uses human-relative copy above 60 seconds", () => {
+    expect(formatSectionFreshness(120_000)).toBe("Updated 2m ago");
+    expect(formatSectionFreshness(120_000)).not.toMatch(/Data age/u);
+    expect(formatSectionFreshness(7_200_000)).toBe("Updated 2h ago");
+    expect(formatSectionFreshness(172_800_000)).toBe("Updated 2d ago");
   });
 });
 

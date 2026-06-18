@@ -1,15 +1,15 @@
 import path from "node:path";
 
-import { quoteJsonString, type TaskId } from "@pancreator/core";
+import { quoteJsonString, resolveProjectPath, type TaskId } from "@pancreator/core";
 
 import {
   InterventionJournalPathError,
   InvalidTaskIdForJournalError,
 } from "./errors.js";
 
-/** Returns `.pan/scheduler/interventions` under `repoRoot`. */
+/** Returns `.pan/scheduler/interventions` under the configured project root. */
 export function defaultInterventionsDir(repoRoot: string): string {
-  return path.resolve(repoRoot, ".pan", "scheduler", "interventions");
+  return resolveProjectPath(repoRoot, ".pan", "scheduler", "interventions");
 }
 
 /** Rejects task identifiers that would escape the interventions directory. */

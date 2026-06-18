@@ -26,13 +26,11 @@ describe("CommandCenterGlobalHeader", () => {
     mockUsePathname.mockReturnValue("/command-center");
   });
 
-  it("renders Feature Delivery link on first-slice routes", () => {
+  it("hides subtitle and Feature Delivery CTA on Home", () => {
     render(<CommandCenterGlobalHeader />);
-    expect(screen.getByTestId("command-center-global-header")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
-      "href",
-      "/mission-control",
-    );
+    expect(screen.queryByTestId("command-center-global-header")).not.toBeInTheDocument();
+    expect(screen.queryByText("Operator delivery surface")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open Feature Delivery" })).not.toBeInTheDocument();
   });
 
   it("hides on routes outside the shipped destination set", () => {

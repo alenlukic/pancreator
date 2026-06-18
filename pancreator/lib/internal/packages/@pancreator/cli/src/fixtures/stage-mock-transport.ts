@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { resolveRepoPath } from "@pancreator/core";
 import type { CursorSdkTransport } from "@pancreator/runner-cursor";
 
 const REMEDIATION_PERSONA = "pancreator-engineer";
@@ -24,14 +25,14 @@ export interface StageFixture {
 
 async function applyWrites(repoRoot: string, writes: StageFixtureWrite[]): Promise<void> {
   for (const entry of writes) {
-    const abs = path.join(repoRoot, entry.path);
+    const abs = resolveRepoPath(repoRoot, entry.path);
     await mkdir(path.dirname(abs), { recursive: true });
     await writeFile(abs, entry.content, "utf8");
   }
 }
 
 function findMissing(repoRoot: string, required: readonly string[]): string[] {
-  return required.filter((rel) => !existsSync(path.join(repoRoot, rel)));
+  return required.filter((rel) => !existsSync(resolveRepoPath(repoRoot, rel)));
 }
 
 /** Deterministic SDK transport driven by JSON stage fixtures. */

@@ -30,8 +30,12 @@ export interface ExperiencePlanningState {
   createdAt?: string;
   completedAt?: string;
   synthesizedDirective?: string;
+  args?: {
+    brief?: string;
+  };
   outputs?: {
     synthesizedDirective?: string;
+    operatorReview?: string;
   };
   source?: {
     inboxPath?: string;
@@ -225,6 +229,34 @@ async function readFeatureDeliveryInboxLink(
     }
     throw error;
   }
+}
+
+export function collectExperiencePlanningProtectedInboxPaths(
+  state: ExperiencePlanningState,
+): string[] {
+  const paths = new Set<string>();
+  const add = (value: unknown): void => {
+    if (typeof value === "string" && value.trim().length > 0) {
+      paths.add(normalizeRel(value));
+    }
+  };
+  add(state.source?.inboxPath);
+  add(state.args?.brief);
+  add(readSynthesizedDirective(state));
+  add(state.outputs?.operatorReview);
+  return [...paths];
+}
+
+export async function listActiveExperiencePlanningProtectedInboxPaths(
+  repoRoot: string,
+): Promise<string[]> {
+  const protectedPaths = new Set<string>();
+  for (const { state } of await listActiveExperiencePlanningRuns(repoRoot)) {
+    for (const rel of collectExperiencePlanningProtectedInboxPaths(state)) {
+      protectedPaths.add(rel);
+    }
+  }
+  return [...protectedPaths];
 }
 
 export async function listActiveExperiencePlanningRuns(
