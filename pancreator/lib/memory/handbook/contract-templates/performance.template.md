@@ -1,38 +1,29 @@
-# Operator section
-- 👀 **In this file:** performance.template
-- ⚖️ **Why it matters:** Quick orientation for performance.template before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - https://sre.google/sre-book/service-level-objectives/
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
 template: performance
 slug: performance
 stability: experimental
-phase: 0b
-allowed-in-milestones: [M1 (rego over telemetry JSON), M2 (+ schemathesis perf), M3+]
+phase: "0b"
+allowed-in-milestones:
+  - M1 (rego over telemetry JSON)
+  - M2 (+ schemathesis perf)
+  - M3+
 purpose: |
   Scaffold for performance contract clauses. Each clause MUST carry an SLI
   definition, an SLO target, a measurement window, and an error budget. M1
   gates pre-aggregated telemetry JSON via `kind: rego`. M2+ adds load-test
   runners.
 references:
-  - kind: lines
-    path: /lib/memory/handbook/contract-format.md
-    range: [1, 1]
-    contentHash: 10d2b8f
-    note: "Wrapper schema reference."
-  - kind: lines
-    path: /lib/memory/handbook/contract-style.md
-    range: [1, 1]
-    contentHash: 2d7acae
-    note: "Layer 2 (performance) requirements: SLI + SLO + window + error budget."
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-format.md","range":[1,1],"contentHash":"10d2b8f","note":"Wrapper schema reference."}'
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-style.md","range":[1,1],"contentHash":"2d7acae","note":"Layer 2 (performance) requirements: SLI + SLO + window + error budget."}'
 external:
   - https://sre.google/sre-book/service-level-objectives/
----
+...
+
+# Operator section
+- 👀 **In this file:** Template — Performance contract
+- ⚖️ **Why it matters:** Quick orientation for Template — Performance contract before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Template — Performance contract
 

@@ -1,15 +1,4 @@
-# Operator section
-- 👀 **In this file:** Inbox Lifecycle and Archival Procedure
-- ⚖️ **Why it matters:** Quick orientation for Inbox Lifecycle and Archival Procedure before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Inbox Lifecycle and Archival Procedure
 slug: inbox-lifecycle
 stability: experimental
 bootstrap-only: false
@@ -20,46 +9,14 @@ purpose: |
   definitions, canonical inbox paths, and the minimum manual archive procedure
   required while runtime archival automation is not yet implemented.
 references:
-  - kind: lines
-    path: lib/memory/adr/0003-inbox-lifecycle-and-archival.md
-    range: [74, 95]
-    contentHash: 064d359
-    note: "ADR-0003 decision defines the required lifecycle states and manual-versus-future automation boundary."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [267, 267]
-    contentHash: 2eb6aa4
-    note: "PRD glossary defines Inbox as a bidirectional queue with in/out/thread locations."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [1037, 1037]
-    contentHash: 2eb6aa4
-    note: "PRD CLI surface includes inbox management verbs."
-  - kind: lines
-    path: AGENTS.md
-    range: [101, 103]
-    contentHash: b953d77
-    note: "AGENTS defines `/lib/inbox/in/` and `/lib/inbox/out/` as canonical operational queue paths."
-  - kind: lines
-    path: AGENTS.md
-    range: [130, 130]
-    contentHash: b953d77
-    note: "AGENTS workspace map defines `lib/inbox/{in,out,threads}/`."
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [49, 53]
-    contentHash: b788753
-    note: "Bootstrap scaffold includes inbox directories in the required repository substrate."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [60, 65]
-    contentHash: 2d7acae
-    note: "Layer 1 requires RFC 2119 keywords in normative prose."
-  - kind: lines
-    path: lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md
-    range: [79, 87]
-    contentHash: fa0e81b
-    note: "Operator round-1 answer Q7 assigns prefix ownership to the active processing agent."
+  - '{"kind":"lines","path":"lib/memory/adr/0003-inbox-lifecycle-and-archival.md","range":[74,95],"contentHash":"064d359","note":"ADR-0003 decision defines the required lifecycle states and manual-versus-future automation boundary."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[267,267],"contentHash":"2eb6aa4","note":"PRD glossary defines Inbox as a bidirectional queue with in/out/thread locations."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[1037,1037],"contentHash":"2eb6aa4","note":"PRD CLI surface includes inbox management verbs."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[101,103],"contentHash":"b953d77","note":"AGENTS defines `/lib/inbox/in/` and `/lib/inbox/out/` as canonical operational queue paths."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[130,130],"contentHash":"b953d77","note":"AGENTS workspace map defines `lib/inbox/{in,out,threads}/`."}'
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[49,53],"contentHash":"b788753","note":"Bootstrap scaffold includes inbox directories in the required repository substrate."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[60,65],"contentHash":"2d7acae","note":"Layer 1 requires RFC 2119 keywords in normative prose."}'
+  - '{"kind":"lines","path":"lib/inbox/threads/172996_05-10-26/timestamp-naming-conventions/25121_1701_round-01-clarify-human-responses.md","range":[79,87],"contentHash":"fa0e81b","note":"Operator round-1 answer Q7 assigns prefix ownership to the active processing agent."}'
 related:
   - /lib/memory/adr/0003-inbox-lifecycle-and-archival.md
   - /lib/memory/handbook/backlog-format.md
@@ -67,7 +24,15 @@ related:
   - /lib/inbox/out/
   - /lib/inbox/threads/
   - /lib/inbox/notes/
----
+...
+
+# Operator section
+- 👀 **In this file:** Inbox Lifecycle
+- ⚖️ **Why it matters:** Quick orientation for Inbox Lifecycle before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/adr/0003-inbox-lifecycle-and-archival.md
+  - /lib/memory/handbook/backlog-format.md
+  - /lib/inbox/in/
 
 # Inbox Lifecycle
 

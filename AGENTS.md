@@ -5,10 +5,6 @@
   - pancreator/lib/memory/handbook/agent-document-registry.md
   - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
   - pancreator/lib/memory/handbook/operator-output-contract.md
-<!-- pancreator-section-index
-format: operator-agent-v1
-agent_section_start_line: 12
--->
 # AGENTS.md — Pancreator agent operating card
 
 > Internal agent entry surface. Human operator procedures live in `OPERATION.md`.
@@ -40,10 +36,11 @@ resolved artifact, and follow its obligations. Agents MUST NOT invent an
 ad-hoc execution contract for the current run; the contract is static in the
 persona spec and pipeline definition.
 
-When a sectioned document/artifact carries a `pancreator-section-index` or
-`$pancreator_section_index` prefix, agents MUST treat the indexed line as the
-first line of agent-readable content and MUST ignore all operator-only content
-before that line.
+When a file begins with `# Operator section` or a `⚙️ no human content` banner,
+agents MUST skip that operator-only prefix and treat everything after it as the
+agent-readable payload. Agents MUST NOT use operator-section prose as evidence
+for validation, scope, requirements, or gate decisions unless the human
+explicitly asks about operator-facing readability.
 
 ## 2 — Persona and pipeline authority
 
@@ -56,6 +53,15 @@ regenerate them with `pnpm -w exec pan cursor-sync` instead of editing them.
 When this card conflicts with a persona spec or generated projection, this card
 wins. Persona specs and generated projections provide narrower local contracts
 inside that repo-wide boundary.
+
+Tool documentation defines platform capabilities and parameter semantics. It
+does not grant permission to use optional or default tool behaviors when this
+card or a referenced repo contract imposes a stricter policy. When a Cursor
+tool or subagent interface allows omitted parameters, inherited defaults,
+optional verification, or broader usage, agents MUST treat the repo-local rule
+as a hard precondition to invocation. If the agent cannot satisfy that
+repo-local precondition exactly, it MUST NOT use that tool path and MUST choose
+another compliant path.
 
 Pipeline definitions live under `pancreator/lib/pipelines/*.yaml`. A pipeline stage MUST name
 its owner persona, required docs, required inputs, required outputs, transition
@@ -82,7 +88,11 @@ invocation and MUST NOT leave the model parameter blank. After launch, the
 parent MUST verify that the running subagent is using that same model string. If
 the subagent is using any other model, or if the parent cannot verify the model
 string, the parent MUST immediately terminate that subagent and reinvoke it with
-the correct explicit model.
+the correct explicit model. If the parent cannot name the exact parent model
+string explicitly before launch, it MUST NOT invoke the ad-hoc subagent. If the
+platform does not expose a way to verify the running subagent's model string,
+the parent MUST NOT use that ad-hoc subagent path and MUST choose a compliant
+alternative instead.
 
 ## 3 — Output manifests and gate validation
 
@@ -150,12 +160,14 @@ defined by `DOC.OPERATOR_AGENT_FORMAT` unless a file-specific parser cannot yet
 tolerate the prefix. `.cursor` projections MUST NOT receive the section prefix;
 they remain generated, compact runtime surfaces.
 
-For Markdown and YAML, the operator section MUST be the first content humans see.
-The `pancreator-section-index` YAML-style block comes next and MUST name the
-1-indexed line where the agent section starts. Any existing file frontmatter
-belongs to the agent section and therefore comes after the operator summary and
-section index. For JSON, the first top-level key MUST be `$pancreator_section_index`,
-followed by `$operator`.
+For Markdown and YAML, document frontmatter (when present) MUST be at line 1.
+The operator section follows and is the first content humans see in preview.
+Agents MUST skip the operator prefix (`# Operator section` and its three bullets,
+or the `⚙️ no human content` banner) and read the remainder of the file as the
+agent section. Any existing file frontmatter belongs to the agent section and
+therefore leads the file before the operator summary. For JSON, the first
+top-level key MAY be `$operator` when a human summary is useful; agents MUST
+strip it before schema validation.
 
 The operator section MUST come before the agent section. Agents MUST NOT consult,
 quote, summarize, validate, or reason from the operator section unless the human
@@ -168,7 +180,6 @@ Human-readable sections MUST include these bullets with emoji prefixes:
 - 👀 **In this file:** what the file contains.
 - ⚖️ **Why it matters:** why a human operator should care, in plain language (not
   contract prose copied from the agent section).
-- ⚖️ **Why it matters:** why the operator should care.
 - 🧭 **See also:** newline-separated related files, or `N/A`.
 
 ## 7 — Human/operator output

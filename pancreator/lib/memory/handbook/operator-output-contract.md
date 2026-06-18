@@ -1,15 +1,4 @@
-# Operator section
-- 👀 **In this file:** Operator Output Contract — Chat Completion Shape
-- ⚖️ **Why it matters:** Quick orientation for Operator Output Contract — Chat Completion Shape before agents load the full contract.
-- 🧭 **See also:**
-  - kind: file
-  - kind: file
-  - /AGENTS.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Operator Output Contract — Chat Completion Shape
 slug: operator-output-contract
 stability: experimental
 bootstrap-only: false
@@ -19,18 +8,22 @@ purpose: |
   The canonical format every agent SHALL use for operator-visible chat/stdout
   output when a bounded task completes.
 references:
-  - kind: file
-    path: AGENTS.md
-    note: "AGENTS §7 binds operator-facing completion output to this contract."
-  - kind: file
-    path: lib/memory/handbook/operator-agent-artifact-format.md
-    note: "Defines the file-level operator/agent section split."
+  - '{"kind":"file","path":"AGENTS.md","note":"AGENTS §7 binds operator-facing completion output to this contract."}'
+  - '{"kind":"file","path":"lib/memory/handbook/operator-agent-artifact-format.md","note":"Defines the file-level operator/agent section split."}'
 related:
   - /AGENTS.md
   - /lib/memory/handbook/operator-agent-artifact-format.md
   - /lib/memory/handbook/output-manifest-contract.md
   - /lib/memory/handbook/pancreator-config.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Operator Output Contract — Chat Completion Shape
+- ⚖️ **Why it matters:** Quick orientation for Operator Output Contract — Chat Completion Shape before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/operator-agent-artifact-format.md
+  - /lib/memory/handbook/output-manifest-contract.md
 
 # Operator Output Contract — Chat Completion Shape
 

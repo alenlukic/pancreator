@@ -1,43 +1,21 @@
 ---
 title: Ratify Open Questions Q1-Q22
-seq: "0001"
+seq: 1
 status: accepted
 date: 2026-04-25
-deciders: [tech-lead, LocalUserAuthorizer]
+deciders:
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 references:
-  - kind: symbol
-    path: .docs/PRD.md
-    symbol: "## 13. Open Questions / Risks"
-    contentHash: 2eb6aa4
-    note: "PRD defines the Q1-Q22 ratification surface."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [1151, 1176]
-    contentHash: 2eb6aa4
-    note: "PRD lists Q1-Q22 defaults that require ratification or override."
-  - kind: symbol
-    path: AGENTS.md
-    symbol: "## 5 — Working agreement"
-    contentHash: b953d77
-    note: "AGENTS defines stage-local workflow and citation/style obligations."
-  - kind: lines
-    path: AGENTS.md
-    range: [78, 90]
-    contentHash: b953d77
-    note: "AGENTS requires local staging, human-gated pushes, dual-anchor citations, and Layer 1 discipline."
-  - kind: symbol
-    path: lib/memory/handbook/contract-style.md
-    symbol: "### Rule 1.1 — RFC 2119 obligation per clause"
-    contentHash: 2d7acae
-    note: "Contract style defines RFC 2119 and atomic clause obligations."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [60, 89]
-    contentHash: 2d7acae
-    note: "Layer 1 requires explicit obligation keywords and atomic statements."
----
+  - '{"kind":"symbol","path":".docs/PRD.md","symbol":"## 13. Open Questions / Risks","contentHash":"2eb6aa4","note":"PRD defines the Q1-Q22 ratification surface."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[1151,1176],"contentHash":"2eb6aa4","note":"PRD lists Q1-Q22 defaults that require ratification or override."}'
+  - '{"kind":"symbol","path":"AGENTS.md","symbol":"## 5 — Working agreement","contentHash":"b953d77","note":"AGENTS defines stage-local workflow and citation/style obligations."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[78,90],"contentHash":"b953d77","note":"AGENTS requires local staging, human-gated pushes, dual-anchor citations, and Layer 1 discipline."}'
+  - '{"kind":"symbol","path":"lib/memory/handbook/contract-style.md","symbol":"### Rule 1.1 — RFC 2119 obligation per clause","contentHash":"2d7acae","note":"Contract style defines RFC 2119 and atomic clause obligations."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[60,89],"contentHash":"2d7acae","note":"Layer 1 requires explicit obligation keywords and atomic statements."}'
+...
 
 ## Context
 

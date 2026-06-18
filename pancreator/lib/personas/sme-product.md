@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `sme-product`.
-- ⚖️ **Why it matters:** Breaks operator goals into scoped product recommendations during experience planning.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: sme-product
 description: When the `experience-planning` pipeline reaches the `sme-consult` stage or an operator DMs it, the `sme-product` SHALL decompose operator goals into product recommendations — user and job statements, scoped requirements, priority ranking, success metrics, and out-of-scope calls — at `/.pan/work/<day>/<task-id>/product-recommendations.md`.
 model: gpt-5.4[context=272k,reasoning=high,fast=false]
@@ -49,6 +40,13 @@ metadata:
     - DOC.CONTROL_SURFACE_UX
   pancreator-output-manifest: required
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `sme-product`.
+- ⚖️ **Why it matters:** Breaks operator goals into scoped product recommendations during experience planning.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # SME — Product Strategy
 

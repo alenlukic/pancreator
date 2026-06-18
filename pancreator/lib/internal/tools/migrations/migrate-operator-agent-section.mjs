@@ -11,7 +11,10 @@ import {
   humanizeHandbookWhy,
   personaOperatorWhy,
   sliceOperatorAgentSection,
+  stripFrontmatterTitle,
+  stripOperatorAgentIndexFromFrontmatter,
   wrapOperatorAgentMarkdown,
+  wrapOperatorAgentYaml,
 } from "../../packages/@pancreator/core/dist/index.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -33,7 +36,54 @@ function write(rel, content) {
 
 /** @param {string} content */
 function isSectioned(content) {
-  return content.includes("pancreator-section-index:");
+  const trimmed = content.replace(/^\uFEFF/, "").trimStart();
+  if (trimmed.startsWith("# Operator section") || trimmed.startsWith("⚙️ no human content")) {
+    return true;
+  }
+  if (!trimmed.startsWith("---")) {
+    return false;
+  }
+  const closeDots = trimmed.indexOf("\n...", 4);
+  const closeDashes = trimmed.indexOf("\n---", 4);
+  let closeIndex = -1;
+  if (closeDots >= 0 && closeDashes >= 0) {
+    closeIndex = Math.min(closeDots, closeDashes);
+  } else {
+    closeIndex = closeDots >= 0 ? closeDots : closeDashes;
+  }
+  if (closeIndex < 0) {
+    return false;
+  }
+  const after = trimmed.slice(closeIndex + 4).replace(/^\uFEFF/, "").trimStart();
+  return after.startsWith("# Operator section") || after.startsWith("⚙️ no human content");
+}
+
+function stripLeadingIndexComment(text) {
+  return text
+    .replace(/<!--\s*pancreator-section-index[\s\S]*?-->\n?/gm, "")
+    .replace(/<!--\s*agent_section_start_line:\s*\d+\s*-->\n?/gm, "");
+}
+
+function normalizeAgentBody(agentBody) {
+  let body = stripLeadingIndexComment(agentBody.replace(/^\uFEFF/, "").trimStart());
+  while (body.startsWith("---\n---\n")) {
+    body = body.slice(4);
+  }
+  const fmMatch = body.match(/^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n([\s\S]*)$/);
+  if (!fmMatch) {
+    return body;
+  }
+  let frontmatter = stripOperatorAgentIndexFromFrontmatter(fmMatch[1] ?? "");
+  frontmatter = stripFrontmatterTitle(frontmatter);
+  if (frontmatter.length === 0) {
+    return fmMatch[2].replace(/^\uFEFF/, "").trimStart();
+  }
+  const closeFence = /\n\.\.\.\r?\n/u.test(fmMatch[0] ?? "") ? "..." : "---";
+  return `---\n${frontmatter}\n${closeFence}\n${fmMatch[2] ?? ""}`;
+}
+
+function extractCleanAgentBody(original) {
+  return normalizeAgentBody(sliceOperatorAgentSection(original));
 }
 
 /** @param {{ inThisFile: string, whyItMatters: string, seeAlso: string[] }} meta @param {string} original */
@@ -41,12 +91,9 @@ function wrapMarkdown(meta, original) {
   return wrapOperatorAgentMarkdown(meta, original);
 }
 
-function normalizeAgentBody(agentBody) {
-  let body = agentBody.replace(/^\uFEFF/, "").trimStart();
-  while (body.startsWith("---\n---\n")) {
-    body = body.slice(4);
-  }
-  return body;
+/** @param {{ inThisFile: string, whyItMatters: string, seeAlso: string[] }} meta @param {string} original */
+function wrapYaml(meta, original) {
+  return wrapOperatorAgentYaml(meta, original);
 }
 
 /** @param {string} rel @param {(agent: string) => { inThisFile: string, whyItMatters: string, seeAlso: string[] }} metaFactory */
@@ -55,8 +102,20 @@ function repairSectionedMarkdown(rel, metaFactory) {
   if (!isSectioned(original)) {
     return { rel, status: "skipped" };
   }
-  const agentBody = normalizeAgentBody(sliceOperatorAgentSection(original));
+  let agentBody = extractCleanAgentBody(original);
   const wrapped = wrapMarkdown(metaFactory(agentBody), agentBody);
+  write(rel, wrapped.endsWith("\n") ? wrapped : `${wrapped}\n`);
+  return { rel, status: "repaired" };
+}
+
+/** @param {string} rel @param {(agent: string) => { inThisFile: string, whyItMatters: string, seeAlso: string[] }} metaFactory */
+function repairSectionedYaml(rel, metaFactory) {
+  const original = read(rel);
+  if (!isSectioned(original)) {
+    return { rel, status: "skipped" };
+  }
+  const agentBody = extractCleanAgentBody(original);
+  const wrapped = wrapYaml(metaFactory(agentBody), agentBody);
   write(rel, wrapped.endsWith("\n") ? wrapped : `${wrapped}\n`);
   return { rel, status: "repaired" };
 }
@@ -103,23 +162,54 @@ function yamlScalar(block, key) {
   return "";
 }
 
+/** @param {string} block @param {string} key */
+function yamlListSection(block, key) {
+  const lines = block.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.startsWith(`${key}:`));
+  if (start < 0) {
+    return [];
+  }
+  /** @type {string[]} */
+  const out = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (/^[a-zA-Z0-9_.-]+:/.test(line) || line === "---" || line === "...") {
+      break;
+    }
+    const item = line.match(/^\s*-\s*(.+)$/);
+    if (!item) {
+      continue;
+    }
+    const value = item[1].trim();
+    if (value.startsWith("/") || value.startsWith("lib/") || value.startsWith("pancreator/")) {
+      out.push(value);
+    }
+  }
+  return out;
+}
+
 /** @param {string} rel @param {string} agentBody */
 function handbookMetaFor(rel, agentBody) {
-  const fmMatch = agentBody.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  const fmMatch = agentBody.match(/^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n([\s\S]*)$/);
   const fm = fmMatch?.[1] ?? agentBody;
-  const title = yamlScalar(fm, "title") || path.basename(rel, ".md");
-  const purpose = yamlScalar(fm, "purpose");
-  const related = [...fm.matchAll(/^\s*-\s*(.+)$/gm)].map((m) => m[1].trim()).slice(0, 3);
+  const body = fmMatch?.[2] ?? "";
+  const slug = yamlScalar(fm, "slug") || path.basename(rel, ".md");
+  const h1Match = body.match(/^#\s+(.+)$/m);
+  const label = h1Match?.[1]?.trim() || slug.replace(/-/g, " ");
+  const related = yamlListSection(fm, "related");
   return {
-    inThisFile: title,
-    whyItMatters: humanizeHandbookWhy(title, purpose),
-    seeAlso: related.length > 0 ? related : ["pancreator/lib/memory/handbook/agent-document-registry.md"],
+    inThisFile: label,
+    whyItMatters: humanizeHandbookWhy(label),
+    seeAlso:
+      related.length > 0
+        ? related.slice(0, 3)
+        : ["pancreator/lib/memory/handbook/agent-document-registry.md"],
   };
 }
 
 /** @param {string} rel @param {string} agentBody */
 function personaMetaFor(rel, agentBody) {
-  const fmMatch = agentBody.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  const fmMatch = agentBody.match(/^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n([\s\S]*)$/);
   const fm = fmMatch?.[1] ?? agentBody;
   const name = yamlScalar(fm, "name") || path.basename(rel, ".md");
   const description = yamlScalar(fm, "description");
@@ -147,6 +237,40 @@ function panWorkMetaFor(rel, agentBody) {
   };
 }
 
+/** @param {string} rel @param {string} agentBody */
+function commandMetaFor(rel, agentBody) {
+  const base = path.basename(rel, ".md");
+  const h1 = agentBody.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  return {
+    inThisFile: `Cursor command spec for \`/${base}\`.`,
+    whyItMatters:
+      base === "introspect"
+        ? "Scans recent agent and operator activity and turns recurring misses into an intake-ready follow-up item."
+        : `Defines the \`/${base}\` Cursor command contract.`,
+    seeAlso: [
+      "AGENTS.md",
+      "pancreator/lib/memory/handbook/agent-document-registry.md",
+      "pancreator/lib/memory/handbook/operator-output-contract.md",
+    ],
+  };
+}
+
+/** @param {string} rel */
+function migrateCommand(rel) {
+  const normalizeCommandBody = (agentBody) => {
+    let body = normalizeAgentBody(agentBody);
+    const fmMatch = body.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
+    return fmMatch ? fmMatch[1].replace(/^\uFEFF/, "").trimStart() : body;
+  };
+  if (isSectioned(read(rel))) {
+    return repairSectionedMarkdown(rel, (agentBody) => commandMetaFor(rel, normalizeCommandBody(agentBody)));
+  }
+  const original = read(rel);
+  const wrapped = wrapMarkdown(commandMetaFor(rel, original), original);
+  write(rel, wrapped.endsWith("\n") ? wrapped : `${wrapped}\n`);
+  return { rel, status: "migrated" };
+}
+
 /** @param {string} rel */
 function migrateHandbookMarkdown(rel) {
   if (isSectioned(read(rel))) {
@@ -172,10 +296,10 @@ function migratePersona(rel) {
 /** @param {string} rel */
 function migratePipeline(rel) {
   if (isSectioned(read(rel))) {
-    return repairSectionedMarkdown(rel, (agentBody) => pipelineMetaFor(rel, agentBody));
+    return repairSectionedYaml(rel, (agentBody) => pipelineMetaFor(rel, agentBody));
   }
   const original = read(rel);
-  const wrapped = wrapMarkdown(pipelineMetaFor(rel, original), original);
+  const wrapped = wrapYaml(pipelineMetaFor(rel, original), original);
   write(rel, wrapped.endsWith("\n") ? wrapped : `${wrapped}\n`);
   return { rel, status: "migrated" };
 }
@@ -249,19 +373,10 @@ function wrapJsonDocument(payload, meta) {
     why_it_matters: meta.whyItMatters,
     see_also: meta.seeAlso?.length ? meta.seeAlso : ["N/A"],
   };
-  const firstKey = Object.keys(payload)[0] ?? "state";
-  let wrapped = {
-    $pancreator_section_index: {
-      format: "operator-agent-v1",
-      agent_section_start_line: 1,
-    },
+  const wrapped = {
     $operator,
     ...payload,
   };
-  const text = JSON.stringify(wrapped, null, 2);
-  const line =
-    text.split("\n").findIndex((entry) => entry.includes(`"${firstKey}"`)) + 1;
-  wrapped.$pancreator_section_index.agent_section_start_line = line > 0 ? line : 1;
   return `${JSON.stringify(wrapped, null, 2)}\n`;
 }
 
@@ -277,7 +392,7 @@ function migratePanWorkJson(rel, base) {
   } catch {
     return { rel, status: "skipped" };
   }
-  if (payload?.$pancreator_section_index) {
+  if (payload?.$operator || payload?.$pancreator_section_index) {
     return { rel, status: "skipped" };
   }
   const taskId =
@@ -356,6 +471,17 @@ function main() {
     .map((name) => path.posix.join("lib/personas", name))) {
     const result = migratePersona(rel);
     report[result.status]?.push(rel);
+  }
+
+  const commandsDir = abs("lib/commands");
+  if (fs.existsSync(commandsDir)) {
+    for (const rel of fs
+      .readdirSync(commandsDir)
+      .filter((name) => name.endsWith(".md"))
+      .map((name) => path.posix.join("lib/commands", name))) {
+      const result = migrateCommand(rel);
+      report[result.status]?.push(rel);
+    }
   }
 
   for (const rel of fs

@@ -1,28 +1,23 @@
-# Operator section
-- 👀 **In this file:** operator-verification.template
-- ⚖️ **Why it matters:** Quick orientation for operator-verification.template before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 6
 template: operator-verification
 slug: operator-verification
 stability: experimental
 phase: 1
-allowed-in-milestones: [M1+]
+allowed-in-milestones:
+  - M1+
 purpose: |
   Scaffold for operator-facing acceptance criteria and manual test flows authored
   at feature-delivery complete or ad-hoc close. The human operator executes these
   checks after archival to confirm correctness; failures SHOULD drive pan reopen.
 references:
-  - kind: lines
-    path: lib/personas/librarian.md
-    range: [114, 133]
-    contentHash: 3f338c1
-    note: "Librarian complete-stage duty to finalize operator-verification.md before close-artifacts."
----
+  - '{"kind":"lines","path":"lib/personas/librarian.md","range":[114,133],"contentHash":"3f338c1","note":"Librarian complete-stage duty to finalize operator-verification.md before close-artifacts."}'
+...
+
+# Operator section
+- 👀 **In this file:** Template — Operator verification
+- ⚖️ **Why it matters:** Quick orientation for Template — Operator verification before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Template — Operator verification
 

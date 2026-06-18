@@ -1,15 +1,4 @@
-# Operator section
-- 👀 **In this file:** Operator Control-Surface UX Standard
-- ⚖️ **Why it matters:** Quick orientation for Operator Control-Surface UX Standard before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - https://macro.com/
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Operator Control-Surface UX Standard
 slug: engineering-control-surface-ux
 stability: experimental
 bootstrap-only: false
@@ -23,16 +12,8 @@ purpose: |
   control-surface pattern family: the operator supervises autonomous work, and
   the UI is the supervision instrument.
 references:
-  - kind: lines
-    path: lib/memory/handbook/engineering/design-craft.md
-    range: [206, 264]
-    contentHash: 9c6c2ef
-    note: "Design-craft gate-blocking conditions that every control surface must clear."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [225, 243]
-    contentHash: 2eb6aa4
-    note: "PRD §3.5 US-10 — graduated intervention spectrum the surface must expose."
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/design-craft.md","range":[206,264],"contentHash":"9c6c2ef","note":"Design-craft gate-blocking conditions that every control surface must clear."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[225,243],"contentHash":"2eb6aa4","note":"PRD §3.5 US-10 — graduated intervention spectrum the surface must expose."}'
 external:
   - https://macro.com/
   - https://lawsofux.com/
@@ -42,7 +23,15 @@ related:
   - /lib/memory/handbook/engineering/design/design-system.md
   - /lib/memory/handbook/engineering/design/component-standard.md
   - /lib/memory/handbook/engineering/design-craft.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Operator Control-Surface UX Standard
+- ⚖️ **Why it matters:** Quick orientation for Operator Control-Surface UX Standard before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/engineering/design/design-system.md
+  - /lib/memory/handbook/engineering/design/component-standard.md
+  - /lib/memory/handbook/engineering/design-craft.md
 
 # Operator Control-Surface UX Standard
 

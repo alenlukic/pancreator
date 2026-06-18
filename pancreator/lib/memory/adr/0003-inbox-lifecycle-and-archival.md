@@ -1,53 +1,23 @@
 ---
 title: Ratify Inbox Lifecycle and Archival Mechanism
-seq: "0003"
+seq: 3
 status: proposed
 date: 2026-04-25
-deciders: [tech-lead, LocalUserAuthorizer]
+deciders:
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [267, 267]
-    contentHash: 2eb6aa4
-    note: "PRD glossary defines Inbox as the bidirectional queue with in/out/thread paths."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [1037, 1037]
-    contentHash: 2eb6aa4
-    note: "PRD CLI surface includes `pan inbox` management verbs."
-  - kind: lines
-    path: AGENTS.md
-    range: [101, 103]
-    contentHash: b953d77
-    note: "AGENTS defines `/lib/inbox/in/` as the canonical incoming work queue and `/lib/inbox/out/` as staged responses."
-  - kind: lines
-    path: AGENTS.md
-    range: [130, 130]
-    contentHash: b953d77
-    note: "AGENTS workspace map defines `lib/inbox/{in,out,threads}/`."
-  - kind: lines
-    path: AGENTS.md
-    range: [145, 146]
-    contentHash: b953d77
-    note: "AGENTS bootstrap status records that runtime/CLI execution wiring is not landed."
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [49, 53]
-    contentHash: b788753
-    note: "Bootstrap scaffold includes `lib/inbox/{in,out,threads}/` as a required repository substrate."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [60, 65]
-    contentHash: 2d7acae
-    note: "Layer 1 requires RFC 2119 keywords for normative statements."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [114, 124]
-    contentHash: 2d7acae
-    note: "Layer 1 forbids weasel words in normative clauses."
----
+  - '{"kind":"lines","path":".docs/PRD.md","range":[267,267],"contentHash":"2eb6aa4","note":"PRD glossary defines Inbox as the bidirectional queue with in/out/thread paths."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[1037,1037],"contentHash":"2eb6aa4","note":"PRD CLI surface includes `pan inbox` management verbs."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[101,103],"contentHash":"b953d77","note":"AGENTS defines `/lib/inbox/in/` as the canonical incoming work queue and `/lib/inbox/out/` as staged responses."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[130,130],"contentHash":"b953d77","note":"AGENTS workspace map defines `lib/inbox/{in,out,threads}/`."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[145,146],"contentHash":"b953d77","note":"AGENTS bootstrap status records that runtime/CLI execution wiring is not landed."}'
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[49,53],"contentHash":"b788753","note":"Bootstrap scaffold includes `lib/inbox/{in,out,threads}/` as a required repository substrate."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[60,65],"contentHash":"2d7acae","note":"Layer 1 requires RFC 2119 keywords for normative statements."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[114,124],"contentHash":"2d7acae","note":"Layer 1 forbids weasel words in normative clauses."}'
+...
 
 ## Context
 

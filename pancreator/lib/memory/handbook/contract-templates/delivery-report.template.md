@@ -1,27 +1,22 @@
-# Operator section
-- 👀 **In this file:** delivery-report.template
-- ⚖️ **Why it matters:** Quick orientation for delivery-report.template before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 6
 template: delivery-report
 slug: delivery-report
 stability: experimental
 phase: 1
-allowed-in-milestones: [M1+]
+allowed-in-milestones:
+  - M1+
 purpose: |
   Scaffold for feature-delivery Delivery Reports authored by tech-writer at the
   report stage. Each claim carries a fenced canonical JSON dual-anchor citation.
 references:
-  - kind: lines
-    path: lib/personas/tech-writer.md
-    range: [80, 137]
-    contentHash: ea46720
-    note: "Delivery Report structure and citation conformance gates."
----
+  - '{"kind":"lines","path":"lib/personas/tech-writer.md","range":[80,137],"contentHash":"ea46720","note":"Delivery Report structure and citation conformance gates."}'
+...
+
+# Operator section
+- 👀 **In this file:** Template — Delivery Report
+- ⚖️ **Why it matters:** Quick orientation for Template — Delivery Report before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Template — Delivery Report
 

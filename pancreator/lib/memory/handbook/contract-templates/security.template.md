@@ -1,19 +1,12 @@
-# Operator section
-- 👀 **In this file:** security.template
-- ⚖️ **Why it matters:** Quick orientation for security.template before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - https://owasp.org/www-project-application-security-verification-standard/
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
 template: security
 slug: security
 stability: experimental
-phase: 0b
-allowed-in-milestones: [M1 (rego + llm-judge), M2 (+ schemathesis), M3+ (+ semgrep)]
+phase: "0b"
+allowed-in-milestones:
+  - M1 (rego + llm-judge)
+  - M2 (+ schemathesis)
+  - M3+ (+ semgrep)
 purpose: |
   Scaffold for security and threat-model contract clauses. Pairs a STRIDE
   category with an OWASP-ASVS reference, an EARS assertion, and a numeric
@@ -21,20 +14,18 @@ purpose: |
   qualitative mitigations via `llm-judge`. M3 adds `semgrep` for code-level
   patterns.
 references:
-  - kind: lines
-    path: /lib/memory/handbook/contract-format.md
-    range: [1, 1]
-    contentHash: 10d2b8f
-    note: "Wrapper schema reference."
-  - kind: lines
-    path: /lib/memory/handbook/contract-style.md
-    range: [1, 1]
-    contentHash: 2d7acae
-    note: "Layer 2 (security) requirements: STRIDE + ASVS + EARS + score."
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-format.md","range":[1,1],"contentHash":"10d2b8f","note":"Wrapper schema reference."}'
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-style.md","range":[1,1],"contentHash":"2d7acae","note":"Layer 2 (security) requirements: STRIDE + ASVS + EARS + score."}'
 external:
   - https://owasp.org/www-project-application-security-verification-standard/
   - https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats
----
+...
+
+# Operator section
+- 👀 **In this file:** Template — Security contract
+- ⚖️ **Why it matters:** Quick orientation for Template — Security contract before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Template — Security contract
 

@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `tech-lead`.
-- ⚖️ **Why it matters:** Consolidates product, design, and technical planning into an execution bundle for the coder.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: tech-lead
 description: When the `feature-delivery` pipeline reaches the `plan` stage, the `tech-lead` SHALL consolidate product, design, and technical planning into `tech/plan.md`, `tech/acceptance-criteria.md`, `manual-qa-test-cases.md`, `plan.md`, `adr-draft.md`, `touch-set.json`, and `handoff.md` for the downstream coder.
 model: gpt-5.5[context=272k,reasoning=high,fast=false]
@@ -57,6 +48,13 @@ metadata:
   pancreator-output-manifest: required
   pancreator-color-suffix: cyan-200
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `tech-lead`.
+- ⚖️ **Why it matters:** Consolidates product, design, and technical planning into an execution bundle for the coder.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Tech Lead
 

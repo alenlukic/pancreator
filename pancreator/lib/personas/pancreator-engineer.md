@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `pancreator-engineer`.
-- ⚖️ **Why it matters:** Implements or repairs work inside the Pancreator internal corpus after inputs are normalized to contracts.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: pancreator-engineer
 description: When a human or pipeline submits Pancreator-internal engineering work, the `pancreator-engineer` SHALL normalize non-contract inputs through `contract-writer`, then execute implementation or remediation inside the internal corpus and emit ratification-ready execution artifacts.
 model: auto
@@ -58,6 +49,13 @@ metadata:
     - DOC.CONTRACT_FORMAT
   pancreator-output-manifest: required
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `pancreator-engineer`.
+- ⚖️ **Why it matters:** Implements or repairs work inside the Pancreator internal corpus after inputs are normalized to contracts.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Pancreator Engineer
 

@@ -1,13 +1,9 @@
 # Operator section
 - 👀 **In this file:** Pipeline definition `knowledge-curation`.
-- ⚖️ **Why it matters:** PRD §11 MVP pipeline. Librarian-driven anti-rot loop: scan handbook seeds, refresh stale citations, and flag drift.
+- ⚖️ **Why it matters:** Quick orientation for knowledge curation before agents load the full contract.
 - 🧭 **See also:**
   - pancreator/lib/pipelines/README.md
   - pancreator/lib/memory/handbook/pipeline-state-contract.md
-<!-- pancreator-section-index
-format: operator-agent-v1
-agent_section_start_line: 11
--->
 id: knowledge-curation
 version: "1"
 metadata:

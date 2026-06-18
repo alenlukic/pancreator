@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `contract-writer`.
-- ⚖️ **Why it matters:** Turns informal requests into machine-checkable contract clauses the rest of the pipeline can enforce.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: contract-writer
 description: When a human requests a machine-checkable gate clause, the `contract-writer` SHALL author the clause to the PRD §4.5 wrapper schema and §4.6 5-layer style discipline and register it in the feature's `contracts.index.json`.
 model: auto
@@ -69,6 +60,13 @@ metadata:
       py-predicate,
     ]
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `contract-writer`.
+- ⚖️ **Why it matters:** Turns informal requests into machine-checkable contract clauses the rest of the pipeline can enforce.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Contract Writer
 

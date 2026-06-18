@@ -49,22 +49,8 @@ export const PERSONA_OPERATOR_WHY: Readonly<Record<string, string>> = {
 /**
  * Returns a short human-readable "why it matters" line for handbook and template docs.
  */
-export function humanizeHandbookWhy(title: string, purpose: string): string {
-  const cleaned = purpose.replace(/\s+/g, " ").trim();
-  if (cleaned.length === 0 || cleaned === "|") {
-    return `Quick orientation for ${title} before agents load the full contract.`;
-  }
-  const sentenceMatch = cleaned.match(/^(.{24,220}?[.!?])(?:\s|$)/);
-  if (sentenceMatch) {
-    return sentenceMatch[1]
-      .replace(/\bSHALL\b/gi, "")
-      .replace(/\bMUST NOT\b/gi, "must not")
-      .replace(/\bMUST\b/gi, "")
-      .replace(/\s{2,}/g, " ")
-      .trim();
-  }
-  const clipped = cleaned.slice(0, 200).replace(/\s+\S*$/, "");
-  return clipped.length > 0 ? `${clipped}.` : `Quick orientation for ${title}.`;
+export function humanizeHandbookWhy(title: string, _purpose?: string): string {
+  return `Quick orientation for ${title} before agents load the full contract.`;
 }
 
 export function personaOperatorWhy(name: string, _description: string): string {

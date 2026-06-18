@@ -1,19 +1,8 @@
-# Operator section
-- 👀 **In this file:** Contract Style Discipline (Layers 1–5)
-- ⚖️ **Why it matters:** Quick orientation for Contract Style Discipline (Layers 1–5) before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Contract Style Discipline (Layers 1–5)
 slug: contract-style
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [contract-writer, librarian, reviewer]
 purpose: |
   The 5-layer style discipline every contract clause MUST follow. Layer 1 is
@@ -22,21 +11,9 @@ purpose: |
   repo-level governance. The canonical reference for the lint loop in the
   `author-contract` skill and for `reviewer`'s Phase 4 contract pass.
 references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [260, 260]
-    contentHash: 2eb6aa4
-    note: "PRD §4 glossary — Spec Contract definition."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [839, 839]
-    contentHash: 2eb6aa4
-    note: "PRD §7 — `Spec contracts are gates, not suggestions` paragraph."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [1190, 1190]
-    contentHash: 2eb6aa4
-    note: "PRD §13 R11 — spec-contract over-fitting risk."
+  - '{"kind":"lines","path":".docs/PRD.md","range":[260,260],"contentHash":"2eb6aa4","note":"PRD §4 glossary — Spec Contract definition."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[839,839],"contentHash":"2eb6aa4","note":"PRD §7 — `Spec contracts are gates, not suggestions` paragraph."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[1190,1190],"contentHash":"2eb6aa4","note":"PRD §13 R11 — spec-contract over-fitting risk."}'
 related:
   - /lib/memory/handbook/glossary.md
   - /lib/memory/handbook/contract-format.md
@@ -46,7 +23,15 @@ external:
   - https://alistairmavin.com/ears/
   - https://www.openpolicyagent.org/docs/policy-language/#metadata
   - https://owasp.org/www-project-application-security-verification-standard/
----
+...
+
+# Operator section
+- 👀 **In this file:** Contract Style Discipline
+- ⚖️ **Why it matters:** Quick orientation for Contract Style Discipline before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/glossary.md
+  - /lib/memory/handbook/contract-format.md
+  - /lib/memory/handbook/contract-templates/
 
 # Contract Style Discipline
 

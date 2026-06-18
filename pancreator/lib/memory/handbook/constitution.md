@@ -1,57 +1,34 @@
-# Operator section
-- 👀 **In this file:** Pancreator Constitution
-- ⚖️ **Why it matters:** Quick orientation for Pancreator Constitution before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Pancreator Constitution
 slug: constitution
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [supervisor, librarian, tech-lead]
 purpose: |
   Org-level charter and governance baseline for Pancreator. This document
   defines mission-level principles, authority boundaries, and change-control
   rules that apply across personas, skills, pipelines, and handbook contracts.
 references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [83, 89]
-    contentHash: 2eb6aa4
-    note: "PRD goals G1-G7 define Pancreator's intended operating outcomes."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [378, 380]
-    contentHash: 2eb6aa4
-    note: "PRD memory and inbox architecture define organizational operating surfaces."
-  - kind: lines
-    path: AGENTS.md
-    range: [73, 100]
-    contentHash: b953d77
-    note: "AGENTS working agreement defines bootstrap-era operating discipline."
-  - kind: lines
-    path: lib/memory/adr/0004-documentation-impact-contract.md
-    range: [51, 75]
-    contentHash: a4dd126
-    note: "ADR-0004 ratifies mandatory per-task documentation-impact decisions."
-  - kind: lines
-    path: lib/memory/handbook/documentation-impact-contract.md
-    range: [46, 101]
-    contentHash: 1916c90
-    note: "Handbook contract defines trigger conditions and decision record shape."
+  - '{"kind":"lines","path":".docs/PRD.md","range":[83,89],"contentHash":"2eb6aa4","note":"PRD goals G1-G7 define Pancreator''s intended operating outcomes."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[378,380],"contentHash":"2eb6aa4","note":"PRD memory and inbox architecture define organizational operating surfaces."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[73,100],"contentHash":"b953d77","note":"AGENTS working agreement defines bootstrap-era operating discipline."}'
+  - '{"kind":"lines","path":"lib/memory/adr/0004-documentation-impact-contract.md","range":[51,75],"contentHash":"a4dd126","note":"ADR-0004 ratifies mandatory per-task documentation-impact decisions."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/documentation-impact-contract.md","range":[46,101],"contentHash":"1916c90","note":"Handbook contract defines trigger conditions and decision record shape."}'
 related:
   - /AGENTS.md
   - /.docs/PRD.md
   - /lib/memory/handbook/glossary.md
   - /lib/memory/handbook/documentation-impact-contract.md
   - /lib/memory/handbook/inbox-lifecycle.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Constitution
+- ⚖️ **Why it matters:** Quick orientation for Constitution before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /.docs/PRD.md
+  - /lib/memory/handbook/glossary.md
 
 # Constitution
 

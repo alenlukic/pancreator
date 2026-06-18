@@ -1,15 +1,4 @@
-# Operator section
-- 👀 **In this file:** Documentation Impact Contract
-- ⚖️ **Why it matters:** Quick orientation for Documentation Impact Contract before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Documentation Impact Contract
 slug: documentation-impact-contract
 stability: experimental
 bootstrap-only: false
@@ -21,32 +10,24 @@ purpose: |
   and record explicit deferral rationale with backlog linkage when updates are
   deferred.
 references:
-  - kind: lines
-    path: lib/memory/adr/0004-documentation-impact-contract.md
-    range: [66, 100]
-    contentHash: a4dd126
-    note: "ADR-0004 decision defines mandatory applies true/false decision and minimum actions."
-  - kind: lines
-    path: AGENTS.md
-    range: [74, 95]
-    contentHash: b953d77
-    note: "AGENTS working agreement is the global policy surface for task-level obligations."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [60, 65]
-    contentHash: 2d7acae
-    note: "Layer 1 requires RFC 2119 keywords in normative policy language."
-  - kind: lines
-    path: lib/memory/handbook/backlog-format.md
-    range: [56, 78]
-    contentHash: dda2fb8
-    note: "Backlog index schema defines required fields for deferred follow-up items."
+  - '{"kind":"lines","path":"lib/memory/adr/0004-documentation-impact-contract.md","range":[66,100],"contentHash":"a4dd126","note":"ADR-0004 decision defines mandatory applies true/false decision and minimum actions."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[74,95],"contentHash":"b953d77","note":"AGENTS working agreement is the global policy surface for task-level obligations."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[60,65],"contentHash":"2d7acae","note":"Layer 1 requires RFC 2119 keywords in normative policy language."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/backlog-format.md","range":[56,78],"contentHash":"dda2fb8","note":"Backlog index schema defines required fields for deferred follow-up items."}'
 related:
   - /lib/memory/adr/0004-documentation-impact-contract.md
   - /lib/memory/backlog/index.yaml
   - /lib/memory/handbook/backlog-format.md
   - /AGENTS.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Documentation Impact Contract
+- ⚖️ **Why it matters:** Quick orientation for Documentation Impact Contract before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/adr/0004-documentation-impact-contract.md
+  - /lib/memory/backlog/index.yaml
+  - /lib/memory/handbook/backlog-format.md
 
 # Documentation Impact Contract
 

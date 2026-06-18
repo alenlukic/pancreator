@@ -1,45 +1,30 @@
-# Operator section
-- 👀 **In this file:** Backlog Index Schema Reference
-- ⚖️ **Why it matters:** Quick orientation for Backlog Index Schema Reference before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Backlog Index Schema Reference
 slug: backlog-format
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [tech-lead, librarian]
 purpose: |
   The canonical schema for `/lib/memory/backlog/index.yaml`, including required
   fields, status and priority enums, and update discipline for open/deferred
   work tracked across bootstrap and milestone execution.
 references:
-  - kind: lines
-    path: lib/memory/adr/0001-backlog-tracking.md
-    range: [76, 81]
-    contentHash: 4a9bed1
-    note: "ADR decision establishes `/lib/memory/backlog/index.yaml` and this handbook schema."
-  - kind: lines
-    path: AGENTS.md
-    range: [77, 83]
-    contentHash: b953d77
-    note: "AGENTS requires dual-anchor citations and Layer 1 style discipline."
-  - kind: lines
-    path: lib/memory/handbook/glossary.md
-    range: [225, 226]
-    contentHash: 762edb4
-    note: "Glossary defines backlog as the live ranked roadmap."
+  - '{"kind":"lines","path":"lib/memory/adr/0001-backlog-tracking.md","range":[76,81],"contentHash":"4a9bed1","note":"ADR decision establishes `/lib/memory/backlog/index.yaml` and this handbook schema."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[77,83],"contentHash":"b953d77","note":"AGENTS requires dual-anchor citations and Layer 1 style discipline."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/glossary.md","range":[225,226],"contentHash":"762edb4","note":"Glossary defines backlog as the live ranked roadmap."}'
 related:
   - /lib/memory/adr/0001-backlog-tracking.md
   - /lib/memory/handbook/contract-style.md
   - /lib/memory/backlog/index.yaml
----
+...
+
+# Operator section
+- 👀 **In this file:** Backlog Index Schema
+- ⚖️ **Why it matters:** Quick orientation for Backlog Index Schema before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/adr/0001-backlog-tracking.md
+  - /lib/memory/handbook/contract-style.md
+  - /lib/memory/backlog/index.yaml
 
 # Backlog Index Schema
 

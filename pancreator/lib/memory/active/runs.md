@@ -9,15 +9,11 @@ purpose: |
   Pointer-only table for active and recent pipeline runs without embedding run
   artifacts inside active memory.
 references:
-  - kind: lines
-    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
-    range: [237, 246]
-    contentHash: 9b2ddcc
-    note: "Spec requires runs.md pointers without embedded artifacts."
+  - '{"kind":"lines","path":"lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json","range":[237,246],"contentHash":"9b2ddcc","note":"Spec requires runs.md pointers without embedded artifacts."}'
 related:
   - /lib/memory/handbook/run-log-schema.md
   - /lib/memory/active/current.md
----
+...
 
 # Active and recent runs
 

@@ -1,15 +1,4 @@
-# Operator section
-- 👀 **In this file:** Compliance Run Triggers
-- ⚖️ **Why it matters:** Quick orientation for Compliance Run Triggers before agents load the full contract.
-- 🧭 **See also:**
-  - kind: file
-  - kind: lines
-  - /AGENTS.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Compliance Run Triggers
 slug: compliance-runs
 stability: experimental
 bootstrap-only: false
@@ -20,19 +9,21 @@ purpose: |
   `tests/compliance/` and how first-slice manual execution differs from
   deferred scheduler automation.
 references:
-  - kind: file
-    path: AGENTS.md
-    note: "AGENTS §5 binds agents to run compliance descriptors when this handbook says the touched surface requires them."
-  - kind: lines
-    path: lib/memory/features/quality-governance/compliance-tests/manual-runbook.md
-    range: [1, 52]
-    contentHash: a207354
-    note: "Manual runbook defines operator-on-demand and structure-change modes."
+  - '{"kind":"file","path":"AGENTS.md","note":"AGENTS §5 binds agents to run compliance descriptors when this handbook says the touched surface requires them."}'
+  - '{"kind":"lines","path":"lib/memory/features/quality-governance/compliance-tests/manual-runbook.md","range":[1,52],"contentHash":"a207354","note":"Manual runbook defines operator-on-demand and structure-change modes."}'
 related:
   - /AGENTS.md
   - /lib/memory/features/quality-governance/compliance-tests/manual-runbook.md
   - /tests/compliance/schemas/latest.yaml
----
+...
+
+# Operator section
+- 👀 **In this file:** Compliance Run Triggers
+- ⚖️ **Why it matters:** Quick orientation for Compliance Run Triggers before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/features/quality-governance/compliance-tests/manual-runbook.md
+  - /tests/compliance/schemas/latest.yaml
 
 # Compliance Run Triggers
 

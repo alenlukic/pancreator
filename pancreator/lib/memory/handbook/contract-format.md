@@ -1,19 +1,8 @@
-# Operator section
-- 👀 **In this file:** Contract Wrapper Schema Reference
-- ⚖️ **Why it matters:** Quick orientation for Contract Wrapper Schema Reference before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Contract Wrapper Schema Reference
 slug: contract-format
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [contract-writer, librarian]
 purpose: |
   The kind-agnostic wrapper schema every contract clause shares, the
@@ -22,21 +11,9 @@ purpose: |
   quorum policy. The canonical reference for `contract-writer` and the
   `author-contract` skill.
 references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [260, 260]
-    contentHash: 2eb6aa4
-    note: "PRD §4 glossary — Spec Contract definition."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [839, 839]
-    contentHash: 2eb6aa4
-    note: "PRD §7 — `Spec contracts are gates, not suggestions` paragraph."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [435, 435]
-    contentHash: 2eb6aa4
-    note: "PRD §5.5 — conformance-target list (Conftest/Rego, Cedar, etc.)."
+  - '{"kind":"lines","path":".docs/PRD.md","range":[260,260],"contentHash":"2eb6aa4","note":"PRD §4 glossary — Spec Contract definition."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[839,839],"contentHash":"2eb6aa4","note":"PRD §7 — `Spec contracts are gates, not suggestions` paragraph."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[435,435],"contentHash":"2eb6aa4","note":"PRD §5.5 — conformance-target list (Conftest/Rego, Cedar, etc.)."}'
 related:
   - /lib/memory/handbook/glossary.md
   - /lib/memory/handbook/contract-style.md
@@ -48,7 +25,15 @@ external:
   - https://schemathesis.io
   - https://playwright.dev
   - https://github.com/dequelabs/axe-core
----
+...
+
+# Operator section
+- 👀 **In this file:** Contract Wrapper Schema
+- ⚖️ **Why it matters:** Quick orientation for Contract Wrapper Schema before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/glossary.md
+  - /lib/memory/handbook/contract-style.md
+  - /lib/memory/handbook/contract-templates/
 
 # Contract Wrapper Schema
 

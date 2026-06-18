@@ -1,19 +1,8 @@
-# Operator section
-- 👀 **In this file:** TypeScript and ES2022 Style Guide
-- ⚖️ **Why it matters:** Quick orientation for TypeScript and ES2022 Style Guide before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - /lib/memory/handbook/engineering/index.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: TypeScript and ES2022 Style Guide
 slug: engineering-typescript
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [reviewer, coder, pancreator-engineer]
 purpose: |
   Standards for modern TypeScript using current stable TypeScript, ES2022+
@@ -22,20 +11,19 @@ purpose: |
   correctness, maintainability, and clear JavaScript output over type-level
   cleverness.
 references:
-  - kind: lines
-    path: lib/memory/handbook/engineering/index.md
-    range: [1, 1]
-    contentHash: 990527f
-    note: "Engineering standards index routes TypeScript activities to this page."
-  - kind: lines
-    path: lib/memory/handbook/engineering/software-engineering.md
-    range: [1, 1]
-    contentHash: 9d6c834
-    note: "This guide layers on top of the general software-engineering standard."
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/index.md","range":[1,1],"contentHash":"990527f","note":"Engineering standards index routes TypeScript activities to this page."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/software-engineering.md","range":[1,1],"contentHash":"9d6c834","note":"This guide layers on top of the general software-engineering standard."}'
 related:
   - /lib/memory/handbook/engineering/index.md
   - /lib/memory/handbook/engineering/software-engineering.md
----
+...
+
+# Operator section
+- 👀 **In this file:** TypeScript and ES2022 Style Guide
+- ⚖️ **Why it matters:** Quick orientation for TypeScript and ES2022 Style Guide before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/engineering/index.md
+  - /lib/memory/handbook/engineering/software-engineering.md
 
 # TypeScript and ES2022 Style Guide
 

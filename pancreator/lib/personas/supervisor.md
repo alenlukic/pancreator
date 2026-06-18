@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `supervisor`.
-- ⚖️ **Why it matters:** Orchestrates pipeline stages, enforces gates, and prepares ship ratification for human review.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: supervisor
 description: When the operator supplies a `lib/inbox/in/` path, the `supervisor` SHALL oversee a fully automated SDK `feature-delivery` run; when the operator names a `lib/pipelines/` definition with optional arguments, the `supervisor` SHALL load and execute that pipeline's declared stage DAG; when prose is underspecified, the `supervisor` SHALL request follow-ups until an inbox item can be drafted; otherwise the `supervisor` SHALL orchestrate stages and enforce gates.
 model: auto
@@ -64,6 +55,13 @@ metadata:
     - DOC.CONTRACT_STYLE
   pancreator-output-manifest: required
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `supervisor`.
+- ⚖️ **Why it matters:** Orchestrates pipeline stages, enforces gates, and prepares ship ratification for human review.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Supervisor
 

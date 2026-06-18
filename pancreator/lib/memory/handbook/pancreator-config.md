@@ -1,14 +1,8 @@
 # Operator section
-- 👀 **In this file:** pancreator-config
-- ⚖️ **Why it matters:** Quick orientation for pancreator-config before agents load the full contract.
+- 👀 **In this file:** pancreator config
+- ⚖️ **Why it matters:** Quick orientation for pancreator config before agents load the full contract.
 - 🧭 **See also:**
-  - an absolute path to the repository or project where the Pancreator harness is embedded, or
-  - a relative path from the Pancreator harness root to that embedded project root.
-  - Every **runnable** command an agent emits for an operator MUST use the full
-<!-- pancreator-section-index
-format: operator-agent-v1
-agent_section_start_line: 12
--->
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 # Pancreator Config
 
 `pancreator.yaml` is the live operator-facing configuration file for this repository.

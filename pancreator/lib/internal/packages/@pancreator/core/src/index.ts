@@ -39,13 +39,14 @@ export {
   PERSONA_OPERATOR_WHY,
 } from "./operator-human-summary.js";
 export {
-  readOperatorAgentSectionIndex,
+  splitOperatorAgentSection,
   sliceOperatorAgentSection,
   stripOperatorAgentIndexFromFrontmatter,
+  stripFrontmatterTitle,
   stripOperatorAgentJsonPrefix,
   parseOperatorAgentJsonText,
   wrapOperatorAgentMarkdown,
+  wrapOperatorAgentYaml,
   wrapOperatorAgentJson,
-  type OperatorAgentSectionIndex,
   type OperatorAgentOperatorMeta,
 } from "./operator-agent-section.js";

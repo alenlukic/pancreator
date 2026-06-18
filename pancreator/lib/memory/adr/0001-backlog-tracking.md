@@ -1,63 +1,25 @@
 ---
 title: Ratify Backlog Tracking Canon
-seq: "0001"
+seq: 1
 status: proposed
 date: 2026-04-25
-deciders: [tech-lead, LocalUserAuthorizer]
+deciders:
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [259, 259]
-    contentHash: 2eb6aa4
-    note: "PRD glossary defines backlog as `/lib/memory/backlog/`, the live ranked roadmap."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [378, 378]
-    contentHash: 2eb6aa4
-    note: "PRD memory layer includes backlog and requires dual-anchor cross-references."
-  - kind: lines
-    path: AGENTS.md
-    range: [18, 29]
-    contentHash: b953d77
-    note: "AGENTS defines handbook and PRD as canonical authoring references."
-  - kind: lines
-    path: AGENTS.md
-    range: [77, 83]
-    contentHash: b953d77
-    note: "AGENTS requires dual-anchor citations and Layer 1 style discipline."
-  - kind: lines
-    path: AGENTS.md
-    range: [120, 121]
-    contentHash: b953d77
-    note: "AGENTS workspace map allocates `/lib/memory/backlog/` as the backlog memory tier."
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [51, 51]
-    contentHash: b788753
-    note: "Bootstrap scaffolds `/lib/memory/backlog/` as a required memory directory."
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [264, 270]
-    contentHash: b788753
-    note: "Bootstrap cross-cutting conventions require dual-anchor citations in artifacts."
-  - kind: lines
-    path: lib/memory/handbook/glossary.md
-    range: [225, 226]
-    contentHash: 762edb4
-    note: "Handbook glossary defines Backlog ownership and scope."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [60, 63]
-    contentHash: 2d7acae
-    note: "Layer 1 requires RFC 2119 obligation keywords in normative statements."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [114, 124]
-    contentHash: 2d7acae
-    note: "Layer 1 bans weasel words in normative clauses."
----
+  - '{"kind":"lines","path":".docs/PRD.md","range":[259,259],"contentHash":"2eb6aa4","note":"PRD glossary defines backlog as `/lib/memory/backlog/`, the live ranked roadmap."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[378,378],"contentHash":"2eb6aa4","note":"PRD memory layer includes backlog and requires dual-anchor cross-references."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[18,29],"contentHash":"b953d77","note":"AGENTS defines handbook and PRD as canonical authoring references."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[77,83],"contentHash":"b953d77","note":"AGENTS requires dual-anchor citations and Layer 1 style discipline."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[120,121],"contentHash":"b953d77","note":"AGENTS workspace map allocates `/lib/memory/backlog/` as the backlog memory tier."}'
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[51,51],"contentHash":"b788753","note":"Bootstrap scaffolds `/lib/memory/backlog/` as a required memory directory."}'
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[264,270],"contentHash":"b788753","note":"Bootstrap cross-cutting conventions require dual-anchor citations in artifacts."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/glossary.md","range":[225,226],"contentHash":"762edb4","note":"Handbook glossary defines Backlog ownership and scope."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[60,63],"contentHash":"2d7acae","note":"Layer 1 requires RFC 2119 obligation keywords in normative statements."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[114,124],"contentHash":"2d7acae","note":"Layer 1 bans weasel words in normative clauses."}'
+...
 
 ## Context
 

@@ -1,19 +1,8 @@
-# Operator section
-- 👀 **In this file:** Output Manifest Contract
-- ⚖️ **Why it matters:** Defines the output manifest every bounded persona invocation emits and gate validators check.
-- 🧭 **See also:**
-  - /AGENTS.md
-  - /lib/memory/handbook/operator-agent-artifact-format.md
-  - /lib/memory/handbook/operator-output-contract.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Output Manifest Contract
 slug: output-manifest-contract
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [supervisor, compliance-auditor, tech-writer]
 purpose: Defines the output manifest every bounded persona invocation emits and gate validators check.
 related:
@@ -23,7 +12,15 @@ related:
   - /lib/memory/handbook/agent-document-registry.md
   - /lib/memory/handbook/persona-contracts.md
   - /lib/memory/handbook/pipeline-state-contract.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Output Manifest Contract
+- ⚖️ **Why it matters:** Quick orientation for Output Manifest Contract before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/operator-agent-artifact-format.md
+  - /lib/memory/handbook/operator-output-contract.md
 
 # Output Manifest Contract
 
@@ -68,10 +65,6 @@ sections and validate only agent-section content.
 
 ```json
 {
-  "$pancreator_section_index": {
-    "format": "operator-agent-v1",
-    "agent_section_start_line": 7
-  },
   "$operator": "⚙️ no human content",
   "output_manifest": {
     "persona_contract": "PERSONA.NAME",

@@ -1,15 +1,4 @@
-# Operator section
-- 👀 **In this file:** Memory tiers for Cursor context economy
-- ⚖️ **Why it matters:** Quick orientation for Memory tiers for Cursor context economy before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - /lib/memory/handbook/context-economy.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Memory tiers for Cursor context economy
 slug: memory-tiers
 stability: experimental
 bootstrap-only: false
@@ -19,21 +8,21 @@ purpose: |
   Canonical six-tier taxonomy for classifying repository knowledge by default
   retrieval cost, durability, and operator-facing intent.
 references:
-  - kind: lines
-    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
-    range: [212, 312]
-    contentHash: 9b2ddcc
-    note: "Acceptance criteria anchor active-memory and memory-tier handbook obligations."
-  - kind: lines
-    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
-    range: [101, 230]
-    contentHash: 188405e
-    note: "Directive §1 defines tier purposes, locations, and rules."
+  - '{"kind":"lines","path":"lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json","range":[212,312],"contentHash":"9b2ddcc","note":"Acceptance criteria anchor active-memory and memory-tier handbook obligations."}'
+  - '{"kind":"lines","path":".pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md","range":[101,230],"contentHash":"188405e","note":"Directive §1 defines tier purposes, locations, and rules."}'
 related:
   - /lib/memory/handbook/context-economy.md
   - /lib/memory/handbook/glossary.md
   - /lib/memory/active/README.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Memory tiers for Cursor context economy
+- ⚖️ **Why it matters:** Quick orientation for Memory tiers for Cursor context economy before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/context-economy.md
+  - /lib/memory/handbook/glossary.md
+  - /lib/memory/active/README.md
 
 # Memory tiers for Cursor context economy
 

@@ -59,6 +59,45 @@ describe("setPersonaFrontmatterModel", () => {
     const { changed } = setPersonaFrontmatterModel(SAMPLE_PERSONA, "old-model");
     expect(changed).toBe(false);
   });
+
+  it("updates model inside a sectioned persona without touching the operator block", () => {
+    const sectioned = `# Operator section
+- 👀 **In this file:** Persona spec for \`intake-analyst\`.
+- ⚖️ **Why it matters:** Turns informal inbox specs into canonical engineering specs.
+- 🧭 **See also:** N/A
+---
+name: intake-analyst
+description: Test persona
+model: old-model
+permissionMode: default
+tools: []
+disallowedTools: []
+mcpServers: []
+maxTurns: 30
+skills: []
+isolation: worktree
+memory: project
+effort: medium
+color: slate
+metadata:
+  pancreator-risk-tier: low
+  pancreator-pipeline-stages: [intake]
+  pancreator-bootstrap-only: false
+  pancreator-stability: experimental
+  pancreator-required-docs: []
+---
+
+# Body
+`;
+    const { content, changed } = setPersonaFrontmatterModel(
+      sectioned,
+      "composer-2.5[fast=false]",
+    );
+    expect(changed).toBe(true);
+    expect(content).toMatch(/^# Operator section/m);
+    expect(content).toContain("model: composer-2.5[fast=false]");
+    expect(content).toContain("# Body");
+  });
 });
 
 describe("syncPersonaModelsFromEscalation", () => {

@@ -1,4 +1,9 @@
-import { projectRootAbs, quoteJsonString, resolveModelEscalationYamlPath } from "@pancreator/core";
+import {
+  projectRootAbs,
+  quoteJsonString,
+  splitOperatorAgentSection,
+  resolveModelEscalationYamlPath,
+} from "@pancreator/core";
 import { loadModelEscalationConfig, type LoadedModelEscalation } from "@pancreator/runner-cursor";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -27,8 +32,24 @@ function yamlQuoteModelValue(value: string): string {
   return value;
 }
 
-/** Updates only the `model:` frontmatter line; preserves the rest of the file verbatim. */
+/** Updates only the `model:` frontmatter line; preserves operator prefixes when present. */
 export function setPersonaFrontmatterModel(
+  raw: string,
+  model: string,
+): { content: string; changed: boolean; previousModel?: string } {
+  const split = splitOperatorAgentSection(raw);
+  if (!split) {
+    return setPersonaFrontmatterModelInAgentSlice(raw, model);
+  }
+  const inner = setPersonaFrontmatterModelInAgentSlice(split.agentBody, model);
+  if (!inner.changed) {
+    return { content: raw, changed: false, previousModel: inner.previousModel };
+  }
+  const content = `${split.operatorPrefix}\n${inner.content}`;
+  return { content, changed: true, previousModel: inner.previousModel };
+}
+
+function setPersonaFrontmatterModelInAgentSlice(
   raw: string,
   model: string,
 ): { content: string; changed: boolean; previousModel?: string } {

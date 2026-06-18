@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `pr-writer`.
-- ⚖️ **Why it matters:** Drafts a merge-ready pull-request summary from a feature's delivery artifacts.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: pr-writer
 description: When the operator invokes `pr-writer` with a feature ID, work directory, or `next-prompt.md` path, the `pr-writer` SHALL emit one fenced PR body (`## Summary`, `## Changelist`, optional `## Delivery Pipeline Manifest`) plus `## Next operator steps` outside the fence; Summary and Changelist MUST be high-level impact and key thematic changes—not exhaustive diff inventories; the `pr-writer` MUST NOT run `gh pr create` or use a Test plan template.
 model: auto
@@ -55,6 +46,13 @@ metadata:
     - DOC.CONTRACT_STYLE
   pancreator-output-manifest: required
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `pr-writer`.
+- ⚖️ **Why it matters:** Drafts a merge-ready pull-request summary from a feature's delivery artifacts.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # PR Writer
 

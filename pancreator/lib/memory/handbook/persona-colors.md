@@ -1,19 +1,8 @@
-# Operator section
-- 👀 **In this file:** Persona Color Palette
-- ⚖️ **Why it matters:** Quick orientation for Persona Color Palette before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - /lib/memory/handbook/persona-spec.md
-  - /lib/memory/handbook/glossary.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Persona Color Palette
 slug: persona-colors
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [persona-designer, librarian]
 purpose: |
   The canonical UX-color palette for the persona `color` field. Resolves the
@@ -21,15 +10,18 @@ purpose: |
   the palette table from `/lib/memory/handbook/persona-spec.md` §6 into a
   dedicated handbook file so future personas have a stable lookup target.
 references:
-  - kind: lines
-    path: /lib/memory/handbook/persona-spec.md
-    range: [180, 210]
-    contentHash: 2a072e0
-    note: "Persona Spec Format §6 — palette table; this file is the canonical alias."
+  - '{"kind":"lines","path":"/lib/memory/handbook/persona-spec.md","range":[180,210],"contentHash":"2a072e0","note":"Persona Spec Format §6 — palette table; this file is the canonical alias."}'
 related:
   - /lib/memory/handbook/persona-spec.md
   - /lib/memory/handbook/glossary.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Persona Color Palette
+- ⚖️ **Why it matters:** Quick orientation for Persona Color Palette before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/persona-spec.md
+  - /lib/memory/handbook/glossary.md
 
 # Persona Color Palette
 

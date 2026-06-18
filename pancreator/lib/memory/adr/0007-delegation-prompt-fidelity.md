@@ -1,28 +1,21 @@
 ---
 title: Ratify Delegation Prompt Fidelity And No Unsolicited Parent Action
-seq: "0007"
+seq: 7
 status: proposed
-date: 2026-05-31T00:00:00Z
-deciders: [supervisor, tech-lead, LocalUserAuthorizer]
+date: "2026-05-31T00:00:00Z"
+deciders:
+  - supervisor
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 feature_id: delegation-prompt-fidelity
 references:
-  - kind: file
-    path: AGENTS.md
-    note: AGENTS §2 now carries the repo-wide delegation authority and prompt-fidelity rules ratified by this ADR.
-  - kind: file
-    path: lib/memory/handbook/context-economy.md
-    note: Planning/execution handoff discipline carries the mirrored prompt-fidelity norm.
-  - kind: file
-    path: lib/memory/handbook/agents-md-authoring.md
-    note: AGENTS change-control workflow requires inbox authorization and ADR for policy-significant edits.
-  - kind: lines
-    path: lib/inbox/in/172975_05-31-26/30025_1539_delegation-prompt-fidelity-no-editorializing.md
-    range: [11, 31]
-    contentHash: a82d909
-    note: Authorizing inbox directive framing the contract gap and required outcomes.
----
+  - '{"kind":"file","path":"AGENTS.md","note":"AGENTS §2 now carries the repo-wide delegation authority and prompt-fidelity rules ratified by this ADR."}'
+  - '{"kind":"file","path":"lib/memory/handbook/context-economy.md","note":"Planning/execution handoff discipline carries the mirrored prompt-fidelity norm."}'
+  - '{"kind":"file","path":"lib/memory/handbook/agents-md-authoring.md","note":"AGENTS change-control workflow requires inbox authorization and ADR for policy-significant edits."}'
+  - '{"kind":"lines","path":"lib/inbox/in/172975_05-31-26/30025_1539_delegation-prompt-fidelity-no-editorializing.md","range":[11,31],"contentHash":"a82d909","note":"Authorizing inbox directive framing the contract gap and required outcomes."}'
+...
 
 ## Context
 

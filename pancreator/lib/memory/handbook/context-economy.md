@@ -1,15 +1,4 @@
-# Operator section
-- 👀 **In this file:** Context economy and Cursor retrieval
-- ⚖️ **Why it matters:** Quick orientation for Context economy and Cursor retrieval before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Context economy and Cursor retrieval
 slug: context-economy
 stability: experimental
 bootstrap-only: false
@@ -20,26 +9,10 @@ purpose: |
   retrieval so routine tasks avoid loading the full durable-memory and work
   artifact surface.
 references:
-  - kind: lines
-    path: AGENTS.md
-    range: [1, 36]
-    contentHash: b953d77
-    note: AGENTS defines the primary entry contract and canon table including PRD routing.
-  - kind: lines
-    path: lib/memory/handbook/index.md
-    range: [53, 72]
-    contentHash: a4563dc
-    note: Handbook index defines retrieval policy and routing table maintenance rules.
-  - kind: lines
-    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
-    range: [288, 352]
-    contentHash: 9b2ddcc
-    note: Context-economy acceptance criteria include tier routing and simple task mode.
-  - kind: lines
-    path: lib/memory/handbook/glossary.md
-    range: [205, 226]
-    contentHash: 762edb4
-    note: Glossary defines active-memory and related tier nouns used here.
+  - '{"kind":"lines","path":"AGENTS.md","range":[1,36],"contentHash":"b953d77","note":"AGENTS defines the primary entry contract and canon table including PRD routing."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/index.md","range":[53,72],"contentHash":"a4563dc","note":"Handbook index defines retrieval policy and routing table maintenance rules."}'
+  - '{"kind":"lines","path":"lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json","range":[288,352],"contentHash":"9b2ddcc","note":"Context-economy acceptance criteria include tier routing and simple task mode."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/glossary.md","range":[205,226],"contentHash":"762edb4","note":"Glossary defines active-memory and related tier nouns used here."}'
 related:
   - /lib/memory/handbook/index.md
   - /lib/memory/handbook/memory-tiers.md
@@ -50,7 +23,15 @@ related:
   - /.docs/PRD.index.md
   - /.docs/M1.index.md
   - /lib/memory/handbook/context-cost-audit.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Context economy and Cursor retrieval
+- ⚖️ **Why it matters:** Quick orientation for Context economy and Cursor retrieval before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/index.md
+  - /lib/memory/handbook/memory-tiers.md
+  - /lib/memory/handbook/glossary.md
 
 # Context economy and Cursor retrieval
 

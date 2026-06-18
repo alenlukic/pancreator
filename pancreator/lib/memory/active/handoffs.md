@@ -13,7 +13,7 @@ related:
   - /lib/memory/handbook/subagent-model-tiers.md
   - /lib/memory/active/current.md
   - /lib/memory/active/runs.md
----
+...
 
 # Active planning/execution handoffs
 

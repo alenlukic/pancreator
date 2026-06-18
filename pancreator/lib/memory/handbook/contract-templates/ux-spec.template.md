@@ -1,39 +1,30 @@
-# Operator section
-- 👀 **In this file:** ux-spec.template
-- ⚖️ **Why it matters:** Quick orientation for ux-spec.template before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - https://www.w3.org/WAI/standards-guidelines/wcag/
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
 template: ux-spec
 slug: ux-spec
 stability: experimental
-phase: 0b
-allowed-in-milestones: [M1 (llm-judge fallback), M2 (playwright + axe), M3+]
+phase: "0b"
+allowed-in-milestones:
+  - M1 (llm-judge fallback)
+  - M2 (playwright + axe)
+  - M3+
 purpose: |
   Scaffold for UX-spec contract clauses. M2 swaps the LLM-judge fallback for
   deterministic Playwright + `@axe-core/playwright` runners. The clause shape
   is the same; only the `kind` and `runtime` fields move.
 references:
-  - kind: lines
-    path: /lib/memory/handbook/contract-format.md
-    range: [1, 1]
-    contentHash: 10d2b8f
-    note: "Wrapper schema reference."
-  - kind: lines
-    path: /lib/memory/handbook/contract-style.md
-    range: [1, 1]
-    contentHash: 2d7acae
-    note: "Layer 2 (axe + playwright) requirements."
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-format.md","range":[1,1],"contentHash":"10d2b8f","note":"Wrapper schema reference."}'
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-style.md","range":[1,1],"contentHash":"2d7acae","note":"Layer 2 (axe + playwright) requirements."}'
 external:
   - https://www.w3.org/WAI/standards-guidelines/wcag/
   - https://playwright.dev
   - https://github.com/dequelabs/axe-core
----
+...
+
+# Operator section
+- 👀 **In this file:** Template — UX-Spec contract
+- ⚖️ **Why it matters:** Quick orientation for Template — UX-Spec contract before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Template — UX-Spec contract
 

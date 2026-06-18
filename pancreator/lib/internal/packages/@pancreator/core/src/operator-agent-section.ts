@@ -1,6 +1,6 @@
 /**
  * Helpers for DOC.OPERATOR_AGENT_FORMAT section prefixes.
- * Consumers slice agent-readable payload at `agent_section_start_line` (1-indexed).
+ * Agents skip the operator block by heading convention; no line index is required.
  */
 
 export interface OperatorAgentOperatorMeta {
@@ -9,45 +9,106 @@ export interface OperatorAgentOperatorMeta {
   seeAlso?: string[];
 }
 
-export interface OperatorAgentSectionIndex {
-  format: "operator-agent-v1";
-  agent_section_start_line: number;
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n([\s\S]*)$/;
+
+const INDEX_ONLY_FRONTMATTER = /^---\r?\n(?:agent_section_start_line:\s*\d+\s*\n|pancreator-section-index:[\s\S]*?)---\r?\n/;
+
+function isOperatorLine(line: string): boolean {
+  return (
+    line.startsWith("- 👀 **In this file:**") ||
+    line.startsWith("- ⚖️ **Why it matters:**") ||
+    line.startsWith("- 🧭 **See also:**") ||
+    line.startsWith("  - ")
+  );
 }
 
-const SECTION_INDEX_LINE =
-  /^\s*agent_section_start_line:\s*(?<line>\d+)\s*$/m;
-
-const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
-
-const INDEX_COMMENT_LINE_COUNT = 4;
-
-function buildIndexYaml(startLine: number): string {
-  return [
-    "pancreator-section-index:",
-    "  format: operator-agent-v1",
-    `  agent_section_start_line: ${startLine}`,
-  ].join("\n");
+function stripIndexArtifacts(source: string): string {
+  return source
+    .replace(/<!--\s*pancreator-section-index[\s\S]*?-->\n?/gm, "")
+    .replace(/<!--\s*agent_section_start_line:\s*\d+\s*-->\n?/gm, "")
+    .replace(INDEX_ONLY_FRONTMATTER, "");
 }
 
-function buildIndexComment(startLine: number): string {
-  return [
-    "<!-- pancreator-section-index",
-    "format: operator-agent-v1",
-    `agent_section_start_line: ${startLine}`,
-    "-->",
-  ].join("\n");
+function peelLeadingFrontmatter(source: string): { frontmatter: string; rest: string } | null {
+  const match = source.match(FRONTMATTER);
+  if (!match) {
+    return null;
+  }
+  let frontmatter = stripOperatorAgentIndexFromFrontmatter(match[1] ?? "");
+  frontmatter = stripFrontmatterTitle(frontmatter);
+  if (frontmatter.length === 0) {
+    return null;
+  }
+  return {
+    frontmatter: `---\n${frontmatter}\n---`,
+    rest: (match[2] ?? "").replace(/^\uFEFF/, "").trimStart(),
+  };
 }
 
-/** Removes a legacy separate index block or index keys from frontmatter text. */
+function skipOperatorPrefix(source: string): string | null {
+  const trimmed = source.replace(/^\uFEFF/, "").trimStart();
+  if (trimmed.startsWith("⚙️ no human content")) {
+    const lines = trimmed.split(/\r?\n/);
+    let i = 1;
+    while (i < lines.length && (lines[i] ?? "").trim() === "") {
+      i++;
+    }
+    return stripIndexArtifacts(lines.slice(i).join("\n"));
+  }
+  if (!trimmed.startsWith("# Operator section")) {
+    return null;
+  }
+  const lines = trimmed.split(/\r?\n/);
+  let i = 1;
+  while (i < lines.length && isOperatorLine(lines[i] ?? "")) {
+    i++;
+  }
+  while (i < lines.length && (lines[i] ?? "").trim() === "") {
+    i++;
+  }
+  return stripIndexArtifacts(lines.slice(i).join("\n"));
+}
+
+function operatorPrefixEndLine(source: string): number {
+  const trimmed = source.replace(/^\uFEFF/, "").trimStart();
+  if (trimmed.startsWith("⚙️ no human content")) {
+    let end = 1;
+    const lines = trimmed.split(/\r?\n/);
+    while (end < lines.length && (lines[end] ?? "").trim() === "") {
+      end++;
+    }
+    return end;
+  }
+  if (!trimmed.startsWith("# Operator section")) {
+    return 0;
+  }
+  const lines = trimmed.split(/\r?\n/);
+  let end = 1;
+  while (end < lines.length && isOperatorLine(lines[end] ?? "")) {
+    end++;
+  }
+  while (end < lines.length && (lines[end] ?? "").trim() === "") {
+    end++;
+  }
+  return end;
+}
+
+/** Removes index keys from frontmatter text (flat or legacy nested). */
 export function stripOperatorAgentIndexFromFrontmatter(yamlBlock: string): string {
   const lines = yamlBlock.replace(/^\uFEFF/, "").split(/\r?\n/);
   const out: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
+    if (/^agent_section_start_line:\s*\d+\s*$/.test(line)) {
+      continue;
+    }
     if (line.startsWith("pancreator-section-index:")) {
       while (i + 1 < lines.length && /^\s/.test(lines[i + 1] ?? "")) {
         i++;
       }
+      continue;
+    }
+    if (/^\s*format:\s*operator-agent-v1\s*$/.test(line)) {
       continue;
     }
     out.push(line);
@@ -55,84 +116,66 @@ export function stripOperatorAgentIndexFromFrontmatter(yamlBlock: string): strin
   return out.join("\n").trimEnd();
 }
 
-function hasSectionIndexMarker(source: string): boolean {
-  return (
-    source.includes("pancreator-section-index:") ||
-    source.includes("<!-- pancreator-section-index")
-  );
-}
-
 /**
- * Returns the section index when the source begins with an operator-agent prefix.
+ * Splits a sectioned source into operator prefix and agent body.
+ * Returns null when the source is not operator-prefixed.
  */
-export function readOperatorAgentSectionIndex(source: string): OperatorAgentSectionIndex | null {
-  const trimmed = source.replace(/^\uFEFF/, "");
-  if (hasSectionIndexMarker(trimmed) && trimmed.includes("format: operator-agent-v1")) {
-    const match = SECTION_INDEX_LINE.exec(trimmed);
-    if (match?.groups?.line) {
-      const agentSectionStartLine = Number.parseInt(match.groups.line, 10);
-      if (Number.isFinite(agentSectionStartLine) && agentSectionStartLine >= 1) {
-        return {
-          format: "operator-agent-v1",
-          agent_section_start_line: agentSectionStartLine,
-        };
-      }
-    }
-  }
-  if (!trimmed.startsWith("---")) {
+export function splitOperatorAgentSection(
+  source: string,
+): { operatorPrefix: string; agentBody: string } | null {
+  const peeled = peelLeadingFrontmatter(source.replace(/^\uFEFF/, "").trimStart());
+  const content = peeled?.rest ?? source.replace(/^\uFEFF/, "").trimStart();
+  if (!content.startsWith("# Operator section") && !content.startsWith("⚙️ no human content")) {
     return null;
   }
-  const firstClose = findLine(trimmed, "---", 1);
-  if (firstClose < 0) {
-    return null;
-  }
-  const header = trimmed.slice(0, firstClose);
-  if (!header.includes("pancreator-section-index:")) {
-    return null;
-  }
-  if (!header.includes("format: operator-agent-v1")) {
-    return null;
-  }
-  const match = SECTION_INDEX_LINE.exec(header);
-  if (!match?.groups?.line) {
-    return null;
-  }
-  const agentSectionStartLine = Number.parseInt(match.groups.line, 10);
-  if (!Number.isFinite(agentSectionStartLine) || agentSectionStartLine < 1) {
-    return null;
-  }
+  const agentBody = sliceOperatorAgentSection(source);
+  const lines = content.split(/\r?\n/);
   return {
-    format: "operator-agent-v1",
-    agent_section_start_line: agentSectionStartLine,
+    operatorPrefix: lines.slice(0, operatorPrefixEndLine(content)).join("\n"),
+    agentBody,
   };
 }
 
 /**
- * Returns the agent-readable slice of a sectioned Markdown or YAML file.
+ * Skips `# Operator section` (and its bullets) or a `⚙️ no human content` banner.
+ * When YAML frontmatter leads the file, it is preserved in the agent slice.
  * Unsectioned input is returned unchanged.
  */
 export function sliceOperatorAgentSection(source: string): string {
-  const index = readOperatorAgentSectionIndex(source);
-  if (!index) {
+  const normalized = source.replace(/^\uFEFF/, "").trimStart();
+  const peeled = peelLeadingFrontmatter(normalized);
+  const leadingFrontmatter = peeled?.frontmatter ?? "";
+  const afterFrontmatter = peeled?.rest ?? normalized;
+
+  const tail = skipOperatorPrefix(afterFrontmatter);
+  if (tail === null) {
     return source;
   }
-  const lines = source.replace(/^\uFEFF/, "").split(/\r?\n/);
-  return lines.slice(index.agent_section_start_line - 1).join("\n");
+
+  if (leadingFrontmatter.length === 0) {
+    return tail;
+  }
+  return `${leadingFrontmatter}\n${tail}`;
 }
 
 /**
- * Removes `$pancreator_section_index` and `$operator` from parsed JSON payloads.
+ * Removes reserved operator prefix keys from parsed JSON payloads.
  */
 export function stripOperatorAgentJsonPrefix(value: unknown): unknown {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return value;
   }
   const record = value as Record<string, unknown>;
-  if (!("$pancreator_section_index" in record)) {
+  if (
+    !("$operator" in record) &&
+    !("$pancreator_section_index" in record) &&
+    !("$agent_section_start_line" in record)
+  ) {
     return value;
   }
   const rest = { ...record };
   delete rest.$pancreator_section_index;
+  delete rest.$agent_section_start_line;
   delete rest.$operator;
   return rest;
 }
@@ -144,53 +187,78 @@ export function parseOperatorAgentJsonText(text: string): unknown {
   return stripOperatorAgentJsonPrefix(JSON.parse(text) as unknown);
 }
 
-/**
- * Wraps Markdown agent content: operator section first, then a single agent frontmatter
- * block (index keys merged in) or an HTML index comment for unfenced YAML/Markdown bodies.
- */
-export function wrapOperatorAgentMarkdown(
-  meta: OperatorAgentOperatorMeta,
-  agentBody: string,
-): string {
-  const normalizedAgent = agentBody.replace(/^\uFEFF/, "").trimStart();
+/** Removes legacy `title:` from agent frontmatter; the markdown H1 is canonical. */
+export function stripFrontmatterTitle(yamlBlock: string): string {
+  return yamlBlock
+    .split(/\r?\n/)
+    .filter((line) => !/^title:\s/.test(line))
+    .join("\n")
+    .trimEnd();
+}
+
+function normalizeAgentBodyForWrap(agentBody: string): string {
+  let body = stripIndexArtifacts(agentBody.replace(/^\uFEFF/, "").trimStart());
+  while (body.startsWith("---\n---\n")) {
+    body = body.slice(4);
+  }
+  const fmMatch = body.match(FRONTMATTER);
+  if (!fmMatch) {
+    return body;
+  }
+  let frontmatter = stripOperatorAgentIndexFromFrontmatter(fmMatch[1] ?? "");
+  frontmatter = stripFrontmatterTitle(frontmatter);
+  if (frontmatter.length === 0) {
+    return (fmMatch[2] ?? "").replace(/^\uFEFF/, "").trimStart();
+  }
+  const closeFence = /\n\.\.\.\r?\n/u.test(fmMatch[0] ?? "") ? "..." : "---";
+  return `---\n${frontmatter}\n${closeFence}\n${fmMatch[2] ?? ""}`;
+}
+
+function buildOperatorBlock(meta: OperatorAgentOperatorMeta): string[] {
   const seeAlsoLines =
     meta.seeAlso !== undefined && meta.seeAlso.length > 0
       ? ["- 🧭 **See also:**", ...meta.seeAlso.map((item) => `  - ${item}`)]
       : ["- 🧭 **See also:** N/A"];
-  const operatorBlock = [
+  return [
     "# Operator section",
     `- 👀 **In this file:** ${meta.inThisFile}`,
     `- ⚖️ **Why it matters:** ${meta.whyItMatters}`,
     ...seeAlsoLines,
   ];
-  const operatorText = operatorBlock.join("\n");
-
-  const fmMatch = normalizedAgent.match(FRONTMATTER);
-  if (fmMatch) {
-    const agentStartLine = operatorBlock.length + 1;
-    const indexYaml = buildIndexYaml(agentStartLine);
-    const cleanFrontmatter = stripOperatorAgentIndexFromFrontmatter(fmMatch[1] ?? "");
-    const mergedAgent = `---\n${indexYaml}\n${cleanFrontmatter}\n---\n${fmMatch[2] ?? ""}`;
-    return `${operatorText}\n${mergedAgent}`;
-  }
-
-  const agentStartLine = operatorBlock.length + INDEX_COMMENT_LINE_COUNT + 1;
-  const indexComment = buildIndexComment(agentStartLine);
-  return `${operatorText}\n${indexComment}\n${normalizedAgent}`;
-}
-
-function computeJsonAgentStartLine(text: string, firstAgentKey: string): number {
-  const lines = text.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i]?.includes(`"${firstAgentKey}"`)) {
-      return i + 1;
-    }
-  }
-  return lines.length;
 }
 
 /**
- * Wraps a JSON object with `$pancreator_section_index` and `$operator` prefix keys.
+ * Wraps Markdown: line-1 frontmatter when present, operator section, then body.
+ * Frontmatter MUST NOT follow the operator section; mid-file fences break preview sizing.
+ */
+export function wrapOperatorAgentMarkdown(
+  meta: OperatorAgentOperatorMeta,
+  agentBody: string,
+): string {
+  const normalizedAgent = normalizeAgentBodyForWrap(agentBody);
+  const operatorText = buildOperatorBlock(meta).join("\n");
+  const fmMatch = normalizedAgent.match(FRONTMATTER);
+  if (fmMatch) {
+    const frontmatter = fmMatch[1] ?? "";
+    const body = (fmMatch[2] ?? "").replace(/^\uFEFF/, "").trimStart();
+    const closeFence = /\n\.\.\.\r?\n/u.test(fmMatch[0] ?? "") ? "..." : "---";
+    return `---\n${frontmatter}\n${closeFence}\n\n${operatorText}\n\n${body}`;
+  }
+  return `${operatorText}\n${normalizedAgent}`;
+}
+
+/** Wraps raw YAML: operator section, then agent payload. */
+export function wrapOperatorAgentYaml(
+  meta: OperatorAgentOperatorMeta,
+  agentBody: string,
+): string {
+  const body = stripIndexArtifacts(agentBody.replace(/^\uFEFF/, "").trimStart());
+  const operatorText = buildOperatorBlock(meta).join("\n");
+  return `${operatorText}\n${body}`;
+}
+
+/**
+ * Wraps a JSON object with a `$operator` summary prefix key.
  */
 export function wrapOperatorAgentJson(
   meta: OperatorAgentOperatorMeta,
@@ -208,37 +276,5 @@ export function wrapOperatorAgentJson(
           why_it_matters: meta.whyItMatters,
           see_also: ["N/A"],
         };
-  const firstAgentKey = Object.keys(payload)[0] ?? "state";
-  let wrapped: Record<string, unknown> = {
-    $pancreator_section_index: {
-      format: "operator-agent-v1",
-      agent_section_start_line: 1,
-    },
-    $operator,
-    ...payload,
-  };
-  const line = computeJsonAgentStartLine(JSON.stringify(wrapped, null, 2), firstAgentKey);
-  wrapped = {
-    $pancreator_section_index: {
-      format: "operator-agent-v1",
-      agent_section_start_line: line,
-    },
-    $operator,
-    ...payload,
-  };
-  return wrapped;
-}
-
-function findLine(source: string, needle: string, skip: number): number {
-  const lines = source.split(/\r?\n/);
-  let seen = 0;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i] === needle) {
-      if (seen >= skip) {
-        return lines.slice(0, i + 1).join("\n").length + (source.includes("\r\n") ? 2 : 1);
-      }
-      seen++;
-    }
-  }
-  return -1;
+  return { $operator, ...payload };
 }

@@ -1,19 +1,8 @@
-# Operator section
-- 👀 **In this file:** Product Design and UI Craft Standard
-- ⚖️ **Why it matters:** Quick orientation for Product Design and UI Craft Standard before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - https://lawsofux.com/
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Product Design and UI Craft Standard
 slug: engineering-design-craft
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [design-engineer, design-reviewer]
 purpose: |
   The product design and UI craft taste profile that `design-engineer` applies when
@@ -22,16 +11,8 @@ purpose: |
   feel, and perceived product maturity, and SHALL enforce the measurable craft
   standards and gate-blocking conditions defined on this page.
 references:
-  - kind: lines
-    path: lib/memory/handbook/engineering/index.md
-    range: [1, 1]
-    contentHash: c50e6bf
-    note: "Engineering standards index routes design activities to this page."
-  - kind: lines
-    path: lib/memory/handbook/contract-templates/ux-spec.template.md
-    range: [28, 48]
-    contentHash: e285662
-    note: "UX-spec template slot map for machine-checkable design assertions."
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/index.md","range":[1,1],"contentHash":"c50e6bf","note":"Engineering standards index routes design activities to this page."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-templates/ux-spec.template.md","range":[28,48],"contentHash":"e285662","note":"UX-spec template slot map for machine-checkable design assertions."}'
 external:
   - https://lawsofux.com/
   - https://www.uxdesigninstitute.com/blog/ux-design-principles-2026/
@@ -45,7 +26,15 @@ related:
   - /lib/personas/design-engineer.md
   - /lib/personas/design-reviewer.md
   - /lib/memory/handbook/contract-templates/ux-spec.template.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Product Design and UI Craft Standard
+- ⚖️ **Why it matters:** Quick orientation for Product Design and UI Craft Standard before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/engineering/index.md
+  - /lib/memory/handbook/engineering/design/design-system.md
+  - /lib/memory/handbook/engineering/design/component-standard.md
 
 # Product Design and UI Craft Standard
 

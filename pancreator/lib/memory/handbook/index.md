@@ -1,24 +1,21 @@
-# Operator section
-- 👀 **In this file:** Handbook Index
-- ⚖️ **Why it matters:** Human-readable entry point for handbook docs.
-- 🧭 **See also:**
-  - /AGENTS.md
-  - /lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
-title: Handbook Index
 slug: handbook-index
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [librarian]
 purpose: Human-readable entry point for handbook docs. Agents resolve binding keys through DOC.REGISTRY.
 related:
   - /AGENTS.md
   - /lib/memory/handbook/agent-document-registry.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Handbook Index
+- ⚖️ **Why it matters:** Quick orientation for Handbook Index before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/agent-document-registry.md
 
 # Handbook Index
 

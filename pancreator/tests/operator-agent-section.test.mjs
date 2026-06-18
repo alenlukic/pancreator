@@ -2,31 +2,31 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  readOperatorAgentSectionIndex,
   sliceOperatorAgentSection,
+  splitOperatorAgentSection,
   wrapOperatorAgentMarkdown,
 } from "../lib/internal/packages/@pancreator/core/dist/index.js";
 
 describe("operator-agent-section", () => {
-  it("places operator section before index frontmatter", () => {
+  it("places frontmatter at line 1 before the operator section", () => {
     const source = wrapOperatorAgentMarkdown(
       {
-        inThisFile: "Persona spec for `adopter`.",
-        whyItMatters: "Helps you adopt Pancreator in an existing repo.",
-        seeAlso: ["pancreator/lib/memory/handbook/persona-spec.md"],
+        inThisFile: "Agent Document Registry",
+        whyItMatters: "Quick orientation for Agent Document Registry before agents load the full contract.",
+        seeAlso: ["/AGENTS.md"],
       },
       `---
-name: adopter
-description: Agent contract prose.
+slug: agent-document-registry
+stability: experimental
 ---
-# Adopter
+# Agent Document Registry
+Body
 `,
     );
-    assert.match(source, /^# Operator section/m);
-    assert.ok(source.indexOf("# Operator section") < source.indexOf("pancreator-section-index:"));
-    assert.doesNotMatch(source, /# Operator section[\s\S]*?\n---\n---\npancreator-section-index:/);
-    assert.match(source, /---\npancreator-section-index:\n[\s\S]*?\nname: adopter/);
-    assert.match(sliceOperatorAgentSection(source), /^---\r?\n(?:pancreator-section-index:[\s\S]*?\n)?name: adopter/);
+    assert.match(source, /^---\r?\nslug: agent-document-registry/);
+    assert.ok(source.indexOf("---") < source.indexOf("# Operator section"));
+    assert.doesNotMatch(source, /# Operator section[\s\S]*?\n---\r?\nslug:/);
+    assert.match(sliceOperatorAgentSection(source), /^---\r?\nslug: agent-document-registry/);
   });
 
   it("returns unsectioned sources unchanged", () => {
@@ -34,17 +34,21 @@ description: Agent contract prose.
     assert.equal(sliceOperatorAgentSection(source), source);
   });
 
-  it("reads section index after operator section", () => {
-    const wrapped = wrapOperatorAgentMarkdown(
-      {
-        inThisFile: "Demo",
-        whyItMatters: "Human summary.",
-        seeAlso: ["N/A"],
-      },
-      "---\ntitle: Demo\n---\n# Body\n",
-    );
-    const index = readOperatorAgentSectionIndex(wrapped);
-    assert.ok(index);
-    assert.ok(index.agent_section_start_line > 5);
+  it("skips operator bullets and preserves leading frontmatter", () => {
+    const source = `---
+slug: demo
+---
+# Operator section
+- 👀 **In this file:** Demo
+- ⚖️ **Why it matters:** Human summary.
+- 🧭 **See also:** N/A
+
+# Demo
+Body
+`;
+    const split = splitOperatorAgentSection(source);
+    assert.ok(split);
+    assert.match(split.agentBody, /^---\r?\nslug: demo/);
+    assert.match(split.agentBody, /# Demo/);
   });
 });

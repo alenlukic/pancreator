@@ -1,21 +1,10 @@
-# Operator section
-- 👀 **In this file:** Agent Document Registry
-- ⚖️ **Why it matters:** Stable global keys for agent contracts, handbook docs, persona specs, and pipelines.
-- 🧭 **See also:**
-  - /AGENTS.md
-  - /lib/memory/handbook/operator-agent-artifact-format.md
-  - /lib/memory/handbook/persona-spec.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Agent Document Registry
 slug: agent-document-registry
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [librarian, supervisor]
-purpose: Stable global keys for agent contracts, handbook docs, persona specs, and pipelines.
+purpose: "Stable global keys for agent contracts, handbook docs, persona specs, and pipelines."
 related:
   - /AGENTS.md
   - /lib/memory/handbook/operator-agent-artifact-format.md
@@ -24,7 +13,15 @@ related:
   - /lib/memory/handbook/output-manifest-contract.md
   - /lib/memory/handbook/operator-output-contract.md
   - /lib/memory/handbook/pipeline-state-contract.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Agent Document Registry
+- ⚖️ **Why it matters:** Quick orientation for Agent Document Registry before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/operator-agent-artifact-format.md
+  - /lib/memory/handbook/persona-spec.md
 
 # Agent Document Registry
 

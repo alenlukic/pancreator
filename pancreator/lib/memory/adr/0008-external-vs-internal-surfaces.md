@@ -1,33 +1,19 @@
 ---
 title: Ratify External Versus Internal Repository Surfaces
-seq: "0008"
+seq: 8
 status: accepted
 date: 2026-06-07
-deciders: [tech-lead, LocalUserAuthorizer]
+deciders:
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 references:
-  - kind: lines
-    path: README.md
-    range: [1, 10]
-    contentHash: pending
-    note: External landing page (high-level only).
-  - kind: lines
-    path: AGENTS.md
-    range: [1, 10]
-    contentHash: pending
-    note: Internal agent operating card (explicit-read on self-host).
-  - kind: lines
-    path: lib/memory/handbook/context-economy.md
-    range: [45, 70]
-    contentHash: pending
-    note: Default retrieval discipline after surface split.
-  - kind: lines
-    path: lib/memory/handbook/embedded-install-manifest.yaml
-    range: [1, 45]
-    contentHash: pending
-    note: Embedded allow/deny lists for operational versus product surfaces.
----
+  - '{"kind":"lines","path":"README.md","range":[1,10],"contentHash":"pending","note":"External landing page (high-level only)."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[1,10],"contentHash":"pending","note":"Internal agent operating card (explicit-read on self-host)."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/context-economy.md","range":[45,70],"contentHash":"pending","note":"Default retrieval discipline after surface split."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/embedded-install-manifest.yaml","range":[1,45],"contentHash":"pending","note":"Embedded allow/deny lists for operational versus product surfaces."}'
+...
 
 ## Context
 

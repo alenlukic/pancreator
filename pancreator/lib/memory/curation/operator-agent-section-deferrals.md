@@ -1,14 +1,4 @@
-# Operator section
-- 👀 **In this file:** Deferred operator/agent section migrations for parser-sensitive JSON and YAML artifacts.
-- ⚖️ **Why it matters:** Records which machine artifacts still need consumer or schema updates before prefix keys can ship safely.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
-  - pancreator/lib/internal/packages/@pancreator/core/src/operator-agent-section.ts
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
-title: Operator/Agent Section Migration Deferrals
 slug: operator-agent-section-deferrals
 stability: experimental
 owners: [librarian, pancreator-engineer]
@@ -18,7 +8,14 @@ purpose: |
 related:
   - /lib/memory/handbook/operator-agent-artifact-format.md
   - /lib/internal/packages/@pancreator/core/src/operator-agent-section.ts
----
+...
+
+# Operator section
+- 👀 **In this file:** Deferred operator/agent section migrations for parser-sensitive JSON and YAML artifacts.
+- ⚖️ **Why it matters:** Records which machine artifacts still need consumer or schema updates before prefix keys can ship safely.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
+  - pancreator/lib/internal/packages/@pancreator/core/src/operator-agent-section.ts
 
 # Operator/Agent section migration deferrals
 
@@ -69,6 +66,6 @@ Each deferred pattern MUST gain one of:
   - lib/memory/curation/operator-agent-section-deferrals.md
 - migration_counts:
   - migrated: 0
-  - repaired: 73
+  - repaired: 74
   - skipped_already_sectioned: 1
   - deferred_patterns: 13

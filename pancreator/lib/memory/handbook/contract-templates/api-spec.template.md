@@ -1,38 +1,29 @@
-# Operator section
-- 👀 **In this file:** api-spec.template
-- ⚖️ **Why it matters:** Quick orientation for api-spec.template before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - https://schemathesis.io
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
 template: api-spec
 slug: api-spec
 stability: experimental
-phase: 0b
-allowed-in-milestones: [M1 (rego over OpenAPI JSON), M2 (schemathesis), M3+]
+phase: "0b"
+allowed-in-milestones:
+  - M1 (rego over OpenAPI JSON)
+  - M2 (schemathesis)
+  - M3+
 purpose: |
   Scaffold for API-spec contract clauses. M1 gates structural OpenAPI
   invariants via `kind: rego` over `openapi.json`. M2 swaps in deterministic
   Schemathesis runs against the live service.
 references:
-  - kind: lines
-    path: /lib/memory/handbook/contract-format.md
-    range: [1, 1]
-    contentHash: 10d2b8f
-    note: "Wrapper schema reference."
-  - kind: lines
-    path: /lib/memory/handbook/contract-style.md
-    range: [1, 1]
-    contentHash: 2d7acae
-    note: "Layer 2 (schemathesis) requirements."
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-format.md","range":[1,1],"contentHash":"10d2b8f","note":"Wrapper schema reference."}'
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-style.md","range":[1,1],"contentHash":"2d7acae","note":"Layer 2 (schemathesis) requirements."}'
 external:
   - https://schemathesis.io
   - https://spec.openapis.org/oas/v3.1.0
----
+...
+
+# Operator section
+- 👀 **In this file:** Template — API-Spec contract
+- ⚖️ **Why it matters:** Quick orientation for Template — API-Spec contract before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Template — API-Spec contract
 

@@ -1,19 +1,8 @@
-# Operator section
-- 👀 **In this file:** Run-Log Schema Contract
-- ⚖️ **Why it matters:** Quick orientation for Run-Log Schema Contract before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - kind: lines
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Run-Log Schema Contract
 slug: run-log-schema
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [tech-lead, librarian, supervisor]
 purpose: |
   Canonical schema and behavior contract for run-log emission under
@@ -22,37 +11,25 @@ purpose: |
   conventions, integrity constraints, and validation checklist that
   `@pancreator/run-logger` SHALL implement in a later phase.
 references:
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [75, 76]
-    contentHash: b788753
-    note: "Phase 0b requires `/lib/memory/handbook/run-log-schema.md` as the run-logger contract seed."
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [181, 183]
-    contentHash: b788753
-    note: "Bootstrap observability requirement sets OpenInference + OTel GenAI conformance expectation."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [838, 840]
-    contentHash: 2eb6aa4
-    note: "PRD defines run-log path, semantic-convention fields, and checkpoint linkage through run-log offset."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [1080, 1084]
-    contentHash: 2eb6aa4
-    note: "PRD requires OTLP/OpenInference + OTel GenAI compatible spans and JSONL local sink."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [1088, 1088]
-    contentHash: 2eb6aa4
-    note: "PRD requires stage-boundary checkpoints and LangGraph-compatible saver shape."
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[75,76],"contentHash":"b788753","note":"Phase 0b requires `/lib/memory/handbook/run-log-schema.md` as the run-logger contract seed."}'
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[181,183],"contentHash":"b788753","note":"Bootstrap observability requirement sets OpenInference + OTel GenAI conformance expectation."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[838,840],"contentHash":"2eb6aa4","note":"PRD defines run-log path, semantic-convention fields, and checkpoint linkage through run-log offset."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[1080,1084],"contentHash":"2eb6aa4","note":"PRD requires OTLP/OpenInference + OTel GenAI compatible spans and JSONL local sink."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[1088,1088],"contentHash":"2eb6aa4","note":"PRD requires stage-boundary checkpoints and LangGraph-compatible saver shape."}'
 related:
   - /.docs/PRD.md
   - /.docs/BOOTSTRAP.md
   - /lib/memory/handbook/glossary.md
   - /lib/memory/handbook/contract-format.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Run-Log Schema Contract
+- ⚖️ **Why it matters:** Quick orientation for Run-Log Schema Contract before agents load the full contract.
+- 🧭 **See also:**
+  - /.docs/PRD.md
+  - /.docs/BOOTSTRAP.md
+  - /lib/memory/handbook/glossary.md
 
 # Run-Log Schema Contract
 

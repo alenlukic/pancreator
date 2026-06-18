@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `compliance-auditor`.
-- ⚖️ **Why it matters:** Runs policy and quality checks on a feature-delivery run and records what passed, what failed, and what needs a backlog follow-up.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: compliance-auditor
 description: When a human or pipeline requests a compliance audit, the `compliance-auditor` SHALL scan the declared scope, detect policy and quality violations, apply safe fixes, and emit a citation-backed audit report plus remediation summary for ratification.
 model: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
@@ -61,6 +52,13 @@ metadata:
     - DOC.DOC_IMPACT
   pancreator-output-manifest: required
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `compliance-auditor`.
+- ⚖️ **Why it matters:** Runs policy and quality checks on a feature-delivery run and records what passed, what failed, and what needs a backlog follow-up.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Compliance Auditor
 

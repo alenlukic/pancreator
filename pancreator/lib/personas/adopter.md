@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `adopter`.
-- ⚖️ **Why it matters:** Helps you adopt Pancreator in an existing repo by scanning the stack and leaving an adoption report plus inbox items for you to ratify.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: adopter
 description: When a human runs `npx pancreator init` in an existing repository, the `adopter` SHALL scan languages, frameworks, test infrastructure, continuous-integration configuration, dependency manifests, and conventions, then emit `/lib/memory/adoption/scan-<date>.md` plus paired inbox items for human ratification.
 model: claude-opus-4-8[thinking=true,context=200k,effort=xhigh,fast=false]
@@ -52,6 +43,13 @@ metadata:
     - DOC.CONTRACT_STYLE
   pancreator-output-manifest: required
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `adopter`.
+- ⚖️ **Why it matters:** Helps you adopt Pancreator in an existing repo by scanning the stack and leaving an adoption report plus inbox items for you to ratify.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Adopter
 

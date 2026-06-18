@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `product-design-lead`.
-- ⚖️ **Why it matters:** Merges product and design recommendations into one feature-delivery-ready inbox directive.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: product-design-lead
 description: "When the `experience-planning` pipeline reaches the `synthesis` stage with operator-approved SME recommendations, the `product-design-lead` SHALL merge `product-recommendations.md`, `design-recommendations.md`, and operator thread feedback into one feature-delivery-ready intake directive under `/lib/inbox/in/<day-bucket>/` with drafted spec frontmatter `design_steps: true` and explicit tradeoff resolutions."
 model: gpt-5.5[context=272k,reasoning=high,fast=false]
@@ -55,6 +46,13 @@ metadata:
     - DOC.CONTROL_SURFACE_UX
   pancreator-output-manifest: required
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `product-design-lead`.
+- ⚖️ **Why it matters:** Merges product and design recommendations into one feature-delivery-ready inbox directive.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Product-Design Lead
 

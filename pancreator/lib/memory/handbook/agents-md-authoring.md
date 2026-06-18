@@ -1,41 +1,30 @@
-# Operator section
-- 👀 **In this file:** AGENTS.md Authoring Guide
-- ⚖️ **Why it matters:** Defines how to keep /AGENTS.md high-signal while static persona, pipeline, and manifest contracts carry execution detail.
-- 🧭 **See also:**
-  - kind: file
-  - kind: file
-  - kind: file
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: AGENTS.md Authoring Guide
 slug: agents-md-authoring
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [supervisor, librarian, tech-lead]
-purpose: Defines how to keep /AGENTS.md high-signal while static persona, pipeline, and manifest contracts carry execution detail.
+purpose: "Defines how to keep /AGENTS.md high-signal while static persona, pipeline, and manifest contracts carry execution detail."
 references:
-  - kind: file
-    path: AGENTS.md
-    note: "Root operating card; intentionally thin index into static contract keys."
-  - kind: file
-    path: lib/memory/handbook/agent-document-registry.md
-    note: "Stable DOC.*, PIPE.*, and PERSONA.* key registry referenced by AGENTS."
-  - kind: file
-    path: lib/memory/handbook/persona-contracts.md
-    note: "Persona specs own execution contracts; AGENTS must not duplicate them."
-  - kind: file
-    path: lib/memory/handbook/output-manifest-contract.md
-    note: "Output manifest double-write and transition validation contract."
+  - '{"kind":"file","path":"AGENTS.md","note":"Root operating card; intentionally thin index into static contract keys."}'
+  - '{"kind":"file","path":"lib/memory/handbook/agent-document-registry.md","note":"Stable DOC.*, PIPE.*, and PERSONA.* key registry referenced by AGENTS."}'
+  - '{"kind":"file","path":"lib/memory/handbook/persona-contracts.md","note":"Persona specs own execution contracts; AGENTS must not duplicate them."}'
+  - '{"kind":"file","path":"lib/memory/handbook/output-manifest-contract.md","note":"Output manifest double-write and transition validation contract."}'
 related:
   - /AGENTS.md
   - /lib/memory/handbook/agent-document-registry.md
   - /lib/memory/handbook/persona-contracts.md
   - /lib/memory/handbook/pipeline-state-contract.md
   - /lib/memory/handbook/output-manifest-contract.md
----
+...
+
+# Operator section
+- 👀 **In this file:** AGENTS.md Authoring Guide
+- ⚖️ **Why it matters:** Quick orientation for AGENTS.md Authoring Guide before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/agent-document-registry.md
+  - /lib/memory/handbook/persona-contracts.md
 
 # AGENTS.md Authoring Guide
 

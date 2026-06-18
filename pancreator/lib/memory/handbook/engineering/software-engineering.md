@@ -1,19 +1,8 @@
-# Operator section
-- 👀 **In this file:** Software Engineering Best Practices
-- ⚖️ **Why it matters:** Quick orientation for Software Engineering Best Practices before agents load the full contract.
-- 🧭 **See also:**
-  - kind: lines
-  - kind: lines
-  - /lib/memory/handbook/engineering/index.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 8
-title: Software Engineering Best Practices
 slug: engineering-software-engineering
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [reviewer, tech-lead, pancreator-engineer]
 purpose: |
   Durable software engineering principles that govern implementation, review,
@@ -21,21 +10,21 @@ purpose: |
   SHALL optimize for correctness, clarity, maintainability, testability,
   reliability, and minimal necessary complexity.
 references:
-  - kind: lines
-    path: lib/memory/handbook/engineering/index.md
-    range: [1, 1]
-    contentHash: 990527f
-    note: "Engineering standards index routes code activities to this page."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [1, 1]
-    contentHash: 2d7acae
-    note: "Contract-style Layer 1 discipline governs prose in engineering artifacts."
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/index.md","range":[1,1],"contentHash":"990527f","note":"Engineering standards index routes code activities to this page."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[1,1],"contentHash":"2d7acae","note":"Contract-style Layer 1 discipline governs prose in engineering artifacts."}'
 related:
   - /lib/memory/handbook/engineering/index.md
   - /lib/memory/handbook/engineering/typescript.md
   - /lib/memory/handbook/contract-style.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Software Engineering Best Practices
+- ⚖️ **Why it matters:** Quick orientation for Software Engineering Best Practices before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/engineering/index.md
+  - /lib/memory/handbook/engineering/typescript.md
+  - /lib/memory/handbook/contract-style.md
 
 # Software Engineering Best Practices
 

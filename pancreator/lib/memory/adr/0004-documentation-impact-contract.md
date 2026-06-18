@@ -1,38 +1,20 @@
 ---
 title: Ratify Documentation Impact Contract Check
-seq: "0004"
+seq: 4
 status: proposed
 date: 2026-04-25
-deciders: [tech-lead, LocalUserAuthorizer]
+deciders:
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 references:
-  - kind: lines
-    path: AGENTS.md
-    range: [18, 29]
-    contentHash: b953d77
-    note: "AGENTS canon table defines handbook seeds as authoritative references."
-  - kind: lines
-    path: AGENTS.md
-    range: [74, 95]
-    contentHash: b953d77
-    note: "AGENTS working agreement defines global norms that apply to every task."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [60, 65]
-    contentHash: 2d7acae
-    note: "Layer 1 style requires RFC 2119 keywords in normative clauses."
-  - kind: lines
-    path: lib/memory/handbook/contract-style.md
-    range: [114, 124]
-    contentHash: 2d7acae
-    note: "Layer 1 style forbids weasel words and requires atomic language."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [839, 839]
-    contentHash: 2eb6aa4
-    note: "PRD contract discipline requires gates to be enforceable and explicit."
----
+  - '{"kind":"lines","path":"AGENTS.md","range":[18,29],"contentHash":"b953d77","note":"AGENTS canon table defines handbook seeds as authoritative references."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[74,95],"contentHash":"b953d77","note":"AGENTS working agreement defines global norms that apply to every task."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[60,65],"contentHash":"2d7acae","note":"Layer 1 style requires RFC 2119 keywords in normative clauses."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/contract-style.md","range":[114,124],"contentHash":"2d7acae","note":"Layer 1 style forbids weasel words and requires atomic language."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[839,839],"contentHash":"2eb6aa4","note":"PRD contract discipline requires gates to be enforceable and explicit."}'
+...
 
 ## Context
 

@@ -1,28 +1,18 @@
 ---
 title: Ratify Timestamp Naming Conventions
-seq: "0005"
+seq: 5
 status: accepted
-date: 2026-04-27T00:00:00Z
-deciders: [tech-lead, LocalUserAuthorizer]
+date: "2026-04-27T00:00:00Z"
+deciders:
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 references:
-  - kind: lines
-    path: lib/memory/features/quality-governance/timestamp-naming-conventions/index.json
-    range: [50, 112]
-    contentHash: 2355044
-    note: "Engineering Spec acceptance criteria for UTC naming, migration, and handbook updates."
-  - kind: lines
-    path: lib/memory/adr/0003-inbox-lifecycle-and-archival.md
-    range: [52, 109]
-    contentHash: 064d359
-    note: "ADR-0003 inbox lifecycle boundary this ADR extends with naming rules."
-  - kind: lines
-    path: lib/memory/adr/0004-documentation-impact-contract.md
-    range: [49, 75]
-    contentHash: a4dd126
-    note: "Documentation-impact discipline for reference updates after path migration."
----
+  - '{"kind":"lines","path":"lib/memory/features/quality-governance/timestamp-naming-conventions/index.json","range":[50,112],"contentHash":2355044,"note":"Engineering Spec acceptance criteria for UTC naming, migration, and handbook updates."}'
+  - '{"kind":"lines","path":"lib/memory/adr/0003-inbox-lifecycle-and-archival.md","range":[52,109],"contentHash":"064d359","note":"ADR-0003 inbox lifecycle boundary this ADR extends with naming rules."}'
+  - '{"kind":"lines","path":"lib/memory/adr/0004-documentation-impact-contract.md","range":[49,75],"contentHash":"a4dd126","note":"Documentation-impact discipline for reference updates after path migration."}'
+...
 
 ## Context
 

@@ -1,13 +1,4 @@
-# Operator section
-- 👀 **In this file:** Persona spec for `coder`.
-- ⚖️ **Why it matters:** Implements the bounded touch-set for a feature-delivery run after planning gates are green.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/persona-spec.md
-  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 7
 name: coder
 description: When the `feature-delivery` pipeline reaches the `implement` stage with a green `plan` gate, the `coder` SHALL start from `/.pan/work/<day>/<id>/handoff.md`, implement one task within the touch-set declared at `/.pan/work/<day>/<id>/touch-set.json`, `product/plan.md`, `design/plan.md`, `tech/plan.md`, `product/acceptance-criteria.md`, `design/acceptance-criteria.md`, `tech/acceptance-criteria.md`, and `manual-qa-test-cases.md`, write tests for every public symbol it adds or modifies, emit `/.pan/work/<day>/<id>/implementation-report.md` proving lint, typecheck, test, coverage, and compliance gates pass, and stage the diff for the `review` stage.
 model: composer-2.5[fast=false]
@@ -56,6 +47,13 @@ metadata:
     - DOC.CONTRACT_STYLE
   pancreator-output-manifest: required
 ---
+
+# Operator section
+- 👀 **In this file:** Persona spec for `coder`.
+- ⚖️ **Why it matters:** Implements the bounded touch-set for a feature-delivery run after planning gates are green.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Coder
 
