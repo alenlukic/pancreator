@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ActivityReceiptFeed } from "./ActivityReceiptFeed";
+import { AttentionBanner } from "./AttentionBanner";
 import { AttentionRegion } from "./AttentionRegion";
 import { MetadataDisclosure } from "./MetadataDisclosure";
 import { RunSummaryHeader } from "./RunSummaryHeader";
@@ -73,6 +74,18 @@ describe("SemanticStatusCard", () => {
   });
 });
 
+describe("AttentionBanner", () => {
+  it("renders the default layout without degraded chrome", () => {
+    render(
+      <AttentionBanner title="Healthy attention">
+        <p>All sources connected.</p>
+      </AttentionBanner>,
+    );
+    expect(screen.getByRole("status", { name: "Healthy attention" })).toBeInTheDocument();
+    expect(screen.getByText("All sources connected.")).toBeInTheDocument();
+  });
+});
+
 describe("AttentionRegion", () => {
   it("shows count chip and empty state", () => {
     render(
@@ -81,13 +94,61 @@ describe("AttentionRegion", () => {
           region: "human-gates",
           testId: "command-center-human-gates",
           title: "Blocked on human",
-          emptyCopy: "No human gates waiting",
+          summaryLabel: "Blocked on human",
+          emptyCopy: "No approval requests yet.",
+          emptyGuidance:
+            "Approval requests appear after a Feature Delivery run reaches a human gate.",
+          overflowLabel: "Open all approval requests",
+          iconKey: "Hand",
+          totalCount: 0,
           rows: [],
-          emptyNextStep: { label: "Open Feature Delivery", href: "/mission-control" },
         }}
       />,
     );
     expect(screen.getByTestId("command-center-human-gates-count")).toHaveTextContent("0");
-    expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toBeInTheDocument();
+    expect(screen.getByText("No approval requests yet.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Approval requests appear after a Feature Delivery run reaches a human gate.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open Feature Delivery" })).not.toBeInTheDocument();
+  });
+
+  it("shows mapped overflow label and relative freshness above threshold", () => {
+    render(
+      <AttentionRegion
+        card={{
+          region: "anomalies",
+          testId: "command-center-anomalies",
+          title: "Anomalies",
+          summaryLabel: "Anomalies",
+          emptyCopy: "No delivery anomalies.",
+          emptyGuidance: "Failed or hanging runs appear here when delivery health degrades.",
+          overflowLabel: "Open all anomalies",
+          iconKey: "TriangleAlert",
+          totalCount: 6,
+          rows: Array.from({ length: 5 }, (_, index) => ({
+            id: `row-${index}`,
+            label: `Anomaly ${index}`,
+            status: "Failed" as const,
+            severity: "Critical" as const,
+            ageIso: "2026-06-02T12:00:00.000Z",
+            ageLabel: "5m ago",
+            primaryCta: { label: "Open failed run", href: "/mission-control" },
+            overflow: {},
+          })),
+          overflowHref: "/compliance",
+          dataAgeMs: 120_000,
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("command-center-anomalies-count")).toHaveTextContent("6");
+    expect(screen.getByRole("link", { name: "Open all anomalies" })).toBeInTheDocument();
+    expect(screen.getByTestId("command-center-anomalies-freshness")).toHaveTextContent(
+      "Updated 2m ago",
+    );
+    expect(screen.queryByText(/Data age \d+s/u)).not.toBeInTheDocument();
   });
 });

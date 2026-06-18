@@ -2,6 +2,7 @@
 
 import { AttentionRegion } from "../shared/AttentionRegion";
 import { AttentionBanner } from "../shared/AttentionBanner";
+import { formatFailedSourceLabel } from "./command-center-data";
 import type { CommandCenterCardModel } from "./command-center-types";
 import { useCommandCenterData } from "./useCommandCenterData";
 
@@ -14,68 +15,81 @@ function cardByRegion(
       region,
       testId: `command-center-${region}`,
       title: region,
+      summaryLabel: region,
       emptyCopy: "No data",
+      emptyGuidance: "",
+      overflowLabel: "",
+      iconKey: "Hand",
+      totalCount: 0,
       rows: [],
     }
   );
 }
 
 export function CommandCenterSurface() {
-  const {
-    cards,
-    loading,
-    runStateError,
-    complianceError,
-    outcomesError,
-    archiveError,
-    isDataStale,
-    dataFetchedAtMs,
-    retry,
-  } = useCommandCenterData();
+  const { cards, loading, failedSources, hasLastSuccessfulSnapshot, dataFetchedAtMs, retry } =
+    useCommandCenterData();
 
-  const degradedSources = [
-    archiveError ? { source: "archive", message: archiveError } : null,
-    outcomesError ? { source: "feature-index", message: outcomesError } : null,
-    complianceError ? { source: "compliance", message: complianceError } : null,
-  ].filter((entry): entry is { source: string; message: string } => entry !== null);
+  const showDegradedBanner = failedSources.length > 0;
+  const sourceLabel = formatFailedSourceLabel(failedSources);
 
   return (
     <div className="command-center-page" data-testid="command-center-page">
       <h1 className="command-center-page-title">Home</h1>
 
-      {runStateError ? (
-        <div className="command-center-error-banner" role="alert">
-          <p>{runStateError}</p>
-          <button type="button" className="command-center-row-cta" onClick={() => void retry()}>
-            Refresh home state
-          </button>
-        </div>
-      ) : null}
+      <div className="command-center-summary-row" data-testid="command-center-summary-row">
+        {cards.map((card) => (
+          <div key={card.region} className="command-center-summary-item">
+            <span className="command-center-summary-label">{card.summaryLabel}</span>
+            <span
+              className="command-center-summary-count"
+              data-testid={`command-center-summary-${card.region}-count`}
+            >
+              {card.totalCount}
+            </span>
+          </div>
+        ))}
+      </div>
 
-      {isDataStale && dataFetchedAtMs !== null ? (
-        <AttentionBanner title="Attention data is stale">
+      {showDegradedBanner ? (
+        <AttentionBanner
+          title="Home data is temporarily degraded"
+          variant="degraded"
+          action={
+            <button
+              type="button"
+              className="command-center-row-cta command-center-degraded-retry"
+              onClick={() => void retry()}
+            >
+              Retry Home refresh
+            </button>
+          }
+        >
           <p>
-            Last successful refresh was {Math.floor((Date.now() - dataFetchedAtMs) / 1000)} seconds
-            ago. Active work revalidates every 10 seconds.
+            Showing the last successful Home snapshot while {sourceLabel} reconnects.
+            {hasLastSuccessfulSnapshot && dataFetchedAtMs !== null
+              ? (() => {
+                  const minutes = Math.max(
+                    1,
+                    Math.floor((Date.now() - dataFetchedAtMs) / 60000),
+                  );
+                  return ` Last good refresh was ${minutes} ${minutes === 1 ? "minute" : "minutes"} ago.`;
+                })()
+              : null}
           </p>
         </AttentionBanner>
       ) : null}
 
-      {degradedSources.map((entry) => (
-        <AttentionBanner key={entry.source} title={`Degraded data from ${entry.source}`}>
-          <p>{entry.message}</p>
-          <button type="button" className="command-center-row-cta" onClick={() => void retry()}>
-            Refresh home state
-          </button>
-        </AttentionBanner>
-      ))}
-
       <div
-        className="command-center-regions-column"
+        className="command-center-attention-shell"
         data-testid={loading ? "command-center-loading" : "command-center-regions"}
         aria-busy={loading || undefined}
       >
-        <AttentionRegion card={cardByRegion(cards, "human-gates")} loading={loading} />
+        <AttentionRegion
+          card={cardByRegion(cards, "human-gates")}
+          loading={loading}
+          isFirst
+        />
         <AttentionRegion card={cardByRegion(cards, "anomalies")} loading={loading} />
         <AttentionRegion card={cardByRegion(cards, "running-now")} loading={loading} />
         <AttentionRegion card={cardByRegion(cards, "recent-outcomes")} loading={loading} />

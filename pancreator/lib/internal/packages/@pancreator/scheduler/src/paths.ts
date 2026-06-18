@@ -1,12 +1,12 @@
 import path from "node:path";
 
-import { quoteJsonString } from "@pancreator/core";
+import { quoteJsonString, resolveProjectPath } from "@pancreator/core";
 
 import { AutomationPathError, InvalidAutomationIdError, SchedulerPathError } from "./errors.js";
 
-/** Returns `.pan/automations` under `repoRoot`. */
+/** Returns `.pan/automations` under the configured project root. */
 export function defaultAutomationsDir(repoRoot: string): string {
-  return path.resolve(repoRoot, ".pan", "automations");
+  return resolveProjectPath(repoRoot, ".pan", "automations");
 }
 
 /** Rejects automation identifiers that would escape the automations directory. */
@@ -41,17 +41,17 @@ export function assertAutomationPathInRegistry(repoRoot: string, filePath: strin
   }
 }
 
-/** Returns `.pan/scheduler` under `repoRoot`. */
+/** Returns `.pan/scheduler` under the configured project root. */
 export function defaultSchedulerDir(repoRoot: string): string {
-  return path.resolve(repoRoot, ".pan", "scheduler");
+  return resolveProjectPath(repoRoot, ".pan", "scheduler");
 }
 
-/** Returns `.pan/scheduler/runs` under `repoRoot`. */
+/** Returns `.pan/scheduler/runs` under the configured project root. */
 export function defaultRunsDir(repoRoot: string): string {
   return path.join(defaultSchedulerDir(repoRoot), "runs");
 }
 
-/** Returns `.pan/scheduler/locks` under `repoRoot`. */
+/** Returns `.pan/scheduler/locks` under the configured project root. */
 export function defaultLocksDir(repoRoot: string): string {
   return path.join(defaultSchedulerDir(repoRoot), "locks");
 }

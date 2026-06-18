@@ -721,4 +721,66 @@ describe("GET /api/run-state", () => {
       process.chdir(originalRoot);
     }
   });
+
+  it("loads shipped outcomes from category-nested feature folders", async () => {
+    const featureDir = path.join(
+      tempRoot,
+      "lib",
+      "memory",
+      "features",
+      "command-center",
+      "demo-nested-feature",
+    );
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(featureDir, "index.json"),
+      stringifyCompactJson({
+        feature_id: "demo-nested-feature",
+        title: "Nested Demo Feature",
+        task_id: "65766_0544_demo-nested-feature",
+        status: "indexed",
+        indexed_at: "2026-06-03T12:00:00.000Z",
+      }),
+    );
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const outcomes = await loadShippedOutcomes(tempRoot, 3);
+      expect(outcomes[0]?.featureId).toBe("demo-nested-feature");
+      expect(outcomes[0]?.title).toBe("Nested Demo Feature");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("derives shipped outcome timestamps from archived inbox paths when indexed_at is missing", async () => {
+    const featureDir = path.join(
+      tempRoot,
+      "lib",
+      "memory",
+      "features",
+      "bootstrap-repo-ops",
+      "bootstrap-cruft-cleanup",
+    );
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(featureDir, "index.json"),
+      stringifyCompactJson({
+        feature_id: "bootstrap-cruft-cleanup",
+        title: "Bootstrap cruft cleanup batch",
+        task_id: "54615_0849_bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants",
+        status: "indexed",
+        archived_inbox_source:
+          ".pan/archive/inbox/in/172980_05-26-26/71700_0612_bootstrap-cruft-cleanup-batch.md",
+      }),
+    );
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const outcomes = await loadShippedOutcomes(tempRoot, 3);
+      expect(outcomes[0]?.indexedAt).toBe("2026-05-26T08:49:45.000Z");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
 });

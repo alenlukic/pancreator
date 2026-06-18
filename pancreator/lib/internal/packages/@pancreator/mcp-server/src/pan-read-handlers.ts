@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { readFile, readdir } from "node:fs/promises";
 
-import { asTaskId, resolvePancreatorYamlPath } from "@pancreator/core";
+import { asTaskId, resolvePancreatorYamlPath, resolveProjectPath, resolveRepoPath } from "@pancreator/core";
 import {
   FsInterventionStore,
   InterventionManager,
@@ -94,14 +94,14 @@ interface FeatureIndexRecord {
 }
 
 async function collectFeatureIndexRecords(repoRoot: string): Promise<FeatureIndexRecord[]> {
-  const featuresRoot = path.join(repoRoot, "lib", "memory", "features");
+  const featuresRoot = resolveProjectPath(repoRoot, "lib", "memory", "features");
   const records: FeatureIndexRecord[] = [];
 
   for (const category of await safeReaddir(featuresRoot)) {
     const categoryRoot = path.join(featuresRoot, category);
 
     const legacyIndexPath = path.posix.join("lib", "memory", "features", category, "index.json");
-    const legacyIndex = await readJsonFile(path.join(repoRoot, legacyIndexPath));
+    const legacyIndex = await readJsonFile(resolveRepoPath(repoRoot, legacyIndexPath));
     if (legacyIndex?.feature_id !== undefined) {
       records.push({ category: undefined, dirName: category, indexPath: legacyIndexPath, index: legacyIndex });
       continue;
@@ -116,7 +116,7 @@ async function collectFeatureIndexRecords(repoRoot: string): Promise<FeatureInde
         dirName,
         "index.json",
       );
-      const index = await readJsonFile(path.join(repoRoot, indexPath));
+      const index = await readJsonFile(resolveRepoPath(repoRoot, indexPath));
       if (index !== null) {
         records.push({ category, dirName, indexPath, index });
       }
@@ -176,7 +176,7 @@ export async function showFeature(
   );
   let spec: string | undefined;
   try {
-    spec = await readFile(path.join(ctx.repoRoot, legacySpecRel), "utf8");
+    spec = await readFile(resolveRepoPath(ctx.repoRoot, legacySpecRel), "utf8");
   } catch {
     spec = undefined;
   }
@@ -208,7 +208,7 @@ export async function queryMemory(
   ctx: DdlExecutionContext,
   query: string,
 ): Promise<MemoryQueryResult> {
-  const handbookIndex = path.join(ctx.repoRoot, "lib", "memory", "handbook", "index.md");
+  const handbookIndex = resolveProjectPath(ctx.repoRoot, "lib", "memory", "handbook", "index.md");
   const router = await MemoryRouter.fromIndexFile(handbookIndex);
   const routeHits = router.routeIntent(query, { limit: 5 });
   const hits: MemoryQueryHit[] = routeHits.map((hit) => ({
@@ -218,7 +218,7 @@ export async function queryMemory(
     notes: hit.notes,
   }));
 
-  const activeRoot = path.join(ctx.repoRoot, "lib", "memory", "active");
+  const activeRoot = resolveProjectPath(ctx.repoRoot, "lib", "memory", "active");
   const activeFiles = ["current.md", "handoffs.md", "README.md"];
   const q = query.toLowerCase();
   for (const name of activeFiles) {
@@ -255,9 +255,9 @@ export async function findWorkFile(
   fileName: string,
 ): Promise<{ abs: string; rel: string } | null> {
   const roots = [
-    { abs: path.join(repoRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
+    { abs: resolveProjectPath(repoRoot, ".pan/work"), rel: path.posix.join(".pan/work") },
     {
-      abs: path.join(repoRoot, ".pan/archive", "work"),
+      abs: resolveProjectPath(repoRoot, ".pan/archive", "work"),
       rel: path.posix.join(".pan/archive", "work"),
     },
   ];
@@ -301,7 +301,7 @@ export async function readWorkspaceStatus(
     config = {};
   }
 
-  const workRoot = path.join(ctx.repoRoot, ".pan/work");
+  const workRoot = resolveProjectPath(ctx.repoRoot, ".pan/work");
   /** @type {string[]} */
   const activeTasks = [];
   for (const day of await safeReaddir(workRoot)) {

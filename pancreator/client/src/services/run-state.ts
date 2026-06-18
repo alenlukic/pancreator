@@ -460,7 +460,66 @@ type FeatureIndexRecord = {
   status?: string;
   indexed_at?: string;
   index?: { completed_at?: string };
+  archived_inbox_source?: string;
+  source_inbox_item?: string | { path?: string; prior_path?: string };
+  delivery_report?: string;
+  artifact_index?: { run_dir?: string };
 };
+
+const DAY_BUCKET_IN_PATH_RE = /\/(\d+_\d{2}-\d{2}-\d{2})\//u;
+
+function extractDayBucketFromPaths(...paths: Array<string | undefined>): string | null {
+  for (const candidate of paths) {
+    if (typeof candidate !== "string" || candidate.length === 0) {
+      continue;
+    }
+    const match = candidate.match(DAY_BUCKET_IN_PATH_RE);
+    if (match !== null) {
+      return match[1]!;
+    }
+    const parsed = parseRunDirParts(candidate);
+    if (parsed !== null) {
+      return parsed.dayBucket;
+    }
+  }
+  return null;
+}
+
+function resolveShippedIndexedAt(record: FeatureIndexRecord): string | null {
+  if (typeof record.indexed_at === "string" && !Number.isNaN(Date.parse(record.indexed_at))) {
+    return record.indexed_at;
+  }
+  if (
+    typeof record.index?.completed_at === "string" &&
+    !Number.isNaN(Date.parse(record.index.completed_at))
+  ) {
+    return record.index.completed_at;
+  }
+  if (typeof record.task_id !== "string") {
+    return null;
+  }
+
+  const sourceInbox =
+    typeof record.source_inbox_item === "string"
+      ? record.source_inbox_item
+      : record.source_inbox_item?.path ?? record.source_inbox_item?.prior_path;
+
+  const dayBucket = extractDayBucketFromPaths(
+    record.archived_inbox_source,
+    sourceInbox,
+    record.delivery_report,
+    record.artifact_index?.run_dir,
+  );
+  if (dayBucket === null) {
+    return null;
+  }
+
+  const decoded = decodeCountdownTimestamp(dayBucket, record.task_id);
+  if (!decoded.ok) {
+    return null;
+  }
+  return new Date(decoded.instantMs).toISOString();
+}
 
 export async function loadArchivedTaskIds(repoRoot: string = findRepoRoot()): Promise<Set<string>> {
   const startedAt = Date.now();
@@ -487,6 +546,36 @@ export async function loadArchivedTaskIds(repoRoot: string = findRepoRoot()): Pr
   return archived;
 }
 
+async function listFeatureIndexPaths(featuresRoot: string): Promise<string[]> {
+  const paths: string[] = [];
+  const topEntries = await fsp.readdir(featuresRoot, { withFileTypes: true });
+
+  for (const entry of topEntries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const entryPath = path.join(featuresRoot, entry.name);
+    const directIndexPath = path.join(entryPath, "index.json");
+    if (fs.existsSync(directIndexPath)) {
+      paths.push(directIndexPath);
+      continue;
+    }
+
+    const nestedEntries = await fsp.readdir(entryPath, { withFileTypes: true });
+    for (const nested of nestedEntries) {
+      if (!nested.isDirectory()) {
+        continue;
+      }
+      const nestedIndexPath = path.join(entryPath, nested.name, "index.json");
+      if (fs.existsSync(nestedIndexPath)) {
+        paths.push(nestedIndexPath);
+      }
+    }
+  }
+
+  return paths;
+}
+
 export async function loadShippedOutcomes(
   repoRoot: string = findRepoRoot(),
   limit = 5,
@@ -499,27 +588,25 @@ export async function loadShippedOutcomes(
   }
 
   const outcomes: ShippedOutcome[] = [];
-  const featureDirs = await fsp.readdir(featuresRoot, { withFileTypes: true });
+  const indexPaths = await listFeatureIndexPaths(featuresRoot);
 
-  for (const featureDir of featureDirs) {
-    if (!featureDir.isDirectory()) {
-      continue;
-    }
-    const indexPath = path.join(featuresRoot, featureDir.name, "index.json");
-    if (!fs.existsSync(indexPath)) {
-      continue;
-    }
+  for (const indexPath of indexPaths) {
     try {
       const raw = await fsp.readFile(indexPath, "utf8");
       const record = JSON.parse(raw) as FeatureIndexRecord;
       if (record.status !== "indexed" || record.task_id === undefined) {
         continue;
       }
+      const indexedAt = resolveShippedIndexedAt(record);
+      if (indexedAt === null) {
+        continue;
+      }
+      const featureDirName = path.basename(path.dirname(indexPath));
       outcomes.push({
-        featureId: record.feature_id ?? featureDir.name,
-        title: record.title ?? featureDir.name,
+        featureId: record.feature_id ?? featureDirName,
+        title: record.title ?? featureDirName,
         taskId: record.task_id,
-        indexedAt: record.indexed_at ?? record.index?.completed_at ?? new Date(0).toISOString(),
+        indexedAt,
       });
     } catch {
       // skip unreadable indexes

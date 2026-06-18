@@ -1,0 +1,114 @@
+{
+  "feature_id": "command-center-home-ux-remediation-feature-delivery-directive",
+  "title": "Command Center — Home UX remediation",
+  "category": "command-center",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "70229_0429_command-center-home-ux-remediation-feature-delivery-directive",
+  "program": "command-center",
+  "indexed_at": "2026-06-18T18:30:00.000Z",
+  "summary": "Command Center Home now reads as one orientation surface with a passive summary row, four ranked attention regions inside one parent shell, guided empty states without CTA chrome, human-relative freshness above 60 seconds, silent healthy polling every 10 seconds, and one page-level degraded banner with retry after reconciliation failure.",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, accepted ship artifacts, and active work paths. After human acceptance, SDK advances to complete and delegates close-artifacts archival to librarian.",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: contracts:from_feature returned zero clauses; no feature-local contract bundle declared.",
+    "intake.human_approval_note: Supervisor ship ratification at 2026-06-18T18:00:00Z with human_ratified_diff true; staged diff limited to fifteen touch-set client paths remediating Command Center Home UX after command-center-post-ship-remediation."
+  ],
+  "implementation_surfaces": [],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "repo_wide_tests_pass": true,
+        "scope_amendments_ratified": true
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true,
+        "design_qa_passes": true
+      }
+    },
+    {
+      "compliance": {
+        "compliance_passes": true,
+        "audit_id": "70229_0429_command-center-home-ux-remediation-feature-delivery-directive-20260618174500"
+      }
+    }
+  ],
+  "open_followups": [
+    "pre-existing-workspace-contract-failures",
+    "pre-existing-kickoff-api-build-failure",
+    "adjacent-unstaged-supervisor-changes"
+  ],
+  "delivery_report": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/delivery-report.md",
+  "source_inbox_item": ".pan/archive/inbox/in/172957_06-18-26/72063_0358_command-center-home-ux-remediation-fd.md",
+  "source_inbox_item_prior": "lib/inbox/in/172957_06-18-26/72063_0358_command-center-home-ux-remediation-fd.md",
+  "artifact_index": {
+    "run_dir": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive",
+    "spec": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/ux-spec.md",
+    "acceptance_criteria_product": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/product/acceptance-criteria.md",
+    "acceptance_criteria_design": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/design/acceptance-criteria.md",
+    "acceptance_criteria_tech": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/tech/acceptance-criteria.md",
+    "touch_set": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/touch-set.json",
+    "manual_qa_test_cases": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/manual-qa-test-cases.md",
+    "implementation_report": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/implementation-report.md",
+    "review": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/review.md",
+    "test_report": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/test-report.md",
+    "design_qa_report": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/design-qa-report.md",
+    "delivery_report": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/delivery-report.md",
+    "compliance_result": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/compliance-result.json",
+    "ship_ratification": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/ship-ratification.json",
+    "operator_verification": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/operator-verification.md",
+    "pipeline_close": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/pipeline-close.md",
+    "run_log": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/run.log.jsonl",
+    "state": ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/state.json",
+    "compliance_audit_history": "lib/memory/features/quality-governance/compliance-tests/audit-history.json",
+    "qa_logs_dir": ".pan/sandboxes/70229_0429_command-center-home-ux-remediation-feature-delivery-directive"
+  },
+  "output_manifest": {
+    "persona_contract": "PERSONA.LIBRARIAN",
+    "stage_contract": "PIPE.FEATURE_DELIVERY.INDEX",
+    "required_docs": [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.MEMORY_TIERS",
+      "DOC.RUN_LOG_SCHEMA",
+      "DOC.OPERATOR_OUTPUT"
+    ],
+    "consulted_docs": [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.MEMORY_TIERS",
+      "DOC.RUN_LOG_SCHEMA",
+      "DOC.OPERATOR_OUTPUT",
+      "PIPE.FEATURE_DELIVERY"
+    ],
+    "produced_artifacts": [
+      "lib/memory/features/command-center/command-center-home-ux-remediation-feature-delivery-directive/index.json",
+      ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/pipeline-close.md",
+      ".pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/operator-verification.md"
+    ],
+    "scope_amendments": [],
+    "validation": [
+      {
+        "name": "node --test tests/feature-index-artifact-index.test.mjs",
+        "result": "pass"
+      },
+      {
+        "name": "gate",
+        "result": "pass"
+      }
+    ],
+    "definition_of_done": "pass",
+    "gate_decision": "advance",
+    "remediation_route": "none"
+  }
+}

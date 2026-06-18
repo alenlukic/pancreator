@@ -30,7 +30,7 @@ mcpServers:
 maxTurns: 60
 skills:
   - blameless-postmortem
-isolation: checkout
+isolation: none
 memory: project
 effort: high
 color: purple

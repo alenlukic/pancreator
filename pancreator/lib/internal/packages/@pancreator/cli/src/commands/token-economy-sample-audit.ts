@@ -43,7 +43,7 @@ interface Watermark {
 const TOKEN_ECONOMY_DIR = ".pan/token-economy";
 
 async function readWatermark(repoRoot: string): Promise<Watermark | null> {
-  const abs = path.join(repoRoot, TOKEN_ECONOMY_DIR, "last-audit.json");
+  const abs = resolveProjectPath(repoRoot, TOKEN_ECONOMY_DIR, "last-audit.json");
   if (!existsSync(abs)) {
     return null;
   }
@@ -51,7 +51,7 @@ async function readWatermark(repoRoot: string): Promise<Watermark | null> {
 }
 
 async function writeWatermark(repoRoot: string, watermark: Watermark): Promise<void> {
-  const dir = path.join(repoRoot, TOKEN_ECONOMY_DIR);
+  const dir = resolveProjectPath(repoRoot, TOKEN_ECONOMY_DIR);
   await mkdir(dir, { recursive: true });
   await writeFile(
     path.join(dir, "last-audit.json"),
@@ -64,7 +64,7 @@ async function collectSummaryPaths(
   repoRoot: string,
   options: SampleAuditOptions,
 ): Promise<string[]> {
-  const workRoot = path.join(repoRoot, ".pan/work");
+  const workRoot = resolveProjectPath(repoRoot, ".pan/work");
   if (!existsSync(workRoot)) {
     return [];
   }
@@ -113,7 +113,7 @@ async function collectSummaryPaths(
 }
 
 async function handoffEnumeratesPathsAsync(repoRoot: string, taskId: string): Promise<boolean> {
-  const workRoot = path.join(repoRoot, ".pan/work");
+  const workRoot = resolveProjectPath(repoRoot, ".pan/work");
   if (!existsSync(workRoot)) {
     return false;
   }
@@ -239,7 +239,7 @@ export async function runTokenEconomySampleAudit(
   const repoRoot = path.resolve(options.repoRoot);
   const now = options.clock?.() ?? new Date();
   const summaryPaths = await collectSummaryPaths(repoRoot, options);
-  const baselinesDir = path.join(repoRoot, TOKEN_ECONOMY_DIR, "baselines");
+  const baselinesDir = resolveProjectPath(repoRoot, TOKEN_ECONOMY_DIR, "baselines");
   await mkdir(baselinesDir, { recursive: true });
 
   const allFindings: TokenEconomyFinding[] = [];
@@ -271,7 +271,7 @@ export async function runTokenEconomySampleAudit(
     report.repair = repair;
   }
 
-  const reportsDir = path.join(repoRoot, TOKEN_ECONOMY_DIR, "reports");
+  const reportsDir = resolveProjectPath(repoRoot, TOKEN_ECONOMY_DIR, "reports");
   await mkdir(reportsDir, { recursive: true });
   const stamp = now.toISOString().replace(/[:.]/gu, "-");
   const reportPath = path.join(reportsDir, `${stamp}.json`);

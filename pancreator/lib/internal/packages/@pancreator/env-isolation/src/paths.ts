@@ -1,13 +1,15 @@
 import path from "node:path";
 
+import { resolveProjectPath } from "@pancreator/core";
+
 import { InvalidRegistryPathError } from "./errors.js";
 
 export function defaultRegistryFilePath(repoRoot: string): string {
-  return path.resolve(repoRoot, ".pan", "sandboxes", "port-registry.json");
+  return resolveProjectPath(repoRoot, ".pan", "sandboxes", "port-registry.json");
 }
 
 export function defaultSandboxesDir(repoRoot: string): string {
-  return path.resolve(repoRoot, ".pan", "sandboxes");
+  return resolveProjectPath(repoRoot, ".pan", "sandboxes");
 }
 
 /** Ensures `registryFilePath` resolves inside `repoRoot/.pan/sandboxes`. */

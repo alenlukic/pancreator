@@ -41,6 +41,7 @@ read per `lib/memory/handbook/context-economy.md`.
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `command-center-home-ux-remediation-feature-delivery-directive` | [indexed] (`2026-06-18T18:30:00.000Z`) | `.pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/delivery-report.md` | `—` | `.pan/archive/inbox/in/172957_06-18-26/72063_0358_command-center-home-ux-remediation-fd.md` |
 | `command-center-post-ship-remediation` | [indexed] (`2026-06-16T21:34:33.667Z`) | `.pan/archive/work/172959_06-16-26/61720_0651_command-center-post-ship-remediation/delivery-report.md` | `—` | `.pan/archive/inbox/in/172959_06-16-26/62115_0644_command-center-post-ship-remediation.md` |
 | `batch-feature-delivery-runs-sequential-parallel` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md` |
 | `bootstrap-cruft-cleanup-batch-stub-feature-folders-and-cursor-agent-variants` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172980_05-26-26/71700_0612_bootstrap-cruft-cleanup-batch.md` |
@@ -50,7 +51,6 @@ read per `lib/memory/handbook/context-economy.md`.
 | `ci-best-practices-batch` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172980_05-26-26/71701_0613_ci-best-practices-batch.md` |
 | `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md` |
 | `command-center-active-memory-craft-enforcement` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82800_0059_cockpit-v2-active-memory-craft-enforcement.md` |
-| `command-center-active-memory-inbox-triage-multi-run-view` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172967_06-08-26/54352_0854_cockpit-v2-pipeline-orientation.md` |
 
 ## Risks and blockers
 
@@ -65,9 +65,10 @@ read per `lib/memory/handbook/context-economy.md`.
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-17T00:14:32.334Z`
+- Active-memory refreshed (UTC): `2026-06-18T07:44:58.596Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
 
 
 

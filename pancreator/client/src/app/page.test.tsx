@@ -1533,14 +1533,11 @@ describe("Command Center default landing", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("command-center-human-gates")).toBeInTheDocument();
-      expect(screen.getByText("No human gates waiting for you")).toBeInTheDocument();
+      expect(screen.getByText("No approval requests yet.")).toBeInTheDocument();
     });
 
     expect(screen.queryByText("No active deliveries")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Feature Delivery" })).toHaveAttribute(
-      "href",
-      "/mission-control",
-    );
+    expect(screen.queryByRole("link", { name: "Open Feature Delivery" })).not.toBeInTheDocument();
   });
 
   it("suppresses global empty when anomaly rows exist without active runs", async () => {

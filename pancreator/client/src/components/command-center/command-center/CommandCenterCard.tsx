@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { AttentionBanner } from "../shared/AttentionBanner";
 import { CommandCenterRow } from "./CommandCenterRow";
 import type { CommandCenterCardModel } from "./command-center-types";
-import { COMMAND_CENTER_STALE_DATA_MS } from "./command-center-types";
+import { COMMAND_CENTER_MAX_ROWS_PER_REGION } from "./command-center-types";
+import { formatSectionFreshness } from "./command-center-data";
 
 export function CommandCenterCard({
   card,
@@ -13,8 +13,11 @@ export function CommandCenterCard({
   card: CommandCenterCardModel;
   loading?: boolean;
 }) {
-  const showDataAge =
-    card.dataAgeMs !== undefined && card.dataAgeMs > COMMAND_CENTER_STALE_DATA_MS && !loading;
+  const freshnessLabel =
+    card.dataAgeMs !== undefined ? formatSectionFreshness(card.dataAgeMs) : "";
+  const showFreshness = freshnessLabel.length > 0 && !loading;
+  const showOverflow =
+    card.overflowHref !== undefined && card.totalCount > COMMAND_CENTER_MAX_ROWS_PER_REGION;
 
   return (
     <section
@@ -25,30 +28,19 @@ export function CommandCenterCard({
       <header className="command-center-card-header">
         <h2 className="command-center-card-title" id={`${card.testId}-title`}>
           {card.title}
-          {card.rows.length > 0 ? (
-            <span className="command-center-card-count"> · {card.rows.length}</span>
-          ) : null}
+          <span className="command-center-card-count"> · {card.totalCount}</span>
         </h2>
-        {showDataAge ? (
+        {showFreshness ? (
           <span className="command-center-data-age-badge" data-testid={`${card.testId}-data-age`}>
-            Data age {Math.floor(card.dataAgeMs! / 1000)}s
+            {freshnessLabel}
           </span>
         ) : null}
-        {card.overflowHref && card.rows.length >= 5 ? (
-          <Link href={card.overflowHref} className="command-center-row-cta command-center-card-overflow">
-            View all
+        {showOverflow ? (
+          <Link href={card.overflowHref!} className="command-center-row-cta command-center-card-overflow">
+            {card.overflowLabel}
           </Link>
         ) : null}
       </header>
-
-      {card.degradedSource ? (
-        <AttentionBanner title={`Degraded data from ${card.degradedSource}`}>
-          <p>
-            Attention data from <strong>{card.degradedSource}</strong> failed to refresh. Rows may be
-            stale until you retry.
-          </p>
-        </AttentionBanner>
-      ) : null}
 
       <div className="command-center-card-body">
         {loading ? (
@@ -60,11 +52,7 @@ export function CommandCenterCard({
         ) : card.rows.length === 0 ? (
           <div className="command-center-empty">
             <p>{card.emptyCopy}</p>
-            {card.emptyNextStep ? (
-              <Link href={card.emptyNextStep.href} className="command-center-row-cta">
-                {card.emptyNextStep.label}
-              </Link>
-            ) : null}
+            <p>{card.emptyGuidance}</p>
           </div>
         ) : (
           card.rows.map((row) => <CommandCenterRow key={row.id} row={row} />)

@@ -684,7 +684,11 @@ export function sortTasksForMultiRunTable(
 }
 
 function formatHumanDate(eventMs: number): string {
-  return new Date(eventMs).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(eventMs).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export function formatLastEventTime(timestamp: string | null, nowMs: number = Date.now()): string {

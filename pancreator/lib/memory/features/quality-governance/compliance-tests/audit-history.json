@@ -1,8 +1,208 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-16T21:34:38.529Z",
+  "generated_at": "2026-06-18T07:44:58.589Z",
   "entries": [
+    {
+      "audit_id": "70229_0429_command-center-home-ux-remediation-feature-delivery-directive-20260618174500",
+      "task_id": "70229_0429_command-center-home-ux-remediation-feature-delivery-directive",
+      "feature_id": "command-center-home-ux-remediation-feature-delivery-directive",
+      "recorded_at": "2026-06-18T17:45:00.000Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "61720_0651_command-center-post-ship-remediation-20260616213427",
+      "artifact_paths": {
+        "compliance_result": ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/compliance-result.json",
+        "run_dir": ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive"
+      },
+      "scope_snapshot": [
+        {
+          "path": ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/delivery-report.md",
+          "exists": true,
+          "sha256": "7f01185",
+          "size_bytes": 11140
+        },
+        {
+          "path": ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/design-qa-report.md",
+          "exists": true,
+          "sha256": "501f465",
+          "size_bytes": 6891
+        },
+        {
+          "path": ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/implementation-report.md",
+          "exists": true,
+          "sha256": "22abff4",
+          "size_bytes": 7774
+        },
+        {
+          "path": ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/review.md",
+          "exists": true,
+          "sha256": "9141bfb",
+          "size_bytes": 2435
+        },
+        {
+          "path": ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/test-report.md",
+          "exists": true,
+          "sha256": "5121298",
+          "size_bytes": 6500
+        },
+        {
+          "path": ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/touch-set.json",
+          "exists": true,
+          "sha256": "59eceb4",
+          "size_bytes": 17445
+        },
+        {
+          "path": "client/src/app/page.test.tsx",
+          "exists": true,
+          "sha256": "2167e2b",
+          "size_bytes": 56048
+        },
+        {
+          "path": "client/src/components/command-center/command-center/command-center-data.test.ts",
+          "exists": true,
+          "sha256": "ce10a39",
+          "size_bytes": 16169
+        },
+        {
+          "path": "client/src/components/command-center/command-center/command-center-data.ts",
+          "exists": true,
+          "sha256": "60c958d",
+          "size_bytes": 13272
+        },
+        {
+          "path": "client/src/components/command-center/command-center/command-center-types.ts",
+          "exists": true,
+          "sha256": "13e9306",
+          "size_bytes": 2548
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterCard.tsx",
+          "exists": true,
+          "sha256": "5fe71b2",
+          "size_bytes": 2190
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterRow.tsx",
+          "exists": true,
+          "sha256": "1f45d92",
+          "size_bytes": 1707
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterRowOverflow.test.tsx",
+          "exists": true,
+          "sha256": "443588d",
+          "size_bytes": 1180
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterRowOverflow.tsx",
+          "exists": true,
+          "sha256": "488dcff",
+          "size_bytes": 3531
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterSurface.test.tsx",
+          "exists": true,
+          "sha256": "ba3ff9f",
+          "size_bytes": 10332
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterSurface.tsx",
+          "exists": true,
+          "sha256": "261c499",
+          "size_bytes": 3359
+        },
+        {
+          "path": "client/src/components/command-center/command-center/useCommandCenterData.ts",
+          "exists": true,
+          "sha256": "e28afab",
+          "size_bytes": 8615
+        },
+        {
+          "path": "client/src/components/command-center/layout/CommandCenterGlobalHeader.test.tsx",
+          "exists": true,
+          "sha256": "0ae5bb7",
+          "size_bytes": 1376
+        },
+        {
+          "path": "client/src/components/command-center/layout/CommandCenterGlobalHeader.tsx",
+          "exists": true,
+          "sha256": "7e6810b",
+          "size_bytes": 775
+        },
+        {
+          "path": "client/src/components/command-center/layout/CommandCenterNavRail.test.tsx",
+          "exists": true,
+          "sha256": "1922ba3",
+          "size_bytes": 4186
+        },
+        {
+          "path": "client/src/components/command-center/shared/AttentionBanner.tsx",
+          "exists": true,
+          "sha256": "6a72099",
+          "size_bytes": 1192
+        },
+        {
+          "path": "client/src/components/command-center/shared/AttentionRegion.tsx",
+          "exists": true,
+          "sha256": "26b42b4",
+          "size_bytes": 2927
+        },
+        {
+          "path": "client/src/components/command-center/shared/shared-components.test.tsx",
+          "exists": true,
+          "sha256": "7121acd",
+          "size_bytes": 5614
+        },
+        {
+          "path": "client/src/styles/surfaces.css",
+          "exists": true,
+          "sha256": "dfc3482",
+          "size_bytes": 92151
+        }
+      ],
+      "delta_summary": {
+        "added": 24,
+        "removed": 4,
+        "modified": 0,
+        "changed_paths": [
+          ".pan/archive/work/172959_06-16-26/61720_0651_command-center-post-ship-remediation/delivery-report.md",
+          ".pan/archive/work/172959_06-16-26/61720_0651_command-center-post-ship-remediation/review.md",
+          ".pan/archive/work/172959_06-16-26/61720_0651_command-center-post-ship-remediation/test-report.md",
+          ".pan/archive/work/172959_06-16-26/61720_0651_command-center-post-ship-remediation/touch-set.json",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/delivery-report.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/design-qa-report.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/implementation-report.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/review.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/test-report.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/touch-set.json",
+          "client/src/app/page.test.tsx",
+          "client/src/components/command-center/command-center/command-center-data.test.ts",
+          "client/src/components/command-center/command-center/command-center-data.ts",
+          "client/src/components/command-center/command-center/command-center-types.ts",
+          "client/src/components/command-center/command-center/CommandCenterCard.tsx",
+          "client/src/components/command-center/command-center/CommandCenterRow.tsx",
+          "client/src/components/command-center/command-center/CommandCenterRowOverflow.test.tsx",
+          "client/src/components/command-center/command-center/CommandCenterRowOverflow.tsx",
+          "client/src/components/command-center/command-center/CommandCenterSurface.test.tsx",
+          "client/src/components/command-center/command-center/CommandCenterSurface.tsx",
+          "client/src/components/command-center/command-center/useCommandCenterData.ts",
+          "client/src/components/command-center/layout/CommandCenterGlobalHeader.test.tsx",
+          "client/src/components/command-center/layout/CommandCenterGlobalHeader.tsx",
+          "client/src/components/command-center/layout/CommandCenterNavRail.test.tsx",
+          "client/src/components/command-center/shared/AttentionBanner.tsx",
+          "client/src/components/command-center/shared/AttentionRegion.tsx",
+          "client/src/components/command-center/shared/shared-components.test.tsx",
+          "client/src/styles/surfaces.css"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
     {
       "audit_id": "61720_0651_command-center-post-ship-remediation-20260616213427",
       "task_id": "61720_0651_command-center-post-ship-remediation",
@@ -437,156 +637,6 @@
           "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
           "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
           "lib/memory/features/command-center-active-memory-operator-craft-revalidation/delivery-report.md",
-          "lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md",
-          "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
-          "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",
-          "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "lib/memory/features/command-center-local-scheduler-tick-and-run-history/delivery-report.md",
-          "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
-          "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
-          "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/delivery-report.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/index.json",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/spec.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md"
-        ]
-      },
-      "findings_summary": {
-        "total": 0,
-        "block": 0,
-        "major": 0,
-        "minor": 0,
-        "note": 0
-      }
-    },
-    {
-      "audit_id": "82780_0100_command-center-active-memory-craft-enforcement-20260609013000",
-      "task_id": "82780_0100_command-center-active-memory-craft-enforcement",
-      "feature_id": "command-center-active-memory-craft-enforcement",
-      "recorded_at": "2026-06-09T01:30:00.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": "919_2344_command-center-active-memory-operator-readability-20260608234000",
-      "artifact_paths": {
-        "compliance_result": ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/compliance-result.json",
-        "run_dir": ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement"
-      },
-      "scope_snapshot": [
-        {
-          "path": ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
-          "exists": true,
-          "sha256": "09833ad",
-          "size_bytes": 4183
-        },
-        {
-          "path": ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/test-report.md",
-          "exists": true,
-          "sha256": "56eb4b7",
-          "size_bytes": 4683
-        },
-        {
-          "path": ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/touch-set.json",
-          "exists": true,
-          "sha256": "39a7184",
-          "size_bytes": 3428
-        },
-        {
-          "path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
-          "exists": true,
-          "sha256": "c886246",
-          "size_bytes": 11524
-        },
-        {
-          "path": "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "exists": true,
-          "sha256": "97abded",
-          "size_bytes": 13527
-        },
-        {
-          "path": "lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md",
-          "exists": true,
-          "sha256": "b3d57fb",
-          "size_bytes": 10888
-        },
-        {
-          "path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
-          "exists": true,
-          "sha256": "41d6fc3",
-          "size_bytes": 12877
-        },
-        {
-          "path": "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",
-          "exists": true,
-          "sha256": "23dcb91",
-          "size_bytes": 12718
-        },
-        {
-          "path": "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "exists": true,
-          "sha256": "1f50944",
-          "size_bytes": 11550
-        },
-        {
-          "path": "lib/memory/features/command-center-local-scheduler-tick-and-run-history/delivery-report.md",
-          "exists": true,
-          "sha256": "836e9d2",
-          "size_bytes": 13266
-        },
-        {
-          "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
-          "exists": true,
-          "sha256": "0db9ec9",
-          "size_bytes": 11184
-        },
-        {
-          "path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
-          "exists": true,
-          "sha256": "33151d4",
-          "size_bytes": 9715
-        },
-        {
-          "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "exists": true,
-          "sha256": "a68b889",
-          "size_bytes": 10847
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/delivery-report.md",
-          "exists": true,
-          "sha256": "a72057b",
-          "size_bytes": 9695
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/index.json",
-          "exists": true,
-          "sha256": "0a37e18",
-          "size_bytes": 19252
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/spec.md",
-          "exists": true,
-          "sha256": "8f1cff5",
-          "size_bytes": 9677
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
-          "exists": true,
-          "sha256": "b77951f",
-          "size_bytes": 13604
-        }
-      ],
-      "delta_summary": {
-        "added": 4,
-        "removed": 3,
-        "modified": 13,
-        "changed_paths": [
-          ".pan/archive/work/172967_06-08-26/919_2344_command-center-active-memory-operator-readability/review.md",
-          ".pan/archive/work/172967_06-08-26/919_2344_command-center-active-memory-operator-readability/test-report.md",
-          ".pan/archive/work/172967_06-08-26/919_2344_command-center-active-memory-operator-readability/touch-set.json",
-          ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
-          ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/test-report.md",
-          ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/touch-set.json",
-          "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
-          "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
           "lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md",
           "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
           "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",

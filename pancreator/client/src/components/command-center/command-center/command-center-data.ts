@@ -22,10 +22,71 @@ import type { StatusPillValue } from "../shared/StatusPill";
 import type {
   CommandCenterBuildInput,
   CommandCenterCardModel,
+  CommandCenterCardRegion,
+  CommandCenterRegionIconKey,
   CommandCenterRowModel,
   CommandCenterSeverity,
 } from "./command-center-types";
-import { COMMAND_CENTER_MAX_ROWS_PER_REGION as MAX_ROWS } from "./command-center-types";
+import {
+  COMMAND_CENTER_MAX_ROWS_PER_REGION as MAX_ROWS,
+  COMMAND_CENTER_STALE_DATA_MS,
+} from "./command-center-types";
+
+const REGION_METADATA: Record<
+  CommandCenterCardRegion,
+  {
+    title: string;
+    summaryLabel: string;
+    emptyCopy: string;
+    emptyGuidance: string;
+    overflowLabel: string;
+    overflowHref: string;
+    iconKey: CommandCenterRegionIconKey;
+    defaultRowActionLabel: string;
+  }
+> = {
+  "human-gates": {
+    title: "Blocked on human",
+    summaryLabel: "Blocked on human",
+    emptyCopy: "No approval requests yet.",
+    emptyGuidance:
+      "Approval requests appear after a Feature Delivery run reaches a human gate.",
+    overflowLabel: "Open all approval requests",
+    overflowHref: "/mission-control",
+    iconKey: "Hand",
+    defaultRowActionLabel: "Open approval request",
+  },
+  anomalies: {
+    title: "Anomalies",
+    summaryLabel: "Anomalies",
+    emptyCopy: "No delivery anomalies.",
+    emptyGuidance: "Failed or hanging runs appear here when delivery health degrades.",
+    overflowLabel: "Open all anomalies",
+    overflowHref: "/compliance",
+    iconKey: "TriangleAlert",
+    defaultRowActionLabel: "Open failed run",
+  },
+  "running-now": {
+    title: "Running work",
+    summaryLabel: "Running work",
+    emptyCopy: "No active delivery runs.",
+    emptyGuidance: "Active Feature Delivery runs appear here while work is in flight.",
+    overflowLabel: "Open all active runs",
+    overflowHref: "/mission-control",
+    iconKey: "LoaderCircle",
+    defaultRowActionLabel: "Open active run",
+  },
+  "recent-outcomes": {
+    title: "Recent outcomes",
+    summaryLabel: "Recent outcomes",
+    emptyCopy: "No recent shipped work.",
+    emptyGuidance: "Shipped work appears here after completion.",
+    overflowLabel: "Open all shipped outcomes",
+    overflowHref: "/mission-control",
+    iconKey: "CheckCircle2",
+    defaultRowActionLabel: "Open shipped outcome",
+  },
+};
 
 function toSeverityChip(severity: CommandCenterSeverity): SeverityChipValue {
   return severity;
@@ -51,6 +112,16 @@ function gateActionLabel(action: "approve" | "reject" | "revise", featureLabel: 
     return `Reject ${object}`;
   }
   return `Revise ${object}`;
+}
+
+function capRows(rows: CommandCenterRowModel[]): {
+  rows: CommandCenterRowModel[];
+  totalCount: number;
+} {
+  return {
+    rows: rows.slice(0, MAX_ROWS),
+    totalCount: rows.length,
+  };
 }
 
 function buildHumanGateRows(tasks: TaskRunStateEnvelope[], nowMs: number): CommandCenterRowModel[] {
@@ -86,7 +157,7 @@ function buildHumanGateRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comma
   }
 
   rows.sort((left, right) => compareBySeverity(left, right));
-  return rows.slice(0, MAX_ROWS);
+  return rows;
 }
 
 function buildAnomalyRows(
@@ -95,6 +166,7 @@ function buildAnomalyRows(
   nowMs: number,
 ): CommandCenterRowModel[] {
   const rows: CommandCenterRowModel[] = [];
+  const defaultLabel = REGION_METADATA.anomalies.defaultRowActionLabel;
 
   for (const task of tasks) {
     if (!hasRetryLimitFailure(task)) {
@@ -110,7 +182,7 @@ function buildAnomalyRows(
       ageIso: timestamp ?? new Date(nowMs).toISOString(),
       ageLabel: formatLastEventTime(timestamp, nowMs),
       primaryCta: {
-        label: "Open run detail",
+        label: defaultLabel,
         href: missionControlHref(task.taskId),
       },
       overflow: {
@@ -140,7 +212,7 @@ function buildAnomalyRows(
       ageLabel: formatLastEventTime(timestamp, nowMs),
       metaHint,
       primaryCta: {
-        label: "Open run detail",
+        label: defaultLabel,
         href: missionControlHref(task.taskId),
       },
       overflow: {
@@ -174,11 +246,12 @@ function buildAnomalyRows(
   }
 
   rows.sort((left, right) => compareBySeverity(left, right));
-  return rows.slice(0, MAX_ROWS);
+  return rows;
 }
 
 function buildRunningNowRows(tasks: TaskRunStateEnvelope[], nowMs: number): CommandCenterRowModel[] {
   const rows: CommandCenterRowModel[] = [];
+  const defaultLabel = REGION_METADATA["running-now"].defaultRowActionLabel;
 
   for (const task of filterNonTerminalTasks(tasks)) {
     const activeStage = findActiveStage(task);
@@ -197,7 +270,7 @@ function buildRunningNowRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comm
       ageIso: timestamp ?? new Date(nowMs).toISOString(),
       ageLabel: formatLastEventTime(timestamp, nowMs),
       primaryCta: {
-        label: "Open run detail",
+        label: defaultLabel,
         href: missionControlHref(task.taskId),
       },
       overflow: {
@@ -210,11 +283,13 @@ function buildRunningNowRows(tasks: TaskRunStateEnvelope[], nowMs: number): Comm
     });
   }
 
-  return rows.slice(0, MAX_ROWS);
+  return rows;
 }
 
 function buildRecentOutcomeRows(shippedOutcomes: ShippedOutcome[], nowMs: number): CommandCenterRowModel[] {
-  return shippedOutcomes.slice(0, MAX_ROWS).map((outcome) => ({
+  const defaultLabel = REGION_METADATA["recent-outcomes"].defaultRowActionLabel;
+
+  return shippedOutcomes.map((outcome) => ({
     id: `outcome:${outcome.taskId}`,
     label: truncateLabel(outcome.title || featureIdToDisplayLabel(outcome.featureId)),
     status: "Complete",
@@ -222,7 +297,7 @@ function buildRecentOutcomeRows(shippedOutcomes: ShippedOutcome[], nowMs: number
     ageIso: outcome.indexedAt,
     ageLabel: formatLastEventTime(outcome.indexedAt, nowMs),
     primaryCta: {
-      label: "Open shipped feature",
+      label: defaultLabel,
       href: `/mission-control?task=${encodeURIComponent(outcome.taskId)}`,
     },
     overflow: {
@@ -238,69 +313,82 @@ function dataAgeForRegion(nowMs: number, fetchedAtMs?: number): number | undefin
   return nowMs - fetchedAtMs;
 }
 
+export function formatSectionFreshness(dataAgeMs: number): string {
+  if (dataAgeMs <= COMMAND_CENTER_STALE_DATA_MS) {
+    return "";
+  }
+  const seconds = Math.floor(dataAgeMs / 1000);
+  if (seconds < 3600) {
+    const minutes = Math.max(1, Math.floor(seconds / 60));
+    return `Updated ${minutes}m ago`;
+  }
+  if (seconds < 86400) {
+    const hours = Math.floor(seconds / 3600);
+    return `Updated ${hours}h ago`;
+  }
+  const days = Math.floor(seconds / 86400);
+  return `Updated ${days}d ago`;
+}
+
+const FAILED_SOURCE_LABELS: Record<string, string> = {
+  "run-state": "run state",
+  archive: "archive",
+  compliance: "compliance audit",
+  "feature-index": "shipped outcomes index",
+};
+
+export function formatFailedSourceLabel(sources: string[]): string {
+  const labels = sources.map((source) => FAILED_SOURCE_LABELS[source] ?? source);
+  if (labels.length === 0) {
+    return "attention data";
+  }
+  if (labels.length === 1) {
+    return labels[0]!;
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
+function buildCard(
+  region: CommandCenterCardRegion,
+  rows: CommandCenterRowModel[],
+  dataAgeMs?: number,
+): CommandCenterCardModel {
+  const meta = REGION_METADATA[region];
+  const capped = capRows(rows);
+
+  return {
+    region,
+    testId: `command-center-${region}`,
+    title: meta.title,
+    summaryLabel: meta.summaryLabel,
+    emptyCopy: meta.emptyCopy,
+    emptyGuidance: meta.emptyGuidance,
+    overflowLabel: meta.overflowLabel,
+    iconKey: meta.iconKey,
+    totalCount: capped.totalCount,
+    rows: capped.rows,
+    overflowHref: meta.overflowHref,
+    dataAgeMs,
+  };
+}
+
 export function buildCommandCenterRows(input: CommandCenterBuildInput): CommandCenterCardModel[] {
   const nowMs = input.nowMs ?? Date.now();
   const dataAgeMs = dataAgeForRegion(nowMs, input.dataFetchedAtMs);
-  const runStateDegraded = input.failedSources?.includes("run-state");
-  const complianceDegraded = input.failedSources?.includes("compliance");
-  const outcomesDegraded = input.failedSources?.includes("feature-index");
-  const archiveDegraded = input.failedSources?.includes("archive");
   const activeTasks = filterNonTerminalTasks(input.tasks);
 
   return [
-    {
-      region: "human-gates",
-      testId: "command-center-human-gates",
-      title: "Blocked on human",
-      emptyCopy: "No human gates waiting for you",
-      emptyNextStep: { label: "Open Feature Delivery", href: "/mission-control" },
-      rows: buildHumanGateRows(activeTasks, nowMs),
-      overflowHref: "/mission-control",
+    buildCard("human-gates", buildHumanGateRows(activeTasks, nowMs), dataAgeMs),
+    buildCard(
+      "anomalies",
+      buildAnomalyRows(activeTasks, input.complianceFindings, nowMs),
       dataAgeMs,
-      ...(runStateDegraded || archiveDegraded
-        ? { degradedSource: runStateDegraded ? "run-state" : "archive" }
-        : {}),
-    },
-    {
-      region: "anomalies",
-      testId: "command-center-anomalies",
-      title: "Anomalies",
-      emptyCopy: "No anomalies detected",
-      rows: buildAnomalyRows(activeTasks, input.complianceFindings, nowMs),
-      overflowHref: "/compliance",
-      dataAgeMs,
-      ...(runStateDegraded || archiveDegraded || complianceDegraded
-        ? {
-            degradedSource: runStateDegraded
-              ? "run-state"
-              : archiveDegraded
-                ? "archive"
-                : "compliance",
-          }
-        : {}),
-    },
-    {
-      region: "running-now",
-      testId: "command-center-running-now",
-      title: "Running work",
-      emptyCopy: "No feature-delivery runs in progress",
-      rows: buildRunningNowRows(activeTasks, nowMs),
-      overflowHref: "/mission-control",
-      dataAgeMs,
-      ...(runStateDegraded || archiveDegraded
-        ? { degradedSource: runStateDegraded ? "run-state" : "archive" }
-        : {}),
-    },
-    {
-      region: "recent-outcomes",
-      testId: "command-center-recent-outcomes",
-      title: "Recent Outcomes",
-      emptyCopy: "No recently shipped features",
-      rows: buildRecentOutcomeRows(input.shippedOutcomes, nowMs),
-      overflowHref: "/mission-control",
-      dataAgeMs,
-      ...(outcomesDegraded ? { degradedSource: "feature-index" } : {}),
-    },
+    ),
+    buildCard("running-now", buildRunningNowRows(activeTasks, nowMs), dataAgeMs),
+    buildCard("recent-outcomes", buildRecentOutcomeRows(input.shippedOutcomes, nowMs), dataAgeMs),
   ];
 }
 
