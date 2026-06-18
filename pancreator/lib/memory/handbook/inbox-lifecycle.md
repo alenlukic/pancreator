@@ -168,6 +168,13 @@ Linking is resolved from the synthesized directive frontmatter (`source_task`) a
 from experience-planning `state.json` (`outputs.synthesizedDirective` or legacy
 `synthesizedDirective`).
 
+While an experience-planning run remains under `/.pan/work/`, `archive-sweep`
+MUST treat these paths as active and MUST NOT move them out of `lib/inbox/`:
+
+- the source brief (`source.inboxPath` / `args.brief`)
+- the synthesized feature-delivery directive (`outputs.synthesizedDirective`)
+- the operator review thread (`outputs.operatorReview`)
+
 ## 3a - Responding to outbox artifacts
 
 When an outbox artifact in `/lib/inbox/out/` requests operator answers for an

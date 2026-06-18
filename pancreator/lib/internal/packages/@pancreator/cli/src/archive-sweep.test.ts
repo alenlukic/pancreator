@@ -151,6 +151,49 @@ describe("runArchiveSweep", () => {
     expect(existsSync(path.join(root, inboxSourceRel))).toBe(true);
   });
 
+  it("preserves inbox items for active experience-planning runs", async () => {
+    const epDay = "172957_06-18-26";
+    const epTask = "72323_0354_command-center-home-ux-remediation";
+    const runDirRel = `.pan/work/${epDay}/${epTask}`;
+    const runAbs = path.join(root, runDirRel);
+    await mkdir(runAbs, { recursive: true });
+    const sourceInRel = `lib/inbox/in/${epDay}/${epTask}.md`;
+    const synthesizedInRel = `lib/inbox/in/${epDay}/72063_0358_command-center-home-ux-remediation-fd.md`;
+    const threadRel = `lib/inbox/threads/${epDay}/command-center-home-ux-remediation/operator-review-round.md`;
+    await mkdir(path.dirname(path.join(root, sourceInRel)), { recursive: true });
+    await mkdir(path.dirname(path.join(root, synthesizedInRel)), { recursive: true });
+    await mkdir(path.dirname(path.join(root, threadRel)), { recursive: true });
+    await writeFile(path.join(root, sourceInRel), "# source brief\n", "utf8");
+    await writeFile(path.join(root, synthesizedInRel), "# synthesized fd\n", "utf8");
+    await writeFile(path.join(root, threadRel), "# operator review\n", "utf8");
+    await writeFile(
+      path.join(runAbs, "state.json"),
+      stringifyCliJson(root, {
+        taskId: epTask,
+        pipeline: "experience-planning",
+        status: "complete",
+        createdAt: "2026-06-18T03:54:36.387Z",
+        completedAt: "2026-06-18T04:15:00.000Z",
+        source: { inboxPath: sourceInRel },
+        outputs: {
+          synthesizedDirective: synthesizedInRel,
+          operatorReview: threadRel,
+        },
+      }),
+      "utf8",
+    );
+
+    const result = await runArchiveSweep(root, {
+      clock: () => new Date("2026-06-18T12:00:00.000Z"),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(existsSync(path.join(root, sourceInRel))).toBe(true);
+    expect(existsSync(path.join(root, synthesizedInRel))).toBe(true);
+    expect(existsSync(path.join(root, threadRel))).toBe(true);
+    expect(existsSync(runAbs)).toBe(true);
+  });
+
   it("archives unrelated inbox out and threads files", async () => {
     const outRel = `lib/inbox/out/${DAY}/unrelated-delivery-report.md`;
     const threadRel = `lib/inbox/threads/${DAY}/other-feature/round-01.md`;
