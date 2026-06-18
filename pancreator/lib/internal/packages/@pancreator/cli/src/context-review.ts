@@ -1,14 +1,15 @@
+import { parseOperatorAgentJsonText } from "@pancreator/core";
 import { resolveRepoPath } from "@pancreator/core";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { panWorkMarkdownMeta, wrapPanWorkMarkdown } from "./pan-work-artifact.js";
 import {
   assertSandboxWorkspace,
   DEFAULT_CONTEXT_REVIEW_WORKSPACE,
 } from "./sandbox-paths.js";
-
 export const CONTEXT_REVIEWER_PERSONA = "context-reviewer" as const;
 
 export { DEFAULT_CONTEXT_REVIEW_WORKSPACE } from "./sandbox-paths.js";
@@ -34,7 +35,7 @@ export function resolveAgentTranscriptsDir(repoRoot: string): string {
 export function extractTouchSetPaths(touchSetRaw: string): string[] {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(touchSetRaw) as unknown;
+    parsed = parseOperatorAgentJsonText(touchSetRaw) as unknown;
   } catch {
     return [];
   }
@@ -212,14 +213,22 @@ export async function scaffoldContextReview(
   await mkdir(path.dirname(promptAbs), { recursive: true });
   await writeFile(
     promptAbs,
-    renderContextReviewPrompt({
-      reviewLabel,
-      workspaceDir: workspace,
-      scopePaths,
-      runDir,
-      contextPaths,
-      transcriptsDir,
-    }),
+    wrapPanWorkMarkdown(
+      renderContextReviewPrompt({
+        reviewLabel,
+        workspaceDir: workspace,
+        scopePaths,
+        runDir,
+        contextPaths,
+        transcriptsDir,
+      }),
+      panWorkMarkdownMeta({
+        artifact: "Context review prompt",
+        featureId: reviewLabel,
+        taskId: reviewLabel,
+        whyItMatters: "Delegates bounded context-review work against declared scope paths.",
+      }),
+    ),
     "utf8",
   );
 

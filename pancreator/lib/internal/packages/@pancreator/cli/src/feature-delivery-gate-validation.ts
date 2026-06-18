@@ -3,6 +3,8 @@
  * Persona prose and CLI stage contracts MUST stay aligned with these validators.
  */
 
+import { sliceOperatorAgentSection, stripOperatorAgentJsonPrefix } from "@pancreator/core";
+
 export type SpotFixScope = "artifact-only" | "code-bounded";
 export type ScopeAmendmentKind =
   | "paired-test"
@@ -89,7 +91,7 @@ function parseScopeAmendmentEntries(raw: unknown): ScopeAmendmentEntry[] {
 
 function parseTouchSetRecord(content: string): Record<string, unknown> | null {
   try {
-    const parsed = JSON.parse(content) as unknown;
+    const parsed = stripOperatorAgentJsonPrefix(JSON.parse(content) as unknown);
     if (!isRecord(parsed)) {
       return null;
     }
@@ -307,13 +309,14 @@ export function validateSpotFixJustification(
 }
 
 export function validatePlanMarkdown(content: string): string | null {
-  if (!ACCEPTANCE_CRITERIA_HEADING.test(content)) {
+  const agentContent = sliceOperatorAgentSection(content);
+  if (!ACCEPTANCE_CRITERIA_HEADING.test(agentContent)) {
     return "plan.md must include a ## Acceptance criteria section with quantified, testable criteria.";
   }
-  if (!SHARED_LAYER_HEADING.test(content)) {
+  if (!SHARED_LAYER_HEADING.test(agentContent)) {
     return "plan.md must include a ## Shared-layer impact section naming shared paths or none.";
   }
-  const criteriaBody = content.split(ACCEPTANCE_CRITERIA_HEADING)[1]?.split(/^##\s/mu)[0] ?? "";
+  const criteriaBody = agentContent.split(ACCEPTANCE_CRITERIA_HEADING)[1]?.split(/^##\s/mu)[0] ?? "";
   const numbered = criteriaBody.match(/^\s*\d+\.\s+\S/mu);
   if (numbered === null) {
     return "plan.md ## Acceptance criteria must contain at least one numbered measurable criterion.";
@@ -322,7 +325,8 @@ export function validatePlanMarkdown(content: string): string | null {
 }
 
 export function validateHandoffMarkdown(content: string): string | null {
-  if (!VALIDATION_COMMANDS_HEADING.test(content)) {
+  const agentContent = sliceOperatorAgentSection(content);
+  if (!VALIDATION_COMMANDS_HEADING.test(agentContent)) {
     return "handoff.md must include a ## Validation commands section naming gate commands and owners.";
   }
   return null;

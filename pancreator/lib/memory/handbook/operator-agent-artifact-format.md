@@ -1,16 +1,14 @@
+# Operator section
+- 👀 **In this file:** Operator/Agent Artifact Format
+- ⚖️ **Why it matters:** Quick orientation for Operator/Agent Artifact Format before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/agent-document-registry.md
+  - /lib/memory/handbook/operator-output-contract.md
 ---
 pancreator-section-index:
   format: operator-agent-v1
-  agent_section_start_line: 13
----
-# Operator section
-- 👀 **In this file:** Canonical operator/agent section format for Pancreator documents and artifacts.
-- ⚖️ **Why it matters:** It keeps human-readable summaries visible while giving agents a precise line where machine/contract content begins.
-- 🧭 **See also:**
-  - AGENTS.md
-  - pancreator/lib/memory/handbook/operator-output-contract.md
-  - pancreator/lib/memory/handbook/output-manifest-contract.md
----
+  agent_section_start_line: 8
 title: Operator/Agent Artifact Format
 slug: operator-agent-artifact-format
 stability: experimental
@@ -50,10 +48,16 @@ this prefix. They are generated runtime projections and stay compact.
 
 Every sectioned file MUST use this order:
 
-1. **Thin section index prefix.** A small prefix at the very top of the file.
-2. **Operator section.** Human-readable summary or one-line no-human-content banner.
+1. **Operator section.** Human-readable summary or one-line no-human-content banner.
+2. **Section index marker.** Either index keys merged into the agent frontmatter,
+   or an HTML comment when the agent payload has no frontmatter fence.
 3. **Agent section.** The canonical file payload, including any existing
    frontmatter, schema keys, contract clauses, or artifact body.
+
+Humans scanning a file MUST see the operator section first. The section index MUST
+NOT use a separate leading `---` fence after the operator section when the agent
+already has frontmatter; that duplicate fence is what causes Markdown previews to
+render the index at the wrong size.
 
 Agents MUST ignore all content before the indexed agent-section line. Agents MUST
 NOT use operator-section prose as evidence for validation, scope, requirements,
@@ -71,65 +75,87 @@ at the original `---` that begins the document's existing frontmatter.
 
 ## 4 — Markdown format
 
-Markdown files MUST use a YAML-style prefix before any other frontmatter:
+Markdown files MUST use this layout:
 
 ```markdown
----
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 11
----
 # Operator section
 - 👀 **In this file:** <one sentence>
-- ⚖️ **Why it matters:** <one sentence>
+- ⚖️ **Why it matters:** <plain-language summary for humans>
 - 🧭 **See also:**
   - <related path>
 ---
-title: Existing Agent Frontmatter
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
+name: Existing Agent Frontmatter Field
 ---
 # Agent-readable content starts here
+```
+
+When the agent section already uses YAML frontmatter, the section index keys MUST
+live inside that same frontmatter block (one `---` fence pair). Do not add a
+separate index fence or a trailing `---` after the operator section; both patterns
+cause Markdown previews to render the index at the wrong size.
+
+For agent bodies without YAML frontmatter (for example repo-root `AGENTS.md` or
+raw pipeline YAML), the section index MUST use an HTML comment immediately before
+the agent payload:
+
+```markdown
+# Operator section
+- 👀 **In this file:** <one sentence>
+...
+<!-- pancreator-section-index
+format: operator-agent-v1
+agent_section_start_line: 12
+-->
+id: feature-delivery
 ```
 
 The three operator bullets are required when the file has useful human content:
 
 - 👀 **In this file:** what the file contains.
-- ⚖️ **Why it matters:** why a human operator should care.
+- ⚖️ **Why it matters:** why a human operator should care, in plain language.
+  MUST NOT paste persona `description` fields, RFC 2119 contract prose, or
+  truncated machine text.
 - 🧭 **See also:** newline-separated related files, or `N/A`.
 
 When the file has no useful human content, replace the full operator section
 with a single-line banner:
 
 ```markdown
+⚙️ no human content
+---
 ---
 pancreator-section-index:
   format: operator-agent-v1
   agent_section_start_line: 7
 ---
-⚙️ no human content
 <agent-readable content starts here>
 ```
 
 ## 5 — YAML format
 
-YAML files MUST use the same YAML-style prefix as the first document. The agent
-section starts at the second YAML document:
+YAML pipeline and contract files MUST use the Markdown-style operator block, then
+an HTML index comment, then raw agent YAML:
 
 ```yaml
----
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 10
-operator:
-  in_this_file: "<one sentence>"
-  why_it_matters: "<one sentence>"
-  see_also:
-    - "lib/memory/handbook/operator-output-contract.md"
----
-<agent YAML content starts here>
+# Operator section
+- 👀 **In this file:** Pipeline definition `feature-delivery`.
+- ⚖️ **Why it matters:** Shows which stages run and which gates block progress.
+- 🧭 **See also:**
+  - pancreator/lib/pipelines/README.md
+<!-- pancreator-section-index
+format: operator-agent-v1
+agent_section_start_line: 12
+-->
+id: feature-delivery
+stages:
+  - id: plan
 ```
 
-If the YAML file has no useful human content, the first document MUST contain
-`operator: "⚙️ no human content"`.
+If the YAML file has no useful human content, use the single-line operator
+banner from §4, then the section index block, then the agent YAML.
 
 ## 6 — JSON format
 
@@ -174,7 +200,10 @@ schema validation.
 
 Authors and agents MUST follow these rules when creating or editing sectioned files:
 
-- The human/operator section MUST come first after the index prefix.
+- The human/operator section MUST be the first content humans see in Markdown and YAML files.
+- The section index frontmatter MUST follow the operator section and use normal `---` fence sizing.
+- **Why it matters** MUST be a true plain-language summary for human operators. It MUST NOT
+  copy persona `description` fields, RFC 2119 contract prose, or truncated machine text.
 - The agent section MUST preserve any canonical schema, frontmatter, and
   machine-readable content required by existing tooling.
 - The operator section MUST summarize; it MUST NOT contain unique requirements,

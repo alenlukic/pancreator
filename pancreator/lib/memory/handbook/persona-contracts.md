@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Persona Static Contracts
+- ⚖️ **Why it matters:** Static contract requirements that every persona spec own directly.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/agent-document-registry.md
+  - /lib/memory/handbook/persona-spec.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Persona Static Contracts
 slug: persona-contracts
 stability: experimental

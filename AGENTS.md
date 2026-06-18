@@ -1,15 +1,14 @@
----
-pancreator-section-index:
-  format: operator-agent-v1
-  agent_section_start_line: 13
----
 # Operator section
 - 👀 **In this file:** Repo-wide agent operating card: where agents start, how they resolve contracts, and how they report work.
-- ⚖️ **Why it matters:** This is the highest-priority behavior contract for every Pancreator agent invocation.
+- ⚖️ **Why it matters:** Every Pancreator agent reads this first so it knows which contracts bind the run and how to report results.
 - 🧭 **See also:**
   - pancreator/lib/memory/handbook/agent-document-registry.md
   - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
   - pancreator/lib/memory/handbook/operator-output-contract.md
+<!-- pancreator-section-index
+format: operator-agent-v1
+agent_section_start_line: 12
+-->
 # AGENTS.md — Pancreator agent operating card
 
 > Internal agent entry surface. Human operator procedures live in `OPERATION.md`.
@@ -151,11 +150,12 @@ defined by `DOC.OPERATOR_AGENT_FORMAT` unless a file-specific parser cannot yet
 tolerate the prefix. `.cursor` projections MUST NOT receive the section prefix;
 they remain generated, compact runtime surfaces.
 
-For Markdown and YAML, the `pancreator-section-index` YAML-style prefix MUST be
-the first bytes in the file and MUST name the 1-indexed line where the agent
-section starts. Any existing file frontmatter belongs to the agent section and
-therefore comes after the prefix and operator summary. For JSON, the first
-top-level key MUST be `$pancreator_section_index`, followed by `$operator`.
+For Markdown and YAML, the operator section MUST be the first content humans see.
+The `pancreator-section-index` YAML-style block comes next and MUST name the
+1-indexed line where the agent section starts. Any existing file frontmatter
+belongs to the agent section and therefore comes after the operator summary and
+section index. For JSON, the first top-level key MUST be `$pancreator_section_index`,
+followed by `$operator`.
 
 The operator section MUST come before the agent section. Agents MUST NOT consult,
 quote, summarize, validate, or reason from the operator section unless the human
@@ -166,6 +166,8 @@ banner.
 Human-readable sections MUST include these bullets with emoji prefixes:
 
 - 👀 **In this file:** what the file contains.
+- ⚖️ **Why it matters:** why a human operator should care, in plain language (not
+  contract prose copied from the agent section).
 - ⚖️ **Why it matters:** why the operator should care.
 - 🧭 **See also:** newline-separated related files, or `N/A`.
 

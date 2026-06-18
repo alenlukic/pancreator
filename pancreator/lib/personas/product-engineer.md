@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Persona spec for `product-engineer`.
+- ⚖️ **Why it matters:** Produces product plans and acceptance criteria during feature-delivery planning.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 name: product-engineer
 description: When the `feature-delivery` pipeline reaches the `plan` stage, the `product-engineer` SHALL emit `/.pan/work/<day>/<id>/product/plan.md` and `/.pan/work/<day>/<id>/product/acceptance-criteria.md` as product-planning inputs for `tech-lead` consolidation before implementation.
 model: gpt-5.4[context=272k,reasoning=high,fast=false]

@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Operator Control-Surface UX Standard
+- ⚖️ **Why it matters:** Quick orientation for Operator Control-Surface UX Standard before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - https://macro.com/
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Operator Control-Surface UX Standard
 slug: engineering-control-surface-ux
 stability: experimental

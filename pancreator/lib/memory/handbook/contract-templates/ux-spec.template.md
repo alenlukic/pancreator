@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** ux-spec.template
+- ⚖️ **Why it matters:** Quick orientation for ux-spec.template before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - https://www.w3.org/WAI/standards-guidelines/wcag/
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 template: ux-spec
 slug: ux-spec
 stability: experimental

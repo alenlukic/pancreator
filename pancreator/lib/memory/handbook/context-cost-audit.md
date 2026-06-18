@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Context cost audit
+- ⚖️ **Why it matters:** Quick orientation for Context cost audit before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/context-economy.md
+  - /lib/memory/handbook/memory-tiers.md
+  - /.docs/M1.index.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Context cost audit
 slug: context-cost-audit
 stability: experimental

@@ -1,3 +1,13 @@
+# Operator section
+- 👀 **In this file:** Pipeline definition `adopt`.
+- ⚖️ **Why it matters:** PRD §11 MVP pipeline. Non-destructive adoption of an existing repo.
+- 🧭 **See also:**
+  - pancreator/lib/pipelines/README.md
+  - pancreator/lib/memory/handbook/pipeline-state-contract.md
+<!-- pancreator-section-index
+format: operator-agent-v1
+agent_section_start_line: 11
+-->
 id: adopt
 version: "1"
 metadata:

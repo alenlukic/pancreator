@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Contract Style Discipline (Layers 1–5)
+- ⚖️ **Why it matters:** Quick orientation for Contract Style Discipline (Layers 1–5) before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - kind: lines
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Contract Style Discipline (Layers 1–5)
 slug: contract-style
 stability: experimental

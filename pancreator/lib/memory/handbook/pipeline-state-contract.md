@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Pipeline State Contract
+- ⚖️ **Why it matters:** Defines pipeline state-machine authoring, stage ownership, gate validation, and remediation routing.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/agent-document-registry.md
+  - /lib/memory/handbook/output-manifest-contract.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Pipeline State Contract
 slug: pipeline-state-contract
 stability: experimental

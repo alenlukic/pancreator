@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { sliceOperatorAgentSection } from "@pancreator/core";
 import { parse as parseYaml } from "yaml";
 import type { PipelineDefinition } from "./types.js";
 
@@ -10,7 +11,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
  * Reads UTF-8 YAML from `path` and returns a validated {@link PipelineDefinition}.
  */
 export function loadPipelineYaml(path: string): PipelineDefinition {
-  const text = readFileSync(path, "utf8");
+  const text = sliceOperatorAgentSection(readFileSync(path, "utf8"));
   let data: unknown;
   try {
     data = parseYaml(text);

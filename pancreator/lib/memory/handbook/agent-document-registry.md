@@ -1,16 +1,14 @@
+# Operator section
+- 👀 **In this file:** Agent Document Registry
+- ⚖️ **Why it matters:** Stable global keys for agent contracts, handbook docs, persona specs, and pipelines.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/operator-agent-artifact-format.md
+  - /lib/memory/handbook/persona-spec.md
 ---
 pancreator-section-index:
   format: operator-agent-v1
-  agent_section_start_line: 13
----
-# Operator section
-- 👀 **In this file:** Stable lookup table for `DOC.*`, `PIPE.*`, and `PERSONA.*` keys.
-- ⚖️ **Why it matters:** Agents use these keys to load binding docs without guessing paths or copying stale context.
-- 🧭 **See also:**
-  - AGENTS.md
-  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
-  - pancreator/lib/memory/handbook/operator-output-contract.md
----
+  agent_section_start_line: 8
 title: Agent Document Registry
 slug: agent-document-registry
 stability: experimental

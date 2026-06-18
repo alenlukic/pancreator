@@ -1,3 +1,13 @@
+# Operator section
+- 👀 **In this file:** Pipeline definition `command-center-design-audit-delivery`.
+- ⚖️ **Why it matters:** Operator-triggered design hardening loop for the Command Center (client/).
+- 🧭 **See also:**
+  - pancreator/lib/pipelines/README.md
+  - pancreator/lib/memory/handbook/pipeline-state-contract.md
+<!-- pancreator-section-index
+format: operator-agent-v1
+agent_section_start_line: 11
+-->
 id: command-center-design-audit-delivery
 version: "1"
 supervisor: supervisor

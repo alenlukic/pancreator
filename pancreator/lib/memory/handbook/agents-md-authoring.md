@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** AGENTS.md Authoring Guide
+- ⚖️ **Why it matters:** Defines how to keep /AGENTS.md high-signal while static persona, pipeline, and manifest contracts carry execution detail.
+- 🧭 **See also:**
+  - kind: file
+  - kind: file
+  - kind: file
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: AGENTS.md Authoring Guide
 slug: agents-md-authoring
 stability: experimental

@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Persona spec for `tech-writer`.
+- ⚖️ **Why it matters:** Writes the delivery report when a feature-delivery run reaches the report stage.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 name: tech-writer
 description: When the `feature-delivery` pipeline reaches the `report` stage, the `tech-writer` SHALL draft one Delivery Report at `/.pan/work/<day>/<task-id>/delivery-report.md` for the named Feature, then exit so the `notifier` post-run step stages the file to `lib/inbox/out/`.
 model: auto

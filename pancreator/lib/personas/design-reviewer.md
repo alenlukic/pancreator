@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Persona spec for `design-reviewer`.
+- ⚖️ **Why it matters:** Checks shipped UI against design canon during the test stage, alongside qa-tester.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 name: design-reviewer
 description: When the `feature-delivery` pipeline reaches the `test` stage, the `design-reviewer` SHALL inspect the running UI as a companion to `qa-tester` and emit `/.pan/work/<day>/<id>/design-qa-report.md` with a `design_qa_passes` gate verdict.
 model: gpt-5.4[context=272k,reasoning=high,fast=false]

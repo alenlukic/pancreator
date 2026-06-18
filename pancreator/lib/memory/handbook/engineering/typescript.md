@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** TypeScript and ES2022 Style Guide
+- ⚖️ **Why it matters:** Quick orientation for TypeScript and ES2022 Style Guide before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - /lib/memory/handbook/engineering/index.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: TypeScript and ES2022 Style Guide
 slug: engineering-typescript
 stability: experimental

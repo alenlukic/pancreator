@@ -1,3 +1,13 @@
+# Operator section
+- 👀 **In this file:** Pipeline definition `feature-delivery`.
+- ⚖️ **Why it matters:** PRD §11 MVP pipeline. Walks a semi-formal directive in lib/inbox/in/ through product, design, and technical planning; implementation; review; QA; delivery report; compliance; ship; and index.
+- 🧭 **See also:**
+  - pancreator/lib/pipelines/README.md
+  - pancreator/lib/memory/handbook/pipeline-state-contract.md
+<!-- pancreator-section-index
+format: operator-agent-v1
+agent_section_start_line: 11
+-->
 id: feature-delivery
 version: "1"
 metadata:

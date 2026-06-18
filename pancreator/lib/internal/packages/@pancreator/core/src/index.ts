@@ -33,3 +33,19 @@ export {
   stringifyCompactJson,
   stringifyRepoJson,
 } from "./canonical-json.js";
+export {
+  humanizeHandbookWhy,
+  personaOperatorWhy,
+  PERSONA_OPERATOR_WHY,
+} from "./operator-human-summary.js";
+export {
+  readOperatorAgentSectionIndex,
+  sliceOperatorAgentSection,
+  stripOperatorAgentIndexFromFrontmatter,
+  stripOperatorAgentJsonPrefix,
+  parseOperatorAgentJsonText,
+  wrapOperatorAgentMarkdown,
+  wrapOperatorAgentJson,
+  type OperatorAgentSectionIndex,
+  type OperatorAgentOperatorMeta,
+} from "./operator-agent-section.js";

@@ -1,3 +1,13 @@
+# Operator section
+- 👀 **In this file:** Pipeline definition `experience-planning`.
+- ⚖️ **Why it matters:** Pre-feature-delivery planning pipeline for product and experience work.
+- 🧭 **See also:**
+  - pancreator/lib/pipelines/README.md
+  - pancreator/lib/memory/handbook/pipeline-state-contract.md
+<!-- pancreator-section-index
+format: operator-agent-v1
+agent_section_start_line: 11
+-->
 id: experience-planning
 version: "1"
 supervisor: supervisor

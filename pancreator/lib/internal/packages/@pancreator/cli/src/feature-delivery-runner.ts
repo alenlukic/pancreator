@@ -1,5 +1,6 @@
 import { asTaskId, projectRootAbs, resolveRepoPath } from "@pancreator/core";
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { parsePanWorkJsonText } from "./pan-work-artifact.js";
 import {
   compilePipeline,
   executeStageSlice,
@@ -594,7 +595,7 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const runLogPath = resolveRepoPath(repoRoot, input.state.artifacts.runLogFile);
   const statePath = resolveRepoPath(repoRoot, input.state.artifacts.stateFile);
   if (existsSync(statePath)) {
-    const existing = JSON.parse(await readFile(statePath, "utf8")) as Record<string, unknown>;
+    const existing = parsePanWorkJsonText(await readFile(statePath, "utf8")) as Record<string, unknown>;
     existing.automation = input.state.automation;
     await writeFile(statePath, `${stringifyCliJson(repoRoot, existing)}\n`, "utf8");
   }

@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** behavior-preservation.template
+- ⚖️ **Why it matters:** Quick orientation for behavior-preservation.template before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - https://stryker-mutator.io
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 template: behavior-preservation
 slug: behavior-preservation
 stability: experimental

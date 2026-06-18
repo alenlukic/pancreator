@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** performance.template
+- ⚖️ **Why it matters:** Quick orientation for performance.template before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - https://sre.google/sre-book/service-level-objectives/
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 template: performance
 slug: performance
 stability: experimental

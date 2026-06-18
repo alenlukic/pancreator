@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Engineering Standards Index
+- ⚖️ **Why it matters:** Quick orientation for Engineering Standards Index before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - /lib/memory/handbook/engineering/software-engineering.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Engineering Standards Index
 slug: engineering-standards-index
 stability: experimental

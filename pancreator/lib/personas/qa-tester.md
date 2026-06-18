@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Persona spec for `qa-tester`.
+- ⚖️ **Why it matters:** Runs automated checks, manual QA, and visual review evidence for the test stage gate.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 name: qa-tester
 description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests), visual QA via the Chrome DevTools MCP server when the touch-set includes UI surfaces, manual verification against `manual-qa-test-cases.md` and the touch-set, and emit `/.pan/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
 model: auto

@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Component and Icon Library Standard
+- ⚖️ **Why it matters:** Quick orientation for Component and Icon Library Standard before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - https://ui.shadcn.com/docs
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Component and Icon Library Standard
 slug: engineering-component-standard
 stability: experimental

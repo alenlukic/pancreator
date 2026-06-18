@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** llm-judge.template
+- ⚖️ **Why it matters:** Quick orientation for llm-judge.template before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 template: llm-judge
 slug: llm-judge
 stability: experimental

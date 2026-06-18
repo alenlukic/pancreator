@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Persona Spec Format Reference
+- ⚖️ **Why it matters:** Quick orientation for Persona Spec Format Reference before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/glossary.md
+  - /lib/memory/handbook/contract-style.md
+  - /lib/memory/handbook/persona-contracts.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Persona Spec Format Reference
 slug: persona-spec
 stability: experimental

@@ -1,16 +1,14 @@
+# Operator section
+- 👀 **In this file:** Output Manifest Contract
+- ⚖️ **Why it matters:** Defines the output manifest every bounded persona invocation emits and gate validators check.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/operator-agent-artifact-format.md
+  - /lib/memory/handbook/operator-output-contract.md
 ---
 pancreator-section-index:
   format: operator-agent-v1
-  agent_section_start_line: 13
----
-# Operator section
-- 👀 **In this file:** Machine-checkable output manifest shape for bounded persona work.
-- ⚖️ **Why it matters:** Gates use this receipt to verify required docs, artifacts, validation, and remediation routing before a pipeline advances.
-- 🧭 **See also:**
-  - AGENTS.md
-  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
-  - pancreator/lib/memory/handbook/operator-output-contract.md
----
+  agent_section_start_line: 8
 title: Output Manifest Contract
 slug: output-manifest-contract
 stability: experimental

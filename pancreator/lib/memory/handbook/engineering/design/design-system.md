@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Design System Token Canon
+- ⚖️ **Why it matters:** Quick orientation for Design System Token Canon before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - https://www.w3.org/WAI/standards-guidelines/wcag/
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Design System Token Canon
 slug: engineering-design-system
 stability: experimental

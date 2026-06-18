@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Persona spec for `librarian`.
+- ⚖️ **Why it matters:** Refreshes feature indexes and archives completed runs after you finish operator verification.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 name: librarian
 description: When the `feature-delivery` pipeline reaches the `index` stage, the `librarian` SHALL refresh the Feature index at `/lib/memory/features/<category>/<id>/index.json` using active `.pan/work/` paths. When the pipeline reaches `complete`, the `librarian` SHALL run `pnpm -w exec pan close-artifacts <task-id>` to archive the run. When the `knowledge-curation` cron pipeline fires, the `librarian` SHALL flag stale citations across the Memory tier.
 model: auto

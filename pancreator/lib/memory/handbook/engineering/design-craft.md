@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Product Design and UI Craft Standard
+- ⚖️ **Why it matters:** Quick orientation for Product Design and UI Craft Standard before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - https://lawsofux.com/
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Product Design and UI Craft Standard
 slug: engineering-design-craft
 stability: experimental

@@ -1,4 +1,12 @@
+# Operator section
+- 👀 **In this file:** delivery-report.template
+- ⚖️ **Why it matters:** Quick orientation for delivery-report.template before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 6
 template: delivery-report
 slug: delivery-report
 stability: experimental

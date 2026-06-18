@@ -1,3 +1,4 @@
+import { parseOperatorAgentJsonText } from "@pancreator/core";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -128,7 +129,7 @@ async function collectRunLogReceipts(repoRoot: string, nowMs: number): Promise<M
       let designSteps: boolean | undefined;
       if (fs.existsSync(statePath)) {
         try {
-          const state = JSON.parse(await fsp.readFile(statePath, "utf8")) as {
+          const state = parseOperatorAgentJsonText(await fsp.readFile(statePath, "utf8")) as {
             featureId?: string;
             options?: { designSteps?: boolean };
           };

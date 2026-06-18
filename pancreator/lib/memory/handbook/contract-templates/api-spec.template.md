@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** api-spec.template
+- ⚖️ **Why it matters:** Quick orientation for api-spec.template before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - https://schemathesis.io
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 template: api-spec
 slug: api-spec
 stability: experimental

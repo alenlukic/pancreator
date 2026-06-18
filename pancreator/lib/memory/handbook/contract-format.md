@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Contract Wrapper Schema Reference
+- ⚖️ **Why it matters:** Quick orientation for Contract Wrapper Schema Reference before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - kind: lines
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Contract Wrapper Schema Reference
 slug: contract-format
 stability: experimental

@@ -1,3 +1,4 @@
+import { sliceOperatorAgentSection } from "@pancreator/core";
 import { parse as parseYaml } from "yaml";
 import type { ParsedPersonaFile } from "./types.js";
 import { assertPersonaSpec } from "./validate.js";
@@ -9,7 +10,8 @@ const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
  * the 16-field Anthropic shape plus Pancreator `metadata` per `/lib/memory/handbook/persona-spec.md`.
  */
 export function parsePersonaMarkdown(source: string): ParsedPersonaFile {
-  const m = source.match(FRONTMATTER);
+  const agentSource = sliceOperatorAgentSection(source);
+  const m = agentSource.match(FRONTMATTER);
   if (!m) {
     throw new Error("Persona file MUST start with YAML frontmatter fenced by `---` delimiters.");
   }
@@ -25,7 +27,8 @@ export function parsePersonaMarkdown(source: string): ParsedPersonaFile {
   if (data === null || typeof data !== "object" || Array.isArray(data)) {
     throw new Error("Persona frontmatter MUST be a YAML mapping.");
   }
-  const record = data as Record<string, unknown>;
+  const record = { ...(data as Record<string, unknown>) };
+  delete record["pancreator-section-index"];
   const spec = assertPersonaSpec(record);
   return { spec, body, frontmatter: record };
 }

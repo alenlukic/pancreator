@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Persona spec for `design-engineer`.
+- ⚖️ **Why it matters:** Produces design plans and acceptance criteria during feature-delivery planning before implementation starts.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 name: design-engineer
 description: When the `feature-delivery` pipeline reaches the `plan` stage, the `design-engineer` SHALL emit `/.pan/work/<day>/<id>/design/plan.md`, `/.pan/work/<day>/<id>/design/acceptance-criteria.md`, and `/.pan/work/<day>/<task-id>/ux-spec.md` as design inputs for `tech-lead` consolidation.
 model: gpt-5.4[context=272k,reasoning=high,fast=false]

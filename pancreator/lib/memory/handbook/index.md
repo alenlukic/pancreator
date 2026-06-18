@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Handbook Index
+- ⚖️ **Why it matters:** Human-readable entry point for handbook docs.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 title: Handbook Index
 slug: handbook-index
 stability: experimental

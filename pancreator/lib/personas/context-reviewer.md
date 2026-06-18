@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Persona spec for `context-reviewer`.
+- ⚖️ **Why it matters:** Reviews a bounded diff and chat context out-of-band and flags missing scope or contract drift before you merge.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 name: context-reviewer
 description: When an operator delegates `/context-reviewer` for out-of-band work, the `context-reviewer` SHALL read the local diff, operator-scoped context (plan docs, commit messages, agent transcripts), and emit advisory `context-review.md` under a sandbox workspace without requiring a feature-delivery task id.
 model: auto

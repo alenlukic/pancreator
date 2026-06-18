@@ -1,3 +1,13 @@
+# Operator section
+- 👀 **In this file:** Pipeline definition `command-center-design-audit-validation`.
+- ⚖️ **Why it matters:** Enforcement-validation variant of command-center-design-audit-delivery.
+- 🧭 **See also:**
+  - pancreator/lib/pipelines/README.md
+  - pancreator/lib/memory/handbook/pipeline-state-contract.md
+<!-- pancreator-section-index
+format: operator-agent-v1
+agent_section_start_line: 11
+-->
 id: command-center-design-audit-validation
 version: "1"
 supervisor: supervisor

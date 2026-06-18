@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Software Engineering Best Practices
+- ⚖️ **Why it matters:** Quick orientation for Software Engineering Best Practices before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - /lib/memory/handbook/engineering/index.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Software Engineering Best Practices
 slug: engineering-software-engineering
 stability: experimental

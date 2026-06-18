@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Persona Color Palette
+- ⚖️ **Why it matters:** Quick orientation for Persona Color Palette before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - /lib/memory/handbook/persona-spec.md
+  - /lib/memory/handbook/glossary.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Persona Color Palette
 slug: persona-colors
 stability: experimental

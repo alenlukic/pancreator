@@ -1,4 +1,13 @@
+# Operator section
+- 👀 **In this file:** Persona spec for `reviewer`.
+- ⚖️ **Why it matters:** Reviews implementation against the touch-set and stage contracts before QA runs.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 7
 name: reviewer
 description: When the `feature-delivery` pipeline reaches the `review` stage with a green `implement` stage, the `reviewer` SHALL run the `modern-code-review` skill against the touch-set, execute every Spec Contract pulled in by `contracts:from_feature`, and emit compact `/.pan/work/<day>/<id>/review.md` gate output for bounded re-entry.
 model: gpt-5.3-codex[reasoning=high,fast=false]

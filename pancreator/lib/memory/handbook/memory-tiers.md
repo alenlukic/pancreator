@@ -1,4 +1,14 @@
+# Operator section
+- 👀 **In this file:** Memory tiers for Cursor context economy
+- ⚖️ **Why it matters:** Quick orientation for Memory tiers for Cursor context economy before agents load the full contract.
+- 🧭 **See also:**
+  - kind: lines
+  - kind: lines
+  - /lib/memory/handbook/context-economy.md
 ---
+pancreator-section-index:
+  format: operator-agent-v1
+  agent_section_start_line: 8
 title: Memory tiers for Cursor context economy
 slug: memory-tiers
 stability: experimental

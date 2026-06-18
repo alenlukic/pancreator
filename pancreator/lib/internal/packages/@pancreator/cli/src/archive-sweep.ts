@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { parsePanWorkJsonText } from "./pan-work-artifact.js";
 import { stringifyCliJson } from "./canonical-json-io.js";
 import { closeOutOfBandWorkspace } from "./close-out-of-band.js";
 import {
@@ -80,7 +81,7 @@ function isActiveFeatureDeliveryRun(state: FeatureDeliveryState): boolean {
 
 async function readStateIfPresent(stateAbs: string): Promise<FeatureDeliveryState | null> {
   try {
-    return JSON.parse(await readFile(stateAbs, "utf8")) as FeatureDeliveryState;
+    return parsePanWorkJsonText(await readFile(stateAbs, "utf8")) as FeatureDeliveryState;
   } catch {
     return null;
   }

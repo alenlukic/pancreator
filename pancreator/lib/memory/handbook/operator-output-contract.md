@@ -1,16 +1,14 @@
+# Operator section
+- 👀 **In this file:** Operator Output Contract — Chat Completion Shape
+- ⚖️ **Why it matters:** Quick orientation for Operator Output Contract — Chat Completion Shape before agents load the full contract.
+- 🧭 **See also:**
+  - kind: file
+  - kind: file
+  - /AGENTS.md
 ---
 pancreator-section-index:
   format: operator-agent-v1
-  agent_section_start_line: 13
----
-# Operator section
-- 👀 **In this file:** Canonical chat/output shape every agent uses when returning work to a human operator.
-- ⚖️ **Why it matters:** It makes completion status, touched files, deletions, and next steps scannable without reading raw agent logs.
-- 🧭 **See also:**
-  - AGENTS.md
-  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
-  - pancreator/lib/memory/handbook/output-manifest-contract.md
----
+  agent_section_start_line: 8
 title: Operator Output Contract — Chat Completion Shape
 slug: operator-output-contract
 stability: experimental

@@ -3,6 +3,7 @@ import { resolveRepoPath } from "@pancreator/core";
 import path from "node:path";
 import { existsSync } from "node:fs";
 
+import { readPanWorkMarkdown } from "./pan-work-artifact.js";
 import {
   OPERATOR_VERIFICATION_FILENAME,
   validateOperatorVerificationMarkdown,
@@ -777,10 +778,11 @@ function validateArtifactContent(
   event?: string,
 ): ArtifactContentWarning | null {
   const base = path.posix.basename(rel);
-  const content = readRepoText(repoRoot, rel);
-  if (content === null) {
+  const rawContent = readRepoText(repoRoot, rel);
+  if (rawContent === null) {
     return null;
   }
+  const content = rel.endsWith(".json") ? rawContent : readPanWorkMarkdown(rawContent);
 
   if (base === "plan.md" && !isCompanionDisciplineArtifact(rel)) {
     const planError = validatePlanMarkdown(content);
