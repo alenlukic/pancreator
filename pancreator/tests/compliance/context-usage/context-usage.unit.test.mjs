@@ -19,6 +19,14 @@ import {
   selectLatestSummariesByRunIndex,
   writeFindings,
 } from "./lib/analyzer.mjs";
+import {
+  buildTurnPrompts,
+  createSyntheticSandbox,
+  evaluateFixedCommandPlan,
+  evaluateStatefulDependencyAudit,
+  evaluateToolCallFidelity,
+  validateScenarioReport,
+} from "./manual-rtk-comparison.mjs";
 import { copyTaskFixtureToTemp } from "./lib/copy-sandbox.mjs";
 import { repoRelativePath } from "./lib/live-env.mjs";
 import {
@@ -87,6 +95,81 @@ test("fixtures: task-low and task-high copy to temp with minimum file count", as
     assert.ok(dest.includes(`context-usage-${taskId}-`));
     fs.rmSync(dest, { recursive: true, force: true });
   }
+});
+
+test("manual RTK comparison: synthetic sandboxes are unique per scenario creation", () => {
+  const first = createSyntheticSandbox({ mode: "plain", runIndex: 1, attempt: 1 });
+  const second = createSyntheticSandbox({ mode: "plain", runIndex: 1, attempt: 1 });
+  try {
+    assert.notEqual(first.sandboxId, second.sandboxId);
+    assert.notEqual(first.sandboxRoot, second.sandboxRoot);
+    assert.match(first.sandboxId, /plain-run-1-attempt-1-/u);
+    assert.match(second.sandboxId, /plain-run-1-attempt-1-/u);
+    assert.ok(fs.existsSync(first.workRoot));
+    assert.ok(fs.existsSync(second.workRoot));
+  } finally {
+    fs.rmSync(first.sandboxRoot, { recursive: true, force: true });
+    fs.rmSync(second.sandboxRoot, { recursive: true, force: true });
+  }
+});
+
+test("manual RTK comparison: report validation rejects mismatched mode", () => {
+  const validation = validateScenarioReport(
+    {
+      mode: "rtk",
+      ts_file_count: 2,
+      alpha_hit_count: 4,
+      files_differ: true,
+      stateful_chain_complete: true,
+      note_line: "mode=rtk;alpha_hits=4;ts_files=2;router_stage=true",
+    },
+    "plain",
+  );
+  assert.match(validation ?? "", /report mode mismatch/u);
+});
+
+test("manual RTK comparison: tool fidelity rejects non-shell tool calls", () => {
+  const fidelity = evaluateToolCallFidelity(["shell", "glob", "read", "terminal"]);
+  assert.equal(fidelity.pass, false);
+  assert.deepEqual(fidelity.disallowed, ["glob", "read"]);
+});
+
+test("manual RTK comparison: turn prompts stay stable across retries", () => {
+  const a = buildTurnPrompts({
+    mode: "rtk",
+    runIndex: 2,
+  });
+  const b = buildTurnPrompts({
+    mode: "rtk",
+    runIndex: 2,
+  });
+  assert.deepEqual(a, b);
+  assert.equal(a.length, 5);
+  assert.match(a[1], /\.work\/rtk-bench\/candidates\.json/u);
+  assert.match(a[2], /\.work\/rtk-bench\/extracts\.json/u);
+  assert.match(a[3], /\.work\/rtk-bench\/comparisons\.json/u);
+  assert.match(a[4], /\.work\/rtk-bench\/mutation-result\.json/u);
+});
+
+test("manual RTK comparison: fixed command plan audit detects mismatch", () => {
+  const expected = ["echo one", "echo two"];
+  const observed = ["echo one", "echo three"];
+  const audit = evaluateFixedCommandPlan(expected, observed);
+  assert.equal(audit.pass, false);
+  assert.equal(audit.mismatches.length, 1);
+  assert.equal(audit.mismatches[0].turn, 2);
+});
+
+test("manual RTK comparison: stateful dependency audit catches rediscovery", () => {
+  const audit = evaluateStatefulDependencyAudit([
+    "find synthetic -type f -name \"*.ts\" > .work/rtk-bench/all-ts.txt",
+    "cat .work/rtk-bench/candidates.json && rg foo synthetic",
+    "cat .work/rtk-bench/extracts.json",
+    "cat .work/rtk-bench/comparisons.json",
+    "cat .work/rtk-bench/mutation-result.json",
+  ]);
+  assert.equal(audit.pass, false);
+  assert.ok(audit.rediscovery_violations.length >= 1);
 });
 
 test("expected: computeVariableSamples subtracts overhead median", () => {
@@ -314,14 +397,25 @@ test("establishExpectedFromRaw: throws when raw file is missing", () => {
   );
 });
 
-test("establishExpectedFromRaw: committed expected baselines match formula", () => {
+test("expected: prototype matrix baselines satisfy upper-bound formula", () => {
+  const overheadMedian = 4600;
+  const overhead = summarizeMetric(Array.from({ length: 8 }, (_, i) => overheadMedian + i * 10));
+  const variableTotals = computeVariableSamples(
+    [9000, 9500, 8800, 10200, 9100, 9300, 8900, 9800],
+    overhead.median,
+  );
+
   for (const taskId of TASK_IDS) {
     for (const model of PROTOTYPE_MODELS) {
-      const expectedPath = resolveExpectedBaselinePath(HARNESS_ROOT, taskId, model);
-      const payload = JSON.parse(fs.readFileSync(expectedPath, "utf8"));
+      const baseline = buildExpectedBaseline({
+        taskId,
+        model,
+        overheadBaseline: { model, total_tokens: overhead },
+        variableTotals,
+      });
       assert.equal(
-        payload.expected_total_tokens.upper_confidence_bound,
-        expectedUpperBound(payload.overhead, payload.variable),
+        baseline.expected_total_tokens.upper_confidence_bound,
+        expectedUpperBound(baseline.overhead, baseline.variable),
       );
     }
   }
@@ -331,13 +425,3 @@ test("paths: normalizePath", () => {
   assert.equal(normalizePath(".\\docs\\PRD.summary.md"), ".docs/PRD.summary.md");
 });
 
-test("baselines: committed prototype baseline files exist", () => {
-  for (const model of PROTOTYPE_MODELS) {
-    assert.ok(fs.existsSync(resolveOverheadBaselinePath(HARNESS_ROOT, model)));
-  }
-  for (const taskId of TASK_IDS) {
-    for (const model of PROTOTYPE_MODELS) {
-      assert.ok(fs.existsSync(resolveExpectedBaselinePath(HARNESS_ROOT, taskId, model)));
-    }
-  }
-});

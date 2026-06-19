@@ -17,6 +17,7 @@
     "context:usage:calibrate": "node pancreator/tests/compliance/context-usage/calibrate-matrix.mjs",
     "context:usage:expected": "node pancreator/tests/compliance/context-usage/establish-expected.mjs",
     "context:usage:analyze": "node pancreator/tests/compliance/context-usage/analyze-calibration.mjs",
+    "context:usage:rtk-compare": "node pancreator/tests/compliance/context-usage/manual-rtk-comparison.mjs",
     "context:usage:test": "node --test pancreator/tests/compliance/context-usage/context-usage.unit.test.mjs pancreator/tests/compliance/context-usage/calibration-stats.unit.test.mjs",
     "repo:structure:test": "node --test pancreator/tests/repo-structure.test.mjs",
     "governance:audit": "node pancreator/lib/internal/tools/governance/audit-governance-usage.mjs",

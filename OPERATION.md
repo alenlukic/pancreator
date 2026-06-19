@@ -415,10 +415,9 @@ pnpm install
 pnpm -w exec pan cursor-sync
 ```
 
-The `.cursor/` directory is gitignored. Canonical sources are `pancreator/lib/personas/`
-(agents and rules). Verify Cursor discovers
-custom agents under `.cursor/agents/` after sync per
-`pancreator/lib/memory/handbook/context-economy.md`.
+The `.cursor/` directory is gitignored. Canonical sources are
+`pancreator/lib/personas/` (agents and rules). Verify Cursor discovers custom
+agents under `.cursor/agents/` after sync.
 
 ## Embedded install checklist
 
@@ -456,6 +455,40 @@ Example dry-run from the harness root:
 ```bash
 pnpm -w exec pan cursor-sync --dry-run
 ```
+
+### Context-policy maintenance
+
+After clone, embedded init, or edits to `pancreator/lib/personas/` (including
+`pancreator/lib/personas/rules/`), the operator SHOULD run
+`pnpm -w exec pan cursor-sync` before invoking subagents.
+
+When `.cursorindexingignore` changes, the operator SHOULD restart or reindex
+Cursor and SHOULD verify custom agent discovery if `.cursor/agents/**` remains
+excluded. The operator SHOULD also verify each persona's
+`.cursor/agents/<name>.md` appears in Cursor after sync.
+
+The operator SHOULD run `pnpm run context:budget` (or
+`node pancreator/lib/internal/tools/context/context-budget-report.mjs`) before
+and after policy changes to capture directional corpus size estimates.
+
+### RTK-first shell policy
+
+`cursor-sync` now emits a managed `.cursor/hooks.json` entry plus
+`.cursor/hooks/pancreator-rtk-before-shell.sh` so shell inspection defaults to
+RTK-compressed commands.
+
+Operator checklist:
+
+1. Install `rtk` and confirm it is on `PATH` (`rtk --help` should succeed).
+2. Re-run `pnpm -w exec pan cursor-sync` after pulling policy changes.
+3. Use `rtk read <path> -l aggressive`, `rtk grep <pattern> <path> --ultra-compact`,
+   and RTK-wrapped git/status commands by default.
+4. Use built-in `Read`/`Grep` or raw shell output only for exact-path or
+   full-fidelity follow-ups when RTK output omits required detail.
+
+If shell commands unexpectedly prompt for approval, inspect `.cursor/hooks.json`
+and confirm the managed hook command exists exactly once in
+`hooks.beforeShellExecution`.
 
 ## pan CLI verbs
 

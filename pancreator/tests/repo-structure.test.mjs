@@ -207,9 +207,9 @@ test("planning/execution handoff contract is represented across active memory, p
   assert.match(activeReadme, /lib\/memory\/active\/handoffs\.md/);
   assert.match(activeReadme, /\.pan\/work\/<day>\/<task-id>\/handoff\.md/);
 
-  const contextEconomy = read("pancreator/lib/memory/handbook/context-economy.md");
-  assert.match(contextEconomy, /Planning\/execution handoff discipline/);
-  assert.match(contextEconomy, /lib\/memory\/active\/handoffs\.md/);
+  const pipelineState = read("pancreator/lib/memory/handbook/pipeline-state-contract.md");
+  assert.match(pipelineState, /Planning\/execution handoff discipline/);
+  assert.match(pipelineState, /lib\/memory\/active\/handoffs\.md/);
 
   const pipeline = read("pancreator/lib/pipelines/feature-delivery.yaml");
   assert.match(pipeline, /\.pan\/work\/<day>\/<task-id>\/handoff\.md/);
@@ -307,7 +307,15 @@ test("local Cursor hooks do not enforce commit-time policy artifacts", () => {
   }
   const hooks = JSON.parse(fs.readFileSync(hooksPath, "utf8"));
   const beforeShell = hooks.hooks?.beforeShellExecution ?? [];
-  assert.equal(beforeShell.length, 0);
+  assert.ok(
+    beforeShell.every((entry) => entry.command !== "bash .cursor/hooks/block-commit.sh"),
+  );
+  assert.ok(
+    beforeShell.filter(
+      (entry) =>
+        entry.command === "bash .cursor/hooks/pancreator-rtk-before-shell.sh",
+    ).length <= 1,
+  );
 });
 
 test("Cursor implementation rules avoid broad lib-wide activation", () => {

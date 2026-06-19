@@ -12,6 +12,7 @@ references:
   - '{"kind":"lines","path":".pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md","range":[101,230],"contentHash":"188405e","note":"Directive §1 defines tier purposes, locations, and rules."}'
 related:
   - /lib/memory/handbook/context-economy.md
+  - /lib/memory/handbook/simple-task-mode.md
   - /lib/memory/handbook/glossary.md
   - /lib/memory/active/README.md
 ...
@@ -173,8 +174,8 @@ tier as machine-oriented outputs indexed for tooling rather than human
 default reasoning.
 
 Representative examples include generated JSON indexes, manifests, migration
-dry-run outputs, compliance JSON artifacts, and structured run logs referenced
-as machine outputs.
+dry-run outputs, compliance JSON artifacts, structured run logs referenced as
+machine outputs, and bulk index JSON under `lib/memory/**`.
 
 When an agent relies on default indexing policy, the agent SHALL exclude
 generated machine artifacts unless the task documents a strong inclusion
@@ -190,5 +191,5 @@ When an agent routes memory-tier questions, the agent SHALL open
 `lib/memory/handbook/index.md` and SHALL select the row that names this page.
 
 When an agent asks what is currently active, the agent SHALL read
-`lib/memory/active/current.md` first unless `simple task mode` forbids memory
-traversal per `lib/memory/handbook/context-economy.md`.
+`lib/memory/active/current.md` first unless `lib/memory/handbook/simple-task-mode.md`
+forbids memory traversal.

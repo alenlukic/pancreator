@@ -50,7 +50,8 @@ copying broad path tables into `AGENTS.md`.
 | `DOC.PERSONA_CONTRACTS`     | `lib/memory/handbook/persona-contracts.md`             | Static persona contract requirements.                                         |
 | `DOC.OUTPUT_MANIFEST`       | `lib/memory/handbook/output-manifest-contract.md`      | Required output manifest shape and double-write rule.                         |
 | `DOC.PIPELINE_STATE`        | `lib/memory/handbook/pipeline-state-contract.md`       | Pipeline state machine, gates, and transition validation.                     |
-| `DOC.CONTEXT_ECONOMY`       | `lib/memory/handbook/context-economy.md`               | Context budget, retrieval depth, memory-tier, and model escalation decisions. |
+| `DOC.CONTEXT_ECONOMY`       | `lib/memory/handbook/context-economy.md`               | Context budget, retrieval depth, RTK-first shell inspection, and memory-tier routing decisions. |
+| `DOC.SIMPLE_TASK_MODE`      | `lib/memory/handbook/simple-task-mode.md`              | Bounded-work posture for low-risk mechanical tasks and context-expansion triggers. |
 | `DOC.OPERATOR_OUTPUT`       | `lib/memory/handbook/operator-output-contract.md`      | Operator-facing completion and next-step format.                              |
 | `DOC.COMPLIANCE_RUNS`       | `lib/memory/handbook/compliance-runs.md`               | Compliance descriptor triggers and validation cadence.                        |
 | `DOC.RUN_LOG_SCHEMA`        | `lib/memory/handbook/run-log-schema.md`                | Run-log fields and telemetry interpretation.                                  |

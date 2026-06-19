@@ -17,6 +17,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadEmbeddedInstallManifestFromRepo } from "./pan-init.js";
 import { syncPersonaModelsFromEscalation } from "./cursor-sync-persona-models.js";
 
@@ -218,7 +219,7 @@ function buildGeneralPurposeRetrievalContract(projectPrefix: string): string[] {
     `Read \`${personaContracts}\` and \`${outputManifest}\`; when a persona owns the task, delegate or adopt that persona's static execution contract instead of inventing one.`,
     `Read \`${workPrompt}\` for the bounded stage scope when present; when no \`next-prompt.md\` exists for the active run, read \`${workHandoff}\` instead.`,
     `Read \`${contextEconomy}\` only when opening broad docs, memory, archived work, or generated artifacts beyond what \`${agentsCard}\`, \`${docRegistry}\`, and the bounded prompt name.`,
-    `Read \`${contextEconomy}\` §"Model and context escalation guidance" only when choosing model class or delegating to an owner persona and the bounded prompt does not already state the escalation path.`,
+    `Re-read \`${agentsCard}\` §2 only when delegating to an owner persona or launching an ad-hoc subagent and the bounded prompt does not already state the delegation path.`,
     `Prefer compact route documents such as \`.docs/M1.index.md\`, \`.docs/PRD.index.md\`, \`.docs/PRD.summary.md\`, and \`${handbookIndex}\` before full source-of-truth documents only when the bounded prompt requires product or handbook authority the compact indexes can satisfy without full-source reads.`,
     `Do not traverse \`${workGlob}\` (except the active run paths named in step 4), \`${projectPath(projectPrefix, ".pan/archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, ".pan/archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
   ];
@@ -296,6 +297,17 @@ function buildPrWriterDeliverableSection(): string[] {
   ];
 }
 
+function buildRtkFirstShellPolicySection(): string[] {
+  return [
+    "## RTK-first shell policy",
+    "",
+    "- For shell-first repository inspection, prefer RTK wrappers such as `rtk read <path> -l aggressive`, `rtk grep <pattern> <path> --ultra-compact`, and `rtk git status|diff|log`.",
+    "- Treat built-in `Read`, `Grep`, and raw shell output as exception paths for exact-path or full-fidelity follow-up only when RTK output omits required detail.",
+    "- When RTK output is insufficient, retry with a narrower RTK command before broad raw output.",
+    "",
+  ];
+}
+
 export function buildAgentProjection(
   personaName: string,
   personaRaw: string,
@@ -344,6 +356,7 @@ export function buildAgentProjection(
     ...buildOperatorOnlyRemoteActionsSection(),
     ...buildPersonaSupremacyOnDelegationSection(personaPathForText),
     ...buildStaticPersonaContractSection(projectPrefix),
+    ...buildRtkFirstShellPolicySection(),
   );
   if (personaName === "pr-writer") {
     yamlLines.push(...buildPrWriterDeliverableSection());
@@ -428,6 +441,9 @@ ${buildStaticPersonaContractSection(projectPrefix).join("\n")}## Operating contr
 - Delegate to the owner persona when the task maps cleanly to one.
 - Perform bounded bridge work only when no owner exists, the work is small, and the route is clear enough to avoid broad context loading.
 - When using this agent as a persona-as-prompt fallback, state the target persona in the first message.
+- For shell-first repository inspection, prefer RTK wrappers such as \`rtk read <path> -l aggressive\`, \`rtk grep <pattern> <path> --ultra-compact\`, and \`rtk git status|diff|log\`.
+- Treat built-in \`Read\`, \`Grep\`, and raw shell output as exception paths for exact-path or full-fidelity follow-up only when RTK output omits required detail.
+- When RTK output is insufficient, retry with a narrower RTK command before broad raw output.
 - Return a compact result that names the route chosen, the files touched or inspected, validation performed, and any remaining owner/persona handoff.
 - On bounded task completion, append \`## Next operator steps\` per \`/lib/memory/handbook/operator-output-contract.md\`: one item when only one follow-up exists; multiple items with **When to choose** and **Impact** when the operator must pick among paths. Label read-only verification as \`Read-only:\`; state exact commands and file paths for mutating steps. Runnable \`pan\` CLI lines MUST use \`pnpm -w exec pan …\` from the repo root (\`lib/memory/handbook/pancreator-config.md\`), not bare \`pan\`. Shell steps MUST be copy-paste-ready fenced \`bash\` blocks with every path enumerated—never "stage the touched files" or "and other files".
 `;
@@ -562,27 +578,119 @@ function emitCursorCommands(
   return written;
 }
 
-const DEFAULT_CURSOR_HOOKS_JSON = `{
-  "version": 1,
-  "hooks": {
-    "beforeShellExecution": []
-  }
+const MANAGED_RTK_HOOK_COMMAND = "bash .cursor/hooks/pancreator-rtk-before-shell.sh";
+const MANAGED_RTK_HOOK_REL = ".cursor/hooks/pancreator-rtk-before-shell.sh";
+const MANAGED_RTK_HOOK_SOURCE_REL =
+  "lib/internal/tools/cursor/pancreator-rtk-before-shell.sh";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-`;
+
+function mergeManagedHookJson(existingRaw: string | undefined): string {
+  let base: Record<string, unknown> = {};
+  if (typeof existingRaw === "string" && existingRaw.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(existingRaw);
+      if (isRecord(parsed)) {
+        base = { ...parsed };
+      }
+    } catch {
+      base = {};
+    }
+  }
+
+  const hooks = isRecord(base.hooks) ? { ...base.hooks } : {};
+  const beforeShell = Array.isArray(hooks.beforeShellExecution)
+    ? [...hooks.beforeShellExecution]
+    : [];
+  const preserved = beforeShell.filter((entry) => {
+    if (!isRecord(entry)) {
+      return true;
+    }
+    return entry.command !== MANAGED_RTK_HOOK_COMMAND;
+  });
+  hooks.beforeShellExecution = [
+    ...preserved,
+    { command: MANAGED_RTK_HOOK_COMMAND, failClosed: false },
+  ];
+
+  base.version = 1;
+  base.hooks = hooks;
+  return `${JSON.stringify(base, null, 2)}\n`;
+}
+
+function resolveManagedRtkHookSource(projectRoot: string): string {
+  const projectSource = path.join(projectRoot, MANAGED_RTK_HOOK_SOURCE_REL);
+  if (existsSync(projectSource)) {
+    return projectSource;
+  }
+
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const packagedSource = path.resolve(
+    here,
+    "..",
+    "..",
+    "..",
+    "..",
+    "tools",
+    "cursor",
+    "pancreator-rtk-before-shell.sh",
+  );
+  if (existsSync(packagedSource)) {
+    return packagedSource;
+  }
+
+  throw new Error(
+    `Missing managed RTK hook source at ${projectSource} and ${packagedSource}`,
+  );
+}
 
 function emitCursorHooks(
   harnessRoot: string,
+  projectRoot: string,
   dryRun: boolean,
 ): CursorSyncWrittenEntry[] {
-  const hooksDir = path.join(harnessRoot, ".cursor");
-  const outRel = ".cursor/hooks.json";
-  const outAbs = path.join(harnessRoot, outRel);
-  const content = DEFAULT_CURSOR_HOOKS_JSON;
+  const written: CursorSyncWrittenEntry[] = [];
+  const cursorDir = path.join(harnessRoot, ".cursor");
+  const hooksDir = path.join(cursorDir, "hooks");
+  const hooksJsonRel = ".cursor/hooks.json";
+  const hooksJsonAbs = path.join(harnessRoot, hooksJsonRel);
+  const hookScriptAbs = path.join(harnessRoot, MANAGED_RTK_HOOK_REL);
+  const hookSourceAbs = resolveManagedRtkHookSource(projectRoot);
+  const hookScriptContent = readFileSync(hookSourceAbs, "utf8");
+  const existingHooksRaw = existsSync(hooksJsonAbs)
+    ? readFileSync(hooksJsonAbs, "utf8")
+    : undefined;
+  const mergedHooksJson = mergeManagedHookJson(existingHooksRaw);
+
   if (!dryRun) {
+    mkdirSync(cursorDir, { recursive: true });
     mkdirSync(hooksDir, { recursive: true });
-    writeFileSync(outAbs, content, "utf8");
+    writeFileSync(hooksJsonAbs, mergedHooksJson, "utf8");
+    writeFileSync(hookScriptAbs, hookScriptContent, "utf8");
   }
-  return [{ path: outRel, action: dryRun ? "would_write" : "write" }];
+  written.push({
+    path: hooksJsonRel,
+    action: dryRun ? "would_write" : "write",
+  });
+  written.push({
+    path: MANAGED_RTK_HOOK_REL,
+    action: dryRun ? "would_write" : "write",
+  });
+
+  const hooksGitkeep = path.join(hooksDir, ".gitkeep");
+  if (existsSync(hooksGitkeep)) {
+    if (!dryRun) {
+      unlinkSync(hooksGitkeep);
+    }
+    written.push({
+      path: ".cursor/hooks/.gitkeep",
+      action: dryRun ? "would_remove" : "remove",
+    });
+  }
+
+  return written;
 }
 
 export function runCursorSync(
@@ -661,7 +769,7 @@ export function runCursorSync(
   written.push(
     ...emitCursorRules(harnessRoot, projectRoot, projectRootRel, dryRun),
   );
-  written.push(...emitCursorHooks(harnessRoot, dryRun));
+  written.push(...emitCursorHooks(harnessRoot, projectRoot, dryRun));
 
   return {
     command: "cursor-sync",

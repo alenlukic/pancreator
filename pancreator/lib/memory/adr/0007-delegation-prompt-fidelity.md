@@ -12,7 +12,7 @@ superseded-by: null
 feature_id: delegation-prompt-fidelity
 references:
   - '{"kind":"file","path":"AGENTS.md","note":"AGENTS §2 now carries the repo-wide delegation authority and prompt-fidelity rules ratified by this ADR."}'
-  - '{"kind":"file","path":"lib/memory/handbook/context-economy.md","note":"Planning/execution handoff discipline carries the mirrored prompt-fidelity norm."}'
+  - '{"kind":"file","path":"lib/memory/handbook/pipeline-state-contract.md","note":"Planning/execution handoff discipline carries the mirrored prompt-fidelity norm."}'
   - '{"kind":"file","path":"lib/memory/handbook/agents-md-authoring.md","note":"AGENTS change-control workflow requires inbox authorization and ADR for policy-significant edits."}'
   - '{"kind":"lines","path":"lib/inbox/in/172975_05-31-26/30025_1539_delegation-prompt-fidelity-no-editorializing.md","range":[11,31],"contentHash":"a82d909","note":"Authorizing inbox directive framing the contract gap and required outcomes."}'
 ...
@@ -33,7 +33,7 @@ proactive action, so parents performed repository work the operator never
 requested even when the prompt was a pure delegation passthrough. Operators
 reported both behaviors as recurring and unacceptable.
 
-The planning/execution handoff discipline in `lib/memory/handbook/context-economy.md`
+The planning/execution handoff discipline in `lib/memory/handbook/pipeline-state-contract.md`
 held a related but weaker `SHOULD NOT` clause that covered only the
 planner-to-executor `next-prompt.md` path, leaving prompt fidelity
 under-specified at the contract layer.
@@ -69,7 +69,7 @@ expand them into adjacent unrequested work. Citation:
 When a parent agent invokes an executor on the planning/execution path, the
 parent agent SHALL apply the same verbatim-fidelity and no-injection norm and
 SHALL treat `AGENTS.md` §2 as the governing source, with
-`lib/memory/handbook/context-economy.md` mirroring that rule for the
+`lib/memory/handbook/pipeline-state-contract.md` mirroring that rule for the
 planning/execution handoff path.
 
 ## Consequences

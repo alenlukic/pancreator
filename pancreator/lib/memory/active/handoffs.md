@@ -9,7 +9,7 @@ purpose: |
   Pointer-only table for compact plan-to-execution handoffs so executor agents
   can start from bounded context instead of inheriting planner context.
 related:
-  - /lib/memory/handbook/context-economy.md
+  - /lib/memory/handbook/pipeline-state-contract.md
   - /lib/memory/handbook/subagent-model-tiers.md
   - /lib/memory/active/current.md
   - /lib/memory/active/runs.md
