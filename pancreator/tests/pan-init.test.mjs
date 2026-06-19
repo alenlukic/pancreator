@@ -65,6 +65,7 @@ test("pan init embedded apply scaffolds under .pancreator and preserves host AGE
   assert.ok(existsSync(path.join(root, ".pancreator/lib/personas/intake-analyst.md")));
   assert.ok(existsSync(path.join(root, ".pancreator/lib/personas/rules/coder.yaml")));
   assert.ok(existsSync(path.join(root, ".pancreator/lib/memory/handbook/context-economy.md")));
+  assert.ok(existsSync(path.join(root, ".pancreator/lib/memory/handbook/simple-task-mode.md")));
   assert.ok(payload.personaSeed?.source === "package");
   assert.ok(payload.handbookSeed?.source === "package");
   assert.ok(typeof payload.cursorSync === "object" && payload.cursorSync.count > 0);

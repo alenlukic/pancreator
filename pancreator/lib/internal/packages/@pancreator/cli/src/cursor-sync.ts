@@ -219,7 +219,7 @@ function buildGeneralPurposeRetrievalContract(projectPrefix: string): string[] {
     `Read \`${personaContracts}\` and \`${outputManifest}\`; when a persona owns the task, delegate or adopt that persona's static execution contract instead of inventing one.`,
     `Read \`${workPrompt}\` for the bounded stage scope when present; when no \`next-prompt.md\` exists for the active run, read \`${workHandoff}\` instead.`,
     `Read \`${contextEconomy}\` only when opening broad docs, memory, archived work, or generated artifacts beyond what \`${agentsCard}\`, \`${docRegistry}\`, and the bounded prompt name.`,
-    `Read \`${contextEconomy}\` §"Model and context escalation guidance" only when choosing model class or delegating to an owner persona and the bounded prompt does not already state the escalation path.`,
+    `Re-read \`${agentsCard}\` §2 only when delegating to an owner persona or launching an ad-hoc subagent and the bounded prompt does not already state the delegation path.`,
     `Prefer compact route documents such as \`.docs/M1.index.md\`, \`.docs/PRD.index.md\`, \`.docs/PRD.summary.md\`, and \`${handbookIndex}\` before full source-of-truth documents only when the bounded prompt requires product or handbook authority the compact indexes can satisfy without full-source reads.`,
     `Do not traverse \`${workGlob}\` (except the active run paths named in step 4), \`${projectPath(projectPrefix, ".pan/archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, ".pan/archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
   ];

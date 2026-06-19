@@ -180,11 +180,12 @@ Rules:
   persona spec changes; they MUST NOT edit `.cursor/agents/` in git (it is not
   tracked).
 
-Model and context escalation guidance lives in
-`/lib/memory/handbook/context-economy.md`. Standalone catch-all agents such
-as `.cursor/agents/general-purpose.md` are allowed when they are explicitly
-documented as non-persona projections and route to canonical personas whenever
-one owns the work.
+Repo-wide subagent model policy lives in `AGENTS.md` §2. Named personas use
+their canonical `.cursor/agents/<name>.md` projection unless the operator
+overrides the invocation; ad-hoc subagents use the parent model exactly.
+Standalone catch-all agents such as `.cursor/agents/general-purpose.md` are
+allowed when they are explicitly documented as non-persona projections and
+route to canonical personas whenever one owns the work.
 
 ### 5.2 — Persona rule specs and Cursor `.mdc` projection
 

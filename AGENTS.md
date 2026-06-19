@@ -82,6 +82,11 @@ that addition. When the delegation prompt carries no instructions for the
 parent, the parent MUST limit itself to invoking the target persona and
 reporting the result.
 
+When a parent agent invokes a named persona, the parent MUST use the canonical
+`.cursor/agents/<name>.md` projection for that persona unless the operator
+explicitly overrides the invocation. Named persona model policy comes from that
+canonical projection; the parent MUST NOT substitute a different ad-hoc model.
+
 When a parent agent invokes an ad-hoc subagent rather than a named persona, the
 parent MUST pass the parent's own exact model string explicitly in the
 invocation and MUST NOT leave the model parameter blank. After launch, the
@@ -114,8 +119,10 @@ Load the narrowest binding artifact that can answer the contract question. Start
 with `DOC.REGISTRY` and the persona/pipeline keys before opening broad handbook,
 PRD, archive, inbox history, or prior run context. Use
 `pancreator/lib/memory/handbook/context-economy.md` only when a task requires context-budget,
-model escalation, memory-tier, or archival retrieval decisions not already named
-by the static contract.
+retrieval-depth, RTK-first shell, memory-tier, or archival retrieval decisions
+not already named by the static contract. Use
+`pancreator/lib/memory/handbook/simple-task-mode.md` only when the task needs the
+bounded low-risk work posture or its context-expansion triggers.
 
 Active feature-delivery work is under `pancreator/.pan/work/<day>/<task-id>/`. Do not scan
 unrelated `pancreator/.pan/work/**`, `pancreator/.pan/archive/**`, `pancreator/lib/inbox/out/**`, or
@@ -124,37 +131,54 @@ request explicitly names archival reconstruction as the task.
 
 ## 5 — Repo operating rules
 
+### Pan CLI and execution environment
+
 - Use `pnpm -w exec pan …` from the repository root for `pan` CLI commands.
 - Before `pnpm -w exec pan run`, `pan advance`, `pan repair-state`, or
   `pan close-artifacts`, load `.env` with `set -a && source .env && set +a`
   when present.
-- Build-mode inbox scaffolding routes through `pnpm -w exec pan intake from-build-plan`.
-  Agents MUST use `pan intake from-build-plan` when promoting Build-mode plan text
-  into the inbox instead of bypassing the inbox queue.
+
+### Feature-delivery workflow routing
+
+- Build-mode inbox scaffolding routes through
+  `pnpm -w exec pan intake from-build-plan`. Agents MUST use
+  `pan intake from-build-plan` when promoting Build-mode plan text into the
+  inbox instead of bypassing the inbox queue.
 - When running feature-delivery commands in chat, set `PAN_FD_PROGRESS=ndjson`,
   monitor stderr for `feature_delivery_progress`, and summarize progress without
   pasting raw NDJSON.
+
+### Source-control and shell-output policy
+
 - Stage diffs locally only. Agents MUST NOT run `git push`, `git commit`,
   `git commit --no-verify`, `gh pr create`, or `gh pr merge` unless an explicit
   persona spec grants that action and the operator has ratified it.
 - Shell inspection MUST default to RTK-compressed commands; agents MUST use raw
   shell output or built-in file/search tools only when RTK output cannot
   provide required fidelity for the active task.
+
+### Formatting and repository hygiene
+
 - JSON written by repo tooling MUST be pretty formatted with two-space indent
   unless a file contract explicitly declares compact JSON.
 - If agent documentation references a non-transient repository directory that is
   absent, create the directory with an appropriate tracked placeholder or update
   the docs in the same change.
+
+### Compliance and governance gates
+
 - Run compliance descriptors under `pancreator/tests/compliance/` when
-  `pancreator/lib/memory/handbook/compliance-runs.md` says the touched surface requires it.
-- After editing any persona under `pancreator/lib/personas/`, regenerate the gitignored
-  Cursor projections with `pnpm -w exec pan cursor-sync` and verify them with
-  `node pancreator/lib/internal/tools/checks/check-cursor-projection-drift.mjs`; stale projections
-  are not caught by tracked-file CI.
+  `pancreator/lib/memory/handbook/compliance-runs.md` says the touched surface
+  requires it.
+- After editing any persona under `pancreator/lib/personas/`, regenerate the
+  gitignored Cursor projections with `pnpm -w exec pan cursor-sync` and verify
+  them with
+  `node pancreator/lib/internal/tools/checks/check-cursor-projection-drift.mjs`;
+  stale projections are not caught by tracked-file CI.
 - When the persona/registry/pipeline/escalation surface changes, run the
   framework gates: `pnpm governance:test` (registry integrity + escalation
-  completeness) and `pnpm governance:projection-drift`. Use `pnpm
-  governance:audit` to re-measure governance usage and friction.
+  completeness) and `pnpm governance:projection-drift`. Use
+  `pnpm governance:audit` to re-measure governance usage and friction.
 
 ## 6 — Sectioned document and artifact format
 

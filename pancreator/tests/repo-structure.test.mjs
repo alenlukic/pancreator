@@ -207,9 +207,9 @@ test("planning/execution handoff contract is represented across active memory, p
   assert.match(activeReadme, /lib\/memory\/active\/handoffs\.md/);
   assert.match(activeReadme, /\.pan\/work\/<day>\/<task-id>\/handoff\.md/);
 
-  const contextEconomy = read("pancreator/lib/memory/handbook/context-economy.md");
-  assert.match(contextEconomy, /Planning\/execution handoff discipline/);
-  assert.match(contextEconomy, /lib\/memory\/active\/handoffs\.md/);
+  const pipelineState = read("pancreator/lib/memory/handbook/pipeline-state-contract.md");
+  assert.match(pipelineState, /Planning\/execution handoff discipline/);
+  assert.match(pipelineState, /lib\/memory\/active\/handoffs\.md/);
 
   const pipeline = read("pancreator/lib/pipelines/feature-delivery.yaml");
   assert.match(pipeline, /\.pan\/work\/<day>\/<task-id>\/handoff\.md/);

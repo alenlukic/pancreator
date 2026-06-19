@@ -22,8 +22,8 @@ related:
 # Current focus
 
 When an agent needs active-memory orientation, the agent SHALL read this file
-before scanning broader `lib/memory/` trees unless `simple task mode` blocks that
-read per `lib/memory/handbook/context-economy.md`.
+before scanning broader `lib/memory/` trees unless
+`lib/memory/handbook/simple-task-mode.md` blocks that read.
 
 ## Active Feature
 
