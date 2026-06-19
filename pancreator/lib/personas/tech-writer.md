@@ -44,6 +44,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `tech-writer`.
+- ⚖️ **Why it matters:** Writes the delivery report when a feature-delivery run reaches the report stage.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Tech Writer
 
 ## Static execution contract

@@ -61,6 +61,13 @@ metadata:
     ]
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `contract-writer`.
+- ⚖️ **Why it matters:** Turns informal requests into machine-checkable contract clauses the rest of the pipeline can enforce.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Contract Writer
 
 ## Static execution contract

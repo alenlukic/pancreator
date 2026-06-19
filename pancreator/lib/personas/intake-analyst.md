@@ -45,6 +45,13 @@ metadata:
   pancreator-color-suffix: cyan-100
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `intake-analyst`.
+- ⚖️ **Why it matters:** Turns informal inbox specs into canonical engineering specs through a short clarifying dialogue.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Intake Analyst
 
 ## Static execution contract

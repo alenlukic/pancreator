@@ -44,6 +44,13 @@ metadata:
   pancreator-color-suffix: teal-200
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `product-engineer`.
+- ⚖️ **Why it matters:** Produces product plans and acceptance criteria during feature-delivery planning.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Product Engineer
 
 ## Static execution contract

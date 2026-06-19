@@ -42,6 +42,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `persona-designer`.
+- ⚖️ **Why it matters:** Authors new persona specs and matching Cursor projections when bootstrap or the librarian proposes a new SME.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Persona Designer
 
 ## Static execution contract

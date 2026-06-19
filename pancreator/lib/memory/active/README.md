@@ -9,23 +9,15 @@ purpose: |
   Operator-facing scope statement for the active-memory tier and exclusions
   that keep default Cursor context small.
 references:
-  - kind: lines
-    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
-    range: [235, 251]
-    contentHash: 9b2ddcc
-    note: "Spec acceptance criteria require README scope and soft budgets."
-  - kind: lines
-    path: .pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md
-    range: [231, 251]
-    contentHash: 188405e
-    note: "Directive §2 defines README behavior and soft budgets. Source archived from lib/inbox/in/ per inbox-lifecycle handbook §3."
+  - '{"kind":"lines","path":"lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json","range":[235,251],"contentHash":"9b2ddcc","note":"Spec acceptance criteria require README scope and soft budgets."}'
+  - '{"kind":"lines","path":".pan/archive/inbox/in/172997_05-09-26/86400_0000_token-economy-enhanced.md","range":[231,251],"contentHash":"188405e","note":"Directive §2 defines README behavior and soft budgets. Source archived from lib/inbox/in/ per inbox-lifecycle handbook §3."}'
 related:
   - /lib/memory/handbook/memory-tiers.md
   - /lib/memory/handbook/context-economy.md
   - /lib/memory/active/current.md
   - /lib/memory/active/runs.md
   - /lib/memory/active/handoffs.md
----
+...
 
 # Active memory tier
 

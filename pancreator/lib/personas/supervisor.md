@@ -56,6 +56,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `supervisor`.
+- ⚖️ **Why it matters:** Orchestrates pipeline stages, enforces gates, and prepares ship ratification for human review.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Supervisor
 
 ## Static execution contract

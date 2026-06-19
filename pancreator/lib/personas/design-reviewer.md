@@ -48,6 +48,13 @@ metadata:
   pancreator-color-suffix: blue-200
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `design-reviewer`.
+- ⚖️ **Why it matters:** Checks shipped UI against design canon during the test stage, alongside qa-tester.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Design Reviewer
 
 ## Static execution contract

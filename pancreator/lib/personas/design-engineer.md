@@ -47,6 +47,13 @@ metadata:
   pancreator-color-suffix: green-200
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `design-engineer`.
+- ⚖️ **Why it matters:** Produces design plans and acceptance criteria during feature-delivery planning before implementation starts.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Design Engineer
 
 ## Static execution contract

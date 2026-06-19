@@ -1,3 +1,4 @@
+import { parseOperatorAgentJsonText } from "@pancreator/core";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
@@ -349,7 +350,7 @@ async function invokePanStatus(
 
 async function readPersistedState(stateAbs: string): Promise<PersistedState> {
   const raw = await fsp.readFile(stateAbs, "utf8");
-  return JSON.parse(raw) as PersistedState;
+  return parseOperatorAgentJsonText(raw) as PersistedState;
 }
 
 async function discoverActiveStateFiles(repoRoot: string): Promise<string[]> {

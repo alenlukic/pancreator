@@ -1,3 +1,10 @@
+# Operator section
+- 👀 **In this file:** Cursor command spec for `/introspect`.
+- ⚖️ **Why it matters:** Scans recent agent and operator activity and turns recurring misses into an intake-ready follow-up item.
+- 🧭 **See also:**
+  - AGENTS.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+  - pancreator/lib/memory/handbook/operator-output-contract.md
 # Introspect
 
 Run a bounded retrospective scan over recent Pancreator operator + agent activity and turn the findings into an intake-ready follow-up item.

@@ -1,9 +1,8 @@
 ---
-title: Engineering Standards Index
 slug: engineering-standards-index
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [reviewer, tech-lead, pancreator-engineer]
 purpose: |
   Routing map for the global engineering standards corpus. Agents writing,
@@ -11,16 +10,8 @@ purpose: |
   standards pages required for the task from this index, and SHALL apply them as
   binding obligations rather than optional guidance.
 references:
-  - kind: lines
-    path: AGENTS.md
-    range: [1, 1]
-    contentHash: b953d77
-    note: "AGENTS working agreement binds code-writing personas to the engineering standards corpus."
-  - kind: lines
-    path: lib/memory/handbook/index.md
-    range: [1, 1]
-    contentHash: 5c703c0
-    note: "Handbook routing index routes engineering-standards intents to this page."
+  - '{"kind":"lines","path":"AGENTS.md","range":[1,1],"contentHash":"b953d77","note":"AGENTS working agreement binds code-writing personas to the engineering standards corpus."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/index.md","range":[1,1],"contentHash":"5c703c0","note":"Handbook routing index routes engineering-standards intents to this page."}'
 related:
   - /lib/memory/handbook/engineering/software-engineering.md
   - /lib/memory/handbook/engineering/typescript.md
@@ -29,7 +20,15 @@ related:
   - /lib/memory/handbook/engineering/design/component-standard.md
   - /lib/memory/handbook/engineering/design/control-surface-ux.md
   - /lib/memory/handbook/contract-style.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Engineering Standards Index
+- ⚖️ **Why it matters:** Quick orientation for Engineering Standards Index before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/engineering/software-engineering.md
+  - /lib/memory/handbook/engineering/typescript.md
+  - /lib/memory/handbook/engineering/design-craft.md
 
 # Engineering Standards Index
 

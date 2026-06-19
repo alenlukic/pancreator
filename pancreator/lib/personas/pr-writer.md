@@ -47,6 +47,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `pr-writer`.
+- ⚖️ **Why it matters:** Drafts a merge-ready pull-request summary from a feature's delivery artifacts.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # PR Writer
 
 ## Static execution contract

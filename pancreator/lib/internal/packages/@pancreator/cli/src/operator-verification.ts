@@ -1,8 +1,11 @@
+import { parseOperatorAgentJsonText, sliceOperatorAgentSection } from "@pancreator/core";
 import { resolveRepoPath } from "@pancreator/core";
 import { rfc3339UtcMs } from "@pancreator/run-logger";
 import { existsSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { panWorkMarkdownMeta, wrapPanWorkMarkdown } from "./pan-work-artifact.js";
 
 export const OPERATOR_VERIFICATION_FILENAME = "operator-verification.md";
 
@@ -54,7 +57,7 @@ function extractTouchSetAcceptanceBullets(touchSetJson: string | null): string[]
     return [];
   }
   try {
-    const parsed = JSON.parse(touchSetJson) as Record<string, unknown>;
+    const parsed = parseOperatorAgentJsonText(touchSetJson) as Record<string, unknown>;
     const criteria = parsed.acceptance_criteria;
     if (!Array.isArray(criteria)) {
       return [];
@@ -102,7 +105,7 @@ function extractTouchSetManualQaBullets(touchSetJson: string | null): string[] {
     return [];
   }
   try {
-    const parsed = JSON.parse(touchSetJson) as Record<string, unknown>;
+    const parsed = parseOperatorAgentJsonText(touchSetJson) as Record<string, unknown>;
     const cases = parsed.manual_qa_test_cases;
     if (!Array.isArray(cases)) {
       return [];
@@ -172,7 +175,8 @@ export function renderOperatorVerificationScaffold(
       ? manualBullets.map((item) => `- Derived from qa-tester manual verification: ${item}`).join("\n")
       : "- No qa-tester manual verification bullets were found; author flows from the touch-set and delivery report.";
 
-  return `# Operator verification — ${state.featureId}
+  return wrapPanWorkMarkdown(
+    `# Operator verification — ${state.featureId}
 
 - Task id: \`${state.taskId}\`
 - Feature id: \`${state.featureId}\`
@@ -221,31 +225,44 @@ pnpm -w exec pan reopen ${state.taskId} --reason "Operator verification failed: 
 \`\`\`
 
 When satisfied, no further action is required beyond the archival record.
-`;
+`,
+    panWorkMarkdownMeta({
+      artifact: "Operator verification scaffold",
+      featureId: state.featureId,
+      taskId: state.taskId,
+      whyItMatters:
+        "Lists acceptance criteria and manual test flows the operator runs before archival closure.",
+      seeAlso: [
+        "lib/memory/handbook/contract-templates/operator-verification.template.md",
+        "lib/memory/handbook/operator-output-contract.md",
+      ],
+    }),
+  );
 }
 
 export function validateOperatorVerificationMarkdown(content: string): OperatorVerificationValidation {
+  const agentContent = sliceOperatorAgentSection(content);
   const warnings: string[] = [];
-  if (!/^#\s+Operator verification/mu.test(content)) {
+  if (!/^#\s+Operator verification/mu.test(agentContent)) {
     warnings.push("missing level-1 Operator verification heading");
   }
-  if (!/^##\s+Acceptance criteria/mu.test(content)) {
+  if (!/^##\s+Acceptance criteria/mu.test(agentContent)) {
     warnings.push("missing ## Acceptance criteria section");
   }
-  if (!/^##\s+Manual test flows/mu.test(content)) {
+  if (!/^##\s+Manual test flows/mu.test(agentContent)) {
     warnings.push("missing ## Manual test flows section");
   }
-  const criteriaCount = (content.match(/^-\s+\[\s\]/gmu) ?? []).length;
+  const criteriaCount = (agentContent.match(/^-\s+\[\s\]/gmu) ?? []).length;
   if (criteriaCount < 1) {
     warnings.push("Acceptance criteria MUST include at least one unchecked checkbox item");
   }
-  if (!/^###\s+Flow/mu.test(content)) {
+  if (!/^###\s+Flow/mu.test(agentContent)) {
     warnings.push("Manual test flows MUST include at least one ### Flow subsection");
   }
-  if (!/^\*\*Steps:\*\*/mu.test(content)) {
+  if (!/^\*\*Steps:\*\*/mu.test(agentContent)) {
     warnings.push("Manual test flows MUST include Steps blocks");
   }
-  if (!/^\*\*Expected result:\*\*/mu.test(content)) {
+  if (!/^\*\*Expected result:\*\*/mu.test(agentContent)) {
     warnings.push("Manual test flows MUST include Expected result blocks");
   }
   return { ok: warnings.length === 0, warnings };

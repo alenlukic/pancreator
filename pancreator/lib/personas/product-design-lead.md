@@ -47,6 +47,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `product-design-lead`.
+- ⚖️ **Why it matters:** Merges product and design recommendations into one feature-delivery-ready inbox directive.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Product-Design Lead
 
 ## Static execution contract

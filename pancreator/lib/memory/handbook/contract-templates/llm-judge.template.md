@@ -2,24 +2,27 @@
 template: llm-judge
 slug: llm-judge
 stability: experimental
-phase: 0b
-allowed-in-milestones: [M1, M2, M3, M4, M5]
+phase: "0b"
+allowed-in-milestones:
+  - M1
+  - M2
+  - M3
+  - M4
+  - M5
 purpose: |
   Scaffold for `kind: llm-judge` clauses. The MVP fallback when no
   deterministic runner applies. Carries the quorum, cost ceiling, and
   worked-examples discipline that Layer 2 requires for `severity: block`.
 references:
-  - kind: lines
-    path: /lib/memory/handbook/contract-format.md
-    range: [1, 1]
-    contentHash: 10d2b8f
-    note: "Wrapper schema reference."
-  - kind: lines
-    path: /lib/memory/handbook/contract-style.md
-    range: [1, 1]
-    contentHash: 2d7acae
-    note: "Layer 2 (LLM-judge) requirements."
----
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-format.md","range":[1,1],"contentHash":"10d2b8f","note":"Wrapper schema reference."}'
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-style.md","range":[1,1],"contentHash":"2d7acae","note":"Layer 2 (LLM-judge) requirements."}'
+...
+
+# Operator section
+- 👀 **In this file:** Template — `kind: llm-judge`
+- ⚖️ **Why it matters:** Quick orientation for Template — `kind: llm-judge` before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Template — `kind: llm-judge`
 

@@ -1,5 +1,4 @@
 ---
-title: Context cost audit
 slug: context-cost-audit
 stability: experimental
 bootstrap-only: false
@@ -12,7 +11,15 @@ related:
   - /lib/memory/handbook/context-economy.md
   - /lib/memory/handbook/memory-tiers.md
   - /.docs/M1.index.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Context cost audit
+- ⚖️ **Why it matters:** Quick orientation for Context cost audit before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/context-economy.md
+  - /lib/memory/handbook/memory-tiers.md
+  - /.docs/M1.index.md
 
 # Context cost audit
 

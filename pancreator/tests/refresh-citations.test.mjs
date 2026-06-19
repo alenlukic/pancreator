@@ -25,6 +25,24 @@ test("classifyPath refuses inbox notes and warns on immutable inbox queues", () 
   assert.match(classifyPath("lib/inbox/in/foo.md").warn ?? "", /immutable inbox/);
 });
 
+test("refreshCitationBody patches flattened YAML frontmatter reference strings", () => {
+  const root = makeTempRepo();
+  const targetRel = ".docs/flat-target.md";
+  mkdirSync(path.dirname(path.join(root, targetRel)), { recursive: true });
+  writeFileSync(path.join(root, targetRel), "hello\n", "utf8");
+  const citation = JSON.stringify({
+    kind: "lines",
+    path: targetRel,
+    range: [1, 1],
+    contentHash: "TBD-on-commit",
+  });
+  const body = ["---", "references:", `  - '${citation}'`, "...", ""].join("\n");
+  const { body: out, changed } = refreshCitationBody(body, 7, root);
+  assert.equal(changed, true);
+  assert.doesNotMatch(out, /TBD-on-commit/);
+  assert.match(out, /contentHash":"[0-9a-f]{7}/);
+});
+
 test("refreshCitationBody patches YAML frontmatter references", () => {
   const root = makeTempRepo();
   const targetRel = ".docs/target.md";

@@ -42,6 +42,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `sme-design`.
+- ⚖️ **Why it matters:** Translates rough intent into design-canon-grounded layout and interaction recommendations during experience planning.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # SME — UX and Design
 
 ## Static execution contract

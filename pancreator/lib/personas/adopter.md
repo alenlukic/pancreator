@@ -44,6 +44,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `adopter`.
+- ⚖️ **Why it matters:** Helps you adopt Pancreator in an existing repo by scanning the stack and leaving an adoption report plus inbox items for you to ratify.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Adopter
 
 ## Static execution contract

@@ -47,6 +47,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `coroner`.
+- ⚖️ **Why it matters:** Diagnoses structural pain in one named workflow and writes an advisory post-mortem plan without changing the repo.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Coroner
 
 ## Static execution contract

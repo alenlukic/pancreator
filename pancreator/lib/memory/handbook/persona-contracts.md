@@ -1,9 +1,8 @@
 ---
-title: Persona Static Contracts
 slug: persona-contracts
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [persona-designer, supervisor]
 purpose: Static contract requirements that every persona spec must own directly.
 related:
@@ -11,7 +10,15 @@ related:
   - /lib/memory/handbook/agent-document-registry.md
   - /lib/memory/handbook/persona-spec.md
   - /lib/memory/handbook/output-manifest-contract.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Persona Static Contracts
+- ⚖️ **Why it matters:** Quick orientation for Persona Static Contracts before agents load the full contract.
+- 🧭 **See also:**
+  - /AGENTS.md
+  - /lib/memory/handbook/agent-document-registry.md
+  - /lib/memory/handbook/persona-spec.md
 
 # Persona Static Contracts
 

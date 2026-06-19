@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { panWorkMarkdownMeta, wrapPanWorkMarkdown } from "./pan-work-artifact.js";
 import { operatorVerificationRel } from "./operator-verification.js";
 import { deliveryReportRel, durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 
@@ -90,7 +91,8 @@ export function renderPipelineCloseDoc(
 
   const closeCmd = `pnpm -w exec pan close-artifacts ${state.taskId}`;
 
-  return `# Pipeline close — ${state.featureId}
+  return wrapPanWorkMarkdown(
+    `# Pipeline close — ${state.featureId}
 
 - Task id: \`${state.taskId}\`
 - Feature id: \`${state.featureId}\`
@@ -126,7 +128,15 @@ ${closeCmd}
 \`\`\`
 
 - No agent SHALL push or open a pull request; Q3 requires human audit of the local diff.
-`;
+`,
+    panWorkMarkdownMeta({
+      artifact: "Pipeline close handoff",
+      featureId: state.featureId,
+      taskId: state.taskId,
+      whyItMatters: "Summarizes stage history, residual issues, and the exact close-artifacts command for the librarian.",
+      seeAlso: ["lib/memory/handbook/operator-output-contract.md"],
+    }),
+  );
 }
 
 export async function ensurePipelineCloseDoc(

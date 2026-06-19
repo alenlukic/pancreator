@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Refresh stale or `TBD-on-commit` contentHash citations across Markdown fenced
- * JSON, standalone JSON bodies, and YAML frontmatter reference lists.
+ * JSON, standalone JSON bodies, YAML frontmatter reference lists (nested or
+ * flattened scalar JSON strings), and inline citation objects.
  *
  * Usage:
  *   node lib/internal/tools/format/refresh-citations.mjs [--dry-run] [<glob>...]

@@ -1,5 +1,4 @@
 ---
-title: Design System Token Canon
 slug: engineering-design-system
 stability: experimental
 bootstrap-only: false
@@ -12,16 +11,8 @@ purpose: |
   Hard-coded values that bypass these tokens are craft defects per the
   design-craft gate-blocking conditions.
 references:
-  - kind: lines
-    path: lib/memory/handbook/engineering/design-craft.md
-    range: [171, 186]
-    contentHash: 9c6c2ef
-    note: "Design-craft color, contrast, and motion standards that these tokens satisfy."
-  - kind: lines
-    path: lib/memory/handbook/engineering/index.md
-    range: [50, 57]
-    contentHash: f1aa3dc
-    note: "Engineering standards corpus that routes design-system intents to this page."
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/design-craft.md","range":[171,186],"contentHash":"9c6c2ef","note":"Design-craft color, contrast, and motion standards that these tokens satisfy."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/index.md","range":[50,57],"contentHash":"f1aa3dc","note":"Engineering standards corpus that routes design-system intents to this page."}'
 external:
   - https://www.w3.org/WAI/standards-guidelines/wcag/
   - https://www.designtokens.org/
@@ -29,7 +20,15 @@ related:
   - /lib/memory/handbook/engineering/design-craft.md
   - /lib/memory/handbook/engineering/design/component-standard.md
   - /lib/memory/handbook/engineering/design/control-surface-ux.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Design System Token Canon
+- ⚖️ **Why it matters:** Quick orientation for Design System Token Canon before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/engineering/design-craft.md
+  - /lib/memory/handbook/engineering/design/component-standard.md
+  - /lib/memory/handbook/engineering/design/control-surface-ux.md
 
 # Design System Token Canon
 

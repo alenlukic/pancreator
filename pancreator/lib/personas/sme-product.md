@@ -41,6 +41,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `sme-product`.
+- ⚖️ **Why it matters:** Breaks operator goals into scoped product recommendations during experience planning.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # SME — Product Strategy
 
 ## Static execution contract

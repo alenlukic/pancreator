@@ -1,36 +1,31 @@
 ---
-title: Pancreator Glossary
 slug: glossary
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [librarian, persona-designer, contract-writer]
 purpose: |
   Canonical lexicon. Every domain noun used in a persona, skill, contract, or
   artifact MUST resolve to a term defined here. Layer 1 lint fails on any
   unresolved noun.
 references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [250, 289]
-    contentHash: 2eb6aa4
-    note: "PRD §4 — Core Concepts (Glossary). Mirrored and extended here."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [908, 966]
-    contentHash: 2eb6aa4
-    note: "PRD §8 — Memory Architecture (memory-tier nouns)."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [858, 905]
-    contentHash: 2eb6aa4
-    note: "PRD §7 — Intervention Conventions (lever vocabulary)."
+  - '{"kind":"lines","path":".docs/PRD.md","range":[250,289],"contentHash":"2eb6aa4","note":"PRD §4 — Core Concepts (Glossary). Mirrored and extended here."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[908,966],"contentHash":"2eb6aa4","note":"PRD §8 — Memory Architecture (memory-tier nouns)."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[858,905],"contentHash":"2eb6aa4","note":"PRD §7 — Intervention Conventions (lever vocabulary)."}'
 related:
   - /lib/memory/handbook/persona-spec.md
   - /lib/memory/handbook/contract-format.md
   - /lib/memory/handbook/contract-style.md
   - /lib/memory/handbook/context-economy.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Glossary
+- ⚖️ **Why it matters:** Quick orientation for Glossary before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/persona-spec.md
+  - /lib/memory/handbook/contract-format.md
+  - /lib/memory/handbook/contract-style.md
 
 # Glossary
 
@@ -266,7 +261,9 @@ ADR promotes this file to canonical. Until then, divergences are tracked under
   importing `canonical-json-format.mjs`). Compact single-line blobs with multiple
   object keys MUST NOT substitute for that layout. Each `contentHash` value MUST
   stay abbreviated per the prefix length emitted by `git rev-parse --short HEAD`
-  at write time.
+  at write time. In memory Markdown frontmatter (`lib/memory/**/*.md`), each
+  citation MUST appear as one scalar JSON string in a `references` array (see
+  `DOC.OPERATOR_AGENT_FORMAT`); nested YAML mapping lists are forbidden there.
 - **Content hash** — the SHA-256 digest of the cited file at citation time. For
   stored values in-scope, the canonical `contentHash` field SHALL record only an
   abbreviated hexadecimal prefix; the prefix length MUST equal the character count

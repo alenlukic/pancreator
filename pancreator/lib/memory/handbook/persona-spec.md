@@ -1,9 +1,8 @@
 ---
-title: Persona Spec Format Reference
 slug: persona-spec
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [persona-designer, librarian]
 purpose: |
   The Anthropic Claude Agent SDK 16-field YAML reference, the Pancreator
@@ -22,7 +21,15 @@ external:
   - https://code.claude.com/docs/en/subagents
   - https://docs.cursor.com/context/rules
   - https://www.rfc-editor.org/info/bcp14
----
+...
+
+# Operator section
+- 👀 **In this file:** Persona Spec Format
+- ⚖️ **Why it matters:** Quick orientation for Persona Spec Format before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/glossary.md
+  - /lib/memory/handbook/contract-style.md
+  - /lib/memory/handbook/persona-contracts.md
 
 # Persona Spec Format
 

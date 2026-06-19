@@ -1,3 +1,8 @@
+# Operator section
+- 👀 **In this file:** pancreator config
+- ⚖️ **Why it matters:** Quick orientation for pancreator config before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 # Pancreator Config
 
 `pancreator.yaml` is the live operator-facing configuration file for this repository.

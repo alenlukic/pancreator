@@ -2,7 +2,7 @@
 title: Product-design-lead synthesis heuristics
 owner: product-design-lead
 stability: experimental
----
+...
 
 # Product-design-lead synthesis heuristics
 

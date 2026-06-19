@@ -49,6 +49,13 @@ metadata:
   pancreator-color-suffix: cyan-200
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `tech-lead`.
+- ⚖️ **Why it matters:** Consolidates product, design, and technical planning into an execution bundle for the coder.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Tech Lead
 
 ## Static execution contract

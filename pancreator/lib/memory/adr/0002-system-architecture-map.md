@@ -1,78 +1,28 @@
 ---
 title: Ratify System Architecture Map Baseline
-seq: "0002"
+seq: 2
 status: proposed
 date: 2026-04-25
-deciders: [tech-lead, LocalUserAuthorizer]
+deciders:
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 references:
-  - kind: lines
-    path: .docs/PRD.md
-    range: [3, 3]
-    contentHash: 2eb6aa4
-    note: "PRD overview defines the four-axis architecture: roles, pipelines, memory, and process."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [12, 12]
-    contentHash: 2eb6aa4
-    note: "PRD scaffold todo defines the canonical repository substrate and top-level directories."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [17, 21]
-    contentHash: 2eb6aa4
-    note: "PRD MVP scope defines persona and skill inventories."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [26, 30]
-    contentHash: 2eb6aa4
-    note: "PRD roadmap defines pipelines and control-plane runtime as distinct implementation layers."
-  - kind: lines
-    path: AGENTS.md
-    range: [31, 41]
-    contentHash: b953d77
-    note: "AGENTS defines current agent and pipeline locations, including bootstrap status for pipeline population."
-  - kind: lines
-    path: AGENTS.md
-    range: [104, 133]
-    contentHash: b953d77
-    note: "AGENTS workspace map defines canonical memory, inbox, and control-plane paths."
-  - kind: lines
-    path: AGENTS.md
-    range: [138, 141]
-    contentHash: b953d77
-    note: "AGENTS bootstrap status records the currently active phases."
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [49, 53]
-    contentHash: b788753
-    note: "Bootstrap Phase 0 scaffolds directories that represent the present implemented repository state."
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [57, 61]
-    contentHash: b788753
-    note: "Bootstrap Phase 0b defines handbook seeds as canonical authoring substrate."
-  - kind: lines
-    path: .docs/BOOTSTRAP.md
-    range: [273, 275]
-    contentHash: b788753
-    note: "Bootstrap conventions require a human-in-the-loop phase-gate reviewer."
-  - kind: lines
-    path: lib/personas/persona-designer.md
-    range: [2, 4]
-    contentHash: 8c8ea4b
-    note: "Persona Designer scope anchors bootstrap persona authoring ownership."
-  - kind: lines
-    path: lib/personas/contract-writer.md
-    range: [2, 4]
-    contentHash: ff1e45d
-    note: "Contract Writer scope anchors bootstrap contract-authoring ownership."
-  - kind: lines
-    path: lib/personas/intake-analyst.md
-    range: [2, 4]
-    contentHash: fc03a8e
-    note: "Intake Analyst anchors the inbox-driven intake contract in current persona inventory."
----
+  - '{"kind":"lines","path":".docs/PRD.md","range":[3,3],"contentHash":"2eb6aa4","note":"PRD overview defines the four-axis architecture: roles, pipelines, memory, and process."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[12,12],"contentHash":"2eb6aa4","note":"PRD scaffold todo defines the canonical repository substrate and top-level directories."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[17,21],"contentHash":"2eb6aa4","note":"PRD MVP scope defines persona and skill inventories."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[26,30],"contentHash":"2eb6aa4","note":"PRD roadmap defines pipelines and control-plane runtime as distinct implementation layers."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[31,41],"contentHash":"b953d77","note":"AGENTS defines current agent and pipeline locations, including bootstrap status for pipeline population."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[104,133],"contentHash":"b953d77","note":"AGENTS workspace map defines canonical memory, inbox, and control-plane paths."}'
+  - '{"kind":"lines","path":"AGENTS.md","range":[138,141],"contentHash":"b953d77","note":"AGENTS bootstrap status records the currently active phases."}'
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[49,53],"contentHash":"b788753","note":"Bootstrap Phase 0 scaffolds directories that represent the present implemented repository state."}'
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[57,61],"contentHash":"b788753","note":"Bootstrap Phase 0b defines handbook seeds as canonical authoring substrate."}'
+  - '{"kind":"lines","path":".docs/BOOTSTRAP.md","range":[273,275],"contentHash":"b788753","note":"Bootstrap conventions require a human-in-the-loop phase-gate reviewer."}'
+  - '{"kind":"lines","path":"lib/personas/persona-designer.md","range":[2,4],"contentHash":"8c8ea4b","note":"Persona Designer scope anchors bootstrap persona authoring ownership."}'
+  - '{"kind":"lines","path":"lib/personas/contract-writer.md","range":[2,4],"contentHash":"ff1e45d","note":"Contract Writer scope anchors bootstrap contract-authoring ownership."}'
+  - '{"kind":"lines","path":"lib/personas/intake-analyst.md","range":[2,4],"contentHash":"fc03a8e","note":"Intake Analyst anchors the inbox-driven intake contract in current persona inventory."}'
+...
 
 ## Context
 

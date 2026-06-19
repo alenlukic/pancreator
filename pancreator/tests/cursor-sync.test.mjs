@@ -115,7 +115,8 @@ test("pan cursor-sync writes projections for project_root dot", async () => {
   assert.equal(existsSync(path.join(root, ".cursor/commands/.gitkeep")), false);
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/commands/introspect.md"));
   const commandProjection = await readFile(path.join(root, ".cursor/commands/introspect.md"), "utf8");
-  assert.match(commandProjection, /# Introspect/u);
+  assert.match(commandProjection, /^# Introspect/m);
+  assert.doesNotMatch(commandProjection, /^# Operator section/m);
   assert.match(commandProjection, /lib\/inbox\/in/u);
   const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
   assert.match(projection, /lib\/personas\/intake-analyst\.md/);

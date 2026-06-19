@@ -53,6 +53,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `compliance-auditor`.
+- ⚖️ **Why it matters:** Runs policy and quality checks on a feature-delivery run and records what passed, what failed, and what needs a backlog follow-up.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Compliance Auditor
 
 ## Static execution contract

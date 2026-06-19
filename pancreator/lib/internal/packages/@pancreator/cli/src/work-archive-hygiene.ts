@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
+import { parsePanWorkJsonText } from "./pan-work-artifact.js";
 
 /** Minimal feature-delivery ledger fields used by hygiene scans. */
 interface FeatureDeliveryState {
@@ -100,7 +101,7 @@ export async function listCanonicalWorkDayDirs(workRootAbs: string): Promise<str
 
 async function readStateIfPresent(stateAbs: string): Promise<FeatureDeliveryState | null> {
   try {
-    const parsed = JSON.parse(await readFile(stateAbs, "utf8")) as FeatureDeliveryState;
+    const parsed = parsePanWorkJsonText(await readFile(stateAbs, "utf8")) as FeatureDeliveryState;
     if (parsed.pipelineId !== "feature-delivery") {
       return null;
     }

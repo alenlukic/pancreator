@@ -1,9 +1,8 @@
 ---
-title: Policy Compliance Contract (Legacy Redirect)
 slug: policy-compliance-contract
 stability: experimental
 bootstrap-only: false
-phase: 0b
+phase: "0b"
 owners: [compliance-auditor, supervisor, tech-writer]
 purpose: |
   Compatibility anchor for older prompts and cached references that still name
@@ -16,7 +15,15 @@ related:
   - /lib/memory/handbook/documentation-impact-contract.md
   - /lib/memory/handbook/operator-output-contract.md
   - /AGENTS.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Policy Compliance Contract (Legacy Redirect)
+- ⚖️ **Why it matters:** Quick orientation for Policy Compliance Contract (Legacy Redirect) before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/compliance-runs.md
+  - /lib/memory/handbook/contract-style.md
+  - /lib/memory/handbook/documentation-impact-contract.md
 
 # Policy Compliance Contract (Legacy Redirect)
 

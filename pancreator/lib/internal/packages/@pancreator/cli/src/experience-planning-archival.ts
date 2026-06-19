@@ -3,7 +3,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { stringifyCliJson } from "./canonical-json-io.js";
+import { stringifyCliJson, stringifyPanWorkJson } from "./canonical-json-io.js";
+import { panWorkStateMeta, parsePanWorkJsonText } from "./pan-work-artifact.js";
 import { pruneEmptyQueueParents } from "./inbox-archive.js";
 import { parseSimpleYaml } from "./simple-yaml.js";
 import {
@@ -174,7 +175,7 @@ async function readExperiencePlanningState(
   stateAbs: string,
 ): Promise<ExperiencePlanningState | null> {
   try {
-    const parsed = JSON.parse(
+    const parsed = parsePanWorkJsonText(
       await readFile(stateAbs, "utf8"),
     ) as Record<string, unknown>;
     if (!isExperiencePlanningState(parsed)) {
@@ -196,7 +197,7 @@ async function readFeatureDeliveryInboxLink(
   archived: boolean,
 ): Promise<FeatureDeliveryInboxLink | null> {
   try {
-    const parsed = JSON.parse(
+    const parsed = parsePanWorkJsonText(
       await readFile(stateAbs, "utf8"),
     ) as Record<string, unknown>;
     if (parsed.pipelineId !== "feature-delivery") {
@@ -422,7 +423,15 @@ export async function archiveExperiencePlanningRun(
   await rename(activeAbs, archiveAbs);
   await writeFile(
     path.join(archiveAbs, "state.json"),
-    stringifyCliJson(repoRoot, state),
+    stringifyPanWorkJson(
+      repoRoot,
+      state as unknown as Record<string, unknown>,
+      panWorkStateMeta(
+        state.featureId ?? state.taskId,
+        state.taskId,
+        state.pipelineId ?? state.pipeline ?? "experience-planning",
+      ),
+    ),
     "utf8",
   );
   await pruneEmptyQueueParents(

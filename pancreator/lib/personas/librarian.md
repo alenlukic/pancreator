@@ -68,6 +68,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `librarian`.
+- ⚖️ **Why it matters:** Refreshes feature indexes and archives completed runs after you finish operator verification.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Librarian
 
 ## Static execution contract

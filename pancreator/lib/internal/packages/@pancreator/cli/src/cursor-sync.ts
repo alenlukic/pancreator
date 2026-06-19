@@ -2,6 +2,7 @@ import {
   projectRootAbs,
   quoteJsonString,
   readProjectRoot,
+  sliceOperatorAgentSection,
 } from "@pancreator/core";
 import {
   emitCursorMdcFromPersonaRule,
@@ -122,6 +123,14 @@ function readMarkdownFiles(dir: string): string[] {
   return readdirSync(dir)
     .filter((name) => name.endsWith(".md"))
     .sort();
+}
+
+/** Drops YAML frontmatter so Cursor command projections stay prompt-only. */
+function stripMarkdownFrontmatter(raw: string): string {
+  const match = /^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/u.exec(
+    raw.replace(/^\uFEFF/, ""),
+  );
+  return match ? match[1]!.replace(/^\uFEFF/, "") : raw;
 }
 
 function buildSourceBackedRetrievalContract(
@@ -292,7 +301,7 @@ export function buildAgentProjection(
   personaRaw: string,
   projectPrefix: string,
 ): string {
-  const { data } = parseFrontmatter(personaRaw);
+  const { data } = parseFrontmatter(sliceOperatorAgentSection(personaRaw));
   const canonicalPersonaRel = posixJoin(
     projectPrefix === "." ? "" : projectPrefix,
     "lib/personas",
@@ -528,10 +537,13 @@ function emitCursorCommands(
 
   for (const file of commandFiles) {
     const commandRaw = readFileSync(path.join(commandsSourceDir, file), "utf8");
+    const commandBody = stripMarkdownFrontmatter(
+      sliceOperatorAgentSection(commandRaw),
+    );
     const outRel = path.posix.join(".cursor/commands", file);
     const outAbs = path.join(harnessRoot, outRel);
     if (!dryRun) {
-      writeFileSync(outAbs, commandRaw, "utf8");
+      writeFileSync(outAbs, commandBody, "utf8");
     }
     written.push({ path: outRel, action: dryRun ? "would_write" : "write" });
   }

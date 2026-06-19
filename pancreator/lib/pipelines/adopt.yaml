@@ -1,3 +1,9 @@
+# Operator section
+- 👀 **In this file:** Pipeline definition `adopt`.
+- ⚖️ **Why it matters:** Quick orientation for adopt before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/pipelines/README.md
+  - pancreator/lib/memory/handbook/pipeline-state-contract.md
 id: adopt
 version: "1"
 metadata:

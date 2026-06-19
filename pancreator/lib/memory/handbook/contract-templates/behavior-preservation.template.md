@@ -2,8 +2,10 @@
 template: behavior-preservation
 slug: behavior-preservation
 stability: experimental
-phase: 0b
-allowed-in-milestones: [M1 (rego over test-result JSON), M3 (full 5-tier composite)]
+phase: "0b"
+allowed-in-milestones:
+  - M1 (rego over test-result JSON)
+  - M3 (full 5-tier composite)
 purpose: |
   Scaffold for behavior-preservation contracts that gate refactors. The
   full M3 contract is a 5-tier composite: existing tests, mutation-test
@@ -11,21 +13,19 @@ purpose: |
   via `rego` over test-result JSON; the other tiers ratchet on as their
   runners land.
 references:
-  - kind: lines
-    path: /lib/memory/handbook/contract-format.md
-    range: [1, 1]
-    contentHash: 10d2b8f
-    note: "Wrapper schema reference."
-  - kind: lines
-    path: .docs/PRD.md
-    range: [715, 715]
-    contentHash: 2eb6aa4
-    note: "PRD §7 — `behavior-preservation` 5-tier composite definition."
+  - '{"kind":"lines","path":"/lib/memory/handbook/contract-format.md","range":[1,1],"contentHash":"10d2b8f","note":"Wrapper schema reference."}'
+  - '{"kind":"lines","path":".docs/PRD.md","range":[715,715],"contentHash":"2eb6aa4","note":"PRD §7 — `behavior-preservation` 5-tier composite definition."}'
 external:
   - https://stryker-mutator.io
   - https://hypothesis.readthedocs.io
   - https://api-extractor.com
----
+...
+
+# Operator section
+- 👀 **In this file:** Template — Behavior-Preservation contract
+- ⚖️ **Why it matters:** Quick orientation for Template — Behavior-Preservation contract before agents load the full contract.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/agent-document-registry.md
 
 # Template — Behavior-Preservation contract
 

@@ -62,6 +62,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `qa-tester`.
+- ⚖️ **Why it matters:** Runs automated checks, manual QA, and visual review evidence for the test stage gate.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # QA Tester
 
 ## Static execution contract

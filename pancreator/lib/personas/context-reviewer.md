@@ -43,6 +43,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `context-reviewer`.
+- ⚖️ **Why it matters:** Reviews a bounded diff and chat context out-of-band and flags missing scope or contract drift before you merge.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Context Reviewer
 
 ## Static execution contract

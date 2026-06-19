@@ -1,74 +1,28 @@
 ---
 title: Ratify Active Memory Versus Archival Memory
-seq: "0006"
+seq: 6
 status: accepted
-date: 2026-05-09T00:00:00Z
-deciders: [tech-lead, LocalUserAuthorizer]
+date: "2026-05-09T00:00:00Z"
+deciders:
+  - tech-lead
+  - LocalUserAuthorizer
 supersedes: null
 superseded-by: null
 feature_id: active-memory-context-economy-pass-2
 references:
-  - kind: lines
-    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
-    range: [191, 210]
-    contentHash: 9b2ddcc
-    note: Feature scope, preservation boundary, and explicit-read obligation for historical trees.
-  - kind: lines
-    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
-    range: [275, 286]
-    contentHash: 9b2ddcc
-    note: Engineering Spec lists required ADR contents.
-  - kind: lines
-    path: lib/memory/handbook/memory-tiers.md
-    range: [34, 122]
-    contentHash: b4d609b
-    note: Six-tier taxonomy, promotion rule, and archival explicit-read defaults.
-  - kind: lines
-    path: lib/memory/handbook/glossary.md
-    range: [212, 226]
-    contentHash: 762edb4
-    note: Glossary defines active-memory, active-work, durable-memory, archival-memory, internal-operating-content, and generated-machine-artifact.
-  - kind: lines
-    path: lib/memory/handbook/context-economy.md
-    range: [64, 108]
-    contentHash: 22e87bf
-    note: Memory-tier routing, active work explicit-read rule, archive boundary, and explicit-read surface examples.
-  - kind: lines
-    path: lib/memory/active/README.md
-    range: [29, 67]
-    contentHash: c889efc
-    note: Active-memory purpose, exclusions, soft budgets, and promotion into durable-memory.
-  - kind: lines
-    path: lib/memory/active/current.md
-    range: [24, 44]
-    contentHash: 9d8ccdb
-    note: Routine orientation entry through pointer-first current focus.
-  - kind: lines
-    path: lib/memory/active/runs.md
-    range: [22, 35]
-    contentHash: 5c1cd00
-    note: Run-pointer table keeps active logs under work and completed logs under lib/internal/work_archive paths.
-  - kind: lines
-    path: .pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md
-    range: [44, 49]
-    contentHash: d0e8d06
-    note: Plan-stage deferrals name backlog linkage and glossary reversal.
-  - kind: lines
-    path: lib/memory/adr/0003-inbox-lifecycle-and-archival.md
-    range: [52, 64]
-    contentHash: 064d359
-    note: Prior archival-boundary problem framing for inbox and queue history.
-  - kind: lines
-    path: lib/memory/adr/0004-documentation-impact-contract.md
-    range: [37, 47]
-    contentHash: a4dd126
-    note: Prior decision that deferred work requires backlog linkage and rationale.
-  - kind: lines
-    path: lib/memory/adr/0005-timestamp-naming-conventions.md
-    range: [35, 47]
-    contentHash: c6fedb1
-    note: Prior migration discipline before physical path moves.
----
+  - '{"kind":"lines","path":"lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json","range":[191,210],"contentHash":"9b2ddcc","note":"Feature scope, preservation boundary, and explicit-read obligation for historical trees."}'
+  - '{"kind":"lines","path":"lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json","range":[275,286],"contentHash":"9b2ddcc","note":"Engineering Spec lists required ADR contents."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/memory-tiers.md","range":[34,122],"contentHash":"b4d609b","note":"Six-tier taxonomy, promotion rule, and archival explicit-read defaults."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/glossary.md","range":[212,226],"contentHash":"762edb4","note":"Glossary defines active-memory, active-work, durable-memory, archival-memory, internal-operating-content, and generated-machine-artifact."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/context-economy.md","range":[64,108],"contentHash":"22e87bf","note":"Memory-tier routing, active work explicit-read rule, archive boundary, and explicit-read surface examples."}'
+  - '{"kind":"lines","path":"lib/memory/active/README.md","range":[29,67],"contentHash":"c889efc","note":"Active-memory purpose, exclusions, soft budgets, and promotion into durable-memory."}'
+  - '{"kind":"lines","path":"lib/memory/active/current.md","range":[24,44],"contentHash":"9d8ccdb","note":"Routine orientation entry through pointer-first current focus."}'
+  - '{"kind":"lines","path":"lib/memory/active/runs.md","range":[22,35],"contentHash":"5c1cd00","note":"Run-pointer table keeps active logs under work and completed logs under lib/internal/work_archive paths."}'
+  - '{"kind":"lines","path":".pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/plan.md","range":[44,49],"contentHash":"d0e8d06","note":"Plan-stage deferrals name backlog linkage and glossary reversal."}'
+  - '{"kind":"lines","path":"lib/memory/adr/0003-inbox-lifecycle-and-archival.md","range":[52,64],"contentHash":"064d359","note":"Prior archival-boundary problem framing for inbox and queue history."}'
+  - '{"kind":"lines","path":"lib/memory/adr/0004-documentation-impact-contract.md","range":[37,47],"contentHash":"a4dd126","note":"Prior decision that deferred work requires backlog linkage and rationale."}'
+  - '{"kind":"lines","path":"lib/memory/adr/0005-timestamp-naming-conventions.md","range":[35,47],"contentHash":"c6fedb1","note":"Prior migration discipline before physical path moves."}'
+...
 
 ## Context
 

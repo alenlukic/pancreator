@@ -1,55 +1,12 @@
 ---
-title: M1 substrate runtime batch — harness loop, install paths, library mode, Phoenix conformance
+title: "M1 substrate runtime batch — harness loop, install paths, library mode, Phoenix conformance"
 feature_id: m1-substrate-runtime-batch
 status: intake-awaiting-ratification
 next_owner: tech-lead
 next_stage: plan
 source_inbox_item: lib/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md
 intake_round: 0
-wp_d_choice: option-a
-wp_d_fallback: option-b-milestone-m2
-work_packages:
-  - feature_id: checkpointer-fs-langgraph-conformance
-    label: WP-A — LangGraph checkpointer conformance
-  - feature_id: runner-cursor-sdk-invocation
-    label: WP-B — Cursor SDK runner invocation
-  - feature_id: pipeline-langgraph-stategraph-compiler
-    label: WP-C — Pipeline StateGraph compiler
-  - feature_id: run-logger-phoenix-conformance
-    label: WP-D — Run-logger Phoenix conformance (option A, Phoenix-only M1)
-wp_d_scope: phoenix-only-m1
-wp_d_deferred_m2: additional-backend-verification
-  - feature_id: library-mode-script-example
-    label: WP-E — Library-mode script example (deferred to M9)
-  - feature_id: pan-install-paths
-    label: WP-F — Install paths
-references:
-  - kind: lines
-    path: lib/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md
-    range: [1, 40]
-    contentHash: b8cf506
-    note: Directive frontmatter, work-package table, and problem statement defining the six M1 gaps consolidated in this batch.
-  - kind: lines
-    path: lib/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md
-    range: [179, 188]
-    contentHash: b8cf506
-    note: Cross-cutting delivery phasing — WP-A and WP-B SHOULD land before or with WP-C; WP-C acceptance includes an e2e stub run against the SDK runner (WP-B).
-  - kind: lines
-    path: lib/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md
-    range: [133, 151]
-    contentHash: b8cf506
-    note: WP-D option A (Phoenix/Langfuse smoke tests) and option B (formal deferral ADR) definitions and acceptance criteria.
-  - kind: lines
-    path: .docs/PRD.md
-    range: [113, 121]
-    contentHash: 2eb6aa4
-    note: PRD §3.5 US-8 (library mode) and US-9 (install paths) — M1 MVP promises that WP-E and WP-F close.
-  - kind: lines
-    path: lib/memory/handbook/run-log-schema.md
-    range: [1, 10]
-    contentHash: 5c18026
-    note: Run-log schema defining OpenInference primary attributes and OTel GenAI semconv parallel layer; referenced by WP-A and WP-B acceptance criteria.
----
+...
 
 # Spec
 

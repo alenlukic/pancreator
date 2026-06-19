@@ -1,5 +1,4 @@
 ---
-title: Component and Icon Library Standard
 slug: engineering-component-standard
 stability: experimental
 bootstrap-only: false
@@ -11,16 +10,8 @@ purpose: |
   owned-code component stack and icon set declared here. Hand-rolled monolithic
   stylesheets and ad-hoc glyph icons are forbidden.
 references:
-  - kind: lines
-    path: lib/memory/handbook/engineering/design-craft.md
-    range: [180, 186]
-    contentHash: 9c6c2ef
-    note: "Design-craft consistency and motion standards that the component stack enforces."
-  - kind: lines
-    path: lib/memory/handbook/engineering/design/design-system.md
-    range: [1, 30]
-    contentHash: 168f8c0
-    note: "Token canon that all components consume."
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/design-craft.md","range":[180,186],"contentHash":"9c6c2ef","note":"Design-craft consistency and motion standards that the component stack enforces."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/engineering/design/design-system.md","range":[1,30],"contentHash":"168f8c0","note":"Token canon that all components consume."}'
 external:
   - https://ui.shadcn.com/docs
   - https://www.radix-ui.com/primitives
@@ -32,7 +23,15 @@ related:
   - /lib/memory/handbook/engineering/design/control-surface-ux.md
   - /lib/memory/handbook/engineering/design-craft.md
   - /lib/memory/handbook/engineering/typescript.md
----
+...
+
+# Operator section
+- 👀 **In this file:** Component and Icon Library Standard
+- ⚖️ **Why it matters:** Quick orientation for Component and Icon Library Standard before agents load the full contract.
+- 🧭 **See also:**
+  - /lib/memory/handbook/engineering/design/design-system.md
+  - /lib/memory/handbook/engineering/design/control-surface-ux.md
+  - /lib/memory/handbook/engineering/design-craft.md
 
 # Component and Icon Library Standard
 

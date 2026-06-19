@@ -5,6 +5,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { stringifyCliJson } from "./canonical-json-io.js";
+import { parsePanWorkJsonText } from "./pan-work-artifact.js";
 import {
   archiveInboxPathForSource,
   pruneEmptyQueueParents,
@@ -157,7 +158,7 @@ export async function closeOutOfBandWorkspace(input: CloseOutOfBandInput): Promi
   const statePathAbs = path.join(activeRunAbs, "state.json");
   let state: FeatureDeliveryState;
   if (existsSync(statePathAbs)) {
-    state = JSON.parse(await readFile(statePathAbs, "utf8")) as FeatureDeliveryState;
+    state = parsePanWorkJsonText(await readFile(statePathAbs, "utf8")) as FeatureDeliveryState;
     state.status = "complete";
     state.currentStage = "complete";
     state.featureId = featureId;

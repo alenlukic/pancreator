@@ -50,6 +50,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `pancreator-engineer`.
+- ⚖️ **Why it matters:** Implements or repairs work inside the Pancreator internal corpus after inputs are normalized to contracts.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Pancreator Engineer
 
 ## Static execution contract

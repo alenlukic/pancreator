@@ -9,23 +9,15 @@ purpose: |
   Compact operator-facing pointers for current repository focus without
   embedding durable or archival artifacts.
 references:
-  - kind: lines
-    path: lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json
-    range: [1, 120]
-    contentHash: d18eff8
-    note: "Most recent shipped Feature delivery report."
-  - kind: lines
-    path: lib/memory/handbook/inbox-lifecycle.md
-    range: [60, 130]
-    contentHash: 29f20be
-    note: "Inbox lifecycle drives the next-Feature pickup procedure."
+  - '{"kind":"lines","path":"lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json","range":[1,120],"contentHash":"d18eff8","note":"Most recent shipped Feature delivery report."}'
+  - '{"kind":"lines","path":"lib/memory/handbook/inbox-lifecycle.md","range":[60,130],"contentHash":"29f20be","note":"Inbox lifecycle drives the next-Feature pickup procedure."}'
 related:
   - /lib/memory/handbook/context-economy.md
   - /lib/memory/handbook/memory-tiers.md
   - /lib/memory/active/README.md
   - /lib/memory/active/runs.md
   - /lib/memory/active/handoffs.md
----
+...
 
 # Current focus
 

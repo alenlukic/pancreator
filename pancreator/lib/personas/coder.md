@@ -48,6 +48,13 @@ metadata:
   pancreator-output-manifest: required
 ---
 
+# Operator section
+- 👀 **In this file:** Persona spec for `coder`.
+- ⚖️ **Why it matters:** Implements the bounded touch-set for a feature-delivery run after planning gates are green.
+- 🧭 **See also:**
+  - pancreator/lib/memory/handbook/persona-spec.md
+  - pancreator/lib/memory/handbook/agent-document-registry.md
+
 # Coder
 
 ## Static execution contract
