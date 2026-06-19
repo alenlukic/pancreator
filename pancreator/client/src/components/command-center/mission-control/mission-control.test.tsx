@@ -384,6 +384,59 @@ describe("MissionControlModule", () => {
     });
   });
 
+  it("requests run state with task query for shipped outcome deep links", async () => {
+    const shippedTask: TaskRunStateEnvelope = {
+      ...mockRunState[0],
+      taskId: "88888_0101_shipped-demo",
+      featureId: "shipped-demo",
+      pipelineStatus: "complete",
+      runDir: ".pan/work/172973_06-02-26/88888_0101_shipped-demo",
+      stages: mockRunState[0].stages.map((stage) => ({
+        ...stage,
+        status: stage.name === "complete" ? "complete" : "complete",
+      })),
+    };
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      expect(url).toContain("/api/run-state?task=");
+      expect(url).toContain(encodeURIComponent("88888_0101_shipped-demo"));
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson([shippedTask]), { status: 200 });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson({ designStepsDefault: false }), { status: 200 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+    mockSearchParams.set("task", "88888_0101_shipped-demo");
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-context-header")).toHaveTextContent("Shipped Demo");
+    });
+    expect(fetchSpy).toHaveBeenCalled();
+  });
+
+  it("shows outcome-not-available empty state when task query does not resolve", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson([]), { status: 200 });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson({ designStepsDefault: false }), { status: 200 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+    mockSearchParams.set("task", "missing_0101_demo");
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mission-control-empty")).toHaveTextContent("Outcome not available");
+    });
+    expect(screen.queryByText("Start feature delivery")).not.toBeInTheDocument();
+  });
+
   it("shows retry-limit banner and stage retry badges", async () => {
     mockFetch();
     render(<MissionControlModule />);

@@ -476,6 +476,9 @@ describe("buildCommandCenterRows operational cards", () => {
     const outcomes = cards.find((card) => card.region === "recent-outcomes");
     expect(outcomes?.rows[0]?.label).toBe("Command Center rebuild");
     expect(outcomes?.rows[0]?.primaryCta.label).toBe("Open shipped outcome");
+    expect(outcomes?.rows[0]?.primaryCta.href).toBe(
+      "/mission-control?task=52276_0928_command-center-rebuild",
+    );
   });
 
   it("keeps pipeline stage slugs out of default row meta for operational cards", () => {

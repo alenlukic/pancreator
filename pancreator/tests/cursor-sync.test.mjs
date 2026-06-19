@@ -131,15 +131,8 @@ test("pan cursor-sync writes projections for project_root dot", async () => {
   assert.doesNotMatch(commandProjection, /^# Operator section/m);
   assert.match(commandProjection, /lib\/inbox\/in/u);
   const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
-  assert.match(projection, /lib\/personas\/intake-analyst\.md/);
-  const { frontmatter, body } = splitAgentProjection(projection);
-  assert.equal(frontmatterHasKey(frontmatter, "tools"), false);
-  assert.equal(frontmatterHasKey(frontmatter, "disallowedTools"), false);
-  assert.equal(frontmatterHasKey(frontmatter, "metadata"), false);
-  assert.match(body, /next-prompt\.md/u);
-  assert.match(body, /handoff\.md/u);
-  assert.match(body, /RTK-first shell policy/u);
-  assert.match(body, /rtk read <path> -l aggressive/u);
+  const sourcePersona = await readFile(path.join(root, "lib/personas/intake-analyst.md"), "utf8");
+  assert.equal(projection, sourcePersona);
 
   const generalPurpose = await readFile(path.join(root, ".cursor/agents/general-purpose.md"), "utf8");
   const gpParsed = splitAgentProjection(generalPurpose);
@@ -180,7 +173,9 @@ test("pan cursor-sync writes projections for project_root .pancreator", async ()
   const payload = parseJsonStdout(result.stdout);
   assert.equal(payload.projectRootRel, ".pancreator");
   const projection = await readFile(path.join(root, ".cursor/agents/intake-analyst.md"), "utf8");
-  assert.match(projection, /\.pancreator\/lib\/personas\/intake-analyst\.md/);
+  assert.match(projection, /\.pancreator\/lib\/memory\/handbook\/persona-spec\.md/u);
+  assert.match(projection, /\.pancreator\/lib\/inbox\/in\//u);
+  assert.doesNotMatch(projection, /(^|[^.])pancreator\/lib\/memory/u);
   assert.ok(existsSync(path.join(root, ".cursor/commands/introspect.md")));
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/commands/introspect.md"));
 });

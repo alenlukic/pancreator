@@ -62,7 +62,11 @@ export function MissionControlModule() {
     }
     setError(null);
     try {
-      const response = await fetch("/api/run-state");
+      const runStateUrl =
+        taskQuery !== null && taskQuery.length > 0
+          ? `/api/run-state?task=${encodeURIComponent(taskQuery)}`
+          : "/api/run-state";
+      const response = await fetch(runStateUrl);
       if (!response.ok) {
         const data = (await response.json()) as { error?: string };
         if (isInitial) {
@@ -85,7 +89,7 @@ export function MissionControlModule() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [taskQuery]);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -258,15 +262,23 @@ export function MissionControlModule() {
   }
 
   if (tasks.length === 0) {
+    const emptyTitle =
+      taskQuery !== null && taskQuery.length > 0 ? "Outcome not available" : "No active runs";
+    const emptyBody =
+      taskQuery !== null && taskQuery.length > 0
+        ? `Unable to load run detail for ${taskQuery}. The task may not exist under active or archived work paths.`
+        : "Start a feature-delivery run from Work Intake or return to Command Center.";
     return (
       <div className="mission-control-module" data-testid="mission-control-module">
         <section className="mc-empty-state" data-testid="mission-control-empty">
-          <h2>No active runs</h2>
-          <p>Start a feature-delivery run from Work Intake or return to Command Center.</p>
+          <h2>{emptyTitle}</h2>
+          <p>{emptyBody}</p>
           <div className="mc-empty-actions">
-            <Link href="/work-intake" className="command-center-start-fd-cta">
-              Start feature delivery
-            </Link>
+            {taskQuery === null || taskQuery.length === 0 ? (
+              <Link href="/work-intake" className="command-center-start-fd-cta">
+                Start feature delivery
+              </Link>
+            ) : null}
             <Link href="/command-center" className="mc-secondary-link">
               Return to command center
             </Link>

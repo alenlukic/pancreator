@@ -89,11 +89,11 @@ For every finding, distinguish direct evidence from inference. Do not invent mis
 
 ## Intake item requirements
 
-Create a new Markdown item under `lib/inbox/in/<UTC-day-bucket>/` proposing changes/fixes/updates based on the report. The item must be ready for `intake-analyst` ingestion.
+Create a new Markdown item under `lib/inbox/in/<countdown-day-bucket>/` proposing changes/fixes/updates based on the report. The item must be ready for `intake-analyst` ingestion.
 
-Use the existing timestamped inbox convention:
+Use the canonical timestamped inbox convention:
 
-- day bucket: UTC `YYMMDD`
+- day bucket: `<days-to-FDS>_<MM-DD-YY>` (for example `172956_06-19-26`)
 - filename: `<seconds-to-midnight>_<HHMM>_introspection-followups.md`
 
 The intake item must include YAML frontmatter:

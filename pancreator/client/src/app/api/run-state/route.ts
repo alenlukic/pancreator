@@ -1,6 +1,7 @@
 import {
   excludeReconciledAttentionTasks,
   getActiveRunState,
+  getRunStateForMissionControl,
   loadArchivedTaskIds,
   loadShippedOutcomes,
 } from "@/services/run-state";
@@ -62,6 +63,7 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
-  const envelopes = await getActiveRunState(repoRoot);
+  const taskId = new URL(request.url).searchParams.get("task");
+  const envelopes = await getRunStateForMissionControl(repoRoot, taskId);
   return Response.json(envelopes);
 }
