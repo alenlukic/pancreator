@@ -69,9 +69,11 @@ pancreator/.docs/
 pancreator/lib/memory/checkpoints/
 pancreator/lib/internal/packages/@pancreator/env-isolation/src/.tmp-ports-*/
 
-# Operator-local calibration traces (CI uses baselines/findings/raw only)
-pancreator/tests/compliance/context-usage/calibration/traces/**
-!pancreator/tests/compliance/context-usage/calibration/traces/.gitkeep
+# Operator-local context-usage calibration artifacts (offline unit tests only)
+pancreator/tests/compliance/context-usage/baselines/**
+!pancreator/tests/compliance/context-usage/baselines/.gitkeep
+pancreator/tests/compliance/context-usage/calibration/**
+!pancreator/tests/compliance/context-usage/calibration/**/.gitkeep
 
 # Committed prototype fixtures (negate global .work/archive ignores)
 !pancreator/tests/compliance/context-usage/fixtures/task-low/work/

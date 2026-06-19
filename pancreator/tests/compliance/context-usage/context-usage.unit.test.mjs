@@ -397,14 +397,25 @@ test("establishExpectedFromRaw: throws when raw file is missing", () => {
   );
 });
 
-test("establishExpectedFromRaw: committed expected baselines match formula", () => {
+test("expected: prototype matrix baselines satisfy upper-bound formula", () => {
+  const overheadMedian = 4600;
+  const overhead = summarizeMetric(Array.from({ length: 8 }, (_, i) => overheadMedian + i * 10));
+  const variableTotals = computeVariableSamples(
+    [9000, 9500, 8800, 10200, 9100, 9300, 8900, 9800],
+    overhead.median,
+  );
+
   for (const taskId of TASK_IDS) {
     for (const model of PROTOTYPE_MODELS) {
-      const expectedPath = resolveExpectedBaselinePath(HARNESS_ROOT, taskId, model);
-      const payload = JSON.parse(fs.readFileSync(expectedPath, "utf8"));
+      const baseline = buildExpectedBaseline({
+        taskId,
+        model,
+        overheadBaseline: { model, total_tokens: overhead },
+        variableTotals,
+      });
       assert.equal(
-        payload.expected_total_tokens.upper_confidence_bound,
-        expectedUpperBound(payload.overhead, payload.variable),
+        baseline.expected_total_tokens.upper_confidence_bound,
+        expectedUpperBound(baseline.overhead, baseline.variable),
       );
     }
   }
@@ -414,13 +425,3 @@ test("paths: normalizePath", () => {
   assert.equal(normalizePath(".\\docs\\PRD.summary.md"), ".docs/PRD.summary.md");
 });
 
-test("baselines: committed prototype baseline files exist", () => {
-  for (const model of PROTOTYPE_MODELS) {
-    assert.ok(fs.existsSync(resolveOverheadBaselinePath(HARNESS_ROOT, model)));
-  }
-  for (const taskId of TASK_IDS) {
-    for (const model of PROTOTYPE_MODELS) {
-      assert.ok(fs.existsSync(resolveExpectedBaselinePath(HARNESS_ROOT, taskId, model)));
-    }
-  }
-});
