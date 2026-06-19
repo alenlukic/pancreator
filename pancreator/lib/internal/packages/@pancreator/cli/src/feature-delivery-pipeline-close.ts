@@ -6,7 +6,8 @@ import path from "node:path";
 
 import { panWorkMarkdownMeta, wrapPanWorkMarkdown } from "./pan-work-artifact.js";
 import { operatorVerificationRel } from "./operator-verification.js";
-import { deliveryReportRel, durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
+import { deliveryReportRel, durableFeatureIndexRel, workflowHealthRel } from "./feature-delivery-stage-artifacts.js";
+import { readWorkflowHealthSummary } from "./workflow-health.js";
 
 export const PIPELINE_CLOSE_FILENAME = "pipeline-close.md";
 
@@ -82,6 +83,12 @@ export function renderPipelineCloseDoc(
   const followups = readIndexFollowups(repoRoot, state.featureId);
   for (const item of followups) {
     residual.push(item);
+  }
+  const workflowHealth = readWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
+  if (workflowHealth !== null && workflowHealth.status !== "healthy") {
+    residual.push(
+      `Workflow health is ${workflowHealth.status}; see ${workflowHealthRel(state.artifacts.runDir)}.`,
+    );
   }
 
   const residualSection =

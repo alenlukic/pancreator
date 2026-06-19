@@ -4,6 +4,13 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 import { parsePanWorkJsonText } from "./pan-work-artifact.js";
+import {
+  type PointerResolution,
+  resolvePointerResolution,
+} from "./workflow-health.js";
+
+export type { PointerResolution };
+export { resolvePointerResolution };
 
 /** Minimal feature-delivery ledger fields used by hygiene scans. */
 interface FeatureDeliveryState {

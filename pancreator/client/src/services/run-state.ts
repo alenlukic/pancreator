@@ -11,6 +11,7 @@ import {
   type StageCell,
   type StageCellStatus,
   type TaskRunStateEnvelope,
+  type WorkflowHealthSummary,
   isTerminalPipelineStatus,
 } from "./run-state-shared";
 import { decodeCountdownTimestamp, parseRunDirParts } from "./timestamp-decode";
@@ -37,6 +38,7 @@ export {
   type StageCellStatus,
   type StageTelemetryChip,
   type TaskRunStateEnvelope,
+  type WorkflowHealthSummary,
 } from "./run-state-shared";
 
 const execFileAsync = promisify(execFile);
@@ -393,6 +395,28 @@ async function discoverActiveStateFiles(repoRoot: string): Promise<string[]> {
   return matches;
 }
 
+async function loadWorkflowHealthSummary(
+  repoRoot: string,
+  runDir: string,
+): Promise<{ summary?: WorkflowHealthSummary; error?: string }> {
+  const rel = path.posix.join(runDir, "workflow-health.json");
+  const abs = resolveRepoPath(rel, repoRoot);
+  try {
+    const raw = await fsp.readFile(abs, "utf8");
+    const parsed = parseOperatorAgentJsonText(raw) as WorkflowHealthSummary;
+    if (typeof parsed.task_id !== "string") {
+      return { error: "Workflow health artifact has an invalid shape." };
+    }
+    return { summary: parsed };
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === "ENOENT") {
+      return {};
+    }
+    return { error: "Unable to load workflow health artifact." };
+  }
+}
+
 async function buildTaskEnvelope(
   repoRoot: string,
   stateAbs: string,
@@ -416,6 +440,7 @@ async function buildTaskEnvelope(
   }
 
   const localDecoded = decodedTimestampFields(state.artifacts.runDir, state.taskId);
+  const workflowHealthResult = await loadWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
 
   return {
     taskId: state.taskId,
@@ -429,6 +454,12 @@ async function buildTaskEnvelope(
     stages,
     runEvents,
     ...(panResult.warning !== undefined ? { sourceWarning: panResult.warning } : {}),
+    ...(workflowHealthResult.summary !== undefined
+      ? { workflowHealth: workflowHealthResult.summary }
+      : {}),
+    ...(workflowHealthResult.error !== undefined
+      ? { workflowHealthLoadError: workflowHealthResult.error }
+      : {}),
   };
 }
 

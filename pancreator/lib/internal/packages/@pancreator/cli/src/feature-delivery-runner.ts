@@ -52,6 +52,7 @@ import { shouldSampleSdkInvocation } from "./sdk-sampling.js";
 import {
   type ArtifactContentWarning,
   defaultAdvanceEventForStage,
+  isPassPathManifestWarning,
   mergedTestStageVerdict,
   parseComplianceVerdict,
   parseDesignQaVerdict,
@@ -63,6 +64,7 @@ import {
   stageArtifactContract,
   validateStageCompletionArtifacts,
 } from "./feature-delivery-stage-artifacts.js";
+import { writeWorkflowHealthArtifact } from "./workflow-health.js";
 
 export {
   parseComplianceVerdict,
@@ -106,13 +108,54 @@ export const FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET = 5;
 
 const WARNING_REMEDIATION_STAGES = new Set(["review", "test", "compliance", "ship"]);
 const BLOCKING_WARNING_CODES_BY_STAGE: Record<string, Set<string>> = {
-  compliance: new Set(["compliance_passes_unparseable", "compliance_final_gate_missing"]),
+  report: new Set([
+    "output_manifest_missing",
+    "output_manifest_incomplete",
+    "output_manifest_noncompliant",
+  ]),
+  compliance: new Set([
+    "compliance_passes_unparseable",
+    "compliance_final_gate_missing",
+    "output_manifest_missing",
+    "output_manifest_incomplete",
+    "output_manifest_noncompliant",
+  ]),
   ship: new Set([
     "ship_ratification_missing_key",
     "ship_ratification_invalid_json",
     "ship_ratification_not_ratified",
   ]),
 };
+
+function passEventForStage(stageId: string): string | null {
+  switch (stageId) {
+    case "review":
+      return "review_passes";
+    case "test":
+      return "qa_passes";
+    case "report":
+      return "report_ready";
+    case "compliance":
+      return "compliance_passes";
+    default:
+      return null;
+  }
+}
+
+function hasPassPathBlockingWarnings(
+  stageId: string,
+  event: string,
+  warnings: readonly ArtifactContentWarning[],
+): boolean {
+  if (warnings.length === 0) {
+    return false;
+  }
+  const passEvent = passEventForStage(stageId);
+  if (passEvent !== null && event === passEvent) {
+    return warnings.some((warning) => isPassPathManifestWarning(stageId, event, warning));
+  }
+  return hasBlockingWarnings(stageId, warnings);
+}
 
 function shouldRemediateWarnings(stageId: string, warnings: readonly ArtifactContentWarning[]): boolean {
   return warnings.length > 0 && WARNING_REMEDIATION_STAGES.has(stageId);
@@ -1026,10 +1069,41 @@ export async function trySdkAutoChainAfterStageWork(input: {
 
   const runDir = input.state.artifacts.runDir;
   const attemptChain = async (event: string, artifactRel: string): Promise<boolean> => {
+    const passEvent = passEventForStage(input.completedStageId);
+    if (passEvent !== null && event === passEvent) {
+      const validation = validateStageCompletionArtifacts(
+        input.repoRoot,
+        input.state,
+        input.completedStageId,
+      );
+      if (!validation.ok || hasPassPathBlockingWarnings(input.completedStageId, event, validation.warnings)) {
+        await writeWorkflowHealthArtifact({
+          repoRoot: input.repoRoot,
+          state: input.state,
+          stageId: input.completedStageId,
+          gateBlockReasons: validation.warnings.map((warning) => warning.message),
+          now: input.now,
+        });
+        return false;
+      }
+    }
     try {
       await input.advanceFn(event, artifactRel);
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.state.currentStage,
+        now: input.now,
+      });
       return true;
     } catch (error) {
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.completedStageId,
+        gateBlockReasons: [error instanceof Error ? error.message : String(error)],
+        now: input.now,
+      });
       if (error instanceof Error && error.message.startsWith("No transition from ")) {
         return false;
       }
@@ -1087,6 +1161,9 @@ export async function trySdkAutoChainAfterStageWork(input: {
       designQaMarkdown: designContent,
       designSteps: designStepsEnabled(input.state.options),
     });
+    if (verdict.designFollowupOnly) {
+      return attemptChain("qa_design_followup", testRel);
+    }
     if (verdict.passes === true) {
       return attemptChain("qa_passes", testRel);
     }
@@ -1172,7 +1249,11 @@ export async function resolveTestStageAdvanceEvent(
 ): Promise<string> {
   if (
     state.currentStage !== "test" ||
-    (event !== "qa_fails" && event !== "qa_passes" && event !== "qa_spot_fix")
+    (event !== "qa_fails" &&
+      event !== "qa_passes" &&
+      event !== "qa_spot_fix" &&
+      event !== "qa_design_followup" &&
+      event !== "repo_wide_blocker")
   ) {
     return event;
   }
@@ -1194,6 +1275,9 @@ export async function resolveTestStageAdvanceEvent(
     designQaMarkdown: designContent,
     designSteps: designStepsEnabled(state.options),
   });
+  if (verdict.designFollowupOnly) {
+    return "qa_design_followup";
+  }
   if (verdict.passes === true) {
     return "qa_passes";
   }

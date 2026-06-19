@@ -51,4 +51,15 @@ Body
     assert.match(split.agentBody, /^---\r?\nslug: demo/);
     assert.match(split.agentBody, /# Demo/);
   });
+
+  it("wrapOperatorAgentMarkdown is idempotent for sectioned content", () => {
+    const meta = {
+      inThisFile: "Demo artifact",
+      whyItMatters: "Human summary.",
+      seeAlso: ["AGENTS.md"],
+    };
+    const once = wrapOperatorAgentMarkdown(meta, "# Demo\nBody\n");
+    const twice = wrapOperatorAgentMarkdown(meta, once);
+    assert.equal((twice.match(/# Operator section/gu) ?? []).length, 1);
+  });
 });

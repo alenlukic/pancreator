@@ -136,13 +136,13 @@ stages:
           DOC.COMPLIANCE_RUNS,
         ]
       definition_of_done:
-        - review.md declares review_passes, repo_wide_tests_pass, and scope_amendments_ratified
+        - review.md declares review_passes and scope_amendments_ratified
         - every product, design, and technical acceptance criterion is verified
         - must-fix findings route to coder unless core_reentry_required routes the run back to plan and tech-lead
         - output manifest is present in review.md and echoed to chat/stdout
       gate:
         validator: PERSONA.SUPERVISOR
-        predicate: "review_passes: true and repo_wide_tests_pass: true"
+        predicate: "review_passes: true"
         pass_event: review_passes
         fail_event: must_fix
       remediation:

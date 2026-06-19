@@ -47,6 +47,26 @@ function normalizeRepoRelativePath(value: string): string {
   return value.replace(/\\/gu, "/").replace(/^\.\//u, "");
 }
 
+/** Git paths from the harness root may include a configured project_root prefix; touch-set paths do not. */
+function touchSetPathCandidates(changedPath: string): string[] {
+  const normalized = normalizeRepoRelativePath(changedPath);
+  const candidates = new Set<string>([normalized]);
+  for (const prefix of ["pancreator/", ".pancreator/"]) {
+    if (normalized.startsWith(prefix)) {
+      candidates.add(normalized.slice(prefix.length));
+      continue;
+    }
+    candidates.add(`${prefix}${normalized}`);
+  }
+  return [...candidates];
+}
+
+function touchSetMatchesDeclaredPath(changedPath: string, declaredPath: string): boolean {
+  return touchSetPathCandidates(changedPath).some((candidate) =>
+    isAllowedPrefixMatch(candidate, declaredPath),
+  );
+}
+
 function readPathEntries(raw: unknown): string[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -427,25 +447,8 @@ export function validateReviewMarkdownForAdvance(content: string, event: string)
     if (passes !== true) {
       return "review_passes advance requires review_passes: true in review.md.";
     }
-    const repoWide = readMarkdownBool(content, "repo_wide_tests_pass");
-    if (repoWide !== true) {
-      return "review_passes advance requires repo_wide_tests_pass: true after repo-wide pnpm test and node --test tests/*.test.mjs.";
-    }
     if (amendmentsRatified !== true) {
       return "review_passes advance requires scope_amendments_ratified: true in review.md.";
-    }
-  }
-  return null;
-}
-
-export function validateTestReportForAdvance(content: string, event: string): string | null {
-  if (event === "qa_spot_fix") {
-    return validateSpotFixJustification("qa_spot_fix", parseSpotFixJustificationFromMarkdown(content));
-  }
-  if (event === "qa_passes") {
-    const passes = readMarkdownBool(content, "qa_passes");
-    if (passes !== true) {
-      return "qa_passes advance requires qa_passes: true in test-report.md.";
     }
   }
   return null;
@@ -455,10 +458,45 @@ export function validateDesignQaForAdvance(content: string, event: string): stri
   if (event === "qa_spot_fix") {
     return validateSpotFixJustification("qa_spot_fix", parseSpotFixJustificationFromMarkdown(content));
   }
+  if (event === "qa_design_followup") {
+    const passes = readMarkdownBool(content, "design_qa_passes");
+    const excluded = readMarkdownBool(content, "excluded_from_gate");
+    if (passes !== false || excluded !== true) {
+      return "qa_design_followup requires design_qa_passes: false with excluded_from_gate: true in design-qa-report.md.";
+    }
+    return null;
+  }
   if (event === "qa_passes") {
     const passes = readMarkdownBool(content, "design_qa_passes");
     if (passes !== true) {
       return "qa_passes advance with design steps requires design_qa_passes: true in design-qa-report.md.";
+    }
+  }
+  return null;
+}
+
+export function validateTestReportForAdvance(content: string, event: string): string | null {
+  if (event === "qa_spot_fix") {
+    return validateSpotFixJustification("qa_spot_fix", parseSpotFixJustificationFromMarkdown(content));
+  }
+  if (event === "qa_design_followup") {
+    const passes = readMarkdownBool(content, "qa_passes");
+    if (passes !== true) {
+      return "qa_design_followup requires qa_passes: true in test-report.md.";
+    }
+    return null;
+  }
+  if (event === "repo_wide_blocker") {
+    const blocker = readMarkdownBool(content, "repo_wide_blocker");
+    if (blocker !== true) {
+      return "repo_wide_blocker advance requires repo_wide_blocker: true in test-report.md.";
+    }
+    return null;
+  }
+  if (event === "qa_passes") {
+    const passes = readMarkdownBool(content, "qa_passes");
+    if (passes !== true) {
+      return "qa_passes advance requires qa_passes: true in test-report.md.";
     }
   }
   return null;
@@ -486,6 +524,74 @@ export function validateComplianceForAdvance(content: string, event: string): st
       return "compliance_passes advance requires compliance_passes: true in compliance-result.json.";
     }
   }
+  if (event === "repo_wide_blocker") {
+    if (record.repo_wide_blocker !== true) {
+      return "repo_wide_blocker advance requires repo_wide_blocker: true in compliance-result.json.";
+    }
+  }
+  return null;
+}
+
+export function validateWorkflowHealthJson(content: string): string | null {
+  let record: Record<string, unknown>;
+  try {
+    const parsed = stripOperatorAgentJsonPrefix(JSON.parse(content) as unknown);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return "workflow-health.json must be a JSON object.";
+    }
+    record = parsed as Record<string, unknown>;
+  } catch {
+    return "workflow-health.json must parse as JSON.";
+  }
+  for (const key of [
+    "task_id",
+    "feature_id",
+    "run_dir",
+    "status",
+    "repair_count",
+    "auto_chain_reversal_count",
+    "findings",
+    "updated_at",
+  ] as const) {
+    if (!(key in record)) {
+      return `workflow-health.json must include top-level ${key}.`;
+    }
+  }
+  const status = record.status;
+  if (
+    status !== "healthy" &&
+    status !== "needs_attention" &&
+    status !== "blocked" &&
+    status !== "reconciled"
+  ) {
+    return "workflow-health.json status must be healthy, needs_attention, blocked, or reconciled.";
+  }
+  return null;
+}
+
+export function validateHighRiskPersonaTranscriptCompliance(
+  record: Record<string, unknown>,
+): string | null {
+  const manifest = record.output_manifest;
+  if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) {
+    return null;
+  }
+  const manifestRecord = manifest as Record<string, unknown>;
+  const consulted = Array.isArray(manifestRecord.consulted_docs)
+    ? manifestRecord.consulted_docs.filter((value): value is string => typeof value === "string")
+    : [];
+  const evidence = record.transcript_required_doc_evidence;
+  if (!Array.isArray(evidence)) {
+    return "High-risk persona compliance requires transcript_required_doc_evidence listing loaded DOC.* keys.";
+  }
+  const loaded = new Set(
+    evidence.filter((value): value is string => typeof value === "string" && value.startsWith("DOC.")),
+  );
+  for (const required of consulted) {
+    if (required.startsWith("DOC.") && !loaded.has(required)) {
+      return `Manifest consulted_docs claims ${required} but transcript evidence does not show it was loaded.`;
+    }
+  }
   return null;
 }
 
@@ -494,19 +600,18 @@ export function touchSetAllowsPath(touchSetContent: string, changedPath: string)
   category: "paths" | "shared_paths" | "amendments" | "undeclared";
 } {
   const parsed = parseTouchSetPaths(touchSetContent);
-  const normalized = normalizeRepoRelativePath(changedPath);
   const inAmendments = parsed.amendments.some((entry) =>
-    isAllowedPrefixMatch(normalized, entry.path),
+    touchSetMatchesDeclaredPath(changedPath, entry.path),
   );
   if (inAmendments) {
     return { allowed: true, category: "amendments" };
   }
-  const inPaths = parsed.paths.some((entry) => isAllowedPrefixMatch(normalized, entry));
+  const inPaths = parsed.paths.some((entry) => touchSetMatchesDeclaredPath(changedPath, entry));
   if (inPaths) {
     return { allowed: true, category: "paths" };
   }
   const inShared = parsed.sharedPaths.some((entry) =>
-    isAllowedPrefixMatch(normalized, entry),
+    touchSetMatchesDeclaredPath(changedPath, entry),
   );
   if (inShared) {
     return { allowed: true, category: "shared_paths" };

@@ -198,6 +198,57 @@ describe("buildCommandCenterRows", () => {
     expect(anomalies?.rows[0]?.primaryCta.label).toBe("Open failed run");
   });
 
+  it("elevates workflow-health anomaly rows ahead of hanging-run rows", () => {
+    const hangingTask = makeTask({
+      taskId: "11111_0100_hanging",
+      featureId: "hanging-feature",
+      runEvents: [
+        {
+          timestamp: new Date(Date.parse("2026-06-02T13:00:00.000Z") - 45 * 60 * 1000).toISOString(),
+          event: "heartbeat",
+          message: "heartbeat",
+          stageId: "implement",
+        },
+      ],
+      stages: baseStages.map((stage) =>
+        stage.name === "implement"
+          ? { ...stage, status: "active" as const, humanGate: "" }
+          : stage.name === "plan"
+            ? { ...stage, status: "complete" as const, humanGate: "" }
+            : stage,
+      ),
+    });
+    const healthTask = makeTask({
+      taskId: "22222_0200_health",
+      featureId: "health-feature",
+      workflowHealth: {
+        task_id: "22222_0200_health",
+        feature_id: "health-feature",
+        run_dir: ".pan/work/demo/22222_0200_health",
+        status: "needs_attention",
+        repair_count: 2,
+        auto_chain_reversal_count: 1,
+        companion_artifacts: [],
+        pointers: [],
+        gate_block_reasons: [],
+        findings: [{ code: "repair_burst", severity: "warning", summary: "Repair burst detected" }],
+        updated_at: "2026-06-02T12:30:00.000Z",
+      },
+    });
+
+    const cards = buildCommandCenterRows({
+      tasks: [hangingTask, healthTask],
+      complianceFindings: [],
+      shippedOutcomes: [],
+      activityEvents: [],
+      nowMs: Date.parse("2026-06-02T13:00:00.000Z"),
+    });
+
+    const anomalies = cards.find((card) => card.region === "anomalies");
+    expect(anomalies?.rows[0]?.id).toBe("workflow-health:22222_0200_health");
+    expect(anomalies?.rows[0]?.label).toContain("Repair burst");
+  });
+
   it("uses approved empty copy and overflow labels without empty-state CTA", () => {
     const cards = buildCommandCenterRows({
       tasks: [],

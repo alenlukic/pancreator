@@ -200,8 +200,8 @@ export const VALID_IMPLEMENTATION_REPORT_MARKDOWN = [
   VALID_IMPLEMENT_OUTPUT_MANIFEST_MARKDOWN,
 ].join("\n");
 
-export const VALID_REVIEW_MARKDOWN = `review_passes: true\nrepo_wide_tests_pass: true\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
-export const VALID_REVIEW_FAIL_MARKDOWN = `review_passes: false\nrepo_wide_tests_pass: false\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
+export const VALID_REVIEW_MARKDOWN = `review_passes: true\ntouch_set_tests_pass: true\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
+export const VALID_REVIEW_FAIL_MARKDOWN = `review_passes: false\ntouch_set_tests_pass: false\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
 
 export const VALID_ADR_MARKDOWN = `# ADR\n\n## Decision\n\nBody.\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
 

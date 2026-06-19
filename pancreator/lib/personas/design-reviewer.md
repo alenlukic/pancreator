@@ -260,11 +260,12 @@ via the `chrome-devtools` MCP server before setting `design_qa_passes: true`.
 1. **Start the dev server.** Run the documented startup command from the handoff or
    touch-set (for example `pnpm --filter client dev`) and confirm the local URL is
    reachable.
-2. **Open a disposable Chrome context.** Launch a fresh page with `new_page` and a
-   unique `isolatedContext` value for the run (or `list_pages` then `select_page`
-   only for pages already created inside that same disposable context). You MUST NOT
-   attach to an operator's personal browsing session, reuse another run's context,
-   or write outside the disposable automation context or profile.
+2. **Open a disposable Chrome context.** Call `list_pages` first. When no
+   task-owned pages are listed, launch a fresh page with `new_page` and a unique
+   `isolatedContext` value for this run only. You MAY call `select_page` only for
+   pages you created in this same task. You MUST NOT attach to an operator's
+   personal browsing session, reuse another run's context, or share sessions across
+   tasks.
 3. **Navigate and snapshot.** Use `navigate_page`, `take_snapshot`, and interaction
    tools (`click`, `hover`, `fill`, `type_text`, `press_key`, `drag`) to exercise
    declared flows and key interactive states. Prefer `take_snapshot` over
@@ -318,6 +319,7 @@ via the `chrome-devtools` MCP server before setting `design_qa_passes: true`.
   halt and request `design-engineer` completion via `design/plan-prompt.md`.
 - If the `chrome-devtools` MCP server is unavailable and UI surfaces are in scope, you MUST set
   `design_qa_passes: false` and document the blocker in Re-entry.
+- If `list_pages` reports no task-owned pages, you MUST NOT attribute browser failure to a shared-profile or session lock. Retry `new_page` with a fresh `isolatedContext` or record the exact MCP error.
 - If disposable-context cleanup cannot be verified at the end of browser inspection, you MUST set
   `design_qa_passes: false` and document the cleanup blocker in Re-entry.
 - If body prose fails Layer 1 lint after 3 consecutive self-correction rounds, you MUST

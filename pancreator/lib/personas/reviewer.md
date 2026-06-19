@@ -139,7 +139,7 @@ MUST contain the five sections below in this order.
 1. **Verdict.** One paragraph at most 80 words declaring `review_passes:
 true` or `review_passes: false` with a one-sentence rationale citing the
    gate that decided the verdict. The Verdict section MUST also declare
-   `repo_wide_tests_pass: true|false`, `lint_typecheck_rerun_required: true|false`,
+   `touch_set_tests_pass: true|false`, `lint_typecheck_rerun_required: true|false`,
    `core_reentry_required: true|false`, `scope_amendments_ratified: true|false`, and when applicable
    `spot_fixable: true|false` and `excluded_from_gate: true|false`.
 2. **Findings.** A bulleted list grouped under three headings: `must fix`,
@@ -159,10 +159,14 @@ true` or `review_passes: false` with a one-sentence rationale citing the
    cite the new-lines coverage figure. Cite the test runner output or
    implementation report at `/.pan/work/<day>/<id>/implementation-report.md`
    for the coverage figures used.
-5. **Repo-wide tests.** A table with one row per command: `pnpm test` and
-   `node --test tests/*.test.mjs`. Columns MUST be `command`, `exit code`,
-   and `pass/fail`. You MUST set `repo_wide_tests_pass: true` only when both
-   commands exit zero.
+5. **Touch-set tests.** A table with one row per `touch-set.json` `tests`
+   entry whose `kind` is `command`. Columns MUST be `command`, `exit code`,
+   and `pass/fail`. You MUST set `touch_set_tests_pass: true` only when every
+   touch-set gate command exits zero. Repo-wide `pnpm lint` MUST NOT appear as a
+   touch-set gate command; use workspace-scoped lint only. You MAY record full-repository `pnpm test`
+   and `node --test tests/*.test.mjs` in the same table with
+   `pass/fail: excluded-from-gate`; those rows MUST NOT set
+   `touch_set_tests_pass: false` or `review_passes: false` when they fail.
 
 The body of `/.pan/work/<day>/<id>/review.md` MUST stay at most 1500 words across the
 five sections combined.
@@ -179,10 +183,11 @@ five sections combined.
   The `supervisor` persona owns the `ship` stage; you stage `review.md`
   and exit.
 - You MUST NOT advance the `review_passes` gate while any finding under
-  `must fix` is unresolved or while `repo_wide_tests_pass` is not `true`.
-  The gate predicate per PRD §7 line 678 reads "all `must fix` resolved AND
-  all product/design/tech acceptance criteria met AND all contracts pass AND
-  threshold policy met AND repo-wide tests pass".
+  `must fix` is unresolved or while `touch_set_tests_pass` is not `true`.
+  The gate predicate reads "all `must fix` resolved AND all
+  product/design/tech acceptance criteria met AND all contracts pass AND
+  threshold policy met AND touch-set gate commands pass". Unrelated
+  repository test failures outside the touch-set MUST NOT block review.
 - You MUST NOT ratify a scope amendment that expands into a new top-level
   directory, a new package, a production dependency, a public API surface, or
   a change-controlled governance tree.

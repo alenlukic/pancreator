@@ -41,6 +41,13 @@ export async function GET(request: Request): Promise<Response> {
       new Set(shippedTaskIds),
     );
 
+    const workflowHealthErrors: Record<string, string> = {};
+    for (const task of tasks) {
+      if (task.workflowHealthLoadError !== undefined) {
+        workflowHealthErrors[task.taskId] = task.workflowHealthLoadError;
+      }
+    }
+
     return Response.json({
       tasks: reconciledTasks,
       reconciliation: {
@@ -48,6 +55,9 @@ export async function GET(request: Request): Promise<Response> {
         shippedTaskIds,
         shippedOutcomes,
         ...(Object.keys(reconciliationErrors).length > 0 ? { errors: reconciliationErrors } : {}),
+        ...(Object.keys(workflowHealthErrors).length > 0
+          ? { workflowHealthErrors }
+          : {}),
       },
     });
   }

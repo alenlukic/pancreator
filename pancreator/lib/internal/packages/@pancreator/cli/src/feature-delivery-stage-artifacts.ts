@@ -32,6 +32,15 @@ import {
   validateTestReportForAdvance,
   validateTouchSetJson,
 } from "./feature-delivery-gate-validation.js";
+import { workflowHealthRel } from "./workflow-health.js";
+
+export { workflowHealthRel };
+
+export const PASS_PATH_MANIFEST_WARNING_CODES = new Set([
+  "output_manifest_missing",
+  "output_manifest_incomplete",
+  "output_manifest_noncompliant",
+]);
 
 /** Minimal state slice for artifact path resolution without importing feature-delivery-run. */
 export interface FeatureDeliveryArtifactState {
@@ -275,7 +284,7 @@ function outputManifestExpectation(base: string): OutputManifestExpectation | nu
   return OUTPUT_MANIFEST_EXPECTATIONS[base] ?? null;
 }
 
-function validateManifestContractKeys(input: {
+export function validateManifestContractKeys(input: {
   rel: string;
   base: string;
   stageContract: string | null;
@@ -346,7 +355,7 @@ function isCompanionDisciplineArtifact(rel: string): boolean {
   return parent === "product" || parent === "design" || parent === "tech";
 }
 
-function validateMarkdownOutputManifest(
+export function validateMarkdownOutputManifest(
   rel: string,
   base: string,
   content: string,
@@ -379,7 +388,7 @@ function validateMarkdownOutputManifest(
   });
 }
 
-function validateJsonOutputManifest(
+export function validateJsonOutputManifest(
   rel: string,
   record: Record<string, unknown>,
 ): ArtifactContentWarning | null {
@@ -503,6 +512,27 @@ export function parseDesignQaVerdict(designQaMarkdown: string): {
   };
 }
 
+export function isDesignOnlyNonBlockingFollowup(input: {
+  qaMarkdown: string;
+  designQaMarkdown?: string;
+  designSteps: boolean;
+}): boolean {
+  const qa = parseQaVerdict(input.qaMarkdown);
+  if (qa.passes !== true) {
+    return false;
+  }
+  if (!input.designSteps || input.designQaMarkdown === undefined) {
+    return false;
+  }
+  const design = parseDesignQaVerdict(input.designQaMarkdown);
+  return (
+    design.passes === false &&
+    design.excludedFromGate &&
+    !design.planInvalidating &&
+    !design.coreReentryRequired
+  );
+}
+
 export function mergedTestStageVerdict(input: {
   qaMarkdown: string;
   designQaMarkdown?: string;
@@ -513,37 +543,57 @@ export function mergedTestStageVerdict(input: {
   coreReentryRequired: boolean;
   spotFixable: boolean;
   excludedFromGate: boolean;
+  designFollowupOnly: boolean;
 } {
   const qa = parseQaVerdict(input.qaMarkdown);
+  const designFollowupOnly = isDesignOnlyNonBlockingFollowup(input);
+  const attach = (
+    verdict: Omit<
+      ReturnType<typeof mergedTestStageVerdict>,
+      "designFollowupOnly"
+    >,
+  ) => ({
+    ...verdict,
+    designFollowupOnly,
+  });
   if (!input.designSteps) {
-    return qa;
+    return attach(qa);
   }
   if (input.designQaMarkdown === undefined) {
-    return { ...qa, passes: qa.passes === true ? null : qa.passes };
+    return attach({ ...qa, passes: qa.passes === true ? null : qa.passes });
   }
   const design = parseDesignQaVerdict(input.designQaMarkdown);
   if (qa.passes === false) {
-    return qa;
+    return attach(qa);
   }
-  if (design.passes === false) {
-    return {
-      passes: false,
-      planInvalidating: design.planInvalidating,
-      coreReentryRequired: design.coreReentryRequired,
-      spotFixable: design.spotFixable,
-      excludedFromGate: design.excludedFromGate,
-    };
-  }
-  if (qa.passes === true && design.passes === true) {
-    return {
+  if (designFollowupOnly) {
+    return attach({
       passes: true,
       planInvalidating: false,
       coreReentryRequired: false,
       spotFixable: false,
       excludedFromGate: false,
-    };
+    });
   }
-  return { ...qa, passes: null };
+  if (design.passes === false) {
+    return attach({
+      passes: false,
+      planInvalidating: design.planInvalidating,
+      coreReentryRequired: design.coreReentryRequired,
+      spotFixable: design.spotFixable,
+      excludedFromGate: design.excludedFromGate,
+    });
+  }
+  if (qa.passes === true && design.passes === true) {
+    return attach({
+      passes: true,
+      planInvalidating: false,
+      coreReentryRequired: false,
+      spotFixable: false,
+      excludedFromGate: false,
+    });
+  }
+  return attach({ ...qa, passes: null });
 }
 
 function readBool(
@@ -929,6 +979,19 @@ function validateArtifactContent(
     return null;
   }
 
+  if (base === "delivery-report.md") {
+    if (event !== undefined) {
+      const reportAdvanceError = validateReportForAdvance(content, event);
+      if (reportAdvanceError !== null) {
+        return gateValidationErrorToWarning(rel, reportAdvanceError);
+      }
+    }
+    return (
+      validateMarkdownBody(rel, content) ??
+      validateMarkdownOutputManifest(rel, base, content)
+    );
+  }
+
   if (base === "compliance-result.json") {
     const verdict = parseComplianceVerdict(content);
     if (verdict.passes === null) {
@@ -1058,10 +1121,13 @@ export function stageArtifactContract(
         event !== "qa_passes" &&
         event !== "qa_fails" &&
         event !== "qa_fails_plan_invalidating" &&
-        event !== "qa_spot_fix"
+        event !== "qa_spot_fix" &&
+        event !== "qa_design_followup" &&
+        event !== "repo_wide_blocker"
       ) {
         throw new Error(
-          `Test stage only supports qa_passes, qa_fails, qa_fails_plan_invalidating, or qa_spot_fix, got ${event}.`,
+          "Test stage only supports qa_passes, qa_fails, qa_fails_plan_invalidating, " +
+            `qa_spot_fix, qa_design_followup, or repo_wide_blocker, got ${event}.`,
         );
       }
       const requiredAfterStageWork = designStepsEnabled(state.options)
@@ -1075,6 +1141,11 @@ export function stageArtifactContract(
     }
     case "report": {
       const deliveryReport = deliveryReportRel(run);
+      if (event !== "report_ready" && event !== "repo_wide_blocker") {
+        throw new Error(
+          `Report stage only supports report_ready or repo_wide_blocker, got ${event}.`,
+        );
+      }
       return {
         primaryArtifact: deliveryReport,
         requiredAfterStageWork: [deliveryReport],
@@ -1087,11 +1158,12 @@ export function stageArtifactContract(
         event !== "compliance_passes" &&
         event !== "compliance_fails" &&
         event !== "compliance_fails_plan_invalidating" &&
-        event !== "compliance_spot_fix"
+        event !== "compliance_spot_fix" &&
+        event !== "repo_wide_blocker"
       ) {
         throw new Error(
           "Compliance stage only supports compliance_passes, compliance_fails, " +
-            `compliance_fails_plan_invalidating, or compliance_spot_fix, got ${event}.`,
+            `compliance_fails_plan_invalidating, compliance_spot_fix, or repo_wide_blocker, got ${event}.`,
         );
       }
       return {
@@ -1146,10 +1218,37 @@ const CONTENT_VALIDATED_BASENAMES = new Set([
   "test-report.md",
   "design-qa-report.md",
   "ux-spec.md",
+  "delivery-report.md",
   "compliance-result.json",
   "ship-ratification.json",
   OPERATOR_VERIFICATION_FILENAME,
 ]);
+
+export function isPassPathManifestWarning(
+  stageId: string,
+  event: string,
+  warning: ArtifactContentWarning,
+): boolean {
+  const passEvent =
+    (stageId === "report" && event === "report_ready") ||
+    (stageId === "compliance" && event === "compliance_passes");
+  if (!passEvent) {
+    return false;
+  }
+  return PASS_PATH_MANIFEST_WARNING_CODES.has(warning.code);
+}
+
+function validateReportForAdvance(content: string, event: string): string | null {
+  if (event !== "report_ready") {
+    return null;
+  }
+  const manifestWarning = validateMarkdownOutputManifest(
+    "delivery-report.md",
+    "delivery-report.md",
+    content,
+  );
+  return manifestWarning?.message ?? null;
+}
 
 export function validateStageCompletionArtifacts(
   repoRoot: string,

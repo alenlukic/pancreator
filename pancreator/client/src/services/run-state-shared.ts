@@ -50,6 +50,51 @@ export type TaskRunStateEnvelope = {
   stages: StageCell[];
   runEvents: RunLogEvent[];
   sourceWarning?: string;
+  workflowHealth?: WorkflowHealthSummary;
+  workflowHealthLoadError?: string;
+};
+
+export type PointerResolutionStatus =
+  | "Live"
+  | "Archived"
+  | "Missing"
+  | "Needs reconciliation";
+
+export type PointerResolution = {
+  label: string;
+  referencedPath: string;
+  status: PointerResolutionStatus;
+  resolvedPath?: string;
+  action?: string;
+  reason?: string;
+};
+
+export type WorkflowHealthFinding = {
+  code: string;
+  severity: "info" | "warning" | "blocking";
+  summary: string;
+  detail?: string;
+  artifact?: string;
+  pointer?: PointerResolution;
+};
+
+export type WorkflowHealthSummary = {
+  task_id: string;
+  feature_id: string;
+  run_dir: string;
+  status: "healthy" | "needs_attention" | "blocked" | "reconciled";
+  repair_count: number;
+  auto_chain_reversal_count: number;
+  last_oversight_check_at?: string;
+  companion_artifacts?: Array<{
+    name: string;
+    present: boolean;
+    blockingReason?: string;
+  }>;
+  pointers?: PointerResolution[];
+  gate_block_reasons?: string[];
+  findings: WorkflowHealthFinding[];
+  updated_at: string;
 };
 
 export function taskDisplayLabel(

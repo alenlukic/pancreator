@@ -698,6 +698,30 @@ describe("GET /api/run-state", () => {
     }
   });
 
+  it("returns workflowHealthErrors in attention reconciliation when artifact is invalid", async () => {
+    writeState(tempRoot, "172973_06-02-26", "65766_0543_demo-feature");
+    const runDir = path.join(
+      tempRoot,
+      ".pan/work/172973_06-02-26/65766_0543_demo-feature",
+    );
+    fs.writeFileSync(path.join(runDir, "workflow-health.json"), "{");
+
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(new Request("http://localhost/api/run-state?view=attention"));
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        reconciliation: { workflowHealthErrors?: Record<string, string> };
+      };
+      expect(payload.reconciliation.workflowHealthErrors?.["65766_0543_demo-feature"]).toContain(
+        "workflow health",
+      );
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
   it("loads shipped outcomes from indexed feature folders", async () => {
     const featureDir = path.join(tempRoot, "lib", "memory", "features", "demo-feature");
     fs.mkdirSync(featureDir, { recursive: true });

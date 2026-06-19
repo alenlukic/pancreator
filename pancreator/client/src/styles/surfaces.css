@@ -4396,3 +4396,101 @@
   margin: 0.15rem 0 0;
   color: var(--text-primary);
 }
+
+.mc-workflow-health {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-primary) 96%, var(--accent));
+}
+
+.mc-workflow-health-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.mc-workflow-health-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.mc-workflow-health-summary-grid dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.mc-workflow-health-summary-grid dd {
+  margin: 0.15rem 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.mc-workflow-health-span {
+  grid-column: 1 / -1;
+}
+
+.mc-workflow-health-primary,
+.mc-workflow-health-secondary {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+  font: inherit;
+}
+
+.mc-workflow-health-primary {
+  background: var(--accent);
+  color: var(--surface-primary);
+  border: 1px solid var(--accent);
+}
+
+.mc-workflow-health-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.mc-pointer-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.75rem;
+  margin-right: 0.35rem;
+}
+
+.mc-pointer-live {
+  background: color-mix(in srgb, #1f8a4c 20%, transparent);
+}
+
+.mc-pointer-archived {
+  background: color-mix(in srgb, #5b6ee1 20%, transparent);
+}
+
+.mc-pointer-missing,
+.mc-pointer-reconcile {
+  background: color-mix(in srgb, #c0392b 18%, transparent);
+}
+
+.mc-workflow-health-disclosure summary {
+  cursor: pointer;
+}
+
+.mc-workflow-health-paths {
+  margin-top: var(--space-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 720px) {
+  .mc-workflow-health-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -13,6 +13,7 @@ Run a bounded retrospective scan over recent Pancreator operator + agent activit
 
 - Treat `AGENTS.md` as the repo-wide authority before acting.
 - Resolve and apply relevant handbook keys through `lib/memory/handbook/agent-document-registry.md` before judging misses. At minimum, consult the docs governing persona contracts, output manifests, inbox lifecycle, context economy, pipeline gates, and operator output contracts when present.
+- The analysis MUST assess whether agents followed context/token-economy guidance when gathering evidence, including RTK-first shell retrieval expectations from `lib/memory/handbook/context-economy.md`.
 - Transcript and rationale review is mandatory. This command MUST inspect in-window agent transcripts and any exposed reasoning/rationale traces needed to judge what agents did, why they did it, and how they did it. Manifest attestation alone is insufficient for agent-spec compliance findings.
 - Do not modify indexed source files. This command may write only local runtime/reporting surfaces under `.pan/introspection/` and an intake item under `lib/inbox/in/`.
 - Do not run `git push`, `git commit`, `gh pr create`, destructive shell commands, or broad cleanup.
@@ -40,6 +41,7 @@ Inspect recent generated evidence under these local surfaces when they exist:
 - `lib/inbox/threads/**`
 - all agent transcripts, transcript bundles, and SDK traces for in-window runs, including transcript-store files outside the repo when the workspace exposes them
 - any run log, state file, handoff, next prompt, output manifest, artifact manifest, stage artifact, intervention log, or operator verification file referenced by those paths or transcripts
+- any shell/tool invocation traces exposed by transcripts, terminal captures, SDK logs, or rationale metadata that are needed to determine whether shell-based repo inspection used `rtk` first or escalated to raw commands with justification
 
 Do **not** inspect `lib/inbox/notes/**`; it is operator-only per inbox lifecycle and is not a valid evidence source for this command.
 
@@ -62,11 +64,14 @@ Write a Markdown report to `.pan/introspection/reports/<UTC-YYYYMMDD-HHMMSS>-int
 6. `## Pipeline gate misses`
 7. `## Agent spec misses`
    - Include cases where an agent failed to load, read, cite, or apply documents required by its persona spec or stage contract.
+   - Include cases where transcript/tool evidence suggests the agent ignored context-economy guidance, especially RTK-first shell retrieval expectations, without a documented need for raw output.
    - This section MUST be informed by transcript + rationale review, not only by manifest attestation.
    - Distinguish "artifact claims compliance" from "transcript evidence suggests compliance" when those differ.
+   - When assessing RTK usage, distinguish shell-based inspection flows from built-in file/search tools; flag a miss only when `context-economy.md` would have required an `rtk` first pass or an explicit escalation rationale.
 8. `## Operator habits outside supported repo interface`
 9. `## Operator friction points with agents`
 10. `## Recurring system mistake patterns`
+   - Call out repeated over-reading, broad context loading, or raw shell inspection habits that violate token/context-economy guidance even when they did not cause a gate failure.
 11. `## Proposed changes`
    - Group proposed changes by category: governance updates, new features, code fixes, agent/persona spec updates, pipeline/gate updates, UX/operator tooling, and documentation.
 12. `## Evidence index`

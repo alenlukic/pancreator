@@ -23,7 +23,12 @@ import {
   listCanonicalWorkDayDirs,
   listTaskDirNames,
   scanWorkArchiveHygiene,
+  type PointerResolution,
+  resolvePointerResolution,
 } from "./work-archive-hygiene.js";
+
+export type { PointerResolution };
+export { resolvePointerResolution };
 
 const TERMINAL_STAGE = "complete" as const;
 const OUT_OF_BAND_MANIFEST = "out-of-band.manifest.json";

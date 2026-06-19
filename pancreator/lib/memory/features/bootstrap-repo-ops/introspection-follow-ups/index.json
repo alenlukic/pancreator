@@ -1,0 +1,159 @@
+{
+  "feature_id": "introspection-follow-ups",
+  "title": "Introspection follow-ups — workflow-health recovery",
+  "category": "bootstrap-repo-ops",
+  "status": "indexed",
+  "current_stage": "index",
+  "task_id": "51237_0946_introspection-follow-ups",
+  "indexed_at": "2026-06-19T19:00:00.000Z",
+  "summary": "Feature-delivery workflow-health recovery ships CLI evidence on stage transitions, blocks malformed report and compliance pass paths, routes repo-wide blockers and non-blocking design-QA follow-up through explicit state-machine outcomes, resolves archive-aware pointers, normalizes generated client test commands, wraps operator sections idempotently, emits supervisor progress heartbeats every 180 seconds, and surfaces workflow-health anomalies on Command Center Home and Mission Control.",
+  "planning_context": [
+    "handoff.handoff_note: Feature index links delivery report, ship artifacts, and active work paths. SDK advances to complete and delegates close-artifacts archival to librarian after index validation passes.",
+    "handoff.decision: index-complete",
+    "review.spec_contracts_note: No contracts/ directory under feature folder; review used behavioral delta coverage only.",
+    "intake.human_approval_note: Plan ratified at plan advance per state.json advanceHistory intake→plan event.",
+    "ship.operator_note: SDK ship ratification with 36 staged touch-set paths; repo-wide lint/test/compliance debt excluded-from-gate per compliance-result.json."
+  ],
+  "implementation_surfaces": [
+    "pancreator/client/src/app/api/run-state/route.test.ts",
+    "pancreator/client/src/app/api/run-state/route.ts",
+    "pancreator/client/src/components/command-center/command-center/command-center-data.test.ts",
+    "pancreator/client/src/components/command-center/command-center/command-center-data.ts",
+    "pancreator/client/src/components/command-center/mission-control/ArtifactsByStage.tsx",
+    "pancreator/client/src/components/command-center/mission-control/MissionControlModule.tsx",
+    "pancreator/client/src/components/command-center/mission-control/WorkflowHealthPanel.tsx",
+    "pancreator/client/src/components/command-center/mission-control/mission-control.test.tsx",
+    "pancreator/client/src/services/run-state-shared.ts",
+    "pancreator/client/src/services/run-state.ts",
+    "pancreator/client/src/styles/surfaces.css",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/archive-sweep.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/experience-planning-archival.test.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/experience-planning-archival.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-fixtures.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-validation.test.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-validation.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-pipeline-close.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-run.test.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-sdk-progress.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/work-archive-hygiene.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/workflow-health.test.ts",
+    "pancreator/lib/internal/packages/@pancreator/cli/src/workflow-health.ts",
+    "pancreator/lib/internal/packages/@pancreator/core/src/operator-agent-section.ts",
+    "pancreator/lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.test.ts",
+    "pancreator/lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts",
+    "pancreator/lib/memory/active/handoffs.md",
+    "pancreator/lib/personas/design-reviewer.md",
+    "pancreator/lib/personas/qa-tester.md",
+    "pancreator/lib/personas/reviewer.md",
+    "pancreator/lib/personas/skills/modern-code-review/SKILL.md",
+    "pancreator/lib/pipelines/feature-delivery.yaml",
+    "pancreator/tests/operator-agent-section.test.mjs"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "touch_set_tests_pass": true,
+        "scope_amendments_ratified": true
+      }
+    },
+    {
+      "test": {
+        "qa_passes": true,
+        "design_qa_passes": false,
+        "advance_event": "qa_design_followup"
+      }
+    },
+    {
+      "compliance": {
+        "compliance_passes": true,
+        "audit_id": "51237_0946_introspection-follow-ups-20260619175418",
+        "excluded_from_gate": true,
+        "repo_wide_blocker": true
+      }
+    }
+  ],
+  "open_followups": [
+    "auto-chain-reversal-double-count-advisory",
+    "repo-wide-json-formatting-debt",
+    "repo-wide-eslint-debt",
+    "project-root-path-doubling-mcp-server",
+    "mqa-10-sdk-heartbeat-human-operator",
+    "design-qa-home-duplicate-unhealthy-run-rows",
+    "design-qa-open-live-path-cta-label",
+    "design-qa-workflow-health-token-colors-and-pulse",
+    "unstaged-adjacent-ship-paths"
+  ],
+  "delivery_report": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
+  "source_inbox_item": "lib/inbox/in/260618/14193_2003_introspection-followups.md",
+  "artifact_index": {
+    "run_dir": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups",
+    "spec": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/plan.md",
+    "acceptance_criteria_product": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/product/acceptance-criteria.md",
+    "acceptance_criteria_design": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/design/acceptance-criteria.md",
+    "acceptance_criteria_tech": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/tech/acceptance-criteria.md",
+    "touch_set": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/touch-set.json",
+    "manual_qa_test_cases": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/manual-qa-test-cases.md",
+    "implementation_report": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/implementation-report.md",
+    "review": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/review.md",
+    "test_report": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/test-report.md",
+    "design_qa_report": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/design-qa-report.md",
+    "delivery_report": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
+    "compliance_result": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/compliance-result.json",
+    "ship_ratification": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/ship-ratification.json",
+    "operator_verification": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/operator-verification.md",
+    "pipeline_close": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/pipeline-close.md",
+    "run_log": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/run.log.jsonl",
+    "state": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/state.json",
+    "compliance_audit_history": "lib/memory/features/quality-governance/compliance-tests/audit-history.json",
+    "qa_logs_dir": ".pan/sandboxes/51237_0946_introspection-follow-ups/logs"
+  },
+  "output_manifest": {
+    "persona_contract": "PERSONA.LIBRARIAN",
+    "stage_contract": "PIPE.FEATURE_DELIVERY.INDEX",
+    "required_docs": [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.MEMORY_TIERS",
+      "DOC.RUN_LOG_SCHEMA",
+      "DOC.OPERATOR_OUTPUT"
+    ],
+    "consulted_docs": [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.MEMORY_TIERS",
+      "DOC.RUN_LOG_SCHEMA",
+      "DOC.OPERATOR_OUTPUT",
+      "PIPE.FEATURE_DELIVERY"
+    ],
+    "produced_artifacts": [
+      "lib/memory/features/bootstrap-repo-ops/introspection-follow-ups/index.json",
+      ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/pipeline-close.md",
+      ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/operator-verification.md"
+    ],
+    "scope_amendments": [],
+    "validation": [
+      {
+        "name": "node --test tests/feature-index-artifact-index.test.mjs",
+        "result": "pass"
+      },
+      {
+        "name": "gate",
+        "result": "pass"
+      }
+    ],
+    "definition_of_done": "pass",
+    "gate_decision": "advance",
+    "remediation_route": "none"
+  }
+}

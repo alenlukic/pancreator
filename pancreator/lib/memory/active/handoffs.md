@@ -40,7 +40,7 @@ and SHOULD contain only these fields:
 
 | Run identifier | Handoff pointer | From | To | Status |
 |---|---|---|---|---|
-| *(none)* | *(none)* | *(none)* | *(none)* | *(none)* |
+| `51237_0946_introspection-follow-ups` | [handoff.md](pancreator/.pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/handoff.md) | tech-lead | coder | review blocked |
 
 ## Recent handoffs
 

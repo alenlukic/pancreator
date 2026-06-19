@@ -107,6 +107,7 @@ import {
   validateStageCompletionArtifacts,
   type ArtifactContentWarning,
 } from "./feature-delivery-stage-artifacts.js";
+import { writeWorkflowHealthArtifact } from "./workflow-health.js";
 import {
   decodeCountdownTimestamp,
   parseRunDirParts,
@@ -1211,6 +1212,14 @@ export async function advanceFeatureDelivery(
       { contentWarnings },
     ),
   );
+
+  await writeWorkflowHealthArtifact({
+    repoRoot,
+    state,
+    stageId: state.currentStage,
+    gateBlockReasons: contentWarnings.map((warning) => warning.message),
+    now,
+  });
 
   return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command: "advance",
@@ -2476,6 +2485,41 @@ function featureDeliveryTransitions(
     },
     {
       from: "test",
+      on: "qa_design_followup",
+      to: "report",
+      humanAttention:
+        "Design follow-up recorded without implement re-entry; continue to report.",
+    },
+    {
+      from: "test",
+      on: "repo_wide_blocker",
+      to: "test",
+      humanAttention:
+        "Repo-wide blocker outside touch-set recorded; resolve before advancing.",
+    },
+    {
+      from: "review",
+      on: "repo_wide_blocker",
+      to: "review",
+      humanAttention:
+        "Repo-wide blocker outside touch-set recorded; resolve before advancing.",
+    },
+    {
+      from: "report",
+      on: "repo_wide_blocker",
+      to: "report",
+      humanAttention:
+        "Repo-wide blocker outside touch-set recorded; resolve before advancing.",
+    },
+    {
+      from: "compliance",
+      on: "repo_wide_blocker",
+      to: "compliance",
+      humanAttention:
+        "Repo-wide blocker outside touch-set recorded; resolve before advancing.",
+    },
+    {
+      from: "test",
       on: "qa_fails",
       to: "implement",
       humanAttention: "Bounded re-entry; qa failures block shipping.",
@@ -2569,6 +2613,69 @@ function featureDeliveryTransitions(
     });
 }
 
+export const renderTransitions = featureDeliveryTransitions;
+
+export function normalizeClientWorkspaceTestCommand(
+  command: string,
+  workingDirectory?: string,
+): string {
+  const wd = (workingDirectory ?? "").replace(/\\/gu, "/").replace(/^\.\//u, "");
+  const isClientWorkspace = wd === "pancreator/client" || wd === "client";
+  if (!isClientWorkspace) {
+    return command;
+  }
+  return command.replace(/\bclient\/src\//gu, "src/");
+}
+
+export function normalizeTouchSetTestCommands(
+  tests: ReadonlyArray<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  return tests.map((entry) => {
+    const command = typeof entry.command === "string" ? entry.command : "";
+    const workingDirectory =
+      typeof entry.working_directory === "string" ? entry.working_directory : undefined;
+    return {
+      ...entry,
+      command: normalizeClientWorkspaceTestCommand(command, workingDirectory),
+    };
+  });
+}
+
+function renderHandoffValidationCommands(repoRoot: string, runDir: string): string {
+  const touchSetRel = path.posix.join(runDir, "touch-set.json");
+  const touchSetAbs = resolveRepoPath(repoRoot, touchSetRel);
+  if (!existsSync(touchSetAbs)) {
+    return `- node --test tests/*.test.mjs
+- node lib/internal/tools/checks/check-workspace-contracts.mjs
+- node lib/internal/tools/context/context-budget-report.mjs`;
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(touchSetAbs, "utf8")) as {
+      tests?: Array<Record<string, unknown>>;
+    };
+    const tests = Array.isArray(parsed.tests) ? normalizeTouchSetTestCommands(parsed.tests) : [];
+    if (tests.length === 0) {
+      return `- node --test tests/*.test.mjs
+- node lib/internal/tools/checks/check-workspace-contracts.mjs
+- node lib/internal/tools/context/context-budget-report.mjs`;
+    }
+    return tests
+      .map((entry) => {
+        const command = typeof entry.command === "string" ? entry.command : "";
+        const wd =
+          typeof entry.working_directory === "string"
+            ? ` (cwd: ${entry.working_directory})`
+            : "";
+        return `- ${command}${wd}`;
+      })
+      .join("\n");
+  } catch {
+    return `- node --test tests/*.test.mjs
+- node lib/internal/tools/checks/check-workspace-contracts.mjs
+- node lib/internal/tools/context/context-budget-report.mjs`;
+  }
+}
+
 function renderHandoff(
   repoRoot: string,
   state: FeatureDeliveryState,
@@ -2633,9 +2740,7 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 
 ## Validation commands
 
-- node --test tests/*.test.mjs
-- node lib/internal/tools/checks/check-workspace-contracts.mjs
-- node lib/internal/tools/context/context-budget-report.mjs
+${renderHandoffValidationCommands(repoRoot, state.artifacts.runDir)}
 ## Re-entry rule
 
 If scope changes, validation repeatedly fails, or the touch-set is incomplete, stop and delegate back to supervisor, tech-lead, or reviewer instead of extending the executor loop.
@@ -2824,11 +2929,11 @@ Advance after ${
       return base;
     }
     case "review":
-      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, repo_wide_tests_pass, lint_typecheck_rerun_required, core_reentry_required, scope_amendments_ratified, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run repo-wide pnpm test and node --test tests/*.test.mjs before review_passes: true; ratify bounded scope amendments before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan. Amendments are allowed only when touch-set.json and implementation-report.md record the same bounded scope amendment.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nTouch-set or plan invalidation (return to plan): pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, touch_set_tests_pass, lint_typecheck_rerun_required, core_reentry_required, scope_amendments_ratified, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run every touch-set.json tests command before review_passes: true; record full-repository pnpm test and node --test tests/*.test.mjs as excluded-from-gate visibility only; ratify bounded scope amendments before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan. Amendments are allowed only when touch-set.json and implementation-report.md record the same bounded scope amendment.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nTouch-set or plan invalidation (return to plan): pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
-        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
-        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
+        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: ${deliveryReportRel(state.artifacts.runDir)}\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
@@ -2910,7 +3015,9 @@ function staticAdvanceLineForStage(
     stage === "test" &&
     (resolvedEvent === "qa_fails" ||
       resolvedEvent === "qa_fails_plan_invalidating" ||
-      resolvedEvent === "qa_spot_fix")
+      resolvedEvent === "qa_spot_fix" ||
+      resolvedEvent === "qa_design_followup" ||
+      resolvedEvent === "repo_wide_blocker")
   ) {
     return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
   }
@@ -3018,7 +3125,9 @@ function buildAdvanceCommand(
     stage === "test" &&
     (event === "qa_fails" ||
       event === "qa_fails_plan_invalidating" ||
-      event === "qa_spot_fix")
+      event === "qa_spot_fix" ||
+      event === "qa_design_followup" ||
+      event === "repo_wide_blocker")
   ) {
     return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
   }

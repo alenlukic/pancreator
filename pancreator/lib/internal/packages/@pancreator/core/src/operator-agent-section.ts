@@ -235,7 +235,8 @@ export function wrapOperatorAgentMarkdown(
   meta: OperatorAgentOperatorMeta,
   agentBody: string,
 ): string {
-  const normalizedAgent = normalizeAgentBodyForWrap(agentBody);
+  const split = splitOperatorAgentSection(agentBody);
+  const normalizedAgent = normalizeAgentBodyForWrap(split?.agentBody ?? agentBody);
   const operatorText = buildOperatorBlock(meta).join("\n");
   const fmMatch = normalizedAgent.match(FRONTMATTER);
   if (fmMatch) {

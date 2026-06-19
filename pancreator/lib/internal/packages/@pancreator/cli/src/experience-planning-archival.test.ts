@@ -8,6 +8,7 @@ import {
   archiveExperiencePlanningForClosedFeatureDelivery,
   archiveExperiencePlanningRun,
   EXPERIENCE_PLANNING_RETENTION_MS,
+  resolveExperiencePlanningDirectivePointer,
   sweepExperiencePlanningWorkRetention,
 } from "./experience-planning-archival.js";
 import { FEATURE_DELIVERY_STATE_SCHEMA_VERSION } from "./feature-delivery-run.js";
@@ -221,5 +222,16 @@ describe("experience-planning archival", () => {
 
     expect(first).toBe(`.pan/archive/work/${EP_DAY}/${EP_TASK}`);
     expect(second).toBe(`.pan/archive/work/${EP_DAY}/${EP_TASK}`);
+  });
+
+  it("resolveExperiencePlanningDirectivePointer resolves archived inbox paths", async () => {
+    const root = await mkRepo();
+    const liveRel = "lib/inbox/in/demo-directive.md";
+    const archiveRel = ".pan/archive/inbox/in/demo-directive.md";
+    await mkdir(path.dirname(path.join(root, archiveRel)), { recursive: true });
+    await writeFile(path.join(root, archiveRel), "# archived\n", "utf8");
+    const pointer = resolveExperiencePlanningDirectivePointer(root, liveRel);
+    expect(pointer.status).toBe("Archived");
+    expect(pointer.resolvedPath).toBe(archiveRel);
   });
 });

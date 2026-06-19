@@ -23,6 +23,7 @@ import {
 } from "@/services/run-state-shared";
 import { MultiRunTable } from "../pipeline/MultiRunTable";
 import { ArtifactsByStage } from "./ArtifactsByStage";
+import { WorkflowHealthPanel } from "./WorkflowHealthPanel";
 import { MISSION_CONTROL_TOAST_EVENT } from "./remediation";
 import { MissionControlStageRail } from "./MissionControlStageRail";
 import { RetryLimitBanner } from "./RetryLimitBanner";
@@ -357,6 +358,12 @@ export function MissionControlModule() {
             selectedStageName={selectedStageName}
             nowMs={nowMs}
             onSelectStage={handleSelectStage}
+          />
+          <WorkflowHealthPanel
+            task={selectedTask}
+            onOpenMissionControl={() => {
+              void loadRunState();
+            }}
           />
           <div className="mc-workspace">
             {selectedStage !== null ? (

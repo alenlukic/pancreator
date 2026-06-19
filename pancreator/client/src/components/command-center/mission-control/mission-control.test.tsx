@@ -396,6 +396,59 @@ describe("MissionControlModule", () => {
     expect(screen.getByTestId("retry-badge-implement")).toHaveTextContent("3");
   });
 
+  it("renders workflow-health panel summaries when health data is present", async () => {
+    const stateWithHealth = [
+      {
+        ...mockRunState[0],
+        workflowHealth: {
+          task_id: mockRunState[0].taskId,
+          feature_id: mockRunState[0].featureId ?? "feature",
+          run_dir: mockRunState[0].runDir,
+          status: "needs_attention" as const,
+          repair_count: 3,
+          auto_chain_reversal_count: 1,
+          last_oversight_check_at: "2026-06-09T12:00:00.000Z",
+          companion_artifacts: [
+            { name: "design/acceptance-criteria.md", present: false, blockingReason: "Missing design artifact" },
+          ],
+          pointers: [
+            {
+              label: "Source directive",
+              referencedPath: "lib/inbox/in/demo.md",
+              status: "Archived" as const,
+              resolvedPath: ".pan/archive/inbox/in/demo.md",
+            },
+          ],
+          gate_block_reasons: ["manifest incomplete"],
+          findings: [{ code: "repair_burst", severity: "warning" as const, summary: "Repair burst detected" }],
+          updated_at: "2026-06-09T12:00:00.000Z",
+        },
+      },
+    ];
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson(stateWithHealth), { status: 200 });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson({ designStepsDefault: false }), { status: 200 });
+      }
+      return new Response(stringifyCompactJson({ error: "missing" }), { status: 404 });
+    });
+    mockSearchParams.set("task", mockRunState[0].taskId);
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("workflow-health-panel")).toBeInTheDocument();
+    });
+
+    const panel = screen.getByTestId("workflow-health-panel");
+    expect(within(panel).getByText("Repairs")).toBeInTheDocument();
+    expect(within(panel).getByText("Auto-chain reversals")).toBeInTheDocument();
+    expect(within(panel).getByText("Missing design artifact")).toBeInTheDocument();
+    expect(panel.querySelector(".mc-pointer-archived")).toHaveTextContent("Archived");
+  });
+
   it("keeps verbose log drawer closed by default", async () => {
     mockFetch();
     render(<MissionControlModule />);

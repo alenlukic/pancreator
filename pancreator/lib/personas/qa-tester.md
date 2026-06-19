@@ -246,10 +246,11 @@ or other operator-facing UI surface, you MUST perform visual QA via the
 
 1. **Start the dev server.** Run the documented startup command (for example
    `pnpm --filter client dev`) and confirm the local URL is reachable.
-2. **Open a disposable Chrome context.** Launch a fresh page with `new_page` and a
-   unique `isolatedContext` value for the run. You MUST NOT attach to an
-   operator's personal browsing session, reuse another run's context, or write
-   outside the disposable automation context or profile.
+2. **Open a disposable Chrome context.** Call `list_pages` first. When no
+   task-owned pages are listed, launch a fresh page with `new_page` and a unique
+   `isolatedContext` value for this run only. You MUST NOT attach to an
+   operator's personal browsing session, reuse another run's context, share sessions
+   across tasks, or write outside the disposable automation context.
 3. **Navigate and snapshot.** Use `navigate_page`, `take_snapshot`, and
    interaction tools (`click`, `hover`, `fill`, `type_text`, `press_key`) to
    exercise interactive affordances declared in the touch-set or handoff.
