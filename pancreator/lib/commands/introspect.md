@@ -13,6 +13,7 @@ Run a bounded retrospective scan over recent Pancreator operator + agent activit
 
 - Treat `AGENTS.md` as the repo-wide authority before acting.
 - Resolve and apply relevant handbook keys through `lib/memory/handbook/agent-document-registry.md` before judging misses. At minimum, consult the docs governing persona contracts, output manifests, inbox lifecycle, context economy, pipeline gates, and operator output contracts when present.
+- Transcript and rationale review is mandatory. This command MUST inspect in-window agent transcripts and any exposed reasoning/rationale traces needed to judge what agents did, why they did it, and how they did it. Manifest attestation alone is insufficient for agent-spec compliance findings.
 - Do not modify indexed source files. This command may write only local runtime/reporting surfaces under `.pan/introspection/` and an intake item under `lib/inbox/in/`.
 - Do not run `git push`, `git commit`, `gh pr create`, destructive shell commands, or broad cleanup.
 
@@ -24,7 +25,7 @@ Run a bounded retrospective scan over recent Pancreator operator + agent activit
    - the prior `completed_at` value in `.pan/introspection/last-run.json`; and
    - `now - 7 days`.
 4. If the last-run file is missing or unreadable, use `now - 7 days`.
-5. Scan only files generated or modified at or after the cutoff. Do not expand beyond the cutoff unless a referenced artifact is needed to understand a finding.
+5. Scan only files generated or modified at or after the cutoff. This is the smaller window of "since the last completed introspect" and "the trailing 7 days." Do not expand beyond the cutoff unless a referenced artifact is needed to understand a finding.
 
 ## Evidence to inspect
 
@@ -37,10 +38,12 @@ Inspect recent generated evidence under these local surfaces when they exist:
 - `lib/inbox/in/**`
 - `lib/inbox/out/**`
 - `lib/inbox/threads/**`
-- `lib/inbox/notes/**`
-- any agent transcript, SDK trace, run log, state file, handoff, next prompt, output manifest, artifact manifest, stage artifact, intervention log, or operator verification file referenced by those paths
+- all agent transcripts, transcript bundles, and SDK traces for in-window runs, including transcript-store files outside the repo when the workspace exposes them
+- any run log, state file, handoff, next prompt, output manifest, artifact manifest, stage artifact, intervention log, or operator verification file referenced by those paths or transcripts
 
-Prefer compact manifests, ledgers, state files, and run logs before opening large transcripts. Open large transcripts only when the compact evidence is insufficient to identify the failure mode.
+Do **not** inspect `lib/inbox/notes/**`; it is operator-only per inbox lifecycle and is not a valid evidence source for this command.
+
+Use compact manifests, ledgers, state files, and run logs first to enumerate the in-scope runs, personas, artifacts, and transcript paths. They are a map, not a substitute. For every in-scope run, transcript review is mandatory: read the corresponding agent transcripts and any exposed reasoning/rationale traces before concluding on agent-spec compliance. Do not rely solely on `consulted_docs`, output manifests, or gate outcomes when assessing whether an agent actually loaded, understood, and applied the documents named by its persona spec or stage contract.
 
 ## Report requirements
 
@@ -52,12 +55,15 @@ Write a Markdown report to `.pan/introspection/reports/<UTC-YYYYMMDD-HHMMSS>-int
    - `cutoff`
    - `last_run_completed_at`
    - evidence roots scanned
+   - transcript coverage summary (which in-window runs/personas had transcript evidence, and any gaps)
 3. `## Executive summary`
 4. `## Repo policy/governance misses`
 5. `## Artifact generation misses`
 6. `## Pipeline gate misses`
 7. `## Agent spec misses`
    - Include cases where an agent failed to load, read, cite, or apply documents required by its persona spec or stage contract.
+   - This section MUST be informed by transcript + rationale review, not only by manifest attestation.
+   - Distinguish "artifact claims compliance" from "transcript evidence suggests compliance" when those differ.
 8. `## Operator habits outside supported repo interface`
 9. `## Operator friction points with agents`
 10. `## Recurring system mistake patterns`
@@ -65,10 +71,11 @@ Write a Markdown report to `.pan/introspection/reports/<UTC-YYYYMMDD-HHMMSS>-int
    - Group proposed changes by category: governance updates, new features, code fixes, agent/persona spec updates, pipeline/gate updates, UX/operator tooling, and documentation.
 12. `## Evidence index`
    - Cite file paths and concise evidence snippets or summaries. Avoid dumping full transcripts.
+   - Include the transcript paths actually reviewed for each run/persona named in findings.
 13. `## Output manifest`
    - Include consulted docs, produced artifacts, validation performed, and remaining uncertainty.
 
-For every finding, distinguish direct evidence from inference. Do not invent misses when the available evidence is ambiguous; record ambiguity in the report instead.
+For every finding, distinguish direct evidence from inference. Do not invent misses when the available evidence is ambiguous; record ambiguity in the report instead. When transcript coverage is partial or missing for an in-window run, say so explicitly and explain whether the result is a coverage gap, a platform gap, or a scope decision forced by missing evidence.
 
 ## Intake item requirements
 
