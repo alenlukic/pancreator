@@ -6,15 +6,6 @@ next_owner: tech-lead
 next_stage: plan
 source_inbox_item: lib/inbox/in/172980_05-26-26/2597_2316_m1-substrate-runtime-batch.md
 intake_round: 0
-wp_d_choice: option-a
-wp_d_fallback: option-b-milestone-m2
-work_packages:
-  - {"feature_id":"checkpointer-fs-langgraph-conformance","label":"WP-A — LangGraph checkpointer conformance"}
-  - {"feature_id":"runner-cursor-sdk-invocation","label":"WP-B — Cursor SDK runner invocation"}
-  - {"feature_id":"pipeline-langgraph-stategraph-compiler","label":"WP-C — Pipeline StateGraph compiler"}
-  - {"feature_id":"run-logger-phoenix-conformance","label":"WP-D — Run-logger Phoenix conformance (option A, Phoenix-only M1)"}
-wp_d_scope: phoenix-only-m1
-wp_d_deferred_m2: "[object Object]"
 ...
 
 # Spec
