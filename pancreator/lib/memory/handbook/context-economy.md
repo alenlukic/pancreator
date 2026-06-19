@@ -55,6 +55,26 @@ MUST NOT load `.docs/**` unless the bounded prompt names an internal task.
 Agents MUST NOT read, traverse, ingest, cite, or modify files under
 `/lib/inbox/notes/` per inbox lifecycle.
 
+## RTK-first shell retrieval
+
+When a task uses shell commands for repository inspection, the agent MUST prefer
+RTK-compressed wrappers before raw shell commands.
+
+Default first pass:
+
+1. Use `rtk read <path> -l aggressive` for broad file inspection.
+2. Use `rtk grep <pattern> <path> --ultra-compact` for broad search.
+3. Use RTK wrappers for routine shell status and diagnostics (`rtk git status`,
+   `rtk git diff`, `rtk git log`, `rtk ls`, and RTK test wrappers where
+   available).
+
+Exception path:
+
+- Built-in `Read`/`Grep` or raw shell commands MAY be used only when the active
+  task needs exact-path, full-fidelity output that compressed RTK output omits.
+- When RTK output omits required detail, the agent SHALL rerun a narrower RTK
+  command first before escalating to broad raw output.
+
 ## Memory-tier routing
 
 This section states canonical routing cited at

@@ -307,7 +307,15 @@ test("local Cursor hooks do not enforce commit-time policy artifacts", () => {
   }
   const hooks = JSON.parse(fs.readFileSync(hooksPath, "utf8"));
   const beforeShell = hooks.hooks?.beforeShellExecution ?? [];
-  assert.equal(beforeShell.length, 0);
+  assert.ok(
+    beforeShell.every((entry) => entry.command !== "bash .cursor/hooks/block-commit.sh"),
+  );
+  assert.ok(
+    beforeShell.filter(
+      (entry) =>
+        entry.command === "bash .cursor/hooks/pancreator-rtk-before-shell.sh",
+    ).length <= 1,
+  );
 });
 
 test("Cursor implementation rules avoid broad lib-wide activation", () => {

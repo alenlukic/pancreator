@@ -49,6 +49,50 @@ pnpm run context:usage:calibrate
 pnpm run context:usage:analyze
 ```
 
+Manual RTK token comparison (`auto` model by default):
+
+```bash
+pnpm run context:usage:rtk-compare
+```
+
+This run creates a synthetic Git sandbox with local bare remote and a large generated
+project surface (services, docs, config, tests, and many decoy files). It then runs
+once with plain commands and once with RTK wrappers.
+
+Execution contract:
+
+- Each mode uses a fixed 5-turn shell command plan (deterministic command string per turn).
+- The harness rejects any non-shell tool calls.
+- The harness rejects runs that diverge from the fixed command plan order/content.
+- Turns must consume the prior turn artifact chain:
+  - turn 1 writes `.work/rtk-bench/candidates.json`
+  - turn 2 consumes candidates and writes `.work/rtk-bench/extracts.json`
+  - turn 3 consumes extracts and writes `.work/rtk-bench/comparisons.json`
+  - turn 4 consumes comparisons and writes `.work/rtk-bench/mutation-result.json`
+  - turn 5 consumes mutation result and writes `.work/rtk-bench/final-report.json`
+- Turns 2-5 are audited for rediscovery violations (`find`/`rg`/`rtk find`/`rtk grep`).
+
+Retry semantics:
+
+- Retries are clean-slate only: fresh sandbox + fresh agent session.
+- The prompt text is identical across attempts for a given `(mode, run_index)`.
+- The harness does not inject retry guidance or corrective scaffolding into prompts.
+- Failed attempts are discarded; accepted attempts are reported with discarded-attempt metadata.
+
+Token reporting:
+
+- Comparison payloads separate `input_tokens` and `output_tokens` for each scenario and summary.
+- `total_tokens` remains a derived aggregate for compatibility.
+- `tool_call_tokens` are intentionally not tracked.
+- Summaries include an accumulation window (`turns 3-5`) for input/output/total deltas.
+
+Reports are written to `calibration/raw/rtk-vs-plain.latest.json` plus a timestamped sibling file.
+
+The scenario executes as explicit SDK turn invocations (5 turns per mode), and logs
+stdout progress lines in this format:
+
+`turn <N>: running <TOOL> in <mode> mode`
+
 Default matrix run: 2 overhead probes + `8 × 4` task runs (~34 API calls). Lower cost:
 
 ```bash

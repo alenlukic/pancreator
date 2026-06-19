@@ -32,4 +32,4 @@ needed; agents load them only when the task requires them.
 
 - [`AGENTS.md`](AGENTS.md) — agent operating instructions
 - [`pancreator/.docs/`](pancreator/.docs/) — product requirements and bootstrap history
-- `.cursor/` — local Cursor IDE runtime (gitignored; run `pan cursor-sync` after clone)
+- `.cursor/` — local Cursor IDE runtime (gitignored; run `pan cursor-sync` after clone; includes managed RTK shell hook policy)

@@ -137,6 +137,9 @@ request explicitly names archival reconstruction as the task.
 - Stage diffs locally only. Agents MUST NOT run `git push`, `git commit`,
   `git commit --no-verify`, `gh pr create`, or `gh pr merge` unless an explicit
   persona spec grants that action and the operator has ratified it.
+- Shell inspection MUST default to RTK-compressed commands; agents MUST use raw
+  shell output or built-in file/search tools only when RTK output cannot
+  provide required fidelity for the active task.
 - JSON written by repo tooling MUST be pretty formatted with two-space indent
   unless a file contract explicitly declares compact JSON.
 - If agent documentation references a non-transient repository directory that is

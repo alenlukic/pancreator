@@ -457,6 +457,25 @@ Example dry-run from the harness root:
 pnpm -w exec pan cursor-sync --dry-run
 ```
 
+### RTK-first shell policy
+
+`cursor-sync` now emits a managed `.cursor/hooks.json` entry plus
+`.cursor/hooks/pancreator-rtk-before-shell.sh` so shell inspection defaults to
+RTK-compressed commands.
+
+Operator checklist:
+
+1. Install `rtk` and confirm it is on `PATH` (`rtk --help` should succeed).
+2. Re-run `pnpm -w exec pan cursor-sync` after pulling policy changes.
+3. Use `rtk read <path> -l aggressive`, `rtk grep <pattern> <path> --ultra-compact`,
+   and RTK-wrapped git/status commands by default.
+4. Use built-in `Read`/`Grep` or raw shell output only for exact-path or
+   full-fidelity follow-ups when RTK output omits required detail.
+
+If shell commands unexpectedly prompt for approval, inspect `.cursor/hooks.json`
+and confirm the managed hook command exists exactly once in
+`hooks.beforeShellExecution`.
+
 ## pan CLI verbs
 
 Every runnable operator command uses `pnpm -w exec pan …` from the repository root.

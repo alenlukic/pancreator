@@ -9,6 +9,7 @@ import { frontmatterHasKey, splitAgentProjection } from "./cursor-agents-retriev
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const PAN_BIN = path.join(REPO_ROOT, "pancreator/lib/internal/packages/@pancreator/cli/bin/pan.js");
+const MANAGED_RTK_HOOK_COMMAND = "bash .cursor/hooks/pancreator-rtk-before-shell.sh";
 
 function runPan(args, cwd) {
   return spawnSync(process.execPath, [PAN_BIN, ...args], {
@@ -88,6 +89,11 @@ test("pan cursor-sync --dry-run emits envelope without writing files", async () 
   assert.ok(payload.written.length > 0);
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/agents/intake-analyst.md"));
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/commands/introspect.md"));
+  assert.ok(
+    payload.written.some(
+      (entry) => entry.path === ".cursor/hooks/pancreator-rtk-before-shell.sh",
+    ),
+  );
   const afterAgents = await readdir(path.join(root, ".cursor/agents"));
   assert.deepEqual(afterAgents.sort(), beforeAgents.sort());
   assert.equal(existsSync(path.join(root, ".cursor/commands")), false);
@@ -111,6 +117,12 @@ test("pan cursor-sync writes projections for project_root dot", async () => {
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/rules/coder.mdc"));
   assert.ok(existsSync(path.join(root, ".cursor/hooks.json")));
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/hooks.json"));
+  assert.ok(existsSync(path.join(root, ".cursor/hooks/pancreator-rtk-before-shell.sh")));
+  assert.ok(
+    payload.written.some(
+      (entry) => entry.path === ".cursor/hooks/pancreator-rtk-before-shell.sh",
+    ),
+  );
   assert.ok(existsSync(path.join(root, ".cursor/commands/introspect.md")));
   assert.equal(existsSync(path.join(root, ".cursor/commands/.gitkeep")), false);
   assert.ok(payload.written.some((entry) => entry.path === ".cursor/commands/introspect.md"));
@@ -126,12 +138,23 @@ test("pan cursor-sync writes projections for project_root dot", async () => {
   assert.equal(frontmatterHasKey(frontmatter, "metadata"), false);
   assert.match(body, /next-prompt\.md/u);
   assert.match(body, /handoff\.md/u);
+  assert.match(body, /RTK-first shell policy/u);
+  assert.match(body, /rtk read <path> -l aggressive/u);
 
   const generalPurpose = await readFile(path.join(root, ".cursor/agents/general-purpose.md"), "utf8");
   const gpParsed = splitAgentProjection(generalPurpose);
   assert.equal(frontmatterHasKey(gpParsed.frontmatter, "tools"), true);
   assert.equal(frontmatterHasKey(gpParsed.frontmatter, "metadata"), true);
   assert.match(gpParsed.body, /next-prompt\.md/u);
+  assert.match(gpParsed.body, /rtk grep <pattern> <path> --ultra-compact/u);
+
+  const hooks = JSON.parse(
+    await readFile(path.join(root, ".cursor/hooks.json"), "utf8"),
+  );
+  const beforeShell = hooks.hooks?.beforeShellExecution ?? [];
+  assert.ok(
+    beforeShell.some((entry) => entry.command === MANAGED_RTK_HOOK_COMMAND),
+  );
 });
 
 test("pan cursor-sync writes projections for project_root .pancreator", async () => {
@@ -209,4 +232,63 @@ test("sync-cursor-agents.mjs bridge delegates to pan cursor-sync", async () => {
   assert.equal(payload.command, "cursor-sync");
   assert.ok(existsSync(path.join(root, ".cursor/agents/intake-analyst.md")));
   assert.ok(existsSync(path.join(root, ".cursor/commands/introspect.md")));
+});
+
+test("pan cursor-sync preserves unrelated hooks and keeps one managed RTK hook", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cursor-sync-hooks-"));
+  await writeFile(path.join(root, "pancreator.yaml"), 'project_root: "."\n', "utf8");
+  await cp(path.join(REPO_ROOT, "pancreator/lib/personas"), path.join(root, "lib/personas"), { recursive: true });
+  await cp(path.join(REPO_ROOT, "pancreator/lib/commands"), path.join(root, "lib/commands"), { recursive: true });
+  await mkdir(path.join(root, ".cursor/hooks"), { recursive: true });
+  await writeFile(
+    path.join(root, ".cursor/hooks.json"),
+    JSON.stringify(
+      {
+        version: 1,
+        hooks: {
+          beforeShellExecution: [
+            { command: "bash .cursor/hooks/custom-shell-check.sh", matcher: "npm" },
+            { command: MANAGED_RTK_HOOK_COMMAND, failClosed: true },
+          ],
+          afterShellExecution: [{ command: "bash .cursor/hooks/audit-shell.sh" }],
+        },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  const first = runPan(["cursor-sync"], root);
+  assert.equal(first.status, 0, first.stderr || first.stdout);
+  const hooksAfterFirst = JSON.parse(
+    await readFile(path.join(root, ".cursor/hooks.json"), "utf8"),
+  );
+  const beforeFirst = hooksAfterFirst.hooks?.beforeShellExecution ?? [];
+  assert.ok(
+    beforeFirst.some(
+      (entry) => entry.command === "bash .cursor/hooks/custom-shell-check.sh",
+    ),
+  );
+  assert.equal(
+    beforeFirst.filter((entry) => entry.command === MANAGED_RTK_HOOK_COMMAND).length,
+    1,
+  );
+  assert.equal(hooksAfterFirst.hooks?.afterShellExecution?.length, 1);
+
+  const second = runPan(["cursor-sync"], root);
+  assert.equal(second.status, 0, second.stderr || second.stdout);
+  const hooksAfterSecond = JSON.parse(
+    await readFile(path.join(root, ".cursor/hooks.json"), "utf8"),
+  );
+  const beforeSecond = hooksAfterSecond.hooks?.beforeShellExecution ?? [];
+  assert.equal(
+    beforeSecond.filter((entry) => entry.command === MANAGED_RTK_HOOK_COMMAND).length,
+    1,
+  );
+  assert.ok(
+    beforeSecond.some(
+      (entry) => entry.command === "bash .cursor/hooks/custom-shell-check.sh",
+    ),
+  );
 });

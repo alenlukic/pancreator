@@ -36,6 +36,9 @@ is where operational trees (`lib/inbox/`, `lib/memory/`, `.pan/work/`, `.pan/arc
 Canonical Cursor sources live under `<project_root>/lib/personas/` (agents and
 rules). Materialize the runtime tree
 with `pnpm -w exec pan cursor-sync` or `pan init --apply` (embedded).
+`cursor-sync` also emits a managed RTK hook policy under `.cursor/hooks/`, so
+operators SHOULD install `rtk` on `PATH` before relying on default shell
+inspection behavior.
 
 Self-hosting (daedaline):
 
