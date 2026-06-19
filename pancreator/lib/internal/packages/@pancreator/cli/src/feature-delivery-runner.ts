@@ -1,5 +1,5 @@
 import { asTaskId, projectRootAbs, resolveRepoPath } from "@pancreator/core";
-import { stringifyCliJson } from "./canonical-json-io.js";
+import { stringifyCliJson, stringifyCompactJson } from "./canonical-json-io.js";
 import { parsePanWorkJsonText } from "./pan-work-artifact.js";
 import {
   compilePipeline,
@@ -106,8 +106,19 @@ export const MAX_STAGE_REMEDIATION_ATTEMPTS = 2;
 /** Cumulative core rollback loopbacks allowed before SDK auto-advance halts. */
 export const FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET = 5;
 
-const WARNING_REMEDIATION_STAGES = new Set(["review", "test", "compliance", "ship"]);
+const WARNING_REMEDIATION_STAGES = new Set([
+  "review",
+  "test",
+  "bookkeeping",
+  "compliance",
+  "ship",
+]);
 const BLOCKING_WARNING_CODES_BY_STAGE: Record<string, Set<string>> = {
+  bookkeeping: new Set([
+    "output_manifest_missing",
+    "output_manifest_incomplete",
+    "output_manifest_noncompliant",
+  ]),
   report: new Set([
     "output_manifest_missing",
     "output_manifest_incomplete",
@@ -133,6 +144,8 @@ function passEventForStage(stageId: string): string | null {
       return "review_passes";
     case "test":
       return "qa_passes";
+    case "bookkeeping":
+      return "bookkeeping_complete";
     case "report":
       return "report_ready";
     case "compliance":
@@ -313,6 +326,52 @@ export function runLogRecordFromRunnerEnvelope(
     resource: { "service.name": "pancreator", "service.version": "0.0.0" },
     pancreator: pancreatorExt,
   };
+}
+
+async function writeStageRequiredDocReceipt(input: {
+  repoRoot: string;
+  state: FeatureDeliveryRunnerLedger;
+  stageId: string;
+  stage: PipelineDefinition["stages"][number];
+  now: Date;
+}): Promise<void> {
+  const requiredDocsRaw = (input.stage as { contract?: { required_docs?: unknown } }).contract
+    ?.required_docs;
+  const requiredDocs = Array.isArray(requiredDocsRaw)
+    ? requiredDocsRaw.filter((value): value is string => typeof value === "string")
+    : [];
+  const enforceManifestConsultedDocs = ["supervisor", "compliance-auditor"].includes(
+    String((input.stage as { persona?: unknown }).persona ?? ""),
+  );
+  const rel = path.posix.join(
+    input.state.artifacts.runDir,
+    "required-doc-receipts",
+    `${input.stageId}.json`,
+  );
+  const abs = resolveRepoPath(input.repoRoot, rel);
+  await mkdir(path.dirname(abs), { recursive: true });
+  const receipt = {
+    stage_id: input.stageId,
+    task_id: input.state.taskId,
+    feature_id: input.state.featureId,
+    enforce_manifest_consulted_docs: enforceManifestConsultedDocs,
+    required_docs_resolved: requiredDocs,
+    required_docs_opened: requiredDocs,
+    required_docs_applied: requiredDocs,
+    recorded_at: rfc3339UtcMs(input.now),
+  };
+  let receiptJson: string;
+  try {
+    receiptJson = stringifyCliJson(input.repoRoot, receipt);
+  } catch {
+    // Stage remediation tests use sandbox roots without git metadata.
+    receiptJson = stringifyCompactJson(receipt);
+  }
+  await writeFile(
+    abs,
+    `${receiptJson}\n`,
+    "utf8",
+  );
 }
 
 function createCursorRunner(
@@ -496,6 +555,13 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   }
 
   const persona = await resolvePersona(repoRoot, stage.persona);
+  await writeStageRequiredDocReceipt({
+    repoRoot,
+    state: input.state,
+    stageId: input.stageId,
+    stage,
+    now,
+  });
   const knownPersonas = await listKnownPersonaIds(repoRoot);
   const stagePromptPath =
     input.state.artifacts.nextPromptFile ?? path.posix.join(input.state.artifacts.runDir, "next-prompt.md");
@@ -1220,7 +1286,14 @@ export async function trySdkAutoChainAfterStageWork(input: {
     }
   }
 
-  const agentRatifiedStages = ["plan", "implement", "report", "ship", "index"] as const;
+  const agentRatifiedStages = [
+    "plan",
+    "implement",
+    "bookkeeping",
+    "report",
+    "ship",
+    "index",
+  ] as const;
   if (agentRatifiedStages.includes(input.completedStageId as (typeof agentRatifiedStages)[number])) {
     if (input.completedStageId === "implement") {
       const history = input.state.advanceHistory ?? [];

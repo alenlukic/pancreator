@@ -34,7 +34,7 @@ related:
 
 ## Default retrieval discipline
 
-Agents and operators SHOULD load the smallest surface that resolves the task:
+Agents and operators MUST load the smallest surface that resolves the task:
 
 1. Read the **agent operating card** first: `AGENTS.md` (self-host) or
    `.pancreator/AGENTS.md` (embedded).

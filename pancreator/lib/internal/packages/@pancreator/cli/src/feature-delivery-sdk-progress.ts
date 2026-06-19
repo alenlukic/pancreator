@@ -2,7 +2,7 @@ import { stringifyCompactJson } from "@pancreator/core";
 import { rfc3339UtcMs } from "@pancreator/run-logger";
 
 /** Interval between heartbeat progress events during an SDK stage invocation. */
-export const FEATURE_DELIVERY_SDK_HEARTBEAT_MS = 180_000;
+export const FEATURE_DELIVERY_SDK_HEARTBEAT_MS = 150_000;
 
 export type FeatureDeliverySdkProgressKind =
   | "stage_transition"

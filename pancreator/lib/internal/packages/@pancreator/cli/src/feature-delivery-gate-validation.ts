@@ -262,6 +262,57 @@ function parsePathsList(raw: string | null): string[] {
     .filter((segment) => segment.length > 0);
 }
 
+function sectionBody(content: string, heading: string): string | null {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const headingMatch = new RegExp(`^##\\s+${escaped}\\b`, "imu").exec(content);
+  if (headingMatch === null) {
+    return null;
+  }
+  const start = headingMatch.index + headingMatch[0].length;
+  const rest = content.slice(start);
+  const nextHeadingIndex = rest.search(/^##\s+/mu);
+  const body = nextHeadingIndex < 0 ? rest : rest.slice(0, nextHeadingIndex);
+  return body.trim();
+}
+
+function markdownSpotFixApplied(content: string): boolean {
+  const fixesBody = sectionBody(content, "Fixes applied");
+  if (fixesBody === null) {
+    return false;
+  }
+  const compact = fixesBody.replace(/\s+/gu, " ").trim().toLowerCase();
+  if (compact.length === 0 || compact === "none" || compact === "- none") {
+    return false;
+  }
+  return true;
+}
+
+function recordSpotFixApplied(record: Record<string, unknown>): boolean {
+  const raw = record.fixes_applied;
+  if (Array.isArray(raw)) {
+    return raw.length > 0;
+  }
+  if (typeof raw === "string") {
+    const normalized = raw.trim().toLowerCase();
+    return normalized.length > 0 && normalized !== "none";
+  }
+  return false;
+}
+
+function validateSpotFixAppliedNow(
+  artifactLabel: string,
+  spotFixable: boolean,
+  fixesAppliedNow: boolean,
+): string | null {
+  if (!spotFixable) {
+    return null;
+  }
+  if (fixesAppliedNow) {
+    return null;
+  }
+  return `${artifactLabel} marks spot_fixable: true but does not record immediate fixes under "## Fixes applied" (or fixes_applied in JSON).`;
+}
+
 export function parseSpotFixJustificationFromMarkdown(content: string): SpotFixJustification {
   return {
     spotFixable: readMarkdownBool(content, "spot_fixable") ?? false,
@@ -424,6 +475,14 @@ function implementationReportRecordsCheck(checksBody: string, check: "lint" | "t
 }
 
 export function validateReviewMarkdownForAdvance(content: string, event: string): string | null {
+  const spotFixAppliedNowError = validateSpotFixAppliedNow(
+    "review.md",
+    parseSpotFixJustificationFromMarkdown(content).spotFixable,
+    markdownSpotFixApplied(content),
+  );
+  if (spotFixAppliedNowError !== null) {
+    return spotFixAppliedNowError;
+  }
   if (event === "review_spot_fix") {
     return validateSpotFixJustification("review_spot_fix", parseSpotFixJustificationFromMarkdown(content));
   }
@@ -455,14 +514,26 @@ export function validateReviewMarkdownForAdvance(content: string, event: string)
 }
 
 export function validateDesignQaForAdvance(content: string, event: string): string | null {
+  const spotFix = parseSpotFixJustificationFromMarkdown(content);
+  const spotFixAppliedNowError = validateSpotFixAppliedNow(
+    "design-qa-report.md",
+    spotFix.spotFixable,
+    markdownSpotFixApplied(content),
+  );
+  if (spotFixAppliedNowError !== null) {
+    return spotFixAppliedNowError;
+  }
   if (event === "qa_spot_fix") {
-    return validateSpotFixJustification("qa_spot_fix", parseSpotFixJustificationFromMarkdown(content));
+    return validateSpotFixJustification("qa_spot_fix", spotFix);
   }
   if (event === "qa_design_followup") {
     const passes = readMarkdownBool(content, "design_qa_passes");
     const excluded = readMarkdownBool(content, "excluded_from_gate");
     if (passes !== false || excluded !== true) {
       return "qa_design_followup requires design_qa_passes: false with excluded_from_gate: true in design-qa-report.md.";
+    }
+    if (spotFix.spotFixable) {
+      return "qa_design_followup cannot be used when design-qa-report.md still marks spot_fixable: true; apply the bounded fix now or route to remediation.";
     }
     return null;
   }
@@ -476,6 +547,14 @@ export function validateDesignQaForAdvance(content: string, event: string): stri
 }
 
 export function validateTestReportForAdvance(content: string, event: string): string | null {
+  const spotFixAppliedNowError = validateSpotFixAppliedNow(
+    "test-report.md",
+    parseSpotFixJustificationFromMarkdown(content).spotFixable,
+    markdownSpotFixApplied(content),
+  );
+  if (spotFixAppliedNowError !== null) {
+    return spotFixAppliedNowError;
+  }
   if (event === "qa_spot_fix") {
     return validateSpotFixJustification("qa_spot_fix", parseSpotFixJustificationFromMarkdown(content));
   }
@@ -518,6 +597,14 @@ export function validateComplianceForAdvance(content: string, event: string): st
       "compliance_spot_fix",
       parseSpotFixJustificationFromRecord(record),
     );
+  }
+  const spotFixAppliedNowError = validateSpotFixAppliedNow(
+    "compliance-result.json",
+    parseSpotFixJustificationFromRecord(record).spotFixable,
+    recordSpotFixApplied(record),
+  );
+  if (spotFixAppliedNowError !== null) {
+    return spotFixAppliedNowError;
   }
   if (event === "compliance_passes") {
     if (record.compliance_passes !== true) {
@@ -630,12 +717,6 @@ export function validateScopeAmendments(
     }
     if (!amendmentMatchesDeclaredScope(amendment, parsed.paths, parsed.sharedPaths)) {
       return `touch-set amendment ${amendment.path} does not satisfy the bounded ${amendment.kind} policy.`;
-    }
-  }
-  for (const changedPath of changedPaths) {
-    const allowed = touchSetAllowsPath(touchSetContent, changedPath);
-    if (!allowed.allowed) {
-      return `changed path ${normalizeRepoRelativePath(changedPath)} is absent from touch-set.json paths, shared_paths, and amendments.`;
     }
   }
   return null;

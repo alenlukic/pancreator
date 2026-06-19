@@ -190,7 +190,7 @@ describe("feature-delivery-gate-validation", () => {
     ).toBeNull();
   });
 
-  it("rejects undeclared changed paths and malformed amendment classes", () => {
+  it("keeps undeclared changed paths advisory while rejecting malformed amendment classes", () => {
     const amendedTouchSet = stringifyCompactJson({
       paths: [{ path: "client/foo.ts", status: "existing" }],
       symbols: [],
@@ -213,7 +213,7 @@ describe("feature-delivery-gate-validation", () => {
     ).toContain("bounded declared-dir-sibling policy");
     expect(
       validateScopeAmendments(validTouchSet, ["client/foo.ts", "client/secret.ts"]),
-    ).toContain("absent from touch-set.json");
+    ).toBeNull();
   });
 
   it("validateTestReportForAdvance accepts qa_design_followup with qa_passes true", () => {

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -35,7 +35,6 @@ import {
   VALID_IMPLEMENTATION_REPORT_MARKDOWN,
   VALID_REVIEW_FAIL_MARKDOWN,
   VALID_REVIEW_MARKDOWN,
-  validComplianceResultJson,
 } from "./feature-delivery-gate-fixtures.js";
 import { deliveryReportRel, durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 import { COMPLIANCE_AUDIT_HISTORY_REL } from "./compliance-audit-history.js";
@@ -143,30 +142,11 @@ async function seedFeatureDeliveryRepo(root: string): Promise<void> {
       path.join(formatToolsDir, toolFile),
     );
   }
-  await writeFile(
+  await copyFile(
+    path.join(CANONICAL_REPO_ROOT, "lib", "pipelines", "feature-delivery.yaml"),
     path.join(root, "lib", "pipelines", "feature-delivery.yaml"),
-    `id: feature-delivery
-version: "1"
-stages:
-  - id: plan
-    persona: tech-lead
-  - id: implement
-    persona: coder
-  - id: review
-    persona: reviewer
-  - id: test
-    persona: qa-tester
-  - id: report
-    persona: tech-writer
-  - id: compliance
-    persona: compliance-auditor
-  - id: ship
-    persona: supervisor
-  - id: index
-    persona: librarian
-`,
-    "utf8",
   );
+  await writeRunnerInvocationConfig(root, "manual");
 }
 
 function gitInTestRepo(root: string, args: string[]): void {
@@ -224,27 +204,6 @@ async function completeFeatureDeliveryRunForClose(
   const report = path.join(root, ...deliveryReportPathRel.split("/"));
   await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
   await runCli(["advance", taskId, "--artifact", deliveryReportPathRel], {
-    repoRoot: root,
-    writeOut: () => undefined,
-  });
-  await writeFile(
-    path.join(activeRunDir, "compliance-result.json"),
-    validComplianceResultJson(root),
-    "utf8",
-  );
-  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
-    repoRoot: root,
-    writeOut: () => undefined,
-  });
-    await writeFile(
-      path.join(activeRunDir, "ship-ratification.json"),
-      stringifyCliJson(root, {
-        task_id: taskId,
-        human_ratified_diff: true,
-      }),
-      "utf8",
-    );
-  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -1219,42 +1178,15 @@ describe("parseAndRun", () => {
 
     const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     const deliveryReportPathRel = deliveryReportRel(runDirRel);
-
-    const report = path.join(root, ...deliveryReportPathRel.split("/"));
-    await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
-    await runCli(["advance", start.taskId, "--artifact", deliveryReportPathRel], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-    await writeFile(
-      path.join(runDir, "compliance-result.json"),
-      validComplianceResultJson(root),
-      "utf8",
-    );
-    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/compliance-result.json`], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-
-    await writeFile(
-      path.join(runDir, "ship-ratification.json"),
-      stringifyCliJson(root, {
-        task_id: start.taskId,
-        human_ratified_diff: true,
-      }),
-      "utf8",
-    );
-    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/ship-ratification.json`], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-
     const indexRel = durableFeatureIndexRel("demo-feature");
     const index = path.join(root, ...indexRel.split("/"));
     await mkdir(path.dirname(index), { recursive: true });
     await writeFile(index, "{}\n", "utf8");
+
+    const report = path.join(root, ...deliveryReportPathRel.split("/"));
+    await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
     const completeOut: string[] = [];
-    const completeCode = await runCli(["advance", start.taskId, "--artifact", indexRel], {
+    const completeCode = await runCli(["advance", start.taskId, "--artifact", deliveryReportPathRel], {
       repoRoot: root,
       writeOut: (c) => completeOut.push(c),
     });
@@ -1311,27 +1243,6 @@ describe("parseAndRun", () => {
     const report = path.join(root, ...deliveryReportPathRel.split("/"));
     await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
     await runCli(["advance", start.taskId, "--artifact", deliveryReportPathRel], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-    await writeFile(
-      path.join(activeRunDir, "compliance-result.json"),
-      validComplianceResultJson(root),
-      "utf8",
-    );
-    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-    await writeFile(
-      path.join(activeRunDir, "ship-ratification.json"),
-      stringifyCliJson(root, {
-        task_id: start.taskId,
-        human_ratified_diff: true,
-      }),
-      "utf8",
-    );
-    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1496,8 +1407,16 @@ describe("parseAndRun", () => {
     });
     const start = JSON.parse(out.join("")) as { taskId: string };
     await completeFeatureDeliveryRunForClose(root, start.taskId, "demo-feature", "172996_05-10-26");
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      "# Current focus\n\n## Active Feature\n\n- `(none)`\n\n## Most recent shipped Features\n\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n\n## Operator notes\n\n- `(none)`\n",
+      "utf8",
+    );
     const activeRunDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
-    await (await import("node:fs/promises")).unlink(path.join(root, activeRunDirRel, "operator-verification.md"));
+    try {
+      await unlink(path.join(root, activeRunDirRel, "operator-verification.md"));
+    } catch {}
 
     const closeOut: string[] = [];
     const code = await runCli(["close-artifacts", start.taskId], {
@@ -1603,7 +1522,7 @@ describe("parseAndRun", () => {
     expect(payload.message).toContain("js-literal-citation");
   });
 
-  it("routes report to compliance and blocks malformed ship policy artifact", async () => {
+  it("routes test output to bookkeeping and rejects non-bookkeeping artifacts", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-report-to-compliance-"));
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
@@ -1637,36 +1556,6 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
-    const deliveryReportPathRel = deliveryReportRel(runDirRel);
-    const report = path.join(root, ...deliveryReportPathRel.split("/"));
-    await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
-    const reportAdvanceOut: string[] = [];
-    const reportCode = await runCli(
-      ["advance", start.taskId, "--artifact", deliveryReportPathRel],
-      { repoRoot: root, writeOut: (c) => reportAdvanceOut.push(c) },
-    );
-    expect(reportCode).toBe(0);
-    const reportAdvance = JSON.parse(reportAdvanceOut.join("")) as {
-      currentStage: string;
-      nextPersona: string | null;
-    };
-    expect(reportAdvance.currentStage).toBe("compliance");
-    expect(reportAdvance.nextPersona).toBe("compliance-auditor");
-
-    await writeFile(
-      path.join(runDir, "compliance-result.json"),
-      validComplianceResultJson(root),
-      "utf8",
-    );
-    const complianceAdvanceOut: string[] = [];
-    const complianceCode = await runCli(
-      ["advance", start.taskId, "--artifact", `${runDirRel}/compliance-result.json`],
-      { repoRoot: root, writeOut: (c) => complianceAdvanceOut.push(c) },
-    );
-    expect(complianceCode).toBe(0);
-    const complianceAdvance = JSON.parse(complianceAdvanceOut.join("")) as { currentStage: string };
-    expect(complianceAdvance.currentStage).toBe("ship");
-
     await writeFile(path.join(runDir, "ship-ratification.json"), "{}\n", "utf8");
     const shipAdvanceOut: string[] = [];
     const shipCode = await runCli(
@@ -1675,8 +1564,8 @@ describe("parseAndRun", () => {
     );
     expect(shipCode).toBe(1);
     const shipFailure = JSON.parse(shipAdvanceOut.join("")) as { message: string };
-    expect(shipFailure.message).toContain("Cannot advance ship");
-    expect(shipFailure.message).toMatch(/ship-ratification|human_ratified_diff|task_id/u);
+    expect(shipFailure.message).toContain("not valid for bookkeeping");
+    expect(shipFailure.message).toContain("delivery-report.md");
   });
 
   it("close-artifacts finalizes a prematurely archived run idempotently", async () => {
@@ -2000,7 +1889,7 @@ describe("parseAndRun", () => {
     expect(implementationReport).toContain("client/foo.test.ts(paired-test:");
   });
 
-  it("blocks review advance when undeclared repo-wide changes remain in the local diff", async () => {
+  it("keeps review scope expansion advisory when undeclared repo-wide changes remain", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-scope-"));
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
@@ -2043,8 +1932,8 @@ describe("parseAndRun", () => {
       writeOut: (c) => reviewOut.push(c),
       writeErr: (c) => reviewErr.push(c),
     });
-    expect(code).toBe(1);
-    expect(`${reviewOut.join("")}\n${reviewErr.join("")}`).toContain("absent from touch-set.json");
+    expect(code).toBe(0);
+    expect(`${reviewOut.join("")}\n${reviewErr.join("")}`).not.toContain("absent from touch-set.json");
   });
 });
 
@@ -2633,13 +2522,7 @@ describe("operator tooling batch cli wiring", () => {
             return `${runDir}/review.md`;
           case "test":
             return `${runDir}/test-report.md`;
-          case "report":
-            return deliveryReportRel(runDir);
-          case "compliance":
-            return `${runDir}/compliance-result.json`;
-          case "ship":
-            return `${runDir}/ship-ratification.json`;
-          case "index":
+          case "bookkeeping":
             return durableFeatureIndexRel(featureId);
           default:
             throw new Error(`No artifact mapping for stage ${stage}`);
@@ -2647,13 +2530,35 @@ describe("operator tooling batch cli wiring", () => {
       };
 
       let currentStage: string = start.currentStage;
-      const stopStages = new Set(["compliance", "ship", "index", "complete", "aborted", "paused"]);
+      const stopStages = new Set(["complete", "aborted", "paused"]);
       for (let i = 0; i < 9; i += 1) {
         if (stopStages.has(currentStage)) {
           break;
         }
         if (currentStage === "test") {
           await seedTestStageAdvanceArtifacts(root, runDir);
+        }
+        if (currentStage === "bookkeeping") {
+          await writeFile(
+            path.join(root, ...deliveryReportRel(runDir).split("/")),
+            VALID_DELIVERY_REPORT_MARKDOWN,
+            "utf8",
+          );
+          const indexAbs = path.join(root, ...durableFeatureIndexRel(featureId).split("/"));
+          await mkdir(path.dirname(indexAbs), { recursive: true });
+          await writeFile(
+            indexAbs,
+            stringifyCliJson(root, {
+              feature_id: featureId,
+              task_id: taskId,
+              status: "indexed",
+              indexed_at: "2026-05-10T13:30:00.000Z",
+              source_inbox_item: { path: "lib/inbox/in/demo-feature.md" },
+              delivery_report: { path: deliveryReportRel(runDir) },
+              implementation_surfaces: [],
+            }),
+            "utf8",
+          );
         }
         const next = await advanceFeatureDelivery({
           repoRoot: root,
@@ -2672,7 +2577,7 @@ describe("operator tooling batch cli wiring", () => {
         }
       }
 
-      for (const stage of ["implement", "review", "test", "compliance"]) {
+      for (const stage of ["implement", "review", "test", "bookkeeping"]) {
         expect(stageParams.has(stage)).toBe(true);
       }
 
@@ -2686,14 +2591,14 @@ describe("operator tooling batch cli wiring", () => {
       expect(prompts.get("implement")).toContain("Persona: coder");
       expect(prompts.get("review")).toContain("Persona: reviewer");
       expect(prompts.get("test")).toContain("Persona: qa-tester");
-      expect(prompts.get("compliance")).toContain("Persona: compliance-auditor");
+      expect(prompts.get("bookkeeping")).toContain("Persona: librarian");
       expect(prompts.get("implement")).toContain("Use subagent/persona: coder");
       expect(prompts.get("review")).toContain("Use subagent/persona: reviewer");
       expect(prompts.get("test")).toContain("Use subagent/persona: qa-tester");
-      expect(prompts.get("compliance")).toContain("Use subagent/persona: compliance-auditor");
-      expect(prompts.get("compliance")).toContain("Compliance exit bundle (all MUST pass)");
-      expect(prompts.get("compliance")).toContain("pnpm lint");
-      expect(promptTokens.get("compliance")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
+      expect(prompts.get("bookkeeping")).toContain("Use subagent/persona: librarian");
+      expect(prompts.get("bookkeeping")).toContain("delivery-report.md");
+      expect(prompts.get("bookkeeping")).toContain("feature index MUST be refreshed");
+      expect(promptTokens.get("bookkeeping")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
       expect(promptTokens.get("review")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
     });
 
@@ -2859,11 +2764,11 @@ stages:
       );
       expect(advanceCode).toBe(0);
       const result = JSON.parse(advanceOut.join("")) as { currentStage: string };
-      expect(["report", "compliance", "ship", "index", "complete"]).toContain(result.currentStage);
+      expect(["bookkeeping", "complete"]).toContain(result.currentStage);
       const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
         currentStage: string;
       };
-      expect(["report", "compliance", "ship", "index", "complete"]).toContain(state.currentStage);
+      expect(["bookkeeping", "complete"]).toContain(state.currentStage);
     });
 
     it("sdk auto-chains review must_fix back to implement", async () => {

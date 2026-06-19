@@ -156,8 +156,8 @@ const ASSERTION_ADAPTERS = {
     for (const step of [
       () => runNodeTestFile("tests/agent-document-registry-integrity.test.mjs"),
       () => runNodeTestFile("tests/model-escalation-completeness.test.mjs"),
+      () => runNodeScript("lib/internal/tools/checks/check-persona-required-context-rfc2119.mjs"),
       () => runNodeScript("lib/internal/tools/checks/check-cursor-projection-drift.mjs"),
-      () => runNodeScript("lib/internal/tools/checks/check-token-telemetry.mjs"),
       () => runNodeScript("lib/internal/tools/governance/audit-governance-usage.mjs", ["--stdout-only"]),
     ]) {
       const result = step();

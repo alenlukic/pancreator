@@ -1,0 +1,19 @@
+{
+  "kind": "persona",
+  "persona_id": "sme-design",
+  "source": "lib/personas/sme-design.md",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.DESIGN_CRAFT",
+    "DOC.OPERATOR_OUTPUT",
+    "DOC.GLOSSARY",
+    "DOC.CONTRACT_STYLE",
+    "DOC.DESIGN_SYSTEM",
+    "DOC.COMPONENT_STANDARD",
+    "DOC.CONTROL_SURFACE_UX"
+  ],
+  "generated_at": "2026-06-19T19:59:36.244Z"
+}

@@ -107,7 +107,11 @@ import {
   validateStageCompletionArtifacts,
   type ArtifactContentWarning,
 } from "./feature-delivery-stage-artifacts.js";
-import { writeWorkflowHealthArtifact } from "./workflow-health.js";
+import {
+  readWorkflowHealthSummary,
+  workflowHealthRel,
+  writeWorkflowHealthArtifact,
+} from "./workflow-health.js";
 import {
   decodeCountdownTimestamp,
   parseRunDirParts,
@@ -139,6 +143,8 @@ const FEATURE_DELIVERY_STAGES = [
   "implement",
   "review",
   "test",
+  "bookkeeping",
+  // Legacy post-test stages retained for backward-compatible state repair flows.
   "report",
   "compliance",
   "ship",
@@ -372,6 +378,36 @@ function featureDiffPathsWithinTouchSet(
   return { touchSetContent, changedPaths };
 }
 
+function classifyCurrentDiffPaths(
+  repoRoot: string,
+  runDir: string,
+): { pipelineOwnedDiffPaths: string[]; adjacentDiffPaths: string[] } {
+  const touchSetRel = path.posix.join(runDir, "touch-set.json");
+  const touchSetAbs = resolveRepoPath(repoRoot, touchSetRel);
+  const touchSetContent = existsSync(touchSetAbs)
+    ? readFileSync(touchSetAbs, "utf8")
+    : null;
+  const pipelineOwnedDiffPaths: string[] = [];
+  const adjacentDiffPaths: string[] = [];
+  for (const rel of currentLocalDiffPaths(repoRoot)) {
+    if (rel.startsWith(`${runDir}/`)) {
+      pipelineOwnedDiffPaths.push(rel);
+      continue;
+    }
+    if (touchSetContent === null) {
+      adjacentDiffPaths.push(rel);
+      continue;
+    }
+    const allowed = touchSetAllowsPath(touchSetContent, rel);
+    if (allowed.allowed) {
+      pipelineOwnedDiffPaths.push(rel);
+      continue;
+    }
+    adjacentDiffPaths.push(rel);
+  }
+  return { pipelineOwnedDiffPaths, adjacentDiffPaths };
+}
+
 function assertReviewStageTouchSetScope(
   repoRoot: string,
   state: FeatureDeliveryState,
@@ -590,6 +626,8 @@ export interface FeatureDeliveryStatusResult {
   artifact?: string | null;
   decodedTimestamp?: string;
   decodedTimestampDiagnostic?: string;
+  pipelineOwnedDiffPaths?: string[];
+  adjacentDiffPaths?: string[];
 }
 
 export interface AdvanceFeatureDeliveryInput {
@@ -621,6 +659,8 @@ export interface AdvanceFeatureDeliveryResult {
   nextCommand?: string | null;
   contentWarnings?: ArtifactContentWarning[];
   warningCount?: number;
+  pipelineOwnedDiffPaths?: string[];
+  adjacentDiffPaths?: string[];
 }
 
 export interface RepairFeatureDeliveryStateInput {
@@ -943,6 +983,7 @@ export async function readFeatureDeliveryStatusWithInterventions(
     stateFile: stateFile.rel,
     nextPromptFile: parsed.artifacts.nextPromptFile ?? null,
     nextHumanAction: parsed.nextHumanAction,
+    ...classifyCurrentDiffPaths(repoRoot, parsed.artifacts.runDir),
     ...decodedTimestampFields(parsed.artifacts.runDir, taskId),
   };
   return enrichFeatureDeliveryEnvelope(repoRoot, parsed, statusBase);
@@ -1045,7 +1086,11 @@ export async function advanceFeatureDelivery(
   if (transition === undefined) {
     throw new Error(`No transition from ${state.currentStage} on ${event}.`);
   }
-  if (state.currentStage === "report" && event === "report_ready") {
+  if (
+    ((state.currentStage === "report" && event === "report_ready") ||
+      (state.currentStage === "bookkeeping" && event === "bookkeeping_complete")) &&
+    artifact.rel === deliveryReportRel(state.artifacts.runDir)
+  ) {
     await assertDeliveryReportCitationFormat(repoRoot, artifact.rel);
   }
   assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
@@ -1055,7 +1100,10 @@ export async function advanceFeatureDelivery(
   if (state.currentStage === "review" && event === "review_passes") {
     assertReviewStageTouchSetScope(repoRoot, state);
   }
-  if (state.currentStage === "index" && event === "artifacts_indexed") {
+  if (
+    (state.currentStage === "index" && event === "artifacts_indexed") ||
+    (state.currentStage === "bookkeeping" && event === "bookkeeping_complete")
+  ) {
     assertIndexImplementationSurfaces(repoRoot, state);
   }
 
@@ -1077,7 +1125,9 @@ export async function advanceFeatureDelivery(
     state.currentStage,
   );
   if (
-    (state.currentStage === "ship" || state.currentStage === "compliance") &&
+    (state.currentStage === "ship" ||
+      state.currentStage === "compliance" ||
+      state.currentStage === "bookkeeping") &&
     contentWarnings.length > 0
   ) {
     const details = contentWarnings
@@ -1220,6 +1270,25 @@ export async function advanceFeatureDelivery(
     gateBlockReasons: contentWarnings.map((warning) => warning.message),
     now,
   });
+  const workflowHealth = readWorkflowHealthSummary(
+    repoRoot,
+    state.artifacts.runDir,
+  );
+  if (
+    applied.toStage === TERMINAL_STAGE &&
+    workflowHealth !== null &&
+    workflowHealth.status !== "healthy" &&
+    !state.nextHumanAction.includes("complete with attention")
+  ) {
+    state.nextHumanAction = `Run is complete with attention (${workflowHealth.status}); inspect ${workflowHealthRel(state.artifacts.runDir)} before artifact closure.`;
+  }
+  appendTransitionSummary({
+    repoRoot,
+    state,
+    applied,
+    now,
+    contentWarnings,
+  });
 
   return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command: "advance",
@@ -1235,6 +1304,7 @@ export async function advanceFeatureDelivery(
     nextPromptFile: requireNextPromptFile(state),
     nextPersona: personaForStage(pipeline, state.currentStage),
     nextHumanAction: state.nextHumanAction,
+    ...classifyCurrentDiffPaths(repoRoot, state.artifacts.runDir),
     contentWarnings,
     warningCount: contentWarnings.length,
   }) as AdvanceFeatureDeliveryResult;
@@ -1410,14 +1480,6 @@ export async function closeFeatureDeliveryArtifacts(
   const inboxSourceAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
   let inboxArchiveRel = closure.inboxArchiveRel;
   let inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
-  const shipRatificationRelActive = path.posix.join(
-    closure.runDirRel,
-    "ship-ratification.json",
-  );
-  const shipRatificationRelArchive = path.posix.join(
-    closure.workArchiveRel,
-    "ship-ratification.json",
-  );
   const indexRel = durableFeatureIndexRel(state.featureId);
   const activeMemoryRel = path.posix.join(
     "lib",
@@ -1454,10 +1516,6 @@ export async function closeFeatureDeliveryArtifacts(
   const runDirRel = alreadyArchived
     ? closure.workArchiveRel
     : closure.runDirRel;
-  const shipRatificationRel = alreadyArchived
-    ? shipRatificationRelArchive
-    : shipRatificationRelActive;
-
   if (!alreadyArchived) {
     await assertExistingDirectory(activeRunDirAbs, closure.runDirRel);
     await assertPathMissing(archiveRunDirAbs, closure.workArchiveRel);
@@ -1465,10 +1523,6 @@ export async function closeFeatureDeliveryArtifacts(
     await assertExistingDirectory(archiveRunDirAbs, closure.workArchiveRel);
   }
 
-  await assertExistingFile(
-    resolveRepoPath(repoRoot, shipRatificationRel),
-    shipRatificationRel,
-  );
   await assertExistingFile(resolveRepoPath(repoRoot, indexRel), indexRel);
   await assertExistingFile(
     resolveRepoPath(
@@ -2320,6 +2374,7 @@ function stageGate(
   if (invocation === "sdk") {
     switch (stage.id) {
       case "plan":
+      case "bookkeeping":
       case "report":
       case "ship":
       case "index":
@@ -2381,6 +2436,12 @@ function stageGate(
         humanAttention:
           "Inspect test-report.md; only qualifying bounded issues may stay in test via spot-fix, otherwise send the run back to implement or plan.",
       };
+    case "bookkeeping":
+      return {
+        humanGate: "bookkeeping_complete",
+        humanAttention:
+          "Inspect closeout artifacts; when delivery report and feature index are ready, advance to complete.",
+      };
     case "compliance":
       return {
         humanGate: "compliance_passes_or_reenter_implement",
@@ -2407,6 +2468,146 @@ function stageGate(
 function featureDeliveryTransitions(
   pipeline?: PipelineDefinition,
 ): FeatureDeliveryTransition[] {
+  const includeBookkeeping = pipelineIncludesStage(pipeline, "bookkeeping");
+  if (includeBookkeeping) {
+    return [
+      {
+        from: "created",
+        on: "invoke",
+        to: "plan",
+        humanAttention:
+          "Operator delegates product, design, and technical planning prompts.",
+      },
+      {
+        from: "plan",
+        on: "sdk_artifact_validation",
+        to: "implement",
+        humanAttention: "Plan and touch-set are validated before coder starts.",
+      },
+      {
+        from: "plan",
+        on: "human_approval",
+        to: "implement",
+        humanAttention: "Plan and touch-set are ratified before coder starts.",
+      },
+      {
+        from: "implement",
+        on: "pause",
+        to: "paused",
+        humanAttention:
+          "Use pan pause <task-id> to stop at the next safe boundary.",
+      },
+      {
+        from: "paused",
+        on: "resume",
+        to: "implement",
+        humanAttention: "Use pan resume <task-id> after resolving the blocker.",
+      },
+      {
+        from: "implement",
+        on: "abort",
+        to: "aborted",
+        humanAttention:
+          "Use pan abort <task-id> --reason <text> for failed or superseded runs.",
+      },
+      {
+        from: "implement",
+        on: "implementation_complete",
+        to: "review",
+        humanAttention:
+          "Reviewer receives only the handoff, touch-set, diff, and validation output.",
+      },
+      {
+        from: "review",
+        on: "must_fix",
+        to: "implement",
+        humanAttention: "Bounded re-entry; high findings block shipping.",
+      },
+      {
+        from: "review",
+        on: "review_core_reentry",
+        to: "plan",
+        humanAttention:
+          "Touch-set or plan invalidation routes back to tech-lead before implementation continues.",
+      },
+      {
+        from: "review",
+        on: "review_spot_fix",
+        to: "review",
+        humanAttention:
+          "Only issues that satisfy the spot-fix complexity bar may stay in review; rerun review after the bounded remediation.",
+      },
+      {
+        from: "review",
+        on: "review_passes",
+        to: "test",
+        humanAttention:
+          "Human should still inspect review output before qa-tester runs.",
+      },
+      {
+        from: "review",
+        on: "repo_wide_blocker",
+        to: "review",
+        humanAttention:
+          "Repo-wide blocker outside touch-set recorded for visibility; stage remains active.",
+      },
+      {
+        from: "test",
+        on: "qa_passes",
+        to: "bookkeeping",
+        humanAttention:
+          "Human should inspect test-report.md before bookkeeping.",
+      },
+      {
+        from: "test",
+        on: "qa_design_followup",
+        to: "bookkeeping",
+        humanAttention:
+          "Design follow-up recorded without implement re-entry; continue to bookkeeping.",
+      },
+      {
+        from: "test",
+        on: "repo_wide_blocker",
+        to: "test",
+        humanAttention:
+          "Repo-wide blocker outside touch-set recorded for visibility; stage remains active.",
+      },
+      {
+        from: "test",
+        on: "qa_fails",
+        to: "implement",
+        humanAttention: "Bounded re-entry; qa failures block shipping.",
+      },
+      {
+        from: "test",
+        on: "qa_spot_fix",
+        to: "test",
+        humanAttention:
+          "Only issues that satisfy the spot-fix complexity bar may stay in test; rerun QA after the bounded remediation.",
+      },
+      {
+        from: "test",
+        on: "qa_fails_plan_invalidating",
+        to: "plan",
+        humanAttention:
+          "Plan-invalidating QA failure; re-plan before re-implementing.",
+      },
+      {
+        from: "bookkeeping",
+        on: "repo_wide_blocker",
+        to: "bookkeeping",
+        humanAttention:
+          "Repo-wide blocker outside active delta recorded for visibility; stage remains active.",
+      },
+      {
+        from: "bookkeeping",
+        on: "bookkeeping_complete",
+        to: "complete",
+        humanAttention: "Confirm closeout artifacts and final operator steps.",
+      },
+    ];
+  }
+
   const includeCompliance = pipelineIncludesStage(pipeline, "compliance");
   const transitions: FeatureDeliveryTransition[] = [
     {
@@ -2421,6 +2622,12 @@ function featureDeliveryTransitions(
       on: "human_approval",
       to: "implement",
       humanAttention: "Plan and touch-set are ratified before coder starts.",
+    },
+    {
+      from: "plan",
+      on: "sdk_artifact_validation",
+      to: "implement",
+      humanAttention: "Plan and touch-set are validated before coder starts.",
     },
     {
       from: "implement",
@@ -2934,6 +3141,8 @@ Advance after ${
       return designStepsEnabled(state.options)
         ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
         : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
+    case "bookkeeping":
+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, current local diff\nOutputs: ${deliveryReportRel(state.artifacts.runDir)}, ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nCloseout rule: delivery-report.md MUST stay citation-backed and machine-readable; feature index MUST be refreshed before completion.\nRepo-wide blocker outside active delta (visibility-only hold): pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${deliveryReportRel(state.artifacts.runDir)}\nAdvance after closeout artifacts are ready: ${advanceLine("bookkeeping", "bookkeeping_complete")}`;
     case "report":
       return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: ${deliveryReportRel(state.artifacts.runDir)}\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
@@ -3027,6 +3236,9 @@ function staticAdvanceLineForStage(
       resolvedEvent === "compliance_fails_plan_invalidating" ||
       resolvedEvent === "compliance_spot_fix")
   ) {
+    return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
+  }
+  if (stage === "bookkeeping" && resolvedEvent === "repo_wide_blocker") {
     return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
   }
   return cmd;
@@ -3137,6 +3349,9 @@ function buildAdvanceCommand(
       event === "compliance_fails_plan_invalidating" ||
       event === "compliance_spot_fix")
   ) {
+    return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
+  }
+  if (stage === "bookkeeping" && event === "repo_wide_blocker") {
     return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
   }
   return `pnpm -w exec pan advance ${taskId} --artifact ${artifact}`;
@@ -3883,6 +4098,61 @@ interface AppliedFeatureDeliveryTransition {
   artifact: string;
 }
 
+function transitionSummariesRel(runDir: string): string {
+  return path.posix.join(runDir, "transition-summaries.jsonl");
+}
+
+function appendTransitionSummary(input: {
+  repoRoot: string;
+  state: FeatureDeliveryState;
+  applied: AppliedFeatureDeliveryTransition;
+  now: Date;
+  contentWarnings: readonly ArtifactContentWarning[];
+}): void {
+  const nextStep = resolveNextStep(input.state, { repoRoot: input.repoRoot });
+  const summary = {
+    at_iso: rfc3339UtcMs(input.now),
+    task_id: input.state.taskId,
+    feature_id: input.state.featureId,
+    from_stage: input.applied.fromStage,
+    to_stage: input.applied.toStage,
+    transition_event: input.applied.event,
+    stage_decision:
+      input.applied.fromStage === input.applied.toStage ? "hold" : "advance",
+    artifact: input.applied.artifact,
+    validation_artifacts: [
+      input.applied.artifact,
+      workflowHealthRel(input.state.artifacts.runDir),
+    ],
+    warning_count: input.contentWarnings.length,
+    warnings: input.contentWarnings.map((warning) => warning.message),
+    pipeline_status: input.state.status,
+    next_human_action: input.state.nextHumanAction,
+    next_command: nextStep.nextCommand,
+    next_event: nextStep.event,
+    output_manifest: {
+      persona_contract: "PERSONA.SUPERVISOR",
+      stage_contract: "PIPE.FEATURE_DELIVERY",
+      required_docs: ["DOC.PIPELINE_STATE", "DOC.OUTPUT_MANIFEST"],
+      consulted_docs: ["DOC.PIPELINE_STATE", "DOC.OUTPUT_MANIFEST"],
+      produced_artifacts: [transitionSummariesRel(input.state.artifacts.runDir)],
+      scope_amendments: [],
+      validation: [{ name: "transition-summary", result: "pass" }],
+      definition_of_done: "pass",
+      gate_decision: "not_applicable",
+      remediation_route: "none",
+    },
+  };
+  const abs = resolveRepoPath(
+    input.repoRoot,
+    transitionSummariesRel(input.state.artifacts.runDir),
+  );
+  writeFileSync(abs, `${stringifyCliJson(input.repoRoot, summary)}\n`, {
+    encoding: "utf8",
+    flag: "a",
+  });
+}
+
 interface ReviewReentryAdvancePlan {
   reviewArtifact: string;
   implementationReport: string;
@@ -4195,6 +4465,31 @@ async function finishAdvanceAfterTransition(input: {
       input.applied.artifact,
     ),
   );
+  await writeWorkflowHealthArtifact({
+    repoRoot: input.repoRoot,
+    state: input.state,
+    stageId: input.state.currentStage,
+    now: input.now,
+  });
+  const workflowHealth = readWorkflowHealthSummary(
+    input.repoRoot,
+    input.state.artifacts.runDir,
+  );
+  if (
+    input.applied.toStage === TERMINAL_STAGE &&
+    workflowHealth !== null &&
+    workflowHealth.status !== "healthy" &&
+    !input.state.nextHumanAction.includes("complete with attention")
+  ) {
+    input.state.nextHumanAction = `Run is complete with attention (${workflowHealth.status}); inspect ${workflowHealthRel(input.state.artifacts.runDir)} before artifact closure.`;
+  }
+  appendTransitionSummary({
+    repoRoot: input.repoRoot,
+    state: input.state,
+    applied: input.applied,
+    now: input.now,
+    contentWarnings: [],
+  });
   return enrichFeatureDeliveryEnvelope(input.repoRoot, input.state, {
     command: "advance",
     status: "ok",
@@ -4209,6 +4504,7 @@ async function finishAdvanceAfterTransition(input: {
     nextPromptFile: requireNextPromptFile(input.state),
     nextPersona: personaForStage(input.pipeline, input.state.currentStage),
     nextHumanAction: input.state.nextHumanAction,
+    ...classifyCurrentDiffPaths(input.repoRoot, input.state.artifacts.runDir),
   }) as AdvanceFeatureDeliveryResult;
 }
 
@@ -4338,6 +4634,29 @@ async function advanceReviewReentryFromImplement(input: {
   }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+  await writeWorkflowHealthArtifact({
+    repoRoot,
+    state,
+    stageId: state.currentStage,
+    gateBlockReasons: contentWarnings.map((warning) => warning.message),
+    now,
+  });
+  const workflowHealth = readWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
+  if (
+    second.toStage === TERMINAL_STAGE &&
+    workflowHealth !== null &&
+    workflowHealth.status !== "healthy" &&
+    !state.nextHumanAction.includes("complete with attention")
+  ) {
+    state.nextHumanAction = `Run is complete with attention (${workflowHealth.status}); inspect ${workflowHealthRel(state.artifacts.runDir)} before artifact closure.`;
+  }
+  appendTransitionSummary({
+    repoRoot,
+    state,
+    applied: second,
+    now,
+    contentWarnings,
+  });
 
   return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command: "advance",
@@ -4353,6 +4672,7 @@ async function advanceReviewReentryFromImplement(input: {
     nextPromptFile: requireNextPromptFile(state),
     nextPersona: personaForStage(pipeline, state.currentStage),
     nextHumanAction: state.nextHumanAction,
+    ...classifyCurrentDiffPaths(repoRoot, state.artifacts.runDir),
     reviewReentry: true,
     contentWarnings,
     warningCount: contentWarnings.length,
@@ -4362,13 +4682,15 @@ async function advanceReviewReentryFromImplement(input: {
 function defaultEventForStage(stage: string): string {
   switch (stage) {
     case "plan":
-      return "human_approval";
+      return "sdk_artifact_validation";
     case "implement":
       return "implementation_complete";
     case "review":
       return "review_passes";
     case "test":
       return "qa_passes";
+    case "bookkeeping":
+      return "bookkeeping_complete";
     case "report":
       return "report_ready";
     case "compliance":
@@ -4470,6 +4792,12 @@ function applyStageStatuses(
       return stage;
     });
   }
+  if (event === "repo_wide_blocker") {
+    return stages.map((stage) => {
+      if (stage.id === fromStage) return { ...stage, status: "ready" };
+      return stage;
+    });
+  }
   if (event === "compliance_fails") {
     return stages.map((stage) => {
       if (stage.id === "compliance") return { ...stage, status: "blocked" };
@@ -4529,6 +4857,7 @@ function nextHumanActionForStage(
   if (invocation === "sdk") {
     switch (stage) {
       case "plan":
+      case "bookkeeping":
       case "report":
         return `${prefix}SDK validates stage artifacts and auto-advances when validation passes.`;
       case "implement":
@@ -4558,6 +4887,8 @@ function nextHumanActionForStage(
       return `${prefix}Delegate next-prompt.md to reviewer; inspect ${state.artifacts.runDir}/review.md and choose pass, must-fix, or review-core-reentry.`;
     case "test":
       return `${prefix}Delegate next-prompt.md to qa-tester and design-qa-prompt.md to design-reviewer in parallel; inspect test-report.md plus design-qa-report.md and choose pass or qa-fail.`;
+    case "bookkeeping":
+      return `${prefix}Delegate next-prompt.md to librarian; verify delivery-report.md, feature index refresh, and closeout artifacts before complete.`;
     case "report":
       return stateIncludesStage(state, "compliance")
         ? `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before compliance.`

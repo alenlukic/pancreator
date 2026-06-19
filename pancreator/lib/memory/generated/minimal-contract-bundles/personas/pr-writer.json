@@ -1,0 +1,17 @@
+{
+  "kind": "persona",
+  "persona_id": "pr-writer",
+  "source": "lib/personas/pr-writer.md",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.OPERATOR_OUTPUT",
+    "DOC.RUN_LOG_SCHEMA",
+    "DOC.PERSONA_SPEC",
+    "DOC.GLOSSARY",
+    "DOC.CONTRACT_STYLE"
+  ],
+  "generated_at": "2026-06-19T19:59:36.241Z"
+}

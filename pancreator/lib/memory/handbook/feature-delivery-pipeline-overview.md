@@ -46,6 +46,10 @@ Each stage then adds its own stage-specific docs such as
 `DOC.PIPELINE_STATE`, `DOC.ENG_SOFTWARE`, `DOC.DESIGN_CRAFT`, or
 `DOC.RUN_LOG_SCHEMA`.
 
+For shell-based repository inspection, every stage owner MUST apply RTK-first
+retrieval per `DOC.CONTEXT_ECONOMY` and MUST record rationale before escalating
+to raw shell output.
+
 The pipeline state contract adds the shared transition rule: before a stage
 advances, the validator MUST confirm that required outputs exist, output
 manifests are present, definitions of done are evidenced, bounded amendments are
@@ -55,14 +59,11 @@ valid and ratified, and the gate predicate is satisfied.
 
 | Stage | Owner persona | Main output | Default pass event |
 | --- | --- | --- | --- |
-| `plan` | `tech-lead` | `touch-set.json` (plus consolidated plan bundle) | `human_approval` |
+| `plan` | `tech-lead` | `touch-set.json` (plus consolidated plan bundle) | `sdk_artifact_validation` |
 | `implement` | `coder` | `implementation-report.md` | `implementation_complete` |
 | `review` | `reviewer` | `review.md` | `review_passes` |
 | `test` | `qa-tester` | `test-report.md` | `qa_passes` |
-| `report` | `tech-writer` | `delivery-report.md` | `report_ready` |
-| `compliance` | `compliance-auditor` | `compliance-result.json` | `compliance_passes` |
-| `ship` | `supervisor` | `ship-ratification.json` | `human_ratifies_local_diff` |
-| `index` | `librarian` | durable feature `index.json` | `artifacts_indexed` |
+| `bookkeeping` | `librarian` | `delivery-report.md` + durable feature `index.json` | `bookkeeping_complete` |
 
 ## Stage-by-stage walkthrough
 
@@ -477,12 +478,12 @@ The runner includes control and terminal states beyond the YAML's declared stage
 - control states: `paused`, `aborted`
 - terminal state: `complete`
 
-The runtime graph for a pipeline that includes compliance is:
+The runtime graph for the default bookkeeping-based pipeline is:
 
 ```mermaid
 stateDiagram-v2
     [*] --> plan: invoke
-    plan --> implement: human_approval
+    plan --> implement: sdk_artifact_validation
 
     implement --> paused: pause
     paused --> implement: resume
@@ -496,24 +497,15 @@ stateDiagram-v2
     review --> review: review_spot_fix
     review --> review: repo_wide_blocker
 
-    test --> report: qa_passes
-    test --> report: qa_design_followup
+    test --> bookkeeping: qa_passes
+    test --> bookkeeping: qa_design_followup
     test --> test: qa_spot_fix
     test --> test: repo_wide_blocker
     test --> implement: qa_fails
     test --> plan: qa_fails_plan_invalidating
 
-    report --> compliance: report_ready
-    report --> report: repo_wide_blocker
-
-    compliance --> ship: compliance_passes
-    compliance --> compliance: compliance_spot_fix
-    compliance --> compliance: repo_wide_blocker
-    compliance --> implement: compliance_fails
-    compliance --> plan: compliance_fails_plan_invalidating
-
-    ship --> index: human_ratifies_local_diff
-    index --> complete: artifacts_indexed
+    bookkeeping --> bookkeeping: repo_wide_blocker
+    bookkeeping --> complete: bookkeeping_complete
     complete --> [*]
 ```
 

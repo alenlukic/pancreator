@@ -26,6 +26,7 @@ import {
   validateComplianceForAdvance,
   validateDesignQaForAdvance,
   validateHandoffMarkdown,
+  validateHighRiskPersonaTranscriptCompliance,
   validateImplementationReport,
   validatePlanMarkdown,
   validateReviewMarkdownForAdvance,
@@ -148,6 +149,8 @@ const STAGE_IDS = [
   "implement",
   "review",
   "test",
+  "bookkeeping",
+  // Legacy post-test stages retained for backward-compatible state parsing.
   "report",
   "compliance",
   "ship",
@@ -346,6 +349,81 @@ function readMarkdownManifestField(content: string, field: string): string | nul
   return match === null ? null : match[1].trim();
 }
 
+function stageIdForArtifactBase(base: string): string | null {
+  switch (base) {
+    case "plan.md":
+    case "touch-set.json":
+    case "handoff.md":
+      return "plan";
+    case "implementation-report.md":
+      return "implement";
+    case "review.md":
+      return "review";
+    case "test-report.md":
+    case "design-qa-report.md":
+      return "test";
+    case "delivery-report.md":
+      return "bookkeeping";
+    case "compliance-result.json":
+      return "compliance";
+    default:
+      return null;
+  }
+}
+
+function readRequiredDocReceipt(repoRoot: string, rel: string): Set<string> | null {
+  const base = path.posix.basename(rel);
+  const stageId = stageIdForArtifactBase(base);
+  if (stageId === null) {
+    return null;
+  }
+  const runDir = path.posix.dirname(rel);
+  const receiptRel = path.posix.join(runDir, "required-doc-receipts", `${stageId}.json`);
+  const receiptRaw = readRepoText(repoRoot, receiptRel);
+  if (receiptRaw === null) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(receiptRaw) as Record<string, unknown>;
+    if (parsed.enforce_manifest_consulted_docs !== true) {
+      return null;
+    }
+    const appliedRaw = parsed.required_docs_applied;
+    if (!Array.isArray(appliedRaw)) {
+      return null;
+    }
+    return new Set(
+      appliedRaw.filter((value): value is string => typeof value === "string"),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function validateRequiredDocReceiptForConsultedDocs(input: {
+  repoRoot: string;
+  rel: string;
+  consultedDocs: string[];
+}): ArtifactContentWarning | null {
+  const appliedDocs = readRequiredDocReceipt(input.repoRoot, input.rel);
+  if (appliedDocs === null) {
+    return null;
+  }
+  for (const consulted of input.consultedDocs) {
+    if (!consulted.startsWith("DOC.")) {
+      continue;
+    }
+    if (!appliedDocs.has(consulted)) {
+      return {
+        path: input.rel,
+        code: "required_doc_receipt_mismatch",
+        message: `${path.posix.basename(input.rel)} consulted_docs claims ${consulted}, but required-doc receipt evidence does not include it.`,
+      };
+    }
+  }
+  return null;
+}
+
 function artifactParentDir(rel: string): string {
   return path.posix.basename(path.posix.dirname(rel));
 }
@@ -528,6 +606,7 @@ export function isDesignOnlyNonBlockingFollowup(input: {
   return (
     design.passes === false &&
     design.excludedFromGate &&
+    !design.spotFixable &&
     !design.planInvalidating &&
     !design.coreReentryRequired
   );
@@ -839,10 +918,17 @@ function validateArtifactContent(
     if (planError !== null) {
       return gateValidationErrorToWarning(rel, planError);
     }
-    return (
+    const manifestWarning =
       validateMarkdownBody(rel, content) ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "handoff.md") {
@@ -850,10 +936,17 @@ function validateArtifactContent(
     if (handoffError !== null) {
       return gateValidationErrorToWarning(rel, handoffError);
     }
-    return (
+    const manifestWarning =
       validateMarkdownBody(rel, content) ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "touch-set.json") {
@@ -869,11 +962,18 @@ function validateArtifactContent(
     if (implementError !== null) {
       return gateValidationErrorToWarning(rel, implementError);
     }
-    return (
+    const manifestWarning =
       validateMarkdownBody(rel, content) ??
       validateVerdictConsistency(rel, content, "implement_gate_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "review.md") {
@@ -894,10 +994,17 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, reviewAdvanceError);
       }
     }
-    return (
+    const manifestWarning =
       validateVerdictConsistency(rel, content, "review_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "test-report.md") {
@@ -915,10 +1022,17 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, testAdvanceError);
       }
     }
-    return (
+    const manifestWarning =
       validateVerdictConsistency(rel, content, "qa_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "design-qa-report.md") {
@@ -936,10 +1050,17 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, designAdvanceError);
       }
     }
-    return (
+    const manifestWarning =
       validateVerdictConsistency(rel, content, "design_qa_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "ux-spec.md") {
@@ -986,10 +1107,17 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, reportAdvanceError);
       }
     }
-    return (
+    const manifestWarning =
       validateMarkdownBody(rel, content) ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "compliance-result.json") {
@@ -1000,6 +1128,21 @@ function validateArtifactContent(
         code: "compliance_passes_unparseable",
         message:
           "compliance-result.json must include compliance_passes: true or compliance_passes: false",
+      };
+    }
+    if (
+      verdict.passes === true &&
+      (verdict.planInvalidating ||
+        verdict.coreReentryRequired ||
+        verdict.spotFixable ||
+        verdict.excludedFromGate ||
+        verdict.failingFinalGateCommands.length > 0)
+    ) {
+      return {
+        path: rel,
+        code: "verdict_conflict",
+        message:
+          "compliance-result.json cannot report compliance_passes: true while also flagging blocker/remediation semantics in the same artifact.",
       };
     }
     if (!verdict.finalGateObserved) {
@@ -1021,7 +1164,30 @@ function validateArtifactContent(
     }
     try {
       const parsed = JSON.parse(content) as Record<string, unknown>;
-      return validateJsonOutputManifest(rel, parsed);
+      const manifestWarning = validateJsonOutputManifest(rel, parsed);
+      if (manifestWarning !== null) {
+        return manifestWarning;
+      }
+      const transcriptEvidenceError =
+        validateHighRiskPersonaTranscriptCompliance(parsed);
+      if (transcriptEvidenceError !== null) {
+        return gateValidationErrorToWarning(rel, transcriptEvidenceError);
+      }
+      const manifest = parsed.output_manifest;
+      const consultedDocs =
+        manifest !== null &&
+        typeof manifest === "object" &&
+        !Array.isArray(manifest) &&
+        Array.isArray((manifest as Record<string, unknown>).consulted_docs)
+          ? ((manifest as Record<string, unknown>).consulted_docs as unknown[]).filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [];
+      return validateRequiredDocReceiptForConsultedDocs({
+        repoRoot,
+        rel,
+        consultedDocs,
+      });
     } catch {
       return null;
     }
@@ -1139,6 +1305,20 @@ export function stageArtifactContract(
         acceptedAdvanceArtifacts: [testReport],
       };
     }
+    case "bookkeeping": {
+      const deliveryReport = deliveryReportRel(run);
+      const durableIndex = durableFeatureIndexRel(state.featureId);
+      if (event !== "bookkeeping_complete" && event !== "repo_wide_blocker") {
+        throw new Error(
+          `Bookkeeping stage only supports bookkeeping_complete or repo_wide_blocker, got ${event}.`,
+        );
+      }
+      return {
+        primaryArtifact: deliveryReport,
+        requiredAfterStageWork: [deliveryReport, durableIndex],
+        acceptedAdvanceArtifacts: [deliveryReport, durableIndex],
+      };
+    }
     case "report": {
       const deliveryReport = deliveryReportRel(run);
       if (event !== "report_ready" && event !== "repo_wide_blocker") {
@@ -1230,6 +1410,7 @@ export function isPassPathManifestWarning(
   warning: ArtifactContentWarning,
 ): boolean {
   const passEvent =
+    (stageId === "bookkeeping" && event === "bookkeeping_complete") ||
     (stageId === "report" && event === "report_ready") ||
     (stageId === "compliance" && event === "compliance_passes");
   if (!passEvent) {
@@ -1239,7 +1420,7 @@ export function isPassPathManifestWarning(
 }
 
 function validateReportForAdvance(content: string, event: string): string | null {
-  if (event !== "report_ready") {
+  if (event !== "report_ready" && event !== "bookkeeping_complete") {
     return null;
   }
   const manifestWarning = validateMarkdownOutputManifest(
@@ -1317,7 +1498,10 @@ function assertAdvanceGateContent(
       );
     }
   }
-  if (stage === "plan" && event === "human_approval") {
+  if (
+    stage === "plan" &&
+    (event === "human_approval" || event === "sdk_artifact_validation")
+  ) {
     for (const rel of contractPlanGateArtifacts(state)) {
       const warning = validateArtifactContent(repoRoot, rel, event);
       if (warning !== null) {
@@ -1359,13 +1543,15 @@ export function assertAdvanceArtifacts(
 export function defaultAdvanceEventForStage(stage: string): string {
   switch (stage) {
     case "plan":
-      return "human_approval";
+      return "sdk_artifact_validation";
     case "implement":
       return "implementation_complete";
     case "review":
       return "review_passes";
     case "test":
       return "qa_passes";
+    case "bookkeeping":
+      return "bookkeeping_complete";
     case "report":
       return "report_ready";
     case "compliance":

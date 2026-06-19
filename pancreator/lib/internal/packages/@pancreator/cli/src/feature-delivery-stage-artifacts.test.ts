@@ -286,7 +286,7 @@ describe("feature-delivery-stage-artifacts", () => {
     await mkdir(runAbs, { recursive: true });
     await writeFile(
       path.join(runAbs, "review.md"),
-      "review_passes: false\nspot_fixable: true\n",
+      "review_passes: false\nspot_fixable: true\n\n## Fixes applied\n- clarified review artifact wording\n",
       "utf8",
     );
 

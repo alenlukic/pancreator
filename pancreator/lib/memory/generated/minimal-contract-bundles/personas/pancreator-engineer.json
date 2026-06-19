@@ -1,0 +1,19 @@
+{
+  "kind": "persona",
+  "persona_id": "pancreator-engineer",
+  "source": "lib/personas/pancreator-engineer.md",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.DOC_IMPACT",
+    "DOC.COMPLIANCE_RUNS",
+    "DOC.PERSONA_SPEC",
+    "DOC.GLOSSARY",
+    "DOC.CONTRACT_FORMAT"
+  ],
+  "generated_at": "2026-06-19T19:59:36.240Z"
+}

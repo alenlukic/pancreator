@@ -1,10 +1,3 @@
-# Operator section
-- 👀 **In this file:** Repo-wide agent operating card: where agents start, how they resolve contracts, and how they report work.
-- ⚖️ **Why it matters:** Every Pancreator agent reads this first so it knows which contracts bind the run and how to report results.
-- 🧭 **See also:**
-  - pancreator/lib/memory/handbook/agent-document-registry.md
-  - pancreator/lib/memory/handbook/operator-agent-artifact-format.md
-  - pancreator/lib/memory/handbook/operator-output-contract.md
 # AGENTS.md — Pancreator agent operating card
 
 > Internal agent entry surface. Human operator procedures live in `OPERATION.md`.
@@ -117,10 +110,13 @@ to the stage owner declared by the pipeline.
 
 Load the narrowest binding artifact that can answer the contract question. Start
 with `DOC.REGISTRY` and the persona/pipeline keys before opening broad handbook,
-PRD, archive, inbox history, or prior run context. Use
-`pancreator/lib/memory/handbook/context-economy.md` only when a task requires context-budget,
-retrieval-depth, RTK-first shell, memory-tier, or archival retrieval decisions
-not already named by the static contract. Use
+PRD, archive, inbox history, or prior run context. Context-economy discipline is
+the default operating posture for every task: agents MUST apply RTK-first shell
+retrieval and bounded context-loading unless a stricter static contract applies.
+Use `pancreator/lib/memory/handbook/context-economy.md` whenever retrieval strategy
+is unclear and whenever a task requires context-budget, retrieval-depth,
+memory-tier, or archival retrieval decisions not already named by the static
+contract. Use
 `pancreator/lib/memory/handbook/simple-task-mode.md` only when the task needs the
 bounded low-risk work posture or its context-expansion triggers.
 
@@ -176,8 +172,9 @@ request explicitly names archival reconstruction as the task.
   `node pancreator/lib/internal/tools/checks/check-cursor-projection-drift.mjs`;
   stale projections are not caught by tracked-file CI.
 - When the persona/registry/pipeline/escalation surface changes, run the
-  framework gates: `pnpm governance:test` (registry integrity + escalation
-  completeness) and `pnpm governance:projection-drift`. Use
+  framework gates: `pnpm governance:test` (registry integrity, escalation
+  completeness, and persona static-contract RFC 2119 + RTK discipline) and
+  `pnpm governance:projection-drift`. Use
   `pnpm governance:audit` to re-measure governance usage and friction.
 
 ## 6 — Sectioned document and artifact format

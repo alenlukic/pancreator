@@ -80,6 +80,11 @@ Write a Markdown report to `.pan/introspection/reports/<UTC-YYYYMMDD-HHMMSS>-int
 13. `## Output manifest`
    - Include consulted docs, produced artifacts, validation performed, and remaining uncertainty.
 
+For sections 4 through 10, the report MUST begin with a table that explicitly
+lists each required facet and includes `facet`, `assessment`, and `reasoning`
+columns before any prose bullets. Omission of a facet is invalid; unknown
+evidence MUST be recorded as `coverage gap` rather than omitted.
+
 For every finding, distinguish direct evidence from inference. Do not invent misses when the available evidence is ambiguous; record ambiguity in the report instead. When transcript coverage is partial or missing for an in-window run, say so explicitly and explain whether the result is a coverage gap, a platform gap, or a scope decision forced by missing evidence.
 
 ## Intake item requirements

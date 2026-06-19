@@ -144,7 +144,7 @@ function countAutoChainReversals(history: RunLogRow[]): number {
   for (const row of history) {
     const event = advanceTransitionEvent(row);
     if (
-      /qa_fails|must_fix|review_core_reentry|compliance_fails|qa_fails_plan_invalidating|compliance_fails_plan_invalidating/u.test(
+      /qa_fails|must_fix|review_core_reentry|qa_fails_plan_invalidating/u.test(
         event,
       )
     ) {
@@ -249,8 +249,14 @@ function companionArtifactStatuses(
   state: FeatureDeliveryArtifactState,
   stageId: string,
 ): CompanionArtifactStatus[] {
-  const required = requiredArtifactsAfterStageWork(state, stageId);
-  const validation = validateStageCompletionArtifacts(repoRoot, state, stageId);
+  let required: readonly string[];
+  let validation: ReturnType<typeof validateStageCompletionArtifacts>;
+  try {
+    required = requiredArtifactsAfterStageWork(state, stageId);
+    validation = validateStageCompletionArtifacts(repoRoot, state, stageId);
+  } catch {
+    return [];
+  }
   const warningByPath = new Map<string, ArtifactContentWarning>();
   for (const warning of validation.warnings) {
     warningByPath.set(warning.path, warning);

@@ -1,0 +1,18 @@
+{
+  "kind": "persona",
+  "persona_id": "sme-product",
+  "source": "lib/personas/sme-product.md",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PRD_SUMMARY",
+    "DOC.PRD_INDEX",
+    "DOC.OPERATOR_OUTPUT",
+    "DOC.GLOSSARY",
+    "DOC.CONTRACT_STYLE",
+    "DOC.CONTROL_SURFACE_UX"
+  ],
+  "generated_at": "2026-06-19T19:59:36.245Z"
+}
