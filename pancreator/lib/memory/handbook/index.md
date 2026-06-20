@@ -6,35 +6,36 @@ phase: "0b"
 owners: [librarian]
 purpose: Human-readable entry point for handbook docs. Agents resolve binding keys through DOC.REGISTRY.
 related:
-  - /AGENTS.md
-  - /lib/memory/handbook/agent-document-registry.md
+  - AGENTS.md
+  - lib/memory/handbook/agent-document-registry.md
 ...
 
 # Operator section
 - 👀 **In this file:** Handbook Index
 - ⚖️ **Why it matters:** Quick orientation for Handbook Index before agents load the full contract.
 - 🧭 **See also:**
-  - /AGENTS.md
-  - /lib/memory/handbook/agent-document-registry.md
+  - AGENTS.md
+  - lib/memory/handbook/agent-document-registry.md
 
 # Handbook Index
 
 Agents start from `AGENTS.md` and resolve binding `DOC.*`, `PIPE.*`, and
 `PERSONA.*` keys through `lib/memory/handbook/agent-document-registry.md`. This
 page is a human-readable orientation layer; the routing table below supports
-`MemoryRouter` intent matching without replacing `DOC.REGISTRY`.
+`MemoryRouter` intent matching without replacing `DOC.REGISTRY`. Paths on this
+page are project-root-relative; resolve them per `AGENTS.md` path convention.
 
 ## Routing
 
 | Intent or question | Primary docs | Secondary docs | Notes |
 | --- | --- | --- | --- |
-| Resolve a term or domain noun | `/lib/memory/handbook/glossary.md` | | Ubiquitous language before authoring contracts. |
-| Resolve a `DOC.*`, `PIPE.*`, or `PERSONA.*` key | `/lib/memory/handbook/agent-document-registry.md` | `AGENTS.md` | Binding key registry. |
-| Context budget and retrieval depth | `/lib/memory/handbook/context-economy.md` | `/lib/memory/handbook/memory-tiers.md` | |
-| Low-risk bounded work posture | `/lib/memory/handbook/simple-task-mode.md` | `AGENTS.md`, `/lib/memory/handbook/context-economy.md` | |
-| Engineering standards selection | `/lib/memory/handbook/engineering/index.md` | `/lib/memory/handbook/engineering/software-engineering.md` | |
-| Pipeline state and gate validation | `/lib/memory/handbook/pipeline-state-contract.md` | `/lib/pipelines/feature-delivery.yaml` | |
-| Human-readable feature-delivery walkthrough | `/lib/memory/handbook/feature-delivery-pipeline-overview.md` | `/lib/memory/handbook/pipeline-state-contract.md`, `/lib/pipelines/feature-delivery.yaml` | Orientation layer for stage inputs, validations, actions, done criteria, and runtime transitions. |
+| Resolve a term or domain noun | `lib/memory/handbook/glossary.md` | | Ubiquitous language before authoring contracts. |
+| Resolve a `DOC.*`, `PIPE.*`, or `PERSONA.*` key | `lib/memory/handbook/agent-document-registry.md` | `AGENTS.md` | Binding key registry. |
+| Context budget and retrieval depth | `lib/memory/handbook/context-economy.md` | `lib/memory/handbook/memory-tiers.md` | |
+| Low-risk bounded work posture | `lib/memory/handbook/simple-task-mode.md` | `AGENTS.md`, `lib/memory/handbook/context-economy.md` | |
+| Engineering standards selection | `lib/memory/handbook/engineering/index.md` | `lib/memory/handbook/engineering/software-engineering.md` | |
+| Pipeline state and gate validation | `lib/memory/handbook/pipeline-state-contract.md` | `lib/pipelines/feature-delivery.yaml` | |
+| Human-readable feature-delivery walkthrough | `lib/memory/handbook/feature-delivery-pipeline-overview.md` | `lib/memory/handbook/pipeline-state-contract.md`, `lib/pipelines/feature-delivery.yaml` | Orientation layer for stage inputs, validations, actions, done criteria, and runtime transitions. |
 
 ## Contract system
 

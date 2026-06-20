@@ -6,18 +6,18 @@ phase: "0b"
 owners: [supervisor, tech-writer, librarian]
 purpose: "Catalog of operator-facing Cursor canvases and the repo artifacts they summarize."
 related:
-  - /lib/operator/README.md
-  - /lib/memory/handbook/feature-delivery-pipeline-overview.md
-  - /lib/memory/handbook/operator-output-contract.md
+  - lib/operator/README.md
+  - lib/memory/handbook/feature-delivery-pipeline-overview.md
+  - lib/memory/handbook/operator-output-contract.md
 ...
 
 # Operator section
 - 👀 **In this file:** Catalog of operator-facing canvases and their backing repo artifacts.
 - ⚖️ **Why it matters:** Lets humans find the visual-first references without scanning chat history or reverse-engineering which document produced a canvas.
 - 🧭 **See also:**
-  - /lib/operator/README.md
-  - /lib/memory/handbook/feature-delivery-pipeline-overview.md
-  - /lib/memory/handbook/pipeline-state-contract.md
+  - lib/operator/README.md
+  - lib/memory/handbook/feature-delivery-pipeline-overview.md
+  - lib/memory/handbook/pipeline-state-contract.md
 
 # Operator Canvas Catalog
 

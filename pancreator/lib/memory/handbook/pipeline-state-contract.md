@@ -6,19 +6,19 @@ phase: "0b"
 owners: [supervisor, tech-lead]
 purpose: "Defines pipeline state-machine authoring, stage ownership, gate validation, and remediation routing."
 related:
-  - /AGENTS.md
-  - /lib/memory/handbook/agent-document-registry.md
-  - /lib/memory/handbook/output-manifest-contract.md
-  - /lib/pipelines/feature-delivery.yaml
+  - AGENTS.md
+  - lib/memory/handbook/agent-document-registry.md
+  - lib/memory/handbook/output-manifest-contract.md
+  - lib/pipelines/feature-delivery.yaml
 ...
 
 # Operator section
 - 👀 **In this file:** Pipeline State Contract
 - ⚖️ **Why it matters:** Quick orientation for Pipeline State Contract before agents load the full contract.
 - 🧭 **See also:**
-  - /AGENTS.md
-  - /lib/memory/handbook/agent-document-registry.md
-  - /lib/memory/handbook/output-manifest-contract.md
+  - AGENTS.md
+  - lib/memory/handbook/agent-document-registry.md
+  - lib/memory/handbook/output-manifest-contract.md
 
 # Pipeline State Contract
 

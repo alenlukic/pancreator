@@ -14,21 +14,21 @@ references:
   - '{"kind":"lines","path":"lib/memory/features/memory-context/active-memory-context-economy-pass-2/index.json","range":[288,352],"contentHash":"9b2ddcc","note":"Context-economy acceptance criteria include tier routing and retrieval-discipline rules."}'
   - '{"kind":"lines","path":"lib/memory/handbook/glossary.md","range":[205,226],"contentHash":"762edb4","note":"Glossary defines active-memory and related tier nouns used here."}'
 related:
-  - /lib/memory/handbook/index.md
-  - /lib/memory/handbook/memory-tiers.md
-  - /lib/memory/handbook/glossary.md
-  - /lib/memory/handbook/simple-task-mode.md
-  - /lib/memory/active/current.md
-  - /lib/memory/handbook/context-cost-audit.md
+  - lib/memory/handbook/index.md
+  - lib/memory/handbook/memory-tiers.md
+  - lib/memory/handbook/glossary.md
+  - lib/memory/handbook/simple-task-mode.md
+  - lib/memory/active/current.md
+  - lib/memory/handbook/context-cost-audit.md
 ...
 
 # Operator section
 - 👀 **In this file:** Context economy and Cursor retrieval
 - ⚖️ **Why it matters:** Quick orientation for Context economy and Cursor retrieval before agents load the full contract.
 - 🧭 **See also:**
-  - /lib/memory/handbook/index.md
-  - /lib/memory/handbook/memory-tiers.md
-  - /lib/memory/handbook/glossary.md
+  - lib/memory/handbook/index.md
+  - lib/memory/handbook/memory-tiers.md
+  - lib/memory/handbook/glossary.md
 
 # Context economy and Cursor retrieval
 
@@ -51,7 +51,7 @@ before full `.docs/PRD.md` or `.docs/BOOTSTRAP.md`. Feature-delivery stage perso
 MUST NOT load `.docs/**` unless the bounded prompt names an internal task.
 
 Agents MUST NOT read, traverse, ingest, cite, or modify files under
-`/lib/inbox/notes/` per inbox lifecycle.
+`lib/inbox/notes/` per inbox lifecycle.
 
 ## RTK-first shell retrieval
 

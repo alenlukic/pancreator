@@ -19,22 +19,22 @@ external:
   - https://mobbin.com/
   - https://www.w3.org/WAI/standards-guidelines/wcag/
 related:
-  - /lib/memory/handbook/engineering/index.md
-  - /lib/memory/handbook/engineering/design/design-system.md
-  - /lib/memory/handbook/engineering/design/component-standard.md
-  - /lib/memory/handbook/engineering/design/control-surface-ux.md
-  - /lib/personas/design-engineer.md
-  - /lib/personas/design-reviewer.md
-  - /lib/memory/handbook/contract-templates/ux-spec.template.md
+  - lib/memory/handbook/engineering/index.md
+  - lib/memory/handbook/engineering/design/design-system.md
+  - lib/memory/handbook/engineering/design/component-standard.md
+  - lib/memory/handbook/engineering/design/control-surface-ux.md
+  - lib/personas/design-engineer.md
+  - lib/personas/design-reviewer.md
+  - lib/memory/handbook/contract-templates/ux-spec.template.md
 ...
 
 # Operator section
 - 👀 **In this file:** Product Design and UI Craft Standard
 - ⚖️ **Why it matters:** Quick orientation for Product Design and UI Craft Standard before agents load the full contract.
 - 🧭 **See also:**
-  - /lib/memory/handbook/engineering/index.md
-  - /lib/memory/handbook/engineering/design/design-system.md
-  - /lib/memory/handbook/engineering/design/component-standard.md
+  - lib/memory/handbook/engineering/index.md
+  - lib/memory/handbook/engineering/design/design-system.md
+  - lib/memory/handbook/engineering/design/component-standard.md
 
 # Product Design and UI Craft Standard
 

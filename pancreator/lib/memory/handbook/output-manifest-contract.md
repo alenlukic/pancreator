@@ -6,21 +6,21 @@ phase: "0b"
 owners: [supervisor, compliance-auditor, tech-writer]
 purpose: Defines the output manifest every bounded persona invocation emits and gate validators check.
 related:
-  - /AGENTS.md
-  - /lib/memory/handbook/operator-agent-artifact-format.md
-  - /lib/memory/handbook/operator-output-contract.md
-  - /lib/memory/handbook/agent-document-registry.md
-  - /lib/memory/handbook/persona-contracts.md
-  - /lib/memory/handbook/pipeline-state-contract.md
+  - AGENTS.md
+  - lib/memory/handbook/operator-agent-artifact-format.md
+  - lib/memory/handbook/operator-output-contract.md
+  - lib/memory/handbook/agent-document-registry.md
+  - lib/memory/handbook/persona-contracts.md
+  - lib/memory/handbook/pipeline-state-contract.md
 ...
 
 # Operator section
 - 👀 **In this file:** Output Manifest Contract
 - ⚖️ **Why it matters:** Quick orientation for Output Manifest Contract before agents load the full contract.
 - 🧭 **See also:**
-  - /AGENTS.md
-  - /lib/memory/handbook/operator-agent-artifact-format.md
-  - /lib/memory/handbook/operator-output-contract.md
+  - AGENTS.md
+  - lib/memory/handbook/operator-agent-artifact-format.md
+  - lib/memory/handbook/operator-output-contract.md
 
 # Output Manifest Contract
 
@@ -38,9 +38,9 @@ For bounded work, the persona MUST write the manifest twice:
    agent section for JSON.
 2. **Operator copy.** Final chat/stdout MUST include the same manifest summary or
    the path and heading/key where the artifact copy lives, and MUST follow
-   `/lib/memory/handbook/operator-output-contract.md`.
+   `lib/memory/handbook/operator-output-contract.md`.
 
-The operator section defined by `/lib/memory/handbook/operator-agent-artifact-format.md`
+The operator section defined by `lib/memory/handbook/operator-agent-artifact-format.md`
 MUST NOT contain the only copy of the manifest. Gate validators ignore operator
 sections and validate only agent-section content.
 

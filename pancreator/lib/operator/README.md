@@ -6,18 +6,18 @@ phase: "0b"
 owners: [supervisor, tech-writer, librarian]
 purpose: "Repo-owned landing page for operator-facing visual references, canvas catalog entries, and human navigation surfaces."
 related:
-  - /lib/operator/canvases.md
-  - /lib/memory/handbook/operator-output-contract.md
-  - /lib/memory/handbook/feature-delivery-pipeline-overview.md
+  - lib/operator/canvases.md
+  - lib/memory/handbook/operator-output-contract.md
+  - lib/memory/handbook/feature-delivery-pipeline-overview.md
 ...
 
 # Operator section
 - 👀 **In this file:** Landing page for operator-facing visual references and canvas catalog entries.
 - ⚖️ **Why it matters:** Gives humans one stable repo location for the visual surfaces that are easiest to scan during delivery and governance work.
 - 🧭 **See also:**
-  - /lib/operator/canvases.md
-  - /lib/memory/handbook/feature-delivery-pipeline-overview.md
-  - /lib/memory/handbook/operator-output-contract.md
+  - lib/operator/canvases.md
+  - lib/memory/handbook/feature-delivery-pipeline-overview.md
+  - lib/memory/handbook/operator-output-contract.md
 
 # Operator Surface Index
 

@@ -4,24 +4,35 @@
 > This file is intentionally thin. It names the binding contract system and the
 > small set of repo-wide operating rules every agent must honor.
 
+## Path convention
+
+Unless marked harness-root, paths in this card, `DOC.REGISTRY`, handbook pages,
+persona specs, pipelines, ledgers, and transient artifacts are
+**project-root-relative**. Resolve them as `<project_root>/<path>` from the
+harness root using live `pancreator.yaml` (`DOC.PANCREATOR_CONFIG`).
+Harness-root paths include `AGENTS.md`, `OPERATION.md`, `.cursor/**`, `.env`,
+and repository tooling outside `project_root`.
+
+In this repository, `project_root` is `pancreator`.
+
 ## 1 — Start here
 
 Every agent invocation MUST read this card before acting. Source-backed
-subagents MAY read their own `pancreator/lib/personas/<name>.md` persona spec first to
+subagents MAY read their own `lib/personas/<name>.md` persona spec first to
 resolve persona-local role semantics, but `AGENTS.md` remains the repo-wide
 authority on conflict and MUST be read before they act.
 
 Agents MUST NOT treat path enumeration as compliance. Binding work rules come
 from static repo artifacts with stable global keys:
 
-- `DOC.REGISTRY` → `pancreator/lib/memory/handbook/agent-document-registry.md`
-- `DOC.OPERATOR_AGENT_FORMAT` → `pancreator/lib/memory/handbook/operator-agent-artifact-format.md`
-- `DOC.PERSONA_SPEC` → `pancreator/lib/memory/handbook/persona-spec.md`
-- `DOC.PERSONA_CONTRACTS` → `pancreator/lib/memory/handbook/persona-contracts.md`
-- `DOC.OUTPUT_MANIFEST` → `pancreator/lib/memory/handbook/output-manifest-contract.md`
-- `DOC.OPERATOR_OUTPUT` → `pancreator/lib/memory/handbook/operator-output-contract.md`
-- `DOC.PIPELINE_STATE` → `pancreator/lib/memory/handbook/pipeline-state-contract.md`
-- `PIPE.FEATURE_DELIVERY` → `pancreator/lib/pipelines/feature-delivery.yaml`
+- `DOC.REGISTRY` → `lib/memory/handbook/agent-document-registry.md`
+- `DOC.OPERATOR_AGENT_FORMAT` → `lib/memory/handbook/operator-agent-artifact-format.md`
+- `DOC.PERSONA_SPEC` → `lib/memory/handbook/persona-spec.md`
+- `DOC.PERSONA_CONTRACTS` → `lib/memory/handbook/persona-contracts.md`
+- `DOC.OUTPUT_MANIFEST` → `lib/memory/handbook/output-manifest-contract.md`
+- `DOC.OPERATOR_OUTPUT` → `lib/memory/handbook/operator-output-contract.md`
+- `DOC.PIPELINE_STATE` → `lib/memory/handbook/pipeline-state-contract.md`
+- `PIPE.FEATURE_DELIVERY` → `lib/pipelines/feature-delivery.yaml`
 
 When a persona spec, pipeline stage, or prompt names a `DOC.*`, `PIPE.*`, or
 `PERSONA.*` key, agents MUST resolve that key through `DOC.REGISTRY`, load the
@@ -37,7 +48,7 @@ explicitly asks about operator-facing readability.
 
 ## 2 — Persona and pipeline authority
 
-Canonical persona specs live at `pancreator/lib/personas/<name>.md`. Each persona spec MUST
+Canonical persona specs live at `lib/personas/<name>.md`. Each persona spec MUST
 own its static execution contract: responsibilities, required docs, required
 inputs, output artifacts, output manifest shape, definition of done, and gate
 validator. Cursor projections under `.cursor/agents/` are generated local files;
@@ -56,12 +67,12 @@ as a hard precondition to invocation. If the agent cannot satisfy that
 repo-local precondition exactly, it MUST NOT use that tool path and MUST choose
 another compliant path.
 
-Pipeline definitions live under `pancreator/lib/pipelines/*.yaml`. A pipeline stage MUST name
+Pipeline definitions live under `lib/pipelines/*.yaml`. A pipeline stage MUST name
 its owner persona, required docs, required inputs, required outputs, transition
 gates, and remediation route. The runtime and supervising personas enforce stage
 transitions from those declarations.
 
-Delegated scope (`pancreator/.pan/work/<day>/<task-id>/next-prompt.md`, `handoff.md`, or an
+Delegated scope (`.pan/work/<day>/<task-id>/next-prompt.md`, `handoff.md`, or an
 operator `/persona` remainder) bounds what to work on. It does not redefine a
 persona's role, tools, forbidden actions, output contract, or definition of done.
 When delegated scope conflicts with the target persona spec, the target persona
@@ -113,16 +124,16 @@ with `DOC.REGISTRY` and the persona/pipeline keys before opening broad handbook,
 PRD, archive, inbox history, or prior run context. Context-economy discipline is
 the default operating posture for every task: agents MUST apply RTK-first shell
 retrieval and bounded context-loading unless a stricter static contract applies.
-Use `pancreator/lib/memory/handbook/context-economy.md` whenever retrieval strategy
+Use `lib/memory/handbook/context-economy.md` whenever retrieval strategy
 is unclear and whenever a task requires context-budget, retrieval-depth,
 memory-tier, or archival retrieval decisions not already named by the static
 contract. Use
-`pancreator/lib/memory/handbook/simple-task-mode.md` only when the task needs the
+`lib/memory/handbook/simple-task-mode.md` only when the task needs the
 bounded low-risk work posture or its context-expansion triggers.
 
-Active feature-delivery work is under `pancreator/.pan/work/<day>/<task-id>/`. Do not scan
-unrelated `pancreator/.pan/work/**`, `pancreator/.pan/archive/**`, `pancreator/lib/inbox/out/**`, or
-`pancreator/lib/inbox/threads/**` unless the static contract, bounded prompt, or operator
+Active feature-delivery work is under `.pan/work/<day>/<task-id>/`. Do not scan
+unrelated `.pan/work/**`, `.pan/archive/**`, `lib/inbox/out/**`, or
+`lib/inbox/threads/**` unless the static contract, bounded prompt, or operator
 request explicitly names archival reconstruction as the task.
 
 ## 5 — Repo operating rules
@@ -163,14 +174,13 @@ request explicitly names archival reconstruction as the task.
 
 ### Compliance and governance gates
 
-- Run compliance descriptors under `pancreator/tests/compliance/` when
-  `pancreator/lib/memory/handbook/compliance-runs.md` says the touched surface
+- Run compliance descriptors under `tests/compliance/` when
+  `lib/memory/handbook/compliance-runs.md` says the touched surface
   requires it.
-- After editing any persona under `pancreator/lib/personas/`, regenerate the
+- After editing any persona under `lib/personas/`, regenerate the
   gitignored Cursor projections with `pnpm -w exec pan cursor-sync` and verify
-  them with
-  `node pancreator/lib/internal/tools/checks/check-cursor-projection-drift.mjs`;
-  stale projections are not caught by tracked-file CI.
+  them with `pnpm governance:projection-drift`; stale projections are not
+  caught by tracked-file CI.
 - When the persona/registry/pipeline/escalation surface changes, run the
   framework gates: `pnpm governance:test` (registry integrity, escalation
   completeness, and persona static-contract RFC 2119 + RTK discipline) and
@@ -209,7 +219,7 @@ Human-readable sections MUST include these bullets with emoji prefixes:
 ## 7 — Human/operator output
 
 Operator-facing completion output MUST follow
-`pancreator/lib/memory/handbook/operator-output-contract.md`. For every chat
+`lib/memory/handbook/operator-output-contract.md`. For every chat
 completion, report action status, brief summary, added/changed files with
 clickable links, deleted files, and next operator actions. Use `N/A` for any
 empty field. For repo-change tasks, report what changed, validation actually
