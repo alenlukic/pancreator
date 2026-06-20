@@ -90,7 +90,7 @@ const EMBEDDED_PANCREATOR_YAML = `project_root: ".pancreator"
 runner:
   cursor:
     invocation: sdk
-    stage_remediation: true
+    stage_remediation: false
     model_escalation:
       config: default
 risk_tier: medium
@@ -666,11 +666,28 @@ export async function readCursorInvocationMode(repoRoot: string): Promise<"manua
   return readCursorInvocationModeSync(repoRoot);
 }
 
-/** Reads `runner.cursor.stage_remediation`; defaults to true when invocation is sdk. */
+/**
+ * Reads `runner.cursor.stage_remediation`.
+ *
+ * Runtime default is now fail-closed (disabled) to avoid hidden
+ * out-of-band artifact patching loops.
+ */
 export async function readStageRemediationEnabled(
   repoRoot: string,
   options?: { ledgerInvocation?: "manual" | "sdk" },
 ): Promise<boolean> {
+  const forceOn =
+    process.env.PAN_STAGE_REMEDIATION_FORCE_ON === "1" ||
+    process.env.PAN_STAGE_REMEDIATION_FORCE_ON === "true";
+  const forceOff =
+    process.env.PAN_STAGE_REMEDIATION_FORCE_OFF === "1" ||
+    process.env.PAN_STAGE_REMEDIATION_FORCE_OFF === "true";
+  if (forceOff) {
+    return false;
+  }
+  if (forceOn) {
+    return true;
+  }
   const cfgPath = resolvePancreatorYamlPath(repoRoot);
   let invocation = await readCursorInvocationMode(repoRoot);
   if (invocation === "manual" && cfgPath === undefined && options?.ledgerInvocation === "sdk") {
@@ -680,11 +697,8 @@ export async function readStageRemediationEnabled(
     return false;
   }
   if (cfgPath === undefined) {
-    return true;
-  }
-  const raw = await readFile(cfgPath, "utf8");
-  if (/stage_remediation:\s*false/u.test(raw)) {
     return false;
   }
-  return true;
+  const raw = await readFile(cfgPath, "utf8");
+  return /stage_remediation:\s*true/u.test(raw);
 }

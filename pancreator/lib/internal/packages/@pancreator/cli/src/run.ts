@@ -14,6 +14,7 @@ import {
   advanceFeatureDelivery,
   appendFeatureDeliveryInterventionRunLog,
   closeFeatureDeliveryArtifacts,
+  lintArtifactsForTask,
   readFeatureDeliveryStatusWithInterventions,
   refreshFeatureDeliveryPrompt,
   repairFeatureDeliveryState,
@@ -100,8 +101,11 @@ export interface CliRunOptions {
 type OutputFormat = "json" | "text";
 
 function resolveOutputFormat(commandFormat: string | undefined, defaultFormat?: OutputFormat): OutputFormat {
-  const raw = commandFormat ?? defaultFormat ?? "json";
-  return raw === "text" ? "text" : "json";
+  const raw = (commandFormat ?? defaultFormat ?? "json").trim().toLowerCase();
+  if (raw === "text" || raw === "json") {
+    return raw;
+  }
+  throw new Error(`--format must be one of: json, text (received: ${raw}).`);
 }
 
 async function featureDeliveryCheckoutRoot(mainRepoRoot: string, _taskId: string): Promise<string> {
@@ -138,6 +142,17 @@ function emitPayload(
 export function formatPanText(payload: object, repoRoot: string = process.cwd()): string {
   const record = payload as Record<string, unknown>;
   const command = record.command;
+  const gateBlockReasons = Array.isArray(record.gateBlockReasons)
+    ? record.gateBlockReasons.filter(
+        (reason): reason is string => typeof reason === "string" && reason.trim().length > 0,
+      )
+    : [];
+  const appendGateBlockReasons = (lines: string[]) => {
+    if (gateBlockReasons.length === 0) {
+      return;
+    }
+    lines.push("", "blocked:", ...gateBlockReasons.map((reason) => `- ${reason}`));
+  };
   if (command === "inbox") {
     const entries = (record.entries as string[] | undefined) ?? [];
     return entries
@@ -174,6 +189,7 @@ export function formatPanText(payload: object, repoRoot: string = process.cwd())
     if (record.reason !== undefined) {
       lines.push(`reason: ${String(record.reason)}`);
     }
+    appendGateBlockReasons(lines);
     return lines.join("\n");
   }
   if (command === "status") {
@@ -192,6 +208,7 @@ export function formatPanText(payload: object, repoRoot: string = process.cwd())
     if (record.nextCommand !== null && record.nextCommand !== undefined) {
       lines.push(`nextCommand: ${String(record.nextCommand)}`);
     }
+    appendGateBlockReasons(lines);
     return lines.join("\n");
   }
   if (command === "run" || command === "advance" || record.command === "feature new") {
@@ -212,6 +229,7 @@ export function formatPanText(payload: object, repoRoot: string = process.cwd())
     if (record.warningCount !== undefined && Number(record.warningCount) > 0) {
       lines.push(`contentWarnings: ${String(record.warningCount)}`);
     }
+    appendGateBlockReasons(lines);
     return lines.join("\n");
   }
   if (command === "check") {
@@ -226,7 +244,7 @@ export function formatPanText(payload: object, repoRoot: string = process.cwd())
     }
     return lines.join("\n");
   }
-  if (command === "artifacts validate") {
+  if (command === "artifacts validate" || command === "artifacts lint") {
     const lines = [
       `status: ${String(record.status ?? "ok")}`,
       `warnings: ${String(record.warningCount ?? 0)}`,
@@ -552,6 +570,25 @@ export async function parseAndRun(
     .action(async (taskId: string, opts: { stage: string; format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       const result = await validateArtifactsForTask({
+        repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
+        taskId,
+        stage: opts.stage,
+      });
+      emitPayload(writeOut, repoRoot, result, format);
+      if (result.missing.length > 0 || result.warningCount > 0) {
+        exit.code = 1;
+      }
+    });
+
+  artifacts
+    .command("lint")
+    .description("Deterministic strict lint checks for stage artifacts")
+    .argument("<taskId>", "Task id under .pan/work/")
+    .requiredOption("--stage <stage>", "Pipeline stage id")
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (taskId: string, opts: { stage: string; format?: string }, _cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
+      const result = await lintArtifactsForTask({
         repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
         taskId,
         stage: opts.stage,

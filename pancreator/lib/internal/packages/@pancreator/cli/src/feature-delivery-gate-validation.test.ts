@@ -10,6 +10,11 @@ import {
   validateScopeAmendments,
   validateSpotFixJustification,
   validateTouchSetJson,
+  validateWorkflowHealthJson,
+  validateHighRiskPersonaTranscriptCompliance,
+  validateTestReportForAdvance,
+  validateDesignQaForAdvance,
+  validateQaDesignFollowupPair,
   parseSpotFixJustificationFromMarkdown,
 } from "./feature-delivery-gate-validation.js";
 
@@ -84,21 +89,19 @@ describe("feature-delivery-gate-validation", () => {
     expect(validateImplementationReport(report)).toBeNull();
   });
 
-  it("requires repo-wide tests for review_passes advance", () => {
-    expect(
-      validateReviewMarkdownForAdvance(
-        "review_passes: true\nrepo_wide_tests_pass: true\nscope_amendments_ratified: true\n",
-        "review_passes",
-      ),
-    ).toBeNull();
+  it("does not require repo-wide tests for review_passes advance", () => {
     expect(
       validateReviewMarkdownForAdvance(
         "review_passes: true\nscope_amendments_ratified: true\n",
         "review_passes",
       ),
-    ).toContain(
-      "repo_wide_tests_pass",
-    );
+    ).toBeNull();
+    expect(
+      validateReviewMarkdownForAdvance(
+        "review_passes: false\nscope_amendments_ratified: true\n",
+        "review_passes",
+      ),
+    ).toContain("review_passes: true");
   });
 
   it("enforces artifact-only review spot-fix scope", () => {
@@ -188,7 +191,7 @@ describe("feature-delivery-gate-validation", () => {
     ).toBeNull();
   });
 
-  it("rejects undeclared changed paths and malformed amendment classes", () => {
+  it("keeps undeclared changed paths advisory while rejecting malformed amendment classes", () => {
     const amendedTouchSet = stringifyCompactJson({
       paths: [{ path: "client/foo.ts", status: "existing" }],
       symbols: [],
@@ -211,6 +214,132 @@ describe("feature-delivery-gate-validation", () => {
     ).toContain("bounded declared-dir-sibling policy");
     expect(
       validateScopeAmendments(validTouchSet, ["client/foo.ts", "client/secret.ts"]),
-    ).toContain("absent from touch-set.json");
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance accepts qa_design_followup with qa_passes true", () => {
+    expect(
+      validateTestReportForAdvance("qa_passes: true\n", "qa_design_followup"),
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance accepts inline qa_passes for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance("## Verdict\n`qa_passes: true`", "qa_design_followup"),
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance accepts excluded qa blockers for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance(
+        "qa_passes: false\nexcluded_from_gate: true\nspot_fixable: false\n",
+        "qa_design_followup",
+      ),
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance rejects spot-fixable qa blockers for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance(
+        "qa_passes: false\nexcluded_from_gate: true\nspot_fixable: true\n",
+        "qa_design_followup",
+      ),
+    ).toContain("spot_fixable: true");
+  });
+
+  it("validateTestReportForAdvance allows browser-lock qa blockers for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance(
+        [
+          "qa_passes: false",
+          "excluded_from_gate: false",
+          "spot_fixable: false",
+          "chrome-devtools:list_pages fails on a locked shared profile",
+          "Use --isolated to run multiple browser instances.",
+        ].join("\n"),
+        "qa_design_followup",
+      ),
+    ).toBeNull();
+  });
+
+  it("validateDesignQaForAdvance requires excluded_from_gate for qa_design_followup", () => {
+    expect(
+      validateDesignQaForAdvance(
+        "design_qa_passes: false\nexcluded_from_gate: true\n",
+        "qa_design_followup",
+      ),
+    ).toBeNull();
+  });
+
+  it("validateDesignQaForAdvance allows browser-lock blockers as design follow-up", () => {
+    expect(
+      validateDesignQaForAdvance(
+        [
+          "design_qa_passes: false",
+          "excluded_from_gate: false",
+          "MCP error: The browser is already running for /Users/alen/.cache/chrome-devtools-mcp/chrome-profile.",
+          "Use --isolated to run multiple browser instances.",
+        ].join("\n"),
+        "qa_design_followup",
+      ),
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance rejects core_reentry_required for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance(
+        "qa_passes: false\nexcluded_from_gate: true\nspot_fixable: false\ncore_reentry_required: true\n",
+        "qa_design_followup",
+      ),
+    ).toContain("core_reentry_required: true");
+  });
+
+  it("validateQaDesignFollowupPair rejects failing design verdict metadata", () => {
+    expect(
+      validateQaDesignFollowupPair({
+        testReportContent: "qa_passes: true\nexcluded_from_gate: false\n",
+        designQaReportContent:
+          "design_qa_passes: false\nexcluded_from_gate: true\ndefinition_of_done: fail\n",
+        designStepsEnabled: true,
+      }),
+    ).toContain("definition_of_done: fail");
+  });
+
+  it("validateDesignQaForAdvance accepts inline design_qa_passes for qa_passes", () => {
+    expect(
+      validateDesignQaForAdvance(
+        "## Verdict\n`design_qa_passes: true`, `excluded_from_gate: false`",
+        "qa_passes",
+      ),
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance accepts inline qa_passes for qa_passes", () => {
+    expect(
+      validateTestReportForAdvance("## Verdict\n`qa_passes: true`", "qa_passes"),
+    ).toBeNull();
+  });
+
+  it("validateWorkflowHealthJson rejects missing status", () => {
+    const error = validateWorkflowHealthJson(
+      stringifyCompactJson({
+        task_id: "t1",
+        feature_id: "f1",
+        run_dir: ".pan/work/day/t1",
+        repair_count: 0,
+        auto_chain_reversal_count: 0,
+        findings: [],
+        updated_at: "2026-06-19T00:00:00.000Z",
+      }),
+    );
+    expect(error).toContain("status");
+  });
+
+  it("validateHighRiskPersonaTranscriptCompliance rejects missing transcript evidence", () => {
+    expect(
+      validateHighRiskPersonaTranscriptCompliance({
+        output_manifest: { consulted_docs: ["DOC.AGENTS", "DOC.REGISTRY"] },
+      }),
+    ).toContain("transcript_required_doc_evidence");
   });
 });

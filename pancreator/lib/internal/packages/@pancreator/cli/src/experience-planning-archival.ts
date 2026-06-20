@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { stringifyCliJson, stringifyPanWorkJson } from "./canonical-json-io.js";
+import { stringifyPanWorkJson } from "./canonical-json-io.js";
 import { panWorkStateMeta, parsePanWorkJsonText } from "./pan-work-artifact.js";
 import { pruneEmptyQueueParents } from "./inbox-archive.js";
 import { parseSimpleYaml } from "./simple-yaml.js";
@@ -11,6 +11,20 @@ import {
   listCanonicalWorkDayDirs,
   listTaskDirNames,
 } from "./work-archive-hygiene.js";
+import {
+  type PointerResolution,
+  resolvePointerResolution,
+} from "./workflow-health.js";
+
+export type { PointerResolution };
+export { resolvePointerResolution };
+
+export function resolveExperiencePlanningDirectivePointer(
+  repoRoot: string,
+  inboxPath: string,
+): PointerResolution {
+  return resolvePointerResolution(repoRoot, inboxPath, "Synthesized directive");
+}
 
 const INBOX_IN_PREFIX = "lib/inbox/in/";
 const ARCHIVE_INBOX_IN_PREFIX = ".pan/archive/inbox/in/";

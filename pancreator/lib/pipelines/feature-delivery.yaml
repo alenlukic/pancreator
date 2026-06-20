@@ -1,17 +1,17 @@
 # Operator section
-- 👀 **In this file:** Pipeline definition `feature-delivery`.
-- ⚖️ **Why it matters:** Quick orientation for feature delivery before agents load the full contract.
-- 🧭 **See also:**
-  - pancreator/lib/pipelines/README.md
-  - pancreator/lib/memory/handbook/pipeline-state-contract.md
+# - 👀 **In this file:** Pipeline definition `feature-delivery`.
+# - ⚖️ **Why it matters:** Quick orientation for feature delivery before agents load the full contract.
+# - 🧭 **See also:**
+#   - pancreator/lib/pipelines/README.md
+#   - pancreator/lib/memory/handbook/pipeline-state-contract.md
 id: feature-delivery
 version: "1"
 metadata:
   pancreator-bootstrap-only: false
   description: >-
     PRD §11 MVP pipeline. Walks a semi-formal directive in lib/inbox/in/ through
-    product, design, and technical planning; implementation; review; QA;
-    delivery report; compliance; ship; and index. Mirrors PRD §3.5 US-1. Each
+    product, design, and technical planning; implementation; review; QA; and a
+    consolidated bookkeeping closeout stage. Mirrors PRD §3.5 US-1. Each
     stage is owned by a named persona; plan-stage companion prompts collect
     product and design implementation plans plus acceptance criteria before the
     tech-lead emits the consolidated execution bundle. Runtime invocation and
@@ -52,8 +52,8 @@ stages:
         - every Markdown artifact includes ## Output manifest
       gate:
         validator: PERSONA.SUPERVISOR
-        predicate: human_approval or sdk_artifact_validation
-        pass_event: human_approval
+        predicate: sdk_artifact_validation
+        pass_event: sdk_artifact_validation
         fail_event: plan_remediation
       remediation:
         default_owner: PERSONA.TECH_LEAD
@@ -136,13 +136,13 @@ stages:
           DOC.COMPLIANCE_RUNS,
         ]
       definition_of_done:
-        - review.md declares review_passes, repo_wide_tests_pass, and scope_amendments_ratified
+        - review.md declares review_passes and scope_amendments_ratified
         - every product, design, and technical acceptance criterion is verified
         - must-fix findings route to coder unless core_reentry_required routes the run back to plan and tech-lead
         - output manifest is present in review.md and echoed to chat/stdout
       gate:
         validator: PERSONA.SUPERVISOR
-        predicate: "review_passes: true and repo_wide_tests_pass: true"
+        predicate: "review_passes: true"
         pass_event: review_passes
         fail_event: must_fix
       remediation:
@@ -175,7 +175,7 @@ stages:
         - output manifests are present in test reports and echoed to chat/stdout
       gate:
         validator: PERSONA.SUPERVISOR
-        predicate: "qa_passes: true and design_qa_passes: true when design QA runs"
+        predicate: "qa_passes: true and design_qa_passes: true when design QA runs; qa_design_followup allowed only for excluded non-blocking follow-up artifacts with no core_reentry_required/spot_fixable/remediate semantics"
         pass_event: qa_passes
         fail_event: qa_fails
       remediation:
@@ -190,93 +190,11 @@ stages:
       - .pan/work/<day>/<task-id>/test-report.md
       - .pan/work/<day>/<task-id>/design-qa-report.md
       - .pan/work/<day>/<task-id>/design-qa-prompt.md
-  - id: report
-    persona: tech-writer
-    label: Author the delivery report
-    contract:
-      key: PIPE.FEATURE_DELIVERY.REPORT
-      persona_contract: PERSONA.TECH_WRITER
-      required_docs:
-        [
-          DOC.AGENTS,
-          DOC.REGISTRY,
-          DOC.PERSONA_CONTRACTS,
-          DOC.OUTPUT_MANIFEST,
-          DOC.OPERATOR_OUTPUT,
-          DOC.RUN_LOG_SCHEMA,
-        ]
-      definition_of_done:
-        - delivery-report.md summarizes implementation, review, QA, compliance, and remaining operator work
-        - claims cite source artifacts
-        - output manifest is present in delivery-report.md and echoed to chat/stdout
-      gate:
-        validator: PERSONA.SUPERVISOR
-        predicate: report_ready
-        pass_event: report_ready
-        fail_event: report_remediation
-      remediation:
-        default_owner: PERSONA.TECH_WRITER
-    outputs:
-      - .pan/work/<day>/<task-id>/delivery-report.md
-  - id: compliance
-    persona: compliance-auditor
-    label: Audit baseline-delta compliance (saved audit history) and run final validation bundle
-    contract:
-      key: PIPE.FEATURE_DELIVERY.COMPLIANCE
-      persona_contract: PERSONA.COMPLIANCE_AUDITOR
-      required_docs:
-        [
-          DOC.AGENTS,
-          DOC.REGISTRY,
-          DOC.PERSONA_CONTRACTS,
-          DOC.OUTPUT_MANIFEST,
-          DOC.PIPELINE_STATE,
-          DOC.COMPLIANCE_RUNS,
-          DOC.RUN_LOG_SCHEMA,
-        ]
-      definition_of_done:
-        - compliance-result.json declares compliance_passes and final_gate command results
-        - output_manifest is present in compliance-result.json and echoed to chat/stdout
-      gate:
-        validator: PERSONA.SUPERVISOR
-        predicate: "compliance_passes: true and all final_gate commands pass"
-        pass_event: compliance_passes
-        fail_event: compliance_fails
-      remediation:
-        default_owner: PERSONA.CODER
-        plan_invalidating_owner: PERSONA.TECH_LEAD
-
-  - id: ship
-    persona: supervisor
-    label: Stage the PR (no auto-push, Q3)
-    contract:
-      key: PIPE.FEATURE_DELIVERY.SHIP
-      persona_contract: PERSONA.SUPERVISOR
-      required_docs:
-        [
-          DOC.AGENTS,
-          DOC.REGISTRY,
-          DOC.PERSONA_CONTRACTS,
-          DOC.OUTPUT_MANIFEST,
-          DOC.PIPELINE_STATE,
-          DOC.OPERATOR_OUTPUT,
-        ]
-      definition_of_done:
-        - ship-ratification.json records human_ratified_diff: true
-        - local diff is staged only after human ratification
-      gate:
-        validator: human
-        predicate: "human_ratified_diff: true"
-        pass_event: human_ratifies_local_diff
-        fail_event: ship_blocked
-      remediation:
-        default_owner: PERSONA.SUPERVISOR
-
-  - id: index
+  - id: bookkeeping
     persona: librarian
-    label: Index emitted artifacts and refresh the feature index before librarian artifact closure
+    label: Consolidate closeout artifacts (delivery report, index refresh, operator verification)
     contract:
-      key: PIPE.FEATURE_DELIVERY.INDEX
+      key: PIPE.FEATURE_DELIVERY.BOOKKEEPING
       persona_contract: PERSONA.LIBRARIAN
       required_docs:
         [
@@ -290,17 +208,21 @@ stages:
           DOC.OPERATOR_OUTPUT,
         ]
       definition_of_done:
-        - durable feature index is refreshed with artifact_index pointers to acceptance-criteria sources, gate evidence, audit logs, and compliance artifacts for the run
+        - delivery-report.md summarizes implementation, review, QA, and remaining operator work
+        - durable feature index is refreshed with artifact_index pointers to acceptance-criteria sources and gate evidence for the run
         - pipeline-close.md and operator-verification.md exist
-        - active work and inbox artifacts are ready for closure
+        - deterministic artifact lint and required-doc receipt evidence pass for closeout artifacts
+        - transition-summaries.jsonl and workflow-health.json report coherent warning and status semantics
+        - output manifests are present in generated artifacts and echoed to chat/stdout
       gate:
         validator: PERSONA.SUPERVISOR
-        predicate: artifacts_indexed
-        pass_event: artifacts_indexed
-        fail_event: index_remediation
+        predicate: bookkeeping_complete with deterministic artifact lint pass and coherent workflow-health/transition-summary status
+        pass_event: bookkeeping_complete
+        fail_event: bookkeeping_remediation
       remediation:
         default_owner: PERSONA.LIBRARIAN
     outputs:
+      - .pan/work/<day>/<task-id>/delivery-report.md
       - lib/memory/features/<category>/<feature-id>/index.json
       - .pan/work/<day>/<task-id>/pipeline-close.md
       - .pan/work/<day>/<task-id>/operator-verification.md

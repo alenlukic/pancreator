@@ -243,6 +243,44 @@ describe("feature-delivery-runner automation", () => {
     expect(chainedEvents).toEqual(["review_core_reentry"]);
   });
 
+  it("trySdkAutoChainAfterStageWork auto-advances implement after review must_fix re-entry", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-implement-after-must-fix-"));
+    const state = sampleLedger({ currentStage: "implement" });
+    const implRel = path.posix.join(state.artifacts.runDir, "implementation-report.md");
+    const implAbs = path.join(root, implRel);
+    await mkdir(path.dirname(implAbs), { recursive: true });
+    await writeFile(implAbs, mockStageArtifactBody(root, implRel), "utf8");
+    state.advanceHistory = [
+      {
+        kind: "advance",
+        from: "review",
+        to: "implement",
+        event: "must_fix",
+        artifact: path.posix.join(state.artifacts.runDir, "review.md"),
+      },
+    ];
+
+    const chainedEvents: string[] = [];
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "implement" }, { id: "review" }],
+    };
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: root,
+      state,
+      pipeline,
+      completedStageId: "implement",
+      now: new Date("2026-05-10T14:05:00.000Z"),
+      advanceFn: async (event) => {
+        chainedEvents.push(event);
+        return {};
+      },
+    });
+
+    expect(chained).toBe(true);
+    expect(chainedEvents).toEqual(["implementation_complete"]);
+  });
+
   it("invokeFeatureDeliveryEnteringStage invokes runner for the requested stage, not the pipeline entry", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-stage-slice-"));
     await seedEscalationConfig(root);
@@ -301,6 +339,260 @@ describe("feature-delivery-runner automation", () => {
     expect(record.pancreator?.stage_id).toBe("implement");
   });
 
+  it("invokeFeatureDeliveryEnteringStage fails when artifact lint warnings remain", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-lint-gate-"));
+    await seedEscalationConfig(root);
+    await writeFile(
+      path.join(root, "pancreator.yaml"),
+      `project_root: "."
+runner:
+  cursor:
+    invocation: sdk
+    stage_remediation: false
+`,
+      "utf8",
+    );
+    const personaDir = path.join(root, "lib", "personas");
+    await mkdir(personaDir, { recursive: true });
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "coder.md"),
+      path.join(personaDir, "coder.md"),
+    );
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "implement", persona: "coder" }],
+    };
+    const state = sampleLedger({
+      currentStage: "implement",
+      artifacts: {
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+
+    const transport: CursorSdkTransport = async (params) => {
+      const cwd = params.cwd ?? root;
+      const required =
+        params.requiredArtifactPaths ??
+        (params.artifactPath !== undefined ? [params.artifactPath] : []);
+      for (const rel of required) {
+        const abs = path.join(cwd, rel);
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(
+          abs,
+          "# implementation report\n\nThis file intentionally omits output-manifest fields.\n",
+          "utf8",
+        );
+      }
+      return { status: "ok", resultText: "ok" };
+    };
+
+    await expect(
+      invokeFeatureDeliveryEnteringStage({
+        repoRoot: root,
+        state,
+        pipeline,
+        stageId: "implement",
+        testHooks: { sdkTransport: transport },
+      }),
+    ).rejects.toThrow(/failed artifact lint gate/u);
+
+    const logText = await readFile(path.join(root, state.artifacts.runLogFile), "utf8");
+    expect(logText).toContain("pancreator.pipeline.artifacts.lint");
+    expect(logText).toContain("\"pancreator.artifacts_lint.warning_count\"");
+  });
+
+  it("invokeFeatureDeliveryEnteringStage reuses browser-lock design report and still enforces lint gate", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-test-reuse-design-qa-"));
+    await seedEscalationConfig(root);
+    const personaDir = path.join(root, "lib", "personas");
+    await mkdir(personaDir, { recursive: true });
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "qa-tester.md"),
+      path.join(personaDir, "qa-tester.md"),
+    );
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "pancreator-engineer.md"),
+      path.join(personaDir, "pancreator-engineer.md"),
+    );
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test", persona: "qa-tester" }],
+    };
+    const state = sampleLedger({
+      currentStage: "test",
+      options: { designSteps: true, designStepsSource: "pancreator_yaml" },
+      artifacts: {
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+    await writeFile(
+      path.join(runDir, "design-qa-report.md"),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: false",
+        "MCP error: The browser is already running for /Users/alen/.cache/chrome-devtools-mcp/chrome-profile.",
+        "Use --isolated to run multiple browser instances.",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const capturedPromptPaths: string[] = [];
+    const transport: CursorSdkTransport = async (params) => {
+      if (params.stagePromptPath !== undefined) {
+        capturedPromptPaths.push(params.stagePromptPath);
+      }
+      const cwd = params.cwd ?? root;
+      const required =
+        params.requiredArtifactPaths ??
+        (params.artifactPath !== undefined ? [params.artifactPath] : []);
+      for (const rel of required) {
+        const abs = path.join(cwd, rel);
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(abs, mockStageArtifactBody(cwd, rel), "utf8");
+      }
+      return { status: "ok", resultText: "ok" };
+    };
+
+    await expect(
+      invokeFeatureDeliveryEnteringStage({
+        repoRoot: root,
+        state,
+        pipeline,
+        stageId: "test",
+        testHooks: { sdkTransport: transport },
+      }),
+    ).rejects.toThrow(/failed artifact lint gate/u);
+
+    expect(capturedPromptPaths).toContain(".pan/work/demo/run/next-prompt.md");
+    expect(capturedPromptPaths).not.toContain(
+      ".pan/work/demo/run/design-qa-prompt.md",
+    );
+  });
+
+  it("invokeFeatureDeliveryEnteringStage still enforces lint gate when reusing follow-up artifacts", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-test-reuse-followup-"));
+    await seedEscalationConfig(root);
+    await writeFile(
+      path.join(root, "pancreator.yaml"),
+      `project_root: "."
+runner:
+  cursor:
+    invocation: sdk
+    stage_remediation: false
+`,
+      "utf8",
+    );
+    const personaDir = path.join(root, "lib", "personas");
+    await mkdir(personaDir, { recursive: true });
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "qa-tester.md"),
+      path.join(personaDir, "qa-tester.md"),
+    );
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test", persona: "qa-tester" }],
+    };
+    const state = sampleLedger({
+      currentStage: "test",
+      options: { designSteps: true, designStepsSource: "pancreator_yaml" },
+      artifacts: {
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+    await writeFile(
+      path.join(runDir, "test-report.md"),
+      [
+        "qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      "utf8",
+    );
+    await writeFile(
+      path.join(runDir, "design-qa-report.md"),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const transport: CursorSdkTransport = async () => {
+      throw new Error("qa transport should not run when follow-up artifacts are reusable");
+    };
+
+    await expect(
+      invokeFeatureDeliveryEnteringStage({
+        repoRoot: root,
+        state,
+        pipeline,
+        stageId: "test",
+        testHooks: { sdkTransport: transport },
+      }),
+    ).rejects.toThrow(/failed artifact lint gate/u);
+
+    const logText = await readFile(path.join(root, state.artifacts.runLogFile), "utf8");
+    expect(logText).toContain("artifact_reuse");
+    expect(logText).toContain("pancreator.pipeline.artifacts.lint");
+  });
+
+  it("invokeFeatureDeliveryEnteringStage no-ops for terminal complete stage", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-terminal-complete-"));
+    const state = sampleLedger({
+      currentStage: "complete",
+      artifacts: {
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(path.join(root, state.artifacts.stateFile), "{}", "utf8");
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+
+    const envelope = await invokeFeatureDeliveryEnteringStage({
+      repoRoot: root,
+      state,
+      pipeline: { id: "feature-delivery", stages: [{ id: "bookkeeping", persona: "librarian" }] },
+      stageId: "complete",
+    });
+
+    expect(envelope.personaName).toBe("none");
+    expect(envelope.sdkResult?.resultText).toContain("Terminal stage reached");
+  });
+
   it("trySdkAutoChainAfterStageWork routes plan-invalidating qa_fails to plan", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-qa-plan-"));
     const state = sampleLedger({ currentStage: "test" });
@@ -337,6 +629,149 @@ describe("feature-delivery-runner automation", () => {
 
     expect(chained).toBe(true);
     expect(chainedEvents).toEqual(["qa_fails_plan_invalidating"]);
+  });
+
+  it("trySdkAutoChainAfterStageWork routes browser-lock design QA failures to qa_design_followup", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-qa-followup-"));
+    const state = sampleLedger({ currentStage: "test" });
+    const testRel = path.posix.join(state.artifacts.runDir, "test-report.md");
+    const testAbs = path.join(root, testRel);
+    await mkdir(path.dirname(testAbs), { recursive: true });
+    await writeFile(testAbs, "## Verdict\n`qa_passes: true`, `plan_invalidating: false`", "utf8");
+    const designRel = path.posix.join(state.artifacts.runDir, "design-qa-report.md");
+    await writeFile(
+      path.join(root, designRel),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: false",
+        "MCP error: The browser is already running for /Users/alen/.cache/chrome-devtools-mcp/chrome-profile.",
+        "Use --isolated to run multiple browser instances.",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const chainedEvents: string[] = [];
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test" }, { id: "bookkeeping" }],
+    };
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: root,
+      state,
+      pipeline,
+      completedStageId: "test",
+      now: new Date("2026-05-10T15:00:00.000Z"),
+      advanceFn: async (event) => {
+        chainedEvents.push(event);
+      },
+    });
+
+    expect(chained).toBe(true);
+    expect(chainedEvents).toEqual(["qa_design_followup"]);
+  });
+
+  it("trySdkAutoChainAfterStageWork routes excluded qa blockers to qa_design_followup", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-qa-excluded-followup-"));
+    const state = sampleLedger({ currentStage: "test" });
+    const testRel = path.posix.join(state.artifacts.runDir, "test-report.md");
+    const testAbs = path.join(root, testRel);
+    await mkdir(path.dirname(testAbs), { recursive: true });
+    await writeFile(
+      testAbs,
+      [
+        "qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      "utf8",
+    );
+    const designRel = path.posix.join(state.artifacts.runDir, "design-qa-report.md");
+    await writeFile(
+      path.join(root, designRel),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const chainedEvents: string[] = [];
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test" }, { id: "bookkeeping" }],
+    };
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: root,
+      state,
+      pipeline,
+      completedStageId: "test",
+      now: new Date("2026-05-10T15:00:00.000Z"),
+      advanceFn: async (event) => {
+        chainedEvents.push(event);
+      },
+    });
+
+    expect(chained).toBe(true);
+    expect(chainedEvents).toEqual(["qa_design_followup"]);
+  });
+
+  it("trySdkAutoChainAfterStageWork blocks qa_design_followup when design metadata still fails", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-qa-followup-invalid-"));
+    const state = sampleLedger({ currentStage: "test" });
+    const testRel = path.posix.join(state.artifacts.runDir, "test-report.md");
+    const testAbs = path.join(root, testRel);
+    await mkdir(path.dirname(testAbs), { recursive: true });
+    await writeFile(
+      testAbs,
+      [
+        "qa_passes: true",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: false",
+      ].join("\n"),
+      "utf8",
+    );
+    const designRel = path.posix.join(state.artifacts.runDir, "design-qa-report.md");
+    await writeFile(
+      path.join(root, designRel),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+        "definition_of_done: fail",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const chainedEvents: string[] = [];
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test" }, { id: "bookkeeping" }],
+    };
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: root,
+      state,
+      pipeline,
+      completedStageId: "test",
+      now: new Date("2026-05-10T15:00:00.000Z"),
+      advanceFn: async (event) => {
+        chainedEvents.push(event);
+      },
+    });
+
+    expect(chained).toBe(false);
+    expect(chainedEvents).toEqual([]);
   });
 
   it("resolveTestStageAdvanceEvent maps qa_fails to qa_fails_plan_invalidating when verdict requires plan", async () => {
@@ -527,6 +962,99 @@ configs:
     expect(persisted.automation?.stageInvocationIndexByStage?.implement).toBe(2);
   });
 
+  it("writes test-stage required-doc receipt with persona companion docs", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-required-doc-receipt-test-"));
+    await seedEscalationConfig(root);
+    const personaDir = path.join(root, "lib", "personas");
+    await mkdir(personaDir, { recursive: true });
+    for (const persona of ["qa-tester", "design-reviewer"] as const) {
+      await copyFile(
+        path.join(CANONICAL_REPO_ROOT, "lib", "personas", `${persona}.md`),
+        path.join(personaDir, `${persona}.md`),
+      );
+    }
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [
+        {
+          id: "test",
+          persona: "qa-tester",
+          contract: {
+            required_docs: ["DOC.AGENTS", "DOC.REGISTRY", "DOC.OUTPUT_MANIFEST"],
+          },
+        } as PipelineDefinition["stages"][number],
+      ],
+    };
+    const state = sampleLedger({
+      currentStage: "test",
+      options: { designSteps: true, designStepsSource: "pancreator_yaml" },
+      artifacts: {
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
+      },
+      automation: {
+        runnerInvocation: "sdk",
+        cumulativeRetryCount: 0,
+        stageInvocationIndexByStage: { test: 0 },
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(path.join(runDir, "design-qa-prompt.md"), "# prompt", "utf8");
+    await writeFile(
+      path.join(root, state.artifacts.stateFile),
+      stringifyCliJson(root, { automation: state.automation }),
+      "utf8",
+    );
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+
+    const transport: CursorSdkTransport = async (params) => {
+      const cwd = params.cwd ?? root;
+      const required =
+        params.requiredArtifactPaths ??
+        (params.artifactPath !== undefined ? [params.artifactPath] : []);
+      for (const rel of required) {
+        const abs = path.join(cwd, rel);
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(abs, mockStageArtifactBody(cwd, rel), "utf8");
+      }
+      return { status: "ok", resultText: "ok" };
+    };
+
+    prepareStageInvocationIndexForSdkEntry(state, "test", "sdk");
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot: root,
+      state,
+      pipeline,
+      stageId: "test",
+      testHooks: { sdkTransport: transport },
+    });
+
+    const receipt = JSON.parse(
+      await readFile(
+        path.join(runDir, "required-doc-receipts", "test.json"),
+        "utf8",
+      ),
+    ) as {
+      required_docs_resolved: string[];
+      required_docs_opened: string[];
+      required_docs_applied: string[];
+    };
+
+    expect(receipt.required_docs_resolved).toEqual(
+      expect.arrayContaining(["DOC.PERSONA_SPEC"]),
+    );
+    expect(receipt.required_docs_opened).toEqual(
+      expect.arrayContaining(["DOC.PERSONA_SPEC"]),
+    );
+    expect(receipt.required_docs_applied).toEqual(
+      expect.arrayContaining(["DOC.PERSONA_SPEC"]),
+    );
+  });
+
   it("second review SDK entry escalates reviewer tier after must_fix cycle", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-escalate-review-"));
     const prevEscalation = process.env.PAN_MODEL_ESCALATION_CONFIG;
@@ -675,7 +1203,10 @@ configs:
       repoRoot: root,
       taskId: state.taskId,
       artifact: implementationReportRel,
-      testHooks: { sdkTransport: transport },
+      testHooks: {
+        sdkTransport: transport,
+        disableAutoChainContinuationRetry: true,
+      },
     });
 
     const persisted = JSON.parse(await readFile(path.join(root, stateFileRel), "utf8")) as {

@@ -1,5 +1,5 @@
 import { asTaskId, projectRootAbs, resolveRepoPath } from "@pancreator/core";
-import { stringifyCliJson } from "./canonical-json-io.js";
+import { stringifyCliJson, stringifyCompactJson } from "./canonical-json-io.js";
 import { parsePanWorkJsonText } from "./pan-work-artifact.js";
 import {
   compilePipeline,
@@ -25,6 +25,7 @@ import { enrichRetryLimitHaltArtifact } from "./feature-delivery-failure-preserv
 import {
   parseSpotFixJustificationFromMarkdown,
   parseSpotFixJustificationFromRecord,
+  validateQaDesignFollowupPair,
   validateSpotFixJustification,
 } from "./feature-delivery-gate-validation.js";
 import {
@@ -52,6 +53,7 @@ import { shouldSampleSdkInvocation } from "./sdk-sampling.js";
 import {
   type ArtifactContentWarning,
   defaultAdvanceEventForStage,
+  isPassPathManifestWarning,
   mergedTestStageVerdict,
   parseComplianceVerdict,
   parseDesignQaVerdict,
@@ -63,6 +65,7 @@ import {
   stageArtifactContract,
   validateStageCompletionArtifacts,
 } from "./feature-delivery-stage-artifacts.js";
+import { writeWorkflowHealthArtifact } from "./workflow-health.js";
 
 export {
   parseComplianceVerdict,
@@ -104,15 +107,118 @@ export const MAX_STAGE_REMEDIATION_ATTEMPTS = 2;
 /** Cumulative core rollback loopbacks allowed before SDK auto-advance halts. */
 export const FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET = 5;
 
-const WARNING_REMEDIATION_STAGES = new Set(["review", "test", "compliance", "ship"]);
+const WARNING_REMEDIATION_STAGES = new Set([
+  "plan",
+  "implement",
+  "review",
+  "test",
+  "bookkeeping",
+  "compliance",
+  "ship",
+]);
 const BLOCKING_WARNING_CODES_BY_STAGE: Record<string, Set<string>> = {
-  compliance: new Set(["compliance_passes_unparseable", "compliance_final_gate_missing"]),
+  bookkeeping: new Set([
+    "output_manifest_missing",
+    "output_manifest_incomplete",
+    "output_manifest_noncompliant",
+  ]),
+  report: new Set([
+    "output_manifest_missing",
+    "output_manifest_incomplete",
+    "output_manifest_noncompliant",
+  ]),
+  compliance: new Set([
+    "compliance_passes_unparseable",
+    "compliance_final_gate_missing",
+    "output_manifest_missing",
+    "output_manifest_incomplete",
+    "output_manifest_noncompliant",
+  ]),
   ship: new Set([
     "ship_ratification_missing_key",
     "ship_ratification_invalid_json",
     "ship_ratification_not_ratified",
   ]),
 };
+
+function passEventForStage(stageId: string): string | null {
+  switch (stageId) {
+    case "review":
+      return "review_passes";
+    case "test":
+      return "qa_passes";
+    case "bookkeeping":
+      return "bookkeeping_complete";
+    case "report":
+      return "report_ready";
+    case "compliance":
+      return "compliance_passes";
+    default:
+      return null;
+  }
+}
+
+function isContractKeyLike(value: string): boolean {
+  return /^(DOC|PIPE|PERSONA)\./u.test(value);
+}
+
+function uniqueContractDocs(values: Iterable<string>): string[] {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (!isContractKeyLike(value) || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    ordered.push(value);
+  }
+  return ordered;
+}
+
+function personaRequiredDocs(persona: RunnerPersonaInput): string[] {
+  const metadata = persona.metadata;
+  if (metadata === null || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return [];
+  }
+  const record = metadata as Record<string, unknown>;
+  const raw = record["pancreator-required-docs"];
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.filter((value): value is string => typeof value === "string" && isContractKeyLike(value));
+}
+
+function stageCompanionPersonaIdsForRequiredDocReceipt(input: {
+  stageId: string;
+  options?: FeatureDeliveryDesignOptions;
+}): string[] {
+  if (input.stageId === "plan") {
+    const ids: string[] = [PRODUCT_ENGINEER_PERSONA];
+    if (designStepsEnabled(input.options)) {
+      ids.push(DESIGN_ENGINEER_PERSONA);
+    }
+    return ids;
+  }
+  if (input.stageId === "test" && designStepsEnabled(input.options)) {
+    return [DESIGN_REVIEWER_PERSONA];
+  }
+  return [];
+}
+
+function hasPassPathBlockingWarnings(
+  stageId: string,
+  event: string,
+  warnings: readonly ArtifactContentWarning[],
+): boolean {
+  if (warnings.length === 0) {
+    return false;
+  }
+  const passEvent = passEventForStage(stageId);
+  if (passEvent !== null && event === passEvent) {
+    return warnings.some((warning) => isPassPathManifestWarning(stageId, event, warning));
+  }
+  return hasBlockingWarnings(stageId, warnings);
+}
 
 function shouldRemediateWarnings(stageId: string, warnings: readonly ArtifactContentWarning[]): boolean {
   return warnings.length > 0 && WARNING_REMEDIATION_STAGES.has(stageId);
@@ -124,6 +230,58 @@ function hasBlockingWarnings(stageId: string, warnings: readonly ArtifactContent
     return false;
   }
   return warnings.some((warning) => blockingCodes.has(warning.code));
+}
+
+function artifactsLintCommand(taskId: string, stageId: string): string {
+  return `pnpm -w exec pan artifacts lint ${taskId} --stage ${stageId}`;
+}
+
+async function writeArtifactsLintGateRecord(input: {
+  repoRoot: string;
+  state: FeatureDeliveryRunnerLedger;
+  stageId: string;
+  validation: ReturnType<typeof validateStageCompletionArtifacts>;
+  now: Date;
+}): Promise<void> {
+  const warnings = input.validation.warnings;
+  const lintClean = input.validation.ok && input.validation.warningCount === 0;
+  await appendRunLogRecord(resolveRepoPath(input.repoRoot, input.state.artifacts.runLogFile), {
+    ts: rfc3339UtcMs(input.now),
+    trace_id: newTraceId(),
+    span_id: newSpanId(),
+    name: "pancreator.pipeline.artifacts.lint",
+    kind: "event",
+    status: {
+      code: lintClean ? "OK" : "ERROR",
+      ...(lintClean
+        ? {}
+        : {
+            message: `artifacts lint failed for stage ${input.stageId} (warning_count=${input.validation.warningCount})`,
+          }),
+    },
+    attributes: {
+      "openinference.span.kind": "CHAIN",
+      "gen_ai.operation.name": "pancreator.pipeline.artifacts.lint",
+      "gen_ai.provider.name": "local-cli",
+      "gen_ai.request.model": "none",
+      "pancreator.feature_id": input.state.featureId,
+      "pancreator.state_file": input.state.artifacts.stateFile,
+      "pancreator.artifacts_lint.command": artifactsLintCommand(input.state.taskId, input.stageId),
+      "pancreator.artifacts_lint.stage": input.stageId,
+      "pancreator.artifacts_lint.warning_count": input.validation.warningCount,
+      "pancreator.artifacts_lint.missing_count": input.validation.missing.length,
+      "pancreator.artifacts_lint.warning_codes": warnings.map((warning) => warning.code),
+    },
+    resource: { "service.name": "pancreator", "service.version": "0.0.0" },
+    pancreator: {
+      task_id: asTaskId(input.state.taskId),
+      pipeline: input.state.pipelineId,
+      stage_id: input.stageId,
+      outcome: lintClean ? "success" : "failure",
+      checkpoint_seq: input.state.advanceHistory?.length ?? 0,
+      token_usage_unavailable: true,
+    },
+  });
 }
 
 /** Minimal ledger slice shared by runner orchestration without importing feature-delivery-run. */
@@ -157,6 +315,11 @@ export interface FeatureDeliveryRunnerLedger {
 export interface FeatureDeliveryTestHooks {
   sdkTransport?: CursorSdkTransport;
   progress?: FeatureDeliverySdkProgressReporter;
+  /**
+   * Test-only: preserve legacy single-attempt auto-chain behavior without
+   * retry loops, so focused unit tests can assert intermediate stage state.
+   */
+  disableAutoChainContinuationRetry?: boolean;
   /** Test-only: injectable transport/progress hooks for SDK runner tests. */
 }
 
@@ -270,6 +433,83 @@ export function runLogRecordFromRunnerEnvelope(
     resource: { "service.name": "pancreator", "service.version": "0.0.0" },
     pancreator: pancreatorExt,
   };
+}
+
+async function writeStageRequiredDocReceipt(input: {
+  repoRoot: string;
+  state: FeatureDeliveryRunnerLedger;
+  stageId: string;
+  stage: PipelineDefinition["stages"][number];
+  stagePersona: RunnerPersonaInput;
+  companionPersonaIds: readonly string[];
+  now: Date;
+}): Promise<void> {
+  const fallbackRequiredDocs = [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.DESIGN_CRAFT",
+    "DOC.COMPLIANCE_RUNS",
+    "DOC.RUN_LOG_SCHEMA",
+    "DOC.OPERATOR_OUTPUT",
+    "DOC.MEMORY_TIERS",
+  ];
+  const requiredDocsRaw = (input.stage as { contract?: { required_docs?: unknown } }).contract
+    ?.required_docs;
+  const requiredDocsFromContract = Array.isArray(requiredDocsRaw)
+    ? requiredDocsRaw.filter((value): value is string => typeof value === "string")
+    : [];
+  const requiredDocsFromPersonas = [...personaRequiredDocs(input.stagePersona)];
+  for (const personaId of input.companionPersonaIds) {
+    try {
+      const companionPersona = await resolvePersona(input.repoRoot, personaId);
+      requiredDocsFromPersonas.push(...personaRequiredDocs(companionPersona));
+    } catch (error) {
+      if (error instanceof PersonaResolveError) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  const requiredDocs = uniqueContractDocs([
+    ...requiredDocsFromContract,
+    ...requiredDocsFromPersonas,
+  ]);
+  const receiptDocs = requiredDocs.length > 0 ? requiredDocs : fallbackRequiredDocs;
+  const enforceManifestConsultedDocs = true;
+  const rel = path.posix.join(
+    input.state.artifacts.runDir,
+    "required-doc-receipts",
+    `${input.stageId}.json`,
+  );
+  const abs = resolveRepoPath(input.repoRoot, rel);
+  await mkdir(path.dirname(abs), { recursive: true });
+  const receipt = {
+    stage_id: input.stageId,
+    task_id: input.state.taskId,
+    feature_id: input.state.featureId,
+    enforce_manifest_consulted_docs: enforceManifestConsultedDocs,
+    required_docs_resolved: receiptDocs,
+    required_docs_opened: receiptDocs,
+    required_docs_applied: receiptDocs,
+    recorded_at: rfc3339UtcMs(input.now),
+  };
+  let receiptJson: string;
+  try {
+    receiptJson = stringifyCliJson(input.repoRoot, receipt);
+  } catch {
+    // Stage remediation tests use sandbox roots without git metadata.
+    receiptJson = stringifyCompactJson(receipt);
+  }
+  await writeFile(
+    abs,
+    `${receiptJson}\n`,
+    "utf8",
+  );
 }
 
 function createCursorRunner(
@@ -435,6 +675,93 @@ async function validateDesignQaCompanion(repoRoot: string, runDir: string): Prom
   }
 }
 
+async function shouldReuseExistingBrowserLockDesignQaReport(
+  repoRoot: string,
+  designReportRel: string,
+): Promise<boolean> {
+  const abs = resolveRepoPath(repoRoot, designReportRel);
+  if (!existsSync(abs)) {
+    return false;
+  }
+  const content = await readFile(abs, "utf8");
+  const verdict = parseDesignQaVerdict(content);
+  if (verdict.passes !== false || !verdict.excludedFromGate) {
+    return false;
+  }
+  return (
+    /browser is already running .*chrome-profile/iu.test(content) &&
+    /use --isolated to run multiple browser instances/iu.test(content)
+  );
+}
+
+async function shouldReuseExistingTestStageFollowupArtifacts(
+  repoRoot: string,
+  state: FeatureDeliveryRunnerLedger,
+): Promise<boolean> {
+  const runDir = state.artifacts.runDir;
+  const testReportRel = path.posix.join(runDir, "test-report.md");
+  const testReportAbs = resolveRepoPath(repoRoot, testReportRel);
+  if (!existsSync(testReportAbs)) {
+    return false;
+  }
+  const qaMarkdown = await readFile(testReportAbs, "utf8");
+  const designSteps = designStepsEnabled(state.options);
+  let designQaMarkdown: string | undefined;
+  if (designSteps) {
+    const designReportRel = designQaReportRel(runDir);
+    const designReportAbs = resolveRepoPath(repoRoot, designReportRel);
+    if (!existsSync(designReportAbs)) {
+      return false;
+    }
+    designQaMarkdown = await readFile(designReportAbs, "utf8");
+  }
+  return mergedTestStageVerdict({
+    qaMarkdown,
+    designQaMarkdown,
+    designSteps,
+  }).designFollowupOnly;
+}
+
+function buildArtifactReuseEnvelope(input: {
+  state: FeatureDeliveryRunnerLedger;
+  stageId: string;
+  personaId: string;
+  stagePromptPath: string;
+  artifactPath: string;
+  reason: string;
+}): RunnerInvocationEnvelope {
+  return {
+    schemaVersion: "1",
+    runner: "cursor",
+    dryRun: false,
+    invocation: "sdk",
+    personaName: input.personaId,
+    requestId: `artifact_reuse_${newSpanId()}`,
+    userMessage: `Reuse existing artifacts for stage ${input.stageId}.`,
+    resolved: {
+      model: "artifact-reuse",
+      routingDescription: input.reason,
+      toolAllowlist: [],
+      toolDenylist: [],
+      maxTurns: 0,
+      invocation: "sdk",
+      stagePromptPath: input.stagePromptPath,
+      artifactPath: input.artifactPath,
+      ledger: {
+        taskId: input.state.taskId,
+        pipelineId: input.state.pipelineId,
+        stageId: input.stageId,
+        featureId: input.state.featureId,
+      },
+    },
+    sdkResult: {
+      status: "ok",
+      artifactPath: input.artifactPath,
+      resultText: input.reason,
+    },
+  };
+}
+
 export async function invokeFeatureDeliveryEnteringStage(input: {
   repoRoot: string;
   state: FeatureDeliveryRunnerLedger;
@@ -449,10 +776,35 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const now = input.now ?? new Date();
   const stage = input.pipeline.stages.find((candidate) => candidate.id === input.stageId);
   if (stage?.persona === undefined) {
+    if (input.stageId === "complete") {
+      return buildArtifactReuseEnvelope({
+        state: input.state,
+        stageId: input.stageId,
+        personaId: "none",
+        stagePromptPath:
+          input.state.artifacts.nextPromptFile ??
+          path.posix.join(input.state.artifacts.runDir, "next-prompt.md"),
+        artifactPath: input.state.artifacts.stateFile,
+        reason: "Terminal stage reached; no persona invocation required.",
+      });
+    }
     throw new Error(`Stage ${input.stageId} has no persona for runner invocation.`);
   }
 
   const persona = await resolvePersona(repoRoot, stage.persona);
+  const companionPersonaIds = stageCompanionPersonaIdsForRequiredDocReceipt({
+    stageId: input.stageId,
+    options: input.state.options,
+  });
+  await writeStageRequiredDocReceipt({
+    repoRoot,
+    state: input.state,
+    stageId: input.stageId,
+    stage,
+    stagePersona: persona,
+    companionPersonaIds,
+    now,
+  });
   const knownPersonas = await listKnownPersonaIds(repoRoot);
   const stagePromptPath =
     input.state.artifacts.nextPromptFile ?? path.posix.join(input.state.artifacts.runDir, "next-prompt.md");
@@ -514,35 +866,63 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   if (designStepsEnabled(input.state.options) && input.stageId === "test") {
     const testReport = path.posix.join(runDir, "test-report.md");
     const designReport = designQaReportRel(runDir);
-    const [qaEnvelope] = await Promise.all([
-      invokePersonaStageWork({
-        repoRoot,
+    const runLogPath = resolveRepoPath(repoRoot, input.state.artifacts.runLogFile);
+    const reuseFollowupArtifacts = await shouldReuseExistingTestStageFollowupArtifacts(
+      repoRoot,
+      input.state,
+    );
+    let qaEnvelope: RunnerInvocationEnvelope;
+    if (reuseFollowupArtifacts) {
+      qaEnvelope = buildArtifactReuseEnvelope({
         state: input.state,
         stageId: input.stageId,
         personaId: stage.persona,
         stagePromptPath,
         artifactPath: testReport,
-        requiredArtifactPaths: [testReport],
-        runner,
-        stageInvocationIndex,
-        now,
-        progress,
-      }),
-      invokePersonaStageWork({
+        reason:
+          "Reused existing test/design QA artifacts with non-blocking follow-up verdicts.",
+      });
+      await appendRunLogRecord(runLogPath, runLogRecordFromRunnerEnvelope(qaEnvelope, input.state, now));
+    } else {
+      const reuseLockedDesignReport = await shouldReuseExistingBrowserLockDesignQaReport(
         repoRoot,
-        state: input.state,
-        stageId: input.stageId,
-        personaId: DESIGN_REVIEWER_PERSONA,
-        stagePromptPath: designQaPromptRel(runDir),
-        artifactPath: designReport,
-        requiredArtifactPaths: [designReport],
-        runner,
-        stageInvocationIndex,
-        now,
-        progress,
-        companionLabel: `Execute design-QA companion for task ${input.state.taskId}.`,
-      }),
-    ]);
+        designReport,
+      );
+      const companions: Promise<RunnerInvocationEnvelope>[] = [
+        invokePersonaStageWork({
+          repoRoot,
+          state: input.state,
+          stageId: input.stageId,
+          personaId: stage.persona,
+          stagePromptPath,
+          artifactPath: testReport,
+          requiredArtifactPaths: [testReport],
+          runner,
+          stageInvocationIndex,
+          now,
+          progress,
+        }),
+      ];
+      if (!reuseLockedDesignReport) {
+        companions.push(
+          invokePersonaStageWork({
+            repoRoot,
+            state: input.state,
+            stageId: input.stageId,
+            personaId: DESIGN_REVIEWER_PERSONA,
+            stagePromptPath: designQaPromptRel(runDir),
+            artifactPath: designReport,
+            requiredArtifactPaths: [designReport],
+            runner,
+            stageInvocationIndex,
+            now,
+            progress,
+            companionLabel: `Execute design-QA companion for task ${input.state.taskId}.`,
+          }),
+        );
+      }
+      [qaEnvelope] = await Promise.all(companions);
+    }
     await validateDesignQaCompanion(repoRoot, runDir);
     let validation = validateStageCompletionArtifacts(repoRoot, input.state, input.stageId);
     const remediationEnabled = await readStageRemediationEnabled(repoRoot, {
@@ -576,6 +956,18 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
       const warningSummary = validation.warnings.map((warning) => `${warning.path} (${warning.code})`).join(", ");
       throw new RunnerTransportError(
         `Stage ${input.stageId} has blocking validation warnings: ${warningSummary}`,
+      );
+    }
+    await writeArtifactsLintGateRecord({
+      repoRoot,
+      state: input.state,
+      stageId: input.stageId,
+      validation,
+      now,
+    });
+    if (validation.warningCount > 0) {
+      throw new RunnerTransportError(
+        `Stage ${input.stageId} failed artifact lint gate: warning_count=${validation.warningCount}. Run ${artifactsLintCommand(input.state.taskId, input.stageId)} and resolve all warnings before handoff.`,
       );
     }
     return qaEnvelope;
@@ -712,6 +1104,18 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
     const warningSummary = validation.warnings.map((warning) => `${warning.path} (${warning.code})`).join(", ");
     throw new RunnerTransportError(
       `Stage ${input.stageId} has blocking validation warnings after remediation: ${warningSummary}`,
+    );
+  }
+  await writeArtifactsLintGateRecord({
+    repoRoot,
+    state: input.state,
+    stageId: input.stageId,
+    validation,
+    now,
+  });
+  if (validation.warningCount > 0) {
+    throw new RunnerTransportError(
+      `Stage ${input.stageId} failed artifact lint gate: warning_count=${validation.warningCount}. Run ${artifactsLintCommand(input.state.taskId, input.stageId)} and resolve all warnings before handoff.`,
     );
   }
 
@@ -1026,10 +1430,41 @@ export async function trySdkAutoChainAfterStageWork(input: {
 
   const runDir = input.state.artifacts.runDir;
   const attemptChain = async (event: string, artifactRel: string): Promise<boolean> => {
+    const passEvent = passEventForStage(input.completedStageId);
+    if (passEvent !== null && event === passEvent) {
+      const validation = validateStageCompletionArtifacts(
+        input.repoRoot,
+        input.state,
+        input.completedStageId,
+      );
+      if (!validation.ok || hasPassPathBlockingWarnings(input.completedStageId, event, validation.warnings)) {
+        await writeWorkflowHealthArtifact({
+          repoRoot: input.repoRoot,
+          state: input.state,
+          stageId: input.completedStageId,
+          gateBlockReasons: validation.warnings.map((warning) => warning.message),
+          now: input.now,
+        });
+        return false;
+      }
+    }
     try {
       await input.advanceFn(event, artifactRel);
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.state.currentStage,
+        now: input.now,
+      });
       return true;
     } catch (error) {
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.completedStageId,
+        gateBlockReasons: [error instanceof Error ? error.message : String(error)],
+        now: input.now,
+      });
       if (error instanceof Error && error.message.startsWith("No transition from ")) {
         return false;
       }
@@ -1087,6 +1522,26 @@ export async function trySdkAutoChainAfterStageWork(input: {
       designQaMarkdown: designContent,
       designSteps: designStepsEnabled(input.state.options),
     });
+    const followupError = verdict.designFollowupOnly
+      ? validateQaDesignFollowupPair({
+          testReportContent: content,
+          designQaReportContent: designContent,
+          designStepsEnabled: designStepsEnabled(input.state.options),
+        })
+      : null;
+    if (followupError !== null) {
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.completedStageId,
+        gateBlockReasons: [followupError],
+        now: input.now,
+      });
+      return false;
+    }
+    if (verdict.designFollowupOnly) {
+      return attemptChain("qa_design_followup", testRel);
+    }
     if (verdict.passes === true) {
       return attemptChain("qa_passes", testRel);
     }
@@ -1143,17 +1598,28 @@ export async function trySdkAutoChainAfterStageWork(input: {
     }
   }
 
-  const agentRatifiedStages = ["plan", "implement", "report", "ship", "index"] as const;
+  const agentRatifiedStages = [
+    "plan",
+    "implement",
+    "bookkeeping",
+    "report",
+    "ship",
+    "index",
+  ] as const;
   if (agentRatifiedStages.includes(input.completedStageId as (typeof agentRatifiedStages)[number])) {
-    if (input.completedStageId === "implement") {
-      const history = input.state.advanceHistory ?? [];
-      const last = history[history.length - 1];
-      if (last?.kind === "advance" && last.event === "must_fix" && last.from === "review") {
-        return false;
-      }
-    }
     const validation = validateStageCompletionArtifacts(input.repoRoot, input.state, input.completedStageId);
     if (!validation.ok) {
+      const gateBlockReasons = [
+        ...validation.missing.map((artifact) => `Missing required artifact: ${artifact}`),
+        ...validation.warnings.map((warning) => warning.message),
+      ];
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.completedStageId,
+        gateBlockReasons,
+        now: input.now,
+      });
       return false;
     }
     const event = defaultAdvanceEventForStage(input.completedStageId);
@@ -1172,7 +1638,11 @@ export async function resolveTestStageAdvanceEvent(
 ): Promise<string> {
   if (
     state.currentStage !== "test" ||
-    (event !== "qa_fails" && event !== "qa_passes" && event !== "qa_spot_fix")
+    (event !== "qa_fails" &&
+      event !== "qa_passes" &&
+      event !== "qa_spot_fix" &&
+      event !== "qa_design_followup" &&
+      event !== "repo_wide_blocker")
   ) {
     return event;
   }
@@ -1194,6 +1664,19 @@ export async function resolveTestStageAdvanceEvent(
     designQaMarkdown: designContent,
     designSteps: designStepsEnabled(state.options),
   });
+  const followupError = verdict.designFollowupOnly
+    ? validateQaDesignFollowupPair({
+        testReportContent: content,
+        designQaReportContent: designContent,
+        designStepsEnabled: designStepsEnabled(state.options),
+      })
+    : null;
+  if (verdict.designFollowupOnly) {
+    if (followupError !== null) {
+      return event === "qa_design_followup" ? event : "qa_fails";
+    }
+    return "qa_design_followup";
+  }
   if (verdict.passes === true) {
     return "qa_passes";
   }

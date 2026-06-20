@@ -4,6 +4,13 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 import { parsePanWorkJsonText } from "./pan-work-artifact.js";
+import {
+  type PointerResolution,
+  resolvePointerResolution,
+} from "./workflow-health.js";
+
+export type { PointerResolution };
+export { resolvePointerResolution };
 
 /** Minimal feature-delivery ledger fields used by hygiene scans. */
 interface FeatureDeliveryState {
@@ -233,7 +240,7 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
 
     if (
       state.currentStage === TERMINAL_STAGE &&
-      state.status === "complete" &&
+      (state.status === "complete" || state.status === "complete_with_attention") &&
       state.artifacts.runDir.startsWith(".pan/work/")
     ) {
       issues.push({
@@ -262,7 +269,8 @@ export async function scanWorkArchiveHygiene(repoRootInput: string): Promise<Wor
   const completeInWork = workRuns.filter(
     (record) =>
       record.state.currentStage === TERMINAL_STAGE &&
-      record.state.status === "complete" &&
+      (record.state.status === "complete" ||
+        record.state.status === "complete_with_attention") &&
       record.state.artifacts.runDir.startsWith(".pan/work/"),
   );
   const byFeatureDay = new Map<string, WorkRunRecord[]>();

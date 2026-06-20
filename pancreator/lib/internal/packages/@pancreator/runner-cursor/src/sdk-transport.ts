@@ -93,10 +93,11 @@ function buildChromeDevtoolsSafetyLines(persona: RunnerPersonaInput): string[] {
   }
   return [
     "Browser hygiene for chrome-devtools:",
-    "- Use `new_page` with a unique `isolatedContext` for the current run.",
-    "- Keep all state in a disposable automation context or profile and do not attach to the operator's regular browsing session.",
+    "- Call `list_pages` before `new_page`. When no task-owned pages are listed, open a fresh page with `new_page` and a unique `isolatedContext` for this run only.",
+    "- Sessions MUST NEVER be shared. Do not attach to the operator's browsing session, another run's context, or any page you did not create in this task.",
+    "- Close every task-owned page before finishing, then call `list_pages` again to verify teardown. Use try/finally so cleanup runs even when inspection fails.",
     "- Do not modify macOS LaunchServices, default-browser handlers, Chrome preferences, extensions, or any other host-level browser configuration.",
-    "- Close every task-owned page before finishing and verify teardown (for example via `list_pages`). If cleanup cannot be verified, treat the task as blocked instead of reporting success.",
+    "- Do not claim a shared-profile or session lock unless `list_pages` shows foreign task-owned pages. When `list_pages` is empty, retry `new_page` or report the exact MCP error text.",
   ];
 }
 

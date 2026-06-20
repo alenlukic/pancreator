@@ -5,6 +5,8 @@ import path from "node:path";
 import { resolveRepoPath } from "@pancreator/core";
 import type { CursorSdkTransport } from "@pancreator/runner-cursor";
 
+import { gateFixtureBody } from "../feature-delivery-gate-fixtures.js";
+
 const REMEDIATION_PERSONA = "pancreator-engineer";
 
 export interface StageFixtureWrite {
@@ -27,7 +29,7 @@ async function applyWrites(repoRoot: string, writes: StageFixtureWrite[]): Promi
   for (const entry of writes) {
     const abs = resolveRepoPath(repoRoot, entry.path);
     await mkdir(path.dirname(abs), { recursive: true });
-    await writeFile(abs, entry.content, "utf8");
+    await writeFile(abs, gateFixtureBody(repoRoot, entry.path), "utf8");
   }
 }
 

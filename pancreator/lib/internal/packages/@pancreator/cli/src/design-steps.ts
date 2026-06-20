@@ -193,6 +193,8 @@ You are \`${DESIGN_ENGINEER_PERSONA}\`. Read \`lib/personas/design-engineer.md\`
 
 ${staticContractPromptLine("design planning artifacts")}
 
+Before you emit any design artifact, you MUST complete an external research receipt per \`lib/memory/handbook/engineering/design-craft.md\`. The receipt MUST cite at least three qualifying public UX or interface-design sources published, revised, or still canonical between 2024 and 2026. \`design/plan.md\` MUST include \`## External research receipt\` and \`## Adopted principles\` naming the principles applied and the UI surfaces they affect.
+
 Emit exactly these artifacts:
 
 - \`${designPlanRel(input.runDir)}\`

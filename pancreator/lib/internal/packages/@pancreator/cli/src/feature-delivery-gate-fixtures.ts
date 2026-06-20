@@ -37,102 +37,96 @@ const VALID_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
   personaContract: "PERSONA.TEST",
 });
 
+/** Mirror `pancreator-required-docs` on stage personas so receipt attestation passes in SDK tests. */
+const IMPLEMENT_STAGE_MANIFEST_DOCS = [
+  "DOC.AGENTS",
+  "DOC.REGISTRY",
+  "DOC.PERSONA_CONTRACTS",
+  "DOC.OUTPUT_MANIFEST",
+  "PIPE.FEATURE_DELIVERY",
+  "DOC.ENG_SOFTWARE",
+  "DOC.ENG_TYPESCRIPT",
+  "DOC.COMPLIANCE_RUNS",
+  "DOC.PERSONA_SPEC",
+  "DOC.GLOSSARY",
+  "DOC.CONTRACT_STYLE",
+] as const;
+
+const REVIEW_STAGE_MANIFEST_DOCS = [
+  ...IMPLEMENT_STAGE_MANIFEST_DOCS,
+  "DOC.CONTRACT_FORMAT",
+] as const;
+
+const TEST_STAGE_MANIFEST_DOCS = [
+  "DOC.AGENTS",
+  "DOC.REGISTRY",
+  "DOC.PERSONA_CONTRACTS",
+  "DOC.OUTPUT_MANIFEST",
+  "PIPE.FEATURE_DELIVERY",
+  "DOC.ENG_SOFTWARE",
+  "DOC.ENG_TYPESCRIPT",
+  "DOC.DESIGN_CRAFT",
+  "DOC.COMPLIANCE_RUNS",
+  "DOC.PERSONA_SPEC",
+  "DOC.GLOSSARY",
+  "DOC.CONTRACT_STYLE",
+] as const;
+
+const REPORT_STAGE_MANIFEST_DOCS = [
+  "DOC.AGENTS",
+  "DOC.REGISTRY",
+  "DOC.PERSONA_CONTRACTS",
+  "DOC.OUTPUT_MANIFEST",
+  "PIPE.FEATURE_DELIVERY",
+  "DOC.OPERATOR_OUTPUT",
+  "DOC.RUN_LOG_SCHEMA",
+  "DOC.PERSONA_SPEC",
+  "DOC.GLOSSARY",
+  "DOC.CONTRACT_STYLE",
+  "DOC.DELIVERY_REPORT_TEMPLATE",
+] as const;
+
+const COMPLIANCE_STAGE_MANIFEST_DOCS = [
+  "DOC.AGENTS",
+  "DOC.REGISTRY",
+  "DOC.PERSONA_CONTRACTS",
+  "DOC.OUTPUT_MANIFEST",
+  "PIPE.FEATURE_DELIVERY",
+  "DOC.COMPLIANCE_RUNS",
+  "DOC.RUN_LOG_SCHEMA",
+  "DOC.OPERATOR_OUTPUT",
+  "DOC.PERSONA_SPEC",
+  "DOC.GLOSSARY",
+  "DOC.CONTRACT_STYLE",
+  "DOC.CONTRACT_FORMAT",
+] as const;
+
 const VALID_IMPLEMENT_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
   personaContract: "PERSONA.CODER",
   stageContract: "PIPE.FEATURE_DELIVERY.IMPLEMENT",
-  requiredDocs: [
-    "DOC.AGENTS",
-    "DOC.REGISTRY",
-    "DOC.PERSONA_CONTRACTS",
-    "DOC.OUTPUT_MANIFEST",
-    "DOC.PIPELINE_STATE",
-    "DOC.ENG_SOFTWARE",
-    "DOC.ENG_TYPESCRIPT",
-    "DOC.COMPLIANCE_RUNS",
-  ],
-  consultedDocs: [
-    "DOC.AGENTS",
-    "DOC.REGISTRY",
-    "DOC.PERSONA_CONTRACTS",
-    "DOC.OUTPUT_MANIFEST",
-    "DOC.PIPELINE_STATE",
-    "DOC.ENG_SOFTWARE",
-    "DOC.ENG_TYPESCRIPT",
-    "DOC.COMPLIANCE_RUNS",
-  ],
+  requiredDocs: [...IMPLEMENT_STAGE_MANIFEST_DOCS],
+  consultedDocs: [...IMPLEMENT_STAGE_MANIFEST_DOCS],
 });
 
 const VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
   personaContract: "PERSONA.REVIEWER",
   stageContract: "PIPE.FEATURE_DELIVERY.REVIEW",
-  requiredDocs: [
-    "DOC.AGENTS",
-    "DOC.REGISTRY",
-    "DOC.PERSONA_CONTRACTS",
-    "DOC.OUTPUT_MANIFEST",
-    "DOC.PIPELINE_STATE",
-    "DOC.ENG_SOFTWARE",
-    "DOC.ENG_TYPESCRIPT",
-    "DOC.COMPLIANCE_RUNS",
-  ],
-  consultedDocs: [
-    "DOC.AGENTS",
-    "DOC.REGISTRY",
-    "DOC.PERSONA_CONTRACTS",
-    "DOC.OUTPUT_MANIFEST",
-    "DOC.PIPELINE_STATE",
-    "DOC.ENG_SOFTWARE",
-    "DOC.ENG_TYPESCRIPT",
-    "DOC.COMPLIANCE_RUNS",
-  ],
+  requiredDocs: [...REVIEW_STAGE_MANIFEST_DOCS],
+  consultedDocs: [...REVIEW_STAGE_MANIFEST_DOCS],
 });
 
 const VALID_TEST_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
   personaContract: "PERSONA.QA_TESTER",
   stageContract: "PIPE.FEATURE_DELIVERY.TEST",
-  requiredDocs: [
-    "DOC.AGENTS",
-    "DOC.REGISTRY",
-    "DOC.PERSONA_CONTRACTS",
-    "DOC.OUTPUT_MANIFEST",
-    "DOC.PIPELINE_STATE",
-    "DOC.ENG_SOFTWARE",
-    "DOC.ENG_TYPESCRIPT",
-    "DOC.DESIGN_CRAFT",
-    "DOC.COMPLIANCE_RUNS",
-  ],
-  consultedDocs: [
-    "DOC.AGENTS",
-    "DOC.REGISTRY",
-    "DOC.PERSONA_CONTRACTS",
-    "DOC.OUTPUT_MANIFEST",
-    "DOC.PIPELINE_STATE",
-    "DOC.ENG_SOFTWARE",
-    "DOC.ENG_TYPESCRIPT",
-    "DOC.DESIGN_CRAFT",
-    "DOC.COMPLIANCE_RUNS",
-  ],
+  requiredDocs: [...TEST_STAGE_MANIFEST_DOCS],
+  consultedDocs: [...TEST_STAGE_MANIFEST_DOCS],
 });
 
 const VALID_REPORT_OUTPUT_MANIFEST_MARKDOWN = buildOutputManifestMarkdown({
   personaContract: "PERSONA.TECH_WRITER",
   stageContract: "PIPE.FEATURE_DELIVERY.REPORT",
-  requiredDocs: [
-    "DOC.AGENTS",
-    "DOC.REGISTRY",
-    "DOC.PERSONA_CONTRACTS",
-    "DOC.OUTPUT_MANIFEST",
-    "DOC.OPERATOR_OUTPUT",
-    "DOC.RUN_LOG_SCHEMA",
-  ],
-  consultedDocs: [
-    "DOC.AGENTS",
-    "DOC.REGISTRY",
-    "DOC.PERSONA_CONTRACTS",
-    "DOC.OUTPUT_MANIFEST",
-    "DOC.OPERATOR_OUTPUT",
-    "DOC.RUN_LOG_SCHEMA",
-  ],
+  requiredDocs: [...REPORT_STAGE_MANIFEST_DOCS],
+  consultedDocs: [...REPORT_STAGE_MANIFEST_DOCS],
 });
 
 export const VALID_PLAN_MARKDOWN = [
@@ -200,8 +194,8 @@ export const VALID_IMPLEMENTATION_REPORT_MARKDOWN = [
   VALID_IMPLEMENT_OUTPUT_MANIFEST_MARKDOWN,
 ].join("\n");
 
-export const VALID_REVIEW_MARKDOWN = `review_passes: true\nrepo_wide_tests_pass: true\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
-export const VALID_REVIEW_FAIL_MARKDOWN = `review_passes: false\nrepo_wide_tests_pass: false\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
+export const VALID_REVIEW_MARKDOWN = `review_passes: true\ntouch_set_tests_pass: true\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
+export const VALID_REVIEW_FAIL_MARKDOWN = `review_passes: false\ntouch_set_tests_pass: false\nlint_typecheck_rerun_required: false\nscope_amendments_ratified: true\n\n${VALID_REVIEW_OUTPUT_MANIFEST_MARKDOWN}\n`;
 
 export const VALID_ADR_MARKDOWN = `# ADR\n\n## Decision\n\nBody.\n\n${VALID_OUTPUT_MANIFEST_MARKDOWN}\n`;
 
@@ -226,24 +220,8 @@ export function validComplianceResultJson(repoRoot: string): string {
     output_manifest: {
       persona_contract: "PERSONA.COMPLIANCE_AUDITOR",
       stage_contract: "PIPE.FEATURE_DELIVERY.COMPLIANCE",
-      required_docs: [
-        "DOC.AGENTS",
-        "DOC.REGISTRY",
-        "DOC.PERSONA_CONTRACTS",
-        "DOC.OUTPUT_MANIFEST",
-        "DOC.PIPELINE_STATE",
-        "DOC.COMPLIANCE_RUNS",
-        "DOC.RUN_LOG_SCHEMA",
-      ],
-      consulted_docs: [
-        "DOC.AGENTS",
-        "DOC.REGISTRY",
-        "DOC.PERSONA_CONTRACTS",
-        "DOC.OUTPUT_MANIFEST",
-        "DOC.PIPELINE_STATE",
-        "DOC.COMPLIANCE_RUNS",
-        "DOC.RUN_LOG_SCHEMA",
-      ],
+      required_docs: [...COMPLIANCE_STAGE_MANIFEST_DOCS],
+      consulted_docs: [...COMPLIANCE_STAGE_MANIFEST_DOCS],
       produced_artifacts: [".pan/work/day/task/compliance-result.json"],
       scope_amendments: [],
       validation: [{ name: "gate", result: "pass" }],

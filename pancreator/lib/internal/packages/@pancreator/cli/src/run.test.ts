@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -35,7 +35,6 @@ import {
   VALID_IMPLEMENTATION_REPORT_MARKDOWN,
   VALID_REVIEW_FAIL_MARKDOWN,
   VALID_REVIEW_MARKDOWN,
-  validComplianceResultJson,
 } from "./feature-delivery-gate-fixtures.js";
 import { deliveryReportRel, durableFeatureIndexRel } from "./feature-delivery-stage-artifacts.js";
 import { COMPLIANCE_AUDIT_HISTORY_REL } from "./compliance-audit-history.js";
@@ -51,6 +50,8 @@ async function runCli(args: string[], options?: RunCliOptions): Promise<number> 
   return parseAndRun(args, {
     ...options,
     testHooks: {
+      disableAutoChainContinuationRetry:
+        options?.testHooks?.disableAutoChainContinuationRetry ?? true,
       ...options?.testHooks,
     },
   });
@@ -80,6 +81,16 @@ async function seedCanonicalPersonas(root: string): Promise<void> {
       path.join(CANONICAL_REPO_ROOT, "lib", "personas", `${persona}.md`),
       path.join(personasDir, `${persona}.md`),
     );
+  }
+}
+
+async function forceCanonicalPersonaModelsAuto(root: string): Promise<void> {
+  const personasDir = path.join(root, "lib", "personas");
+  for (const persona of FEATURE_DELIVERY_PERSONAS) {
+    const personaPath = path.join(personasDir, `${persona}.md`);
+    const existing = await readFile(personaPath, "utf8");
+    const updated = existing.replace(/^model:\s*.+$/mu, "model: auto");
+    await writeFile(personaPath, updated, "utf8");
   }
 }
 
@@ -143,30 +154,11 @@ async function seedFeatureDeliveryRepo(root: string): Promise<void> {
       path.join(formatToolsDir, toolFile),
     );
   }
-  await writeFile(
+  await copyFile(
+    path.join(CANONICAL_REPO_ROOT, "lib", "pipelines", "feature-delivery.yaml"),
     path.join(root, "lib", "pipelines", "feature-delivery.yaml"),
-    `id: feature-delivery
-version: "1"
-stages:
-  - id: plan
-    persona: tech-lead
-  - id: implement
-    persona: coder
-  - id: review
-    persona: reviewer
-  - id: test
-    persona: qa-tester
-  - id: report
-    persona: tech-writer
-  - id: compliance
-    persona: compliance-auditor
-  - id: ship
-    persona: supervisor
-  - id: index
-    persona: librarian
-`,
-    "utf8",
   );
+  await writeRunnerInvocationConfig(root, "manual");
 }
 
 function gitInTestRepo(root: string, args: string[]): void {
@@ -224,27 +216,6 @@ async function completeFeatureDeliveryRunForClose(
   const report = path.join(root, ...deliveryReportPathRel.split("/"));
   await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
   await runCli(["advance", taskId, "--artifact", deliveryReportPathRel], {
-    repoRoot: root,
-    writeOut: () => undefined,
-  });
-  await writeFile(
-    path.join(activeRunDir, "compliance-result.json"),
-    validComplianceResultJson(root),
-    "utf8",
-  );
-  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
-    repoRoot: root,
-    writeOut: () => undefined,
-  });
-    await writeFile(
-      path.join(activeRunDir, "ship-ratification.json"),
-      stringifyCliJson(root, {
-        task_id: taskId,
-        human_ratified_diff: true,
-      }),
-      "utf8",
-    );
-  await runCli(["advance", taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
     repoRoot: root,
     writeOut: () => undefined,
   });
@@ -341,9 +312,10 @@ describe("parseAndRun", () => {
     };
     expect(state.currentStage).toBe("plan");
     expect(state.transitions.length).toBeGreaterThan(5);
-    expect(await readFile(path.join(root, msg.handoffFile), "utf8")).toContain(
-      "Executor persona: tech-lead",
-    );
+    const handoff = await readFile(path.join(root, msg.handoffFile), "utf8");
+    expect(handoff).toContain("Executor persona: tech-lead");
+    expect(handoff).toContain("## Output manifest");
+    expect(handoff).toContain("- consulted_docs: DOC.OUTPUT_MANIFEST");
     const runMsg = JSON.parse(raw) as { nextCommand?: string };
     expect(runMsg.nextCommand).toMatch(/^pnpm -w exec pan advance /u);
     expect(await readFile(path.join(root, msg.runLogFile), "utf8")).toContain(
@@ -370,6 +342,22 @@ describe("parseAndRun", () => {
     expect(text).toContain("38670_1315_demo-feature");
     expect(text).toContain("2026-05-10 13:15 UTC");
     expect(text).toContain("nextCommand: pnpm -w exec pan advance");
+  });
+
+  it("fails fast on invalid --format values", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-run-format-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+    const out: string[] = [];
+    const code = await runCli(
+      ["run", "feature-delivery", "demo-feature.md", "--format", "tex"],
+      {
+        repoRoot: root,
+        writeOut: (chunk) => out.push(chunk),
+      },
+    );
+    expect(code).toBe(1);
+    expect(out.join("")).toContain("--format must be one of: json, text");
   });
 
   it("pan next returns the same nextCommand as run without mutating state", async () => {
@@ -613,6 +601,15 @@ describe("parseAndRun", () => {
     const cleanMsg = JSON.parse(cleanOut.join("")) as { warningCount: number; status: string };
     expect(cleanMsg.warningCount).toBe(0);
     expect(cleanMsg.status).toBe("ok");
+    const lintCleanOut: string[] = [];
+    const lintCleanCode = await runCli(
+      ["artifacts", "lint", taskId, "--stage", "review"],
+      { repoRoot: root, writeOut: (c) => lintCleanOut.push(c) },
+    );
+    expect(lintCleanCode).toBe(0);
+    const lintCleanMsg = JSON.parse(lintCleanOut.join("")) as { command: string; status: string };
+    expect(lintCleanMsg.command).toBe("artifacts lint");
+    expect(lintCleanMsg.status).toBe("ok");
 
     await seedPlanStageAdvanceArtifacts(root, runDirRel);
     await writeFile(path.join(root, runDirRel, "plan.md"), "# Plan\n\nno headings\n", "utf8");
@@ -741,6 +738,7 @@ describe("parseAndRun", () => {
     const registry = panCheckRegistry();
     expect(registry).toContain("work-archive-hygiene");
     expect(registry).toContain("shipped-ledger-cap");
+    expect(registry).toContain("introspection-path-attestation");
     expect(registry).toContain("cursorindexingignore");
 
     const sample: PanCheckResult = {
@@ -1219,42 +1217,15 @@ describe("parseAndRun", () => {
 
     const runDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     const deliveryReportPathRel = deliveryReportRel(runDirRel);
-
-    const report = path.join(root, ...deliveryReportPathRel.split("/"));
-    await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
-    await runCli(["advance", start.taskId, "--artifact", deliveryReportPathRel], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-    await writeFile(
-      path.join(runDir, "compliance-result.json"),
-      validComplianceResultJson(root),
-      "utf8",
-    );
-    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/compliance-result.json`], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-
-    await writeFile(
-      path.join(runDir, "ship-ratification.json"),
-      stringifyCliJson(root, {
-        task_id: start.taskId,
-        human_ratified_diff: true,
-      }),
-      "utf8",
-    );
-    await runCli(["advance", start.taskId, "--artifact", `.pan/work/172996_05-10-26/${start.taskId}/ship-ratification.json`], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-
     const indexRel = durableFeatureIndexRel("demo-feature");
     const index = path.join(root, ...indexRel.split("/"));
     await mkdir(path.dirname(index), { recursive: true });
     await writeFile(index, "{}\n", "utf8");
+
+    const report = path.join(root, ...deliveryReportPathRel.split("/"));
+    await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
     const completeOut: string[] = [];
-    const completeCode = await runCli(["advance", start.taskId, "--artifact", indexRel], {
+    const completeCode = await runCli(["advance", start.taskId, "--artifact", deliveryReportPathRel], {
       repoRoot: root,
       writeOut: (c) => completeOut.push(c),
     });
@@ -1311,27 +1282,6 @@ describe("parseAndRun", () => {
     const report = path.join(root, ...deliveryReportPathRel.split("/"));
     await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
     await runCli(["advance", start.taskId, "--artifact", deliveryReportPathRel], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-    await writeFile(
-      path.join(activeRunDir, "compliance-result.json"),
-      validComplianceResultJson(root),
-      "utf8",
-    );
-    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/compliance-result.json`], {
-      repoRoot: root,
-      writeOut: () => undefined,
-    });
-    await writeFile(
-      path.join(activeRunDir, "ship-ratification.json"),
-      stringifyCliJson(root, {
-        task_id: start.taskId,
-        human_ratified_diff: true,
-      }),
-      "utf8",
-    );
-    await runCli(["advance", start.taskId, "--artifact", `${activeRunDirRel}/ship-ratification.json`], {
       repoRoot: root,
       writeOut: () => undefined,
     });
@@ -1496,8 +1446,18 @@ describe("parseAndRun", () => {
     });
     const start = JSON.parse(out.join("")) as { taskId: string };
     await completeFeatureDeliveryRunForClose(root, start.taskId, "demo-feature", "172996_05-10-26");
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      "# Current focus\n\n## Active Feature\n\n- `(none)`\n\n## Most recent shipped Features\n\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n\n## Operator notes\n\n- `(none)`\n",
+      "utf8",
+    );
     const activeRunDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
-    await (await import("node:fs/promises")).unlink(path.join(root, activeRunDirRel, "operator-verification.md"));
+    try {
+      await unlink(path.join(root, activeRunDirRel, "operator-verification.md"));
+    } catch {
+      /* operator-verification.md may already be absent */
+    }
 
     const closeOut: string[] = [];
     const code = await runCli(["close-artifacts", start.taskId], {
@@ -1603,7 +1563,7 @@ describe("parseAndRun", () => {
     expect(payload.message).toContain("js-literal-citation");
   });
 
-  it("routes report to compliance and blocks malformed ship policy artifact", async () => {
+  it("routes test output to bookkeeping and rejects non-bookkeeping artifacts", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-report-to-compliance-"));
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
@@ -1637,36 +1597,6 @@ describe("parseAndRun", () => {
       writeOut: () => undefined,
     });
 
-    const deliveryReportPathRel = deliveryReportRel(runDirRel);
-    const report = path.join(root, ...deliveryReportPathRel.split("/"));
-    await writeFile(report, VALID_DELIVERY_REPORT_MARKDOWN, "utf8");
-    const reportAdvanceOut: string[] = [];
-    const reportCode = await runCli(
-      ["advance", start.taskId, "--artifact", deliveryReportPathRel],
-      { repoRoot: root, writeOut: (c) => reportAdvanceOut.push(c) },
-    );
-    expect(reportCode).toBe(0);
-    const reportAdvance = JSON.parse(reportAdvanceOut.join("")) as {
-      currentStage: string;
-      nextPersona: string | null;
-    };
-    expect(reportAdvance.currentStage).toBe("compliance");
-    expect(reportAdvance.nextPersona).toBe("compliance-auditor");
-
-    await writeFile(
-      path.join(runDir, "compliance-result.json"),
-      validComplianceResultJson(root),
-      "utf8",
-    );
-    const complianceAdvanceOut: string[] = [];
-    const complianceCode = await runCli(
-      ["advance", start.taskId, "--artifact", `${runDirRel}/compliance-result.json`],
-      { repoRoot: root, writeOut: (c) => complianceAdvanceOut.push(c) },
-    );
-    expect(complianceCode).toBe(0);
-    const complianceAdvance = JSON.parse(complianceAdvanceOut.join("")) as { currentStage: string };
-    expect(complianceAdvance.currentStage).toBe("ship");
-
     await writeFile(path.join(runDir, "ship-ratification.json"), "{}\n", "utf8");
     const shipAdvanceOut: string[] = [];
     const shipCode = await runCli(
@@ -1675,8 +1605,8 @@ describe("parseAndRun", () => {
     );
     expect(shipCode).toBe(1);
     const shipFailure = JSON.parse(shipAdvanceOut.join("")) as { message: string };
-    expect(shipFailure.message).toContain("Cannot advance ship");
-    expect(shipFailure.message).toMatch(/ship-ratification|human_ratified_diff|task_id/u);
+    expect(shipFailure.message).toContain("not valid for bookkeeping");
+    expect(shipFailure.message).toContain("delivery-report.md");
   });
 
   it("close-artifacts finalizes a prematurely archived run idempotently", async () => {
@@ -1737,6 +1667,127 @@ describe("parseAndRun", () => {
     expect(closed.archivedRunDir).toBe(archiveRunDirRel);
     expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
     expect(existsSync(path.join(root, archiveRunDirRel))).toBe(true);
+  });
+
+  it("close-artifacts recovers when active and archived run directories both exist", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-close-artifacts-duplicate-run-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await runCli(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    const dayDir = "172996_05-10-26";
+    const { activeRunDirRel, inboxSourceRel } = await completeFeatureDeliveryRunForClose(
+      root,
+      start.taskId,
+      "demo-feature",
+      dayDir,
+    );
+    const archiveRunDirRel = `.pan/archive/work/${dayDir}/${start.taskId}`;
+    await mkdir(path.join(root, archiveRunDirRel), { recursive: true });
+    await writeFile(path.join(root, archiveRunDirRel, "stale.txt"), "stale\n", "utf8");
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        `\n- \`${inboxSourceRel}\`\n`,
+        "",
+        "## Most recent shipped Features",
+        "\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+        "",
+        "## Operator notes",
+        "\n<!-- pan:active-memory:operator-notes:auto -->\n\n- Active-memory refreshed (UTC): `2020-01-01T00:00:00.000Z`\n\n<!-- /pan:active-memory:operator-notes:auto -->\n",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const closeOut: string[] = [];
+    const code = await runCli(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => closeOut.push(c),
+      clock: () => new Date("2026-05-10T14:00:00.000Z"),
+    });
+    expect(code).toBe(0);
+    const closed = JSON.parse(closeOut.join("")) as {
+      pipelineStatus: string;
+      archivedRunDir: string;
+    };
+    expect(closed.pipelineStatus).toBe("closed");
+    expect(closed.archivedRunDir).toBe(archiveRunDirRel);
+    expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
+    expect(existsSync(path.join(root, archiveRunDirRel))).toBe(true);
+    expect(existsSync(path.join(root, archiveRunDirRel, "stale.txt"))).toBe(false);
+  });
+
+  it("close-artifacts resolves renamed inbox directives from feature index lineage", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-close-artifacts-renamed-inbox-"));
+    await seedFeatureDeliveryRepo(root);
+    const liveInboxRel = "lib/inbox/in/172957_06-18-26/demo-feature.md";
+    await mkdir(path.join(root, ...liveInboxRel.split("/").slice(0, -1)), { recursive: true });
+    await writeFile(path.join(root, liveInboxRel), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await runCli(["feature", "new", "172957_06-18-26/demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string };
+    const dayDir = "172996_05-10-26";
+    const activeRunDirRel = `.pan/work/${dayDir}/${start.taskId}`;
+    await completeFeatureDeliveryRunForClose(root, start.taskId, "demo-feature", dayDir);
+
+    const statePath = path.join(root, start.stateFile);
+    const state = JSON.parse(await readFile(statePath, "utf8")) as {
+      source: { inboxEntry: string; inboxPath: string };
+    };
+    state.source.inboxPath = "lib/inbox/in/260618/demo-feature.md";
+    state.source.inboxEntry = "260618/demo-feature.md";
+    await writeFile(statePath, stringifyCliJson(root, state), "utf8");
+
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        `\n- \`${liveInboxRel}\`\n`,
+        "",
+        "## Most recent shipped Features",
+        "\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+        "",
+        "## Operator notes",
+        "\n<!-- pan:active-memory:operator-notes:auto -->\n\n- Active-memory refreshed (UTC): `2020-01-01T00:00:00.000Z`\n\n<!-- /pan:active-memory:operator-notes:auto -->\n",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const closeOut: string[] = [];
+    const code = await runCli(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => closeOut.push(c),
+      clock: () => new Date("2026-05-10T14:00:00.000Z"),
+    });
+    expect(code).toBe(0);
+    const closed = JSON.parse(closeOut.join("")) as {
+      pipelineStatus: string;
+      archivedInboxPath: string;
+    };
+    expect(closed.pipelineStatus).toBe("closed");
+    expect(closed.archivedInboxPath).toBe(
+      ".pan/archive/inbox/in/172957_06-18-26/demo-feature.md",
+    );
+    expect(existsSync(path.join(root, liveInboxRel))).toBe(false);
+    expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
   });
 
   it("rolls back archive moves when active-memory refresh fails during close-artifacts", async () => {
@@ -2000,7 +2051,7 @@ describe("parseAndRun", () => {
     expect(implementationReport).toContain("client/foo.test.ts(paired-test:");
   });
 
-  it("blocks review advance when undeclared repo-wide changes remain in the local diff", async () => {
+  it("keeps review scope expansion advisory when undeclared repo-wide changes remain", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-review-scope-"));
     await seedFeatureDeliveryRepo(root);
     await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
@@ -2043,8 +2094,8 @@ describe("parseAndRun", () => {
       writeOut: (c) => reviewOut.push(c),
       writeErr: (c) => reviewErr.push(c),
     });
-    expect(code).toBe(1);
-    expect(`${reviewOut.join("")}\n${reviewErr.join("")}`).toContain("absent from touch-set.json");
+    expect(code).toBe(0);
+    expect(`${reviewOut.join("")}\n${reviewErr.join("")}`).not.toContain("absent from touch-set.json");
   });
 });
 
@@ -2633,13 +2684,7 @@ describe("operator tooling batch cli wiring", () => {
             return `${runDir}/review.md`;
           case "test":
             return `${runDir}/test-report.md`;
-          case "report":
-            return deliveryReportRel(runDir);
-          case "compliance":
-            return `${runDir}/compliance-result.json`;
-          case "ship":
-            return `${runDir}/ship-ratification.json`;
-          case "index":
+          case "bookkeeping":
             return durableFeatureIndexRel(featureId);
           default:
             throw new Error(`No artifact mapping for stage ${stage}`);
@@ -2647,7 +2692,7 @@ describe("operator tooling batch cli wiring", () => {
       };
 
       let currentStage: string = start.currentStage;
-      const stopStages = new Set(["compliance", "ship", "index", "complete", "aborted", "paused"]);
+      const stopStages = new Set(["complete", "aborted", "paused"]);
       for (let i = 0; i < 9; i += 1) {
         if (stopStages.has(currentStage)) {
           break;
@@ -2655,11 +2700,36 @@ describe("operator tooling batch cli wiring", () => {
         if (currentStage === "test") {
           await seedTestStageAdvanceArtifacts(root, runDir);
         }
+        if (currentStage === "bookkeeping") {
+          await writeFile(
+            path.join(root, ...deliveryReportRel(runDir).split("/")),
+            VALID_DELIVERY_REPORT_MARKDOWN,
+            "utf8",
+          );
+          const indexAbs = path.join(root, ...durableFeatureIndexRel(featureId).split("/"));
+          await mkdir(path.dirname(indexAbs), { recursive: true });
+          await writeFile(
+            indexAbs,
+            stringifyCliJson(root, {
+              feature_id: featureId,
+              task_id: taskId,
+              status: "indexed",
+              indexed_at: "2026-05-10T13:30:00.000Z",
+              source_inbox_item: { path: "lib/inbox/in/demo-feature.md" },
+              delivery_report: { path: deliveryReportRel(runDir) },
+              implementation_surfaces: [],
+            }),
+            "utf8",
+          );
+        }
         const next = await advanceFeatureDelivery({
           repoRoot: root,
           taskId,
           artifact: artifactForStage(currentStage),
-          testHooks: { sdkTransport: captureTransport },
+          testHooks: {
+            sdkTransport: captureTransport,
+            disableAutoChainContinuationRetry: true,
+          },
         });
         currentStage = next.currentStage;
       }
@@ -2672,7 +2742,7 @@ describe("operator tooling batch cli wiring", () => {
         }
       }
 
-      for (const stage of ["implement", "review", "test", "compliance"]) {
+      for (const stage of ["implement", "review", "test", "bookkeeping"]) {
         expect(stageParams.has(stage)).toBe(true);
       }
 
@@ -2686,15 +2756,93 @@ describe("operator tooling batch cli wiring", () => {
       expect(prompts.get("implement")).toContain("Persona: coder");
       expect(prompts.get("review")).toContain("Persona: reviewer");
       expect(prompts.get("test")).toContain("Persona: qa-tester");
-      expect(prompts.get("compliance")).toContain("Persona: compliance-auditor");
+      expect(prompts.get("bookkeeping")).toContain("Persona: librarian");
       expect(prompts.get("implement")).toContain("Use subagent/persona: coder");
       expect(prompts.get("review")).toContain("Use subagent/persona: reviewer");
       expect(prompts.get("test")).toContain("Use subagent/persona: qa-tester");
-      expect(prompts.get("compliance")).toContain("Use subagent/persona: compliance-auditor");
-      expect(prompts.get("compliance")).toContain("Compliance exit bundle (all MUST pass)");
-      expect(prompts.get("compliance")).toContain("pnpm lint");
-      expect(promptTokens.get("compliance")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
+      expect(prompts.get("bookkeeping")).toContain("Use subagent/persona: librarian");
+      expect(prompts.get("bookkeeping")).toContain("delivery-report.md");
+      expect(prompts.get("bookkeeping")).toContain("feature index MUST be refreshed");
+      expect(promptTokens.get("bookkeeping")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
       expect(promptTokens.get("review")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
+    });
+
+    it("integration: transition state logic advances correctly with generated artifacts", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-transition-state-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await forceCanonicalPersonaModelsAuto(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+
+      const runOut: string[] = [];
+      const runCode = await runCli(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => runOut.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      });
+      expect(runCode).toBe(0);
+      const start = JSON.parse(runOut.join("")) as {
+        taskId: string;
+        stateFile: string;
+        featureId: string;
+        currentStage: string;
+      };
+      expect(start.currentStage).toBe("plan");
+      const runDirRel = path.posix.dirname(start.stateFile);
+
+      await seedPlanStageAdvanceArtifacts(root, runDirRel, start.featureId);
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await writeFile(
+        path.join(root, runDirRel, "implementation-report.md"),
+        VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+        "utf8",
+      );
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await writeFile(path.join(root, runDirRel, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await seedTestStageAdvanceArtifacts(root, runDirRel);
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/test-report.md`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        currentStage: string;
+        advanceHistory?: Array<{ kind: string; event?: string }>;
+        stages?: Array<{ id: string; status: string }>;
+      };
+      expect(state.currentStage).toBe("bookkeeping");
+      const transitionEvents = (state.advanceHistory ?? [])
+        .filter((entry) => entry.kind === "advance")
+        .map((entry) => entry.event)
+        .filter((event): event is string => typeof event === "string");
+      expect(transitionEvents).toEqual(
+        expect.arrayContaining([
+          "sdk_artifact_validation",
+          "implementation_complete",
+          "review_passes",
+          "qa_passes",
+        ]),
+      );
+      const stageStatus = new Map((state.stages ?? []).map((stage) => [stage.id, stage.status]));
+      expect(stageStatus.get("plan")).toBe("complete");
+      expect(stageStatus.get("implement")).toBe("complete");
+      expect(stageStatus.get("review")).toBe("complete");
+      expect(stageStatus.get("test")).toBe("complete");
+      expect(stageStatus.get("bookkeeping")).toBe("ready");
     });
 
     it("does not call SDK transport for manual mode across run and advance", async () => {
@@ -2859,14 +3007,118 @@ stages:
       );
       expect(advanceCode).toBe(0);
       const result = JSON.parse(advanceOut.join("")) as { currentStage: string };
-      expect(["report", "compliance", "ship", "index", "complete"]).toContain(result.currentStage);
+      expect(["bookkeeping", "complete"]).toContain(result.currentStage);
       const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
         currentStage: string;
       };
-      expect(["report", "compliance", "ship", "index", "complete"]).toContain(state.currentStage);
+      expect(["bookkeeping", "complete"]).toContain(state.currentStage);
     });
 
-    it("sdk auto-chains review must_fix back to implement", async () => {
+    it("retries interrupted sdk stage when operator reruns previous artifact", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-interrupt-resume-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+
+      const out: string[] = [];
+      const runCode = await runCli(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      });
+      expect(runCode).toBe(0);
+
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; featureId: string };
+      const runDirRel = path.posix.dirname(start.stateFile);
+      await seedPlanStageAdvanceArtifacts(root, runDirRel, start.featureId);
+      await writeRunnerInvocationConfig(root, "sdk");
+
+      const interruptedOut: string[] = [];
+      const interruptedCode = await runCli(
+        ["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`],
+        {
+          repoRoot: root,
+          writeOut: (c) => interruptedOut.push(c),
+          testHooks: {
+            sdkTransport: async () => {
+              throw new Error("simulated operator interrupt");
+            },
+          },
+        },
+      );
+      expect(interruptedCode).toBe(1);
+      expect(interruptedOut.join("")).toContain("simulated operator interrupt");
+
+      const midState = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        currentStage: string;
+      };
+      expect(midState.currentStage).toBe("implement");
+
+      const resumedOut: string[] = [];
+      const resumedCode = await runCli(
+        ["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`],
+        {
+          repoRoot: root,
+          writeOut: (c) => resumedOut.push(c),
+          testHooks: { sdkTransport: mockSdkTransport() },
+        },
+      );
+      expect(resumedCode).toBe(0);
+      const resumed = JSON.parse(resumedOut.join("")) as { event: string; currentStage: string };
+      expect(resumed.event).toBe("resume_implement");
+      expect(["review", "test", "bookkeeping", "complete"]).toContain(resumed.currentStage);
+    });
+
+    it("repair-state in sdk mode resumes implement and auto-chains", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-repair-resume-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+
+      const out: string[] = [];
+      const runCode = await runCli(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      });
+      expect(runCode).toBe(0);
+
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; featureId: string };
+      const runDirRel = path.posix.dirname(start.stateFile);
+      await seedPlanStageAdvanceArtifacts(root, runDirRel, start.featureId);
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await writeRunnerInvocationConfig(root, "sdk");
+      const repairOut: string[] = [];
+      const repairCode = await runCli(
+        [
+          "repair-state",
+          start.taskId,
+          "--stage",
+          "implement",
+          "--artifact",
+          `${runDirRel}/touch-set.json`,
+          "--reason",
+          "Resuming implement after manual interrupt during sdk stage run",
+        ],
+        {
+          repoRoot: root,
+          writeOut: (c) => repairOut.push(c),
+          testHooks: { sdkTransport: mockSdkTransport() },
+        },
+      );
+      expect(repairCode).toBe(0);
+      const repaired = JSON.parse(repairOut.join("")) as { currentStage: string; nextHumanAction: string };
+      expect(["review", "test", "bookkeeping", "complete"]).toContain(repaired.currentStage);
+      expect(repaired.nextHumanAction).toContain("SDK");
+    });
+
+    it("sdk loops must_fix cycles until retry-limit halt", async () => {
       const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-auto-must-fix-"));
       await seedFeatureDeliveryRepo(root);
       await seedCanonicalPersonas(root);
@@ -2898,13 +3150,14 @@ stages:
           testHooks: { sdkTransport: transport },
         },
       );
-      expect(advanceCode).toBe(0);
-      const result = JSON.parse(advanceOut.join("")) as { currentStage: string };
-      expect(result.currentStage).toBe("implement");
+      expect(advanceCode).toBe(1);
+      expect(advanceOut.join("")).toContain("retry limit halt");
       const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        status: string;
         currentStage: string;
       };
-      expect(state.currentStage).toBe("implement");
+      expect(state.status).toBe("halted");
+      expect(state.currentStage).toBe("review");
     });
 
     it("halts sdk automation when retry budget is exceeded via advance", async () => {
@@ -2945,5 +3198,73 @@ stages:
       expect(halted.status).toBe("halted");
       expect(halted.automation?.cumulativeRetryCount).toBe(6);
     });
+
+    it("fails fast on lint-gate errors instead of burny stall retries", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-stall-halt-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+
+      const out: string[] = [];
+      await runCli(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      });
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; featureId: string };
+      const runDirRel = path.posix.dirname(start.stateFile);
+      await seedPlanStageAdvanceArtifacts(root, runDirRel, start.featureId);
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await writeRunnerInvocationConfig(root, "sdk");
+      const stallTransport: CursorSdkTransport = async (params) => {
+        const cwd = params.cwd ?? process.cwd();
+        const required =
+          params.requiredArtifactPaths ??
+          (params.artifactPath !== undefined ? [params.artifactPath] : []);
+        for (const rel of required) {
+          const abs = path.join(cwd, rel);
+          if (existsSync(abs)) {
+            continue;
+          }
+          await mkdir(path.dirname(abs), { recursive: true });
+          if (rel.endsWith("implementation-report.md")) {
+            await writeFile(abs, "# implementation report\n\nmissing required manifest fields\n", "utf8");
+          } else {
+            await writeFile(abs, gateFixtureBody(cwd, rel), "utf8");
+          }
+        }
+        return { status: "ok", resultText: "mocked-sdk" };
+      };
+
+      const repairOut: string[] = [];
+      const repairCode = await runCli(
+        [
+          "repair-state",
+          start.taskId,
+          "--stage",
+          "implement",
+          "--artifact",
+          `${runDirRel}/touch-set.json`,
+          "--reason",
+          "Resume implement after interrupted sdk run with invalid report artifacts",
+        ],
+        {
+          repoRoot: root,
+          writeOut: (c) => repairOut.push(c),
+          testHooks: {
+            sdkTransport: stallTransport,
+            disableAutoChainContinuationRetry: false,
+          },
+        },
+      );
+      expect(repairCode).toBe(1);
+      expect(repairOut.join("")).toContain("failed artifact lint gate");
+    });
+
   });
 });

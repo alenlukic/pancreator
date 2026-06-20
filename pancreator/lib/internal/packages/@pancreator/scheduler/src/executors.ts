@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { asTaskId, resolveProjectPath } from "@pancreator/core";
+import { asTaskId, projectRootAbs, resolveProjectPath } from "@pancreator/core";
 import { FsInterventionStore } from "@pancreator/intervention";
 import { parsePersonaMarkdown } from "@pancreator/persona";
 import {
@@ -73,24 +73,25 @@ function evaluateAgentDispatch(envelope: {
 
 /** Builds scheduler tick executors that honor `runner.cursor.invocation` from `pancreator.yaml`. */
 export async function createSchedulerTickExecutors(
-  repoRoot: string,
+  harnessRoot: string,
   options: CreateSchedulerTickExecutorsOptions = {},
 ): Promise<TickExecutors> {
   const prepareEnvironment = options.prepareEnvironment ?? prepareCursorRunnerEnvironment;
-  prepareEnvironment(repoRoot);
+  prepareEnvironment(harnessRoot);
 
-  const invocation = options.invocation ?? readCursorInvocationMode(repoRoot);
+  const invocation = options.invocation ?? readCursorInvocationMode(harnessRoot);
+  const projectRoot = projectRootAbs(harnessRoot);
   const runner = new CursorRunner({
     invocation,
-    repoRoot,
-    cwd: repoRoot,
+    repoRoot: harnessRoot,
+    cwd: projectRoot,
     apiKey: process.env.CURSOR_API_KEY,
   });
-  const interventionStore = new FsInterventionStore(repoRoot);
+  const interventionStore = new FsInterventionStore(harnessRoot);
 
   return {
     dispatchAgent: async ({ automation, persona, prompt, runId }) => {
-      const personaInput = await resolvePersonaInput(repoRoot, persona);
+      const personaInput = await resolvePersonaInput(harnessRoot, persona);
       const envelope = await runner.invoke({
         persona: personaInput,
         message: prompt,
@@ -123,7 +124,7 @@ export async function createSchedulerTickExecutors(
       }
       const args = ["-w", "exec", "pan", ...subcommand.trim().split(/\s+/u)];
       const result = spawnSync("pnpm", args, {
-        cwd: repoRoot,
+        cwd: harnessRoot,
         encoding: "utf8",
         shell: false,
         env: process.env,

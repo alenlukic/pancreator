@@ -106,6 +106,19 @@ describe("renderDesignPlanPrompt", () => {
     expect(prompt).toContain("design-craft.md");
     expect(prompt).toContain("Mobbin-fidelity");
   });
+
+  it("requires external research receipt, qualifying sources, and adopted principles", () => {
+    const prompt = renderDesignPlanPrompt({
+      featureId: "demo-feature",
+      taskId: "99999_demo",
+      runDir: ".pan/work/172999_01-01-26/99999_demo",
+      sourcePath: "lib/inbox/in/demo-feature.md",
+    });
+    expect(prompt).toContain("external research receipt");
+    expect(prompt).toContain("at least three qualifying public UX or interface-design sources");
+    expect(prompt).toContain("## External research receipt");
+    expect(prompt).toContain("## Adopted principles");
+  });
 });
 
 describe("mergedTestStageVerdict", () => {

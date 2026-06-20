@@ -67,8 +67,12 @@ describe("feature-delivery-sdk-progress", () => {
     );
 
     const joined = err.join("");
-    expect(joined).toContain("[pan fd] task-1: entering plan (tech-lead)");
-    expect(joined).toContain("[pan fd] task-1: finished plan (tech-lead)");
+    expect(joined).toContain("[pan fd] stage enter");
+    expect(joined).toContain("task: task-1");
+    expect(joined).toContain("stage: plan");
+    expect(joined).toContain("persona: tech-lead");
+    expect(joined).toContain("[pan fd] stage complete");
+    expect(joined).toContain("elapsed:");
   });
 
   it("skips progress emission when reporter is undefined", async () => {

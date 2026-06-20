@@ -8,11 +8,15 @@ import {
   planStageRequiredArtifactRels,
   seedPlanStageAdvanceArtifacts,
   VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+  VALID_PLAN_MARKDOWN,
   VALID_REVIEW_MARKDOWN,
 } from "./feature-delivery-gate-fixtures.js";
 import {
   assertAdvanceArtifacts,
+  mergedTestStageVerdict,
   parseComplianceVerdict,
+  parseDesignQaVerdict,
+  parseQaVerdict,
   requiredArtifactsAfterStageWork,
   stageArtifactContract,
   validateStageCompletionArtifacts,
@@ -163,6 +167,32 @@ describe("feature-delivery-stage-artifacts", () => {
     expect(validation.warnings[0]?.code).toBe("review_passes_unparseable");
   });
 
+  it("treats prose-only review verdicts as unparseable", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-review-prose-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(
+      path.join(runAbs, "review.md"),
+      "# review\n\n`review_passes: false`, `scope_amendments_ratified: true`\n",
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("review_passes_unparseable");
+  });
+
+  it("requires scope_amendments_ratified as a dedicated review field", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-stage-review-scope-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(path.join(runAbs, "review.md"), "review_passes: true\n", "utf8");
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("review_scope_unparseable");
+  });
+
   it("AC-P7: validateStageCompletionArtifacts reports one warning for malformed review.md", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-ac-p7-malformed-"));
     const runAbs = path.join(root, sampleState.artifacts.runDir);
@@ -286,7 +316,7 @@ describe("feature-delivery-stage-artifacts", () => {
     await mkdir(runAbs, { recursive: true });
     await writeFile(
       path.join(runAbs, "review.md"),
-      "review_passes: false\nspot_fixable: true\n",
+      "review_passes: false\nscope_amendments_ratified: true\nspot_fixable: true\n\n## Fixes applied\n- clarified review artifact wording\n",
       "utf8",
     );
 
@@ -299,6 +329,32 @@ describe("feature-delivery-stage-artifacts", () => {
         "review_spot_fix",
       ),
     ).toThrow(/spot_fix_scope/u);
+  });
+
+  it("accepts plan criteria delegated to referenced acceptance-criteria docs", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-plan-delegated-ac-"));
+    await seedPlanStageAdvanceArtifacts(
+      root,
+      sampleState.artifacts.runDir,
+      sampleState.featureId,
+    );
+    const delegatedPlan = VALID_PLAN_MARKDOWN.replace(
+      "1. AC-1: behavior verified.",
+      [
+        "- `P-AC-01` through `P-AC-06` from `product/acceptance-criteria.md` apply.",
+        "- `D-AC-01` through `D-AC-09` from `design/acceptance-criteria.md` apply.",
+        "- `T-AC-01` through `T-AC-09` from `tech/acceptance-criteria.md` apply.",
+      ].join("\n"),
+    );
+    await writeFile(
+      path.join(root, sampleState.artifacts.runDir, "plan.md"),
+      delegatedPlan,
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "plan");
+    expect(validation.ok).toBe(true);
+    expect(validation.warnings).toEqual([]);
   });
 
   it("assertAdvanceArtifacts rejects implement advance without implement_gate_passes", async () => {
@@ -427,6 +483,125 @@ describe("feature-delivery-stage-artifacts", () => {
     );
     expect(validation.warningCount).toBe(1);
     expect(validation.warnings[0]?.code).toBe("verdict_conflict");
+  });
+
+  it("validateStageCompletionArtifacts rejects stale produced_artifacts paths", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-produced-artifacts-stale-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(
+      path.join(runAbs, "review.md"),
+      [
+        "review_passes: true",
+        "scope_amendments_ratified: true",
+        "",
+        "## Output manifest",
+        "",
+        "- persona_contract: PERSONA.REVIEWER",
+        "- stage_contract: PIPE.FEATURE_DELIVERY.REVIEW",
+        "- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.PERSONA_CONTRACTS, DOC.OUTPUT_MANIFEST, PIPE.FEATURE_DELIVERY, DOC.ENG_SOFTWARE, DOC.ENG_TYPESCRIPT, DOC.COMPLIANCE_RUNS, DOC.PERSONA_SPEC, DOC.GLOSSARY, DOC.CONTRACT_STYLE, DOC.CONTRACT_FORMAT",
+        "- consulted_docs: DOC.AGENTS, DOC.REGISTRY, DOC.PERSONA_CONTRACTS, DOC.OUTPUT_MANIFEST, PIPE.FEATURE_DELIVERY, DOC.ENG_SOFTWARE, DOC.ENG_TYPESCRIPT, DOC.COMPLIANCE_RUNS, DOC.PERSONA_SPEC, DOC.GLOSSARY, DOC.CONTRACT_STYLE, DOC.CONTRACT_FORMAT",
+        "- produced_artifacts: .pan/work/day/task/review.md",
+        "- scope_amendments: none",
+        "- validation: none",
+        "- definition_of_done: pass",
+        "- gate_decision: advance",
+        "- remediation_route: none",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("produced_artifact_mismatch");
+  });
+
+  it("validateStageCompletionArtifacts rejects empty required-doc receipt evidence", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-receipt-empty-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(path.join(runAbs, "required-doc-receipts"), { recursive: true });
+    await writeFile(
+      path.join(runAbs, "implementation-report.md"),
+      VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+      "utf8",
+    );
+    await writeFile(
+      path.join(runAbs, "required-doc-receipts", "implement.json"),
+      stringifyCompactJson({
+        enforce_manifest_consulted_docs: true,
+        required_docs_resolved: [],
+        required_docs_opened: [],
+        required_docs_applied: [],
+      }),
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "implement");
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("required_doc_receipt_empty");
+  });
+
+  it("parseDesignQaVerdict infers excluded_from_gate for browser lock blockers", () => {
+    const verdict = parseDesignQaVerdict(
+      [
+        "design_qa_passes: false",
+        "excluded_from_gate: false",
+        "MCP error: The browser is already running for /Users/alen/.cache/chrome-devtools-mcp/chrome-profile.",
+        "Use --isolated to run multiple browser instances.",
+      ].join("\n"),
+    );
+    expect(verdict.passes).toBe(false);
+    expect(verdict.excludedFromGate).toBe(true);
+  });
+
+  it("parseDesignQaVerdict reads inline verdict fields in prose", () => {
+    const verdict = parseDesignQaVerdict(
+      "`design_qa_passes: true`, `plan_invalidating: false`, `excluded_from_gate: false`",
+    );
+    expect(verdict.passes).toBe(true);
+    expect(verdict.planInvalidating).toBe(false);
+    expect(verdict.excludedFromGate).toBe(false);
+  });
+
+  it("parseQaVerdict reads inline verdict fields in prose", () => {
+    const verdict = parseQaVerdict(
+      "## Verdict\n`qa_passes: true`, `plan_invalidating: false`, `excluded_from_gate: false`",
+    );
+    expect(verdict.passes).toBe(true);
+    expect(verdict.planInvalidating).toBe(false);
+    expect(verdict.excludedFromGate).toBe(false);
+  });
+
+  it("parseQaVerdict infers excluded_from_gate for browser lock blockers", () => {
+    const verdict = parseQaVerdict(
+      [
+        "qa_passes: false",
+        "core_reentry_required: true",
+        "excluded_from_gate: false",
+        "chrome-devtools:list_pages fails on a locked shared profile",
+        "The browser is already running for /Users/alen/.cache/chrome-devtools-mcp/chrome-profile.",
+        "Use --isolated to run multiple browser instances.",
+      ].join("\n"),
+    );
+    expect(verdict.passes).toBe(false);
+    expect(verdict.excludedFromGate).toBe(true);
+    expect(verdict.coreReentryRequired).toBe(false);
+  });
+
+  it("mergedTestStageVerdict treats excluded qa blockers as follow-up only", () => {
+    const verdict = mergedTestStageVerdict({
+      qaMarkdown: [
+        "qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      designQaMarkdown: "design_qa_passes: true\n",
+      designSteps: true,
+    });
+    expect(verdict.designFollowupOnly).toBe(true);
+    expect(verdict.passes).toBe(false);
   });
 
   it("parseComplianceVerdict reads final gate command statuses", () => {
