@@ -21,9 +21,9 @@ test("migrateMemoryFrontmatterContent flattens references and closes with ...", 
   const { content, changed } = migrateMemoryFrontmatterContent(input);
   assert.equal(changed, true);
   assert.match(content, /^---\nslug: sample\n/u);
-  assert.match(content, /references:\n  - '\{"kind":"file","path":"AGENTS.md","note":"binding"\}'/u);
+  assert.match(content, /references:\n {2}- '\{"kind":"file","path":"AGENTS.md","note":"binding"\}'/u);
   assert.match(content, /\n\.\.\.\n\n# Title/u);
-  assert.doesNotMatch(content, /\n  - kind: file/u);
+  assert.doesNotMatch(content, /\n {2}- kind: file/u);
 });
 
 test("migrateMemoryFrontmatterContent is idempotent for portable frontmatter", () => {

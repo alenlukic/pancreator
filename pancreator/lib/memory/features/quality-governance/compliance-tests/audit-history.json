@@ -1,8 +1,417 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-18T07:44:58.589Z",
+  "generated_at": "2026-06-20T02:55:52.297Z",
   "entries": [
+    {
+      "audit_id": "51237_0946_introspection-follow-ups-20260619175418",
+      "task_id": "51237_0946_introspection-follow-ups",
+      "feature_id": "introspection-follow-ups",
+      "recorded_at": "2026-06-19T17:54:18.335Z",
+      "stage_status": "passed",
+      "baseline_audit_id": "70229_0429_command-center-home-ux-remediation-feature-delivery-directive-20260618174500",
+      "artifact_paths": {
+        "compliance_result": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/compliance-result.json",
+        "run_dir": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups"
+      },
+      "scope_snapshot": [
+        {
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
+          "exists": true,
+          "sha256": "c913753",
+          "size_bytes": 9778
+        },
+        {
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/design-qa-report.md",
+          "exists": true,
+          "sha256": "df25196",
+          "size_bytes": 11504
+        },
+        {
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/implementation-report.md",
+          "exists": true,
+          "sha256": "17fe9f0",
+          "size_bytes": 8783
+        },
+        {
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/review.md",
+          "exists": true,
+          "sha256": "32aceb6",
+          "size_bytes": 5743
+        },
+        {
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/test-report.md",
+          "exists": true,
+          "sha256": "b60ac9f",
+          "size_bytes": 8519
+        },
+        {
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/touch-set.json",
+          "exists": true,
+          "sha256": "dfc0af2",
+          "size_bytes": 16108
+        },
+        {
+          "path": "client/src/app/api/run-state/route.test.ts",
+          "exists": true,
+          "sha256": "80f6f0c",
+          "size_bytes": 30163
+        },
+        {
+          "path": "client/src/app/api/run-state/route.ts",
+          "exists": true,
+          "sha256": "248a3dd",
+          "size_bytes": 2134
+        },
+        {
+          "path": "client/src/components/command-center/command-center/command-center-data.test.ts",
+          "exists": true,
+          "sha256": "28eb9f5",
+          "size_bytes": 17946
+        },
+        {
+          "path": "client/src/components/command-center/command-center/command-center-data.ts",
+          "exists": true,
+          "sha256": "60febbf",
+          "size_bytes": 14788
+        },
+        {
+          "path": "client/src/components/command-center/command-center/command-center-types.ts",
+          "exists": true,
+          "sha256": "13e9306",
+          "size_bytes": 2548
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterRow.tsx",
+          "exists": true,
+          "sha256": "1f45d92",
+          "size_bytes": 1707
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterSurface.test.tsx",
+          "exists": true,
+          "sha256": "ba3ff9f",
+          "size_bytes": 10332
+        },
+        {
+          "path": "client/src/components/command-center/command-center/CommandCenterSurface.tsx",
+          "exists": true,
+          "sha256": "261c499",
+          "size_bytes": 3359
+        },
+        {
+          "path": "client/src/components/command-center/mission-control/ArtifactsByStage.tsx",
+          "exists": true,
+          "sha256": "0ff3aa6",
+          "size_bytes": 5246
+        },
+        {
+          "path": "client/src/components/command-center/mission-control/mission-control.test.tsx",
+          "exists": true,
+          "sha256": "d2b29fb",
+          "size_bytes": 18250
+        },
+        {
+          "path": "client/src/components/command-center/mission-control/MissionControlModule.tsx",
+          "exists": true,
+          "sha256": "d6b2d22",
+          "size_bytes": 14311
+        },
+        {
+          "path": "client/src/components/command-center/mission-control/WorkflowHealthPanel.tsx",
+          "exists": true,
+          "sha256": "acf1912",
+          "size_bytes": 6250
+        },
+        {
+          "path": "client/src/services/run-state-shared.ts",
+          "exists": true,
+          "sha256": "b85b946",
+          "size_bytes": 23651
+        },
+        {
+          "path": "client/src/services/run-state.ts",
+          "exists": true,
+          "sha256": "3a0b219",
+          "size_bytes": 20234
+        },
+        {
+          "path": "client/src/styles/surfaces.css",
+          "exists": true,
+          "sha256": "f945bc8",
+          "size_bytes": 94221
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/archive-sweep.test.ts",
+          "exists": true,
+          "sha256": "d40eb1a",
+          "size_bytes": 9480
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/archive-sweep.ts",
+          "exists": true,
+          "sha256": "57e3eb1",
+          "size_bytes": 18123
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/experience-planning-archival.test.ts",
+          "exists": true,
+          "sha256": "bb87a28",
+          "size_bytes": 8785
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/experience-planning-archival.ts",
+          "exists": true,
+          "sha256": "92f961b",
+          "size_bytes": 15394
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-fixtures.ts",
+          "exists": true,
+          "sha256": "b1092c1",
+          "size_bytes": 11808
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-validation.test.ts",
+          "exists": true,
+          "sha256": "69cde82",
+          "size_bytes": 8817
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-validation.ts",
+          "exists": true,
+          "sha256": "ab58dab",
+          "size_bytes": 24163
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-pipeline-close.test.ts",
+          "exists": true,
+          "sha256": "6e1d3c0",
+          "size_bytes": 3049
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-pipeline-close.ts",
+          "exists": true,
+          "sha256": "444dde8",
+          "size_bytes": 5398
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.test.ts",
+          "exists": true,
+          "sha256": "ad9dc74",
+          "size_bytes": 1281
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
+          "exists": true,
+          "sha256": "d3d9acc",
+          "size_bytes": 165075
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.test.ts",
+          "exists": true,
+          "sha256": "fb57d15",
+          "size_bytes": 27834
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
+          "exists": true,
+          "sha256": "18cd41f",
+          "size_bytes": 47804
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-sdk-progress.ts",
+          "exists": true,
+          "sha256": "cf6221b",
+          "size_bytes": 8233
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.test.ts",
+          "exists": true,
+          "sha256": "c502a8d",
+          "size_bytes": 14845
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.ts",
+          "exists": true,
+          "sha256": "2879f75",
+          "size_bytes": 40505
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-remediation.test.ts",
+          "exists": true,
+          "sha256": "8c413e2",
+          "size_bytes": 6940
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/pan-work-artifact.ts",
+          "exists": true,
+          "sha256": "c0afb7f",
+          "size_bytes": 1693
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/work-archive-hygiene.ts",
+          "exists": true,
+          "sha256": "05bdc92",
+          "size_bytes": 11541
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/workflow-health.test.ts",
+          "exists": true,
+          "sha256": "98afbc7",
+          "size_bytes": 3733
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/cli/src/workflow-health.ts",
+          "exists": true,
+          "sha256": "ca10010",
+          "size_bytes": 13794
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/core/src/operator-agent-section.ts",
+          "exists": true,
+          "sha256": "de794dc",
+          "size_bytes": 9087
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.test.ts",
+          "exists": true,
+          "sha256": "6250290",
+          "size_bytes": 4606
+        },
+        {
+          "path": "lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts",
+          "exists": true,
+          "sha256": "46dac6c",
+          "size_bytes": 11604
+        },
+        {
+          "path": "lib/memory/active/handoffs.md",
+          "exists": true,
+          "sha256": "fa0f850",
+          "size_bytes": 1842
+        },
+        {
+          "path": "lib/personas/design-reviewer.md",
+          "exists": true,
+          "sha256": "2a3bd3e",
+          "size_bytes": 17729
+        },
+        {
+          "path": "lib/personas/qa-tester.md",
+          "exists": true,
+          "sha256": "5358ab5",
+          "size_bytes": 18420
+        },
+        {
+          "path": "lib/personas/reviewer.md",
+          "exists": true,
+          "sha256": "32cf424",
+          "size_bytes": 13657
+        },
+        {
+          "path": "lib/personas/skills/modern-code-review/SKILL.md",
+          "exists": true,
+          "sha256": "e32910a",
+          "size_bytes": 11667
+        },
+        {
+          "path": "lib/pipelines/feature-delivery.yaml",
+          "exists": true,
+          "sha256": "02ec051",
+          "size_bytes": 11766
+        },
+        {
+          "path": "tests/operator-agent-section.test.mjs",
+          "exists": true,
+          "sha256": "fcbbede",
+          "size_bytes": 2072
+        }
+      ],
+      "delta_summary": {
+        "added": 45,
+        "removed": 17,
+        "modified": 7,
+        "changed_paths": [
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/delivery-report.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/design-qa-report.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/implementation-report.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/review.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/test-report.md",
+          ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/touch-set.json",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/design-qa-report.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/implementation-report.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/review.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/test-report.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/touch-set.json",
+          "client/src/app/api/run-state/route.test.ts",
+          "client/src/app/api/run-state/route.ts",
+          "client/src/app/page.test.tsx",
+          "client/src/components/command-center/command-center/command-center-data.test.ts",
+          "client/src/components/command-center/command-center/command-center-data.ts",
+          "client/src/components/command-center/command-center/command-center-types.ts",
+          "client/src/components/command-center/command-center/CommandCenterCard.tsx",
+          "client/src/components/command-center/command-center/CommandCenterRow.tsx",
+          "client/src/components/command-center/command-center/CommandCenterRowOverflow.test.tsx",
+          "client/src/components/command-center/command-center/CommandCenterRowOverflow.tsx",
+          "client/src/components/command-center/command-center/CommandCenterSurface.test.tsx",
+          "client/src/components/command-center/command-center/CommandCenterSurface.tsx",
+          "client/src/components/command-center/command-center/useCommandCenterData.ts",
+          "client/src/components/command-center/layout/CommandCenterGlobalHeader.test.tsx",
+          "client/src/components/command-center/layout/CommandCenterGlobalHeader.tsx",
+          "client/src/components/command-center/layout/CommandCenterNavRail.test.tsx",
+          "client/src/components/command-center/mission-control/ArtifactsByStage.tsx",
+          "client/src/components/command-center/mission-control/mission-control.test.tsx",
+          "client/src/components/command-center/mission-control/MissionControlModule.tsx",
+          "client/src/components/command-center/mission-control/WorkflowHealthPanel.tsx",
+          "client/src/components/command-center/shared/AttentionBanner.tsx",
+          "client/src/components/command-center/shared/AttentionRegion.tsx",
+          "client/src/components/command-center/shared/shared-components.test.tsx",
+          "client/src/services/run-state-shared.ts",
+          "client/src/services/run-state.ts",
+          "client/src/styles/surfaces.css",
+          "lib/internal/packages/@pancreator/cli/src/archive-sweep.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/archive-sweep.ts",
+          "lib/internal/packages/@pancreator/cli/src/experience-planning-archival.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/experience-planning-archival.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-fixtures.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-validation.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-gate-validation.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-pipeline-close.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-pipeline-close.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-run.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-runner.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-sdk-progress.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-artifacts.ts",
+          "lib/internal/packages/@pancreator/cli/src/feature-delivery-stage-remediation.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/pan-work-artifact.ts",
+          "lib/internal/packages/@pancreator/cli/src/work-archive-hygiene.ts",
+          "lib/internal/packages/@pancreator/cli/src/workflow-health.test.ts",
+          "lib/internal/packages/@pancreator/cli/src/workflow-health.ts",
+          "lib/internal/packages/@pancreator/core/src/operator-agent-section.ts",
+          "lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.test.ts",
+          "lib/internal/packages/@pancreator/runner-cursor/src/sdk-transport.ts",
+          "lib/memory/active/handoffs.md",
+          "lib/personas/design-reviewer.md",
+          "lib/personas/qa-tester.md",
+          "lib/personas/reviewer.md",
+          "lib/personas/skills/modern-code-review/SKILL.md",
+          "lib/pipelines/feature-delivery.yaml",
+          "tests/operator-agent-section.test.mjs"
+        ]
+      },
+      "findings_summary": {
+        "total": 0,
+        "block": 0,
+        "major": 0,
+        "minor": 0,
+        "note": 0
+      }
+    },
     {
       "audit_id": "70229_0429_command-center-home-ux-remediation-feature-delivery-directive-20260618174500",
       "task_id": "70229_0429_command-center-home-ux-remediation-feature-delivery-directive",
@@ -488,163 +897,6 @@
           "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
           "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
           "lib/memory/features/command-center-ux-philosophy-information-architecture-and-user-stories/delivery-report.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/delivery-report.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/index.json",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/spec.md",
-          "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md"
-        ]
-      },
-      "findings_summary": {
-        "total": 0,
-        "block": 0,
-        "major": 0,
-        "minor": 0,
-        "note": 0
-      }
-    },
-    {
-      "audit_id": "77283_0231_command-center-active-memory-operator-craft-revalidation-20260609024000",
-      "task_id": "77283_0231_command-center-active-memory-operator-craft-revalidation",
-      "feature_id": "command-center-active-memory-operator-craft-revalidation",
-      "recorded_at": "2026-06-09T02:40:00.000Z",
-      "stage_status": "passed",
-      "baseline_audit_id": "82780_0100_command-center-active-memory-craft-enforcement-20260609013000",
-      "artifact_paths": {
-        "compliance_result": ".pan/archive/work/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/compliance-result.json",
-        "run_dir": ".pan/archive/work/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation"
-      },
-      "scope_snapshot": [
-        {
-          "path": ".pan/archive/work/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/review.md",
-          "exists": true,
-          "sha256": "7944b64",
-          "size_bytes": 6018
-        },
-        {
-          "path": ".pan/archive/work/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/test-report.md",
-          "exists": true,
-          "sha256": "6578a5c",
-          "size_bytes": 4884
-        },
-        {
-          "path": ".pan/archive/work/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/touch-set.json",
-          "exists": true,
-          "sha256": "61bc524",
-          "size_bytes": 1384
-        },
-        {
-          "path": "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
-          "exists": true,
-          "sha256": "c886246",
-          "size_bytes": 11524
-        },
-        {
-          "path": "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "exists": true,
-          "sha256": "97abded",
-          "size_bytes": 13527
-        },
-        {
-          "path": "lib/memory/features/command-center-active-memory-operator-craft-revalidation/delivery-report.md",
-          "exists": true,
-          "sha256": "b32ca9d",
-          "size_bytes": 11381
-        },
-        {
-          "path": "lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md",
-          "exists": true,
-          "sha256": "b3d57fb",
-          "size_bytes": 10888
-        },
-        {
-          "path": "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
-          "exists": true,
-          "sha256": "41d6fc3",
-          "size_bytes": 12877
-        },
-        {
-          "path": "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",
-          "exists": true,
-          "sha256": "23dcb91",
-          "size_bytes": 12718
-        },
-        {
-          "path": "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "exists": true,
-          "sha256": "1f50944",
-          "size_bytes": 11550
-        },
-        {
-          "path": "lib/memory/features/command-center-local-scheduler-tick-and-run-history/delivery-report.md",
-          "exists": true,
-          "sha256": "836e9d2",
-          "size_bytes": 13266
-        },
-        {
-          "path": "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
-          "exists": true,
-          "sha256": "0db9ec9",
-          "size_bytes": 11184
-        },
-        {
-          "path": "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
-          "exists": true,
-          "sha256": "33151d4",
-          "size_bytes": 9715
-        },
-        {
-          "path": "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
-          "exists": true,
-          "sha256": "a68b889",
-          "size_bytes": 10847
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/delivery-report.md",
-          "exists": true,
-          "sha256": "a72057b",
-          "size_bytes": 9695
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/index.json",
-          "exists": true,
-          "sha256": "0a37e18",
-          "size_bytes": 19252
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/spec.md",
-          "exists": true,
-          "sha256": "8f1cff5",
-          "size_bytes": 9677
-        },
-        {
-          "path": "lib/memory/features/command-center-ux-spec-and-information-architecture/ux-spec.md",
-          "exists": true,
-          "sha256": "b77951f",
-          "size_bytes": 13604
-        }
-      ],
-      "delta_summary": {
-        "added": 4,
-        "removed": 3,
-        "modified": 14,
-        "changed_paths": [
-          ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/review.md",
-          ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/test-report.md",
-          ".pan/archive/work/172966_06-09-26/82780_0100_command-center-active-memory-craft-enforcement/touch-set.json",
-          ".pan/archive/work/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/review.md",
-          ".pan/archive/work/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/test-report.md",
-          ".pan/archive/work/172966_06-09-26/77283_0231_command-center-active-memory-operator-craft-revalidation/touch-set.json",
-          "lib/memory/features/command-center-active-memory-craft-enforcement/delivery-report.md",
-          "lib/memory/features/command-center-active-memory-inbox-triage-multi-run-view/delivery-report.md",
-          "lib/memory/features/command-center-active-memory-operator-craft-revalidation/delivery-report.md",
-          "lib/memory/features/command-center-active-memory-operator-readability/delivery-report.md",
-          "lib/memory/features/command-center-automation-registry-and-management-ui/delivery-report.md",
-          "lib/memory/features/command-center-craft-polish-pass/delivery-report.md",
-          "lib/memory/features/command-center-live-run-refresh-and-stage-artifact-drawer/delivery-report.md",
-          "lib/memory/features/command-center-local-scheduler-tick-and-run-history/delivery-report.md",
-          "lib/memory/features/command-center-maintenance-toolkit-compliance-tests/delivery-report.md",
-          "lib/memory/features/command-center-module-tab-accessibility/delivery-report.md",
-          "lib/memory/features/command-center-pipeline-command-center-and-human-gate-queue/delivery-report.md",
           "lib/memory/features/command-center-ux-spec-and-information-architecture/delivery-report.md",
           "lib/memory/features/command-center-ux-spec-and-information-architecture/index.json",
           "lib/memory/features/command-center-ux-spec-and-information-architecture/spec.md",

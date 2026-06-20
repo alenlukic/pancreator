@@ -109,6 +109,17 @@ that merely repeats `required_docs` proves nothing, whereas `consulted_docs` is 
 checkable claim a gate validates against the contract. Every key in `required_docs`
 MUST appear in `consulted_docs`; additional consulted keys are allowed.
 
+`produced_artifacts` is also an attestation. Every path listed there MUST resolve
+to a real repository artifact at validation time, and each manifest-bearing
+artifact MUST include its own path in `produced_artifacts`. Stale paths are lint
+failures, not advisory warnings.
+
+When a stage emits required-doc receipts (`required-doc-receipts/<stage>.json`),
+those receipts MUST set `enforce_manifest_consulted_docs: true` and carry
+non-empty `required_docs_resolved`, `required_docs_opened`, and
+`required_docs_applied` arrays that cover every `DOC.*` key in
+`consulted_docs`.
+
 ## Gate rule
 
 A transition validator MUST block advancement when the manifest is missing from
@@ -122,6 +133,10 @@ Validators MUST also reject manifests that omit any shape field shown in
 `consulted_docs` instead of `DOC.*` / `PIPE.*` / `PERSONA.*` keys, or declare a
 stage-specific `stage_contract` / `required_docs` set that does not match the
 owning pipeline contract.
+
+For artifact-producing stage transitions, validators MUST run deterministic
+artifact lint (`pan artifacts lint <taskId> --stage <stage>`) or an equivalent
+runtime-integrated validator path before allowing a clean pass transition.
 
 When a stage validator also checks local diff or touch-set compliance, it MUST
 block advancement when a changed path is absent from the declared touch-set and

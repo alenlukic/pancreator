@@ -347,7 +347,6 @@ ${distTable()}
 - Target: ${Math.round(TOKEN_TELEMETRY_TARGET * 100)}% — ${
   tokenCoverage >= TOKEN_TELEMETRY_TARGET ? "MET" : "BELOW TARGET"
 }
-> Coverage is gated by \`node lib/internal/tools/checks/check-token-telemetry.mjs\`.
 
 ## Transcript audit
 
@@ -371,7 +370,6 @@ node lib/internal/tools/governance/audit-governance-usage.mjs --window ${windowD
 
 # structural framework gates (fail closed)
 node lib/internal/tools/checks/check-cursor-projection-drift.mjs
-node lib/internal/tools/checks/check-token-telemetry.mjs
 node --test tests/agent-document-registry-integrity.test.mjs
 node --test tests/model-escalation-completeness.test.mjs
 \`\`\`

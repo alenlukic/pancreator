@@ -13,13 +13,30 @@ const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)\r?\n([\s\S]*)$/;
 
 const INDEX_ONLY_FRONTMATTER = /^---\r?\n(?:agent_section_start_line:\s*\d+\s*\n|pancreator-section-index:[\s\S]*?)---\r?\n/;
 
+function stripYamlCommentPrefix(line: string): string {
+  const trimmed = line.trimStart();
+  if (trimmed.startsWith("# ")) {
+    return trimmed.slice(2);
+  }
+  if (trimmed.startsWith("#")) {
+    return trimmed.slice(1).trimStart();
+  }
+  return line;
+}
+
 function isOperatorLine(line: string): boolean {
+  const content = stripYamlCommentPrefix(line);
   return (
-    line.startsWith("- 👀 **In this file:**") ||
-    line.startsWith("- ⚖️ **Why it matters:**") ||
-    line.startsWith("- 🧭 **See also:**") ||
-    line.startsWith("  - ")
+    content.startsWith("- 👀 **In this file:**") ||
+    content.startsWith("- ⚖️ **Why it matters:**") ||
+    content.startsWith("- 🧭 **See also:**") ||
+    content.startsWith("  - ")
   );
+}
+
+function isNoHumanContentBanner(source: string): boolean {
+  const trimmed = source.replace(/^\uFEFF/, "").trimStart();
+  return trimmed.startsWith("⚙️ no human content") || trimmed.startsWith("# ⚙️ no human content");
 }
 
 function stripIndexArtifacts(source: string): string {
@@ -47,7 +64,7 @@ function peelLeadingFrontmatter(source: string): { frontmatter: string; rest: st
 
 function skipOperatorPrefix(source: string): string | null {
   const trimmed = source.replace(/^\uFEFF/, "").trimStart();
-  if (trimmed.startsWith("⚙️ no human content")) {
+  if (isNoHumanContentBanner(trimmed)) {
     const lines = trimmed.split(/\r?\n/);
     let i = 1;
     while (i < lines.length && (lines[i] ?? "").trim() === "") {
@@ -71,7 +88,7 @@ function skipOperatorPrefix(source: string): string | null {
 
 function operatorPrefixEndLine(source: string): number {
   const trimmed = source.replace(/^\uFEFF/, "").trimStart();
-  if (trimmed.startsWith("⚙️ no human content")) {
+  if (isNoHumanContentBanner(trimmed)) {
     let end = 1;
     const lines = trimmed.split(/\r?\n/);
     while (end < lines.length && (lines[end] ?? "").trim() === "") {
@@ -125,7 +142,7 @@ export function splitOperatorAgentSection(
 ): { operatorPrefix: string; agentBody: string } | null {
   const peeled = peelLeadingFrontmatter(source.replace(/^\uFEFF/, "").trimStart());
   const content = peeled?.rest ?? source.replace(/^\uFEFF/, "").trimStart();
-  if (!content.startsWith("# Operator section") && !content.startsWith("⚙️ no human content")) {
+  if (!content.startsWith("# Operator section") && !isNoHumanContentBanner(content)) {
     return null;
   }
   const agentBody = sliceOperatorAgentSection(source);
@@ -235,7 +252,8 @@ export function wrapOperatorAgentMarkdown(
   meta: OperatorAgentOperatorMeta,
   agentBody: string,
 ): string {
-  const normalizedAgent = normalizeAgentBodyForWrap(agentBody);
+  const split = splitOperatorAgentSection(agentBody);
+  const normalizedAgent = normalizeAgentBodyForWrap(split?.agentBody ?? agentBody);
   const operatorText = buildOperatorBlock(meta).join("\n");
   const fmMatch = normalizedAgent.match(FRONTMATTER);
   if (fmMatch) {
@@ -247,14 +265,21 @@ export function wrapOperatorAgentMarkdown(
   return `${operatorText}\n${normalizedAgent}`;
 }
 
-/** Wraps raw YAML: operator section, then agent payload. */
+function buildYamlOperatorBlock(meta: OperatorAgentOperatorMeta): string {
+  const lines = buildOperatorBlock(meta);
+  return [
+    lines[0] ?? "# Operator section",
+    ...lines.slice(1).map((line) => `# ${line}`),
+  ].join("\n");
+}
+
+/** Wraps raw YAML: commented operator section, then agent payload. */
 export function wrapOperatorAgentYaml(
   meta: OperatorAgentOperatorMeta,
   agentBody: string,
 ): string {
   const body = stripIndexArtifacts(agentBody.replace(/^\uFEFF/, "").trimStart());
-  const operatorText = buildOperatorBlock(meta).join("\n");
-  return `${operatorText}\n${body}`;
+  return `${buildYamlOperatorBlock(meta)}\n${body}`;
 }
 
 /**

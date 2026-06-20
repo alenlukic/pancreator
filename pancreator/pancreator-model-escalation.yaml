@@ -31,8 +31,7 @@ configs:
 
       coder:
         default: composer-2.5[fast=false]
-        3: gpt-5.2-codex[reasoning=high,fast=false]
-        4: gpt-5.3-codex[reasoning=high,fast=false]
+        3: gpt-5.3-codex[reasoning=high,fast=false]
 
       reviewer:
         default: gpt-5.3-codex[reasoning=high,fast=false]

@@ -93,8 +93,8 @@ defaults:
 feature_delivery:
   design_steps: true
 
-# Feature-delivery runner invocation (opt-in). Omit this block or set `manual` to keep
-# the handoff-and-paste operator loop. Set `sdk` to invoke CursorRunner on run/advance.
+# Feature-delivery runner invocation defaults to SDK automation.
+# Set `manual` only when explicitly opting into handoff-and-paste operation.
 runner:
   cursor:
     invocation: sdk

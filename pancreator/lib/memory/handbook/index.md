@@ -34,6 +34,7 @@ page is a human-readable orientation layer; the routing table below supports
 | Low-risk bounded work posture | `/lib/memory/handbook/simple-task-mode.md` | `AGENTS.md`, `/lib/memory/handbook/context-economy.md` | |
 | Engineering standards selection | `/lib/memory/handbook/engineering/index.md` | `/lib/memory/handbook/engineering/software-engineering.md` | |
 | Pipeline state and gate validation | `/lib/memory/handbook/pipeline-state-contract.md` | `/lib/pipelines/feature-delivery.yaml` | |
+| Human-readable feature-delivery walkthrough | `/lib/memory/handbook/feature-delivery-pipeline-overview.md` | `/lib/memory/handbook/pipeline-state-contract.md`, `/lib/pipelines/feature-delivery.yaml` | Orientation layer for stage inputs, validations, actions, done criteria, and runtime transitions. |
 
 ## Contract system
 
@@ -42,6 +43,7 @@ page is a human-readable orientation layer; the routing table below supports
 - `persona-contracts.md` — static persona execution-contract requirements.
 - `output-manifest-contract.md` — required manifest shape and double-write rule.
 - `pipeline-state-contract.md` — state machine, gates, and remediation routing.
+- `feature-delivery-pipeline-overview.md` — readable walkthrough of the FD stage contracts and runtime loopbacks.
 
 ## Common handbook areas
 

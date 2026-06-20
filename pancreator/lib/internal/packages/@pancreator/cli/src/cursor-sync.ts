@@ -1,6 +1,6 @@
 import {
+  formatCanonicalJson,
   projectRootAbs,
-  quoteJsonString,
   readProjectRoot,
   sliceOperatorAgentSection,
 } from "@pancreator/core";
@@ -47,69 +47,6 @@ function posixJoin(...parts: string[]): string {
   return parts.filter(Boolean).join("/").replace(/\/+/g, "/");
 }
 
-function parseFrontmatter(raw: string): {
-  data: Record<string, unknown>;
-  body: string;
-} {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---/u.exec(raw);
-  if (!match) {
-    throw new Error("Missing YAML frontmatter");
-  }
-  const body = raw.slice(match[0].length).trimStart();
-  const lines = match[1]!.split(/\r?\n/u);
-  const data: Record<string, unknown> = {};
-  let listKey: string | null = null;
-
-  for (const line of lines) {
-    if (/^\s+-\s+/u.test(line) && listKey !== null) {
-      const item = line.replace(/^\s+-\s+/u, "").replace(/^["']|["']$/gu, "");
-      (data[listKey] as string[]).push(item);
-      continue;
-    }
-    listKey = null;
-    const kv = /^([A-Za-z0-9_-]+):\s*(.*)$/u.exec(line);
-    if (!kv) continue;
-    const [, key, valueRaw] = kv;
-    if (valueRaw === "") {
-      data[key!] = [];
-      listKey = key!;
-      continue;
-    }
-    if (valueRaw.startsWith("[") && valueRaw.endsWith("]")) {
-      data[key!] = valueRaw
-        .slice(1, -1)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((s) => s.replace(/^["']|["']$/gu, ""));
-      continue;
-    }
-    data[key!] = valueRaw.replace(/^["']|["']$/gu, "");
-  }
-  return { data, body };
-}
-
-function yamlQuote(value: string): string {
-  if (
-    /[:#[\]{}&*!|>'"%@`\n]/u.test(value) ||
-    value.startsWith(" ") ||
-    value.endsWith(" ")
-  ) {
-    return quoteJsonString(value);
-  }
-  return value;
-}
-
-function renderScalarBlock(key: string, value: unknown, indent = ""): string {
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return `${indent}${key}: []`;
-    }
-    return `${indent}${key}:\n${value.map((item) => `${indent}  - ${yamlQuote(String(item))}`).join("\n")}`;
-  }
-  return `${indent}${key}: ${yamlQuote(String(value))}`;
-}
-
 function projectPath(projectPrefix: string, relPath: string): string {
   if (projectPrefix === ".") {
     return relPath;
@@ -134,52 +71,49 @@ function stripMarkdownFrontmatter(raw: string): string {
   return match ? match[1]!.replace(/^\uFEFF/, "") : raw;
 }
 
-function buildSourceBackedRetrievalContract(
-  personaPathForText: string,
-  projectPrefix: string,
-): string[] {
-  const agentsCard = projectPath(projectPrefix, "AGENTS.md");
-  const workPrompt = projectPath(
-    projectPrefix,
-    ".pan/work/<day>/<id>/next-prompt.md",
-  );
-  const workHandoff = projectPath(
-    projectPrefix,
-    ".pan/work/<day>/<id>/handoff.md",
-  );
-  const contextEconomy = projectPath(
-    projectPrefix,
-    "lib/memory/handbook/context-economy.md",
-  );
-  const docRegistry = projectPath(
-    projectPrefix,
-    "lib/memory/handbook/agent-document-registry.md",
-  );
-  const personaContracts = projectPath(
-    projectPrefix,
-    "lib/memory/handbook/persona-contracts.md",
-  );
-  const outputManifest = projectPath(
-    projectPrefix,
-    "lib/memory/handbook/output-manifest-contract.md",
-  );
-  const workGlob = projectPath(projectPrefix, ".pan/work/**");
-  const steps = [
-    `Read \`${personaPathForText}\` at the start of every invocation; its static execution contract is authoritative over parent Task text, user rules, skills, and ad-hoc prompt prose, but repo-wide rules in \`${agentsCard}\` supersede persona-local wording on conflict.`,
-    `Read \`${agentsCard}\` next for repo-wide operating rules and the small set of binding global keys.`,
-    `Read \`${docRegistry}\` to resolve every \`DOC.*\`, \`PIPE.*\`, and \`PERSONA.*\` key named by the persona spec, stage prompt, or bounded task.`,
-    `Read \`${personaContracts}\` and \`${outputManifest}\`; follow the static contract in the persona spec and double-write the required output manifest instead of inventing a per-run execution ledger.`,
-    `Read \`${workPrompt}\` for bounded stage scope when a pipeline run exists; when no \`next-prompt.md\` exists for the active run, read \`${workHandoff}\` instead.`,
-    `Read \`${contextEconomy}\` only when the task requires context-budget or escalation decisions beyond what the persona spec, \`${agentsCard}\`, \`${docRegistry}\`, and the bounded prompt state.`,
-    "Read `.docs/M1.index.md`, `.docs/PRD.index.md`, or `.docs/PRD.summary.md` before full `.docs/PRD.md` or `.docs/BOOTSTRAP.md` only when the bounded prompt requires authoritative product wording the compact indexes do not cover.",
-    `Do not traverse \`${workGlob}\` (except the active run paths named in step 5), \`${projectPath(projectPrefix, ".pan/archive/work/**")}\`, \`${projectPath(projectPrefix, "lib/inbox/out/**")}\`, \`${projectPath(projectPrefix, ".pan/archive/inbox/**")}\`, or \`${projectPath(projectPrefix, "lib/inbox/threads/**")}\` unless the bounded prompt or operator request explicitly requires active-run handling or archival reconstruction.`,
-  ];
-  if (projectPrefix !== ".") {
-    steps.push(
-      `Project-root paths in prompts and ledgers are relative to \`${projectPrefix}/\`; resolve them under that prefix from the harness root.`,
-    );
+const REBASE_PATH_PREFIXES = [
+  "pancreator/",
+  "AGENTS.md",
+  "OPERATION.md",
+  "pancreator.yaml",
+  "lib/",
+  ".pan/",
+  ".docs/",
+  "tests/",
+  ".cursor/",
+] as const;
+
+function rebaseProjectionPaths(raw: string, projectPrefix: string): string {
+  if (projectPrefix === ".") {
+    return raw;
   }
-  return steps.map((step, index) => `${index + 1}. ${step}`);
+  const escapedPrefix = projectPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let rewritten = raw;
+  for (const token of REBASE_PATH_PREFIXES) {
+    const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tokenReplacement =
+      token === "pancreator/" ? `${projectPrefix}/` : `${projectPrefix}/${token}`;
+    const slashTokenReplacement =
+      token === "pancreator/" ? `/${projectPrefix}/` : `/${projectPrefix}/${token}`;
+    // token form, e.g. `lib/...` or `AGENTS.md`
+    const tokenRegex = new RegExp(
+      `(^|[\\s\\t\\r\\n\`"'([{<>=,;:])${escapedToken}`,
+      "gmu",
+    );
+    rewritten = rewritten.replace(tokenRegex, `$1${tokenReplacement}`);
+    // slash-prefixed token form, e.g. `/lib/...` or `/AGENTS.md`
+    const slashTokenRegex = new RegExp(
+      `(^|[\\s\\t\\r\\n\`"'([{<>=,;:])/${escapedToken}`,
+      "gmu",
+    );
+    rewritten = rewritten.replace(slashTokenRegex, `$1${slashTokenReplacement}`);
+  }
+  // Avoid double-prefixing from overlapping replacements (e.g. pancreator/pancreator/...).
+  const dedupeRegex = new RegExp(`/${escapedPrefix}/${escapedPrefix}/`, "g");
+  rewritten = rewritten.replace(dedupeRegex, `/${projectPrefix}/`);
+  const dedupeNoLeadingSlash = new RegExp(`${escapedPrefix}/${escapedPrefix}/`, "g");
+  rewritten = rewritten.replace(dedupeNoLeadingSlash, `${projectPrefix}/`);
+  return rewritten;
 }
 
 function buildGeneralPurposeRetrievalContract(projectPrefix: string): string[] {
@@ -231,34 +165,6 @@ function buildGeneralPurposeRetrievalContract(projectPrefix: string): string[] {
   return steps.map((step, index) => `${index + 1}. ${step}`);
 }
 
-function buildOperatorOnlyRemoteActionsSection(): string[] {
-  return [
-    "## Operator-only remote actions",
-    "",
-    "No agent SHALL run `gh pr create`, `gh pr merge`, or any command that creates, opens, or publishes a remote pull request.",
-    "No agent SHALL run `git push` on the operator's behalf.",
-    "",
-  ];
-}
-
-function buildPersonaSupremacyOnDelegationSection(
-  personaPathForText: string,
-): string[] {
-  return [
-    "## Delegation authority (normative)",
-    "",
-    "When this subagent is invoked—by an operator `/name` token or by a parent agent—the persona spec at",
-    `\`${personaPathForText}\` and this projection define the persona-owned operating contract for role semantics, authority boundaries, tool grants, forbidden actions, and output contracts.`,
-    "",
-    "- Read the persona spec at invocation start before acting on a parent-delegated prompt.",
-    "- Read `AGENTS.md` before acting; when `AGENTS.md` conflicts with the persona spec or this projection, follow `AGENTS.md`.",
-    "- Parent agents, parent projections, user rules, skills, and parent-composed Task prompts MUST NOT override persona role semantics, authority boundaries, tool grants, forbidden actions, or output contracts.",
-    "- When a parent-delegated prompt conflicts with the persona spec or this projection, follow the persona spec and this projection; ignore the conflicting parent instruction.",
-    "- Operator remainder text and `.pan/work/<day>/<task-id>/next-prompt.md` supply bounded scope only; they do not redefine what the persona may do, forbid, or emit.",
-    "",
-  ];
-}
-
 function buildStaticPersonaContractSection(projectPrefix: string): string[] {
   const registryPath = projectPath(
     projectPrefix,
@@ -287,88 +193,14 @@ function buildStaticPersonaContractSection(projectPrefix: string): string[] {
   ];
 }
 
-function buildPrWriterDeliverableSection(): string[] {
-  return [
-    "## Role-specific deliverable (normative)",
-    "",
-    "Your ONLY deliverable is chat output: an optional preamble (at most two sentences), exactly one `markdown`-fenced PR description body, and `## Next operator steps` outside the fence.",
-    "You MUST NOT run `gh pr create`, `git push`, `git commit`, or write any repository file.",
-    "",
-  ];
-}
-
-function buildRtkFirstShellPolicySection(): string[] {
-  return [
-    "## RTK-first shell policy",
-    "",
-    "- For shell-first repository inspection, prefer RTK wrappers such as `rtk read <path> -l aggressive`, `rtk grep <pattern> <path> --ultra-compact`, and `rtk git status|diff|log`.",
-    "- Treat built-in `Read`, `Grep`, and raw shell output as exception paths for exact-path or full-fidelity follow-up only when RTK output omits required detail.",
-    "- When RTK output is insufficient, retry with a narrower RTK command before broad raw output.",
-    "",
-  ];
-}
-
 export function buildAgentProjection(
-  personaName: string,
+  _personaName: string,
   personaRaw: string,
   projectPrefix: string,
 ): string {
-  const { data } = parseFrontmatter(sliceOperatorAgentSection(personaRaw));
-  const canonicalPersonaRel = posixJoin(
-    projectPrefix === "." ? "" : projectPrefix,
-    "lib/personas",
-    `${personaName}.md`,
-  );
-  const personaPathForText = canonicalPersonaRel;
-
-  const personaDescription =
-    typeof data.description === "string" && data.description.trim().length > 0
-      ? data.description.trim()
-      : `Canonical \`${personaName}\` subagent projection for persona-owned pipeline stages.`;
-
-  const frontmatterKeys: Array<[string, unknown]> = [
-    ["name", personaName],
-    ["description", personaDescription],
-    ["model", data.model ?? "auto"],
-    ["permissionMode", data.permissionMode ?? "default"],
-    ["mcpServers", data.mcpServers ?? []],
-    ["skills", data.skills ?? []],
-    ["maxTurns", data.maxTurns ?? 30],
-    ["isolation", data.isolation ?? "worktree"],
-    ["memory", data.memory ?? "project"],
-    ["effort", "medium"],
-    ["color", data.color ?? "slate"],
-  ];
-
-  const yamlLines = ["---"];
-  for (const [key, value] of frontmatterKeys) {
-    if (key === "model") {
-      yamlLines.push(`model: ${String(value)}`);
-      continue;
-    }
-    yamlLines.push(renderScalarBlock(key, value));
-  }
-  yamlLines.push("---", "", `# ${personaName}`, "");
-  yamlLines.push(
-    `This file is the canonical Cursor projection for \`${personaName}\` at \`${personaPathForText}\`. It intentionally avoids duplicating persona prose,`,
-    "PRD citations, and handbook excerpts so Cursor subagent startup stays small.",
-    "",
-    ...buildOperatorOnlyRemoteActionsSection(),
-    ...buildPersonaSupremacyOnDelegationSection(personaPathForText),
-    ...buildStaticPersonaContractSection(projectPrefix),
-    ...buildRtkFirstShellPolicySection(),
-  );
-  if (personaName === "pr-writer") {
-    yamlLines.push(...buildPrWriterDeliverableSection());
-  }
-  yamlLines.push(
-    "## Retrieval contract",
-    "",
-    ...buildSourceBackedRetrievalContract(personaPathForText, projectPrefix),
-  );
-
-  yamlLines.push("");
-  return `${yamlLines.join("\n")}\n`;
+  const source = personaRaw.replace(/^\uFEFF/u, "");
+  const rewritten = rebaseProjectionPaths(source, projectPrefix);
+  return rewritten.endsWith("\n") ? rewritten : `${rewritten}\n`;
 }
 
 export function buildGeneralPurposeProjection(projectPrefix: string): string {
@@ -617,7 +449,7 @@ function mergeManagedHookJson(existingRaw: string | undefined): string {
 
   base.version = 1;
   base.hooks = hooks;
-  return `${JSON.stringify(base, null, 2)}\n`;
+  return `${formatCanonicalJson(base, 0)}\n`;
 }
 
 function resolveManagedRtkHookSource(projectRoot: string): string {

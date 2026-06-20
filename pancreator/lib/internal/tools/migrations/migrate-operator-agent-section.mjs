@@ -16,6 +16,7 @@ import {
   wrapOperatorAgentMarkdown,
   wrapOperatorAgentYaml,
 } from "../../packages/@pancreator/core/dist/index.js";
+import { stringifyRepoJson } from "../format/canonical-json-format.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 
@@ -377,7 +378,7 @@ function wrapJsonDocument(payload, meta) {
     $operator,
     ...payload,
   };
-  return `${JSON.stringify(wrapped, null, 2)}\n`;
+  return stringifyRepoJson(wrapped, ROOT);
 }
 
 /** @param {string} rel @param {string} base */
@@ -592,7 +593,7 @@ ${deferredJsonGlobs.map((pattern) => `| \`${pattern}\` | Closed or compliance-va
 
   write("lib/memory/curation/operator-agent-section-deferrals.md", deferralDoc.endsWith("\n") ? deferralDoc : `${deferralDoc}\n`);
 
-  console.log(JSON.stringify(report, null, 2));
+  process.stdout.write(stringifyRepoJson(report, ROOT));
 }
 
 main();
