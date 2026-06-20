@@ -6,9 +6,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   archiveInboxPathForSource,
+  collectFeatureIndexInboxCandidates,
   findExistingArchivedInboxPath,
   pruneEmptyInboxQueueTree,
   pruneEmptyQueueParents,
+  resolveLiveInboxSourcePath,
 } from "./inbox-archive.js";
 
 describe("archiveInboxPathForSource", () => {
@@ -30,6 +32,30 @@ describe("archiveInboxPathForSource", () => {
     expect(archiveInboxPathForSource("lib/inbox/in/demo-feature.md", "172996_05-10-26")).toBe(
       ".pan/archive/inbox/in/172996_05-10-26/demo-feature.md",
     );
+  });
+});
+
+describe("resolveLiveInboxSourcePath", () => {
+  it("finds renamed inbox directives by feature index candidate or basename", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-inbox-resolve-live-"));
+    const live = "lib/inbox/in/172957_06-18-26/14193_2003_introspection-followups.md";
+    await mkdir(path.join(root, ...live.split("/").slice(0, -1)), { recursive: true });
+    await writeFile(path.join(root, live), "# follow-ups\n", "utf8");
+
+    const fromIndex = await resolveLiveInboxSourcePath(
+      root,
+      "lib/inbox/in/260618/14193_2003_introspection-followups.md",
+      collectFeatureIndexInboxCandidates({
+        source_inbox_item: live,
+      }),
+    );
+    expect(fromIndex).toBe(live);
+
+    const fromBasename = await resolveLiveInboxSourcePath(
+      root,
+      "lib/inbox/in/260618/14193_2003_introspection-followups.md",
+    );
+    expect(fromBasename).toBe(live);
   });
 });
 

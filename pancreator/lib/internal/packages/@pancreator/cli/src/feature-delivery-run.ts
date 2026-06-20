@@ -24,6 +24,7 @@ import {
   readFile,
   readdir,
   rename,
+  rm,
   stat,
   writeFile,
 } from "node:fs/promises";
@@ -74,6 +75,7 @@ import {
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
   readCursorInvocationForState,
+  resetStageInvocationIndex,
   resolveComplianceStageAdvanceEvent,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
@@ -108,13 +110,22 @@ import {
   type ArtifactContentWarning,
 } from "./feature-delivery-stage-artifacts.js";
 import {
+  readWorkflowHealthSummary,
+  type WorkflowHealthSummary,
+  workflowHealthRel,
+  writeWorkflowHealthArtifact,
+} from "./workflow-health.js";
+import {
   decodeCountdownTimestamp,
   parseRunDirParts,
 } from "./timestamp-decode.js";
 import {
   archiveInboxPathForSource,
+  collectFeatureIndexInboxCandidates,
   findExistingArchivedInboxPath,
+  inboxEntryFromPath,
   pruneEmptyQueueParents,
+  resolveLiveInboxSourcePath,
 } from "./inbox-archive.js";
 import {
   parseTouchSetPaths,
@@ -138,6 +149,8 @@ const FEATURE_DELIVERY_STAGES = [
   "implement",
   "review",
   "test",
+  "bookkeeping",
+  // Legacy post-test stages retained for backward-compatible state repair flows.
   "report",
   "compliance",
   "ship",
@@ -371,6 +384,36 @@ function featureDiffPathsWithinTouchSet(
   return { touchSetContent, changedPaths };
 }
 
+function classifyCurrentDiffPaths(
+  repoRoot: string,
+  runDir: string,
+): { pipelineOwnedDiffPaths: string[]; adjacentDiffPaths: string[] } {
+  const touchSetRel = path.posix.join(runDir, "touch-set.json");
+  const touchSetAbs = resolveRepoPath(repoRoot, touchSetRel);
+  const touchSetContent = existsSync(touchSetAbs)
+    ? readFileSync(touchSetAbs, "utf8")
+    : null;
+  const pipelineOwnedDiffPaths: string[] = [];
+  const adjacentDiffPaths: string[] = [];
+  for (const rel of currentLocalDiffPaths(repoRoot)) {
+    if (rel.startsWith(`${runDir}/`)) {
+      pipelineOwnedDiffPaths.push(rel);
+      continue;
+    }
+    if (touchSetContent === null) {
+      adjacentDiffPaths.push(rel);
+      continue;
+    }
+    const allowed = touchSetAllowsPath(touchSetContent, rel);
+    if (allowed.allowed) {
+      pipelineOwnedDiffPaths.push(rel);
+      continue;
+    }
+    adjacentDiffPaths.push(rel);
+  }
+  return { pipelineOwnedDiffPaths, adjacentDiffPaths };
+}
+
 function assertReviewStageTouchSetScope(
   repoRoot: string,
   state: FeatureDeliveryState,
@@ -436,6 +479,7 @@ export type PipelineStatus =
   | "ready_for_stage_delegation"
   | "waiting_for_human_gate"
   | "complete"
+  | "complete_with_attention"
   | "closed"
   | "reopened"
   | "repaired"
@@ -525,7 +569,7 @@ export interface FeatureDeliveryNextResult {
 }
 
 export interface ValidateArtifactsResult {
-  command: "artifacts validate";
+  command: "artifacts validate" | "artifacts lint";
   status: "ok" | "invalid";
   taskId: string;
   stage: string;
@@ -589,6 +633,8 @@ export interface FeatureDeliveryStatusResult {
   artifact?: string | null;
   decodedTimestamp?: string;
   decodedTimestampDiagnostic?: string;
+  pipelineOwnedDiffPaths?: string[];
+  adjacentDiffPaths?: string[];
 }
 
 export interface AdvanceFeatureDeliveryInput {
@@ -620,6 +666,8 @@ export interface AdvanceFeatureDeliveryResult {
   nextCommand?: string | null;
   contentWarnings?: ArtifactContentWarning[];
   warningCount?: number;
+  pipelineOwnedDiffPaths?: string[];
+  adjacentDiffPaths?: string[];
 }
 
 export interface RepairFeatureDeliveryStateInput {
@@ -850,24 +898,17 @@ export async function startFeatureDelivery(
   if (invocation === "sdk") {
     const compiledForChain =
       compiled ?? (await compileFeatureDeliveryPipeline(repoRoot, pipeline));
-    await trySdkAutoChainAfterStageWork({
+    await ensureSdkAutoChainProgress({
       repoRoot,
+      taskId,
       state,
       pipeline,
       completedStageId: "plan",
       compiled: compiledForChain,
       now,
+      clock: input.clock,
       testHooks: input.testHooks,
-      advanceFn: async (chainEvent, chainArtifact) =>
-        advanceFeatureDelivery({
-          repoRoot,
-          taskId,
-          artifact: chainArtifact,
-          event: chainEvent,
-          clock: input.clock,
-          testHooks: input.testHooks,
-          progress: resolveFeatureDeliveryProgress(input),
-        }),
+      progress: resolveFeatureDeliveryProgress(input),
     });
     Object.assign(state, await readFeatureDeliveryState(stateFile));
   }
@@ -942,6 +983,7 @@ export async function readFeatureDeliveryStatusWithInterventions(
     stateFile: stateFile.rel,
     nextPromptFile: parsed.artifacts.nextPromptFile ?? null,
     nextHumanAction: parsed.nextHumanAction,
+    ...classifyCurrentDiffPaths(repoRoot, parsed.artifacts.runDir),
     ...decodedTimestampFields(parsed.artifacts.runDir, taskId),
   };
   return enrichFeatureDeliveryEnvelope(repoRoot, parsed, statusBase);
@@ -1037,6 +1079,8 @@ export async function advanceFeatureDelivery(
     testResolvedEvent,
     artifact.rel,
   );
+  const invocation = await readCursorInvocationForState(repoRoot, state);
+  ensureAutomationState(state, invocation);
   const transition = state.transitions.find(
     (candidate) =>
       candidate.from === state.currentStage && candidate.on === event,
@@ -1044,17 +1088,44 @@ export async function advanceFeatureDelivery(
   if (transition === undefined) {
     throw new Error(`No transition from ${state.currentStage} on ${event}.`);
   }
-  if (state.currentStage === "report" && event === "report_ready") {
+  if (
+    ((state.currentStage === "report" && event === "report_ready") ||
+      (state.currentStage === "bookkeeping" && event === "bookkeeping_complete")) &&
+    artifact.rel === deliveryReportRel(state.artifacts.runDir)
+  ) {
     await assertDeliveryReportCitationFormat(repoRoot, artifact.rel);
   }
-  assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
+  try {
+    assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
+  } catch (error) {
+    const resumed = await tryResumeInterruptedSdkStageAdvance({
+      repoRoot,
+      taskId,
+      state,
+      pipeline,
+      stateFileRel: stateFile.rel,
+      invocation,
+      providedArtifactRel: artifact.rel,
+      event,
+      now,
+      testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
+    });
+    if (resumed !== null) {
+      return resumed;
+    }
+    throw error;
+  }
   if (state.currentStage === "implement" && event === "implementation_complete") {
     assertImplementStageTouchSetScope(repoRoot, state);
   }
   if (state.currentStage === "review" && event === "review_passes") {
     assertReviewStageTouchSetScope(repoRoot, state);
   }
-  if (state.currentStage === "index" && event === "artifacts_indexed") {
+  if (
+    (state.currentStage === "index" && event === "artifacts_indexed") ||
+    (state.currentStage === "bookkeeping" && event === "bookkeeping_complete")
+  ) {
     assertIndexImplementationSurfaces(repoRoot, state);
   }
 
@@ -1076,7 +1147,9 @@ export async function advanceFeatureDelivery(
     state.currentStage,
   );
   if (
-    (state.currentStage === "ship" || state.currentStage === "compliance") &&
+    (state.currentStage === "ship" ||
+      state.currentStage === "compliance" ||
+      state.currentStage === "bookkeeping") &&
     contentWarnings.length > 0
   ) {
     const details = contentWarnings
@@ -1104,9 +1177,6 @@ export async function advanceFeatureDelivery(
     );
     state.artifacts.operatorVerificationFile = verificationRel;
   }
-  const invocation = await readCursorInvocationForState(repoRoot, state);
-  ensureAutomationState(state, invocation);
-
   if (invocation === "sdk") {
     const haltSummary = await applySdkRetrySideEffects({
       repoRoot,
@@ -1172,24 +1242,17 @@ export async function advanceFeatureDelivery(
 
     await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
 
-    const chained = await trySdkAutoChainAfterStageWork({
+    const chained = await ensureSdkAutoChainProgress({
       repoRoot,
+      taskId,
       state,
       pipeline,
       completedStageId: state.currentStage,
       compiled,
       now,
+      clock: input.clock,
       testHooks: input.testHooks,
-      advanceFn: async (chainEvent, chainArtifact) =>
-        advanceFeatureDelivery({
-          repoRoot,
-          taskId,
-          artifact: chainArtifact,
-          event: chainEvent,
-          clock: input.clock,
-          testHooks: input.testHooks,
-          progress: resolveFeatureDeliveryProgress(input),
-        }),
+      progress: resolveFeatureDeliveryProgress(input),
     });
 
     if (chained) {
@@ -1212,6 +1275,29 @@ export async function advanceFeatureDelivery(
     ),
   );
 
+  await writeWorkflowHealthArtifact({
+    repoRoot,
+    state,
+    stageId: state.currentStage,
+    gateBlockReasons: contentWarnings.map((warning) => warning.message),
+    now,
+  });
+  const workflowHealth = readWorkflowHealthSummary(
+    repoRoot,
+    state.artifacts.runDir,
+  );
+  if (applied.toStage === TERMINAL_STAGE) {
+    applyTerminalWorkflowHealthOutcome(state, workflowHealth);
+    await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+  }
+  appendTransitionSummary({
+    repoRoot,
+    state,
+    applied,
+    now,
+    contentWarnings,
+  });
+
   return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command: "advance",
     status: "ok",
@@ -1226,8 +1312,181 @@ export async function advanceFeatureDelivery(
     nextPromptFile: requireNextPromptFile(state),
     nextPersona: personaForStage(pipeline, state.currentStage),
     nextHumanAction: state.nextHumanAction,
+    ...classifyCurrentDiffPaths(repoRoot, state.artifacts.runDir),
     contentWarnings,
     warningCount: contentWarnings.length,
+  }) as AdvanceFeatureDeliveryResult;
+}
+
+interface EnsureSdkAutoChainProgressInput {
+  repoRoot: string;
+  taskId: string;
+  state: FeatureDeliveryState;
+  pipeline: PipelineDefinition;
+  completedStageId: FeatureDeliveryCurrentStage;
+  now: Date;
+  clock?: () => Date;
+  testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
+  compiled?: Awaited<ReturnType<typeof compileFeatureDeliveryPipeline>>;
+}
+
+async function ensureSdkAutoChainProgress(
+  input: EnsureSdkAutoChainProgressInput,
+): Promise<boolean> {
+  const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
+  if (invocation !== "sdk") {
+    return false;
+  }
+
+  let compiled = input.compiled;
+  for (;;) {
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: input.repoRoot,
+      state: input.state,
+      pipeline: input.pipeline,
+      completedStageId: input.completedStageId,
+      compiled,
+      now: input.now,
+      testHooks: input.testHooks,
+      advanceFn: async (chainEvent, chainArtifact) =>
+        advanceFeatureDelivery({
+          repoRoot: input.repoRoot,
+          taskId: input.taskId,
+          artifact: chainArtifact,
+          event: chainEvent,
+          clock: input.clock,
+          testHooks: input.testHooks,
+          progress: input.progress,
+        }),
+    });
+    if (chained) {
+      return true;
+    }
+    if (input.testHooks?.disableAutoChainContinuationRetry === true) {
+      return false;
+    }
+    if (
+      !isNonTerminalFeatureDeliveryState(input.state) ||
+      input.state.currentStage !== input.completedStageId
+    ) {
+      return false;
+    }
+
+    const stallReason =
+      `SDK auto-chain stalled at ${input.completedStageId}; no valid automatic transition was derived from current stage artifacts.`;
+    input.state.status = "halted";
+    input.state.nextHumanAction =
+      `${stallReason} Fix stage outputs or transition logic, then run pan repair-state/pan resume.`;
+    await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+    await writeWorkflowHealthArtifact({
+      repoRoot: input.repoRoot,
+      state: input.state,
+      stageId: input.completedStageId,
+      gateBlockReasons: [stallReason],
+      now: input.now,
+    });
+    throw new Error(stallReason);
+  }
+}
+
+interface ResumeInterruptedSdkStageAdvanceInput {
+  repoRoot: string;
+  taskId: string;
+  state: FeatureDeliveryState;
+  pipeline: PipelineDefinition;
+  stateFileRel: string;
+  invocation: "manual" | "sdk";
+  providedArtifactRel: string;
+  event: string;
+  now: Date;
+  testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
+}
+
+async function tryResumeInterruptedSdkStageAdvance(
+  input: ResumeInterruptedSdkStageAdvanceInput,
+): Promise<AdvanceFeatureDeliveryResult | null> {
+  if (input.invocation !== "sdk") {
+    return null;
+  }
+  if (input.state.status !== "ready_for_stage_delegation") {
+    return null;
+  }
+  if (!isNonTerminalFeatureDeliveryState(input.state)) {
+    return null;
+  }
+  if (input.event !== defaultEventForStage(input.state.currentStage)) {
+    return null;
+  }
+
+  const lastAdvance = lastAdvanceEntry(input.state);
+  if (
+    lastAdvance?.to !== input.state.currentStage ||
+    lastAdvance.artifact !== input.providedArtifactRel
+  ) {
+    return null;
+  }
+
+  const resumeStageId = input.state.currentStage;
+  const compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
+  prepareStageInvocationIndexForSdkEntry(input.state, resumeStageId, input.invocation);
+  await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+  await invokeFeatureDeliveryEnteringStage({
+    repoRoot: input.repoRoot,
+    state: input.state,
+    pipeline: input.pipeline,
+    stageId: resumeStageId,
+    compiled,
+    now: input.now,
+    testHooks: input.testHooks,
+    progress: input.progress,
+  });
+  await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+
+  const chained = await ensureSdkAutoChainProgress({
+    repoRoot: input.repoRoot,
+    taskId: input.taskId,
+    state: input.state,
+    pipeline: input.pipeline,
+    completedStageId: resumeStageId,
+    compiled,
+    now: input.now,
+    clock: () => input.now,
+    testHooks: input.testHooks,
+    progress: input.progress,
+  });
+
+  if (chained) {
+    const refreshed = await readFeatureDeliveryState(
+      resolveRepoPath(input.repoRoot, input.state.artifacts.stateFile),
+    );
+    Object.assign(input.state, refreshed);
+  }
+
+  await writeWorkflowHealthArtifact({
+    repoRoot: input.repoRoot,
+    state: input.state,
+    stageId: input.state.currentStage,
+    gateBlockReasons: [],
+    now: input.now,
+  });
+
+  return enrichFeatureDeliveryEnvelope(input.repoRoot, input.state, {
+    command: "advance",
+    status: "ok",
+    taskId: input.taskId,
+    featureId: input.state.featureId,
+    fromStage: resumeStageId,
+    event: `resume_${resumeStageId}`,
+    currentStage: input.state.currentStage,
+    artifact: input.providedArtifactRel,
+    stateFile: input.stateFileRel,
+    handoffFile: input.state.artifacts.handoffFile,
+    nextPromptFile: requireNextPromptFile(input.state),
+    nextPersona: personaForStage(input.pipeline, input.state.currentStage),
+    nextHumanAction: input.state.nextHumanAction,
+    ...classifyCurrentDiffPaths(input.repoRoot, input.state.artifacts.runDir),
   }) as AdvanceFeatureDeliveryResult;
 }
 
@@ -1260,7 +1519,7 @@ export async function repairFeatureDeliveryState(
   state.nextHumanAction = nextHumanActionForStage(
     state,
     targetStage,
-    `Manual state repair: ${reason}`,
+    `Manual state repair: ${reason}.`,
     state.automation?.runnerInvocation ??
       (await readCursorInvocationMode(repoRoot)),
   );
@@ -1307,6 +1566,23 @@ export async function repairFeatureDeliveryState(
       testHooks: input.testHooks,
       progress: resolveFeatureDeliveryProgress(input),
     });
+    await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
+    const chained = await ensureSdkAutoChainProgress({
+      repoRoot,
+      taskId,
+      state,
+      pipeline,
+      completedStageId: targetStage,
+      compiled,
+      now,
+      clock: input.clock,
+      testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
+    });
+    if (chained) {
+      const refreshed = await readFeatureDeliveryState(stateFile.abs);
+      Object.assign(state, refreshed);
+    }
   }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
@@ -1321,6 +1597,18 @@ export async function repairFeatureDeliveryState(
       reason,
     ),
   );
+  const gateBlockReasons = isNonTerminalFeatureDeliveryState(state)
+    ? validateStageCompletionArtifacts(repoRoot, state, state.currentStage).warnings.map(
+        (warning) => warning.message,
+      )
+    : [];
+  await writeWorkflowHealthArtifact({
+    repoRoot,
+    state,
+    stageId: state.currentStage,
+    gateBlockReasons,
+    now,
+  });
 
   return {
     command: "repair-state",
@@ -1386,7 +1674,10 @@ export async function closeFeatureDeliveryArtifacts(
   const state = await readFeatureDeliveryState(stateFile.abs);
   const pipeline = loadFeatureDeliveryPipeline(repoRoot);
 
-  if (state.currentStage !== TERMINAL_STAGE || state.status !== "complete") {
+  if (
+    state.currentStage !== TERMINAL_STAGE ||
+    (state.status !== "complete" && state.status !== "complete_with_attention")
+  ) {
     if (state.currentStage === TERMINAL_STAGE && state.status === "closed") {
       throw new Error(`Task ${taskId} is already closed.`);
     }
@@ -1398,18 +1689,45 @@ export async function closeFeatureDeliveryArtifacts(
   const closure = finalClosurePaths(state);
   const activeRunDirAbs = resolveRepoPath(repoRoot, closure.runDirRel);
   const archiveRunDirAbs = resolveRepoPath(repoRoot, closure.workArchiveRel);
-  const inboxSourceAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
-  let inboxArchiveRel = closure.inboxArchiveRel;
-  let inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
-  const shipRatificationRelActive = path.posix.join(
-    closure.runDirRel,
-    "ship-ratification.json",
-  );
-  const shipRatificationRelArchive = path.posix.join(
-    closure.workArchiveRel,
-    "ship-ratification.json",
-  );
   const indexRel = durableFeatureIndexRel(state.featureId);
+  const indexAbs = resolveRepoPath(repoRoot, indexRel);
+  let inboxSourceRel = closure.inboxSourceRel;
+  if (!existsSync(resolveRepoPath(repoRoot, inboxSourceRel))) {
+    const indexCandidates =
+      existsSync(indexAbs)
+        ? collectFeatureIndexInboxCandidates(
+            JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>,
+          )
+        : [];
+    const resolvedInboxSourceRel = await resolveLiveInboxSourcePath(
+      repoRoot,
+      inboxSourceRel,
+      indexCandidates,
+    );
+    if (resolvedInboxSourceRel === null) {
+      throw new Error(`Required file is missing: ${inboxSourceRel}.`);
+    }
+    if (resolvedInboxSourceRel !== inboxSourceRel) {
+      state.source.inboxPath = resolvedInboxSourceRel;
+      state.source.inboxEntry = inboxEntryFromPath(resolvedInboxSourceRel);
+      inboxSourceRel = resolvedInboxSourceRel;
+      await writeFile(
+        stateFile.abs,
+        stringifyPanWorkJson(
+          repoRoot,
+          state as unknown as Record<string, unknown>,
+          panWorkStateMeta(state.featureId, state.taskId, state.pipelineId),
+        ),
+        "utf8",
+      );
+    }
+  }
+  let inboxSourceAbs = resolveRepoPath(repoRoot, inboxSourceRel);
+  let inboxArchiveRel = archiveInboxPathForSource(
+    inboxSourceRel,
+    parseWorkRunDir(closure.runDirRel, taskId).dayDir,
+  );
+  let inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
   const activeMemoryRel = path.posix.join(
     "lib",
     "memory",
@@ -1418,14 +1736,14 @@ export async function closeFeatureDeliveryArtifacts(
   );
 
   const activeRunExists = existsSync(activeRunDirAbs);
-  const archiveRunExists = existsSync(archiveRunDirAbs);
+  let archiveRunExists = existsSync(archiveRunDirAbs);
   const inboxSourceExists = existsSync(inboxSourceAbs);
   let inboxArchiveExists = existsSync(inboxArchiveAbs);
   if (!inboxSourceExists && !inboxArchiveExists) {
     const run = parseWorkRunDir(closure.runDirRel, taskId);
     const siblingArchive = await findExistingArchivedInboxPath(
       repoRoot,
-      closure.inboxSourceRel,
+      inboxSourceRel,
       run.dayDir,
     );
     if (siblingArchive !== null) {
@@ -1436,19 +1754,26 @@ export async function closeFeatureDeliveryArtifacts(
   }
 
   if (activeRunExists && archiveRunExists) {
-    throw new Error(
-      `Duplicate run directories for task ${taskId}: both ${closure.runDirRel} and ${closure.workArchiveRel} exist. Roll back the premature archive move before close-artifacts.`,
-    );
+    const activeStateAbs = path.join(activeRunDirAbs, "state.json");
+    const archiveStateAbs = path.join(archiveRunDirAbs, "state.json");
+    const loadedFromActive = path.resolve(stateFile.abs) === path.resolve(activeStateAbs);
+    const loadedFromArchive = path.resolve(stateFile.abs) === path.resolve(archiveStateAbs);
+    if (loadedFromActive) {
+      await rm(archiveRunDirAbs, { recursive: true, force: true });
+      archiveRunExists = false;
+    } else if (loadedFromArchive) {
+      await rm(activeRunDirAbs, { recursive: true, force: true });
+    } else {
+      throw new Error(
+        `Duplicate run directories for task ${taskId}: both ${closure.runDirRel} and ${closure.workArchiveRel} exist. Roll back the premature archive move before close-artifacts.`,
+      );
+    }
   }
 
   const alreadyArchived = !activeRunExists && archiveRunExists;
   const runDirRel = alreadyArchived
     ? closure.workArchiveRel
     : closure.runDirRel;
-  const shipRatificationRel = alreadyArchived
-    ? shipRatificationRelArchive
-    : shipRatificationRelActive;
-
   if (!alreadyArchived) {
     await assertExistingDirectory(activeRunDirAbs, closure.runDirRel);
     await assertPathMissing(archiveRunDirAbs, closure.workArchiveRel);
@@ -1456,10 +1781,6 @@ export async function closeFeatureDeliveryArtifacts(
     await assertExistingDirectory(archiveRunDirAbs, closure.workArchiveRel);
   }
 
-  await assertExistingFile(
-    resolveRepoPath(repoRoot, shipRatificationRel),
-    shipRatificationRel,
-  );
   await assertExistingFile(resolveRepoPath(repoRoot, indexRel), indexRel);
   await assertExistingFile(
     resolveRepoPath(
@@ -1481,14 +1802,14 @@ export async function closeFeatureDeliveryArtifacts(
     if (inboxAlreadyArchivedForRun) {
       await assertExistingFile(inboxArchiveAbs, inboxArchiveRel);
     } else {
-      await assertExistingFile(inboxSourceAbs, closure.inboxSourceRel);
-      await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
+      await assertExistingFile(inboxSourceAbs, inboxSourceRel);
+      await assertPathMissing(inboxArchiveAbs, inboxArchiveRel);
     }
   } else if (!inboxArchiveExists && inboxSourceExists) {
-    await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
+    await assertPathMissing(inboxArchiveAbs, inboxArchiveRel);
   } else if (inboxArchiveExists && inboxSourceExists) {
     throw new Error(
-      `Duplicate inbox paths for task ${taskId}: both ${closure.inboxSourceRel} and ${closure.inboxArchiveRel} exist.`,
+      `Duplicate inbox paths for task ${taskId}: both ${inboxSourceRel} and ${inboxArchiveRel} exist.`,
     );
   }
 
@@ -1542,7 +1863,7 @@ export async function closeFeatureDeliveryArtifacts(
         inboxArchived = true;
         await pruneEmptyQueueParents(
           repoRoot,
-          path.posix.dirname(closure.inboxSourceRel),
+          path.posix.dirname(inboxSourceRel),
           "lib/inbox/in",
         );
       } else {
@@ -1592,7 +1913,7 @@ export async function closeFeatureDeliveryArtifacts(
         artifact: closure.workArchiveRel,
         reason: alreadyArchived
           ? `Finalized closure for run already archived at ${closure.workArchiveRel}.`
-          : `Archived active run from ${previousRunDir} and source inbox directive from ${closure.inboxSourceRel}.`,
+          : `Archived active run from ${previousRunDir} and source inbox directive from ${inboxSourceRel}.`,
       },
     ];
 
@@ -1651,7 +1972,7 @@ export async function closeFeatureDeliveryArtifacts(
         now,
         previousRunDir,
         closure.workArchiveRel,
-        closure.inboxSourceRel,
+        inboxSourceRel,
         inboxArchiveRel,
       ),
     );
@@ -1660,7 +1981,7 @@ export async function closeFeatureDeliveryArtifacts(
       repoRoot,
       state.featureId,
       inboxArchiveRel,
-      closure.inboxSourceRel,
+      inboxSourceRel,
     );
     await normalizeComplianceAuditHistoryForArchivedRun({
       repoRoot,
@@ -1672,7 +1993,7 @@ export async function closeFeatureDeliveryArtifacts(
     const activeMemoryRefresh = await applyActiveMemoryRefreshOnArtifactClosure(
       repoRoot,
       {
-        archivedInboxSourceRel: closure.inboxSourceRel,
+        archivedInboxSourceRel: inboxSourceRel,
         clock: input.clock,
       },
     );
@@ -1714,11 +2035,11 @@ export async function closeFeatureDeliveryArtifacts(
     );
     const activeInboxStateAbs = resolveRepoPath(
       repoRoot,
-      closure.inboxSourceRel,
+      inboxSourceRel,
     );
     const archiveInboxStateAbs = resolveRepoPath(
       repoRoot,
-      closure.inboxArchiveRel,
+      inboxArchiveRel,
     );
 
     if (
@@ -2311,6 +2632,7 @@ function stageGate(
   if (invocation === "sdk") {
     switch (stage.id) {
       case "plan":
+      case "bookkeeping":
       case "report":
       case "ship":
       case "index":
@@ -2372,6 +2694,12 @@ function stageGate(
         humanAttention:
           "Inspect test-report.md; only qualifying bounded issues may stay in test via spot-fix, otherwise send the run back to implement or plan.",
       };
+    case "bookkeeping":
+      return {
+        humanGate: "bookkeeping_complete",
+        humanAttention:
+          "Inspect closeout artifacts; when delivery report and feature index are ready, advance to complete.",
+      };
     case "compliance":
       return {
         humanGate: "compliance_passes_or_reenter_implement",
@@ -2398,6 +2726,146 @@ function stageGate(
 function featureDeliveryTransitions(
   pipeline?: PipelineDefinition,
 ): FeatureDeliveryTransition[] {
+  const includeBookkeeping = pipelineIncludesStage(pipeline, "bookkeeping");
+  if (includeBookkeeping) {
+    return [
+      {
+        from: "created",
+        on: "invoke",
+        to: "plan",
+        humanAttention:
+          "Operator delegates product, design, and technical planning prompts.",
+      },
+      {
+        from: "plan",
+        on: "sdk_artifact_validation",
+        to: "implement",
+        humanAttention: "Plan and touch-set are validated before coder starts.",
+      },
+      {
+        from: "plan",
+        on: "human_approval",
+        to: "implement",
+        humanAttention: "Plan and touch-set are ratified before coder starts.",
+      },
+      {
+        from: "implement",
+        on: "pause",
+        to: "paused",
+        humanAttention:
+          "Use pan pause <task-id> to stop at the next safe boundary.",
+      },
+      {
+        from: "paused",
+        on: "resume",
+        to: "implement",
+        humanAttention: "Use pan resume <task-id> after resolving the blocker.",
+      },
+      {
+        from: "implement",
+        on: "abort",
+        to: "aborted",
+        humanAttention:
+          "Use pan abort <task-id> --reason <text> for failed or superseded runs.",
+      },
+      {
+        from: "implement",
+        on: "implementation_complete",
+        to: "review",
+        humanAttention:
+          "Reviewer receives only the handoff, touch-set, diff, and validation output.",
+      },
+      {
+        from: "review",
+        on: "must_fix",
+        to: "implement",
+        humanAttention: "Bounded re-entry; high findings block shipping.",
+      },
+      {
+        from: "review",
+        on: "review_core_reentry",
+        to: "plan",
+        humanAttention:
+          "Touch-set or plan invalidation routes back to tech-lead before implementation continues.",
+      },
+      {
+        from: "review",
+        on: "review_spot_fix",
+        to: "review",
+        humanAttention:
+          "Only issues that satisfy the spot-fix complexity bar may stay in review; rerun review after the bounded remediation.",
+      },
+      {
+        from: "review",
+        on: "review_passes",
+        to: "test",
+        humanAttention:
+          "Human should still inspect review output before qa-tester runs.",
+      },
+      {
+        from: "review",
+        on: "repo_wide_blocker",
+        to: "review",
+        humanAttention:
+          "Repo-wide blocker outside touch-set recorded for visibility; stage remains active.",
+      },
+      {
+        from: "test",
+        on: "qa_passes",
+        to: "bookkeeping",
+        humanAttention:
+          "Human should inspect test-report.md before bookkeeping.",
+      },
+      {
+        from: "test",
+        on: "qa_design_followup",
+        to: "bookkeeping",
+        humanAttention:
+          "Design follow-up recorded without implement re-entry; continue to bookkeeping.",
+      },
+      {
+        from: "test",
+        on: "repo_wide_blocker",
+        to: "test",
+        humanAttention:
+          "Repo-wide blocker outside touch-set recorded for visibility; stage remains active.",
+      },
+      {
+        from: "test",
+        on: "qa_fails",
+        to: "implement",
+        humanAttention: "Bounded re-entry; qa failures block shipping.",
+      },
+      {
+        from: "test",
+        on: "qa_spot_fix",
+        to: "test",
+        humanAttention:
+          "Only issues that satisfy the spot-fix complexity bar may stay in test; rerun QA after the bounded remediation.",
+      },
+      {
+        from: "test",
+        on: "qa_fails_plan_invalidating",
+        to: "plan",
+        humanAttention:
+          "Plan-invalidating QA failure; re-plan before re-implementing.",
+      },
+      {
+        from: "bookkeeping",
+        on: "repo_wide_blocker",
+        to: "bookkeeping",
+        humanAttention:
+          "Repo-wide blocker outside active delta recorded for visibility; stage remains active.",
+      },
+      {
+        from: "bookkeeping",
+        on: "bookkeeping_complete",
+        to: "complete",
+        humanAttention: "Confirm closeout artifacts and final operator steps.",
+      },
+    ];
+  }
+
   const includeCompliance = pipelineIncludesStage(pipeline, "compliance");
   const transitions: FeatureDeliveryTransition[] = [
     {
@@ -2412,6 +2880,12 @@ function featureDeliveryTransitions(
       on: "human_approval",
       to: "implement",
       humanAttention: "Plan and touch-set are ratified before coder starts.",
+    },
+    {
+      from: "plan",
+      on: "sdk_artifact_validation",
+      to: "implement",
+      humanAttention: "Plan and touch-set are validated before coder starts.",
     },
     {
       from: "implement",
@@ -2473,6 +2947,41 @@ function featureDeliveryTransitions(
       to: "report",
       humanAttention:
         "Human should inspect test-report.md before report/compliance.",
+    },
+    {
+      from: "test",
+      on: "qa_design_followup",
+      to: "report",
+      humanAttention:
+        "Design follow-up recorded without implement re-entry; continue to report.",
+    },
+    {
+      from: "test",
+      on: "repo_wide_blocker",
+      to: "test",
+      humanAttention:
+        "Repo-wide blocker outside touch-set recorded; resolve before advancing.",
+    },
+    {
+      from: "review",
+      on: "repo_wide_blocker",
+      to: "review",
+      humanAttention:
+        "Repo-wide blocker outside touch-set recorded; resolve before advancing.",
+    },
+    {
+      from: "report",
+      on: "repo_wide_blocker",
+      to: "report",
+      humanAttention:
+        "Repo-wide blocker outside touch-set recorded; resolve before advancing.",
+    },
+    {
+      from: "compliance",
+      on: "repo_wide_blocker",
+      to: "compliance",
+      humanAttention:
+        "Repo-wide blocker outside touch-set recorded; resolve before advancing.",
     },
     {
       from: "test",
@@ -2569,6 +3078,69 @@ function featureDeliveryTransitions(
     });
 }
 
+export const renderTransitions = featureDeliveryTransitions;
+
+export function normalizeClientWorkspaceTestCommand(
+  command: string,
+  workingDirectory?: string,
+): string {
+  const wd = (workingDirectory ?? "").replace(/\\/gu, "/").replace(/^\.\//u, "");
+  const isClientWorkspace = wd === "pancreator/client" || wd === "client";
+  if (!isClientWorkspace) {
+    return command;
+  }
+  return command.replace(/\bclient\/src\//gu, "src/");
+}
+
+export function normalizeTouchSetTestCommands(
+  tests: ReadonlyArray<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  return tests.map((entry) => {
+    const command = typeof entry.command === "string" ? entry.command : "";
+    const workingDirectory =
+      typeof entry.working_directory === "string" ? entry.working_directory : undefined;
+    return {
+      ...entry,
+      command: normalizeClientWorkspaceTestCommand(command, workingDirectory),
+    };
+  });
+}
+
+function renderHandoffValidationCommands(repoRoot: string, runDir: string): string {
+  const touchSetRel = path.posix.join(runDir, "touch-set.json");
+  const touchSetAbs = resolveRepoPath(repoRoot, touchSetRel);
+  if (!existsSync(touchSetAbs)) {
+    return `- node --test tests/*.test.mjs
+- node lib/internal/tools/checks/check-workspace-contracts.mjs
+- node lib/internal/tools/context/context-budget-report.mjs`;
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(touchSetAbs, "utf8")) as {
+      tests?: Array<Record<string, unknown>>;
+    };
+    const tests = Array.isArray(parsed.tests) ? normalizeTouchSetTestCommands(parsed.tests) : [];
+    if (tests.length === 0) {
+      return `- node --test tests/*.test.mjs
+- node lib/internal/tools/checks/check-workspace-contracts.mjs
+- node lib/internal/tools/context/context-budget-report.mjs`;
+    }
+    return tests
+      .map((entry) => {
+        const command = typeof entry.command === "string" ? entry.command : "";
+        const wd =
+          typeof entry.working_directory === "string"
+            ? ` (cwd: ${entry.working_directory})`
+            : "";
+        return `- ${command}${wd}`;
+      })
+      .join("\n");
+  } catch {
+    return `- node --test tests/*.test.mjs
+- node lib/internal/tools/checks/check-workspace-contracts.mjs
+- node lib/internal/tools/context/context-budget-report.mjs`;
+  }
+}
+
 function renderHandoff(
   repoRoot: string,
   state: FeatureDeliveryState,
@@ -2579,6 +3151,20 @@ function renderHandoff(
   const stage = state.currentStage;
   const sdkMode = state.automation?.runnerInvocation === "sdk";
   const excerpt = directive?.trim().split(/\r?\n/u).slice(0, 20).join("\n");
+  const handoffOutputManifest = [
+    "## Output manifest",
+    "",
+    "- persona_contract: PERSONA.SUPERVISOR",
+    "- stage_contract: PIPE.FEATURE_DELIVERY",
+    "- required_docs: DOC.OUTPUT_MANIFEST",
+    "- consulted_docs: DOC.OUTPUT_MANIFEST",
+    `- produced_artifacts: ${state.artifacts.handoffFile}, ${requireNextPromptFile(state)}`,
+    "- scope_amendments: none",
+    "- validation: handoff_sections_present",
+    "- definition_of_done: pass",
+    "- gate_decision: advance",
+    "- remediation_route: supervisor",
+  ].join("\n");
   return `# Feature delivery handoff — ${state.featureId}
 
 - Feature id: ${state.featureId}
@@ -2633,9 +3219,9 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 
 ## Validation commands
 
-- node --test tests/*.test.mjs
-- node lib/internal/tools/checks/check-workspace-contracts.mjs
-- node lib/internal/tools/context/context-budget-report.mjs
+${renderHandoffValidationCommands(repoRoot, state.artifacts.runDir)}
+
+${handoffOutputManifest}
 ## Re-entry rule
 
 If scope changes, validation repeatedly fails, or the touch-set is incomplete, stop and delegate back to supervisor, tech-lead, or reviewer instead of extending the executor loop.
@@ -2789,6 +3375,7 @@ function stageContractMarkdown(
   state: FeatureDeliveryState,
   stage: string,
 ): string {
+  const lintGateLine = `Lint gate (mandatory before handoff): run \`pnpm -w exec pan artifacts lint ${state.taskId} --stage ${stage}\` and proceed only when the command reports \`status: "ok"\` with \`warningCount: 0\`.`;
   const advanceLine = (forStage: string, event?: string): string => {
     if (forStage !== state.currentStage) {
       return staticAdvanceLineForStage(state, forStage, event);
@@ -2809,14 +3396,15 @@ function stageContractMarkdown(
 Product companion: ${productPlanPromptRel(state.artifacts.runDir)} → ${productPlanRel(state.artifacts.runDir)} + ${productAcceptanceCriteriaRel(state.artifacts.runDir)}
 Design companion: ${designPlanPromptRel(state.artifacts.runDir)} → ${designPlanRel(state.artifacts.runDir)} + ${designAcceptanceCriteriaRel(state.artifacts.runDir)} + ${uxSpecRel(state.artifacts.runDir)}
 Outputs: ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}
-Plan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria, manual_qa_test_cases; handoff.md MUST include ## Validation commands.
+Plan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria, manual_qa_test_cases; handoff.md MUST include ## Validation commands and ## Output manifest.
+${lintGateLine}
 Advance after ${
         state.automation?.runnerInvocation === "sdk"
           ? "agent validates product/design/tech plan artifacts"
           : "human ratification"
       }: ${advanceLine("plan")}`;
     case "implement": {
-      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}\nOutput: ${state.artifacts.runDir}/implementation-report.md\nImplement gate: set implement_gate_passes: true only after lint, typecheck, tests, coverage thresholds, applicable compliance checks, and every product/design/technical acceptance criterion pass.\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
+      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}\nOutput: ${state.artifacts.runDir}/implementation-report.md\nImplement gate: set implement_gate_passes: true only after lint, typecheck, tests, coverage thresholds, applicable compliance checks, and every product/design/technical acceptance criterion pass.\n${lintGateLine}\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
       const reentry = resolveImplementMustFixReentry(state, repoRoot);
       if (reentry !== null) {
         return `${base}\nAfter must_fix fixes, when ${state.artifacts.runDir}/review.md already records review_passes: true, chain to test in one step: ${reentry.nextCommand}`;
@@ -2824,23 +3412,25 @@ Advance after ${
       return base;
     }
     case "review":
-      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, repo_wide_tests_pass, lint_typecheck_rerun_required, core_reentry_required, scope_amendments_ratified, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run repo-wide pnpm test and node --test tests/*.test.mjs before review_passes: true; ratify bounded scope amendments before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan. Amendments are allowed only when touch-set.json and implementation-report.md record the same bounded scope amendment.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nTouch-set or plan invalidation (return to plan): pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, touch_set_tests_pass, lint_typecheck_rerun_required, core_reentry_required, scope_amendments_ratified, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run every touch-set.json tests command before review_passes: true; record full-repository pnpm test and node --test tests/*.test.mjs as excluded-from-gate visibility only; ratify bounded scope amendments before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\n${lintGateLine}\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan. Amendments are allowed only when touch-set.json and implementation-report.md record the same bounded scope amendment.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nTouch-set or plan invalidation (return to plan): pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
-        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
-        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\n${lintGateLine}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
+        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\n${lintGateLine}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
+    case "bookkeeping":
+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, current local diff\nOutputs: ${deliveryReportRel(state.artifacts.runDir)}, ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nCloseout rule: delivery-report.md MUST stay citation-backed and machine-readable; feature index MUST be refreshed before completion.\n${lintGateLine}\nRepo-wide blocker outside active delta (visibility-only hold): pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${deliveryReportRel(state.artifacts.runDir)}\nAdvance after closeout artifacts are ready: ${advanceLine("bookkeeping", "bookkeeping_complete")}`;
     case "report":
-      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: ${deliveryReportRel(state.artifacts.runDir)}\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: ${deliveryReportRel(state.artifacts.runDir)}\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\n${lintGateLine}\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
-      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, ${deliveryReportRel(state.artifacts.runDir)}, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nVerdict fields: compliance_passes, plan_invalidating, core_reentry_required, spot_fixable, excluded_from_gate, and final_gate\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nQualifying spot-fix (stay in compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
+      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, ${deliveryReportRel(state.artifacts.runDir)}, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nVerdict fields: compliance_passes, plan_invalidating, core_reentry_required, spot_fixable, excluded_from_gate, and final_gate\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\n${lintGateLine}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nQualifying spot-fix (stay in compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
     case "ship": {
       const shipInputs = stateIncludesStage(state, "compliance")
         ? `local diff, ${state.artifacts.runDir}/compliance-result.json, ${deliveryReportRel(state.artifacts.runDir)}`
         : `local diff, ${state.artifacts.runDir}/test-report.md, ${deliveryReportRel(state.artifacts.runDir)}`;
-      return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/ship-ratification.json (human_ratified_diff: true)\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
+      return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/ship-ratification.json (human_ratified_diff: true)\n${lintGateLine}\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
     }
     case "index":
-      return `Inputs: delivery report and accepted ship artifacts\nOutputs: ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not .pan/archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\nDo NOT mv .pan/work/ to .pan/archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
+      return `Inputs: delivery report and accepted ship artifacts\nOutputs: ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not .pan/archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\n${lintGateLine}\nDo NOT mv .pan/work/ to .pan/archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
       return state.status === "closed"
         ? closedContractMarkdown(state)
@@ -2910,7 +3500,9 @@ function staticAdvanceLineForStage(
     stage === "test" &&
     (resolvedEvent === "qa_fails" ||
       resolvedEvent === "qa_fails_plan_invalidating" ||
-      resolvedEvent === "qa_spot_fix")
+      resolvedEvent === "qa_spot_fix" ||
+      resolvedEvent === "qa_design_followup" ||
+      resolvedEvent === "repo_wide_blocker")
   ) {
     return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
   }
@@ -2920,6 +3512,9 @@ function staticAdvanceLineForStage(
       resolvedEvent === "compliance_fails_plan_invalidating" ||
       resolvedEvent === "compliance_spot_fix")
   ) {
+    return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
+  }
+  if (stage === "bookkeeping" && resolvedEvent === "repo_wide_blocker") {
     return `pnpm -w exec pan advance ${state.taskId} --event ${resolvedEvent} --artifact ${contract.primaryArtifact}`;
   }
   return cmd;
@@ -3018,7 +3613,9 @@ function buildAdvanceCommand(
     stage === "test" &&
     (event === "qa_fails" ||
       event === "qa_fails_plan_invalidating" ||
-      event === "qa_spot_fix")
+      event === "qa_spot_fix" ||
+      event === "qa_design_followup" ||
+      event === "repo_wide_blocker")
   ) {
     return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
   }
@@ -3028,6 +3625,9 @@ function buildAdvanceCommand(
       event === "compliance_fails_plan_invalidating" ||
       event === "compliance_spot_fix")
   ) {
+    return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
+  }
+  if (stage === "bookkeeping" && event === "repo_wide_blocker") {
     return `pnpm -w exec pan advance ${taskId} --event ${event} --artifact ${artifact}`;
   }
   return `pnpm -w exec pan advance ${taskId} --artifact ${artifact}`;
@@ -3088,24 +3688,40 @@ function enrichFeatureDeliveryEnvelope<T extends Record<string, unknown>>(
   nextCommand?: string | null;
   event?: string | null;
   artifact?: string | null;
+  workflowHealthStatus?: string;
+  gateBlockReasons?: string[];
 } {
   type Enriched = T & {
     nextCommand?: string | null;
     event?: string | null;
     artifact?: string | null;
+    workflowHealthStatus?: string;
+    gateBlockReasons?: string[];
   };
+  const workflowHealth = readWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
+  const healthFields =
+    workflowHealth === null
+      ? {}
+      : {
+          workflowHealthStatus: workflowHealth.status,
+          ...(workflowHealth.gate_block_reasons.length > 0
+            ? { gateBlockReasons: workflowHealth.gate_block_reasons }
+            : {}),
+        };
   if (!isNonTerminalFeatureDeliveryState(state)) {
     return {
       ...payload,
       nextCommand: null,
       event: null,
       artifact: null,
+      ...healthFields,
     } as Enriched;
   }
   const step = resolveNextStep(state, { repoRoot });
   const enriched = {
     ...payload,
     nextCommand: step.nextCommand,
+    ...healthFields,
   };
   if ("event" in payload) {
     return enriched as Enriched;
@@ -3181,6 +3797,18 @@ export async function validateArtifactsForTask(input: {
     warnings: validation.warnings,
     missing: validation.missing,
     present: validation.present,
+  };
+}
+
+export async function lintArtifactsForTask(input: {
+  repoRoot: string;
+  taskId: string;
+  stage: string;
+}): Promise<ValidateArtifactsResult> {
+  const result = await validateArtifactsForTask(input);
+  return {
+    ...result,
+    command: "artifacts lint",
   };
 }
 
@@ -3774,6 +4402,97 @@ interface AppliedFeatureDeliveryTransition {
   artifact: string;
 }
 
+function transitionSummariesRel(runDir: string): string {
+  return path.posix.join(runDir, "transition-summaries.jsonl");
+}
+
+function appendTransitionSummary(input: {
+  repoRoot: string;
+  state: FeatureDeliveryState;
+  applied: AppliedFeatureDeliveryTransition;
+  now: Date;
+  contentWarnings: readonly ArtifactContentWarning[];
+}): void {
+  const workflowHealth = readWorkflowHealthSummary(
+    input.repoRoot,
+    input.state.artifacts.runDir,
+  );
+  const lintWarnings = input.contentWarnings.map((warning) => warning.message);
+  const healthWarnings =
+    workflowHealth === null
+      ? []
+      : [
+          ...workflowHealth.gate_block_reasons,
+          ...workflowHealth.findings
+            .filter((finding) => finding.severity === "warning" || finding.severity === "blocking")
+            .map((finding) => finding.summary),
+        ];
+  const combinedWarnings = [...new Set([...lintWarnings, ...healthWarnings])];
+  const nextStep = resolveNextStep(input.state, { repoRoot: input.repoRoot });
+  const summary = {
+    at_iso: rfc3339UtcMs(input.now),
+    task_id: input.state.taskId,
+    feature_id: input.state.featureId,
+    from_stage: input.applied.fromStage,
+    to_stage: input.applied.toStage,
+    transition_event: input.applied.event,
+    stage_decision:
+      input.applied.fromStage === input.applied.toStage ? "hold" : "advance",
+    artifact: input.applied.artifact,
+    validation_artifacts: [
+      input.applied.artifact,
+      workflowHealthRel(input.state.artifacts.runDir),
+    ],
+    warning_count: combinedWarnings.length,
+    warnings: combinedWarnings,
+    artifact_lint_status: input.contentWarnings.length === 0 ? "pass" : "fail",
+    artifact_lint_warning_count: input.contentWarnings.length,
+    workflow_health_status: workflowHealth?.status ?? null,
+    workflow_health_warning_count: healthWarnings.length,
+    pipeline_status: input.state.status,
+    next_human_action: input.state.nextHumanAction,
+    next_command: nextStep.nextCommand,
+    next_event: nextStep.event,
+    output_manifest: {
+      persona_contract: "PERSONA.SUPERVISOR",
+      stage_contract: "PIPE.FEATURE_DELIVERY",
+      required_docs: ["DOC.PIPELINE_STATE", "DOC.OUTPUT_MANIFEST"],
+      consulted_docs: ["DOC.PIPELINE_STATE", "DOC.OUTPUT_MANIFEST"],
+      produced_artifacts: [transitionSummariesRel(input.state.artifacts.runDir)],
+      scope_amendments: [],
+      validation: [{ name: "transition-summary", result: "pass" }],
+      definition_of_done: "pass",
+      gate_decision: "not_applicable",
+      remediation_route: "none",
+    },
+  };
+  const abs = resolveRepoPath(
+    input.repoRoot,
+    transitionSummariesRel(input.state.artifacts.runDir),
+  );
+  writeFileSync(abs, `${stringifyCliJson(input.repoRoot, summary)}\n`, {
+    encoding: "utf8",
+    flag: "a",
+  });
+}
+
+function applyTerminalWorkflowHealthOutcome(
+  state: FeatureDeliveryState,
+  workflowHealth: WorkflowHealthSummary | null,
+): void {
+  if (state.currentStage !== TERMINAL_STAGE || state.status === "closed") {
+    return;
+  }
+  if (workflowHealth !== null && workflowHealth.status !== "healthy") {
+    state.status = "complete_with_attention";
+    state.nextHumanAction = `Run is complete with attention (${workflowHealth.status}); inspect ${workflowHealthRel(state.artifacts.runDir)} before artifact closure.`;
+    return;
+  }
+  if (state.status === "complete_with_attention") {
+    state.status = "complete";
+  }
+}
+
 interface ReviewReentryAdvancePlan {
   reviewArtifact: string;
   implementationReport: string;
@@ -4050,23 +4769,16 @@ async function finishAdvanceAfterTransition(input: {
     "advance",
   );
   if (invocation === "sdk" && compiled !== undefined) {
-    const chained = await trySdkAutoChainAfterStageWork({
+    const chained = await ensureSdkAutoChainProgress({
       repoRoot: input.repoRoot,
+      taskId: input.taskId,
       state: input.state,
       pipeline: input.pipeline,
       completedStageId: input.state.currentStage,
       compiled,
       now: input.now,
       testHooks: input.testHooks,
-      advanceFn: async (chainEvent, chainArtifact) =>
-        advanceFeatureDelivery({
-          repoRoot: input.repoRoot,
-          taskId: input.taskId,
-          artifact: chainArtifact,
-          event: chainEvent,
-          testHooks: input.testHooks,
-          progress: resolveFeatureDeliveryProgress(input),
-        }),
+      progress: resolveFeatureDeliveryProgress(input),
     });
     if (chained) {
       const refreshed = await readFeatureDeliveryState(
@@ -4086,6 +4798,32 @@ async function finishAdvanceAfterTransition(input: {
       input.applied.artifact,
     ),
   );
+  await writeWorkflowHealthArtifact({
+    repoRoot: input.repoRoot,
+    state: input.state,
+    stageId: input.state.currentStage,
+    now: input.now,
+  });
+  const workflowHealth = readWorkflowHealthSummary(
+    input.repoRoot,
+    input.state.artifacts.runDir,
+  );
+  if (input.applied.toStage === TERMINAL_STAGE) {
+    applyTerminalWorkflowHealthOutcome(input.state, workflowHealth);
+    await persistStateAndPrompts(
+      input.repoRoot,
+      input.state,
+      input.pipeline,
+      "advance",
+    );
+  }
+  appendTransitionSummary({
+    repoRoot: input.repoRoot,
+    state: input.state,
+    applied: input.applied,
+    now: input.now,
+    contentWarnings: [],
+  });
   return enrichFeatureDeliveryEnvelope(input.repoRoot, input.state, {
     command: "advance",
     status: "ok",
@@ -4100,6 +4838,7 @@ async function finishAdvanceAfterTransition(input: {
     nextPromptFile: requireNextPromptFile(input.state),
     nextPersona: personaForStage(input.pipeline, input.state.currentStage),
     nextHumanAction: input.state.nextHumanAction,
+    ...classifyCurrentDiffPaths(input.repoRoot, input.state.artifacts.runDir),
   }) as AdvanceFeatureDeliveryResult;
 }
 
@@ -4229,6 +4968,25 @@ async function advanceReviewReentryFromImplement(input: {
   }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+  await writeWorkflowHealthArtifact({
+    repoRoot,
+    state,
+    stageId: state.currentStage,
+    gateBlockReasons: contentWarnings.map((warning) => warning.message),
+    now,
+  });
+  const workflowHealth = readWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
+  if (second.toStage === TERMINAL_STAGE) {
+    applyTerminalWorkflowHealthOutcome(state, workflowHealth);
+    await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
+  }
+  appendTransitionSummary({
+    repoRoot,
+    state,
+    applied: second,
+    now,
+    contentWarnings,
+  });
 
   return enrichFeatureDeliveryEnvelope(repoRoot, state, {
     command: "advance",
@@ -4244,6 +5002,7 @@ async function advanceReviewReentryFromImplement(input: {
     nextPromptFile: requireNextPromptFile(state),
     nextPersona: personaForStage(pipeline, state.currentStage),
     nextHumanAction: state.nextHumanAction,
+    ...classifyCurrentDiffPaths(repoRoot, state.artifacts.runDir),
     reviewReentry: true,
     contentWarnings,
     warningCount: contentWarnings.length,
@@ -4253,13 +5012,15 @@ async function advanceReviewReentryFromImplement(input: {
 function defaultEventForStage(stage: string): string {
   switch (stage) {
     case "plan":
-      return "human_approval";
+      return "sdk_artifact_validation";
     case "implement":
       return "implementation_complete";
     case "review":
       return "review_passes";
     case "test":
       return "qa_passes";
+    case "bookkeeping":
+      return "bookkeeping_complete";
     case "report":
       return "report_ready";
     case "compliance":
@@ -4361,6 +5122,12 @@ function applyStageStatuses(
       return stage;
     });
   }
+  if (event === "repo_wide_blocker") {
+    return stages.map((stage) => {
+      if (stage.id === fromStage) return { ...stage, status: "ready" };
+      return stage;
+    });
+  }
   if (event === "compliance_fails") {
     return stages.map((stage) => {
       if (stage.id === "compliance") return { ...stage, status: "blocked" };
@@ -4420,6 +5187,7 @@ function nextHumanActionForStage(
   if (invocation === "sdk") {
     switch (stage) {
       case "plan":
+      case "bookkeeping":
       case "report":
         return `${prefix}SDK validates stage artifacts and auto-advances when validation passes.`;
       case "implement":
@@ -4449,6 +5217,8 @@ function nextHumanActionForStage(
       return `${prefix}Delegate next-prompt.md to reviewer; inspect ${state.artifacts.runDir}/review.md and choose pass, must-fix, or review-core-reentry.`;
     case "test":
       return `${prefix}Delegate next-prompt.md to qa-tester and design-qa-prompt.md to design-reviewer in parallel; inspect test-report.md plus design-qa-report.md and choose pass or qa-fail.`;
+    case "bookkeeping":
+      return `${prefix}Delegate next-prompt.md to librarian; verify delivery-report.md, feature index refresh, and closeout artifacts before complete.`;
     case "report":
       return stateIncludesStage(state, "compliance")
         ? `${prefix}Delegate next-prompt.md to tech-writer; ratify delivery-report.md before compliance.`
@@ -4585,6 +5355,116 @@ async function safeReaddir(dir: string): Promise<string[]> {
   }
 }
 
+function normalizeRelPath(value: string): string {
+  return value.replace(/\\/gu, "/").replace(/^\/+/u, "");
+}
+
+async function resolveAttestedPath(repoRoot: string, rel: string): Promise<string | null> {
+  const normalized = normalizeRelPath(rel);
+  const candidates = normalized.startsWith("pancreator/")
+    ? [normalized]
+    : [normalized, path.posix.join("pancreator", normalized)];
+  for (const candidate of candidates) {
+    if (existsSync(resolveRepoPath(repoRoot, candidate))) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+async function findInboxDirectiveByBasename(
+  repoRoot: string,
+  basename: string,
+): Promise<string | null> {
+  const roots = ["lib/inbox/in", "pancreator/lib/inbox/in"];
+  for (const rootRel of roots) {
+    const rootAbs = resolveRepoPath(repoRoot, rootRel);
+    if (!existsSync(rootAbs)) {
+      continue;
+    }
+    const queue: Array<{ abs: string; rel: string }> = [
+      { abs: rootAbs, rel: rootRel },
+    ];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === undefined) {
+        break;
+      }
+      const entries = await safeReaddir(current.abs);
+      for (const entry of entries) {
+        const childAbs = path.join(current.abs, entry);
+        const childRel = path.posix.join(current.rel, entry);
+        try {
+          const info = await stat(childAbs);
+          if (info.isDirectory()) {
+            queue.push({ abs: childAbs, rel: childRel });
+            continue;
+          }
+          if (info.isFile() && entry === basename) {
+            return childRel;
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+async function introspectionPathAttestationIssues(
+  repoRoot: string,
+): Promise<{ markerPath: string | null; issues: string[] }> {
+  const markerCandidates = [
+    ".pan/introspection/last-run.json",
+    "pancreator/.pan/introspection/last-run.json",
+  ];
+  let markerPath: string | null = null;
+  for (const candidate of markerCandidates) {
+    if (existsSync(resolveRepoPath(repoRoot, candidate))) {
+      markerPath = candidate;
+      break;
+    }
+  }
+  if (markerPath === null) {
+    return { markerPath: null, issues: [] };
+  }
+  const markerRaw = await readFile(resolveRepoPath(repoRoot, markerPath), "utf8");
+  let marker: Record<string, unknown>;
+  try {
+    marker = JSON.parse(markerRaw) as Record<string, unknown>;
+  } catch {
+    return { markerPath, issues: [`${markerPath} must parse as JSON.`] };
+  }
+  const issues: string[] = [];
+  const reportPath = marker.report_path;
+  if (typeof reportPath !== "string" || reportPath.trim().length === 0) {
+    issues.push(`${markerPath} must include string report_path.`);
+  } else if ((await resolveAttestedPath(repoRoot, reportPath)) === null) {
+    issues.push(`${markerPath} report_path is missing: ${reportPath}`);
+  }
+  const inboxPath = marker.inbox_item_path;
+  if (typeof inboxPath !== "string" || inboxPath.trim().length === 0) {
+    issues.push(`${markerPath} must include string inbox_item_path.`);
+  } else {
+    const resolved = await resolveAttestedPath(repoRoot, inboxPath);
+    if (resolved === null) {
+      const candidate = await findInboxDirectiveByBasename(
+        repoRoot,
+        path.posix.basename(normalizeRelPath(inboxPath)),
+      );
+      if (candidate !== null) {
+        issues.push(
+          `${markerPath} inbox_item_path is stale: ${inboxPath} (found ${candidate}).`,
+        );
+      } else {
+        issues.push(`${markerPath} inbox_item_path is missing: ${inboxPath}`);
+      }
+    }
+  }
+  return { markerPath, issues };
+}
+
 export interface PanCheckEntry {
   id: string;
   label: string;
@@ -4613,6 +5493,7 @@ export const PAN_CHECK_REPO_CHECK_IDS = [
   "active-fd-artifacts",
   "work-archive-hygiene",
   "shipped-ledger-cap",
+  "introspection-path-attestation",
   "cursorindexingignore",
 ] as const;
 
@@ -4907,6 +5788,36 @@ export async function runPanCheck(
       command: ignorePath,
       status: "pass",
       exitCode: 0,
+    });
+  }
+
+  const introspectionAttestation = await introspectionPathAttestationIssues(
+    repoRoot,
+  );
+  if (introspectionAttestation.markerPath === null) {
+    checks.push({
+      id: "introspection-path-attestation",
+      label: "Introspection last-run path attestation",
+      command: "(no introspection marker)",
+      status: "skip",
+      remediation: "Run /introspect once to initialize .pan/introspection/last-run.json",
+    });
+  } else if (introspectionAttestation.issues.length === 0) {
+    checks.push({
+      id: "introspection-path-attestation",
+      label: "Introspection last-run path attestation",
+      command: introspectionAttestation.markerPath,
+      status: "pass",
+      exitCode: 0,
+    });
+  } else {
+    checks.push({
+      id: "introspection-path-attestation",
+      label: "Introspection last-run path attestation",
+      command: introspectionAttestation.markerPath,
+      status: "fail",
+      exitCode: 1,
+      remediation: introspectionAttestation.issues.join("; "),
     });
   }
 

@@ -26,12 +26,23 @@ import {
   validateComplianceForAdvance,
   validateDesignQaForAdvance,
   validateHandoffMarkdown,
+  validateHighRiskPersonaTranscriptCompliance,
   validateImplementationReport,
   validatePlanMarkdown,
   validateReviewMarkdownForAdvance,
+  validateQaDesignFollowupPair,
   validateTestReportForAdvance,
   validateTouchSetJson,
 } from "./feature-delivery-gate-validation.js";
+import { workflowHealthRel } from "./workflow-health.js";
+
+export { workflowHealthRel };
+
+export const PASS_PATH_MANIFEST_WARNING_CODES = new Set([
+  "output_manifest_missing",
+  "output_manifest_incomplete",
+  "output_manifest_noncompliant",
+]);
 
 /** Minimal state slice for artifact path resolution without importing feature-delivery-run. */
 export interface FeatureDeliveryArtifactState {
@@ -139,6 +150,8 @@ const STAGE_IDS = [
   "implement",
   "review",
   "test",
+  "bookkeeping",
+  // Legacy post-test stages retained for backward-compatible state parsing.
   "report",
   "compliance",
   "ship",
@@ -275,7 +288,7 @@ function outputManifestExpectation(base: string): OutputManifestExpectation | nu
   return OUTPUT_MANIFEST_EXPECTATIONS[base] ?? null;
 }
 
-function validateManifestContractKeys(input: {
+export function validateManifestContractKeys(input: {
   rel: string;
   base: string;
   stageContract: string | null;
@@ -337,6 +350,186 @@ function readMarkdownManifestField(content: string, field: string): string | nul
   return match === null ? null : match[1].trim();
 }
 
+function stageIdForArtifactBase(base: string): string | null {
+  switch (base) {
+    case "plan.md":
+    case "touch-set.json":
+    case "handoff.md":
+      return "plan";
+    case "implementation-report.md":
+      return "implement";
+    case "review.md":
+      return "review";
+    case "test-report.md":
+    case "design-qa-report.md":
+      return "test";
+    case "delivery-report.md":
+      return "bookkeeping";
+    case "compliance-result.json":
+      return "compliance";
+    default:
+      return null;
+  }
+}
+
+interface RequiredDocReceipt {
+  enforceManifestConsultedDocs: boolean;
+  resolvedDocs: Set<string>;
+  openedDocs: Set<string>;
+  appliedDocs: Set<string>;
+  parseError?: string;
+}
+
+function parseRequiredDocList(
+  value: unknown,
+): Set<string> | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  return new Set(
+    value.filter((item): item is string => typeof item === "string"),
+  );
+}
+
+function readRequiredDocReceipt(
+  repoRoot: string,
+  rel: string,
+): RequiredDocReceipt | null {
+  const base = path.posix.basename(rel);
+  const stageId = stageIdForArtifactBase(base);
+  if (stageId === null) {
+    return null;
+  }
+  const runDir = path.posix.dirname(rel);
+  const receiptRel = path.posix.join(runDir, "required-doc-receipts", `${stageId}.json`);
+  const receiptRaw = readRepoText(repoRoot, receiptRel);
+  if (receiptRaw === null) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(receiptRaw) as Record<string, unknown>;
+    const resolvedDocs = parseRequiredDocList(parsed.required_docs_resolved);
+    const openedDocs = parseRequiredDocList(parsed.required_docs_opened);
+    const appliedDocs = parseRequiredDocList(parsed.required_docs_applied);
+    if (resolvedDocs === null || openedDocs === null || appliedDocs === null) {
+      return {
+        enforceManifestConsultedDocs:
+          parsed.enforce_manifest_consulted_docs === true,
+        resolvedDocs: resolvedDocs ?? new Set(),
+        openedDocs: openedDocs ?? new Set(),
+        appliedDocs: appliedDocs ?? new Set(),
+        parseError:
+          "required-doc receipt must include array fields required_docs_resolved, required_docs_opened, and required_docs_applied.",
+      };
+    }
+    return {
+      enforceManifestConsultedDocs:
+        parsed.enforce_manifest_consulted_docs === true,
+      resolvedDocs,
+      openedDocs,
+      appliedDocs,
+    };
+  } catch {
+    return {
+      enforceManifestConsultedDocs: false,
+      resolvedDocs: new Set(),
+      openedDocs: new Set(),
+      appliedDocs: new Set(),
+      parseError: "required-doc receipt must parse as JSON.",
+    };
+  }
+}
+
+function validateRequiredDocReceiptForConsultedDocs(input: {
+  repoRoot: string;
+  rel: string;
+  consultedDocs: string[];
+}): ArtifactContentWarning | null {
+  const receipt = readRequiredDocReceipt(input.repoRoot, input.rel);
+  if (receipt === null) {
+    return null;
+  }
+  if (receipt.parseError !== undefined) {
+    return {
+      path: input.rel,
+      code: "required_doc_receipt_invalid",
+      message: `${path.posix.basename(input.rel)} ${receipt.parseError}`,
+    };
+  }
+  if (!receipt.enforceManifestConsultedDocs) {
+    return {
+      path: input.rel,
+      code: "required_doc_receipt_unenforced",
+      message: `${path.posix.basename(input.rel)} required-doc receipt must set enforce_manifest_consulted_docs: true.`,
+    };
+  }
+  if (
+    receipt.resolvedDocs.size === 0 ||
+    receipt.openedDocs.size === 0 ||
+    receipt.appliedDocs.size === 0
+  ) {
+    return {
+      path: input.rel,
+      code: "required_doc_receipt_empty",
+      message: `${path.posix.basename(input.rel)} required-doc receipt must include non-empty required_docs_resolved/opened/applied evidence.`,
+    };
+  }
+  for (const consulted of input.consultedDocs) {
+    if (!consulted.startsWith("DOC.")) {
+      continue;
+    }
+    if (
+      !receipt.resolvedDocs.has(consulted) ||
+      !receipt.openedDocs.has(consulted) ||
+      !receipt.appliedDocs.has(consulted)
+    ) {
+      return {
+        path: input.rel,
+        code: "required_doc_receipt_mismatch",
+        message: `${path.posix.basename(input.rel)} consulted_docs claims ${consulted}, but required-doc receipt evidence does not include it across resolved/opened/applied.`,
+      };
+    }
+  }
+  return null;
+}
+
+function parseProducedArtifactsFromManifest(raw: string | null): string[] {
+  return parseManifestList(raw).map((entry) =>
+    entry.replace(/\\/gu, "/").replace(/^\/+/u, "").trim(),
+  );
+}
+
+function validateProducedArtifactsForManifest(input: {
+  repoRoot: string;
+  rel: string;
+  producedArtifacts: string[];
+}): ArtifactContentWarning | null {
+  if (input.producedArtifacts.length === 0) {
+    return null;
+  }
+  const relNorm = input.rel.replace(/\\/gu, "/").replace(/^\/+/u, "");
+  if (!input.producedArtifacts.includes(relNorm)) {
+    return {
+      path: input.rel,
+      code: "produced_artifact_mismatch",
+      message: `${path.posix.basename(input.rel)} output manifest produced_artifacts must include ${relNorm}.`,
+    };
+  }
+  for (const produced of input.producedArtifacts) {
+    if (produced.length === 0) {
+      continue;
+    }
+    if (!existsSync(resolveRepoPath(input.repoRoot, produced))) {
+      return {
+        path: input.rel,
+        code: "produced_artifact_missing",
+        message: `${path.posix.basename(input.rel)} output manifest references missing produced artifact ${produced}.`,
+      };
+    }
+  }
+  return null;
+}
+
 function artifactParentDir(rel: string): string {
   return path.posix.basename(path.posix.dirname(rel));
 }
@@ -346,7 +539,7 @@ function isCompanionDisciplineArtifact(rel: string): boolean {
   return parent === "product" || parent === "design" || parent === "tech";
 }
 
-function validateMarkdownOutputManifest(
+export function validateMarkdownOutputManifest(
   rel: string,
   base: string,
   content: string,
@@ -379,7 +572,7 @@ function validateMarkdownOutputManifest(
   });
 }
 
-function validateJsonOutputManifest(
+export function validateJsonOutputManifest(
   rel: string,
   record: Record<string, unknown>,
 ): ArtifactContentWarning | null {
@@ -434,7 +627,13 @@ export function isFeatureDeliveryStageId(
 export function parseReviewPassesVerdict(
   reviewMarkdown: string,
 ): boolean | null {
-  const match = reviewMarkdown.match(/review_passes:\s*(true|false)/iu);
+  return readBooleanField(reviewMarkdown, "review_passes");
+}
+
+function readBooleanField(markdown: string, field: string): boolean | null {
+  const match = markdown.match(
+    new RegExp(`^\\s*${field}:\\s*(true|false)\\s*$`, "imu"),
+  );
   if (match === null) {
     return null;
   }
@@ -450,13 +649,24 @@ export function parseReviewGateOutcome(reviewMarkdown: string): {
 } {
   return {
     passes: parseReviewPassesVerdict(reviewMarkdown),
-    coreReentryRequired: /core_reentry_required:\s*true/iu.test(reviewMarkdown),
-    scopeAmendmentsRatified: /scope_amendments_ratified:\s*true/iu.test(
-      reviewMarkdown,
-    ),
-    spotFixable: /spot_fixable:\s*true/iu.test(reviewMarkdown),
-    excludedFromGate: /excluded_from_gate:\s*true/iu.test(reviewMarkdown),
+    coreReentryRequired: readBooleanField(reviewMarkdown, "core_reentry_required") === true,
+    scopeAmendmentsRatified:
+      readBooleanField(reviewMarkdown, "scope_amendments_ratified") === true,
+    spotFixable: readBooleanField(reviewMarkdown, "spot_fixable") === true,
+    excludedFromGate: readBooleanField(reviewMarkdown, "excluded_from_gate") === true,
   };
+}
+
+function readBooleanFieldInlineFallback(markdown: string, field: string): boolean | null {
+  const strict = readBooleanField(markdown, field);
+  if (strict !== null) {
+    return strict;
+  }
+  const inline = markdown.match(new RegExp(`\\b${field}:\\s*(true|false)\\b`, "iu"));
+  if (inline === null) {
+    return null;
+  }
+  return inline[1]?.toLowerCase() === "true";
 }
 
 export function parseQaVerdict(testMarkdown: string): {
@@ -466,16 +676,34 @@ export function parseQaVerdict(testMarkdown: string): {
   spotFixable: boolean;
   excludedFromGate: boolean;
 } {
-  const passMatch = testMarkdown.match(/qa_passes:\s*(true|false)/iu);
-  const planMatch = testMarkdown.match(/plan_invalidating:\s*(true|false)/iu);
+  const passes = readBooleanFieldInlineFallback(testMarkdown, "qa_passes");
+  const inferredExcludedFromGate =
+    passes === false &&
+    (/browser is already running .*chrome-profile/iu.test(testMarkdown) ||
+      /use --isolated to run multiple browser instances/iu.test(testMarkdown) ||
+      /locked shared profile/iu.test(testMarkdown));
   return {
-    passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
+    passes,
     planInvalidating:
-      planMatch !== null && planMatch[1].toLowerCase() === "true",
-    coreReentryRequired: /core_reentry_required:\s*true/iu.test(testMarkdown),
-    spotFixable: /spot_fixable:\s*true/iu.test(testMarkdown),
-    excludedFromGate: /excluded_from_gate:\s*true/iu.test(testMarkdown),
+      !inferredExcludedFromGate &&
+      readBooleanFieldInlineFallback(testMarkdown, "plan_invalidating") === true,
+    coreReentryRequired:
+      !inferredExcludedFromGate &&
+      readBooleanFieldInlineFallback(testMarkdown, "core_reentry_required") === true,
+    spotFixable:
+      !inferredExcludedFromGate &&
+      readBooleanFieldInlineFallback(testMarkdown, "spot_fixable") === true,
+    excludedFromGate:
+      readBooleanFieldInlineFallback(testMarkdown, "excluded_from_gate") === true ||
+      inferredExcludedFromGate,
   };
+}
+
+function hasDesignQaBrowserProfileLockBlocker(designQaMarkdown: string): boolean {
+  return (
+    /browser is already running .*chrome-profile/iu.test(designQaMarkdown) ||
+    /use --isolated to run multiple browser instances/iu.test(designQaMarkdown)
+  );
 }
 
 export function parseDesignQaVerdict(designQaMarkdown: string): {
@@ -485,22 +713,54 @@ export function parseDesignQaVerdict(designQaMarkdown: string): {
   spotFixable: boolean;
   excludedFromGate: boolean;
 } {
-  const passMatch = designQaMarkdown.match(
-    /design_qa_passes:\s*(true|false)/iu,
-  );
-  const planMatch = designQaMarkdown.match(
-    /plan_invalidating:\s*(true|false)/iu,
-  );
+  const passes = readBooleanFieldInlineFallback(designQaMarkdown, "design_qa_passes");
+  const inferredExcludedFromGate =
+    passes === false && hasDesignQaBrowserProfileLockBlocker(designQaMarkdown);
   return {
-    passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
+    passes,
     planInvalidating:
-      planMatch !== null && planMatch[1].toLowerCase() === "true",
-    coreReentryRequired: /core_reentry_required:\s*true/iu.test(
-      designQaMarkdown,
-    ),
-    spotFixable: /spot_fixable:\s*true/iu.test(designQaMarkdown),
-    excludedFromGate: /excluded_from_gate:\s*true/iu.test(designQaMarkdown),
+      readBooleanFieldInlineFallback(designQaMarkdown, "plan_invalidating") === true,
+    coreReentryRequired:
+      readBooleanFieldInlineFallback(designQaMarkdown, "core_reentry_required") === true,
+    spotFixable:
+      readBooleanFieldInlineFallback(designQaMarkdown, "spot_fixable") === true,
+    excludedFromGate:
+      readBooleanFieldInlineFallback(designQaMarkdown, "excluded_from_gate") === true ||
+      inferredExcludedFromGate,
   };
+}
+
+export function isDesignOnlyNonBlockingFollowup(input: {
+  qaMarkdown: string;
+  designQaMarkdown?: string;
+  designSteps: boolean;
+}): boolean {
+  const qa = parseQaVerdict(input.qaMarkdown);
+  if (qa.passes !== true) {
+    return false;
+  }
+  if (!input.designSteps || input.designQaMarkdown === undefined) {
+    return false;
+  }
+  const design = parseDesignQaVerdict(input.designQaMarkdown);
+  return (
+    design.passes === false &&
+    design.excludedFromGate &&
+    !design.spotFixable &&
+    !design.planInvalidating &&
+    !design.coreReentryRequired
+  );
+}
+
+export function isQaOnlyNonBlockingFollowup(qaMarkdown: string): boolean {
+  const qa = parseQaVerdict(qaMarkdown);
+  return (
+    qa.passes === false &&
+    qa.excludedFromGate &&
+    !qa.spotFixable &&
+    !qa.planInvalidating &&
+    !qa.coreReentryRequired
+  );
 }
 
 export function mergedTestStageVerdict(input: {
@@ -513,37 +773,58 @@ export function mergedTestStageVerdict(input: {
   coreReentryRequired: boolean;
   spotFixable: boolean;
   excludedFromGate: boolean;
+  designFollowupOnly: boolean;
 } {
   const qa = parseQaVerdict(input.qaMarkdown);
+  const designFollowupOnly =
+    isQaOnlyNonBlockingFollowup(input.qaMarkdown) || isDesignOnlyNonBlockingFollowup(input);
+  const attach = (
+    verdict: Omit<
+      ReturnType<typeof mergedTestStageVerdict>,
+      "designFollowupOnly"
+    >,
+  ) => ({
+    ...verdict,
+    designFollowupOnly,
+  });
   if (!input.designSteps) {
-    return qa;
+    return attach(qa);
   }
   if (input.designQaMarkdown === undefined) {
-    return { ...qa, passes: qa.passes === true ? null : qa.passes };
+    return attach({ ...qa, passes: qa.passes === true ? null : qa.passes });
   }
   const design = parseDesignQaVerdict(input.designQaMarkdown);
   if (qa.passes === false) {
-    return qa;
+    return attach(qa);
   }
-  if (design.passes === false) {
-    return {
-      passes: false,
-      planInvalidating: design.planInvalidating,
-      coreReentryRequired: design.coreReentryRequired,
-      spotFixable: design.spotFixable,
-      excludedFromGate: design.excludedFromGate,
-    };
-  }
-  if (qa.passes === true && design.passes === true) {
-    return {
+  if (designFollowupOnly) {
+    return attach({
       passes: true,
       planInvalidating: false,
       coreReentryRequired: false,
       spotFixable: false,
       excludedFromGate: false,
-    };
+    });
   }
-  return { ...qa, passes: null };
+  if (design.passes === false) {
+    return attach({
+      passes: false,
+      planInvalidating: design.planInvalidating,
+      coreReentryRequired: design.coreReentryRequired,
+      spotFixable: design.spotFixable,
+      excludedFromGate: design.excludedFromGate,
+    });
+  }
+  if (qa.passes === true && design.passes === true) {
+    return attach({
+      passes: true,
+      planInvalidating: false,
+      coreReentryRequired: false,
+      spotFixable: false,
+      excludedFromGate: false,
+    });
+  }
+  return attach({ ...qa, passes: null });
 }
 
 function readBool(
@@ -765,6 +1046,80 @@ function readRepoText(repoRoot: string, rel: string): string | null {
   return readFileSync(abs, "utf8");
 }
 
+function readMarkdownSectionBody(content: string, heading: string): string | null {
+  const lines = content.split(/\r?\n/u);
+  const headingRegex = new RegExp(
+    `^##\\s+${heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\\b`,
+    "iu",
+  );
+  const start = lines.findIndex((line) => headingRegex.test(line));
+  if (start < 0) {
+    return null;
+  }
+  const bodyLines: string[] = [];
+  for (let idx = start + 1; idx < lines.length; idx += 1) {
+    if (/^##\s+/u.test(lines[idx] ?? "")) {
+      break;
+    }
+    bodyLines.push(lines[idx] ?? "");
+  }
+  return bodyLines.join("\n");
+}
+
+function resolvePlanCriteriaReferencePaths(planRel: string, criteriaSection: string): string[] {
+  const refs = new Set<string>();
+  const addRef = (rawRef: string) => {
+    const candidate = rawRef.replace(/\\/gu, "/").replace(/^\/+/, "").trim();
+    if (candidate.length === 0 || !candidate.endsWith("acceptance-criteria.md")) {
+      return;
+    }
+    if (candidate.startsWith(".pan/") || candidate.startsWith("lib/")) {
+      refs.add(path.posix.normalize(candidate));
+      return;
+    }
+    refs.add(path.posix.normalize(path.posix.join(path.posix.dirname(planRel), candidate)));
+  };
+  for (const match of criteriaSection.matchAll(/`([^`\n]*acceptance-criteria\.md)`/gu)) {
+    addRef(match[1] ?? "");
+  }
+  for (const match of criteriaSection.matchAll(/(?:^|[\s(])([A-Za-z0-9._/-]*acceptance-criteria\.md)\b/gu)) {
+    addRef(match[1] ?? "");
+  }
+  return [...refs];
+}
+
+function markdownHasCriteriaList(content: string): boolean {
+  return /^\s*(?:\d+\.|-)\s+\S/mu.test(content);
+}
+
+function planCriteriaDelegatesToReferences(
+  repoRoot: string,
+  planRel: string,
+  content: string,
+): boolean {
+  const criteriaSection = readMarkdownSectionBody(content, "Acceptance criteria");
+  if (criteriaSection === null) {
+    return false;
+  }
+  const references = resolvePlanCriteriaReferencePaths(planRel, criteriaSection);
+  if (references.length === 0) {
+    return false;
+  }
+  for (const rel of references) {
+    const referencedRaw = readRepoText(repoRoot, rel);
+    if (referencedRaw === null) {
+      return false;
+    }
+    const referencedContent = readPanWorkMarkdown(referencedRaw);
+    const beforeManifest =
+      referencedContent.split(/^##\s+Output manifest\b/imu)[0] ?? referencedContent;
+    if (!markdownHasCriteriaList(beforeManifest)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function gateValidationErrorToWarning(
   rel: string,
   message: string,
@@ -786,13 +1141,33 @@ function validateArtifactContent(
 
   if (base === "plan.md" && !isCompanionDisciplineArtifact(rel)) {
     const planError = validatePlanMarkdown(content);
-    if (planError !== null) {
+    const delegatedCriteriaSatisfiesPlanGate =
+      planError?.includes("must contain at least one numbered measurable criterion") ===
+        true && planCriteriaDelegatesToReferences(repoRoot, rel, content);
+    if (planError !== null && !delegatedCriteriaSatisfiesPlanGate) {
       return gateValidationErrorToWarning(rel, planError);
     }
-    return (
+    const manifestWarning =
       validateMarkdownBody(rel, content) ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "handoff.md") {
@@ -800,10 +1175,27 @@ function validateArtifactContent(
     if (handoffError !== null) {
       return gateValidationErrorToWarning(rel, handoffError);
     }
-    return (
+    const manifestWarning =
       validateMarkdownBody(rel, content) ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "touch-set.json") {
@@ -819,11 +1211,28 @@ function validateArtifactContent(
     if (implementError !== null) {
       return gateValidationErrorToWarning(rel, implementError);
     }
-    return (
+    const manifestWarning =
       validateMarkdownBody(rel, content) ??
       validateVerdictConsistency(rel, content, "implement_gate_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "review.md") {
@@ -835,6 +1244,14 @@ function validateArtifactContent(
           "review.md must contain review_passes: true or review_passes: false",
       };
     }
+    if (readBooleanField(content, "scope_amendments_ratified") === null) {
+      return {
+        path: rel,
+        code: "review_scope_unparseable",
+        message:
+          "review.md must contain scope_amendments_ratified: true or scope_amendments_ratified: false",
+      };
+    }
     if (event !== undefined) {
       const reviewAdvanceError = validateReviewMarkdownForAdvance(
         content,
@@ -844,10 +1261,27 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, reviewAdvanceError);
       }
     }
-    return (
+    const manifestWarning =
       validateVerdictConsistency(rel, content, "review_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "test-report.md") {
@@ -865,10 +1299,27 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, testAdvanceError);
       }
     }
-    return (
+    const manifestWarning =
       validateVerdictConsistency(rel, content, "qa_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "design-qa-report.md") {
@@ -886,10 +1337,27 @@ function validateArtifactContent(
         return gateValidationErrorToWarning(rel, designAdvanceError);
       }
     }
-    return (
+    const manifestWarning =
       validateVerdictConsistency(rel, content, "design_qa_passes") ??
       validateMarkdownOutputManifest(rel, base, content)
-    );
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
   }
 
   if (base === "ux-spec.md") {
@@ -929,6 +1397,36 @@ function validateArtifactContent(
     return null;
   }
 
+  if (base === "delivery-report.md") {
+    if (event !== undefined) {
+      const reportAdvanceError = validateReportForAdvance(content, event);
+      if (reportAdvanceError !== null) {
+        return gateValidationErrorToWarning(rel, reportAdvanceError);
+      }
+    }
+    const manifestWarning =
+      validateMarkdownBody(rel, content) ??
+      validateMarkdownOutputManifest(rel, base, content)
+    if (manifestWarning !== null) {
+      return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
+    return validateRequiredDocReceiptForConsultedDocs({
+      repoRoot,
+      rel,
+      consultedDocs: parseManifestList(readMarkdownManifestField(content, "consulted_docs")),
+    });
+  }
+
   if (base === "compliance-result.json") {
     const verdict = parseComplianceVerdict(content);
     if (verdict.passes === null) {
@@ -937,6 +1435,21 @@ function validateArtifactContent(
         code: "compliance_passes_unparseable",
         message:
           "compliance-result.json must include compliance_passes: true or compliance_passes: false",
+      };
+    }
+    if (
+      verdict.passes === true &&
+      (verdict.planInvalidating ||
+        verdict.coreReentryRequired ||
+        verdict.spotFixable ||
+        verdict.excludedFromGate ||
+        verdict.failingFinalGateCommands.length > 0)
+    ) {
+      return {
+        path: rel,
+        code: "verdict_conflict",
+        message:
+          "compliance-result.json cannot report compliance_passes: true while also flagging blocker/remediation semantics in the same artifact.",
       };
     }
     if (!verdict.finalGateObserved) {
@@ -958,7 +1471,47 @@ function validateArtifactContent(
     }
     try {
       const parsed = JSON.parse(content) as Record<string, unknown>;
-      return validateJsonOutputManifest(rel, parsed);
+      const manifestWarning = validateJsonOutputManifest(rel, parsed);
+      if (manifestWarning !== null) {
+        return manifestWarning;
+      }
+      const manifest = parsed.output_manifest;
+      const producedArtifacts =
+        manifest !== null &&
+        typeof manifest === "object" &&
+        !Array.isArray(manifest) &&
+        Array.isArray((manifest as Record<string, unknown>).produced_artifacts)
+          ? ((manifest as Record<string, unknown>).produced_artifacts as unknown[]).filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [];
+      const producedArtifactsWarning = validateProducedArtifactsForManifest({
+        repoRoot,
+        rel,
+        producedArtifacts,
+      });
+      if (producedArtifactsWarning !== null) {
+        return producedArtifactsWarning;
+      }
+      const transcriptEvidenceError =
+        validateHighRiskPersonaTranscriptCompliance(parsed);
+      if (transcriptEvidenceError !== null) {
+        return gateValidationErrorToWarning(rel, transcriptEvidenceError);
+      }
+      const consultedDocs =
+        manifest !== null &&
+        typeof manifest === "object" &&
+        !Array.isArray(manifest) &&
+        Array.isArray((manifest as Record<string, unknown>).consulted_docs)
+          ? ((manifest as Record<string, unknown>).consulted_docs as unknown[]).filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [];
+      return validateRequiredDocReceiptForConsultedDocs({
+        repoRoot,
+        rel,
+        consultedDocs,
+      });
     } catch {
       return null;
     }
@@ -967,6 +1520,16 @@ function validateArtifactContent(
   const manifestWarning = validateMarkdownOutputManifest(rel, base, content);
   if (manifestWarning !== null) {
     return manifestWarning;
+  }
+  const producedArtifactsWarning = validateProducedArtifactsForManifest({
+    repoRoot,
+    rel,
+    producedArtifacts: parseProducedArtifactsFromManifest(
+      readMarkdownManifestField(content, "produced_artifacts"),
+    ),
+  });
+  if (producedArtifactsWarning !== null) {
+    return producedArtifactsWarning;
   }
 
   if (base === OPERATOR_VERIFICATION_FILENAME) {
@@ -1058,10 +1621,13 @@ export function stageArtifactContract(
         event !== "qa_passes" &&
         event !== "qa_fails" &&
         event !== "qa_fails_plan_invalidating" &&
-        event !== "qa_spot_fix"
+        event !== "qa_spot_fix" &&
+        event !== "qa_design_followup" &&
+        event !== "repo_wide_blocker"
       ) {
         throw new Error(
-          `Test stage only supports qa_passes, qa_fails, qa_fails_plan_invalidating, or qa_spot_fix, got ${event}.`,
+          "Test stage only supports qa_passes, qa_fails, qa_fails_plan_invalidating, " +
+            `qa_spot_fix, qa_design_followup, or repo_wide_blocker, got ${event}.`,
         );
       }
       const requiredAfterStageWork = designStepsEnabled(state.options)
@@ -1073,8 +1639,27 @@ export function stageArtifactContract(
         acceptedAdvanceArtifacts: [testReport],
       };
     }
+    case "bookkeeping": {
+      const deliveryReport = deliveryReportRel(run);
+      const durableIndex = durableFeatureIndexRel(state.featureId);
+      if (event !== "bookkeeping_complete" && event !== "repo_wide_blocker") {
+        throw new Error(
+          `Bookkeeping stage only supports bookkeeping_complete or repo_wide_blocker, got ${event}.`,
+        );
+      }
+      return {
+        primaryArtifact: deliveryReport,
+        requiredAfterStageWork: [deliveryReport, durableIndex],
+        acceptedAdvanceArtifacts: [deliveryReport, durableIndex],
+      };
+    }
     case "report": {
       const deliveryReport = deliveryReportRel(run);
+      if (event !== "report_ready" && event !== "repo_wide_blocker") {
+        throw new Error(
+          `Report stage only supports report_ready or repo_wide_blocker, got ${event}.`,
+        );
+      }
       return {
         primaryArtifact: deliveryReport,
         requiredAfterStageWork: [deliveryReport],
@@ -1087,11 +1672,12 @@ export function stageArtifactContract(
         event !== "compliance_passes" &&
         event !== "compliance_fails" &&
         event !== "compliance_fails_plan_invalidating" &&
-        event !== "compliance_spot_fix"
+        event !== "compliance_spot_fix" &&
+        event !== "repo_wide_blocker"
       ) {
         throw new Error(
           "Compliance stage only supports compliance_passes, compliance_fails, " +
-            `compliance_fails_plan_invalidating, or compliance_spot_fix, got ${event}.`,
+            `compliance_fails_plan_invalidating, compliance_spot_fix, or repo_wide_blocker, got ${event}.`,
         );
       }
       return {
@@ -1146,10 +1732,38 @@ const CONTENT_VALIDATED_BASENAMES = new Set([
   "test-report.md",
   "design-qa-report.md",
   "ux-spec.md",
+  "delivery-report.md",
   "compliance-result.json",
   "ship-ratification.json",
   OPERATOR_VERIFICATION_FILENAME,
 ]);
+
+export function isPassPathManifestWarning(
+  stageId: string,
+  event: string,
+  warning: ArtifactContentWarning,
+): boolean {
+  const passEvent =
+    (stageId === "bookkeeping" && event === "bookkeeping_complete") ||
+    (stageId === "report" && event === "report_ready") ||
+    (stageId === "compliance" && event === "compliance_passes");
+  if (!passEvent) {
+    return false;
+  }
+  return PASS_PATH_MANIFEST_WARNING_CODES.has(warning.code);
+}
+
+function validateReportForAdvance(content: string, event: string): string | null {
+  if (event !== "report_ready" && event !== "bookkeeping_complete") {
+    return null;
+  }
+  const manifestWarning = validateMarkdownOutputManifest(
+    "delivery-report.md",
+    "delivery-report.md",
+    content,
+  );
+  return manifestWarning?.message ?? null;
+}
 
 export function validateStageCompletionArtifacts(
   repoRoot: string,
@@ -1198,6 +1812,25 @@ function assertAdvanceGateContent(
   ) {
     advanceArtifacts.push(designQaReportRel(state.artifacts.runDir));
   }
+  if (stage === "test" && event === "qa_design_followup") {
+    const testContent = readRepoText(repoRoot, artifact);
+    const designRel = designQaReportRel(state.artifacts.runDir);
+    const designContent = readRepoText(repoRoot, designRel) ?? undefined;
+    const pairError =
+      testContent === null
+        ? null
+        : validateQaDesignFollowupPair({
+            testReportContent: testContent,
+            designQaReportContent: designContent,
+            designStepsEnabled: designStepsEnabled(state.options),
+          });
+    if (pairError !== null) {
+      throw new Error(`Cannot advance ${stage} on ${event}; ${pairError}`);
+    }
+    if (designStepsEnabled(state.options)) {
+      advanceArtifacts.push(designRel);
+    }
+  }
   for (const rel of advanceArtifacts) {
     const warning = validateArtifactContent(repoRoot, rel, event);
     if (warning !== null) {
@@ -1218,7 +1851,10 @@ function assertAdvanceGateContent(
       );
     }
   }
-  if (stage === "plan" && event === "human_approval") {
+  if (
+    stage === "plan" &&
+    (event === "human_approval" || event === "sdk_artifact_validation")
+  ) {
     for (const rel of contractPlanGateArtifacts(state)) {
       const warning = validateArtifactContent(repoRoot, rel, event);
       if (warning !== null) {
@@ -1260,13 +1896,15 @@ export function assertAdvanceArtifacts(
 export function defaultAdvanceEventForStage(stage: string): string {
   switch (stage) {
     case "plan":
-      return "human_approval";
+      return "sdk_artifact_validation";
     case "implement":
       return "implementation_complete";
     case "review":
       return "review_passes";
     case "test":
       return "qa_passes";
+    case "bookkeeping":
+      return "bookkeeping_complete";
     case "report":
       return "report_ready";
     case "compliance":

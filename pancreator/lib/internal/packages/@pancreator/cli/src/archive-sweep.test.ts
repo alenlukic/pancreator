@@ -151,6 +151,78 @@ describe("runArchiveSweep", () => {
     expect(existsSync(path.join(root, inboxSourceRel))).toBe(true);
   });
 
+  it("does not move a shared inbox directive when archiving an aborted duplicate", async () => {
+    const sharedInboxRel = `lib/inbox/in/${DAY}/shared.md`;
+    await writeFile(path.join(root, sharedInboxRel), "# shared\n", "utf8");
+
+    const activeTask = "77777_active_run";
+    const activeRunRel = `.pan/work/${DAY}/${activeTask}`;
+    await mkdir(path.join(root, activeRunRel), { recursive: true });
+    await writeFile(
+      path.join(root, activeRunRel, "state.json"),
+      stringifyCliJson(root, {
+        schemaVersion: FEATURE_DELIVERY_STATE_SCHEMA_VERSION,
+        pipelineId: "feature-delivery",
+        taskId: activeTask,
+        featureId: "demo-feature",
+        status: "ready_for_stage_delegation",
+        currentStage: "implement",
+        createdAtIso: "2026-05-10T13:15:30.000Z",
+        source: { inboxEntry: "shared.md", inboxPath: sharedInboxRel },
+        artifacts: {
+          runDir: activeRunRel,
+          stateFile: `${activeRunRel}/state.json`,
+          handoffFile: `${activeRunRel}/handoff.md`,
+          runLogFile: `${activeRunRel}/run.log.jsonl`,
+          nextPromptFile: `${activeRunRel}/next-prompt.md`,
+        },
+        stages: [],
+        transitions: [],
+        nextHumanAction: "Implement",
+      }),
+      "utf8",
+    );
+
+    const abortedTask = "88888_aborted_duplicate";
+    const abortedRunRel = `.pan/work/${DAY}/${abortedTask}`;
+    await mkdir(path.join(root, abortedRunRel), { recursive: true });
+    await writeFile(
+      path.join(root, abortedRunRel, "state.json"),
+      stringifyCliJson(root, {
+        schemaVersion: FEATURE_DELIVERY_STATE_SCHEMA_VERSION,
+        pipelineId: "feature-delivery",
+        taskId: abortedTask,
+        featureId: "demo-feature",
+        status: "halted",
+        currentStage: "aborted",
+        createdAtIso: "2026-05-10T13:20:00.000Z",
+        source: { inboxEntry: "shared.md", inboxPath: sharedInboxRel },
+        artifacts: {
+          runDir: abortedRunRel,
+          stateFile: `${abortedRunRel}/state.json`,
+          handoffFile: `${abortedRunRel}/handoff.md`,
+          runLogFile: `${abortedRunRel}/run.log.jsonl`,
+          nextPromptFile: `${abortedRunRel}/next-prompt.md`,
+        },
+        stages: [],
+        transitions: [],
+        nextHumanAction: "Aborted",
+      }),
+      "utf8",
+    );
+
+    const result = await runArchiveSweep(root, {
+      clock: () => new Date("2026-05-10T14:00:00.000Z"),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.closed).toContain(abortedTask);
+    expect(result.skipped.some((entry) => entry.path === activeTask)).toBe(true);
+    expect(existsSync(path.join(root, sharedInboxRel))).toBe(true);
+    expect(existsSync(path.join(root, ".pan/archive/inbox/in", DAY, "shared.md"))).toBe(false);
+    expect(existsSync(path.join(root, ".pan/archive/work", DAY, abortedTask))).toBe(true);
+  });
+
   it("preserves inbox items for active experience-planning runs", async () => {
     const epDay = "172957_06-18-26";
     const epTask = "72323_0354_command-center-home-ux-remediation";

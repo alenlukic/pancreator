@@ -23,7 +23,12 @@ import {
   listCanonicalWorkDayDirs,
   listTaskDirNames,
   scanWorkArchiveHygiene,
+  type PointerResolution,
+  resolvePointerResolution,
 } from "./work-archive-hygiene.js";
+
+export type { PointerResolution };
+export { resolvePointerResolution };
 
 const TERMINAL_STAGE = "complete" as const;
 const OUT_OF_BAND_MANIFEST = "out-of-band.manifest.json";
@@ -168,6 +173,7 @@ async function archiveAbortedFeatureDeliveryRun(
   repoRoot: string,
   state: FeatureDeliveryState,
   now: Date,
+  protectedInboxPaths: ReadonlySet<string>,
 ): Promise<string> {
   const runDirRel = normalizeRel(state.artifacts.runDir);
   const parts = runDirRel.split("/");
@@ -187,7 +193,11 @@ async function archiveAbortedFeatureDeliveryRun(
   }
 
   const inboxSourceRel = normalizeRel(state.source.inboxPath);
-  if (inboxSourceRel.startsWith(INBOX_IN_PREFIX) && existsSync(resolveRepoPath(repoRoot, inboxSourceRel))) {
+  if (
+    inboxSourceRel.startsWith(INBOX_IN_PREFIX) &&
+    !protectedInboxPaths.has(inboxSourceRel) &&
+    existsSync(resolveRepoPath(repoRoot, inboxSourceRel))
+  ) {
     const inboxArchiveRel = archiveInboxPathForSource(inboxSourceRel, dayDir);
     await movePath(repoRoot, inboxSourceRel, inboxArchiveRel);
     await pruneEmptyQueueParents(repoRoot, path.posix.dirname(inboxSourceRel), "lib/inbox/in");
@@ -309,7 +319,11 @@ async function collectTerminalRuns(repoRoot: string): Promise<{
         activeInboxPaths.add(normalizeRel(state.source.inboxPath));
         continue;
       }
-      if (state.pipelineId === "feature-delivery" && state.currentStage === TERMINAL_STAGE && state.status === "complete") {
+      if (
+        state.pipelineId === "feature-delivery" &&
+        state.currentStage === TERMINAL_STAGE &&
+        (state.status === "complete" || state.status === "complete_with_attention")
+      ) {
         terminalRuns.push({
           taskId,
           dayDir,
@@ -432,7 +446,12 @@ export async function runArchiveSweep(
       if (state === null) {
         throw new Error("Missing state.json for aborted run");
       }
-      const archiveRunRel = await archiveAbortedFeatureDeliveryRun(repoRoot, state, now);
+      const archiveRunRel = await archiveAbortedFeatureDeliveryRun(
+        repoRoot,
+        state,
+        now,
+        activeInboxPaths,
+      );
       closed.push(run.taskId);
       archived.push(archiveRunRel);
       const epArchived = await archiveExperiencePlanningForClosedFeatureDelivery(

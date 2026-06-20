@@ -85,6 +85,8 @@ describe("sdk-transport prompt and verification helpers", () => {
     expect(prompt).toContain("MCP servers: chrome-devtools");
     expect(prompt).toContain("MCP setting sources: user, project, plugins");
     expect(prompt).toContain("Browser hygiene for chrome-devtools:");
+    expect(prompt).toContain("list_pages");
+    expect(prompt).toContain("Sessions MUST NEVER be shared");
     expect(prompt).toContain("Do not modify macOS LaunchServices, default-browser handlers");
   });
 
