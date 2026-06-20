@@ -22,7 +22,7 @@ describe("parseHandbookIndexTable", () => {
     const rows = parseHandbookIndexTable(md);
     expect(rows.length).toBeGreaterThan(4);
     const glossary = rows.find((r) => r.intent.startsWith("Resolve a term"));
-    expect(glossary?.primaryPaths[0]).toBe("/lib/memory/handbook/glossary.md");
+    expect(glossary?.primaryPaths[0]).toBe("lib/memory/handbook/glossary.md");
   });
 });
 

@@ -1,9 +1,9 @@
 # Operator section
-- 👀 **In this file:** Pipeline definition `init-greenfield`.
-- ⚖️ **Why it matters:** Quick orientation for init greenfield before agents load the full contract.
-- 🧭 **See also:**
-  - pancreator/lib/pipelines/README.md
-  - pancreator/lib/memory/handbook/pipeline-state-contract.md
+# - 👀 **In this file:** Pipeline definition `init-greenfield`.
+# - ⚖️ **Why it matters:** Quick orientation for init greenfield before agents load the full contract.
+# - 🧭 **See also:**
+#   - pancreator/lib/pipelines/README.md
+#   - pancreator/lib/memory/handbook/pipeline-state-contract.md
 id: init-greenfield
 version: "1"
 metadata:

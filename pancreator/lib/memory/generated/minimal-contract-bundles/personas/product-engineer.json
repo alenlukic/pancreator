@@ -1,0 +1,19 @@
+{
+  "kind": "persona",
+  "persona_id": "product-engineer",
+  "source": "lib/personas/product-engineer.md",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "PIPE.FEATURE_DELIVERY",
+    "DOC.PRD_SUMMARY",
+    "DOC.PRD_INDEX",
+    "DOC.PERSONA_SPEC",
+    "DOC.GLOSSARY",
+    "DOC.CONTRACT_STYLE",
+    "DOC.CONTRACT_FORMAT"
+  ],
+  "generated_at": "2026-06-19T19:59:36.242Z"
+}

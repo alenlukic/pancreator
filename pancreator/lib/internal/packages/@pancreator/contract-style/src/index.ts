@@ -5,8 +5,8 @@
 export { PANCREATOR_CORE_VERSION } from "@pancreator/core";
 
 export { LAYER1_WEASEL_BANLIST } from "./banlist.js";
-export { findLayer1WeaselHits } from "./scan.js";
-export type { WeaselHit } from "./scan.js";
+export { findLayer1WeaselHits, findRequiredContextMissingRfc2119 } from "./scan.js";
+export type { MissingRfc2119Hit, WeaselHit } from "./scan.js";
 
 export const PANCREATOR_CONTRACT_STYLE_STUB = "contract-style" as const;
 

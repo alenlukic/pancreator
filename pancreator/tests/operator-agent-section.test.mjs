@@ -51,4 +51,35 @@ Body
     assert.match(split.agentBody, /^---\r?\nslug: demo/);
     assert.match(split.agentBody, /# Demo/);
   });
+
+  it("wrapOperatorAgentMarkdown is idempotent for sectioned content", () => {
+    const meta = {
+      inThisFile: "Demo artifact",
+      whyItMatters: "Human summary.",
+      seeAlso: ["AGENTS.md"],
+    };
+    const once = wrapOperatorAgentMarkdown(meta, "# Demo\nBody\n");
+    const twice = wrapOperatorAgentMarkdown(meta, once);
+    assert.equal((twice.match(/# Operator section/gu) ?? []).length, 1);
+  });
+
+  it("wrapOperatorAgentYaml comments operator bullets and slice strips them", async () => {
+    const { wrapOperatorAgentYaml } = await import(
+      "../lib/internal/packages/@pancreator/core/dist/index.js"
+    );
+    const wrapped = wrapOperatorAgentYaml(
+      {
+        inThisFile: "Pipeline definition `feature-delivery`.",
+        whyItMatters: "Shows which stages run and which gates block progress.",
+        seeAlso: ["pancreator/lib/pipelines/README.md"],
+      },
+      "id: feature-delivery\nstages:\n  - id: plan\n",
+    );
+    assert.match(wrapped, /^# Operator section\n# - 👀 \*\*In this file:\*\*/);
+    assert.doesNotMatch(wrapped, /^- 👀 \*\*In this file:\*\*/m);
+    assert.equal(
+      sliceOperatorAgentSection(wrapped),
+      "id: feature-delivery\nstages:\n  - id: plan\n",
+    );
+  });
 });

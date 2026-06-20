@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { stringifyRepoJson } from "../format/canonical-json-format.mjs";
 
 const TOOLS_DIR = path.dirname(fileURLToPath(import.meta.url));
-const PAN_BIN = path.join(TOOLS_DIR, "../packages/@pancreator/cli/bin/pan.js");
+const PAN_BIN = path.join(TOOLS_DIR, "../../packages/@pancreator/cli/bin/pan.js");
 
 function runCursorSync(harnessRootInput, options = {}) {
   const harnessRoot = path.resolve(harnessRootInput || process.cwd());

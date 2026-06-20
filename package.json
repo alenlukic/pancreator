@@ -14,8 +14,10 @@
     "migration:test": "node --test pancreator/tests/migrate-timestamp-naming.test.mjs pancreator/tests/migrate-inbox-convention.test.mjs",
     "repo:structure:test": "node --test pancreator/tests/repo-structure.test.mjs",
     "governance:audit": "node pancreator/lib/internal/tools/governance/audit-governance-usage.mjs",
+    "governance:contract-bundles": "node pancreator/lib/internal/tools/contracts/generate-minimal-contract-bundles.mjs",
     "governance:projection-drift": "node pancreator/lib/internal/tools/checks/check-cursor-projection-drift.mjs",
-    "governance:test": "node --test pancreator/tests/agent-document-registry-integrity.test.mjs pancreator/tests/model-escalation-completeness.test.mjs",
+    "governance:persona-rfc2119": "node pancreator/lib/internal/tools/checks/check-persona-required-context-rfc2119.mjs",
+    "governance:test": "node --test pancreator/tests/agent-document-registry-integrity.test.mjs pancreator/tests/model-escalation-completeness.test.mjs && node pancreator/lib/internal/tools/checks/check-persona-required-context-rfc2119.mjs",
     "test": "turbo run test && node --test pancreator/tests/repo-structure.test.mjs pancreator/tests/migrate-json-formatting.test.mjs pancreator/tests/migrate-timestamp-naming.test.mjs pancreator/tests/migrate-inbox-convention.test.mjs pancreator/tests/agent-document-registry-integrity.test.mjs pancreator/tests/model-escalation-completeness.test.mjs",
     "test:run-logger-conformance": "node --test pancreator/tests/run-logger-conformance/*.test.mjs"
   },

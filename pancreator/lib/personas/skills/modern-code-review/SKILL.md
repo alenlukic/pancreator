@@ -115,13 +115,20 @@ review's Spec Contract results table.
 Every `severity: block` clause whose `result` is `fail` MUST also appear in
 the `must fix` section under Findings. An omitted clause fails the gate.
 
-### Step 4 — Verify repo-wide tests before QA handoff
+### Step 4 — Verify touch-set tests before QA handoff
 
-Run `pnpm test` and `node --test tests/*.test.mjs` from the repository root.
-Record both commands in the **Repo-wide tests** section of `review.md`. Set
-`repo_wide_tests_pass: true` only when both commands exit zero. Do not rerun
-`pnpm lint` or `pnpm typecheck` unless review-stage remediation changed code;
-otherwise set `lint_typecheck_rerun_required: false` and cite
+Run every `touch-set.json` `tests` entry with `kind: command` from the run's
+touch-set. Record each command in the **Touch-set tests** section of
+`review.md`. Set `touch_set_tests_pass: true` only when every touch-set gate
+command exits zero.
+
+You MAY also run `pnpm test` and `node --test tests/*.test.mjs` from the
+repository root for operator visibility. Record those rows with
+`pass/fail: excluded-from-gate`; they MUST NOT set `touch_set_tests_pass: false`
+or `review_passes: false` when they fail.
+
+Do not rerun `pnpm lint` or `pnpm typecheck` unless review-stage remediation
+changed code; otherwise set `lint_typecheck_rerun_required: false` and cite
 `implementation-report.md`.
 
 ### Step 5 — Verify the coverage delta and the test plan
@@ -157,7 +164,7 @@ declared in `lib/personas/reviewer.md`:
    citation into the source (diff, touch-set test paths, or
    `/.pan/work/<day>/<id>/implementation-report.md`) from which the
    coverage figures were derived.
-5. **Repo-wide tests.** The table built in Step 4.
+5. **Touch-set tests.** The table built in Step 4.
 
 The full body MUST stay at most 1500 words across the five sections.
 

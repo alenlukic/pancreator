@@ -6,22 +6,22 @@ phase: "0b"
 owners: [librarian, supervisor]
 purpose: "Stable global keys for agent contracts, handbook docs, persona specs, and pipelines."
 related:
-  - /AGENTS.md
-  - /lib/memory/handbook/operator-agent-artifact-format.md
-  - /lib/memory/handbook/persona-spec.md
-  - /lib/memory/handbook/persona-contracts.md
-  - /lib/memory/handbook/output-manifest-contract.md
-  - /lib/memory/handbook/operator-output-contract.md
-  - /lib/memory/handbook/pipeline-state-contract.md
+  - AGENTS.md
+  - lib/memory/handbook/operator-agent-artifact-format.md
+  - lib/memory/handbook/persona-spec.md
+  - lib/memory/handbook/persona-contracts.md
+  - lib/memory/handbook/output-manifest-contract.md
+  - lib/memory/handbook/operator-output-contract.md
+  - lib/memory/handbook/pipeline-state-contract.md
 ...
 
 # Operator section
 - 👀 **In this file:** Agent Document Registry
 - ⚖️ **Why it matters:** Quick orientation for Agent Document Registry before agents load the full contract.
 - 🧭 **See also:**
-  - /AGENTS.md
-  - /lib/memory/handbook/operator-agent-artifact-format.md
-  - /lib/memory/handbook/persona-spec.md
+  - AGENTS.md
+  - lib/memory/handbook/operator-agent-artifact-format.md
+  - lib/memory/handbook/persona-spec.md
 
 # Agent Document Registry
 
@@ -36,6 +36,9 @@ copying broad path tables into `AGENTS.md`.
 - `PIPE.*` keys identify pipeline definitions or pipeline-stage contracts.
 - `PERSONA.*` keys identify canonical persona specs.
 - Agents MUST resolve every key they are instructed to use before acting.
+- Path values in the tables below are project-root-relative; resolve them per
+  `AGENTS.md` path convention. Harness-root paths such as `.cursor/**` are not
+  registry keys and are resolved separately.
 - Authors MUST update this registry in the same change that creates, renames, or
   retires a key.
 

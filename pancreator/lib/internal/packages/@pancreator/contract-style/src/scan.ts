@@ -9,6 +9,11 @@ export type WeaselHit = {
   phrase: string;
 };
 
+export type MissingRfc2119Hit = {
+  line: number;
+  text: string;
+};
+
 /**
  * Returns non-overlapping substring hits for the Layer 1 weasel list, lowest index first.
  * This is a string-level helper; full Layer 1 lint is tree-sitter based in the handbook.
@@ -32,4 +37,42 @@ export function findLayer1WeaselHits(text: string): WeaselHit[] {
     }
   }
   return hits.sort((a, b) => a.start - b.start);
+}
+
+const RFC_2119_KEYWORD =
+  /\b(MUST(?: NOT)?|SHALL(?: NOT)?|SHOULD(?: NOT)?|MAY|OPTIONAL|RECOMMENDED|NOT RECOMMENDED|REQUIRED)\b/u;
+const IMPERATIVE_HINT =
+  /\b(resolve|load|apply|execute|emit|record|run|verify|use|delegate|route|treat|limit)\b/iu;
+
+/**
+ * Returns Required-context bullets that look imperative but omit RFC 2119 keywords.
+ */
+export function findRequiredContextMissingRfc2119(text: string): MissingRfc2119Hit[] {
+  if (text.length < 1) {
+    return [];
+  }
+  const lines = text.split(/\r?\n/u);
+  const hits: MissingRfc2119Hit[] = [];
+  let inRequiredContext = false;
+  for (let idx = 0; idx < lines.length; idx += 1) {
+    const line = lines[idx].trim();
+    if (/^###\s+Required context\b/iu.test(line)) {
+      inRequiredContext = true;
+      continue;
+    }
+    if (inRequiredContext && /^###\s+/u.test(line)) {
+      inRequiredContext = false;
+    }
+    if (!inRequiredContext || !line.startsWith("- ")) {
+      continue;
+    }
+    if (!IMPERATIVE_HINT.test(line)) {
+      continue;
+    }
+    if (RFC_2119_KEYWORD.test(line)) {
+      continue;
+    }
+    hits.push({ line: idx + 1, text: line });
+  }
+  return hits;
 }

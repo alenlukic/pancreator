@@ -8,19 +8,19 @@ purpose: |
   Defines the two-section file layout that separates operator-readable summaries
   from agent-readable contract content across permanent documents and transient artifacts.
 related:
-  - /AGENTS.md
-  - /lib/memory/handbook/agent-document-registry.md
-  - /lib/memory/handbook/operator-output-contract.md
-  - /lib/memory/handbook/output-manifest-contract.md
+  - AGENTS.md
+  - lib/memory/handbook/agent-document-registry.md
+  - lib/memory/handbook/operator-output-contract.md
+  - lib/memory/handbook/output-manifest-contract.md
 ...
 
 # Operator section
 - 👀 **In this file:** Operator/Agent Artifact Format
 - ⚖️ **Why it matters:** Quick orientation for Operator/Agent Artifact Format before agents load the full contract.
 - 🧭 **See also:**
-  - /AGENTS.md
-  - /lib/memory/handbook/agent-document-registry.md
-  - /lib/memory/handbook/operator-output-contract.md
+  - AGENTS.md
+  - lib/memory/handbook/agent-document-registry.md
+  - lib/memory/handbook/operator-output-contract.md
 
 # Operator/Agent Artifact Format
 
@@ -85,7 +85,7 @@ purpose: |
 references:
   - '{"kind":"file","path":"AGENTS.md","note":"Repo operating card."}'
 related:
-  - /AGENTS.md
+  - AGENTS.md
 ...
 
 # Operator section
@@ -125,22 +125,27 @@ with a single-line banner:
 
 ## 4 — YAML format
 
-YAML pipeline and contract files MUST use the Markdown-style operator block,
+YAML pipeline and contract files MUST use the operator block as YAML comments,
 then raw agent YAML:
 
 ```yaml
 # Operator section
-- 👀 **In this file:** Pipeline definition `feature-delivery`.
-- ⚖️ **Why it matters:** Shows which stages run and which gates block progress.
-- 🧭 **See also:**
-  - pancreator/lib/pipelines/README.md
+# - 👀 **In this file:** Pipeline definition `feature-delivery`.
+# - ⚖️ **Why it matters:** Shows which stages run and which gates block progress.
+# - 🧭 **See also:**
+#   - lib/pipelines/README.md
 id: feature-delivery
 stages:
   - id: plan
 ```
 
 If the YAML file has no useful human content, use the single-line operator
-banner from §3, then the agent YAML.
+banner as a comment, then the agent YAML:
+
+```yaml
+# ⚙️ no human content
+id: example
+```
 
 ## 5 — JSON format
 

@@ -17,7 +17,7 @@ scope:
     - "tests/agent-document-registry-integrity.test.mjs"
     - "tests/model-escalation-completeness.test.mjs"
     - "lib/internal/tools/checks/check-cursor-projection-drift.mjs"
-    - "lib/internal/tools/checks/check-token-telemetry.mjs"
+    - "lib/internal/tools/checks/check-persona-required-context-rfc2119.mjs"
     - "lib/internal/tools/governance/audit-governance-usage.mjs"
 assertion:
   statement: >
@@ -25,17 +25,18 @@ assertion:
     and enforced by deterministic, fail-closed checks rather than by persona
     prose alone. Specifically: every DOC.*/PIPE.*/PERSONA.* key in
     DOC.REGISTRY resolves on disk; every persona owns a complete
-    '## Static execution contract'; every feature-delivery persona (including
-    design/product sub-stage personas) resolves in every model-escalation
-    config; the gitignored Cursor projections stay in sync with their canonical
-    persona specs; and agent-span token telemetry coverage does not regress
-    below its enforced floor.
+    '## Static execution contract' whose required bullets use RFC 2119
+    keywords; every persona defines RTK-first shell retrieval discipline in
+    responsibilities and exposes `Bash(rtk:*)` in tools; every
+    feature-delivery persona (including design/product sub-stage personas)
+    resolves in every model-escalation config; the gitignored Cursor
+    projections stay in sync with their canonical persona specs.
   pass_criteria: >
     All of the following exit zero:
     `node --test tests/agent-document-registry-integrity.test.mjs`,
     `node --test tests/model-escalation-completeness.test.mjs`,
+    `node lib/internal/tools/checks/check-persona-required-context-rfc2119.mjs`,
     `node lib/internal/tools/checks/check-cursor-projection-drift.mjs`, and
-    `node lib/internal/tools/checks/check-token-telemetry.mjs` at the configured floor.
     `node lib/internal/tools/governance/audit-governance-usage.mjs` produces the
     governance usage + friction report used to review residual warn-level
-    signals (escalation WARN noise, re-entry load, telemetry coverage gap).
+    signals (escalation WARN noise and re-entry load).

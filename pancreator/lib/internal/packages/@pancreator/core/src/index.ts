@@ -9,6 +9,7 @@ export const PANCREATOR_CORE_VERSION = "0.0.0" as const;
 export type { ContentHash, FeatureId, TaskId } from "./branded.js";
 export { asContentHash, asFeatureId, asTaskId } from "./branded.js";
 export {
+  findHarnessRoot,
   projectRootAbs,
   readProjectRoot,
   readProjectRootFromYaml,
@@ -20,6 +21,8 @@ export {
 export {
   resolveDeliveryOperatingCard,
   resolveDeliveryOperatingCardRel,
+  resolveDeliveryOperationProcedures,
+  resolveDeliveryOperationProceduresRel,
 } from "./delivery-operating-card.js";
 export {
   abbreviateHashes,
