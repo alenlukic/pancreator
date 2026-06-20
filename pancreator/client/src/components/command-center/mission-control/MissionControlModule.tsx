@@ -17,6 +17,7 @@ import {
   filterNonTerminalTasks,
   findActiveStage,
   isNonTerminalTask,
+  panArgsFromNextCommand,
   type PanExecuteResult,
   type StageCell,
   type TaskRunStateEnvelope,
@@ -364,6 +365,12 @@ export function MissionControlModule() {
             nowMs={nowMs}
             isPolling={isPolling}
             onOpenRunLogs={() => setLogDrawerOpen(true)}
+            onRunNextCommand={(nextCommand) => {
+              requestMutatingExecute(
+                "Run next command",
+                panArgsFromNextCommand(nextCommand),
+              );
+            }}
           />
           {isNonTerminalTask(selectedTask) ? (
             <div className="mc-intervention-strip" data-testid="mission-control-intervention-strip">
@@ -374,22 +381,22 @@ export function MissionControlModule() {
                 disabled={executeBusy}
                 aria-label={`Pause ${featureDisplayLabel(selectedTask)}`}
                 onClick={() =>
-                  requestMutatingExecute("Pause", `pause ${selectedTask.taskId}`)
+                  requestMutatingExecute("Pause run", `pause ${selectedTask.taskId}`)
                 }
               >
-                Pause
+                Pause run
               </button>
               <button
                 type="button"
                 className="command-center-row-cta-quiet"
                 data-testid="mc-intervention-steer"
                 disabled={executeBusy}
-                aria-label={`Steer ${featureDisplayLabel(selectedTask)}`}
+                aria-label={`Open next prompt for ${featureDisplayLabel(selectedTask)}`}
                 onClick={() =>
                   file.handleOpenNextPrompt(`${selectedTask.runDir}/next-prompt.md`)
                 }
               >
-                Steer
+                Open next prompt
               </button>
               <button
                 type="button"
@@ -399,12 +406,12 @@ export function MissionControlModule() {
                 aria-label={`Abort ${featureDisplayLabel(selectedTask)}`}
                 onClick={() =>
                   requestMutatingExecute(
-                    "Abort",
+                    "Abort run",
                     `abort ${selectedTask.taskId} --reason "operator initiated from Command Center"`,
                   )
                 }
               >
-                Abort
+                Abort run
               </button>
             </div>
           ) : null}

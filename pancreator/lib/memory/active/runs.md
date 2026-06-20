@@ -24,7 +24,7 @@ keep active logs under **active-work** prefixes such as `.pan/work/<day>/<task-i
 
 | Run identifier | Pointer | Feature | Status |
 |---|---|---|---|
-| *(none)* | *(none)* | *(none)* | *(none)* |
+| `63035_0629_command-center-crowding-remediation-and-design-research-rule-hardening` | `.pan/work/172955_06-20-26/63035_0629_command-center-crowding-remediation-and-design-research-rule-hardening/` | `command-center-crowding-remediation-and-design-research-rule-hardening` | active; implement stage |
 
 ## Recent runs
 
@@ -35,3 +35,5 @@ keep active logs under **active-work** prefixes such as `.pan/work/<day>/<task-i
 | `172996_05-10-26/68321_1315_bootstrap-state-fast-forward` | *(no retained workspace)* | `bootstrap-state-fast-forward` | complete; operator close-out |
 | `172997_05-09-26/10920_2058_intake` | `.pan/archive/work/172997_05-09-26/10920_2058_intake-active-memory-context-economy-pass-2/` | `active-memory-context-economy-pass-2` | intake closed, ratified |
 | `172997_05-09-26/3900_2255_plan` | `.pan/archive/work/172997_05-09-26/3900_2255_plan-active-memory-context-economy-pass-2/` | `active-memory-context-economy-pass-2` | plan + implement (7 slices, 3 waves) + review (approve) + report drafted |
+| `72323_0354_command-center-home-ux-remediation` | `.pan/archive/work/172957_06-18-26/72323_0354_command-center-home-ux-remediation/` | `command-center-home-ux-remediation` | experience-planning complete; archived by librarian |
+| `63323_0624_command-center-crowding-remediation-and-design-research-rule-hardening` | `.pan/archive/work/172955_06-20-26/63323_0624_command-center-crowding-remediation-and-design-research-rule-hardening/` | `command-center-crowding-remediation-and-design-research-rule-hardening` | superseded unstarted duplicate; archived by librarian |

@@ -265,6 +265,16 @@ pass the gate. When `spot_fixable: true`, `design-qa-report.md` MUST also record
 `spot_fix_scope: code-bounded`, `spot_fix_paths` (max 3), and
 `spot_fix_rationale` so the runtime can reject unbounded `qa_spot_fix` advances.
 
+## Research grounding for design planning
+
+Design-enabled plan work MUST record an external research receipt before
+`design/plan.md`, `design/acceptance-criteria.md`, or `ux-spec.md` are emitted.
+
+The research receipt MUST cite at least three public UX or interface-design
+sources that were published, revised, or remain canonical between 2024 and 2026.
+Each emitted design artifact MUST name the adopted principles from that research
+and the UI surfaces those principles affect.
+
 ## Stability
 
 This page is an engineering-standards seed and remains `experimental` until

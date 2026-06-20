@@ -71,8 +71,6 @@ import {
   applySdkRetrySideEffects,
   compileFeatureDeliveryPipeline,
   ensureAutomationState,
-  FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET,
-  incrementAutomationRetry,
   invokeFeatureDeliveryEnteringStage,
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
@@ -81,7 +79,6 @@ import {
   resolveComplianceStageAdvanceEvent,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
-  writeRetryLimitHaltArtifact,
   type FeatureDeliveryAutomationState,
   type FeatureDeliveryTestHooks,
 } from "./feature-delivery-runner.js";
@@ -1376,66 +1373,20 @@ async function ensureSdkAutoChainProgress(
       return false;
     }
 
-    const retryCount = incrementAutomationRetry(input.state);
-    if (retryCount > FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET) {
-      resetStageInvocationIndex(input.state);
-      input.state.status = "halted";
-      const outboxRel = await writeRetryLimitHaltArtifact({
-        repoRoot: input.repoRoot,
-        state: input.state,
-        failingStage: input.completedStageId,
-        retryCount,
-        now: input.now,
-      });
-      input.state.nextHumanAction =
-        `Automatic stage retry halted after ${retryCount} retries; inspect ${outboxRel} and repair-state if needed.`;
-      await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
-      await writeWorkflowHealthArtifact({
-        repoRoot: input.repoRoot,
-        state: input.state,
-        stageId: input.completedStageId,
-        gateBlockReasons: [
-          `Automatic stage retry halted at ${input.completedStageId} after ${retryCount} attempts.`,
-        ],
-        now: input.now,
-      });
-      const summary = [
-        `task_id=${input.state.taskId}`,
-        `feature_id=${input.state.featureId}`,
-        `failing_stage=${input.completedStageId}`,
-        `retry_count=${retryCount}`,
-        `outbox_artifact=${outboxRel}`,
-      ].join(" ");
-      const haltError = new Error(`Feature-delivery retry limit halt: ${summary}`) as Error & {
-        haltSummary: string;
-      };
-      haltError.haltSummary = summary;
-      throw haltError;
-    }
-
-    input.state.status = "ready_for_stage_delegation";
+    const stallReason =
+      `SDK auto-chain stalled at ${input.completedStageId}; no valid automatic transition was derived from current stage artifacts.`;
+    input.state.status = "halted";
     input.state.nextHumanAction =
-      `SDK auto-chain stalled at ${input.completedStageId}; retrying stage execution (${retryCount}/${FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET}).`;
-    prepareStageInvocationIndexForSdkEntry(
-      input.state,
-      input.completedStageId,
-      invocation,
-    );
-    if (compiled === undefined) {
-      compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
-    }
+      `${stallReason} Fix stage outputs or transition logic, then run pan repair-state/pan resume.`;
     await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
-    await invokeFeatureDeliveryEnteringStage({
+    await writeWorkflowHealthArtifact({
       repoRoot: input.repoRoot,
       state: input.state,
-      pipeline: input.pipeline,
       stageId: input.completedStageId,
-      compiled,
+      gateBlockReasons: [stallReason],
       now: input.now,
-      testHooks: input.testHooks,
-      progress: input.progress,
     });
-    await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+    throw new Error(stallReason);
   }
 }
 
@@ -3424,6 +3375,7 @@ function stageContractMarkdown(
   state: FeatureDeliveryState,
   stage: string,
 ): string {
+  const lintGateLine = `Lint gate (mandatory before handoff): run \`pnpm -w exec pan artifacts lint ${state.taskId} --stage ${stage}\` and proceed only when the command reports \`status: "ok"\` with \`warningCount: 0\`.`;
   const advanceLine = (forStage: string, event?: string): string => {
     if (forStage !== state.currentStage) {
       return staticAdvanceLineForStage(state, forStage, event);
@@ -3445,13 +3397,14 @@ Product companion: ${productPlanPromptRel(state.artifacts.runDir)} → ${product
 Design companion: ${designPlanPromptRel(state.artifacts.runDir)} → ${designPlanRel(state.artifacts.runDir)} + ${designAcceptanceCriteriaRel(state.artifacts.runDir)} + ${uxSpecRel(state.artifacts.runDir)}
 Outputs: ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}
 Plan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria, manual_qa_test_cases; handoff.md MUST include ## Validation commands and ## Output manifest.
+${lintGateLine}
 Advance after ${
         state.automation?.runnerInvocation === "sdk"
           ? "agent validates product/design/tech plan artifacts"
           : "human ratification"
       }: ${advanceLine("plan")}`;
     case "implement": {
-      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}\nOutput: ${state.artifacts.runDir}/implementation-report.md\nImplement gate: set implement_gate_passes: true only after lint, typecheck, tests, coverage thresholds, applicable compliance checks, and every product/design/technical acceptance criterion pass.\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
+      const base = `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}\nOutput: ${state.artifacts.runDir}/implementation-report.md\nImplement gate: set implement_gate_passes: true only after lint, typecheck, tests, coverage thresholds, applicable compliance checks, and every product/design/technical acceptance criterion pass.\n${lintGateLine}\nAdvance after implementation is accepted: ${advanceLine("implement")}`;
       const reentry = resolveImplementMustFixReentry(state, repoRoot);
       if (reentry !== null) {
         return `${base}\nAfter must_fix fixes, when ${state.artifacts.runDir}/review.md already records review_passes: true, chain to test in one step: ${reentry.nextCommand}`;
@@ -3459,25 +3412,25 @@ Advance after ${
       return base;
     }
     case "review":
-      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, touch_set_tests_pass, lint_typecheck_rerun_required, core_reentry_required, scope_amendments_ratified, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run every touch-set.json tests command before review_passes: true; record full-repository pnpm test and node --test tests/*.test.mjs as excluded-from-gate visibility only; ratify bounded scope amendments before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan. Amendments are allowed only when touch-set.json and implementation-report.md record the same bounded scope amendment.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nTouch-set or plan invalidation (return to plan): pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
+      return `Inputs: ${state.artifacts.handoffFile}, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/implementation-report.md, current local diff\nOutput: ${state.artifacts.runDir}/review.md\nVerdict fields: review_passes, touch_set_tests_pass, lint_typecheck_rerun_required, core_reentry_required, scope_amendments_ratified, and when applicable spot_fixable and excluded_from_gate\nReview gate: verify every product, design, and technical acceptance criterion before review_passes: true; run every touch-set.json tests command before review_passes: true; record full-repository pnpm test and node --test tests/*.test.mjs as excluded-from-gate visibility only; ratify bounded scope amendments before review_passes: true; rerun pnpm lint and pnpm typecheck only when review-stage remediation changed code.\n${lintGateLine}\nShared-layer rule: edits under touch-set.json shared_paths are allowed; undeclared shared-layer edits route to plan. Amendments are allowed only when touch-set.json and implementation-report.md record the same bounded scope amendment.\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nReview spot-fix is artifact-only (spot_fix_scope: artifact-only).\nAdvance on pass: ${advanceLine("review", "review_passes")}\nQualifying spot-fix (stay in review): pnpm -w exec pan advance ${state.taskId} --event review_spot_fix --artifact ${state.artifacts.runDir}/review.md\nTouch-set or plan invalidation (return to plan): pnpm -w exec pan advance ${state.taskId} --event review_core_reentry --artifact ${state.artifacts.runDir}/review.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event must_fix --artifact ${state.artifacts.runDir}/review.md`;
     case "test":
       return designStepsEnabled(state.options)
-        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
-        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
+        ? `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, current local diff, validation output\nOutputs: ${state.artifacts.runDir}/test-report.md and ${path.posix.join(state.artifacts.runDir, "design-qa-report.md")}\nParallel companions: qa-tester exercises manual QA cases (${state.artifacts.runDir}/next-prompt.md) + design-reviewer checks global UI/UX/design rules (${designQaPromptRel(state.artifacts.runDir)})\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\n${lintGateLine}\nAdvance on pass (both qa_passes and design_qa_passes): ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`
+        : `Inputs: ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/touch-set.json, ${manualQaTestCasesRel(state.artifacts.runDir)}, current local diff, validation output\nOutput: ${state.artifacts.runDir}/test-report.md\nVerdict fields: qa_passes, plan_invalidating, and when applicable core_reentry_required and spot_fixable\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\n${lintGateLine}\nAdvance on pass: ${advanceLine("test", "qa_passes")}\nDesign-only follow-up without implement re-entry: pnpm -w exec pan advance ${state.taskId} --event qa_design_followup --artifact ${state.artifacts.runDir}/test-report.md\nRepo-wide blocker outside touch-set: pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${state.artifacts.runDir}/test-report.md\nQualifying spot-fix (stay in test): pnpm -w exec pan advance ${state.taskId} --event qa_spot_fix --artifact ${state.artifacts.runDir}/test-report.md\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event qa_fails --artifact ${state.artifacts.runDir}/test-report.md\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event qa_fails_plan_invalidating --artifact ${state.artifacts.runDir}/test-report.md`;
     case "bookkeeping":
-      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, current local diff\nOutputs: ${deliveryReportRel(state.artifacts.runDir)}, ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nCloseout rule: delivery-report.md MUST stay citation-backed and machine-readable; feature index MUST be refreshed before completion.\nRepo-wide blocker outside active delta (visibility-only hold): pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${deliveryReportRel(state.artifacts.runDir)}\nAdvance after closeout artifacts are ready: ${advanceLine("bookkeeping", "bookkeeping_complete")}`;
+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, current local diff\nOutputs: ${deliveryReportRel(state.artifacts.runDir)}, ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nCloseout rule: delivery-report.md MUST stay citation-backed and machine-readable; feature index MUST be refreshed before completion.\n${lintGateLine}\nRepo-wide blocker outside active delta (visibility-only hold): pnpm -w exec pan advance ${state.taskId} --event repo_wide_blocker --artifact ${deliveryReportRel(state.artifacts.runDir)}\nAdvance after closeout artifacts are ready: ${advanceLine("bookkeeping", "bookkeeping_complete")}`;
     case "report":
-      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: ${deliveryReportRel(state.artifacts.runDir)}\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
+      return `Inputs: ${state.artifacts.runDir}/implementation-report.md, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md\nOutput: ${deliveryReportRel(state.artifacts.runDir)}\nCitation rule: each claim MUST use fenced canonical JSON with double-quoted keys per lib/personas/tech-writer.md §Conformance gates; JS-literal {kind: lines, ...} form is forbidden.\n${lintGateLine}\nBefore advance, run: node --test tests/migrate-json-formatting.test.mjs\nAdvance after report is accepted: ${advanceLine("report")}`;
     case "compliance":
-      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, ${deliveryReportRel(state.artifacts.runDir)}, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nVerdict fields: compliance_passes, plan_invalidating, core_reentry_required, spot_fixable, excluded_from_gate, and final_gate\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nQualifying spot-fix (stay in compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
+      return `Inputs: ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.runDir}/review.md, ${state.artifacts.runDir}/test-report.md, ${deliveryReportRel(state.artifacts.runDir)}, local diff\nOutput: ${state.artifacts.runDir}/compliance-result.json\nVerdict fields: compliance_passes, plan_invalidating, core_reentry_required, spot_fixable, excluded_from_gate, and final_gate\nCompliance exit bundle (all MUST pass): ${complianceStageExitCommands().join(", ")}\n${complianceAuditFocusContract(repoRoot, state)}\n${SPOT_FIX_COMPLEXITY_BAR_SUMMARY}\n${SPOT_FIX_JUSTIFICATION_FIELDS}\n${lintGateLine}\nAdvance on pass: ${advanceLine("compliance", "compliance_passes")}\nQualifying spot-fix (stay in compliance): pnpm -w exec pan advance ${state.taskId} --event compliance_spot_fix --artifact ${state.artifacts.runDir}/compliance-result.json\nNon-qualifying issue (return to implement): pnpm -w exec pan advance ${state.taskId} --event compliance_fails --artifact ${state.artifacts.runDir}/compliance-result.json\nPlan-invalidating issue (return to plan): pnpm -w exec pan advance ${state.taskId} --event compliance_fails_plan_invalidating --artifact ${state.artifacts.runDir}/compliance-result.json`;
     case "ship": {
       const shipInputs = stateIncludesStage(state, "compliance")
         ? `local diff, ${state.artifacts.runDir}/compliance-result.json, ${deliveryReportRel(state.artifacts.runDir)}`
         : `local diff, ${state.artifacts.runDir}/test-report.md, ${deliveryReportRel(state.artifacts.runDir)}`;
-      return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/ship-ratification.json (human_ratified_diff: true)\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
+      return `Inputs: ${shipInputs}\nOutput: ${state.artifacts.runDir}/ship-ratification.json (human_ratified_diff: true)\n${lintGateLine}\nAdvance only after human ratifies local diff: ${advanceLine("ship")}`;
     }
     case "index":
-      return `Inputs: delivery report and accepted ship artifacts\nOutputs: ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not .pan/archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\nDo NOT mv .pan/work/ to .pan/archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
+      return `Inputs: delivery report and accepted ship artifacts\nOutputs: ${durableFeatureIndexRel(state.featureId)}, ${pipelineCloseRel(state)}, ${operatorVerificationRel(state)}\nIndex rule: link active ${state.artifacts.runDir}/ paths (not .pan/archive/work/).\nPipeline close: summarize outcome, residual issues, and operator next steps in ${pipelineCloseRel(state)} before complete.\nOperator verification: finalize ${operatorVerificationRel(state)} with acceptance criteria and manual test flows before close-artifacts.\n${lintGateLine}\nDo NOT mv .pan/work/ to .pan/archive/work/; pnpm -w exec pan close-artifacts performs archival at complete.\nAdvance after artifacts are indexed: ${advanceLine("index")}`;
     case "complete":
       return state.status === "closed"
         ? closedContractMarkdown(state)

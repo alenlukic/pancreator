@@ -190,9 +190,41 @@ describe("RunContextHeader", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Show technical details/u }));
+    fireEvent.click(screen.getByRole("button", { name: /Show technical paths and IDs/u }));
     expect(screen.getByTestId("run-context-metadata-panel")).toHaveTextContent(
       mockRunState[0].taskId,
+    );
+  });
+
+  it("invokes run-next-command callback when the primary action is activated", () => {
+    const onRunNextCommand = vi.fn();
+    const taskWithCommand: TaskRunStateEnvelope = {
+      ...mockRunState[0],
+      stages: mockRunState[0].stages.map((stage) =>
+        stage.name === "implement"
+          ? {
+              ...stage,
+              status: "active",
+              nextCommand:
+                "pnpm -w exec pan advance 61498_0655_command-center-feature-delivery-mission-control-run-detail --artifact .pan/work/run/implementation-report.md",
+            }
+          : stage,
+      ),
+    };
+
+    render(
+      <RunContextHeader
+        task={taskWithCommand}
+        nowMs={Date.parse("2026-06-09T12:00:00.000Z")}
+        isPolling={false}
+        onOpenRunLogs={() => undefined}
+        onRunNextCommand={onRunNextCommand}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Run next command" }));
+    expect(onRunNextCommand).toHaveBeenCalledWith(
+      "pnpm -w exec pan advance 61498_0655_command-center-feature-delivery-mission-control-run-detail --artifact .pan/work/run/implementation-report.md",
     );
   });
 });
@@ -370,7 +402,9 @@ describe("MissionControlModule", () => {
     });
 
     const rail = screen.getByTestId("mission-control-stage-rail");
-    const stageNames = [...rail.querySelectorAll("h4")].map((node) => node.textContent);
+    const stageNames = [...rail.querySelectorAll(".mc-stage-strip-label")].map(
+      (node) => node.textContent,
+    );
     expect(stageNames).toEqual([...FD_STAGE_ORDER]);
   });
 
@@ -536,8 +570,15 @@ describe("MissionControlModule", () => {
     const panel = screen.getByTestId("workflow-health-panel");
     expect(within(panel).getByText("Repairs")).toBeInTheDocument();
     expect(within(panel).getByText("Auto-chain reversals")).toBeInTheDocument();
-    expect(within(panel).getByText("Missing design artifact")).toBeInTheDocument();
-    expect(panel.querySelector(".mc-pointer-archived")).toHaveTextContent("Archived");
+    expect(panel.querySelector(".mc-pointer-archived")).not.toBeVisible();
+    const pointerSummary = within(panel)
+      .getAllByText("Pointer status")
+      .find((node) => node.tagName === "SUMMARY");
+    expect(pointerSummary).toBeDefined();
+    fireEvent.click(pointerSummary!);
+    expect(panel.querySelector(".mc-pointer-archived")).toBeVisible();
+    fireEvent.click(within(panel).getByText("Companion artifact gaps"));
+    expect(within(panel).getByText("Missing design artifact")).toBeVisible();
   });
 
   it("keeps verbose log drawer closed by default", async () => {
@@ -587,9 +628,9 @@ describe("MissionControlModule", () => {
     await waitFor(() => {
       expect(screen.getByTestId("multi-run-table")).toBeInTheDocument();
       expect(screen.getByTestId("mission-control-intervention-strip")).toBeInTheDocument();
-      expect(screen.getByTestId("mc-intervention-pause")).toHaveTextContent("Pause");
-      expect(screen.getByTestId("mc-intervention-steer")).toHaveTextContent("Steer");
-      expect(screen.getByTestId("mc-intervention-abort")).toHaveTextContent("Abort");
+      expect(screen.getByTestId("mc-intervention-pause")).toHaveTextContent("Pause run");
+      expect(screen.getByTestId("mc-intervention-steer")).toHaveTextContent("Open next prompt");
+      expect(screen.getByTestId("mc-intervention-abort")).toHaveTextContent("Abort run");
     });
 
     const detailColumn = screen.getByTestId("mission-control-stage-rail").closest(".mc-run-detail-column");
@@ -609,6 +650,150 @@ describe("MissionControlModule", () => {
     await waitFor(() => {
       expect(screen.getByTestId("mission-control-toast")).toHaveTextContent(
         "Action not available yet: Retry stage",
+      );
+    });
+  });
+
+  it("renders one canonical selected-run heading without repeating the title in body surfaces", async () => {
+    mockFetch();
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-context-header")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getAllByRole("heading", {
+        level: 1,
+        name: "Command Center Feature Delivery Mission Control Run Detail",
+      }),
+    ).toHaveLength(1);
+
+    const detailColumn = screen.getByTestId("run-context-header").closest(".mc-run-detail-column") as HTMLElement;
+    expect(detailColumn).not.toBeNull();
+    expect(within(detailColumn).queryByRole("heading", { level: 2, name: /Command Center Feature Delivery Mission Control Run Detail/u })).not.toBeInTheDocument();
+  });
+
+  it("keeps workflow-health raw paths closed until disclosure and reveal", async () => {
+    const stateWithHealth = [
+      {
+        ...mockRunState[0],
+        workflowHealth: {
+          task_id: mockRunState[0].taskId,
+          feature_id: mockRunState[0].featureId ?? "feature",
+          run_dir: mockRunState[0].runDir,
+          status: "needs_attention" as const,
+          repair_count: 0,
+          auto_chain_reversal_count: 0,
+          last_oversight_check_at: "2026-06-09T12:00:00.000Z",
+          companion_artifacts: [],
+          pointers: [],
+          gate_block_reasons: [],
+          findings: [],
+          updated_at: "2026-06-09T12:00:00.000Z",
+        },
+      },
+    ];
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson(stateWithHealth), { status: 200 });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson({ designStepsDefault: false }), { status: 200 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("workflow-health-panel")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("workflow-health-paths")).not.toBeInTheDocument();
+    expect(screen.queryByText(mockRunState[0].runDir)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Reveal technical paths"));
+    fireEvent.click(screen.getByTestId("workflow-health-reveal-paths"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("workflow-health-paths")).toHaveTextContent(mockRunState[0].runDir);
+    });
+  });
+
+  it("activates non-pending stage cells from the compact strip by keyboard", async () => {
+    mockFetch();
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stage-cell-plan")).toBeInTheDocument();
+    });
+
+    const planCell = screen.getByTestId("stage-cell-plan");
+    fireEvent.keyDown(planCell.parentElement!, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stage-detail-panel")).toBeInTheDocument();
+      expect(screen.getByTestId("stage-detail-panel")).toHaveTextContent("plan");
+    });
+  });
+
+  it("shows one quiet multi-run utility and hides raw run ids from default row copy", async () => {
+    mockFetch();
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("multi-run-table")).toBeInTheDocument();
+    });
+
+    const row = screen.getByTestId(`multi-run-row-${mockRunState[0].taskId}`);
+    expect(within(row).getByTestId(`multi-run-copy-id-${mockRunState[0].taskId}`)).toHaveTextContent(
+      "Copy run id",
+    );
+    expect(within(row).queryByText(mockRunState[0].taskId)).not.toBeInTheDocument();
+    expect(
+      within(row).getAllByRole("button", { name: /copy run id/i }),
+    ).toHaveLength(1);
+  });
+
+  it("opens execute confirmation from Run next command with normalized pan args", async () => {
+    const stateWithNextCommand: TaskRunStateEnvelope[] = [
+      {
+        ...mockRunState[0],
+        stages: mockRunState[0].stages.map((stage) =>
+          stage.name === "implement"
+            ? {
+                ...stage,
+                status: "active",
+                nextCommand:
+                  "pnpm -w exec pan advance 61498_0655_command-center-feature-delivery-mission-control-run-detail --artifact .pan/work/run/implementation-report.md",
+              }
+            : stage,
+        ),
+      },
+    ];
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        return new Response(stringifyCompactJson(stateWithNextCommand), { status: 200 });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson({ designStepsDefault: false }), { status: 200 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Run next command" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run next command" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("execute-confirm-modal")).toBeInTheDocument();
+      expect(screen.getByTestId("execute-confirm-modal")).toHaveTextContent(
+        "advance 61498_0655_command-center-feature-delivery-mission-control-run-detail --artifact .pan/work/run/implementation-report.md",
       );
     });
   });

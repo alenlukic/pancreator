@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
+  findHarnessRoot,
   projectRootAbs,
   readProjectRoot,
   readProjectRootFromYaml,
@@ -51,6 +52,21 @@ test("resolveProjectPath nests .pan under project_root pancreator", () => {
   assert.equal(
     resolveProjectPath(REPO_ROOT, ".pan", "work"),
     path.join(REPO_ROOT, "pancreator", ".pan", "work"),
+  );
+});
+
+test("findHarnessRoot returns outermost config owner for nested self-host layout", async () => {
+  const harness = await mkdtemp(path.join(os.tmpdir(), "harness-nested-"));
+  await mkdir(path.join(harness, "pancreator"), { recursive: true });
+  await writeFile(
+    path.join(harness, "pancreator", "pancreator.yaml"),
+    'project_root: "pancreator"\nrisk_tier: medium\n',
+    "utf8",
+  );
+  assert.equal(findHarnessRoot(path.join(harness, "pancreator", "client")), harness);
+  assert.equal(
+    resolveProjectPath(findHarnessRoot(path.join(harness, "pancreator")), "lib", "personas", "coder.md"),
+    path.join(harness, "pancreator", "lib", "personas", "coder.md"),
   );
 });
 

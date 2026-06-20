@@ -70,6 +70,30 @@ export function resolveProjectPath(harnessRoot: string, ...segments: string[]): 
   return path.join(projectRootAbs(harnessRoot), ...segments);
 }
 
+/**
+ * Walks upward from `startDir` and returns the outermost directory whose tree
+ * contains a live `pancreator.yaml`. Scheduler and core path helpers expect this
+ * harness root, not the directory that directly contains the config file.
+ */
+export function findHarnessRoot(startDir: string): string {
+  let dir = path.resolve(startDir);
+  let harnessRoot: string | undefined;
+  while (true) {
+    if (resolvePancreatorYamlPath(dir) !== undefined) {
+      harnessRoot = dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  if (harnessRoot === undefined) {
+    throw new Error("Harness root not found");
+  }
+  return harnessRoot;
+}
+
 /** Resolves a project-relative posix path stored in ledgers and artifacts. */
 export function resolveRepoPath(harnessRoot: string, relPosix: string): string {
   const norm = relPosix.replace(/\\/gu, "/").replace(/^\/+/u, "");

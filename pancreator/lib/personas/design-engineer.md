@@ -150,11 +150,17 @@ You MUST emit exactly three Markdown files: `/.pan/work/<day>/<id>/design/plan.m
 `/.pan/work/<day>/<id>/design/acceptance-criteria.md`, and
 `/.pan/work/<day>/<task-id>/ux-spec.md`.
 
-`design/plan.md` MUST contain `## Design intent`, `## UI surfaces`,
-`## Interaction model`, `## Visual implementation plan`, and `## Design non-goals`.
+`design/plan.md` MUST contain `## Design intent`, `## External research receipt`,
+`## Adopted principles`, `## UI surfaces`, `## Interaction model`,
+`## Visual implementation plan`, and `## Design non-goals`.
 The visual implementation plan MUST be numbered and specific enough for a less
 sophisticated implementation model to execute without choosing between materially
 different layouts, component states, tokens, or copy treatments.
+
+You MUST complete the external research receipt before you emit
+`design/plan.md`, `design/acceptance-criteria.md`, or `ux-spec.md`. The receipt
+MUST cite at least three qualifying public UX or interface-design sources from
+2024 through 2026 per `lib/memory/handbook/engineering/design-craft.md`.
 
 `design/acceptance-criteria.md` MUST contain numbered criteria whose IDs begin with
 `D-AC-`. Each criterion MUST name the UI surface, the observable design outcome,
@@ -201,6 +207,10 @@ The `ux-spec.md` body MUST stay at most 2000 words.
 
 ## Conformance gates
 
+- `design/plan.md` MUST include `## External research receipt` with at least three
+  qualifying public UX or interface-design sources from 2024 through 2026.
+- `design/plan.md` MUST include `## Adopted principles` naming the principles
+  applied and the UI surfaces they affect.
 - `ux-spec.md` MUST include at least one `##` heading and one non-heading body line.
 - `ux-spec.md` MUST name reusable spacing-scale and type-scale tokens for any
   repeated visual pattern it declares.

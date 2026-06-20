@@ -5,16 +5,16 @@ import {
   type TickExecutors,
 } from "@pancreator/scheduler";
 
-import { findRepoRoot } from "@/services/repo-paths";
+import { findHarnessRoot } from "@/services/repo-paths";
 
 export type { RunRecord } from "@pancreator/scheduler";
 
 export async function triggerManualAutomationRun(automationId: string): Promise<{
   outcomes: { automationId: string; runId: string; status: string }[];
 }> {
-  const repoRoot = findRepoRoot();
-  const executors = await createSchedulerTickExecutors(repoRoot);
-  const outcomes = await tickAutomations(repoRoot, {
+  const harnessRoot = findHarnessRoot();
+  const executors = await createSchedulerTickExecutors(harnessRoot);
+  const outcomes = await tickAutomations(harnessRoot, {
     automationId,
     manual: true,
     executors,

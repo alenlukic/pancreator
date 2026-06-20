@@ -3,7 +3,7 @@ import {
   InvalidAutomationIdError,
 } from "@pancreator/scheduler";
 import { getAutomation } from "@pancreator/scheduler";
-import { findRepoRoot } from "@/services/repo-paths";
+import { findHarnessRoot } from "@/services/repo-paths";
 import { loadAutomationRunHistory } from "@/services/scheduler-runs-read";
 
 function validationResponse(error: unknown): Response {
@@ -27,7 +27,7 @@ export async function GET(
   }
 
   try {
-    await getAutomation(findRepoRoot(), automationId);
+    await getAutomation(findHarnessRoot(), automationId);
     const runs = await loadAutomationRunHistory(automationId);
     return Response.json({ runs });
   } catch (error) {

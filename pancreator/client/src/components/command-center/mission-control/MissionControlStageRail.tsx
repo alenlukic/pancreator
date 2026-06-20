@@ -1,6 +1,9 @@
 import type { KeyboardEvent } from "react";
-import type { StageCell, TaskRunStateEnvelope } from "@/services/run-state-shared";
-import { StageCellCard } from "./StageMachineGrid";
+import {
+  countStageRetryTransitions,
+  type StageCell,
+  type TaskRunStateEnvelope,
+} from "@/services/run-state-shared";
 
 const FD_STAGE_ORDER = [
   "intake",
@@ -14,10 +17,27 @@ const FD_STAGE_ORDER = [
   "index",
 ] as const;
 
+function stageTestId(stageName: string): string {
+  return `stage-cell-${stageName.toLowerCase().replace(/_/g, "-")}`;
+}
+
+function stageStripStatusClass(status: StageCell["status"]): string {
+  switch (status) {
+    case "active":
+      return "mc-stage-strip-active";
+    case "failed":
+      return "mc-stage-strip-failed";
+    case "complete":
+      return "mc-stage-strip-complete";
+    default:
+      return "mc-stage-strip-pending";
+  }
+}
+
 export function MissionControlStageRail({
   task,
   selectedStageName,
-  nowMs,
+  nowMs: _nowMs,
   onSelectStage,
 }: {
   task: TaskRunStateEnvelope;
@@ -39,36 +59,69 @@ export function MissionControlStageRail({
 
   return (
     <nav
-      className="mc-stage-rail"
+      className="mc-stage-rail mc-stage-strip"
       role="navigation"
       aria-label="Feature delivery stages"
       data-testid="mission-control-stage-rail"
     >
-      <div className="mc-stage-rail-track">
+      <div className="mc-stage-rail-track mc-stage-strip-track">
         {FD_STAGE_ORDER.map((stageName) => {
           const stage = stageByName.get(stageName);
           if (stage === undefined) {
             return null;
           }
           const isSelected = selectedStageName === stage.name;
+          const isPending = stage.status === "pending";
+          const retryCount = countStageRetryTransitions(task.runEvents, stage.name);
+          const cellClasses = [
+            "mc-stage-strip-cell",
+            stageStripStatusClass(stage.status),
+            isSelected ? "mc-stage-strip-selected" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          const retryBadge =
+            retryCount > 0 ? (
+              <span
+                className="mc-stage-strip-retry"
+                data-testid={`retry-badge-${stage.name}`}
+                aria-label={`${retryCount} retries`}
+              >
+                {retryCount}
+              </span>
+            ) : null;
+
+          if (isPending) {
+            return (
+              <span
+                key={stage.name}
+                className={cellClasses}
+                data-testid={stageTestId(stage.name)}
+                aria-label={`${stage.name} stage, pending`}
+              >
+                <span className="mc-stage-strip-label">{stage.name}</span>
+                {retryBadge}
+              </span>
+            );
+          }
+
           return (
             <div
               key={stage.name}
-              className="mc-stage-rail-cell-wrap"
+              className="mc-stage-strip-cell-wrap"
               onKeyDown={(event) => handleKeyDown(event, stage)}
             >
-              <StageCellCard
-                stage={stage}
-                runEvents={task.runEvents}
-                nowMs={nowMs}
-                isSelected={isSelected}
-                showMissionControlChrome
-                onActivate={() => {
-                  if (stage.status !== "pending") {
-                    onSelectStage(stage);
-                  }
-                }}
-              />
+              <button
+                type="button"
+                className={`${cellClasses} mc-stage-strip-interactive`}
+                data-testid={stageTestId(stage.name)}
+                aria-label={`${stage.name} stage, ${stage.status}`}
+                aria-pressed={isSelected}
+                onClick={() => onSelectStage(stage)}
+              >
+                <span className="mc-stage-strip-label">{stage.name}</span>
+                {retryBadge}
+              </button>
             </div>
           );
         })}

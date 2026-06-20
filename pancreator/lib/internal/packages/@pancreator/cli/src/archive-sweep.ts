@@ -173,6 +173,7 @@ async function archiveAbortedFeatureDeliveryRun(
   repoRoot: string,
   state: FeatureDeliveryState,
   now: Date,
+  protectedInboxPaths: ReadonlySet<string>,
 ): Promise<string> {
   const runDirRel = normalizeRel(state.artifacts.runDir);
   const parts = runDirRel.split("/");
@@ -192,7 +193,11 @@ async function archiveAbortedFeatureDeliveryRun(
   }
 
   const inboxSourceRel = normalizeRel(state.source.inboxPath);
-  if (inboxSourceRel.startsWith(INBOX_IN_PREFIX) && existsSync(resolveRepoPath(repoRoot, inboxSourceRel))) {
+  if (
+    inboxSourceRel.startsWith(INBOX_IN_PREFIX) &&
+    !protectedInboxPaths.has(inboxSourceRel) &&
+    existsSync(resolveRepoPath(repoRoot, inboxSourceRel))
+  ) {
     const inboxArchiveRel = archiveInboxPathForSource(inboxSourceRel, dayDir);
     await movePath(repoRoot, inboxSourceRel, inboxArchiveRel);
     await pruneEmptyQueueParents(repoRoot, path.posix.dirname(inboxSourceRel), "lib/inbox/in");
@@ -441,7 +446,12 @@ export async function runArchiveSweep(
       if (state === null) {
         throw new Error("Missing state.json for aborted run");
       }
-      const archiveRunRel = await archiveAbortedFeatureDeliveryRun(repoRoot, state, now);
+      const archiveRunRel = await archiveAbortedFeatureDeliveryRun(
+        repoRoot,
+        state,
+        now,
+        activeInboxPaths,
+      );
       closed.push(run.taskId);
       archived.push(archiveRunRel);
       const epArchived = await archiveExperiencePlanningForClosedFeatureDelivery(

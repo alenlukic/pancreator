@@ -3118,7 +3118,7 @@ stages:
       expect(repaired.nextHumanAction).toContain("SDK");
     });
 
-    it("sdk auto-chains review must_fix back to implement", async () => {
+    it("sdk loops must_fix cycles until retry-limit halt", async () => {
       const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-auto-must-fix-"));
       await seedFeatureDeliveryRepo(root);
       await seedCanonicalPersonas(root);
@@ -3150,13 +3150,14 @@ stages:
           testHooks: { sdkTransport: transport },
         },
       );
-      expect(advanceCode).toBe(0);
-      const result = JSON.parse(advanceOut.join("")) as { currentStage: string };
-      expect(result.currentStage).toBe("implement");
+      expect(advanceCode).toBe(1);
+      expect(advanceOut.join("")).toContain("retry limit halt");
       const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        status: string;
         currentStage: string;
       };
-      expect(state.currentStage).toBe("implement");
+      expect(state.status).toBe("halted");
+      expect(state.currentStage).toBe("review");
     });
 
     it("halts sdk automation when retry budget is exceeded via advance", async () => {
@@ -3198,7 +3199,7 @@ stages:
       expect(halted.automation?.cumulativeRetryCount).toBe(6);
     });
 
-    it("halts sdk automation when stage auto-chain stalls repeatedly", async () => {
+    it("fails fast on lint-gate errors instead of burny stall retries", async () => {
       const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-stall-halt-"));
       await seedFeatureDeliveryRepo(root);
       await seedCanonicalPersonas(root);
@@ -3262,14 +3263,7 @@ stages:
         },
       );
       expect(repairCode).toBe(1);
-      expect(repairOut.join("")).toContain("retry limit halt");
-
-      const halted = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
-        status: string;
-        automation?: { cumulativeRetryCount: number };
-      };
-      expect(halted.status).toBe("halted");
-      expect(halted.automation?.cumulativeRetryCount).toBe(6);
+      expect(repairOut.join("")).toContain("failed artifact lint gate");
     });
 
   });

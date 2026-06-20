@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveRepoPath } from "@/services/repo-paths";
+import { findHarnessRoot, resolveRepoPath } from "@/services/repo-paths";
 
 describe("resolveRepoPath", () => {
   let tempRoot = "";
@@ -32,5 +32,21 @@ describe("resolveRepoPath", () => {
     tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-paths-"));
     fs.writeFileSync(path.join(tempRoot, "pancreator.yaml"), "phase: test\n");
     expect(() => resolveRepoPath("", tempRoot)).toThrow("Path is required");
+  });
+
+  it("findHarnessRoot resolves nested self-host layout to outer harness", () => {
+    tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pancreator-harness-"));
+    const projectDir = path.join(tempRoot, "pancreator");
+    fs.mkdirSync(projectDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectDir, "pancreator.yaml"),
+      'project_root: "pancreator"\n',
+      "utf8",
+    );
+    fs.mkdirSync(path.join(projectDir, "lib", "personas"), { recursive: true });
+    fs.writeFileSync(path.join(projectDir, "lib", "personas", "coder.md"), "---\nname: coder\n---\n");
+
+    expect(findHarnessRoot(projectDir)).toBe(tempRoot);
+    expect(findHarnessRoot(path.join(projectDir, "client"))).toBe(tempRoot);
   });
 });

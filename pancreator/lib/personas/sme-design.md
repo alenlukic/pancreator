@@ -137,6 +137,12 @@ these five sections:
 5. **Motion.** Timing, easing, and amplitude intent within design-craft motion
    limits, honoring `prefers-reduced-motion`.
 
+When your recommendations can influence feature-delivery design artifacts, you
+MUST complete an external research receipt before emitting
+`design-recommendations.md`. The receipt MUST cite at least three qualifying
+public UX or interface-design sources from 2024 through 2026 and MUST name the
+adopted principles that shaped the recommendations.
+
 When a recommendation concerns control-surface behavior, you SHALL cite the
 numbered obligation from
 `/lib/memory/handbook/engineering/design/control-surface-ux.md` it satisfies.
@@ -169,6 +175,10 @@ per `/lib/memory/handbook/operator-output-contract.md`, with explicit **What** /
 
 ## Conformance gates
 
+- When recommendations can influence feature-delivery design artifacts,
+  `design-recommendations.md` MUST include an external research receipt with at
+  least three qualifying public UX or interface-design sources from 2024 through
+  2026 and MUST name the adopted principles applied.
 - `design-recommendations.md` MUST contain all five required sections, each with
   at least one non-heading body line.
 - Every layout, color, type, radius, or motion value MUST resolve to a named

@@ -1,3 +1,4 @@
+import { findHarnessRoot as resolveHarnessRoot } from "@pancreator/core";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -13,6 +14,25 @@ export class PathAccessError extends Error {
 
 const NOTES_PREFIX = "lib/inbox/notes";
 
+/** Outermost harness root for `@pancreator/core` and scheduler path resolution. */
+export function findHarnessRoot(startDir: string = process.cwd()): string {
+  const candidates = [startDir];
+  if (path.basename(startDir) === "client") {
+    candidates.push(path.dirname(startDir));
+  }
+
+  for (const candidate of candidates) {
+    try {
+      return resolveHarnessRoot(candidate);
+    } catch {
+      // try next candidate
+    }
+  }
+
+  throw new Error("Harness root not found");
+}
+
+/** Directory containing live `pancreator.yaml` for direct project file access. */
 export function findRepoRoot(startDir: string = process.cwd()): string {
   const candidates = [startDir];
   if (path.basename(startDir) === "client") {

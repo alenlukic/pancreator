@@ -74,11 +74,15 @@ export function WorkflowHealthPanel({
 
   if (loadError !== undefined) {
     return (
-      <section className="mc-workflow-health" data-testid="workflow-health-panel">
-        <h2>Workflow health</h2>
+      <section className="mc-workflow-health mc-workflow-health-support" data-testid="workflow-health-panel">
+        <h2 className="mc-workflow-health-title">Workflow health</h2>
         <p className="mc-workflow-health-degraded">{loadError}</p>
-        <button type="button" className="mc-workflow-health-primary" onClick={onOpenMissionControl}>
-          Retry loading run state
+        <button
+          type="button"
+          className="mc-workflow-health-quiet"
+          onClick={onOpenMissionControl}
+        >
+          Open workflow health
         </button>
       </section>
     );
@@ -86,22 +90,26 @@ export function WorkflowHealthPanel({
 
   if (health === undefined) {
     return (
-      <section className="mc-workflow-health" data-testid="workflow-health-panel">
-        <h2>Workflow health</h2>
+      <section className="mc-workflow-health mc-workflow-health-support" data-testid="workflow-health-panel">
+        <h2 className="mc-workflow-health-title">Workflow health</h2>
         <p className="mc-workflow-health-empty">
           No workflow-health summary yet for {featureDisplayLabel(task)}.
         </p>
-        <button type="button" className="mc-workflow-health-primary" onClick={onOpenMissionControl}>
-          Refresh run state
+        <button
+          type="button"
+          className="mc-workflow-health-quiet"
+          onClick={onOpenMissionControl}
+        >
+          Open workflow health
         </button>
       </section>
     );
   }
 
   return (
-    <section className="mc-workflow-health" data-testid="workflow-health-panel">
+    <section className="mc-workflow-health mc-workflow-health-support" data-testid="workflow-health-panel">
       <div className="mc-workflow-health-header">
-        <h2>Workflow health</h2>
+        <h2 className="mc-workflow-health-title">Workflow health</h2>
         <span className={`mc-workflow-health-status mc-workflow-health-${health.status}`}>
           {health.status.replace(/_/gu, " ")}
         </span>
@@ -141,20 +149,20 @@ export function WorkflowHealthPanel({
       </dl>
 
       {health.gate_block_reasons !== undefined && health.gate_block_reasons.length > 0 ? (
-        <div className="mc-workflow-health-blockers">
-          <h3>Gate blocks</h3>
-          <ul>
+        <details className="mc-workflow-health-details">
+          <summary>Gate blocks</summary>
+          <ul className="mc-workflow-health-blockers-list">
             {health.gate_block_reasons.map((reason) => (
               <li key={reason}>{reason}</li>
             ))}
           </ul>
-        </div>
+        </details>
       ) : null}
 
       {companions.some((item) => !item.present || item.blockingReason !== undefined) ? (
-        <div className="mc-workflow-health-companions">
-          <h3>Companion artifacts</h3>
-          <ul>
+        <details className="mc-workflow-health-details">
+          <summary>Companion artifact gaps</summary>
+          <ul className="mc-workflow-health-companions-list">
             {companions
               .filter((item) => !item.present || item.blockingReason !== undefined)
               .map((item) => (
@@ -164,13 +172,13 @@ export function WorkflowHealthPanel({
                 </li>
               ))}
           </ul>
-        </div>
+        </details>
       ) : null}
 
       {pointers.length > 0 ? (
-        <div className="mc-workflow-health-pointers">
-          <h3>Pointer status</h3>
-          <ul>
+        <details className="mc-workflow-health-details">
+          <summary>Pointer status</summary>
+          <ul className="mc-workflow-health-pointers-list">
             {pointers.map((pointer) => (
               <li key={`${pointer.label}:${pointer.referencedPath}`}>
                 <span className={pointerChipClass(pointer.status)}>{pointer.status}</span>
@@ -189,18 +197,23 @@ export function WorkflowHealthPanel({
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       ) : null}
 
       <details className="mc-workflow-health-disclosure">
-        <summary>Show technical paths</summary>
+        <summary>Reveal technical paths</summary>
         {showPaths ? null : (
-          <button type="button" className="mc-workflow-health-secondary" onClick={() => setShowPaths(true)}>
-            Reveal paths for copy
+          <button
+            type="button"
+            className="mc-workflow-health-secondary"
+            data-testid="workflow-health-reveal-paths"
+            onClick={() => setShowPaths(true)}
+          >
+            Copy or reveal technical paths
           </button>
         )}
         {showPaths ? (
-          <div className="mc-workflow-health-paths">
+          <div className="mc-workflow-health-paths" data-testid="workflow-health-paths">
             <p>{health.run_dir}</p>
             {pointers.map((pointer) => (
               <p key={pointer.referencedPath}>{pointer.referencedPath}</p>
@@ -209,8 +222,13 @@ export function WorkflowHealthPanel({
         ) : null}
       </details>
 
-      <button type="button" className="mc-workflow-health-primary" onClick={onOpenMissionControl}>
-        Open remediation steps
+      <button
+        type="button"
+        className="mc-workflow-health-quiet"
+        data-testid="workflow-health-open"
+        onClick={onOpenMissionControl}
+      >
+        Open workflow health
       </button>
     </section>
   );

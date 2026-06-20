@@ -158,6 +158,53 @@ function passEventForStage(stageId: string): string | null {
   }
 }
 
+function isContractKeyLike(value: string): boolean {
+  return /^(DOC|PIPE|PERSONA)\./u.test(value);
+}
+
+function uniqueContractDocs(values: Iterable<string>): string[] {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (!isContractKeyLike(value) || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    ordered.push(value);
+  }
+  return ordered;
+}
+
+function personaRequiredDocs(persona: RunnerPersonaInput): string[] {
+  const metadata = persona.metadata;
+  if (metadata === null || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return [];
+  }
+  const record = metadata as Record<string, unknown>;
+  const raw = record["pancreator-required-docs"];
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.filter((value): value is string => typeof value === "string" && isContractKeyLike(value));
+}
+
+function stageCompanionPersonaIdsForRequiredDocReceipt(input: {
+  stageId: string;
+  options?: FeatureDeliveryDesignOptions;
+}): string[] {
+  if (input.stageId === "plan") {
+    const ids: string[] = [PRODUCT_ENGINEER_PERSONA];
+    if (designStepsEnabled(input.options)) {
+      ids.push(DESIGN_ENGINEER_PERSONA);
+    }
+    return ids;
+  }
+  if (input.stageId === "test" && designStepsEnabled(input.options)) {
+    return [DESIGN_REVIEWER_PERSONA];
+  }
+  return [];
+}
+
 function hasPassPathBlockingWarnings(
   stageId: string,
   event: string,
@@ -183,6 +230,58 @@ function hasBlockingWarnings(stageId: string, warnings: readonly ArtifactContent
     return false;
   }
   return warnings.some((warning) => blockingCodes.has(warning.code));
+}
+
+function artifactsLintCommand(taskId: string, stageId: string): string {
+  return `pnpm -w exec pan artifacts lint ${taskId} --stage ${stageId}`;
+}
+
+async function writeArtifactsLintGateRecord(input: {
+  repoRoot: string;
+  state: FeatureDeliveryRunnerLedger;
+  stageId: string;
+  validation: ReturnType<typeof validateStageCompletionArtifacts>;
+  now: Date;
+}): Promise<void> {
+  const warnings = input.validation.warnings;
+  const lintClean = input.validation.ok && input.validation.warningCount === 0;
+  await appendRunLogRecord(resolveRepoPath(input.repoRoot, input.state.artifacts.runLogFile), {
+    ts: rfc3339UtcMs(input.now),
+    trace_id: newTraceId(),
+    span_id: newSpanId(),
+    name: "pancreator.pipeline.artifacts.lint",
+    kind: "event",
+    status: {
+      code: lintClean ? "OK" : "ERROR",
+      ...(lintClean
+        ? {}
+        : {
+            message: `artifacts lint failed for stage ${input.stageId} (warning_count=${input.validation.warningCount})`,
+          }),
+    },
+    attributes: {
+      "openinference.span.kind": "CHAIN",
+      "gen_ai.operation.name": "pancreator.pipeline.artifacts.lint",
+      "gen_ai.provider.name": "local-cli",
+      "gen_ai.request.model": "none",
+      "pancreator.feature_id": input.state.featureId,
+      "pancreator.state_file": input.state.artifacts.stateFile,
+      "pancreator.artifacts_lint.command": artifactsLintCommand(input.state.taskId, input.stageId),
+      "pancreator.artifacts_lint.stage": input.stageId,
+      "pancreator.artifacts_lint.warning_count": input.validation.warningCount,
+      "pancreator.artifacts_lint.missing_count": input.validation.missing.length,
+      "pancreator.artifacts_lint.warning_codes": warnings.map((warning) => warning.code),
+    },
+    resource: { "service.name": "pancreator", "service.version": "0.0.0" },
+    pancreator: {
+      task_id: asTaskId(input.state.taskId),
+      pipeline: input.state.pipelineId,
+      stage_id: input.stageId,
+      outcome: lintClean ? "success" : "failure",
+      checkpoint_seq: input.state.advanceHistory?.length ?? 0,
+      token_usage_unavailable: true,
+    },
+  });
 }
 
 /** Minimal ledger slice shared by runner orchestration without importing feature-delivery-run. */
@@ -341,6 +440,8 @@ async function writeStageRequiredDocReceipt(input: {
   state: FeatureDeliveryRunnerLedger;
   stageId: string;
   stage: PipelineDefinition["stages"][number];
+  stagePersona: RunnerPersonaInput;
+  companionPersonaIds: readonly string[];
   now: Date;
 }): Promise<void> {
   const fallbackRequiredDocs = [
@@ -362,10 +463,23 @@ async function writeStageRequiredDocReceipt(input: {
   const requiredDocsFromContract = Array.isArray(requiredDocsRaw)
     ? requiredDocsRaw.filter((value): value is string => typeof value === "string")
     : [];
-  const requiredDocs =
-    requiredDocsFromContract.length > 0
-      ? requiredDocsFromContract
-      : fallbackRequiredDocs;
+  const requiredDocsFromPersonas = [...personaRequiredDocs(input.stagePersona)];
+  for (const personaId of input.companionPersonaIds) {
+    try {
+      const companionPersona = await resolvePersona(input.repoRoot, personaId);
+      requiredDocsFromPersonas.push(...personaRequiredDocs(companionPersona));
+    } catch (error) {
+      if (error instanceof PersonaResolveError) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  const requiredDocs = uniqueContractDocs([
+    ...requiredDocsFromContract,
+    ...requiredDocsFromPersonas,
+  ]);
+  const receiptDocs = requiredDocs.length > 0 ? requiredDocs : fallbackRequiredDocs;
   const enforceManifestConsultedDocs = true;
   const rel = path.posix.join(
     input.state.artifacts.runDir,
@@ -379,9 +493,9 @@ async function writeStageRequiredDocReceipt(input: {
     task_id: input.state.taskId,
     feature_id: input.state.featureId,
     enforce_manifest_consulted_docs: enforceManifestConsultedDocs,
-    required_docs_resolved: requiredDocs,
-    required_docs_opened: requiredDocs,
-    required_docs_applied: requiredDocs,
+    required_docs_resolved: receiptDocs,
+    required_docs_opened: receiptDocs,
+    required_docs_applied: receiptDocs,
     recorded_at: rfc3339UtcMs(input.now),
   };
   let receiptJson: string;
@@ -678,11 +792,17 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   }
 
   const persona = await resolvePersona(repoRoot, stage.persona);
+  const companionPersonaIds = stageCompanionPersonaIdsForRequiredDocReceipt({
+    stageId: input.stageId,
+    options: input.state.options,
+  });
   await writeStageRequiredDocReceipt({
     repoRoot,
     state: input.state,
     stageId: input.stageId,
     stage,
+    stagePersona: persona,
+    companionPersonaIds,
     now,
   });
   const knownPersonas = await listKnownPersonaIds(repoRoot);
@@ -838,6 +958,18 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
         `Stage ${input.stageId} has blocking validation warnings: ${warningSummary}`,
       );
     }
+    await writeArtifactsLintGateRecord({
+      repoRoot,
+      state: input.state,
+      stageId: input.stageId,
+      validation,
+      now,
+    });
+    if (validation.warningCount > 0) {
+      throw new RunnerTransportError(
+        `Stage ${input.stageId} failed artifact lint gate: warning_count=${validation.warningCount}. Run ${artifactsLintCommand(input.state.taskId, input.stageId)} and resolve all warnings before handoff.`,
+      );
+    }
     return qaEnvelope;
   }
 
@@ -972,6 +1104,18 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
     const warningSummary = validation.warnings.map((warning) => `${warning.path} (${warning.code})`).join(", ");
     throw new RunnerTransportError(
       `Stage ${input.stageId} has blocking validation warnings after remediation: ${warningSummary}`,
+    );
+  }
+  await writeArtifactsLintGateRecord({
+    repoRoot,
+    state: input.state,
+    stageId: input.stageId,
+    validation,
+    now,
+  });
+  if (validation.warningCount > 0) {
+    throw new RunnerTransportError(
+      `Stage ${input.stageId} failed artifact lint gate: warning_count=${validation.warningCount}. Run ${artifactsLintCommand(input.state.taskId, input.stageId)} and resolve all warnings before handoff.`,
     );
   }
 
@@ -1463,13 +1607,6 @@ export async function trySdkAutoChainAfterStageWork(input: {
     "index",
   ] as const;
   if (agentRatifiedStages.includes(input.completedStageId as (typeof agentRatifiedStages)[number])) {
-    if (input.completedStageId === "implement") {
-      const history = input.state.advanceHistory ?? [];
-      const last = history[history.length - 1];
-      if (last?.kind === "advance" && last.event === "must_fix" && last.from === "review") {
-        return false;
-      }
-    }
     const validation = validateStageCompletionArtifacts(input.repoRoot, input.state, input.completedStageId);
     if (!validation.ok) {
       const gateBlockReasons = [
