@@ -75,7 +75,6 @@ import {
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
   readCursorInvocationForState,
-  resetStageInvocationIndex,
   resolveComplianceStageAdvanceEvent,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
@@ -1339,7 +1338,7 @@ async function ensureSdkAutoChainProgress(
     return false;
   }
 
-  let compiled = input.compiled;
+  const compiled = input.compiled;
   for (;;) {
     const chained = await trySdkAutoChainAfterStageWork({
       repoRoot: input.repoRoot,
@@ -1722,7 +1721,7 @@ export async function closeFeatureDeliveryArtifacts(
       );
     }
   }
-  let inboxSourceAbs = resolveRepoPath(repoRoot, inboxSourceRel);
+  const inboxSourceAbs = resolveRepoPath(repoRoot, inboxSourceRel);
   let inboxArchiveRel = archiveInboxPathForSource(
     inboxSourceRel,
     parseWorkRunDir(closure.runDirRel, taskId).dayDir,

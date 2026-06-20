@@ -982,7 +982,7 @@ configs:
           contract: {
             required_docs: ["DOC.AGENTS", "DOC.REGISTRY", "DOC.OUTPUT_MANIFEST"],
           },
-        },
+        } as PipelineDefinition["stages"][number],
       ],
     };
     const state = sampleLedger({
