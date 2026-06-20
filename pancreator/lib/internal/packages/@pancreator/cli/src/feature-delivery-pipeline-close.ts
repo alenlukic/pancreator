@@ -33,6 +33,25 @@ export interface PipelineCloseState {
   advanceHistory?: PipelineCloseAdvanceEntry[];
 }
 
+function closeoutOutcomeLabel(
+  pipelineStatus: string,
+  workflowStatus: "healthy" | "needs_attention" | "blocked" | "reconciled" | null,
+): string {
+  if (workflowStatus === "blocked") {
+    return "blocked";
+  }
+  if (pipelineStatus === "complete_with_attention" || workflowStatus === "needs_attention") {
+    return "attention-required completion";
+  }
+  if (workflowStatus === "reconciled") {
+    return "reconciled completion";
+  }
+  if (pipelineStatus === "complete" || workflowStatus === "healthy") {
+    return "clean completion";
+  }
+  return pipelineStatus;
+}
+
 export function pipelineCloseRel(state: Pick<PipelineCloseState, "artifacts">): string {
   return path.posix.join(state.artifacts.runDir, PIPELINE_CLOSE_FILENAME);
 }
@@ -85,6 +104,8 @@ export function renderPipelineCloseDoc(
     residual.push(item);
   }
   const workflowHealth = readWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
+  const workflowStatus = workflowHealth?.status ?? null;
+  const outcomeLabel = closeoutOutcomeLabel(state.status, workflowStatus);
   if (workflowHealth !== null && workflowHealth.status !== "healthy") {
     residual.push(
       `Workflow health is ${workflowHealth.status}; see ${workflowHealthRel(state.artifacts.runDir)}.`,
@@ -111,6 +132,7 @@ export function renderPipelineCloseDoc(
 ## Outcome
 
 Feature-delivery reached \`${state.currentStage}\` with pipeline status \`${state.status}\`.
+Outcome class: \`${outcomeLabel}\`.
 Source directive: \`${state.source.inboxPath}\`.
 
 ## Stage history

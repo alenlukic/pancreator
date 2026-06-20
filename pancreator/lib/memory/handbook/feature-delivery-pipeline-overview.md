@@ -117,7 +117,7 @@ valid and ratified, and the gate predicate is satisfied.
 
 **Transition states and criteria**
 
-- pass: `human_approval -> implement`
+- pass: `sdk_artifact_validation -> implement`
   - criteria: all required plan outputs exist and their content validators pass
 - fail/hold: `plan_remediation`
   - criteria: missing or malformed planning artifacts; runtime holds the stage
@@ -243,7 +243,9 @@ valid and ratified, and the gate predicate is satisfied.
 - every touch-set gate command is executed and recorded
 - every full-repository visibility command is recorded, even when excluded from gate
 - every manual QA case is exercised and logged
-- `design_qa_passes: true` is also required when design steps are enabled
+- `design_qa_passes: true` is required for the clean pass path when design steps
+  are enabled; the only alternate advance is an explicit non-blocking
+  `qa_design_followup` route
 - qualifying spot fixes remain narrow and in-scope
 
 **Loaded context**
@@ -271,11 +273,13 @@ valid and ratified, and the gate predicate is satisfied.
 
 **Transition states and criteria**
 
-- `qa_passes -> report`
+- `qa_passes -> bookkeeping`
   - criteria: `qa_passes: true`; if design steps are on, `design_qa_passes: true`
-- `qa_design_followup -> report`
-  - criteria: functional QA passed, design QA returned
-    `design_qa_passes: false` with `excluded_from_gate: true`
+- `qa_design_followup -> bookkeeping`
+  - criteria: non-blocking follow-up only — artifacts declare
+    `excluded_from_gate: true`, do not declare `core_reentry_required: true`,
+    do not declare `spot_fixable: true`, and do not carry failing
+    `definition_of_done` / `gate_decision` semantics
 - `qa_spot_fix -> test`
   - criteria: valid bounded spot-fix justification
 - `qa_fails -> implement`
@@ -285,162 +289,29 @@ valid and ratified, and the gate predicate is satisfied.
 - `repo_wide_blocker -> test`
   - criteria: unrelated repository blocker is recorded without advancing
 
-### `report`
+### `bookkeeping`
 
 **Expected inputs**
 
 - `.pan/work/<day>/<task-id>/implementation-report.md`
 - `.pan/work/<day>/<task-id>/review.md`
 - `.pan/work/<day>/<task-id>/test-report.md`
-- cited plan, ADR, source, and test artifacts referenced by the report template
+- `.pan/work/<day>/<task-id>/design-qa-report.md` when design steps are enabled
+- current run ledger data such as `state.json`, `run.log.jsonl`, and
+  `workflow-health.json`
+- durable feature memory pointers and artifact-index targets
 
 **Owner validation**
 
-- `delivery-report.md` contains the required six sections in order
-- claims are citation-backed
-- citation objects use canonical JSON formatting
-- summary and full-body word-count limits hold
-
-**Loaded context**
-
-- shared contract baseline
-- `DOC.OPERATOR_OUTPUT`
-- `DOC.RUN_LOG_SCHEMA`
-- `DOC.DELIVERY_REPORT_TEMPLATE`
-- `DOC.GLOSSARY`
-- `DOC.CONTRACT_STYLE`
-
-**Actions**
-
-- writes a delivery report for the feature as an operator-facing artifact
-- summarizes implementation, interfaces, tradeoffs, usage guidance, and testing
-
-**Done criteria**
-
-- `delivery-report.md` summarizes implementation, review, QA, compliance, and
+- `delivery-report.md` exists and summarizes implementation, review, QA, and
   remaining operator work
-- claims cite source artifacts
-- output manifest is present and echoed
-
-**Transition states and criteria**
-
-- `report_ready -> compliance`
-  - criteria: `delivery-report.md` exists and satisfies content plus manifest checks
-- fail/hold: `report_remediation`
-  - criteria: the report is missing or malformed; runtime holds the stage
-- `repo_wide_blocker -> report`
-  - criteria: unrelated repository blocker is recorded without advancing
-
-### `compliance`
-
-**Expected inputs**
-
-- `.pan/work/<day>/<task-id>/touch-set.json`
-- `.pan/work/<day>/<task-id>/review.md`
-- `.pan/work/<day>/<task-id>/test-report.md`
-- `.pan/work/<day>/<task-id>/delivery-report.md`
-- current diff
-- optional audit baseline or focused run-log selector
-
-**Owner validation**
-
-- final gate command results are recorded under `final_gate`
-- compliance descriptors run when `DOC.COMPLIANCE_RUNS` says the surface is in scope
-- baseline-delta drift, documentation impact, style, and active-memory drift are reviewed
-- gate recommendation follows the canonical compliance rubric
-
-**Loaded context**
-
-- shared contract baseline
-- `DOC.PIPELINE_STATE`
-- `DOC.COMPLIANCE_RUNS`
-- `DOC.RUN_LOG_SCHEMA`
-- `DOC.OPERATOR_OUTPUT`
-- `DOC.DOC_IMPACT`
-- `DOC.CONTRACT_STYLE`
-- `DOC.CONTRACT_FORMAT`
-
-**Actions**
-
-- runs the compliance-stage exit bundle
-- runs descriptor-backed compliance checks when required
-- performs judgment-based policy review
-- emits `compliance-result.json`
-- may also emit audit and remediation reports
-
-**Done criteria**
-
-- `compliance-result.json` declares `compliance_passes`
-- `final_gate` records command results
-- output manifest is present and echoed
-
-**Transition states and criteria**
-
-- `compliance_passes -> ship`
-  - criteria: `compliance_passes: true` and all final-gate commands pass
-- `compliance_spot_fix -> compliance`
-  - criteria: valid bounded spot-fix justification
-- `compliance_fails -> implement`
-  - criteria: non-plan-invalidating compliance failure
-- `compliance_fails_plan_invalidating -> plan`
-  - criteria: compliance issue invalidates the current plan
-- `repo_wide_blocker -> compliance`
-  - criteria: unrelated repository blocker is recorded without advancing
-
-### `ship`
-
-**Expected inputs**
-
-- local diff
-- `.pan/work/<day>/<task-id>/delivery-report.md`
-- `.pan/work/<day>/<task-id>/compliance-result.json` when the compliance stage is present
-
-**Owner validation**
-
-- the diff has been human-ratified before the stage advances
-- local staging happens only after ratification
-- the run log, checkpoints, and operator-visible status remain consistent
-
-**Loaded context**
-
-- shared contract baseline
-- `DOC.PIPELINE_STATE`
-- `DOC.RUN_LOG_SCHEMA`
-- `DOC.OPERATOR_OUTPUT`
-- `DOC.PANCREATOR_CONFIG`
-
-**Actions**
-
-- orchestrates the ship gate
-- prepares local ship artifacts
-- blocks for human ratification before any push or PR creation
-
-**Done criteria**
-
-- `ship-ratification.json` records `human_ratified_diff: true`
-- local diff is staged only after ratification
-
-**Transition states and criteria**
-
-- `human_ratifies_local_diff -> index`
-  - criteria: `ship-ratification.json` records `human_ratified_diff: true`
-- fail/hold: `ship_blocked`
-  - criteria: ratification is missing or withheld; runtime remains blocked at ship
-
-### `index`
-
-**Expected inputs**
-
-- delivery report and accepted ship artifacts
-- active run-directory paths under `.pan/work/<day>/<task-id>/`
-
-**Owner validation**
-
-- durable feature index JSON shape is correct
-- `artifact_index` points at acceptance-criteria sources, gate evidence, audit logs,
-  and compliance artifacts
+- durable feature `index.json` refreshes `artifact_index` pointers to acceptance
+  criteria, gate evidence, and closeout artifacts
 - `pipeline-close.md` and `operator-verification.md` exist
-- active work and inbox artifacts are ready for closure
+- workflow-health and transition-summary helper artifacts, when emitted by the
+  runner, surface remaining warnings consistently enough for operator follow-up
+- active work and source inbox artifacts are ready for
+  `pnpm -w exec pan close-artifacts <task-id>`
 
 **Loaded context**
 
@@ -449,26 +320,37 @@ valid and ratified, and the gate predicate is satisfied.
 - `DOC.MEMORY_TIERS`
 - `DOC.RUN_LOG_SCHEMA`
 - `DOC.OPERATOR_OUTPUT`
+- pipeline helper artifacts needed to synthesize closeout status and pointers
 
 **Actions**
 
+- consolidates closeout artifacts after QA passes or a valid non-blocking
+  `qa_design_followup`
 - refreshes durable feature memory
-- writes `pipeline-close.md`
-- writes or finalizes `operator-verification.md`
-- prepares the run for `pnpm -w exec pan close-artifacts <task-id>` during complete
+- writes or finalizes `delivery-report.md`, `pipeline-close.md`, and
+  `operator-verification.md`
+- prepares the run for `pnpm -w exec pan close-artifacts <task-id>` during
+  complete-stage closure
 
 **Done criteria**
 
+- `delivery-report.md` summarizes implementation, review, QA, and remaining
+  operator work
 - durable feature index is refreshed with artifact pointers
 - pipeline close and operator verification artifacts exist
-- active work is ready for closure
+- output manifests are present and echoed
 
 **Transition states and criteria**
 
-- `artifacts_indexed -> complete`
-  - criteria: index artifacts exist and validate
-- fail/hold: `index_remediation`
-  - criteria: index artifacts are missing or malformed; runtime holds the stage
+- `bookkeeping_complete -> complete`
+  - criteria: closeout artifacts exist and validate, deterministic artifact lint
+    passes, and workflow-health plus transition summaries agree on warning
+    semantics; unhealthy terminal summaries use pipeline status
+    `complete_with_attention`
+- fail/hold: `bookkeeping_remediation`
+  - criteria: closeout artifacts are missing, malformed, or internally inconsistent
+- `repo_wide_blocker -> bookkeeping`
+  - criteria: unrelated repository blocker is recorded without advancing
 
 ## Runtime state machine
 
@@ -476,48 +358,64 @@ The runner includes control and terminal states beyond the YAML's declared stage
 
 - entry state: `created`
 - control states: `paused`, `aborted`
-- terminal state: `complete`
+- terminal stage: `complete`
+- terminal pipeline statuses: `complete`, `complete_with_attention`, `closed`
 
-The runtime graph for the default bookkeeping-based pipeline is:
+The runtime graph for the default bookkeeping-based pipeline is easiest to read
+as a vertical happy path plus a compact list of off-path transitions:
 
 ```mermaid
-stateDiagram-v2
-    [*] --> plan: invoke
-    plan --> implement: sdk_artifact_validation
+flowchart TD
+    invoke([invoke])
+    plan[plan]
+    implement[implement]
+    review[review]
+    test[test]
+    bookkeeping[bookkeeping]
+    complete([complete])
 
-    implement --> paused: pause
-    paused --> implement: resume
-    implement --> aborted: abort
-    aborted --> [*]
-    implement --> review: implementation_complete
-
-    review --> test: review_passes
-    review --> implement: must_fix
-    review --> plan: review_core_reentry
-    review --> review: review_spot_fix
-    review --> review: repo_wide_blocker
-
-    test --> bookkeeping: qa_passes
-    test --> bookkeeping: qa_design_followup
-    test --> test: qa_spot_fix
-    test --> test: repo_wide_blocker
-    test --> implement: qa_fails
-    test --> plan: qa_fails_plan_invalidating
-
-    bookkeeping --> bookkeeping: repo_wide_blocker
-    bookkeeping --> complete: bookkeeping_complete
-    complete --> [*]
+    invoke --> plan
+    plan -->|sdk_artifact_validation| implement
+    implement -->|implementation_complete| review
+    review -->|review_passes| test
+    test -->|qa_passes| bookkeeping
+    test -->|qa_design_followup| bookkeeping
+    bookkeeping -->|bookkeeping_complete| complete
 ```
+
+**Off-path transitions**
+
+- `implement`
+  - `pause -> paused`
+  - `resume -> implement`
+  - `abort -> aborted`
+- `review`
+  - `must_fix -> implement`
+  - `review_core_reentry -> plan`
+  - `review_spot_fix -> review`
+  - `repo_wide_blocker -> review`
+- `test`
+  - `qa_spot_fix -> test`
+  - `repo_wide_blocker -> test`
+  - `qa_fails -> implement`
+  - `qa_fails_plan_invalidating -> plan`
+- `bookkeeping`
+  - `repo_wide_blocker -> bookkeeping`
 
 ## Implementation notes
 
-- `plan_remediation`, `implementation_remediation`, `report_remediation`,
-  `ship_blocked`, and `index_remediation` are important contract outcomes, but
-  they are not all distinct runtime graph edges. Several behave as hold-and-fix
-  gate states rather than a transition to a different stage node.
-- `next-prompt.md`, `design-qa-prompt.md`, checkpoints, and run-log updates are
-  runner-owned helper artifacts. They are part of the pipeline's operation, but
-  they are not all owner-persona-authored deliverables.
+- `plan_remediation`, `implementation_remediation`, and
+  `bookkeeping_remediation` are important contract outcomes, but they are not
+  all distinct runtime graph edges. Several behave as hold-and-fix gate states
+  rather than a transition to a different stage node.
+- `next-prompt.md`, `design-qa-prompt.md`, `workflow-health.json`,
+  `transition-summaries.jsonl`, required-doc receipt artifacts, checkpoints, and
+  run-log updates are runner-owned helper artifacts. They are part of the
+  pipeline's operation, but they are not all owner-persona-authored deliverables.
+- Current runtime nuance: a run can reach terminal stage `complete` with either
+  pipeline status `complete` (clean) or `complete_with_attention` (warnings
+  remain). Inspect `workflow-health.json` and `transition-summaries.jsonl`
+  before closure whenever attention is required.
 - In SDK mode, the runner may auto-chain pass events and some remediation events
   after it validates the current stage artifacts. Retry-budget enforcement can
   halt repeated remediation loops.

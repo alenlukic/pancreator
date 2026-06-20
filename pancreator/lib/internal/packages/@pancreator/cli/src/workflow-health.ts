@@ -54,6 +54,8 @@ export interface WorkflowHealthSummary {
   feature_id: string;
   run_dir: string;
   status: WorkflowHealthStatus;
+  artifact_lint_status: "pass" | "fail";
+  artifact_lint_warning_count: number;
   repair_count: number;
   auto_chain_reversal_count: number;
   last_oversight_check_at?: string;
@@ -351,6 +353,10 @@ export function buildWorkflowHealthSummary(
   }
 
   const companions = companionArtifactStatuses(input.repoRoot, input.state, stageId);
+  const artifactLintWarningCount = companions.filter(
+    (companion) => !companion.present || companion.blockingReason !== undefined,
+  ).length;
+  const artifactLintStatus = artifactLintWarningCount === 0 ? "pass" : "fail";
   for (const companion of companions) {
     if (companion.present && companion.blockingReason === undefined) {
       continue;
@@ -395,6 +401,8 @@ export function buildWorkflowHealthSummary(
     feature_id: input.state.featureId,
     run_dir: runDir,
     status,
+    artifact_lint_status: artifactLintStatus,
+    artifact_lint_warning_count: artifactLintWarningCount,
     repair_count: repairCount,
     auto_chain_reversal_count: autoChainReversalCount,
     ...(oversightCheckAt !== undefined

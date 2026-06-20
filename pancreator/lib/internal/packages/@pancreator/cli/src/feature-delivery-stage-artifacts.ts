@@ -30,6 +30,7 @@ import {
   validateImplementationReport,
   validatePlanMarkdown,
   validateReviewMarkdownForAdvance,
+  validateQaDesignFollowupPair,
   validateTestReportForAdvance,
   validateTouchSetJson,
 } from "./feature-delivery-gate-validation.js";
@@ -371,7 +372,29 @@ function stageIdForArtifactBase(base: string): string | null {
   }
 }
 
-function readRequiredDocReceipt(repoRoot: string, rel: string): Set<string> | null {
+interface RequiredDocReceipt {
+  enforceManifestConsultedDocs: boolean;
+  resolvedDocs: Set<string>;
+  openedDocs: Set<string>;
+  appliedDocs: Set<string>;
+  parseError?: string;
+}
+
+function parseRequiredDocList(
+  value: unknown,
+): Set<string> | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  return new Set(
+    value.filter((item): item is string => typeof item === "string"),
+  );
+}
+
+function readRequiredDocReceipt(
+  repoRoot: string,
+  rel: string,
+): RequiredDocReceipt | null {
   const base = path.posix.basename(rel);
   const stageId = stageIdForArtifactBase(base);
   if (stageId === null) {
@@ -385,18 +408,35 @@ function readRequiredDocReceipt(repoRoot: string, rel: string): Set<string> | nu
   }
   try {
     const parsed = JSON.parse(receiptRaw) as Record<string, unknown>;
-    if (parsed.enforce_manifest_consulted_docs !== true) {
-      return null;
+    const resolvedDocs = parseRequiredDocList(parsed.required_docs_resolved);
+    const openedDocs = parseRequiredDocList(parsed.required_docs_opened);
+    const appliedDocs = parseRequiredDocList(parsed.required_docs_applied);
+    if (resolvedDocs === null || openedDocs === null || appliedDocs === null) {
+      return {
+        enforceManifestConsultedDocs:
+          parsed.enforce_manifest_consulted_docs === true,
+        resolvedDocs: resolvedDocs ?? new Set(),
+        openedDocs: openedDocs ?? new Set(),
+        appliedDocs: appliedDocs ?? new Set(),
+        parseError:
+          "required-doc receipt must include array fields required_docs_resolved, required_docs_opened, and required_docs_applied.",
+      };
     }
-    const appliedRaw = parsed.required_docs_applied;
-    if (!Array.isArray(appliedRaw)) {
-      return null;
-    }
-    return new Set(
-      appliedRaw.filter((value): value is string => typeof value === "string"),
-    );
+    return {
+      enforceManifestConsultedDocs:
+        parsed.enforce_manifest_consulted_docs === true,
+      resolvedDocs,
+      openedDocs,
+      appliedDocs,
+    };
   } catch {
-    return null;
+    return {
+      enforceManifestConsultedDocs: false,
+      resolvedDocs: new Set(),
+      openedDocs: new Set(),
+      appliedDocs: new Set(),
+      parseError: "required-doc receipt must parse as JSON.",
+    };
   }
 }
 
@@ -405,19 +445,85 @@ function validateRequiredDocReceiptForConsultedDocs(input: {
   rel: string;
   consultedDocs: string[];
 }): ArtifactContentWarning | null {
-  const appliedDocs = readRequiredDocReceipt(input.repoRoot, input.rel);
-  if (appliedDocs === null) {
+  const receipt = readRequiredDocReceipt(input.repoRoot, input.rel);
+  if (receipt === null) {
     return null;
+  }
+  if (receipt.parseError !== undefined) {
+    return {
+      path: input.rel,
+      code: "required_doc_receipt_invalid",
+      message: `${path.posix.basename(input.rel)} ${receipt.parseError}`,
+    };
+  }
+  if (!receipt.enforceManifestConsultedDocs) {
+    return {
+      path: input.rel,
+      code: "required_doc_receipt_unenforced",
+      message: `${path.posix.basename(input.rel)} required-doc receipt must set enforce_manifest_consulted_docs: true.`,
+    };
+  }
+  if (
+    receipt.resolvedDocs.size === 0 ||
+    receipt.openedDocs.size === 0 ||
+    receipt.appliedDocs.size === 0
+  ) {
+    return {
+      path: input.rel,
+      code: "required_doc_receipt_empty",
+      message: `${path.posix.basename(input.rel)} required-doc receipt must include non-empty required_docs_resolved/opened/applied evidence.`,
+    };
   }
   for (const consulted of input.consultedDocs) {
     if (!consulted.startsWith("DOC.")) {
       continue;
     }
-    if (!appliedDocs.has(consulted)) {
+    if (
+      !receipt.resolvedDocs.has(consulted) ||
+      !receipt.openedDocs.has(consulted) ||
+      !receipt.appliedDocs.has(consulted)
+    ) {
       return {
         path: input.rel,
         code: "required_doc_receipt_mismatch",
-        message: `${path.posix.basename(input.rel)} consulted_docs claims ${consulted}, but required-doc receipt evidence does not include it.`,
+        message: `${path.posix.basename(input.rel)} consulted_docs claims ${consulted}, but required-doc receipt evidence does not include it across resolved/opened/applied.`,
+      };
+    }
+  }
+  return null;
+}
+
+function parseProducedArtifactsFromManifest(raw: string | null): string[] {
+  return parseManifestList(raw).map((entry) =>
+    entry.replace(/\\/gu, "/").replace(/^\/+/u, "").trim(),
+  );
+}
+
+function validateProducedArtifactsForManifest(input: {
+  repoRoot: string;
+  rel: string;
+  producedArtifacts: string[];
+}): ArtifactContentWarning | null {
+  if (input.producedArtifacts.length === 0) {
+    return null;
+  }
+  const relNorm = input.rel.replace(/\\/gu, "/").replace(/^\/+/u, "");
+  if (!input.producedArtifacts.includes(relNorm)) {
+    return {
+      path: input.rel,
+      code: "produced_artifact_mismatch",
+      message: `${path.posix.basename(input.rel)} output manifest produced_artifacts must include ${relNorm}.`,
+    };
+  }
+  for (const produced of input.producedArtifacts) {
+    if (produced.length === 0) {
+      continue;
+    }
+    if (!existsSync(resolveRepoPath(input.repoRoot, produced))) {
+      return {
+        path: input.rel,
+        code: "produced_artifact_missing",
+        message: `${path.posix.basename(input.rel)} output manifest references missing produced artifact ${produced}.`,
       };
     }
   }
@@ -1047,6 +1153,16 @@ function validateArtifactContent(
     if (manifestWarning !== null) {
       return manifestWarning;
     }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
     return validateRequiredDocReceiptForConsultedDocs({
       repoRoot,
       rel,
@@ -1064,6 +1180,16 @@ function validateArtifactContent(
       validateMarkdownOutputManifest(rel, base, content)
     if (manifestWarning !== null) {
       return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
     }
     return validateRequiredDocReceiptForConsultedDocs({
       repoRoot,
@@ -1091,6 +1217,16 @@ function validateArtifactContent(
       validateMarkdownOutputManifest(rel, base, content)
     if (manifestWarning !== null) {
       return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
     }
     return validateRequiredDocReceiptForConsultedDocs({
       repoRoot,
@@ -1131,6 +1267,16 @@ function validateArtifactContent(
     if (manifestWarning !== null) {
       return manifestWarning;
     }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
     return validateRequiredDocReceiptForConsultedDocs({
       repoRoot,
       rel,
@@ -1159,6 +1305,16 @@ function validateArtifactContent(
     if (manifestWarning !== null) {
       return manifestWarning;
     }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
     return validateRequiredDocReceiptForConsultedDocs({
       repoRoot,
       rel,
@@ -1186,6 +1342,16 @@ function validateArtifactContent(
       validateMarkdownOutputManifest(rel, base, content)
     if (manifestWarning !== null) {
       return manifestWarning;
+    }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
     }
     return validateRequiredDocReceiptForConsultedDocs({
       repoRoot,
@@ -1244,6 +1410,16 @@ function validateArtifactContent(
     if (manifestWarning !== null) {
       return manifestWarning;
     }
+    const producedArtifactsWarning = validateProducedArtifactsForManifest({
+      repoRoot,
+      rel,
+      producedArtifacts: parseProducedArtifactsFromManifest(
+        readMarkdownManifestField(content, "produced_artifacts"),
+      ),
+    });
+    if (producedArtifactsWarning !== null) {
+      return producedArtifactsWarning;
+    }
     return validateRequiredDocReceiptForConsultedDocs({
       repoRoot,
       rel,
@@ -1299,12 +1475,29 @@ function validateArtifactContent(
       if (manifestWarning !== null) {
         return manifestWarning;
       }
+      const manifest = parsed.output_manifest;
+      const producedArtifacts =
+        manifest !== null &&
+        typeof manifest === "object" &&
+        !Array.isArray(manifest) &&
+        Array.isArray((manifest as Record<string, unknown>).produced_artifacts)
+          ? ((manifest as Record<string, unknown>).produced_artifacts as unknown[]).filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [];
+      const producedArtifactsWarning = validateProducedArtifactsForManifest({
+        repoRoot,
+        rel,
+        producedArtifacts,
+      });
+      if (producedArtifactsWarning !== null) {
+        return producedArtifactsWarning;
+      }
       const transcriptEvidenceError =
         validateHighRiskPersonaTranscriptCompliance(parsed);
       if (transcriptEvidenceError !== null) {
         return gateValidationErrorToWarning(rel, transcriptEvidenceError);
       }
-      const manifest = parsed.output_manifest;
       const consultedDocs =
         manifest !== null &&
         typeof manifest === "object" &&
@@ -1327,6 +1520,16 @@ function validateArtifactContent(
   const manifestWarning = validateMarkdownOutputManifest(rel, base, content);
   if (manifestWarning !== null) {
     return manifestWarning;
+  }
+  const producedArtifactsWarning = validateProducedArtifactsForManifest({
+    repoRoot,
+    rel,
+    producedArtifacts: parseProducedArtifactsFromManifest(
+      readMarkdownManifestField(content, "produced_artifacts"),
+    ),
+  });
+  if (producedArtifactsWarning !== null) {
+    return producedArtifactsWarning;
   }
 
   if (base === OPERATOR_VERIFICATION_FILENAME) {
@@ -1608,6 +1811,25 @@ function assertAdvanceGateContent(
     designStepsEnabled(state.options)
   ) {
     advanceArtifacts.push(designQaReportRel(state.artifacts.runDir));
+  }
+  if (stage === "test" && event === "qa_design_followup") {
+    const testContent = readRepoText(repoRoot, artifact);
+    const designRel = designQaReportRel(state.artifacts.runDir);
+    const designContent = readRepoText(repoRoot, designRel) ?? undefined;
+    const pairError =
+      testContent === null
+        ? null
+        : validateQaDesignFollowupPair({
+            testReportContent: testContent,
+            designQaReportContent: designContent,
+            designStepsEnabled: designStepsEnabled(state.options),
+          });
+    if (pairError !== null) {
+      throw new Error(`Cannot advance ${stage} on ${event}; ${pairError}`);
+    }
+    if (designStepsEnabled(state.options)) {
+      advanceArtifacts.push(designRel);
+    }
   }
   for (const rel of advanceArtifacts) {
     const warning = validateArtifactContent(repoRoot, rel, event);

@@ -14,6 +14,7 @@ import {
   advanceFeatureDelivery,
   appendFeatureDeliveryInterventionRunLog,
   closeFeatureDeliveryArtifacts,
+  lintArtifactsForTask,
   readFeatureDeliveryStatusWithInterventions,
   refreshFeatureDeliveryPrompt,
   repairFeatureDeliveryState,
@@ -243,7 +244,7 @@ export function formatPanText(payload: object, repoRoot: string = process.cwd())
     }
     return lines.join("\n");
   }
-  if (command === "artifacts validate") {
+  if (command === "artifacts validate" || command === "artifacts lint") {
     const lines = [
       `status: ${String(record.status ?? "ok")}`,
       `warnings: ${String(record.warningCount ?? 0)}`,
@@ -569,6 +570,25 @@ export async function parseAndRun(
     .action(async (taskId: string, opts: { stage: string; format?: string }, _cmd) => {
       const format = resolveOutputFormat(opts.format, options?.format);
       const result = await validateArtifactsForTask({
+        repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
+        taskId,
+        stage: opts.stage,
+      });
+      emitPayload(writeOut, repoRoot, result, format);
+      if (result.missing.length > 0 || result.warningCount > 0) {
+        exit.code = 1;
+      }
+    });
+
+  artifacts
+    .command("lint")
+    .description("Deterministic strict lint checks for stage artifacts")
+    .argument("<taskId>", "Task id under .pan/work/")
+    .requiredOption("--stage <stage>", "Pipeline stage id")
+    .option("--format <format>", "Output format: json (default) or text")
+    .action(async (taskId: string, opts: { stage: string; format?: string }, _cmd) => {
+      const format = resolveOutputFormat(opts.format, options?.format);
+      const result = await lintArtifactsForTask({
         repoRoot: await featureDeliveryCheckoutRoot(repoRoot, taskId),
         taskId,
         stage: opts.stage,

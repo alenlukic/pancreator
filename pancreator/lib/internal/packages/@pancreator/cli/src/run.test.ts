@@ -601,6 +601,15 @@ describe("parseAndRun", () => {
     const cleanMsg = JSON.parse(cleanOut.join("")) as { warningCount: number; status: string };
     expect(cleanMsg.warningCount).toBe(0);
     expect(cleanMsg.status).toBe("ok");
+    const lintCleanOut: string[] = [];
+    const lintCleanCode = await runCli(
+      ["artifacts", "lint", taskId, "--stage", "review"],
+      { repoRoot: root, writeOut: (c) => lintCleanOut.push(c) },
+    );
+    expect(lintCleanCode).toBe(0);
+    const lintCleanMsg = JSON.parse(lintCleanOut.join("")) as { command: string; status: string };
+    expect(lintCleanMsg.command).toBe("artifacts lint");
+    expect(lintCleanMsg.status).toBe("ok");
 
     await seedPlanStageAdvanceArtifacts(root, runDirRel);
     await writeFile(path.join(root, runDirRel, "plan.md"), "# Plan\n\nno headings\n", "utf8");
@@ -729,6 +738,7 @@ describe("parseAndRun", () => {
     const registry = panCheckRegistry();
     expect(registry).toContain("work-archive-hygiene");
     expect(registry).toContain("shipped-ledger-cap");
+    expect(registry).toContain("introspection-path-attestation");
     expect(registry).toContain("cursorindexingignore");
 
     const sample: PanCheckResult = {

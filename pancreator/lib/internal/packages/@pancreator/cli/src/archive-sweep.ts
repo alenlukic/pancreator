@@ -314,7 +314,11 @@ async function collectTerminalRuns(repoRoot: string): Promise<{
         activeInboxPaths.add(normalizeRel(state.source.inboxPath));
         continue;
       }
-      if (state.pipelineId === "feature-delivery" && state.currentStage === TERMINAL_STAGE && state.status === "complete") {
+      if (
+        state.pipelineId === "feature-delivery" &&
+        state.currentStage === TERMINAL_STAGE &&
+        (state.status === "complete" || state.status === "complete_with_attention")
+      ) {
         terminalRuns.push({
           taskId,
           dayDir,

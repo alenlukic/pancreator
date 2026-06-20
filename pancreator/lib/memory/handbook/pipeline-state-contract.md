@@ -63,8 +63,12 @@ Before a stage transition, the validator MUST check:
 3. every definition-of-done condition is evidenced;
 4. any bounded scope amendment is declared, class-valid, and ratified by the
    owning validator before pass; and
-5. the gate predicate is parseable and satisfied for a pass transition; and
-6. failures route to the remediation owner named by the stage contract.
+5. deterministic artifact lint passes (required-doc receipts, consulted-doc
+   attestation, produced-artifact path attestation, and verdict/event coherence);
+6. when workflow helper artifacts are present, `transition-summaries.jsonl`
+   warning/status fields are consistent with `workflow-health.json`; and
+7. the gate predicate is parseable and satisfied for a pass transition; and
+8. failures route to the remediation owner named by the stage contract.
 
 When any check fails, the pipeline MUST remain at the current stage or route to
 the declared remediation stage. It MUST NOT advance based on broad prose claims.

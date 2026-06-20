@@ -83,6 +83,8 @@ export type WorkflowHealthSummary = {
   feature_id: string;
   run_dir: string;
   status: "healthy" | "needs_attention" | "blocked" | "reconciled";
+  artifact_lint_status?: "pass" | "fail";
+  artifact_lint_warning_count?: number;
   repair_count: number;
   auto_chain_reversal_count: number;
   last_oversight_check_at?: string;
@@ -108,6 +110,7 @@ export function taskDisplayLabel(
 
 const TERMINAL_PIPELINE_STATUSES = new Set([
   "complete",
+  "complete_with_attention",
   "closed",
   "canceled",
   "cancelled",

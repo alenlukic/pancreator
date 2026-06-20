@@ -485,6 +485,62 @@ describe("feature-delivery-stage-artifacts", () => {
     expect(validation.warnings[0]?.code).toBe("verdict_conflict");
   });
 
+  it("validateStageCompletionArtifacts rejects stale produced_artifacts paths", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-produced-artifacts-stale-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(runAbs, { recursive: true });
+    await writeFile(
+      path.join(runAbs, "review.md"),
+      [
+        "review_passes: true",
+        "scope_amendments_ratified: true",
+        "",
+        "## Output manifest",
+        "",
+        "- persona_contract: PERSONA.REVIEWER",
+        "- stage_contract: PIPE.FEATURE_DELIVERY.REVIEW",
+        "- required_docs: DOC.AGENTS, DOC.REGISTRY, DOC.PERSONA_CONTRACTS, DOC.OUTPUT_MANIFEST, DOC.PIPELINE_STATE, DOC.ENG_SOFTWARE, DOC.ENG_TYPESCRIPT, DOC.COMPLIANCE_RUNS",
+        "- consulted_docs: DOC.AGENTS, DOC.REGISTRY, DOC.PERSONA_CONTRACTS, DOC.OUTPUT_MANIFEST, DOC.PIPELINE_STATE, DOC.ENG_SOFTWARE, DOC.ENG_TYPESCRIPT, DOC.COMPLIANCE_RUNS",
+        "- produced_artifacts: .pan/work/day/task/review.md",
+        "- scope_amendments: none",
+        "- validation: none",
+        "- definition_of_done: pass",
+        "- gate_decision: advance",
+        "- remediation_route: none",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "review");
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("produced_artifact_mismatch");
+  });
+
+  it("validateStageCompletionArtifacts rejects empty required-doc receipt evidence", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-receipt-empty-"));
+    const runAbs = path.join(root, sampleState.artifacts.runDir);
+    await mkdir(path.join(runAbs, "required-doc-receipts"), { recursive: true });
+    await writeFile(
+      path.join(runAbs, "implementation-report.md"),
+      VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+      "utf8",
+    );
+    await writeFile(
+      path.join(runAbs, "required-doc-receipts", "implement.json"),
+      stringifyCompactJson({
+        enforce_manifest_consulted_docs: true,
+        required_docs_resolved: [],
+        required_docs_opened: [],
+        required_docs_applied: [],
+      }),
+      "utf8",
+    );
+
+    const validation = validateStageCompletionArtifacts(root, sampleState, "implement");
+    expect(validation.warningCount).toBe(1);
+    expect(validation.warnings[0]?.code).toBe("required_doc_receipt_empty");
+  });
+
   it("parseDesignQaVerdict infers excluded_from_gate for browser lock blockers", () => {
     const verdict = parseDesignQaVerdict(
       [

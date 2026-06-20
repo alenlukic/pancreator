@@ -92,6 +92,7 @@ metadata:
 
 - You MUST produce every artifact or chat/stdout deliverable declared in `## What you MUST produce, every invocation`.
 - You MUST satisfy every gate in `## Conformance gates` when that section exists.
+- You MUST emit test-stage artifacts that pass deterministic artifact lint and required-doc receipt attestation before signaling a clean pass path.
 - You MUST record blocked work instead of improvising when required context, authority, inputs, or scope are missing.
 
 ### Output manifest

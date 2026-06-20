@@ -175,7 +175,7 @@ stages:
         - output manifests are present in test reports and echoed to chat/stdout
       gate:
         validator: PERSONA.SUPERVISOR
-        predicate: "qa_passes: true and design_qa_passes: true when design QA runs"
+        predicate: "qa_passes: true and design_qa_passes: true when design QA runs; qa_design_followup allowed only for excluded non-blocking follow-up artifacts with no core_reentry_required/spot_fixable/remediate semantics"
         pass_event: qa_passes
         fail_event: qa_fails
       remediation:
@@ -211,10 +211,12 @@ stages:
         - delivery-report.md summarizes implementation, review, QA, and remaining operator work
         - durable feature index is refreshed with artifact_index pointers to acceptance-criteria sources and gate evidence for the run
         - pipeline-close.md and operator-verification.md exist
+        - deterministic artifact lint and required-doc receipt evidence pass for closeout artifacts
+        - transition-summaries.jsonl and workflow-health.json report coherent warning and status semantics
         - output manifests are present in generated artifacts and echoed to chat/stdout
       gate:
         validator: PERSONA.SUPERVISOR
-        predicate: bookkeeping_complete
+        predicate: bookkeeping_complete with deterministic artifact lint pass and coherent workflow-health/transition-summary status
         pass_event: bookkeeping_complete
         fail_event: bookkeeping_remediation
       remediation:

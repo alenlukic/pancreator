@@ -14,6 +14,7 @@ import {
   validateHighRiskPersonaTranscriptCompliance,
   validateTestReportForAdvance,
   validateDesignQaForAdvance,
+  validateQaDesignFollowupPair,
   parseSpotFixJustificationFromMarkdown,
 } from "./feature-delivery-gate-validation.js";
 
@@ -282,6 +283,26 @@ describe("feature-delivery-gate-validation", () => {
         "qa_design_followup",
       ),
     ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance rejects core_reentry_required for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance(
+        "qa_passes: false\nexcluded_from_gate: true\nspot_fixable: false\ncore_reentry_required: true\n",
+        "qa_design_followup",
+      ),
+    ).toContain("core_reentry_required: true");
+  });
+
+  it("validateQaDesignFollowupPair rejects failing design verdict metadata", () => {
+    expect(
+      validateQaDesignFollowupPair({
+        testReportContent: "qa_passes: true\nexcluded_from_gate: false\n",
+        designQaReportContent:
+          "design_qa_passes: false\nexcluded_from_gate: true\ndefinition_of_done: fail\n",
+        designStepsEnabled: true,
+      }),
+    ).toContain("definition_of_done: fail");
   });
 
   it("validateDesignQaForAdvance accepts inline design_qa_passes for qa_passes", () => {

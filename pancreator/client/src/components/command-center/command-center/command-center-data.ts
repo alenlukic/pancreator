@@ -196,7 +196,7 @@ function buildAnomalyRows(
         severity: health.status === "blocked" ? "Blocking" : "Warning",
         ageIso: health.updated_at,
         ageLabel: formatLastEventTime(health.updated_at, nowMs),
-        metaHint: `Repairs ${health.repair_count} · Reversals ${health.auto_chain_reversal_count}`,
+        metaHint: `Repairs ${health.repair_count} · Reversals ${health.auto_chain_reversal_count} · Lint ${(health.artifact_lint_status ?? "unknown").replace(/_/gu, " ")}${health.artifact_lint_warning_count !== undefined ? ` (${health.artifact_lint_warning_count})` : ""}`,
         primaryCta: {
           label: "Open workflow health",
           href: missionControlHref(task.taskId),

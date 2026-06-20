@@ -340,6 +340,29 @@ function validateSpotFixAppliedNow(
   return `${artifactLabel} marks spot_fixable: true but does not record immediate fixes under "## Fixes applied" (or fixes_applied in JSON).`;
 }
 
+function validateNonBlockingFollowupArtifactFields(
+  artifactLabel: string,
+  content: string,
+): string | null {
+  if (readMarkdownBoolInlineFallback(content, "core_reentry_required") === true) {
+    return `qa_design_followup cannot be used when ${artifactLabel} still marks core_reentry_required: true.`;
+  }
+  const definitionOfDone = readMarkdownField(content, "definition_of_done")?.toLowerCase();
+  if (definitionOfDone === "fail") {
+    return `qa_design_followup cannot be used when ${artifactLabel} still marks definition_of_done: fail.`;
+  }
+  const gateDecision = readMarkdownField(content, "gate_decision")?.toLowerCase();
+  if (
+    gateDecision === "remediate" ||
+    gateDecision === "blocked" ||
+    gateDecision === "hold" ||
+    gateDecision === "fail"
+  ) {
+    return `qa_design_followup cannot be used when ${artifactLabel} still marks gate_decision: ${gateDecision}.`;
+  }
+  return null;
+}
+
 export function parseSpotFixJustificationFromMarkdown(content: string): SpotFixJustification {
   return {
     spotFixable: readMarkdownBool(content, "spot_fixable") ?? false,
@@ -564,6 +587,13 @@ export function validateDesignQaForAdvance(content: string, event: string): stri
     if (spotFix.spotFixable) {
       return "qa_design_followup cannot be used when design-qa-report.md still marks spot_fixable: true; apply the bounded fix now or route to remediation.";
     }
+    const nonBlockingError = validateNonBlockingFollowupArtifactFields(
+      "design-qa-report.md",
+      content,
+    );
+    if (nonBlockingError !== null) {
+      return nonBlockingError;
+    }
     return null;
   }
   if (event === "qa_passes") {
@@ -598,6 +628,13 @@ export function validateTestReportForAdvance(content: string, event: string): st
     if (readMarkdownBoolInlineFallback(content, "spot_fixable") === true) {
       return "qa_design_followup cannot be used when test-report.md still marks spot_fixable: true; apply the bounded fix now or route to remediation.";
     }
+    const nonBlockingError = validateNonBlockingFollowupArtifactFields(
+      "test-report.md",
+      content,
+    );
+    if (nonBlockingError !== null) {
+      return nonBlockingError;
+    }
     return null;
   }
   if (event === "repo_wide_blocker") {
@@ -614,6 +651,27 @@ export function validateTestReportForAdvance(content: string, event: string): st
     }
   }
   return null;
+}
+
+export function validateQaDesignFollowupPair(input: {
+  testReportContent: string;
+  designQaReportContent?: string;
+  designStepsEnabled: boolean;
+}): string | null {
+  const qaError = validateTestReportForAdvance(
+    input.testReportContent,
+    "qa_design_followup",
+  );
+  if (qaError !== null) {
+    return qaError;
+  }
+  if (!input.designStepsEnabled) {
+    return null;
+  }
+  if (input.designQaReportContent === undefined) {
+    return "qa_design_followup with design steps enabled requires design-qa-report.md.";
+  }
+  return validateDesignQaForAdvance(input.designQaReportContent, "qa_design_followup");
 }
 
 export function validateComplianceForAdvance(content: string, event: string): string | null {

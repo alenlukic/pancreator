@@ -51,6 +51,26 @@ export function WorkflowHealthPanel({
 
   const companions = useMemo(() => health?.companion_artifacts ?? [], [health]);
   const pointers = useMemo(() => health?.pointers ?? [], [health]);
+  const lintWarningCount = useMemo(
+    () =>
+      health?.artifact_lint_warning_count ??
+      companions.filter((item) => !item.present || item.blockingReason !== undefined).length,
+    [companions, health?.artifact_lint_warning_count],
+  );
+  const lintStatus = useMemo(
+    () =>
+      health?.artifact_lint_status ??
+      (lintWarningCount > 0 ? "fail" : "pass"),
+    [health?.artifact_lint_status, lintWarningCount],
+  );
+  const warningCount = useMemo(
+    () =>
+      (health?.findings ?? []).filter(
+        (finding) =>
+          finding.severity === "warning" || finding.severity === "blocking",
+      ).length,
+    [health?.findings],
+  );
 
   if (loadError !== undefined) {
     return (
@@ -105,6 +125,14 @@ export function WorkflowHealthPanel({
           <dd>
             {companions.filter((item) => item.present).length}/{companions.length || 0} ready
           </dd>
+        </div>
+        <div>
+          <dt>Artifact lint</dt>
+          <dd>{`${lintStatus} (${lintWarningCount})`}</dd>
+        </div>
+        <div>
+          <dt>Warnings</dt>
+          <dd>{warningCount}</dd>
         </div>
         <div className="mc-workflow-health-span">
           <dt>Last oversight check</dt>

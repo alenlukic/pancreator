@@ -87,6 +87,7 @@ metadata:
 
 - You MUST produce every artifact or chat/stdout deliverable declared in `## What you MUST produce, every invocation`.
 - You MUST satisfy every gate in `## Conformance gates` when that section exists.
+- You MUST treat deterministic artifact lint as a hard gate for artifact-producing pass transitions (`pan artifacts lint <taskId> --stage <stage>` or equivalent runtime-integrated validator).
 - You MUST record blocked work instead of improvising when required context, authority, inputs, or scope are missing.
 
 ### Output manifest

@@ -611,6 +611,57 @@ runner:
     expect(chainedEvents).toEqual(["qa_design_followup"]);
   });
 
+  it("trySdkAutoChainAfterStageWork blocks qa_design_followup when design metadata still fails", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-qa-followup-invalid-"));
+    const state = sampleLedger({ currentStage: "test" });
+    const testRel = path.posix.join(state.artifacts.runDir, "test-report.md");
+    const testAbs = path.join(root, testRel);
+    await mkdir(path.dirname(testAbs), { recursive: true });
+    await writeFile(
+      testAbs,
+      [
+        "qa_passes: true",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: false",
+      ].join("\n"),
+      "utf8",
+    );
+    const designRel = path.posix.join(state.artifacts.runDir, "design-qa-report.md");
+    await writeFile(
+      path.join(root, designRel),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+        "definition_of_done: fail",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const chainedEvents: string[] = [];
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test" }, { id: "bookkeeping" }],
+    };
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: root,
+      state,
+      pipeline,
+      completedStageId: "test",
+      now: new Date("2026-05-10T15:00:00.000Z"),
+      advanceFn: async (event) => {
+        chainedEvents.push(event);
+      },
+    });
+
+    expect(chained).toBe(false);
+    expect(chainedEvents).toEqual([]);
+  });
+
   it("resolveTestStageAdvanceEvent maps qa_fails to qa_fails_plan_invalidating when verdict requires plan", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-resolve-qa-"));
     const state = sampleLedger({ currentStage: "test" });

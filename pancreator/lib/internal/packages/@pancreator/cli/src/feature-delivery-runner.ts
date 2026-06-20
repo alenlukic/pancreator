@@ -25,6 +25,7 @@ import { enrichRetryLimitHaltArtifact } from "./feature-delivery-failure-preserv
 import {
   parseSpotFixJustificationFromMarkdown,
   parseSpotFixJustificationFromRecord,
+  validateQaDesignFollowupPair,
   validateSpotFixJustification,
 } from "./feature-delivery-gate-validation.js";
 import {
@@ -342,14 +343,30 @@ async function writeStageRequiredDocReceipt(input: {
   stage: PipelineDefinition["stages"][number];
   now: Date;
 }): Promise<void> {
+  const fallbackRequiredDocs = [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.ENG_SOFTWARE",
+    "DOC.ENG_TYPESCRIPT",
+    "DOC.DESIGN_CRAFT",
+    "DOC.COMPLIANCE_RUNS",
+    "DOC.RUN_LOG_SCHEMA",
+    "DOC.OPERATOR_OUTPUT",
+    "DOC.MEMORY_TIERS",
+  ];
   const requiredDocsRaw = (input.stage as { contract?: { required_docs?: unknown } }).contract
     ?.required_docs;
-  const requiredDocs = Array.isArray(requiredDocsRaw)
+  const requiredDocsFromContract = Array.isArray(requiredDocsRaw)
     ? requiredDocsRaw.filter((value): value is string => typeof value === "string")
     : [];
-  const enforceManifestConsultedDocs = ["supervisor", "compliance-auditor"].includes(
-    String((input.stage as { persona?: unknown }).persona ?? ""),
-  );
+  const requiredDocs =
+    requiredDocsFromContract.length > 0
+      ? requiredDocsFromContract
+      : fallbackRequiredDocs;
+  const enforceManifestConsultedDocs = true;
   const rel = path.posix.join(
     input.state.artifacts.runDir,
     "required-doc-receipts",
@@ -1361,6 +1378,23 @@ export async function trySdkAutoChainAfterStageWork(input: {
       designQaMarkdown: designContent,
       designSteps: designStepsEnabled(input.state.options),
     });
+    const followupError = verdict.designFollowupOnly
+      ? validateQaDesignFollowupPair({
+          testReportContent: content,
+          designQaReportContent: designContent,
+          designStepsEnabled: designStepsEnabled(input.state.options),
+        })
+      : null;
+    if (followupError !== null) {
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.completedStageId,
+        gateBlockReasons: [followupError],
+        now: input.now,
+      });
+      return false;
+    }
     if (verdict.designFollowupOnly) {
       return attemptChain("qa_design_followup", testRel);
     }
@@ -1493,7 +1527,17 @@ export async function resolveTestStageAdvanceEvent(
     designQaMarkdown: designContent,
     designSteps: designStepsEnabled(state.options),
   });
+  const followupError = verdict.designFollowupOnly
+    ? validateQaDesignFollowupPair({
+        testReportContent: content,
+        designQaReportContent: designContent,
+        designStepsEnabled: designStepsEnabled(state.options),
+      })
+    : null;
   if (verdict.designFollowupOnly) {
+    if (followupError !== null) {
+      return event === "qa_design_followup" ? event : "qa_fails";
+    }
     return "qa_design_followup";
   }
   if (verdict.passes === true) {

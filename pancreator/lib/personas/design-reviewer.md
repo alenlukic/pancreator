@@ -78,6 +78,7 @@ metadata:
 
 - You MUST produce every artifact or chat/stdout deliverable declared in `## What you MUST produce, every invocation`.
 - You MUST satisfy every gate in `## Conformance gates` when that section exists.
+- You MUST emit design-QA artifacts that pass deterministic artifact lint and required-doc receipt attestation before signaling non-blocking follow-up semantics.
 - You MUST record blocked work instead of improvising when required context, authority, inputs, or scope are missing.
 
 ### Output manifest

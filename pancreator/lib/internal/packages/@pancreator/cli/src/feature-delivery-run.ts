@@ -114,6 +114,7 @@ import {
 } from "./feature-delivery-stage-artifacts.js";
 import {
   readWorkflowHealthSummary,
+  type WorkflowHealthSummary,
   workflowHealthRel,
   writeWorkflowHealthArtifact,
 } from "./workflow-health.js";
@@ -481,6 +482,7 @@ export type PipelineStatus =
   | "ready_for_stage_delegation"
   | "waiting_for_human_gate"
   | "complete"
+  | "complete_with_attention"
   | "closed"
   | "reopened"
   | "repaired"
@@ -570,7 +572,7 @@ export interface FeatureDeliveryNextResult {
 }
 
 export interface ValidateArtifactsResult {
-  command: "artifacts validate";
+  command: "artifacts validate" | "artifacts lint";
   status: "ok" | "invalid";
   taskId: string;
   stage: string;
@@ -1287,13 +1289,9 @@ export async function advanceFeatureDelivery(
     repoRoot,
     state.artifacts.runDir,
   );
-  if (
-    applied.toStage === TERMINAL_STAGE &&
-    workflowHealth !== null &&
-    workflowHealth.status !== "healthy" &&
-    !state.nextHumanAction.includes("complete with attention")
-  ) {
-    state.nextHumanAction = `Run is complete with attention (${workflowHealth.status}); inspect ${workflowHealthRel(state.artifacts.runDir)} before artifact closure.`;
+  if (applied.toStage === TERMINAL_STAGE) {
+    applyTerminalWorkflowHealthOutcome(state, workflowHealth);
+    await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
   }
   appendTransitionSummary({
     repoRoot,
@@ -1725,7 +1723,10 @@ export async function closeFeatureDeliveryArtifacts(
   const state = await readFeatureDeliveryState(stateFile.abs);
   const pipeline = loadFeatureDeliveryPipeline(repoRoot);
 
-  if (state.currentStage !== TERMINAL_STAGE || state.status !== "complete") {
+  if (
+    state.currentStage !== TERMINAL_STAGE ||
+    (state.status !== "complete" && state.status !== "complete_with_attention")
+  ) {
     if (state.currentStage === TERMINAL_STAGE && state.status === "closed") {
       throw new Error(`Task ${taskId} is already closed.`);
     }
@@ -3846,6 +3847,18 @@ export async function validateArtifactsForTask(input: {
   };
 }
 
+export async function lintArtifactsForTask(input: {
+  repoRoot: string;
+  taskId: string;
+  stage: string;
+}): Promise<ValidateArtifactsResult> {
+  const result = await validateArtifactsForTask(input);
+  return {
+    ...result,
+    command: "artifacts lint",
+  };
+}
+
 function collectStageContentWarnings(
   repoRoot: string,
   state: FeatureDeliveryState,
@@ -4447,6 +4460,21 @@ function appendTransitionSummary(input: {
   now: Date;
   contentWarnings: readonly ArtifactContentWarning[];
 }): void {
+  const workflowHealth = readWorkflowHealthSummary(
+    input.repoRoot,
+    input.state.artifacts.runDir,
+  );
+  const lintWarnings = input.contentWarnings.map((warning) => warning.message);
+  const healthWarnings =
+    workflowHealth === null
+      ? []
+      : [
+          ...workflowHealth.gate_block_reasons,
+          ...workflowHealth.findings
+            .filter((finding) => finding.severity === "warning" || finding.severity === "blocking")
+            .map((finding) => finding.summary),
+        ];
+  const combinedWarnings = [...new Set([...lintWarnings, ...healthWarnings])];
   const nextStep = resolveNextStep(input.state, { repoRoot: input.repoRoot });
   const summary = {
     at_iso: rfc3339UtcMs(input.now),
@@ -4462,8 +4490,12 @@ function appendTransitionSummary(input: {
       input.applied.artifact,
       workflowHealthRel(input.state.artifacts.runDir),
     ],
-    warning_count: input.contentWarnings.length,
-    warnings: input.contentWarnings.map((warning) => warning.message),
+    warning_count: combinedWarnings.length,
+    warnings: combinedWarnings,
+    artifact_lint_status: input.contentWarnings.length === 0 ? "pass" : "fail",
+    artifact_lint_warning_count: input.contentWarnings.length,
+    workflow_health_status: workflowHealth?.status ?? null,
+    workflow_health_warning_count: healthWarnings.length,
     pipeline_status: input.state.status,
     next_human_action: input.state.nextHumanAction,
     next_command: nextStep.nextCommand,
@@ -4489,6 +4521,23 @@ function appendTransitionSummary(input: {
     encoding: "utf8",
     flag: "a",
   });
+}
+
+function applyTerminalWorkflowHealthOutcome(
+  state: FeatureDeliveryState,
+  workflowHealth: WorkflowHealthSummary | null,
+): void {
+  if (state.currentStage !== TERMINAL_STAGE || state.status === "closed") {
+    return;
+  }
+  if (workflowHealth !== null && workflowHealth.status !== "healthy") {
+    state.status = "complete_with_attention";
+    state.nextHumanAction = `Run is complete with attention (${workflowHealth.status}); inspect ${workflowHealthRel(state.artifacts.runDir)} before artifact closure.`;
+    return;
+  }
+  if (state.status === "complete_with_attention") {
+    state.status = "complete";
+  }
 }
 
 interface ReviewReentryAdvancePlan {
@@ -4806,13 +4855,14 @@ async function finishAdvanceAfterTransition(input: {
     input.repoRoot,
     input.state.artifacts.runDir,
   );
-  if (
-    input.applied.toStage === TERMINAL_STAGE &&
-    workflowHealth !== null &&
-    workflowHealth.status !== "healthy" &&
-    !input.state.nextHumanAction.includes("complete with attention")
-  ) {
-    input.state.nextHumanAction = `Run is complete with attention (${workflowHealth.status}); inspect ${workflowHealthRel(input.state.artifacts.runDir)} before artifact closure.`;
+  if (input.applied.toStage === TERMINAL_STAGE) {
+    applyTerminalWorkflowHealthOutcome(input.state, workflowHealth);
+    await persistStateAndPrompts(
+      input.repoRoot,
+      input.state,
+      input.pipeline,
+      "advance",
+    );
   }
   appendTransitionSummary({
     repoRoot: input.repoRoot,
@@ -4973,13 +5023,9 @@ async function advanceReviewReentryFromImplement(input: {
     now,
   });
   const workflowHealth = readWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
-  if (
-    second.toStage === TERMINAL_STAGE &&
-    workflowHealth !== null &&
-    workflowHealth.status !== "healthy" &&
-    !state.nextHumanAction.includes("complete with attention")
-  ) {
-    state.nextHumanAction = `Run is complete with attention (${workflowHealth.status}); inspect ${workflowHealthRel(state.artifacts.runDir)} before artifact closure.`;
+  if (second.toStage === TERMINAL_STAGE) {
+    applyTerminalWorkflowHealthOutcome(state, workflowHealth);
+    await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
   }
   appendTransitionSummary({
     repoRoot,
@@ -5356,6 +5402,116 @@ async function safeReaddir(dir: string): Promise<string[]> {
   }
 }
 
+function normalizeRelPath(value: string): string {
+  return value.replace(/\\/gu, "/").replace(/^\/+/u, "");
+}
+
+async function resolveAttestedPath(repoRoot: string, rel: string): Promise<string | null> {
+  const normalized = normalizeRelPath(rel);
+  const candidates = normalized.startsWith("pancreator/")
+    ? [normalized]
+    : [normalized, path.posix.join("pancreator", normalized)];
+  for (const candidate of candidates) {
+    if (existsSync(resolveRepoPath(repoRoot, candidate))) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+async function findInboxDirectiveByBasename(
+  repoRoot: string,
+  basename: string,
+): Promise<string | null> {
+  const roots = ["lib/inbox/in", "pancreator/lib/inbox/in"];
+  for (const rootRel of roots) {
+    const rootAbs = resolveRepoPath(repoRoot, rootRel);
+    if (!existsSync(rootAbs)) {
+      continue;
+    }
+    const queue: Array<{ abs: string; rel: string }> = [
+      { abs: rootAbs, rel: rootRel },
+    ];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === undefined) {
+        break;
+      }
+      const entries = await safeReaddir(current.abs);
+      for (const entry of entries) {
+        const childAbs = path.join(current.abs, entry);
+        const childRel = path.posix.join(current.rel, entry);
+        try {
+          const info = await stat(childAbs);
+          if (info.isDirectory()) {
+            queue.push({ abs: childAbs, rel: childRel });
+            continue;
+          }
+          if (info.isFile() && entry === basename) {
+            return childRel;
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+async function introspectionPathAttestationIssues(
+  repoRoot: string,
+): Promise<{ markerPath: string | null; issues: string[] }> {
+  const markerCandidates = [
+    ".pan/introspection/last-run.json",
+    "pancreator/.pan/introspection/last-run.json",
+  ];
+  let markerPath: string | null = null;
+  for (const candidate of markerCandidates) {
+    if (existsSync(resolveRepoPath(repoRoot, candidate))) {
+      markerPath = candidate;
+      break;
+    }
+  }
+  if (markerPath === null) {
+    return { markerPath: null, issues: [] };
+  }
+  const markerRaw = await readFile(resolveRepoPath(repoRoot, markerPath), "utf8");
+  let marker: Record<string, unknown>;
+  try {
+    marker = JSON.parse(markerRaw) as Record<string, unknown>;
+  } catch {
+    return { markerPath, issues: [`${markerPath} must parse as JSON.`] };
+  }
+  const issues: string[] = [];
+  const reportPath = marker.report_path;
+  if (typeof reportPath !== "string" || reportPath.trim().length === 0) {
+    issues.push(`${markerPath} must include string report_path.`);
+  } else if ((await resolveAttestedPath(repoRoot, reportPath)) === null) {
+    issues.push(`${markerPath} report_path is missing: ${reportPath}`);
+  }
+  const inboxPath = marker.inbox_item_path;
+  if (typeof inboxPath !== "string" || inboxPath.trim().length === 0) {
+    issues.push(`${markerPath} must include string inbox_item_path.`);
+  } else {
+    const resolved = await resolveAttestedPath(repoRoot, inboxPath);
+    if (resolved === null) {
+      const candidate = await findInboxDirectiveByBasename(
+        repoRoot,
+        path.posix.basename(normalizeRelPath(inboxPath)),
+      );
+      if (candidate !== null) {
+        issues.push(
+          `${markerPath} inbox_item_path is stale: ${inboxPath} (found ${candidate}).`,
+        );
+      } else {
+        issues.push(`${markerPath} inbox_item_path is missing: ${inboxPath}`);
+      }
+    }
+  }
+  return { markerPath, issues };
+}
+
 export interface PanCheckEntry {
   id: string;
   label: string;
@@ -5384,6 +5540,7 @@ export const PAN_CHECK_REPO_CHECK_IDS = [
   "active-fd-artifacts",
   "work-archive-hygiene",
   "shipped-ledger-cap",
+  "introspection-path-attestation",
   "cursorindexingignore",
 ] as const;
 
@@ -5678,6 +5835,36 @@ export async function runPanCheck(
       command: ignorePath,
       status: "pass",
       exitCode: 0,
+    });
+  }
+
+  const introspectionAttestation = await introspectionPathAttestationIssues(
+    repoRoot,
+  );
+  if (introspectionAttestation.markerPath === null) {
+    checks.push({
+      id: "introspection-path-attestation",
+      label: "Introspection last-run path attestation",
+      command: "(no introspection marker)",
+      status: "skip",
+      remediation: "Run /introspect once to initialize .pan/introspection/last-run.json",
+    });
+  } else if (introspectionAttestation.issues.length === 0) {
+    checks.push({
+      id: "introspection-path-attestation",
+      label: "Introspection last-run path attestation",
+      command: introspectionAttestation.markerPath,
+      status: "pass",
+      exitCode: 0,
+    });
+  } else {
+    checks.push({
+      id: "introspection-path-attestation",
+      label: "Introspection last-run path attestation",
+      command: introspectionAttestation.markerPath,
+      status: "fail",
+      exitCode: 1,
+      remediation: introspectionAttestation.issues.join("; "),
     });
   }
 
