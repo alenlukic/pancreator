@@ -209,10 +209,13 @@ const OUTPUT_MANIFEST_EXPECTATIONS: Record<string, OutputManifestExpectation> = 
       "DOC.REGISTRY",
       "DOC.PERSONA_CONTRACTS",
       "DOC.OUTPUT_MANIFEST",
-      "DOC.PIPELINE_STATE",
+      "PIPE.FEATURE_DELIVERY",
       "DOC.ENG_SOFTWARE",
       "DOC.ENG_TYPESCRIPT",
       "DOC.COMPLIANCE_RUNS",
+      "DOC.PERSONA_SPEC",
+      "DOC.GLOSSARY",
+      "DOC.CONTRACT_STYLE",
     ],
   },
   "review.md": {
@@ -222,10 +225,14 @@ const OUTPUT_MANIFEST_EXPECTATIONS: Record<string, OutputManifestExpectation> = 
       "DOC.REGISTRY",
       "DOC.PERSONA_CONTRACTS",
       "DOC.OUTPUT_MANIFEST",
-      "DOC.PIPELINE_STATE",
+      "PIPE.FEATURE_DELIVERY",
       "DOC.ENG_SOFTWARE",
       "DOC.ENG_TYPESCRIPT",
       "DOC.COMPLIANCE_RUNS",
+      "DOC.PERSONA_SPEC",
+      "DOC.GLOSSARY",
+      "DOC.CONTRACT_STYLE",
+      "DOC.CONTRACT_FORMAT",
     ],
   },
   "test-report.md": {
@@ -235,11 +242,14 @@ const OUTPUT_MANIFEST_EXPECTATIONS: Record<string, OutputManifestExpectation> = 
       "DOC.REGISTRY",
       "DOC.PERSONA_CONTRACTS",
       "DOC.OUTPUT_MANIFEST",
-      "DOC.PIPELINE_STATE",
+      "PIPE.FEATURE_DELIVERY",
       "DOC.ENG_SOFTWARE",
       "DOC.ENG_TYPESCRIPT",
       "DOC.DESIGN_CRAFT",
       "DOC.COMPLIANCE_RUNS",
+      "DOC.PERSONA_SPEC",
+      "DOC.GLOSSARY",
+      "DOC.CONTRACT_STYLE",
     ],
   },
   "delivery-report.md": {
@@ -249,8 +259,13 @@ const OUTPUT_MANIFEST_EXPECTATIONS: Record<string, OutputManifestExpectation> = 
       "DOC.REGISTRY",
       "DOC.PERSONA_CONTRACTS",
       "DOC.OUTPUT_MANIFEST",
+      "PIPE.FEATURE_DELIVERY",
       "DOC.OPERATOR_OUTPUT",
       "DOC.RUN_LOG_SCHEMA",
+      "DOC.PERSONA_SPEC",
+      "DOC.GLOSSARY",
+      "DOC.CONTRACT_STYLE",
+      "DOC.DELIVERY_REPORT_TEMPLATE",
     ],
   },
   "compliance-result.json": {
@@ -260,9 +275,14 @@ const OUTPUT_MANIFEST_EXPECTATIONS: Record<string, OutputManifestExpectation> = 
       "DOC.REGISTRY",
       "DOC.PERSONA_CONTRACTS",
       "DOC.OUTPUT_MANIFEST",
-      "DOC.PIPELINE_STATE",
+      "PIPE.FEATURE_DELIVERY",
       "DOC.COMPLIANCE_RUNS",
       "DOC.RUN_LOG_SCHEMA",
+      "DOC.OPERATOR_OUTPUT",
+      "DOC.PERSONA_SPEC",
+      "DOC.GLOSSARY",
+      "DOC.CONTRACT_STYLE",
+      "DOC.CONTRACT_FORMAT",
     ],
   },
 };
@@ -364,7 +384,7 @@ function stageIdForArtifactBase(base: string): string | null {
     case "design-qa-report.md":
       return "test";
     case "delivery-report.md":
-      return "bookkeeping";
+      return "report";
     case "compliance-result.json":
       return "compliance";
     default:

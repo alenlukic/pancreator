@@ -1025,15 +1025,13 @@ configs:
     };
 
     prepareStageInvocationIndexForSdkEntry(state, "test", "sdk");
-    await expect(
-      invokeFeatureDeliveryEnteringStage({
-        repoRoot: root,
-        state,
-        pipeline,
-        stageId: "test",
-        testHooks: { sdkTransport: transport },
-      }),
-    ).rejects.toThrow(/failed artifact lint gate/u);
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot: root,
+      state,
+      pipeline,
+      stageId: "test",
+      testHooks: { sdkTransport: transport },
+    });
 
     const receipt = JSON.parse(
       await readFile(
