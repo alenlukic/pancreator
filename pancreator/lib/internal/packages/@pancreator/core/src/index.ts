@@ -21,6 +21,8 @@ export {
 export {
   resolveDeliveryOperatingCard,
   resolveDeliveryOperatingCardRel,
+  resolveDeliveryOperationProcedures,
+  resolveDeliveryOperationProceduresRel,
 } from "./delivery-operating-card.js";
 export {
   abbreviateHashes,

@@ -12,17 +12,38 @@ import {
  * - Self-host and greenfield: `AGENTS.md` at harness root
  */
 export function resolveDeliveryOperatingCardRel(harnessRoot: string): string {
-  const harness = path.resolve(harnessRoot);
-  const cfgPath = resolvePancreatorYamlPath(harness);
-  const projectRootRel = cfgPath
-    ? readProjectRootFromYaml(readFileSync(cfgPath, "utf8"))
-    : ".";
-
+  const projectRootRel = readProjectRootRel(harnessRoot);
   if (projectRootRel === ".pancreator") {
     return ".pancreator/AGENTS.md";
   }
-
   return "AGENTS.md";
+}
+
+/**
+ * Project-relative or harness-root path to human operator procedures.
+ * - Embedded (`project_root: ".pancreator"`): `.pancreator/OPERATION.md`
+ * - Self-host and greenfield: `OPERATION.md` at harness root
+ */
+export function resolveDeliveryOperationProceduresRel(harnessRoot: string): string {
+  const projectRootRel = readProjectRootRel(harnessRoot);
+  if (projectRootRel === ".pancreator") {
+    return ".pancreator/OPERATION.md";
+  }
+  return "OPERATION.md";
+}
+
+function readProjectRootRel(harnessRoot: string): string {
+  const cfgPath = resolvePancreatorYamlPath(harnessRoot);
+  if (cfgPath === undefined) {
+    return ".";
+  }
+  return readProjectRootFromYaml(readFileSync(cfgPath, "utf8"));
+}
+
+/** Absolute path to human operator procedures. */
+export function resolveDeliveryOperationProcedures(harnessRoot: string): string {
+  const rel = resolveDeliveryOperationProceduresRel(harnessRoot);
+  return path.join(path.resolve(harnessRoot), ...rel.split("/"));
 }
 
 /** Absolute path to the agent operating card. */

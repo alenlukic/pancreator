@@ -19,15 +19,6 @@ export default tseslint.config(
     ],
   },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
-  {
-    rules: {
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
-    },
-  },
   {
     files: ["pancreator/tests/**/*.mjs", "*.config.mjs"],
     languageOptions: {
@@ -55,11 +46,9 @@ export default tseslint.config(
     },
   },
   {
-    files: [
-      "pancreator/lib/internal/packages/@pancreator/**/*.ts",
-    ],
+    files: ["pancreator/lib/internal/packages/@pancreator/**/*.ts"],
+    extends: [...tseslint.configs.recommended],
     languageOptions: {
-      parser: tseslint.parser,
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: "module",
@@ -70,6 +59,10 @@ export default tseslint.config(
       "@pancreator": pancreatorPlugin,
     },
     rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
       "@pancreator/no-horizontal-primitive-deps": "error",
     },
   },

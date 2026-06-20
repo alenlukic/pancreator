@@ -19,22 +19,22 @@ external:
   - https://mobbin.com/
   - https://www.w3.org/WAI/standards-guidelines/wcag/
 related:
-  - /lib/memory/handbook/engineering/index.md
-  - /lib/memory/handbook/engineering/design/design-system.md
-  - /lib/memory/handbook/engineering/design/component-standard.md
-  - /lib/memory/handbook/engineering/design/control-surface-ux.md
-  - /lib/personas/design-engineer.md
-  - /lib/personas/design-reviewer.md
-  - /lib/memory/handbook/contract-templates/ux-spec.template.md
+  - lib/memory/handbook/engineering/index.md
+  - lib/memory/handbook/engineering/design/design-system.md
+  - lib/memory/handbook/engineering/design/component-standard.md
+  - lib/memory/handbook/engineering/design/control-surface-ux.md
+  - lib/personas/design-engineer.md
+  - lib/personas/design-reviewer.md
+  - lib/memory/handbook/contract-templates/ux-spec.template.md
 ...
 
 # Operator section
 - 👀 **In this file:** Product Design and UI Craft Standard
 - ⚖️ **Why it matters:** Quick orientation for Product Design and UI Craft Standard before agents load the full contract.
 - 🧭 **See also:**
-  - /lib/memory/handbook/engineering/index.md
-  - /lib/memory/handbook/engineering/design/design-system.md
-  - /lib/memory/handbook/engineering/design/component-standard.md
+  - lib/memory/handbook/engineering/index.md
+  - lib/memory/handbook/engineering/design/design-system.md
+  - lib/memory/handbook/engineering/design/component-standard.md
 
 # Product Design and UI Craft Standard
 
@@ -264,6 +264,16 @@ spot fix keeps `design_qa_passes: false` until the defect is fixed and does not
 pass the gate. When `spot_fixable: true`, `design-qa-report.md` MUST also record
 `spot_fix_scope: code-bounded`, `spot_fix_paths` (max 3), and
 `spot_fix_rationale` so the runtime can reject unbounded `qa_spot_fix` advances.
+
+## Research grounding for design planning
+
+Design-enabled plan work MUST record an external research receipt before
+`design/plan.md`, `design/acceptance-criteria.md`, or `ux-spec.md` are emitted.
+
+The research receipt MUST cite at least three public UX or interface-design
+sources that were published, revised, or remain canonical between 2024 and 2026.
+Each emitted design artifact MUST name the adopted principles from that research
+and the UI surfaces those principles affect.
 
 ## Stability
 

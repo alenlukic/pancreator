@@ -12,6 +12,7 @@ import {
   readProjectRoot,
   readProjectRootFromYaml,
   resolveDeliveryOperatingCardRel,
+  resolveDeliveryOperationProceduresRel,
   resolveProjectPath,
   resolveRepoPath,
 } from "../lib/internal/packages/@pancreator/core/dist/index.js";
@@ -46,6 +47,36 @@ test("resolveRepoPath keeps harness-root pancreator.yaml", async () => {
   await writeFile(path.join(harness, "pancreator.yaml"), "project_root: .\n", "utf8");
   assert.equal(resolveRepoPath(harness, "pancreator.yaml"), path.join(harness, "pancreator.yaml"));
   assert.equal(resolveRepoPath(harness, ".pan/work/day/task/state.json"), path.join(harness, ".pan/work", "day", "task", "state.json"));
+});
+
+test("resolveRepoPath keeps .cursor and delivery cards at harness root on self-host", () => {
+  assert.equal(
+    resolveRepoPath(REPO_ROOT, ".cursor/agents/coder.md"),
+    path.join(REPO_ROOT, ".cursor", "agents", "coder.md"),
+  );
+  assert.equal(resolveRepoPath(REPO_ROOT, "AGENTS.md"), path.join(REPO_ROOT, "AGENTS.md"));
+  assert.equal(resolveRepoPath(REPO_ROOT, "OPERATION.md"), path.join(REPO_ROOT, "OPERATION.md"));
+});
+
+test("resolveRepoPath nests delivery cards under embedded project_root", async () => {
+  const harness = await mkdtemp(path.join(os.tmpdir(), "harness-embedded-cards-"));
+  await writeFile(
+    path.join(harness, "pancreator.yaml"),
+    'project_root: ".pancreator"\nrisk_tier: medium\n',
+    "utf8",
+  );
+  assert.equal(
+    resolveRepoPath(harness, "AGENTS.md"),
+    path.join(harness, ".pancreator", "AGENTS.md"),
+  );
+  assert.equal(
+    resolveRepoPath(harness, "OPERATION.md"),
+    path.join(harness, ".pancreator", "OPERATION.md"),
+  );
+  assert.equal(
+    resolveRepoPath(harness, ".cursor/hooks.json"),
+    path.join(harness, ".cursor", "hooks.json"),
+  );
 });
 
 test("resolveProjectPath nests .pan under project_root pancreator", () => {
@@ -83,6 +114,7 @@ test("resolveDeliveryOperatingCardRel uses embedded AGENTS under .pancreator", a
     "utf8",
   );
   assert.equal(resolveDeliveryOperatingCardRel(harness), ".pancreator/AGENTS.md");
+  assert.equal(resolveDeliveryOperationProceduresRel(harness), ".pancreator/OPERATION.md");
 });
 
 test("pan intake new writes under project_root for embedded harness", async () => {

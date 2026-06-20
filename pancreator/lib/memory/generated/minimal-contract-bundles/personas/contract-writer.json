@@ -1,0 +1,18 @@
+{
+  "kind": "persona",
+  "persona_id": "contract-writer",
+  "source": "lib/personas/contract-writer.md",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.CONTRACT_STYLE",
+    "DOC.CONTRACT_FORMAT",
+    "DOC.CONTRACT_TEMPLATES",
+    "DOC.PERSONA_SPEC",
+    "DOC.DOC_IMPACT",
+    "DOC.GLOSSARY"
+  ],
+  "generated_at": "2026-06-19T19:59:36.236Z"
+}

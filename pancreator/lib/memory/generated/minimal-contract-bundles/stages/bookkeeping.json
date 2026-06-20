@@ -1,0 +1,17 @@
+{
+  "kind": "stage",
+  "pipeline_id": "feature-delivery",
+  "stage_id": "bookkeeping",
+  "persona": "librarian",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "DOC.PIPELINE_STATE",
+    "DOC.MEMORY_TIERS",
+    "DOC.RUN_LOG_SCHEMA",
+    "DOC.OPERATOR_OUTPUT"
+  ],
+  "generated_at": "2026-06-19T19:59:36.370Z"
+}

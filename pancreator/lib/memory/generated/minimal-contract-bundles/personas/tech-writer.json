@@ -1,0 +1,19 @@
+{
+  "kind": "persona",
+  "persona_id": "tech-writer",
+  "source": "lib/personas/tech-writer.md",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "PIPE.FEATURE_DELIVERY",
+    "DOC.OPERATOR_OUTPUT",
+    "DOC.RUN_LOG_SCHEMA",
+    "DOC.PERSONA_SPEC",
+    "DOC.GLOSSARY",
+    "DOC.CONTRACT_STYLE",
+    "DOC.DELIVERY_REPORT_TEMPLATE"
+  ],
+  "generated_at": "2026-06-19T19:59:36.246Z"
+}

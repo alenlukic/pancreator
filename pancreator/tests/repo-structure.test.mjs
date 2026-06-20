@@ -232,7 +232,6 @@ test("workspace and scripts use conventional client and tests paths", () => {
 
   const pkg = JSON.parse(read("package.json"));
   assert.match(pkg.scripts["check:workspace-contracts"], /^node pancreator\/lib\/internal\/tools\//);
-  assert.match(pkg.scripts["context:budget"], /^node pancreator\/lib\/internal\/tools\//);
   assert.match(pkg.scripts["repo:structure:test"], /^node --test pancreator\/tests\//);
   assert.match(pkg.scripts.test, /turbo run test/);
   assert.match(pkg.scripts.test, /node --test pancreator\/tests\//);

@@ -1,0 +1,22 @@
+{
+  "kind": "persona",
+  "persona_id": "design-engineer",
+  "source": "lib/personas/design-engineer.md",
+  "required_docs": [
+    "DOC.AGENTS",
+    "DOC.REGISTRY",
+    "DOC.PERSONA_CONTRACTS",
+    "DOC.OUTPUT_MANIFEST",
+    "PIPE.FEATURE_DELIVERY",
+    "DOC.DESIGN_CRAFT",
+    "DOC.DESIGN_SYSTEM",
+    "DOC.COMPONENT_STANDARD",
+    "DOC.CONTROL_SURFACE_UX",
+    "DOC.PERSONA_SPEC",
+    "DOC.GLOSSARY",
+    "DOC.CONTRACT_STYLE",
+    "DOC.CONTRACT_FORMAT",
+    "DOC.UX_SPEC_TEMPLATE"
+  ],
+  "generated_at": "2026-06-19T19:59:36.237Z"
+}
