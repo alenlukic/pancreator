@@ -352,6 +352,8 @@ const FD_STAGE_ORDER = [
 describe("MissionControlModule", () => {
   beforeEach(() => {
     mockSearchParams.delete("task");
+    mockSearchParams.delete("outcome");
+    mockSearchParams.delete("label");
     vi.restoreAllMocks();
   });
 
@@ -384,7 +386,7 @@ describe("MissionControlModule", () => {
     });
   });
 
-  it("requests run state with task query for shipped outcome deep links", async () => {
+  it("requests run state with outcome query for shipped outcome deep links", async () => {
     const shippedTask: TaskRunStateEnvelope = {
       ...mockRunState[0],
       taskId: "88888_0101_shipped-demo",
@@ -398,8 +400,9 @@ describe("MissionControlModule", () => {
     };
     const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
       const url = String(input);
-      expect(url).toContain("/api/run-state?task=");
+      expect(url).toContain("/api/run-state?outcome=");
       expect(url).toContain(encodeURIComponent("88888_0101_shipped-demo"));
+      expect(url).not.toContain("task=");
       if (url.includes("/api/run-state")) {
         return new Response(stringifyCompactJson([shippedTask]), { status: 200 });
       }
@@ -408,13 +411,48 @@ describe("MissionControlModule", () => {
       }
       return new Response(stringifyCompactJson({}), { status: 404 });
     });
-    mockSearchParams.set("task", "88888_0101_shipped-demo");
+    mockSearchParams.set("outcome", "88888_0101_shipped-demo");
+    mockSearchParams.set("label", "Shipped Demo");
     render(<MissionControlModule />);
 
     await waitFor(() => {
       expect(screen.getByTestId("run-context-header")).toHaveTextContent("Shipped Demo");
     });
     expect(fetchSpy).toHaveBeenCalled();
+  });
+
+  it("shows shipped outcome unavailable state when outcome query does not resolve", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/run-state")) {
+        expect(url).toContain("outcome=");
+        return new Response(stringifyCompactJson([]), { status: 200 });
+      }
+      if (url.includes("/api/config")) {
+        return new Response(stringifyCompactJson({ designStepsDefault: false }), { status: 200 });
+      }
+      return new Response(stringifyCompactJson({}), { status: 404 });
+    });
+    mockSearchParams.set("outcome", "missing_0101_demo");
+    mockSearchParams.set("label", "Missing Shipped Demo");
+    render(<MissionControlModule />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mission-control-shipped-unavailable")).toHaveTextContent(
+        "Shipped outcome unavailable",
+      );
+    });
+    expect(screen.getByText(/Missing Shipped Demo/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to Home" })).toHaveAttribute(
+      "href",
+      "/command-center",
+    );
+    const reloadButton = screen.getByTestId("mc-reload-shipped-outcome");
+    expect(reloadButton).toHaveTextContent("Reload shipped outcome");
+    reloadButton.click();
+    await waitFor(() => {
+      expect(fetchSpy.mock.calls.filter(([input]) => String(input).includes("/api/run-state")).length).toBeGreaterThan(1);
+    });
   });
 
   it("shows outcome-not-available empty state when task query does not resolve", async () => {

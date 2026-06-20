@@ -24,6 +24,7 @@ import {
   readFile,
   readdir,
   rename,
+  rm,
   stat,
   writeFile,
 } from "node:fs/promises";
@@ -70,13 +71,17 @@ import {
   applySdkRetrySideEffects,
   compileFeatureDeliveryPipeline,
   ensureAutomationState,
+  FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET,
+  incrementAutomationRetry,
   invokeFeatureDeliveryEnteringStage,
   parseReportApprovalArtifact,
   prepareStageInvocationIndexForSdkEntry,
   readCursorInvocationForState,
+  resetStageInvocationIndex,
   resolveComplianceStageAdvanceEvent,
   resolveTestStageAdvanceEvent,
   trySdkAutoChainAfterStageWork,
+  writeRetryLimitHaltArtifact,
   type FeatureDeliveryAutomationState,
   type FeatureDeliveryTestHooks,
 } from "./feature-delivery-runner.js";
@@ -118,8 +123,11 @@ import {
 } from "./timestamp-decode.js";
 import {
   archiveInboxPathForSource,
+  collectFeatureIndexInboxCandidates,
   findExistingArchivedInboxPath,
+  inboxEntryFromPath,
   pruneEmptyQueueParents,
+  resolveLiveInboxSourcePath,
 } from "./inbox-archive.js";
 import {
   parseTouchSetPaths,
@@ -891,24 +899,17 @@ export async function startFeatureDelivery(
   if (invocation === "sdk") {
     const compiledForChain =
       compiled ?? (await compileFeatureDeliveryPipeline(repoRoot, pipeline));
-    await trySdkAutoChainAfterStageWork({
+    await ensureSdkAutoChainProgress({
       repoRoot,
+      taskId,
       state,
       pipeline,
       completedStageId: "plan",
       compiled: compiledForChain,
       now,
+      clock: input.clock,
       testHooks: input.testHooks,
-      advanceFn: async (chainEvent, chainArtifact) =>
-        advanceFeatureDelivery({
-          repoRoot,
-          taskId,
-          artifact: chainArtifact,
-          event: chainEvent,
-          clock: input.clock,
-          testHooks: input.testHooks,
-          progress: resolveFeatureDeliveryProgress(input),
-        }),
+      progress: resolveFeatureDeliveryProgress(input),
     });
     Object.assign(state, await readFeatureDeliveryState(stateFile));
   }
@@ -1079,6 +1080,8 @@ export async function advanceFeatureDelivery(
     testResolvedEvent,
     artifact.rel,
   );
+  const invocation = await readCursorInvocationForState(repoRoot, state);
+  ensureAutomationState(state, invocation);
   const transition = state.transitions.find(
     (candidate) =>
       candidate.from === state.currentStage && candidate.on === event,
@@ -1093,7 +1096,27 @@ export async function advanceFeatureDelivery(
   ) {
     await assertDeliveryReportCitationFormat(repoRoot, artifact.rel);
   }
-  assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
+  try {
+    assertStageArtifact(repoRoot, state, state.currentStage, artifact.rel, event);
+  } catch (error) {
+    const resumed = await tryResumeInterruptedSdkStageAdvance({
+      repoRoot,
+      taskId,
+      state,
+      pipeline,
+      stateFileRel: stateFile.rel,
+      invocation,
+      providedArtifactRel: artifact.rel,
+      event,
+      now,
+      testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
+    });
+    if (resumed !== null) {
+      return resumed;
+    }
+    throw error;
+  }
   if (state.currentStage === "implement" && event === "implementation_complete") {
     assertImplementStageTouchSetScope(repoRoot, state);
   }
@@ -1155,9 +1178,6 @@ export async function advanceFeatureDelivery(
     );
     state.artifacts.operatorVerificationFile = verificationRel;
   }
-  const invocation = await readCursorInvocationForState(repoRoot, state);
-  ensureAutomationState(state, invocation);
-
   if (invocation === "sdk") {
     const haltSummary = await applySdkRetrySideEffects({
       repoRoot,
@@ -1223,24 +1243,17 @@ export async function advanceFeatureDelivery(
 
     await persistStateAndPrompts(repoRoot, state, pipeline, "advance");
 
-    const chained = await trySdkAutoChainAfterStageWork({
+    const chained = await ensureSdkAutoChainProgress({
       repoRoot,
+      taskId,
       state,
       pipeline,
       completedStageId: state.currentStage,
       compiled,
       now,
+      clock: input.clock,
       testHooks: input.testHooks,
-      advanceFn: async (chainEvent, chainArtifact) =>
-        advanceFeatureDelivery({
-          repoRoot,
-          taskId,
-          artifact: chainArtifact,
-          event: chainEvent,
-          clock: input.clock,
-          testHooks: input.testHooks,
-          progress: resolveFeatureDeliveryProgress(input),
-        }),
+      progress: resolveFeatureDeliveryProgress(input),
     });
 
     if (chained) {
@@ -1310,6 +1323,224 @@ export async function advanceFeatureDelivery(
   }) as AdvanceFeatureDeliveryResult;
 }
 
+interface EnsureSdkAutoChainProgressInput {
+  repoRoot: string;
+  taskId: string;
+  state: FeatureDeliveryState;
+  pipeline: PipelineDefinition;
+  completedStageId: FeatureDeliveryCurrentStage;
+  now: Date;
+  clock?: () => Date;
+  testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
+  compiled?: Awaited<ReturnType<typeof compileFeatureDeliveryPipeline>>;
+}
+
+async function ensureSdkAutoChainProgress(
+  input: EnsureSdkAutoChainProgressInput,
+): Promise<boolean> {
+  const invocation = await readCursorInvocationForState(input.repoRoot, input.state);
+  if (invocation !== "sdk") {
+    return false;
+  }
+
+  let compiled = input.compiled;
+  for (;;) {
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: input.repoRoot,
+      state: input.state,
+      pipeline: input.pipeline,
+      completedStageId: input.completedStageId,
+      compiled,
+      now: input.now,
+      testHooks: input.testHooks,
+      advanceFn: async (chainEvent, chainArtifact) =>
+        advanceFeatureDelivery({
+          repoRoot: input.repoRoot,
+          taskId: input.taskId,
+          artifact: chainArtifact,
+          event: chainEvent,
+          clock: input.clock,
+          testHooks: input.testHooks,
+          progress: input.progress,
+        }),
+    });
+    if (chained) {
+      return true;
+    }
+    if (input.testHooks?.disableAutoChainContinuationRetry === true) {
+      return false;
+    }
+    if (
+      !isNonTerminalFeatureDeliveryState(input.state) ||
+      input.state.currentStage !== input.completedStageId
+    ) {
+      return false;
+    }
+
+    const retryCount = incrementAutomationRetry(input.state);
+    if (retryCount > FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET) {
+      resetStageInvocationIndex(input.state);
+      input.state.status = "halted";
+      const outboxRel = await writeRetryLimitHaltArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        failingStage: input.completedStageId,
+        retryCount,
+        now: input.now,
+      });
+      input.state.nextHumanAction =
+        `Automatic stage retry halted after ${retryCount} retries; inspect ${outboxRel} and repair-state if needed.`;
+      await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.completedStageId,
+        gateBlockReasons: [
+          `Automatic stage retry halted at ${input.completedStageId} after ${retryCount} attempts.`,
+        ],
+        now: input.now,
+      });
+      const summary = [
+        `task_id=${input.state.taskId}`,
+        `feature_id=${input.state.featureId}`,
+        `failing_stage=${input.completedStageId}`,
+        `retry_count=${retryCount}`,
+        `outbox_artifact=${outboxRel}`,
+      ].join(" ");
+      const haltError = new Error(`Feature-delivery retry limit halt: ${summary}`) as Error & {
+        haltSummary: string;
+      };
+      haltError.haltSummary = summary;
+      throw haltError;
+    }
+
+    input.state.status = "ready_for_stage_delegation";
+    input.state.nextHumanAction =
+      `SDK auto-chain stalled at ${input.completedStageId}; retrying stage execution (${retryCount}/${FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET}).`;
+    prepareStageInvocationIndexForSdkEntry(
+      input.state,
+      input.completedStageId,
+      invocation,
+    );
+    if (compiled === undefined) {
+      compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
+    }
+    await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot: input.repoRoot,
+      state: input.state,
+      pipeline: input.pipeline,
+      stageId: input.completedStageId,
+      compiled,
+      now: input.now,
+      testHooks: input.testHooks,
+      progress: input.progress,
+    });
+    await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+  }
+}
+
+interface ResumeInterruptedSdkStageAdvanceInput {
+  repoRoot: string;
+  taskId: string;
+  state: FeatureDeliveryState;
+  pipeline: PipelineDefinition;
+  stateFileRel: string;
+  invocation: "manual" | "sdk";
+  providedArtifactRel: string;
+  event: string;
+  now: Date;
+  testHooks?: FeatureDeliveryTestHooks;
+  progress?: FeatureDeliverySdkProgressReporter;
+}
+
+async function tryResumeInterruptedSdkStageAdvance(
+  input: ResumeInterruptedSdkStageAdvanceInput,
+): Promise<AdvanceFeatureDeliveryResult | null> {
+  if (input.invocation !== "sdk") {
+    return null;
+  }
+  if (input.state.status !== "ready_for_stage_delegation") {
+    return null;
+  }
+  if (!isNonTerminalFeatureDeliveryState(input.state)) {
+    return null;
+  }
+  if (input.event !== defaultEventForStage(input.state.currentStage)) {
+    return null;
+  }
+
+  const lastAdvance = lastAdvanceEntry(input.state);
+  if (
+    lastAdvance?.to !== input.state.currentStage ||
+    lastAdvance.artifact !== input.providedArtifactRel
+  ) {
+    return null;
+  }
+
+  const resumeStageId = input.state.currentStage;
+  const compiled = await compileFeatureDeliveryPipeline(input.repoRoot, input.pipeline);
+  prepareStageInvocationIndexForSdkEntry(input.state, resumeStageId, input.invocation);
+  await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+  await invokeFeatureDeliveryEnteringStage({
+    repoRoot: input.repoRoot,
+    state: input.state,
+    pipeline: input.pipeline,
+    stageId: resumeStageId,
+    compiled,
+    now: input.now,
+    testHooks: input.testHooks,
+    progress: input.progress,
+  });
+  await persistStateAndPrompts(input.repoRoot, input.state, input.pipeline, "advance");
+
+  const chained = await ensureSdkAutoChainProgress({
+    repoRoot: input.repoRoot,
+    taskId: input.taskId,
+    state: input.state,
+    pipeline: input.pipeline,
+    completedStageId: resumeStageId,
+    compiled,
+    now: input.now,
+    clock: () => input.now,
+    testHooks: input.testHooks,
+    progress: input.progress,
+  });
+
+  if (chained) {
+    const refreshed = await readFeatureDeliveryState(
+      resolveRepoPath(input.repoRoot, input.state.artifacts.stateFile),
+    );
+    Object.assign(input.state, refreshed);
+  }
+
+  await writeWorkflowHealthArtifact({
+    repoRoot: input.repoRoot,
+    state: input.state,
+    stageId: input.state.currentStage,
+    gateBlockReasons: [],
+    now: input.now,
+  });
+
+  return enrichFeatureDeliveryEnvelope(input.repoRoot, input.state, {
+    command: "advance",
+    status: "ok",
+    taskId: input.taskId,
+    featureId: input.state.featureId,
+    fromStage: resumeStageId,
+    event: `resume_${resumeStageId}`,
+    currentStage: input.state.currentStage,
+    artifact: input.providedArtifactRel,
+    stateFile: input.stateFileRel,
+    handoffFile: input.state.artifacts.handoffFile,
+    nextPromptFile: requireNextPromptFile(input.state),
+    nextPersona: personaForStage(input.pipeline, input.state.currentStage),
+    nextHumanAction: input.state.nextHumanAction,
+    ...classifyCurrentDiffPaths(input.repoRoot, input.state.artifacts.runDir),
+  }) as AdvanceFeatureDeliveryResult;
+}
+
 export async function repairFeatureDeliveryState(
   input: RepairFeatureDeliveryStateInput,
 ): Promise<RepairFeatureDeliveryStateResult> {
@@ -1339,7 +1570,7 @@ export async function repairFeatureDeliveryState(
   state.nextHumanAction = nextHumanActionForStage(
     state,
     targetStage,
-    `Manual state repair: ${reason}`,
+    `Manual state repair: ${reason}.`,
     state.automation?.runnerInvocation ??
       (await readCursorInvocationMode(repoRoot)),
   );
@@ -1386,6 +1617,23 @@ export async function repairFeatureDeliveryState(
       testHooks: input.testHooks,
       progress: resolveFeatureDeliveryProgress(input),
     });
+    await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
+    const chained = await ensureSdkAutoChainProgress({
+      repoRoot,
+      taskId,
+      state,
+      pipeline,
+      completedStageId: targetStage,
+      compiled,
+      now,
+      clock: input.clock,
+      testHooks: input.testHooks,
+      progress: resolveFeatureDeliveryProgress(input),
+    });
+    if (chained) {
+      const refreshed = await readFeatureDeliveryState(stateFile.abs);
+      Object.assign(state, refreshed);
+    }
   }
 
   await persistStateAndPrompts(repoRoot, state, pipeline, "repair");
@@ -1400,6 +1648,18 @@ export async function repairFeatureDeliveryState(
       reason,
     ),
   );
+  const gateBlockReasons = isNonTerminalFeatureDeliveryState(state)
+    ? validateStageCompletionArtifacts(repoRoot, state, state.currentStage).warnings.map(
+        (warning) => warning.message,
+      )
+    : [];
+  await writeWorkflowHealthArtifact({
+    repoRoot,
+    state,
+    stageId: state.currentStage,
+    gateBlockReasons,
+    now,
+  });
 
   return {
     command: "repair-state",
@@ -1477,10 +1737,45 @@ export async function closeFeatureDeliveryArtifacts(
   const closure = finalClosurePaths(state);
   const activeRunDirAbs = resolveRepoPath(repoRoot, closure.runDirRel);
   const archiveRunDirAbs = resolveRepoPath(repoRoot, closure.workArchiveRel);
-  const inboxSourceAbs = resolveRepoPath(repoRoot, closure.inboxSourceRel);
-  let inboxArchiveRel = closure.inboxArchiveRel;
-  let inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
   const indexRel = durableFeatureIndexRel(state.featureId);
+  const indexAbs = resolveRepoPath(repoRoot, indexRel);
+  let inboxSourceRel = closure.inboxSourceRel;
+  if (!existsSync(resolveRepoPath(repoRoot, inboxSourceRel))) {
+    const indexCandidates =
+      existsSync(indexAbs)
+        ? collectFeatureIndexInboxCandidates(
+            JSON.parse(await readFile(indexAbs, "utf8")) as Record<string, unknown>,
+          )
+        : [];
+    const resolvedInboxSourceRel = await resolveLiveInboxSourcePath(
+      repoRoot,
+      inboxSourceRel,
+      indexCandidates,
+    );
+    if (resolvedInboxSourceRel === null) {
+      throw new Error(`Required file is missing: ${inboxSourceRel}.`);
+    }
+    if (resolvedInboxSourceRel !== inboxSourceRel) {
+      state.source.inboxPath = resolvedInboxSourceRel;
+      state.source.inboxEntry = inboxEntryFromPath(resolvedInboxSourceRel);
+      inboxSourceRel = resolvedInboxSourceRel;
+      await writeFile(
+        stateFile.abs,
+        stringifyPanWorkJson(
+          repoRoot,
+          state as unknown as Record<string, unknown>,
+          panWorkStateMeta(state.featureId, state.taskId, state.pipelineId),
+        ),
+        "utf8",
+      );
+    }
+  }
+  let inboxSourceAbs = resolveRepoPath(repoRoot, inboxSourceRel);
+  let inboxArchiveRel = archiveInboxPathForSource(
+    inboxSourceRel,
+    parseWorkRunDir(closure.runDirRel, taskId).dayDir,
+  );
+  let inboxArchiveAbs = resolveRepoPath(repoRoot, inboxArchiveRel);
   const activeMemoryRel = path.posix.join(
     "lib",
     "memory",
@@ -1489,14 +1784,14 @@ export async function closeFeatureDeliveryArtifacts(
   );
 
   const activeRunExists = existsSync(activeRunDirAbs);
-  const archiveRunExists = existsSync(archiveRunDirAbs);
+  let archiveRunExists = existsSync(archiveRunDirAbs);
   const inboxSourceExists = existsSync(inboxSourceAbs);
   let inboxArchiveExists = existsSync(inboxArchiveAbs);
   if (!inboxSourceExists && !inboxArchiveExists) {
     const run = parseWorkRunDir(closure.runDirRel, taskId);
     const siblingArchive = await findExistingArchivedInboxPath(
       repoRoot,
-      closure.inboxSourceRel,
+      inboxSourceRel,
       run.dayDir,
     );
     if (siblingArchive !== null) {
@@ -1507,9 +1802,20 @@ export async function closeFeatureDeliveryArtifacts(
   }
 
   if (activeRunExists && archiveRunExists) {
-    throw new Error(
-      `Duplicate run directories for task ${taskId}: both ${closure.runDirRel} and ${closure.workArchiveRel} exist. Roll back the premature archive move before close-artifacts.`,
-    );
+    const activeStateAbs = path.join(activeRunDirAbs, "state.json");
+    const archiveStateAbs = path.join(archiveRunDirAbs, "state.json");
+    const loadedFromActive = path.resolve(stateFile.abs) === path.resolve(activeStateAbs);
+    const loadedFromArchive = path.resolve(stateFile.abs) === path.resolve(archiveStateAbs);
+    if (loadedFromActive) {
+      await rm(archiveRunDirAbs, { recursive: true, force: true });
+      archiveRunExists = false;
+    } else if (loadedFromArchive) {
+      await rm(activeRunDirAbs, { recursive: true, force: true });
+    } else {
+      throw new Error(
+        `Duplicate run directories for task ${taskId}: both ${closure.runDirRel} and ${closure.workArchiveRel} exist. Roll back the premature archive move before close-artifacts.`,
+      );
+    }
   }
 
   const alreadyArchived = !activeRunExists && archiveRunExists;
@@ -1544,14 +1850,14 @@ export async function closeFeatureDeliveryArtifacts(
     if (inboxAlreadyArchivedForRun) {
       await assertExistingFile(inboxArchiveAbs, inboxArchiveRel);
     } else {
-      await assertExistingFile(inboxSourceAbs, closure.inboxSourceRel);
-      await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
+      await assertExistingFile(inboxSourceAbs, inboxSourceRel);
+      await assertPathMissing(inboxArchiveAbs, inboxArchiveRel);
     }
   } else if (!inboxArchiveExists && inboxSourceExists) {
-    await assertPathMissing(inboxArchiveAbs, closure.inboxArchiveRel);
+    await assertPathMissing(inboxArchiveAbs, inboxArchiveRel);
   } else if (inboxArchiveExists && inboxSourceExists) {
     throw new Error(
-      `Duplicate inbox paths for task ${taskId}: both ${closure.inboxSourceRel} and ${closure.inboxArchiveRel} exist.`,
+      `Duplicate inbox paths for task ${taskId}: both ${inboxSourceRel} and ${inboxArchiveRel} exist.`,
     );
   }
 
@@ -1605,7 +1911,7 @@ export async function closeFeatureDeliveryArtifacts(
         inboxArchived = true;
         await pruneEmptyQueueParents(
           repoRoot,
-          path.posix.dirname(closure.inboxSourceRel),
+          path.posix.dirname(inboxSourceRel),
           "lib/inbox/in",
         );
       } else {
@@ -1655,7 +1961,7 @@ export async function closeFeatureDeliveryArtifacts(
         artifact: closure.workArchiveRel,
         reason: alreadyArchived
           ? `Finalized closure for run already archived at ${closure.workArchiveRel}.`
-          : `Archived active run from ${previousRunDir} and source inbox directive from ${closure.inboxSourceRel}.`,
+          : `Archived active run from ${previousRunDir} and source inbox directive from ${inboxSourceRel}.`,
       },
     ];
 
@@ -1714,7 +2020,7 @@ export async function closeFeatureDeliveryArtifacts(
         now,
         previousRunDir,
         closure.workArchiveRel,
-        closure.inboxSourceRel,
+        inboxSourceRel,
         inboxArchiveRel,
       ),
     );
@@ -1723,7 +2029,7 @@ export async function closeFeatureDeliveryArtifacts(
       repoRoot,
       state.featureId,
       inboxArchiveRel,
-      closure.inboxSourceRel,
+      inboxSourceRel,
     );
     await normalizeComplianceAuditHistoryForArchivedRun({
       repoRoot,
@@ -1735,7 +2041,7 @@ export async function closeFeatureDeliveryArtifacts(
     const activeMemoryRefresh = await applyActiveMemoryRefreshOnArtifactClosure(
       repoRoot,
       {
-        archivedInboxSourceRel: closure.inboxSourceRel,
+        archivedInboxSourceRel: inboxSourceRel,
         clock: input.clock,
       },
     );
@@ -1777,11 +2083,11 @@ export async function closeFeatureDeliveryArtifacts(
     );
     const activeInboxStateAbs = resolveRepoPath(
       repoRoot,
-      closure.inboxSourceRel,
+      inboxSourceRel,
     );
     const archiveInboxStateAbs = resolveRepoPath(
       repoRoot,
-      closure.inboxArchiveRel,
+      inboxArchiveRel,
     );
 
     if (
@@ -2893,6 +3199,20 @@ function renderHandoff(
   const stage = state.currentStage;
   const sdkMode = state.automation?.runnerInvocation === "sdk";
   const excerpt = directive?.trim().split(/\r?\n/u).slice(0, 20).join("\n");
+  const handoffOutputManifest = [
+    "## Output manifest",
+    "",
+    "- persona_contract: PERSONA.SUPERVISOR",
+    "- stage_contract: PIPE.FEATURE_DELIVERY",
+    "- required_docs: DOC.OUTPUT_MANIFEST",
+    "- consulted_docs: DOC.OUTPUT_MANIFEST",
+    `- produced_artifacts: ${state.artifacts.handoffFile}, ${requireNextPromptFile(state)}`,
+    "- scope_amendments: none",
+    "- validation: handoff_sections_present",
+    "- definition_of_done: pass",
+    "- gate_decision: advance",
+    "- remediation_route: supervisor",
+  ].join("\n");
   return `# Feature delivery handoff — ${state.featureId}
 
 - Feature id: ${state.featureId}
@@ -2948,6 +3268,8 @@ ${stageContractMarkdown(repoRoot, state, stage)}
 ## Validation commands
 
 ${renderHandoffValidationCommands(repoRoot, state.artifacts.runDir)}
+
+${handoffOutputManifest}
 ## Re-entry rule
 
 If scope changes, validation repeatedly fails, or the touch-set is incomplete, stop and delegate back to supervisor, tech-lead, or reviewer instead of extending the executor loop.
@@ -3121,7 +3443,7 @@ function stageContractMarkdown(
 Product companion: ${productPlanPromptRel(state.artifacts.runDir)} → ${productPlanRel(state.artifacts.runDir)} + ${productAcceptanceCriteriaRel(state.artifacts.runDir)}
 Design companion: ${designPlanPromptRel(state.artifacts.runDir)} → ${designPlanRel(state.artifacts.runDir)} + ${designAcceptanceCriteriaRel(state.artifacts.runDir)} + ${uxSpecRel(state.artifacts.runDir)}
 Outputs: ${productPlanRel(state.artifacts.runDir)}, ${productAcceptanceCriteriaRel(state.artifacts.runDir)}, ${designPlanRel(state.artifacts.runDir)}, ${designAcceptanceCriteriaRel(state.artifacts.runDir)}, ${uxSpecRel(state.artifacts.runDir)}, ${techPlanRel(state.artifacts.runDir)}, ${techAcceptanceCriteriaRel(state.artifacts.runDir)}, ${manualQaTestCasesRel(state.artifacts.runDir)}, ${state.artifacts.runDir}/plan.md, ${state.artifacts.runDir}/adr-draft.md, ${state.artifacts.runDir}/touch-set.json, ${state.artifacts.handoffFile}
-Plan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria, manual_qa_test_cases; handoff.md MUST include ## Validation commands.
+Plan gate: plan.md MUST include ## Acceptance criteria and ## Shared-layer impact; touch-set.json MUST include paths, tests, shared_paths, integration_prerequisites, acceptance_criteria, manual_qa_test_cases; handoff.md MUST include ## Validation commands and ## Output manifest.
 Advance after ${
         state.automation?.runnerInvocation === "sdk"
           ? "agent validates product/design/tech plan artifacts"
@@ -3412,24 +3734,40 @@ function enrichFeatureDeliveryEnvelope<T extends Record<string, unknown>>(
   nextCommand?: string | null;
   event?: string | null;
   artifact?: string | null;
+  workflowHealthStatus?: string;
+  gateBlockReasons?: string[];
 } {
   type Enriched = T & {
     nextCommand?: string | null;
     event?: string | null;
     artifact?: string | null;
+    workflowHealthStatus?: string;
+    gateBlockReasons?: string[];
   };
+  const workflowHealth = readWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
+  const healthFields =
+    workflowHealth === null
+      ? {}
+      : {
+          workflowHealthStatus: workflowHealth.status,
+          ...(workflowHealth.gate_block_reasons.length > 0
+            ? { gateBlockReasons: workflowHealth.gate_block_reasons }
+            : {}),
+        };
   if (!isNonTerminalFeatureDeliveryState(state)) {
     return {
       ...payload,
       nextCommand: null,
       event: null,
       artifact: null,
+      ...healthFields,
     } as Enriched;
   }
   const step = resolveNextStep(state, { repoRoot });
   const enriched = {
     ...payload,
     nextCommand: step.nextCommand,
+    ...healthFields,
   };
   if ("event" in payload) {
     return enriched as Enriched;
@@ -4429,23 +4767,16 @@ async function finishAdvanceAfterTransition(input: {
     "advance",
   );
   if (invocation === "sdk" && compiled !== undefined) {
-    const chained = await trySdkAutoChainAfterStageWork({
+    const chained = await ensureSdkAutoChainProgress({
       repoRoot: input.repoRoot,
+      taskId: input.taskId,
       state: input.state,
       pipeline: input.pipeline,
       completedStageId: input.state.currentStage,
       compiled,
       now: input.now,
       testHooks: input.testHooks,
-      advanceFn: async (chainEvent, chainArtifact) =>
-        advanceFeatureDelivery({
-          repoRoot: input.repoRoot,
-          taskId: input.taskId,
-          artifact: chainArtifact,
-          event: chainEvent,
-          testHooks: input.testHooks,
-          progress: resolveFeatureDeliveryProgress(input),
-        }),
+      progress: resolveFeatureDeliveryProgress(input),
     });
     if (chained) {
       const refreshed = await readFeatureDeliveryState(

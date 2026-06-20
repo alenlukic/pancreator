@@ -39,6 +39,33 @@ const SCOPE_AMENDMENT_KINDS: readonly ScopeAmendmentKind[] = [
   "declared-dir-sibling",
 ];
 
+function hasDesignQaBrowserProfileLockBlocker(content: string): boolean {
+  return (
+    /browser is already running .*chrome-profile/iu.test(content) ||
+    /use --isolated to run multiple browser instances/iu.test(content)
+  );
+}
+
+function hasQaBrowserProfileLockBlocker(content: string): boolean {
+  return (
+    /browser is already running .*chrome-profile/iu.test(content) ||
+    /use --isolated to run multiple browser instances/iu.test(content) ||
+    /locked shared profile/iu.test(content)
+  );
+}
+
+function readMarkdownBoolInlineFallback(content: string, field: string): boolean | null {
+  const strict = readMarkdownBool(content, field);
+  if (strict !== null) {
+    return strict;
+  }
+  const inline = content.match(new RegExp(`\\b${field}:\\s*(true|false)\\b`, "iu"));
+  if (inline === null) {
+    return null;
+  }
+  return inline[1]?.toLowerCase() === "true";
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -527,8 +554,10 @@ export function validateDesignQaForAdvance(content: string, event: string): stri
     return validateSpotFixJustification("qa_spot_fix", spotFix);
   }
   if (event === "qa_design_followup") {
-    const passes = readMarkdownBool(content, "design_qa_passes");
-    const excluded = readMarkdownBool(content, "excluded_from_gate");
+    const passes = readMarkdownBoolInlineFallback(content, "design_qa_passes");
+    const excluded =
+      readMarkdownBoolInlineFallback(content, "excluded_from_gate") === true ||
+      (passes === false && hasDesignQaBrowserProfileLockBlocker(content));
     if (passes !== false || excluded !== true) {
       return "qa_design_followup requires design_qa_passes: false with excluded_from_gate: true in design-qa-report.md.";
     }
@@ -538,7 +567,7 @@ export function validateDesignQaForAdvance(content: string, event: string): stri
     return null;
   }
   if (event === "qa_passes") {
-    const passes = readMarkdownBool(content, "design_qa_passes");
+    const passes = readMarkdownBoolInlineFallback(content, "design_qa_passes");
     if (passes !== true) {
       return "qa_passes advance with design steps requires design_qa_passes: true in design-qa-report.md.";
     }
@@ -559,9 +588,15 @@ export function validateTestReportForAdvance(content: string, event: string): st
     return validateSpotFixJustification("qa_spot_fix", parseSpotFixJustificationFromMarkdown(content));
   }
   if (event === "qa_design_followup") {
-    const passes = readMarkdownBool(content, "qa_passes");
-    if (passes !== true) {
-      return "qa_design_followup requires qa_passes: true in test-report.md.";
+    const passes = readMarkdownBoolInlineFallback(content, "qa_passes");
+    const excluded =
+      readMarkdownBoolInlineFallback(content, "excluded_from_gate") === true ||
+      (passes === false && hasQaBrowserProfileLockBlocker(content));
+    if (passes !== true && !(passes === false && excluded)) {
+      return "qa_design_followup requires qa_passes: true or qa_passes: false with excluded_from_gate: true in test-report.md.";
+    }
+    if (readMarkdownBoolInlineFallback(content, "spot_fixable") === true) {
+      return "qa_design_followup cannot be used when test-report.md still marks spot_fixable: true; apply the bounded fix now or route to remediation.";
     }
     return null;
   }
@@ -573,7 +608,7 @@ export function validateTestReportForAdvance(content: string, event: string): st
     return null;
   }
   if (event === "qa_passes") {
-    const passes = readMarkdownBool(content, "qa_passes");
+    const passes = readMarkdownBoolInlineFallback(content, "qa_passes");
     if (passes !== true) {
       return "qa_passes advance requires qa_passes: true in test-report.md.";
     }
@@ -708,7 +743,7 @@ export function touchSetAllowsPath(touchSetContent: string, changedPath: string)
 
 export function validateScopeAmendments(
   touchSetContent: string,
-  changedPaths: readonly string[],
+  _changedPaths: readonly string[],
 ): string | null {
   const parsed = parseTouchSetPaths(touchSetContent);
   for (const amendment of parsed.amendments) {

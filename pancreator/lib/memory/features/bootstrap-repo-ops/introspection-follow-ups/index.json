@@ -89,7 +89,7 @@
     "unstaged-adjacent-ship-paths"
   ],
   "delivery_report": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
-  "source_inbox_item": "lib/inbox/in/172957_06-18-26/14193_2003_introspection-followups.md",
+  "source_inbox_item": ".pan/archive/inbox/in/172957_06-18-26/14193_2003_introspection-followups.md",
   "artifact_index": {
     "run_dir": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups",
     "spec": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/plan.md",
@@ -155,5 +155,6 @@
     "definition_of_done": "pass",
     "gate_decision": "advance",
     "remediation_route": "none"
-  }
+  },
+  "source_inbox_item_prior": "lib/inbox/in/172957_06-18-26/14193_2003_introspection-followups.md"
 }

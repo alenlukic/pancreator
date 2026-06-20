@@ -94,13 +94,33 @@ function formatProgressText(event: FeatureDeliverySdkProgressEvent): string {
   const prefix = "[pan fd]";
   switch (event.kind) {
     case "stage_transition":
-      return `${prefix} ${event.taskId}: ${event.fromStage ?? "?"} → ${event.toStage ?? event.stageId}${event.event ? ` (${event.event})` : ""}`;
+      return [
+        "",
+        `${prefix} stage transition`,
+        `  task: ${event.taskId}`,
+        `  from: ${event.fromStage ?? "?"}`,
+        `  to: ${event.toStage ?? event.stageId}`,
+        ...(event.event ? [`  event: ${event.event}`] : []),
+      ].join("\n");
     case "stage_enter":
-      return `${prefix} ${event.taskId}: entering ${event.stageId}${event.persona ? ` (${event.persona})` : ""}`;
+      return [
+        "",
+        `${prefix} stage enter`,
+        `  task: ${event.taskId}`,
+        `  stage: ${event.stageId}`,
+        ...(event.persona ? [`  persona: ${event.persona}`] : []),
+      ].join("\n");
     case "heartbeat":
-      return `${prefix} ${event.taskId}: ${event.stageId}${event.persona ? ` (${event.persona})` : ""} running… ${formatElapsed(event.elapsedMs ?? 0)}`;
+      return `${prefix} heartbeat | task=${event.taskId} stage=${event.stageId}${event.persona ? ` persona=${event.persona}` : ""} elapsed=${formatElapsed(event.elapsedMs ?? 0)}`;
     case "stage_complete":
-      return `${prefix} ${event.taskId}: finished ${event.stageId}${event.persona ? ` (${event.persona})` : ""} (${formatElapsed(event.elapsedMs ?? 0)})`;
+      return [
+        "",
+        `${prefix} stage complete`,
+        `  task: ${event.taskId}`,
+        `  stage: ${event.stageId}`,
+        ...(event.persona ? [`  persona: ${event.persona}`] : []),
+        `  elapsed: ${formatElapsed(event.elapsedMs ?? 0)}`,
+      ].join("\n");
     default:
       return `${prefix} ${event.taskId}: ${event.stageId}`;
   }

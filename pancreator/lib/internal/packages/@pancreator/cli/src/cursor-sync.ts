@@ -1,4 +1,5 @@
 import {
+  formatCanonicalJson,
   projectRootAbs,
   readProjectRoot,
   sliceOperatorAgentSection,
@@ -448,7 +449,7 @@ function mergeManagedHookJson(existingRaw: string | undefined): string {
 
   base.version = 1;
   base.hooks = hooks;
-  return `${JSON.stringify(base, null, 2)}\n`;
+  return `${formatCanonicalJson(base, 0)}\n`;
 }
 
 function resolveManagedRtkHookSource(projectRoot: string): string {

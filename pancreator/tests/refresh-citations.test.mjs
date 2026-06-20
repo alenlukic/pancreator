@@ -12,6 +12,7 @@ import {
   refreshCitationBody,
   refreshCitations,
 } from "../lib/internal/tools/format/refresh-citations.mjs";
+import { stringifyCompactJson } from "../lib/internal/tools/format/canonical-json-format.mjs";
 import { legacyPrettyJson } from "./helpers/legacy-json-stringify.mjs";
 
 function makeTempRepo() {
@@ -30,7 +31,7 @@ test("refreshCitationBody patches flattened YAML frontmatter reference strings",
   const targetRel = ".docs/flat-target.md";
   mkdirSync(path.dirname(path.join(root, targetRel)), { recursive: true });
   writeFileSync(path.join(root, targetRel), "hello\n", "utf8");
-  const citation = JSON.stringify({
+  const citation = stringifyCompactJson({
     kind: "lines",
     path: targetRel,
     range: [1, 1],

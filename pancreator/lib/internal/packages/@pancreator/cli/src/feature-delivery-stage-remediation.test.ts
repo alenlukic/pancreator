@@ -17,6 +17,7 @@ import {
   createStageMockTransport,
   type StageFixture,
 } from "./fixtures/stage-mock-transport.js";
+import { gateFixtureBody } from "./feature-delivery-gate-fixtures.js";
 
 const CANONICAL_REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 
@@ -181,7 +182,7 @@ describe("feature-delivery SDK stage remediation", () => {
 
     for (const entry of fixture.writesOnSuccess) {
       const body = await readFile(path.join(root, entry.path), "utf8");
-      expect(body).toBe(entry.content);
+      expect(body).toBe(gateFixtureBody(root, entry.path));
     }
   });
 });

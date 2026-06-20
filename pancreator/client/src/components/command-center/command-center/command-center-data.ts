@@ -12,6 +12,7 @@ import {
   findActiveStage,
   formatLastEventTime,
   missionControlHref,
+  missionControlShippedOutcomeHref,
   newestRunEventTimestamp,
   taskLevelNextCommand,
   type TaskRunStateEnvelope,
@@ -339,7 +340,7 @@ function buildRecentOutcomeRows(shippedOutcomes: ShippedOutcome[], nowMs: number
     ageLabel: formatLastEventTime(outcome.indexedAt, nowMs),
     primaryCta: {
       label: defaultLabel,
-      href: `/mission-control?task=${encodeURIComponent(outcome.taskId)}`,
+      href: missionControlShippedOutcomeHref(outcome),
     },
     overflow: {
       taskId: outcome.taskId,

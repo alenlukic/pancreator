@@ -2,6 +2,7 @@ import {
   excludeReconciledAttentionTasks,
   getActiveRunState,
   getRunStateForMissionControl,
+  getShippedOutcomeRunStateForMissionControl,
   loadArchivedTaskIds,
   loadShippedOutcomes,
 } from "@/services/run-state";
@@ -61,6 +62,15 @@ export async function GET(request: Request): Promise<Response> {
           : {}),
       },
     });
+  }
+
+  const outcomeId = new URL(request.url).searchParams.get("outcome");
+  if (outcomeId !== null && outcomeId.length > 0) {
+    const shippedEnvelopes = await getShippedOutcomeRunStateForMissionControl(
+      repoRoot,
+      outcomeId,
+    );
+    return Response.json(shippedEnvelopes);
   }
 
   const taskId = new URL(request.url).searchParams.get("task");

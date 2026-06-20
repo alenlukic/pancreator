@@ -301,6 +301,186 @@ describe("feature-delivery-runner automation", () => {
     expect(record.pancreator?.stage_id).toBe("implement");
   });
 
+  it("invokeFeatureDeliveryEnteringStage reuses browser-lock design report on test retries", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-test-reuse-design-qa-"));
+    await seedEscalationConfig(root);
+    const personaDir = path.join(root, "lib", "personas");
+    await mkdir(personaDir, { recursive: true });
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "qa-tester.md"),
+      path.join(personaDir, "qa-tester.md"),
+    );
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "pancreator-engineer.md"),
+      path.join(personaDir, "pancreator-engineer.md"),
+    );
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test", persona: "qa-tester" }],
+    };
+    const state = sampleLedger({
+      currentStage: "test",
+      options: { designSteps: true, designStepsSource: "pancreator_yaml" },
+      artifacts: {
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+    await writeFile(
+      path.join(runDir, "design-qa-report.md"),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: false",
+        "MCP error: The browser is already running for /Users/alen/.cache/chrome-devtools-mcp/chrome-profile.",
+        "Use --isolated to run multiple browser instances.",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const capturedPromptPaths: string[] = [];
+    const transport: CursorSdkTransport = async (params) => {
+      if (params.stagePromptPath !== undefined) {
+        capturedPromptPaths.push(params.stagePromptPath);
+      }
+      const cwd = params.cwd ?? root;
+      const required =
+        params.requiredArtifactPaths ??
+        (params.artifactPath !== undefined ? [params.artifactPath] : []);
+      for (const rel of required) {
+        const abs = path.join(cwd, rel);
+        await mkdir(path.dirname(abs), { recursive: true });
+        await writeFile(abs, mockStageArtifactBody(cwd, rel), "utf8");
+      }
+      return { status: "ok", resultText: "ok" };
+    };
+
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot: root,
+      state,
+      pipeline,
+      stageId: "test",
+      testHooks: { sdkTransport: transport },
+    });
+
+    expect(capturedPromptPaths).toContain(".pan/work/demo/run/next-prompt.md");
+    expect(capturedPromptPaths).not.toContain(
+      ".pan/work/demo/run/design-qa-prompt.md",
+    );
+  });
+
+  it("invokeFeatureDeliveryEnteringStage reuses follow-up artifacts without re-invoking qa", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-test-reuse-followup-"));
+    await seedEscalationConfig(root);
+    await writeFile(
+      path.join(root, "pancreator.yaml"),
+      `project_root: "."
+runner:
+  cursor:
+    invocation: sdk
+    stage_remediation: false
+`,
+      "utf8",
+    );
+    const personaDir = path.join(root, "lib", "personas");
+    await mkdir(personaDir, { recursive: true });
+    await copyFile(
+      path.join(CANONICAL_REPO_ROOT, "lib", "personas", "qa-tester.md"),
+      path.join(personaDir, "qa-tester.md"),
+    );
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test", persona: "qa-tester" }],
+    };
+    const state = sampleLedger({
+      currentStage: "test",
+      options: { designSteps: true, designStepsSource: "pancreator_yaml" },
+      artifacts: {
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+    await writeFile(
+      path.join(runDir, "test-report.md"),
+      [
+        "qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      "utf8",
+    );
+    await writeFile(
+      path.join(runDir, "design-qa-report.md"),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const transport: CursorSdkTransport = async () => {
+      throw new Error("qa transport should not run when follow-up artifacts are reusable");
+    };
+
+    await invokeFeatureDeliveryEnteringStage({
+      repoRoot: root,
+      state,
+      pipeline,
+      stageId: "test",
+      testHooks: { sdkTransport: transport },
+    });
+
+    const logText = await readFile(path.join(root, state.artifacts.runLogFile), "utf8");
+    expect(logText).toContain("artifact_reuse");
+  });
+
+  it("invokeFeatureDeliveryEnteringStage no-ops for terminal complete stage", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-terminal-complete-"));
+    const state = sampleLedger({
+      currentStage: "complete",
+      artifacts: {
+        runDir: ".pan/work/demo/run",
+        stateFile: ".pan/work/demo/run/state.json",
+        runLogFile: ".pan/work/demo/run/run.log.jsonl",
+        nextPromptFile: ".pan/work/demo/run/next-prompt.md",
+      },
+    });
+    const runDir = path.join(root, state.artifacts.runDir);
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "next-prompt.md"), "# prompt", "utf8");
+    await writeFile(path.join(root, state.artifacts.stateFile), "{}", "utf8");
+    await writeFile(path.join(root, state.artifacts.runLogFile), "", "utf8");
+
+    const envelope = await invokeFeatureDeliveryEnteringStage({
+      repoRoot: root,
+      state,
+      pipeline: { id: "feature-delivery", stages: [{ id: "bookkeeping", persona: "librarian" }] },
+      stageId: "complete",
+    });
+
+    expect(envelope.personaName).toBe("none");
+    expect(envelope.sdkResult?.resultText).toContain("Terminal stage reached");
+  });
+
   it("trySdkAutoChainAfterStageWork routes plan-invalidating qa_fails to plan", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-qa-plan-"));
     const state = sampleLedger({ currentStage: "test" });
@@ -337,6 +517,98 @@ describe("feature-delivery-runner automation", () => {
 
     expect(chained).toBe(true);
     expect(chainedEvents).toEqual(["qa_fails_plan_invalidating"]);
+  });
+
+  it("trySdkAutoChainAfterStageWork routes browser-lock design QA failures to qa_design_followup", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-qa-followup-"));
+    const state = sampleLedger({ currentStage: "test" });
+    const testRel = path.posix.join(state.artifacts.runDir, "test-report.md");
+    const testAbs = path.join(root, testRel);
+    await mkdir(path.dirname(testAbs), { recursive: true });
+    await writeFile(testAbs, "## Verdict\n`qa_passes: true`, `plan_invalidating: false`", "utf8");
+    const designRel = path.posix.join(state.artifacts.runDir, "design-qa-report.md");
+    await writeFile(
+      path.join(root, designRel),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: false",
+        "MCP error: The browser is already running for /Users/alen/.cache/chrome-devtools-mcp/chrome-profile.",
+        "Use --isolated to run multiple browser instances.",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const chainedEvents: string[] = [];
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test" }, { id: "bookkeeping" }],
+    };
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: root,
+      state,
+      pipeline,
+      completedStageId: "test",
+      now: new Date("2026-05-10T15:00:00.000Z"),
+      advanceFn: async (event) => {
+        chainedEvents.push(event);
+      },
+    });
+
+    expect(chained).toBe(true);
+    expect(chainedEvents).toEqual(["qa_design_followup"]);
+  });
+
+  it("trySdkAutoChainAfterStageWork routes excluded qa blockers to qa_design_followup", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-runner-qa-excluded-followup-"));
+    const state = sampleLedger({ currentStage: "test" });
+    const testRel = path.posix.join(state.artifacts.runDir, "test-report.md");
+    const testAbs = path.join(root, testRel);
+    await mkdir(path.dirname(testAbs), { recursive: true });
+    await writeFile(
+      testAbs,
+      [
+        "qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      "utf8",
+    );
+    const designRel = path.posix.join(state.artifacts.runDir, "design-qa-report.md");
+    await writeFile(
+      path.join(root, designRel),
+      [
+        "design_qa_passes: false",
+        "plan_invalidating: false",
+        "core_reentry_required: false",
+        "spot_fixable: false",
+        "excluded_from_gate: true",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const chainedEvents: string[] = [];
+    const pipeline: PipelineDefinition = {
+      id: "feature-delivery",
+      stages: [{ id: "test" }, { id: "bookkeeping" }],
+    };
+    const chained = await trySdkAutoChainAfterStageWork({
+      repoRoot: root,
+      state,
+      pipeline,
+      completedStageId: "test",
+      now: new Date("2026-05-10T15:00:00.000Z"),
+      advanceFn: async (event) => {
+        chainedEvents.push(event);
+      },
+    });
+
+    expect(chained).toBe(true);
+    expect(chainedEvents).toEqual(["qa_design_followup"]);
   });
 
   it("resolveTestStageAdvanceEvent maps qa_fails to qa_fails_plan_invalidating when verdict requires plan", async () => {
@@ -675,7 +947,10 @@ configs:
       repoRoot: root,
       taskId: state.taskId,
       artifact: implementationReportRel,
-      testHooks: { sdkTransport: transport },
+      testHooks: {
+        sdkTransport: transport,
+        disableAutoChainContinuationRetry: true,
+      },
     });
 
     const persisted = JSON.parse(await readFile(path.join(root, stateFileRel), "utf8")) as {

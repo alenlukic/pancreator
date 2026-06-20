@@ -50,6 +50,8 @@ async function runCli(args: string[], options?: RunCliOptions): Promise<number> 
   return parseAndRun(args, {
     ...options,
     testHooks: {
+      disableAutoChainContinuationRetry:
+        options?.testHooks?.disableAutoChainContinuationRetry ?? true,
       ...options?.testHooks,
     },
   });
@@ -79,6 +81,16 @@ async function seedCanonicalPersonas(root: string): Promise<void> {
       path.join(CANONICAL_REPO_ROOT, "lib", "personas", `${persona}.md`),
       path.join(personasDir, `${persona}.md`),
     );
+  }
+}
+
+async function forceCanonicalPersonaModelsAuto(root: string): Promise<void> {
+  const personasDir = path.join(root, "lib", "personas");
+  for (const persona of FEATURE_DELIVERY_PERSONAS) {
+    const personaPath = path.join(personasDir, `${persona}.md`);
+    const existing = await readFile(personaPath, "utf8");
+    const updated = existing.replace(/^model:\s*.+$/mu, "model: auto");
+    await writeFile(personaPath, updated, "utf8");
   }
 }
 
@@ -300,9 +312,10 @@ describe("parseAndRun", () => {
     };
     expect(state.currentStage).toBe("plan");
     expect(state.transitions.length).toBeGreaterThan(5);
-    expect(await readFile(path.join(root, msg.handoffFile), "utf8")).toContain(
-      "Executor persona: tech-lead",
-    );
+    const handoff = await readFile(path.join(root, msg.handoffFile), "utf8");
+    expect(handoff).toContain("Executor persona: tech-lead");
+    expect(handoff).toContain("## Output manifest");
+    expect(handoff).toContain("- consulted_docs: DOC.OUTPUT_MANIFEST");
     const runMsg = JSON.parse(raw) as { nextCommand?: string };
     expect(runMsg.nextCommand).toMatch(/^pnpm -w exec pan advance /u);
     expect(await readFile(path.join(root, msg.runLogFile), "utf8")).toContain(
@@ -329,6 +342,22 @@ describe("parseAndRun", () => {
     expect(text).toContain("38670_1315_demo-feature");
     expect(text).toContain("2026-05-10 13:15 UTC");
     expect(text).toContain("nextCommand: pnpm -w exec pan advance");
+  });
+
+  it("fails fast on invalid --format values", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-run-format-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+    const out: string[] = [];
+    const code = await runCli(
+      ["run", "feature-delivery", "demo-feature.md", "--format", "tex"],
+      {
+        repoRoot: root,
+        writeOut: (chunk) => out.push(chunk),
+      },
+    );
+    expect(code).toBe(1);
+    expect(out.join("")).toContain("--format must be one of: json, text");
   });
 
   it("pan next returns the same nextCommand as run without mutating state", async () => {
@@ -1416,7 +1445,9 @@ describe("parseAndRun", () => {
     const activeRunDirRel = `.pan/work/172996_05-10-26/${start.taskId}`;
     try {
       await unlink(path.join(root, activeRunDirRel, "operator-verification.md"));
-    } catch {}
+    } catch {
+      /* operator-verification.md may already be absent */
+    }
 
     const closeOut: string[] = [];
     const code = await runCli(["close-artifacts", start.taskId], {
@@ -1626,6 +1657,127 @@ describe("parseAndRun", () => {
     expect(closed.archivedRunDir).toBe(archiveRunDirRel);
     expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
     expect(existsSync(path.join(root, archiveRunDirRel))).toBe(true);
+  });
+
+  it("close-artifacts recovers when active and archived run directories both exist", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-close-artifacts-duplicate-run-"));
+    await seedFeatureDeliveryRepo(root);
+    await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await runCli(["feature", "new", "demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string };
+    const dayDir = "172996_05-10-26";
+    const { activeRunDirRel, inboxSourceRel } = await completeFeatureDeliveryRunForClose(
+      root,
+      start.taskId,
+      "demo-feature",
+      dayDir,
+    );
+    const archiveRunDirRel = `.pan/archive/work/${dayDir}/${start.taskId}`;
+    await mkdir(path.join(root, archiveRunDirRel), { recursive: true });
+    await writeFile(path.join(root, archiveRunDirRel, "stale.txt"), "stale\n", "utf8");
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        `\n- \`${inboxSourceRel}\`\n`,
+        "",
+        "## Most recent shipped Features",
+        "\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+        "",
+        "## Operator notes",
+        "\n<!-- pan:active-memory:operator-notes:auto -->\n\n- Active-memory refreshed (UTC): `2020-01-01T00:00:00.000Z`\n\n<!-- /pan:active-memory:operator-notes:auto -->\n",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const closeOut: string[] = [];
+    const code = await runCli(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => closeOut.push(c),
+      clock: () => new Date("2026-05-10T14:00:00.000Z"),
+    });
+    expect(code).toBe(0);
+    const closed = JSON.parse(closeOut.join("")) as {
+      pipelineStatus: string;
+      archivedRunDir: string;
+    };
+    expect(closed.pipelineStatus).toBe("closed");
+    expect(closed.archivedRunDir).toBe(archiveRunDirRel);
+    expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
+    expect(existsSync(path.join(root, archiveRunDirRel))).toBe(true);
+    expect(existsSync(path.join(root, archiveRunDirRel, "stale.txt"))).toBe(false);
+  });
+
+  it("close-artifacts resolves renamed inbox directives from feature index lineage", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "pan-close-artifacts-renamed-inbox-"));
+    await seedFeatureDeliveryRepo(root);
+    const liveInboxRel = "lib/inbox/in/172957_06-18-26/demo-feature.md";
+    await mkdir(path.join(root, ...liveInboxRel.split("/").slice(0, -1)), { recursive: true });
+    await writeFile(path.join(root, liveInboxRel), "# Demo Feature", "utf8");
+    const out: string[] = [];
+    await runCli(["feature", "new", "172957_06-18-26/demo-feature.md"], {
+      repoRoot: root,
+      writeOut: (c) => out.push(c),
+      clock: () => new Date("2026-05-10T13:15:30.000Z"),
+    });
+    const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string };
+    const dayDir = "172996_05-10-26";
+    const activeRunDirRel = `.pan/work/${dayDir}/${start.taskId}`;
+    await completeFeatureDeliveryRunForClose(root, start.taskId, "demo-feature", dayDir);
+
+    const statePath = path.join(root, start.stateFile);
+    const state = JSON.parse(await readFile(statePath, "utf8")) as {
+      source: { inboxEntry: string; inboxPath: string };
+    };
+    state.source.inboxPath = "lib/inbox/in/260618/demo-feature.md";
+    state.source.inboxEntry = "260618/demo-feature.md";
+    await writeFile(statePath, stringifyCliJson(root, state), "utf8");
+
+    await mkdir(path.join(root, "lib", "memory", "active"), { recursive: true });
+    await writeFile(
+      path.join(root, "lib", "memory", "active", "current.md"),
+      [
+        "# Current focus",
+        "",
+        "## Active Feature",
+        `\n- \`${liveInboxRel}\`\n`,
+        "",
+        "## Most recent shipped Features",
+        "\n| Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |\n|---|---|---|---|---|\n| `—` | `—` | `—` | `—` | `—` |\n",
+        "",
+        "## Operator notes",
+        "\n<!-- pan:active-memory:operator-notes:auto -->\n\n- Active-memory refreshed (UTC): `2020-01-01T00:00:00.000Z`\n\n<!-- /pan:active-memory:operator-notes:auto -->\n",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const closeOut: string[] = [];
+    const code = await runCli(["close-artifacts", start.taskId], {
+      repoRoot: root,
+      writeOut: (c) => closeOut.push(c),
+      clock: () => new Date("2026-05-10T14:00:00.000Z"),
+    });
+    expect(code).toBe(0);
+    const closed = JSON.parse(closeOut.join("")) as {
+      pipelineStatus: string;
+      archivedInboxPath: string;
+    };
+    expect(closed.pipelineStatus).toBe("closed");
+    expect(closed.archivedInboxPath).toBe(
+      ".pan/archive/inbox/in/172957_06-18-26/demo-feature.md",
+    );
+    expect(existsSync(path.join(root, liveInboxRel))).toBe(false);
+    expect(existsSync(path.join(root, activeRunDirRel))).toBe(false);
   });
 
   it("rolls back archive moves when active-memory refresh fails during close-artifacts", async () => {
@@ -2564,7 +2716,10 @@ describe("operator tooling batch cli wiring", () => {
           repoRoot: root,
           taskId,
           artifact: artifactForStage(currentStage),
-          testHooks: { sdkTransport: captureTransport },
+          testHooks: {
+            sdkTransport: captureTransport,
+            disableAutoChainContinuationRetry: true,
+          },
         });
         currentStage = next.currentStage;
       }
@@ -2600,6 +2755,84 @@ describe("operator tooling batch cli wiring", () => {
       expect(prompts.get("bookkeeping")).toContain("feature index MUST be refreshed");
       expect(promptTokens.get("bookkeeping")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
       expect(promptTokens.get("review")).toBeGreaterThan(promptTokens.get("implement") ?? 0);
+    });
+
+    it("integration: transition state logic advances correctly with generated artifacts", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-transition-state-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await forceCanonicalPersonaModelsAuto(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+
+      const runOut: string[] = [];
+      const runCode = await runCli(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => runOut.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      });
+      expect(runCode).toBe(0);
+      const start = JSON.parse(runOut.join("")) as {
+        taskId: string;
+        stateFile: string;
+        featureId: string;
+        currentStage: string;
+      };
+      expect(start.currentStage).toBe("plan");
+      const runDirRel = path.posix.dirname(start.stateFile);
+
+      await seedPlanStageAdvanceArtifacts(root, runDirRel, start.featureId);
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await writeFile(
+        path.join(root, runDirRel, "implementation-report.md"),
+        VALID_IMPLEMENTATION_REPORT_MARKDOWN,
+        "utf8",
+      );
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/implementation-report.md`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await writeFile(path.join(root, runDirRel, "review.md"), VALID_REVIEW_MARKDOWN, "utf8");
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/review.md`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await seedTestStageAdvanceArtifacts(root, runDirRel);
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/test-report.md`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      const state = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        currentStage: string;
+        advanceHistory?: Array<{ kind: string; event?: string }>;
+        stages?: Array<{ id: string; status: string }>;
+      };
+      expect(state.currentStage).toBe("bookkeeping");
+      const transitionEvents = (state.advanceHistory ?? [])
+        .filter((entry) => entry.kind === "advance")
+        .map((entry) => entry.event)
+        .filter((event): event is string => typeof event === "string");
+      expect(transitionEvents).toEqual(
+        expect.arrayContaining([
+          "sdk_artifact_validation",
+          "implementation_complete",
+          "review_passes",
+          "qa_passes",
+        ]),
+      );
+      const stageStatus = new Map((state.stages ?? []).map((stage) => [stage.id, stage.status]));
+      expect(stageStatus.get("plan")).toBe("complete");
+      expect(stageStatus.get("implement")).toBe("complete");
+      expect(stageStatus.get("review")).toBe("complete");
+      expect(stageStatus.get("test")).toBe("complete");
+      expect(stageStatus.get("bookkeeping")).toBe("ready");
     });
 
     it("does not call SDK transport for manual mode across run and advance", async () => {
@@ -2771,6 +3004,110 @@ stages:
       expect(["bookkeeping", "complete"]).toContain(state.currentStage);
     });
 
+    it("retries interrupted sdk stage when operator reruns previous artifact", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-interrupt-resume-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+
+      const out: string[] = [];
+      const runCode = await runCli(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      });
+      expect(runCode).toBe(0);
+
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; featureId: string };
+      const runDirRel = path.posix.dirname(start.stateFile);
+      await seedPlanStageAdvanceArtifacts(root, runDirRel, start.featureId);
+      await writeRunnerInvocationConfig(root, "sdk");
+
+      const interruptedOut: string[] = [];
+      const interruptedCode = await runCli(
+        ["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`],
+        {
+          repoRoot: root,
+          writeOut: (c) => interruptedOut.push(c),
+          testHooks: {
+            sdkTransport: async () => {
+              throw new Error("simulated operator interrupt");
+            },
+          },
+        },
+      );
+      expect(interruptedCode).toBe(1);
+      expect(interruptedOut.join("")).toContain("simulated operator interrupt");
+
+      const midState = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        currentStage: string;
+      };
+      expect(midState.currentStage).toBe("implement");
+
+      const resumedOut: string[] = [];
+      const resumedCode = await runCli(
+        ["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`],
+        {
+          repoRoot: root,
+          writeOut: (c) => resumedOut.push(c),
+          testHooks: { sdkTransport: mockSdkTransport() },
+        },
+      );
+      expect(resumedCode).toBe(0);
+      const resumed = JSON.parse(resumedOut.join("")) as { event: string; currentStage: string };
+      expect(resumed.event).toBe("resume_implement");
+      expect(["review", "test", "bookkeeping", "complete"]).toContain(resumed.currentStage);
+    });
+
+    it("repair-state in sdk mode resumes implement and auto-chains", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-repair-resume-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+
+      const out: string[] = [];
+      const runCode = await runCli(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      });
+      expect(runCode).toBe(0);
+
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; featureId: string };
+      const runDirRel = path.posix.dirname(start.stateFile);
+      await seedPlanStageAdvanceArtifacts(root, runDirRel, start.featureId);
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await writeRunnerInvocationConfig(root, "sdk");
+      const repairOut: string[] = [];
+      const repairCode = await runCli(
+        [
+          "repair-state",
+          start.taskId,
+          "--stage",
+          "implement",
+          "--artifact",
+          `${runDirRel}/touch-set.json`,
+          "--reason",
+          "Resuming implement after manual interrupt during sdk stage run",
+        ],
+        {
+          repoRoot: root,
+          writeOut: (c) => repairOut.push(c),
+          testHooks: { sdkTransport: mockSdkTransport() },
+        },
+      );
+      expect(repairCode).toBe(0);
+      const repaired = JSON.parse(repairOut.join("")) as { currentStage: string; nextHumanAction: string };
+      expect(["review", "test", "bookkeeping", "complete"]).toContain(repaired.currentStage);
+      expect(repaired.nextHumanAction).toContain("SDK");
+    });
+
     it("sdk auto-chains review must_fix back to implement", async () => {
       const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-auto-must-fix-"));
       await seedFeatureDeliveryRepo(root);
@@ -2850,5 +3187,80 @@ stages:
       expect(halted.status).toBe("halted");
       expect(halted.automation?.cumulativeRetryCount).toBe(6);
     });
+
+    it("halts sdk automation when stage auto-chain stalls repeatedly", async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "pan-sdk-stall-halt-"));
+      await seedFeatureDeliveryRepo(root);
+      await seedCanonicalPersonas(root);
+      await writeRunnerInvocationConfig(root, "manual");
+      await writeFile(path.join(root, "lib", "inbox", "in", "demo-feature.md"), "# Demo", "utf8");
+
+      const out: string[] = [];
+      await runCli(["run", "feature-delivery", "demo-feature.md"], {
+        repoRoot: root,
+        writeOut: (c) => out.push(c),
+        clock: () => new Date("2026-05-10T13:15:30.000Z"),
+      });
+      const start = JSON.parse(out.join("")) as { taskId: string; stateFile: string; featureId: string };
+      const runDirRel = path.posix.dirname(start.stateFile);
+      await seedPlanStageAdvanceArtifacts(root, runDirRel, start.featureId);
+      await runCli(["advance", start.taskId, "--artifact", `${runDirRel}/touch-set.json`], {
+        repoRoot: root,
+        writeOut: () => undefined,
+      });
+
+      await writeRunnerInvocationConfig(root, "sdk");
+      const stallTransport: CursorSdkTransport = async (params) => {
+        const cwd = params.cwd ?? process.cwd();
+        const required =
+          params.requiredArtifactPaths ??
+          (params.artifactPath !== undefined ? [params.artifactPath] : []);
+        for (const rel of required) {
+          const abs = path.join(cwd, rel);
+          if (existsSync(abs)) {
+            continue;
+          }
+          await mkdir(path.dirname(abs), { recursive: true });
+          if (rel.endsWith("implementation-report.md")) {
+            await writeFile(abs, "# implementation report\n\nmissing required manifest fields\n", "utf8");
+          } else {
+            await writeFile(abs, gateFixtureBody(cwd, rel), "utf8");
+          }
+        }
+        return { status: "ok", resultText: "mocked-sdk" };
+      };
+
+      const repairOut: string[] = [];
+      const repairCode = await runCli(
+        [
+          "repair-state",
+          start.taskId,
+          "--stage",
+          "implement",
+          "--artifact",
+          `${runDirRel}/touch-set.json`,
+          "--reason",
+          "Resume implement after interrupted sdk run with invalid report artifacts",
+        ],
+        {
+          repoRoot: root,
+          writeOut: (c) => repairOut.push(c),
+          testHooks: {
+            sdkTransport: stallTransport,
+            disableAutoChainContinuationRetry: false,
+          },
+        },
+      );
+      expect(repairCode).toBe(1);
+      expect(repairOut.join("")).toContain("retry limit halt");
+
+      const halted = JSON.parse(await readFile(path.join(root, start.stateFile), "utf8")) as {
+        status: string;
+        automation?: { cumulativeRetryCount: number };
+      };
+      expect(halted.status).toBe("halted");
+      expect(halted.automation?.cumulativeRetryCount).toBe(6);
+    });
+
   });
 });

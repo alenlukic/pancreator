@@ -2744,6 +2744,14 @@
   background: var(--surface-elevated);
 }
 
+.mc-shipped-unavailable {
+  max-width: 36rem;
+  margin: var(--space-6) auto;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
+  border-radius: var(--radii-lg, 12px);
+  box-shadow: var(--shadow-md, 0 4px 12px color-mix(in srgb, var(--text-primary) 8%, transparent));
+}
+
 .mc-empty-actions {
   display: flex;
   flex-wrap: wrap;

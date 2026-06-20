@@ -36,6 +36,13 @@ const POLL_INTERVAL_MS = 7500;
 export function MissionControlModule() {
   const searchParams = useSearchParams();
   const taskQuery = searchParams.get("task");
+  const outcomeQuery = searchParams.get("outcome");
+  const outcomeLabelQuery = searchParams.get("label");
+  const isShippedOutcomeQuery = outcomeQuery !== null && outcomeQuery.length > 0;
+  const shippedOutcomeLabel =
+    outcomeLabelQuery !== null && outcomeLabelQuery.length > 0
+      ? outcomeLabelQuery
+      : outcomeQuery ?? "this shipped outcome";
 
   const [tasks, setTasks] = useState<TaskRunStateEnvelope[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -63,9 +70,11 @@ export function MissionControlModule() {
     setError(null);
     try {
       const runStateUrl =
-        taskQuery !== null && taskQuery.length > 0
-          ? `/api/run-state?task=${encodeURIComponent(taskQuery)}`
-          : "/api/run-state";
+        isShippedOutcomeQuery
+          ? `/api/run-state?outcome=${encodeURIComponent(outcomeQuery!)}`
+          : taskQuery !== null && taskQuery.length > 0
+            ? `/api/run-state?task=${encodeURIComponent(taskQuery)}`
+            : "/api/run-state";
       const response = await fetch(runStateUrl);
       if (!response.ok) {
         const data = (await response.json()) as { error?: string };
@@ -89,7 +98,7 @@ export function MissionControlModule() {
         setLoading(false);
       }
     }
-  }, [taskQuery]);
+  }, [isShippedOutcomeQuery, outcomeQuery, taskQuery]);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -183,8 +192,14 @@ export function MissionControlModule() {
         return fromQuery;
       }
     }
+    if (isShippedOutcomeQuery && outcomeQuery !== null) {
+      const fromOutcome = tasks.find((task) => task.taskId === outcomeQuery);
+      if (fromOutcome !== undefined) {
+        return fromOutcome;
+      }
+    }
     return nonTerminalTasks[0] ?? tasks[0] ?? null;
-  }, [nonTerminalTasks, selectedTaskId, taskQuery, tasks]);
+  }, [isShippedOutcomeQuery, nonTerminalTasks, outcomeQuery, selectedTaskId, taskQuery, tasks]);
 
   useEffect(() => {
     if (selectedTask === null) {
@@ -262,6 +277,36 @@ export function MissionControlModule() {
   }
 
   if (tasks.length === 0) {
+    if (isShippedOutcomeQuery) {
+      return (
+        <div className="mission-control-module" data-testid="mission-control-module">
+          <section
+            className="mc-empty-state mc-shipped-unavailable"
+            data-testid="mission-control-shipped-unavailable"
+          >
+            <h2>Shipped outcome unavailable</h2>
+            <p>
+              Unable to open {shippedOutcomeLabel} from the current shipped index entry. The
+              shipped record may be missing or no longer resolvable.
+            </p>
+            <div className="mc-empty-actions">
+              <Link href="/command-center" className="command-center-row-cta">
+                Return to Home
+              </Link>
+              <button
+                type="button"
+                className="command-center-row-cta-quiet"
+                data-testid="mc-reload-shipped-outcome"
+                onClick={() => void loadRunState({ initial: true })}
+              >
+                Reload shipped outcome
+              </button>
+            </div>
+          </section>
+        </div>
+      );
+    }
+
     const emptyTitle =
       taskQuery !== null && taskQuery.length > 0 ? "Outcome not available" : "No active runs";
     const emptyBody =

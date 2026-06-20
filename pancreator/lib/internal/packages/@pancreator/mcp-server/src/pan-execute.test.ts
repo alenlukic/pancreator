@@ -10,7 +10,7 @@ import { callDdlToolMcp, readPancreatorResourceMcp } from "./create-mcp-server.j
 import { listResourceDefinitions } from "./definitions.js";
 import { DdlDeferredToolError, executeDdlTool } from "./pan-execute.js";
 
-const ROOT = path.resolve(import.meta.dirname, "..", "..", "..", "..", "..", "..");
+const ROOT = path.resolve(import.meta.dirname, "..", "..", "..", "..", "..", "..", "..");
 const JSON_FORMAT_ABBREV_ENV = "PAN_JSON_FORMAT_ABBREV_LEN";
 
 let priorAbbrevLen: string | undefined;
@@ -189,10 +189,7 @@ describe("stdio MCP transport read tools", () => {
     const { StdioClientTransport } = await import(
       "@modelcontextprotocol/sdk/client/stdio.js"
     );
-    const serverEntry = path.join(
-      ROOT,
-      "lib/internal/packages/@pancreator/mcp-server/dist/server.js",
-    );
+    const serverEntry = path.join(import.meta.dirname, "..", "dist", "server.js");
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [serverEntry],

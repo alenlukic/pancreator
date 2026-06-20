@@ -521,7 +521,13 @@ export function isFeatureDeliveryStageId(
 export function parseReviewPassesVerdict(
   reviewMarkdown: string,
 ): boolean | null {
-  const match = reviewMarkdown.match(/review_passes:\s*(true|false)/iu);
+  return readBooleanField(reviewMarkdown, "review_passes");
+}
+
+function readBooleanField(markdown: string, field: string): boolean | null {
+  const match = markdown.match(
+    new RegExp(`^\\s*${field}:\\s*(true|false)\\s*$`, "imu"),
+  );
   if (match === null) {
     return null;
   }
@@ -537,13 +543,24 @@ export function parseReviewGateOutcome(reviewMarkdown: string): {
 } {
   return {
     passes: parseReviewPassesVerdict(reviewMarkdown),
-    coreReentryRequired: /core_reentry_required:\s*true/iu.test(reviewMarkdown),
-    scopeAmendmentsRatified: /scope_amendments_ratified:\s*true/iu.test(
-      reviewMarkdown,
-    ),
-    spotFixable: /spot_fixable:\s*true/iu.test(reviewMarkdown),
-    excludedFromGate: /excluded_from_gate:\s*true/iu.test(reviewMarkdown),
+    coreReentryRequired: readBooleanField(reviewMarkdown, "core_reentry_required") === true,
+    scopeAmendmentsRatified:
+      readBooleanField(reviewMarkdown, "scope_amendments_ratified") === true,
+    spotFixable: readBooleanField(reviewMarkdown, "spot_fixable") === true,
+    excludedFromGate: readBooleanField(reviewMarkdown, "excluded_from_gate") === true,
   };
+}
+
+function readBooleanFieldInlineFallback(markdown: string, field: string): boolean | null {
+  const strict = readBooleanField(markdown, field);
+  if (strict !== null) {
+    return strict;
+  }
+  const inline = markdown.match(new RegExp(`\\b${field}:\\s*(true|false)\\b`, "iu"));
+  if (inline === null) {
+    return null;
+  }
+  return inline[1]?.toLowerCase() === "true";
 }
 
 export function parseQaVerdict(testMarkdown: string): {
@@ -553,16 +570,34 @@ export function parseQaVerdict(testMarkdown: string): {
   spotFixable: boolean;
   excludedFromGate: boolean;
 } {
-  const passMatch = testMarkdown.match(/qa_passes:\s*(true|false)/iu);
-  const planMatch = testMarkdown.match(/plan_invalidating:\s*(true|false)/iu);
+  const passes = readBooleanFieldInlineFallback(testMarkdown, "qa_passes");
+  const inferredExcludedFromGate =
+    passes === false &&
+    (/browser is already running .*chrome-profile/iu.test(testMarkdown) ||
+      /use --isolated to run multiple browser instances/iu.test(testMarkdown) ||
+      /locked shared profile/iu.test(testMarkdown));
   return {
-    passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
+    passes,
     planInvalidating:
-      planMatch !== null && planMatch[1].toLowerCase() === "true",
-    coreReentryRequired: /core_reentry_required:\s*true/iu.test(testMarkdown),
-    spotFixable: /spot_fixable:\s*true/iu.test(testMarkdown),
-    excludedFromGate: /excluded_from_gate:\s*true/iu.test(testMarkdown),
+      !inferredExcludedFromGate &&
+      readBooleanFieldInlineFallback(testMarkdown, "plan_invalidating") === true,
+    coreReentryRequired:
+      !inferredExcludedFromGate &&
+      readBooleanFieldInlineFallback(testMarkdown, "core_reentry_required") === true,
+    spotFixable:
+      !inferredExcludedFromGate &&
+      readBooleanFieldInlineFallback(testMarkdown, "spot_fixable") === true,
+    excludedFromGate:
+      readBooleanFieldInlineFallback(testMarkdown, "excluded_from_gate") === true ||
+      inferredExcludedFromGate,
   };
+}
+
+function hasDesignQaBrowserProfileLockBlocker(designQaMarkdown: string): boolean {
+  return (
+    /browser is already running .*chrome-profile/iu.test(designQaMarkdown) ||
+    /use --isolated to run multiple browser instances/iu.test(designQaMarkdown)
+  );
 }
 
 export function parseDesignQaVerdict(designQaMarkdown: string): {
@@ -572,21 +607,20 @@ export function parseDesignQaVerdict(designQaMarkdown: string): {
   spotFixable: boolean;
   excludedFromGate: boolean;
 } {
-  const passMatch = designQaMarkdown.match(
-    /design_qa_passes:\s*(true|false)/iu,
-  );
-  const planMatch = designQaMarkdown.match(
-    /plan_invalidating:\s*(true|false)/iu,
-  );
+  const passes = readBooleanFieldInlineFallback(designQaMarkdown, "design_qa_passes");
+  const inferredExcludedFromGate =
+    passes === false && hasDesignQaBrowserProfileLockBlocker(designQaMarkdown);
   return {
-    passes: passMatch === null ? null : passMatch[1].toLowerCase() === "true",
+    passes,
     planInvalidating:
-      planMatch !== null && planMatch[1].toLowerCase() === "true",
-    coreReentryRequired: /core_reentry_required:\s*true/iu.test(
-      designQaMarkdown,
-    ),
-    spotFixable: /spot_fixable:\s*true/iu.test(designQaMarkdown),
-    excludedFromGate: /excluded_from_gate:\s*true/iu.test(designQaMarkdown),
+      readBooleanFieldInlineFallback(designQaMarkdown, "plan_invalidating") === true,
+    coreReentryRequired:
+      readBooleanFieldInlineFallback(designQaMarkdown, "core_reentry_required") === true,
+    spotFixable:
+      readBooleanFieldInlineFallback(designQaMarkdown, "spot_fixable") === true,
+    excludedFromGate:
+      readBooleanFieldInlineFallback(designQaMarkdown, "excluded_from_gate") === true ||
+      inferredExcludedFromGate,
   };
 }
 
@@ -612,6 +646,17 @@ export function isDesignOnlyNonBlockingFollowup(input: {
   );
 }
 
+export function isQaOnlyNonBlockingFollowup(qaMarkdown: string): boolean {
+  const qa = parseQaVerdict(qaMarkdown);
+  return (
+    qa.passes === false &&
+    qa.excludedFromGate &&
+    !qa.spotFixable &&
+    !qa.planInvalidating &&
+    !qa.coreReentryRequired
+  );
+}
+
 export function mergedTestStageVerdict(input: {
   qaMarkdown: string;
   designQaMarkdown?: string;
@@ -625,7 +670,8 @@ export function mergedTestStageVerdict(input: {
   designFollowupOnly: boolean;
 } {
   const qa = parseQaVerdict(input.qaMarkdown);
-  const designFollowupOnly = isDesignOnlyNonBlockingFollowup(input);
+  const designFollowupOnly =
+    isQaOnlyNonBlockingFollowup(input.qaMarkdown) || isDesignOnlyNonBlockingFollowup(input);
   const attach = (
     verdict: Omit<
       ReturnType<typeof mergedTestStageVerdict>,
@@ -894,6 +940,80 @@ function readRepoText(repoRoot: string, rel: string): string | null {
   return readFileSync(abs, "utf8");
 }
 
+function readMarkdownSectionBody(content: string, heading: string): string | null {
+  const lines = content.split(/\r?\n/u);
+  const headingRegex = new RegExp(
+    `^##\\s+${heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\\b`,
+    "iu",
+  );
+  const start = lines.findIndex((line) => headingRegex.test(line));
+  if (start < 0) {
+    return null;
+  }
+  const bodyLines: string[] = [];
+  for (let idx = start + 1; idx < lines.length; idx += 1) {
+    if (/^##\s+/u.test(lines[idx] ?? "")) {
+      break;
+    }
+    bodyLines.push(lines[idx] ?? "");
+  }
+  return bodyLines.join("\n");
+}
+
+function resolvePlanCriteriaReferencePaths(planRel: string, criteriaSection: string): string[] {
+  const refs = new Set<string>();
+  const addRef = (rawRef: string) => {
+    const candidate = rawRef.replace(/\\/gu, "/").replace(/^\/+/, "").trim();
+    if (candidate.length === 0 || !candidate.endsWith("acceptance-criteria.md")) {
+      return;
+    }
+    if (candidate.startsWith(".pan/") || candidate.startsWith("lib/")) {
+      refs.add(path.posix.normalize(candidate));
+      return;
+    }
+    refs.add(path.posix.normalize(path.posix.join(path.posix.dirname(planRel), candidate)));
+  };
+  for (const match of criteriaSection.matchAll(/`([^`\n]*acceptance-criteria\.md)`/gu)) {
+    addRef(match[1] ?? "");
+  }
+  for (const match of criteriaSection.matchAll(/(?:^|[\s(])([A-Za-z0-9._/-]*acceptance-criteria\.md)\b/gu)) {
+    addRef(match[1] ?? "");
+  }
+  return [...refs];
+}
+
+function markdownHasCriteriaList(content: string): boolean {
+  return /^\s*(?:\d+\.|-)\s+\S/mu.test(content);
+}
+
+function planCriteriaDelegatesToReferences(
+  repoRoot: string,
+  planRel: string,
+  content: string,
+): boolean {
+  const criteriaSection = readMarkdownSectionBody(content, "Acceptance criteria");
+  if (criteriaSection === null) {
+    return false;
+  }
+  const references = resolvePlanCriteriaReferencePaths(planRel, criteriaSection);
+  if (references.length === 0) {
+    return false;
+  }
+  for (const rel of references) {
+    const referencedRaw = readRepoText(repoRoot, rel);
+    if (referencedRaw === null) {
+      return false;
+    }
+    const referencedContent = readPanWorkMarkdown(referencedRaw);
+    const beforeManifest =
+      referencedContent.split(/^##\s+Output manifest\b/imu)[0] ?? referencedContent;
+    if (!markdownHasCriteriaList(beforeManifest)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function gateValidationErrorToWarning(
   rel: string,
   message: string,
@@ -915,7 +1035,10 @@ function validateArtifactContent(
 
   if (base === "plan.md" && !isCompanionDisciplineArtifact(rel)) {
     const planError = validatePlanMarkdown(content);
-    if (planError !== null) {
+    const delegatedCriteriaSatisfiesPlanGate =
+      planError?.includes("must contain at least one numbered measurable criterion") ===
+        true && planCriteriaDelegatesToReferences(repoRoot, rel, content);
+    if (planError !== null && !delegatedCriteriaSatisfiesPlanGate) {
       return gateValidationErrorToWarning(rel, planError);
     }
     const manifestWarning =
@@ -983,6 +1106,14 @@ function validateArtifactContent(
         code: "review_passes_unparseable",
         message:
           "review.md must contain review_passes: true or review_passes: false",
+      };
+    }
+    if (readBooleanField(content, "scope_amendments_ratified") === null) {
+      return {
+        path: rel,
+        code: "review_scope_unparseable",
+        message:
+          "review.md must contain scope_amendments_ratified: true or scope_amendments_ratified: false",
       };
     }
     if (event !== undefined) {

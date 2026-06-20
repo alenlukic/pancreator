@@ -33,6 +33,8 @@ before scanning broader `lib/memory/` trees unless
 
 | Feature | Shipped at (UTC) | Delivery report | Outbox artifact | Archived source |
 |---|---|---|---|---|
+| `recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state` | [indexed] (`2026-06-20T02:45:00.000Z`) | `.pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/delivery…` | `—` | `.pan/archive/inbox/in/180716_06-19-26/80716_1807_recent-outcomes-open-shipped-outcome-navigation.md` |
+| `introspection-follow-ups` | [indexed] (`2026-06-19T19:00:00.000Z`) | `.pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md` | `—` | `.pan/archive/inbox/in/172957_06-18-26/14193_2003_introspection-followups.md` |
 | `command-center-home-ux-remediation-feature-delivery-directive` | [indexed] (`2026-06-18T18:30:00.000Z`) | `.pan/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/delivery-report.md` | `—` | `.pan/archive/inbox/in/172957_06-18-26/72063_0358_command-center-home-ux-remediation-fd.md` |
 | `command-center-post-ship-remediation` | [indexed] (`2026-06-16T21:34:33.667Z`) | `.pan/archive/work/172959_06-16-26/61720_0651_command-center-post-ship-remediation/delivery-report.md` | `—` | `.pan/archive/inbox/in/172959_06-16-26/62115_0644_command-center-post-ship-remediation.md` |
 | `batch-feature-delivery-runs-sequential-parallel` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172970_06-05-26/71489_0408_batch-feature-delivery-sequential-parallel.md` |
@@ -41,8 +43,6 @@ before scanning broader `lib/memory/` trees unless
 | `bootstrap-phase-5-m1-exit-close-docs-bootstrap` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172976_05-30-26/60751_0707_bootstrap-phase-5-m1-exit.md` |
 | `build-mode-inbox-scaffolding` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172970_06-05-26/19570_1833_build-mode-inbox-scaffolding.md` |
 | `ci-best-practices-batch` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172980_05-26-26/71701_0613_ci-best-practices-batch.md` |
-| `cli-operator-tooling-batch-deferral-protocol-intake-scaffolder-active-memory-ref` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172981_05-25-26/64488_0605_cli-operator-tooling-batch.md` |
-| `command-center-active-memory-craft-enforcement` | [indexed] (`—`) | `—` | `—` | `.pan/archive/inbox/in/172966_06-09-26/82800_0059_cockpit-v2-active-memory-craft-enforcement.md` |
 
 ## Risks and blockers
 
@@ -57,9 +57,12 @@ before scanning broader `lib/memory/` trees unless
 
 <!-- pan:active-memory:operator-notes:auto -->
 
-- Active-memory refreshed (UTC): `2026-06-18T07:44:58.596Z`
+- Active-memory refreshed (UTC): `2026-06-20T02:55:52.304Z`
 
 <!-- /pan:active-memory:operator-notes:auto -->
+
+
+
 
 
 

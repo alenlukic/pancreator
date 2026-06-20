@@ -222,12 +222,80 @@ describe("feature-delivery-gate-validation", () => {
     ).toBeNull();
   });
 
+  it("validateTestReportForAdvance accepts inline qa_passes for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance("## Verdict\n`qa_passes: true`", "qa_design_followup"),
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance accepts excluded qa blockers for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance(
+        "qa_passes: false\nexcluded_from_gate: true\nspot_fixable: false\n",
+        "qa_design_followup",
+      ),
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance rejects spot-fixable qa blockers for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance(
+        "qa_passes: false\nexcluded_from_gate: true\nspot_fixable: true\n",
+        "qa_design_followup",
+      ),
+    ).toContain("spot_fixable: true");
+  });
+
+  it("validateTestReportForAdvance allows browser-lock qa blockers for qa_design_followup", () => {
+    expect(
+      validateTestReportForAdvance(
+        [
+          "qa_passes: false",
+          "excluded_from_gate: false",
+          "spot_fixable: false",
+          "chrome-devtools:list_pages fails on a locked shared profile",
+          "Use --isolated to run multiple browser instances.",
+        ].join("\n"),
+        "qa_design_followup",
+      ),
+    ).toBeNull();
+  });
+
   it("validateDesignQaForAdvance requires excluded_from_gate for qa_design_followup", () => {
     expect(
       validateDesignQaForAdvance(
         "design_qa_passes: false\nexcluded_from_gate: true\n",
         "qa_design_followup",
       ),
+    ).toBeNull();
+  });
+
+  it("validateDesignQaForAdvance allows browser-lock blockers as design follow-up", () => {
+    expect(
+      validateDesignQaForAdvance(
+        [
+          "design_qa_passes: false",
+          "excluded_from_gate: false",
+          "MCP error: The browser is already running for /Users/alen/.cache/chrome-devtools-mcp/chrome-profile.",
+          "Use --isolated to run multiple browser instances.",
+        ].join("\n"),
+        "qa_design_followup",
+      ),
+    ).toBeNull();
+  });
+
+  it("validateDesignQaForAdvance accepts inline design_qa_passes for qa_passes", () => {
+    expect(
+      validateDesignQaForAdvance(
+        "## Verdict\n`design_qa_passes: true`, `excluded_from_gate: false`",
+        "qa_passes",
+      ),
+    ).toBeNull();
+  });
+
+  it("validateTestReportForAdvance accepts inline qa_passes for qa_passes", () => {
+    expect(
+      validateTestReportForAdvance("## Verdict\n`qa_passes: true`", "qa_passes"),
     ).toBeNull();
   });
 

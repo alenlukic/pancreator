@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { legacyPrettyJson } from "./helpers/legacy-json-stringify.mjs";
 import { frontmatterHasKey, splitAgentProjection } from "./cursor-agents-retrieval-contract.test.mjs";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -237,20 +238,16 @@ test("pan cursor-sync preserves unrelated hooks and keeps one managed RTK hook",
   await mkdir(path.join(root, ".cursor/hooks"), { recursive: true });
   await writeFile(
     path.join(root, ".cursor/hooks.json"),
-    JSON.stringify(
-      {
-        version: 1,
-        hooks: {
-          beforeShellExecution: [
-            { command: "bash .cursor/hooks/custom-shell-check.sh", matcher: "npm" },
-            { command: MANAGED_RTK_HOOK_COMMAND, failClosed: true },
-          ],
-          afterShellExecution: [{ command: "bash .cursor/hooks/audit-shell.sh" }],
-        },
+    legacyPrettyJson({
+      version: 1,
+      hooks: {
+        beforeShellExecution: [
+          { command: "bash .cursor/hooks/custom-shell-check.sh", matcher: "npm" },
+          { command: MANAGED_RTK_HOOK_COMMAND, failClosed: true },
+        ],
+        afterShellExecution: [{ command: "bash .cursor/hooks/audit-shell.sh" }],
       },
-      null,
-      2,
-    ),
+    }),
     "utf8",
   );
 

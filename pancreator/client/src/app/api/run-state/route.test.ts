@@ -901,4 +901,66 @@ describe("GET /api/run-state", () => {
       process.chdir(originalRoot);
     }
   });
+
+  it("resolves indexed shipped outcome through outcome query", async () => {
+    const taskId = "65766_0543_demo-feature";
+    writeArchivedState(tempRoot, "172973_06-02-26", taskId);
+    const featureDir = path.join(tempRoot, "lib", "memory", "features", "demo-feature");
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(featureDir, "index.json"),
+      stringifyCompactJson({
+        feature_id: "demo-feature",
+        title: "Demo Feature",
+        task_id: taskId,
+        status: "indexed",
+        indexed_at: "2026-06-02T12:00:00.000Z",
+      }),
+    );
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(
+        new Request(`http://localhost/api/run-state?outcome=${encodeURIComponent(taskId)}`),
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as Array<{ taskId: string; pipelineStatus?: string }>;
+      expect(payload).toHaveLength(1);
+      expect(payload[0]?.taskId).toBe(taskId);
+      expect(payload[0]?.pipelineStatus).toBe("closed");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("returns empty array for outcome query when shipped index has no match", async () => {
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(
+        new Request("http://localhost/api/run-state?outcome=missing_0101_demo"),
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as unknown[];
+      expect(payload).toEqual([]);
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("returns empty array for outcome query when task is not indexed as shipped", async () => {
+    writeArchivedState(tempRoot, "172973_06-02-26", "88888_0101_unindexed");
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(
+        new Request("http://localhost/api/run-state?outcome=88888_0101_unindexed"),
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as unknown[];
+      expect(payload).toEqual([]);
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
 });

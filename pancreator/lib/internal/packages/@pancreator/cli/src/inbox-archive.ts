@@ -1,6 +1,6 @@
 import { resolveProjectPath, resolveRepoPath } from "@pancreator/core";
 import { existsSync } from "node:fs";
-import { readdir, rm, rmdir } from "node:fs/promises";
+import { readdir, rm, rmdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 const INBOX_IN_PREFIX = "lib/inbox/in/";
@@ -47,6 +47,127 @@ export function archiveInboxPathForSource(sourceRel: string, fallbackDayDir?: st
  * When a superseded run shares an inbox directive already archived, locate the existing path.
  * Prefers canonical day-bucket leaves; falls back to legacy per-task nested archives.
  */
+function normalizeInboxRel(value: string): string {
+  return value.replace(/\\/gu, "/").replace(/^\/+/, "");
+}
+
+function pushInboxPathCandidate(candidates: string[], value: unknown): void {
+  if (typeof value === "string" && value.trim().length > 0) {
+    candidates.push(normalizeInboxRel(value));
+    return;
+  }
+  if (value && typeof value === "object" && typeof (value as Record<string, unknown>)["path"] === "string") {
+    candidates.push(normalizeInboxRel((value as Record<string, unknown>)["path"] as string));
+  }
+}
+
+export function inboxEntryFromPath(inboxPath: string): string {
+  const norm = normalizeInboxRel(inboxPath);
+  if (!norm.startsWith(INBOX_IN_PREFIX)) {
+    throw new Error(`inbox source MUST be under ${INBOX_IN_PREFIX}; got ${inboxPath}.`);
+  }
+  const tail = norm.slice(INBOX_IN_PREFIX.length);
+  if (tail.length === 0) {
+    throw new Error(`inbox source has an invalid relative tail: ${inboxPath}.`);
+  }
+  return tail;
+}
+
+async function findActiveInboxByBasename(
+  repoRoot: string,
+  basename: string,
+): Promise<string | null> {
+  const inboxRootAbs = resolveProjectPath(repoRoot, "lib", "inbox", "in");
+  if (!existsSync(inboxRootAbs)) {
+    return null;
+  }
+
+  async function walk(dirAbs: string, dirRel: string): Promise<string | null> {
+    const entries = await safeReaddir(dirAbs);
+    for (const entryName of entries) {
+      if (entryName.startsWith(".")) {
+        continue;
+      }
+      const childAbs = path.join(dirAbs, entryName);
+      const childRel = path.posix.join(dirRel, entryName);
+      let childStat;
+      try {
+        childStat = await stat(childAbs);
+      } catch {
+        continue;
+      }
+      if (childStat.isDirectory()) {
+        const nested = await walk(childAbs, childRel);
+        if (nested !== null) {
+          return nested;
+        }
+        continue;
+      }
+      if (entryName === basename) {
+        return childRel;
+      }
+    }
+    return null;
+  }
+
+  return walk(inboxRootAbs, INBOX_IN_PREFIX.replace(/\/+$/u, ""));
+}
+
+/**
+ * Resolves a live inbox directive when state still points at a renamed or moved path.
+ * Prefers the declared path, then explicit candidates (for example feature index lineage),
+ * then a basename search under lib/inbox/in.
+ */
+export async function resolveLiveInboxSourcePath(
+  repoRoot: string,
+  declaredRel: string,
+  extraCandidates: string[] = [],
+): Promise<string | null> {
+  const declared = normalizeInboxRel(declaredRel);
+  if (existsSync(resolveRepoPath(repoRoot, declared))) {
+    return declared;
+  }
+
+  const seen = new Set<string>();
+  for (const candidate of [declared, ...extraCandidates.map(normalizeInboxRel)]) {
+    if (candidate.length === 0 || seen.has(candidate)) {
+      continue;
+    }
+    seen.add(candidate);
+    if (!candidate.startsWith(INBOX_IN_PREFIX)) {
+      continue;
+    }
+    if (existsSync(resolveRepoPath(repoRoot, candidate))) {
+      return candidate;
+    }
+  }
+
+  return findActiveInboxByBasename(repoRoot, path.posix.basename(declared));
+}
+
+export function collectFeatureIndexInboxCandidates(
+  indexRecord: Record<string, unknown>,
+): string[] {
+  const candidates: string[] = [];
+  pushInboxPathCandidate(candidates, indexRecord["source_inbox_item"]);
+  pushInboxPathCandidate(candidates, indexRecord["source_inbox_item_prior"]);
+  const intake = indexRecord["intake"];
+  if (intake && typeof intake === "object") {
+    pushInboxPathCandidate(candidates, (intake as Record<string, unknown>)["source_inbox_item"]);
+  }
+  const artifactIndex = indexRecord["artifact_index"];
+  if (artifactIndex && typeof artifactIndex === "object") {
+    const lineage = (artifactIndex as Record<string, unknown>)["lineage"];
+    if (lineage && typeof lineage === "object") {
+      pushInboxPathCandidate(
+        candidates,
+        (lineage as Record<string, unknown>)["source_inbox_item"],
+      );
+    }
+  }
+  return [...new Set(candidates)];
+}
+
 export async function findExistingArchivedInboxPath(
   repoRoot: string,
   inboxSourceRel: string,

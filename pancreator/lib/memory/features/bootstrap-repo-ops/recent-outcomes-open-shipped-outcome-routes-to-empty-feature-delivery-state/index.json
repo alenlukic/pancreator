@@ -1,0 +1,119 @@
+{
+  "feature_id": "recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state",
+  "title": "Recent outcomes — shipped outcome navigation fix",
+  "category": "bootstrap-repo-ops",
+  "status": "indexed",
+  "current_stage": "bookkeeping",
+  "task_id": "6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state",
+  "indexed_at": "2026-06-20T02:45:00.000Z",
+  "summary": "Command Center shipped `Recent outcomes` rows deep-link via `/mission-control?outcome=<taskId>&label=<title>` instead of active-run `task` queries. Mission Control validates outcome requests against shipped feature indexes, renders completed-run detail when resolvable, and shows a dedicated `Shipped outcome unavailable` fallback with reload and home actions when not.",
+  "planning_context": [
+    "handoff.decision: bookkeeping closeout after qa_design_followup",
+    "intake.problem: shipped row opened /mission-control?task=51237_0946_introspection-follow-ups and landed on No active runs",
+    "review.spec_contracts_note: No task-specific contracts/ directory; review used behavioral delta coverage only.",
+    "test.advance_event: qa_design_followup with qa_passes false and design_qa_passes false due to browser lock and HTTP probe timeouts",
+    "pipeline.note: bootstrap feature-delivery omits dedicated compliance and ship stages; placeholder gate artifacts record that omission"
+  ],
+  "implementation_surfaces": [
+    "pancreator/client/src/app/api/run-state/route.test.ts",
+    "pancreator/client/src/app/api/run-state/route.ts",
+    "pancreator/client/src/components/command-center/command-center/command-center-data.test.ts",
+    "pancreator/client/src/components/command-center/command-center/command-center-data.ts",
+    "pancreator/client/src/components/command-center/mission-control/MissionControlModule.tsx",
+    "pancreator/client/src/components/command-center/mission-control/mission-control.test.tsx",
+    "pancreator/client/src/services/run-state-shared.ts",
+    "pancreator/client/src/services/run-state.ts",
+    "pancreator/client/src/styles/surfaces.css"
+  ],
+  "validation": [
+    {
+      "review": {
+        "verdict": "pass",
+        "review_passes": true,
+        "touch_set_tests_pass": true,
+        "scope_amendments_ratified": true
+      }
+    },
+    {
+      "test": {
+        "qa_passes": false,
+        "design_qa_passes": false,
+        "advance_event": "qa_design_followup"
+      }
+    }
+  ],
+  "open_followups": [
+    "mqa-01-human-operator-reproduction",
+    "chrome-devtools-mcp-browser-profile-lock",
+    "live-command-center-http-probe-timeout",
+    "design-qa-live-dom-evidence-blocked",
+    "repo-wide-workspace-contract-debt-visibility-only"
+  ],
+  "delivery_report": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/delivery-report.md",
+  "source_inbox_item": ".pan/archive/inbox/in/180716_06-19-26/80716_1807_recent-outcomes-open-shipped-outcome-navigation.md",
+  "artifact_index": {
+    "run_dir": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state",
+    "spec": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/plan.md",
+    "acceptance_criteria_product": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/product/acceptance-criteria.md",
+    "acceptance_criteria_design": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/design/acceptance-criteria.md",
+    "acceptance_criteria_tech": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/tech/acceptance-criteria.md",
+    "touch_set": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/touch-set.json",
+    "manual_qa_test_cases": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/manual-qa-test-cases.md",
+    "implementation_report": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/implementation-report.md",
+    "review": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/review.md",
+    "test_report": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/test-report.md",
+    "design_qa_report": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/design-qa-report.md",
+    "delivery_report": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/delivery-report.md",
+    "compliance_result": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/compliance-result.json",
+    "ship_ratification": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/ship-ratification.json",
+    "operator_verification": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/operator-verification.md",
+    "pipeline_close": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/pipeline-close.md",
+    "run_log": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/run.log.jsonl",
+    "state": ".pan/work/172956_06-19-26/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/state.json",
+    "compliance_audit_history": "lib/memory/features/quality-governance/compliance-tests/audit-history.json",
+    "qa_logs_dir": ".pan/sandboxes/6416_2213_recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/logs"
+  },
+  "output_manifest": {
+    "persona_contract": "PERSONA.LIBRARIAN",
+    "stage_contract": "PIPE.FEATURE_DELIVERY.BOOKKEEPING",
+    "required_docs": [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.MEMORY_TIERS",
+      "DOC.RUN_LOG_SCHEMA",
+      "DOC.OPERATOR_OUTPUT"
+    ],
+    "consulted_docs": [
+      "DOC.AGENTS",
+      "DOC.REGISTRY",
+      "DOC.PERSONA_CONTRACTS",
+      "DOC.OUTPUT_MANIFEST",
+      "DOC.PIPELINE_STATE",
+      "DOC.MEMORY_TIERS",
+      "DOC.RUN_LOG_SCHEMA",
+      "DOC.OPERATOR_OUTPUT",
+      "PIPE.FEATURE_DELIVERY"
+    ],
+    "produced_artifacts": [
+      "lib/memory/features/bootstrap-repo-ops/recent-outcomes-open-shipped-outcome-routes-to-empty-feature-delivery-state/index.json"
+    ],
+    "scope_amendments": [],
+    "validation": [
+      {
+        "name": "node --test tests/feature-index-artifact-index.test.mjs",
+        "result": "pass"
+      },
+      {
+        "name": "delivery-report-manifest-repair",
+        "result": "pass"
+      }
+    ],
+    "definition_of_done": "pass",
+    "gate_decision": "advance",
+    "remediation_route": "none"
+  },
+  "source_inbox_item_prior": "lib/inbox/in/180716_06-19-26/80716_1807_recent-outcomes-open-shipped-outcome-navigation.md"
+}

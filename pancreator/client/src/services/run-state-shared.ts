@@ -331,6 +331,15 @@ export function missionControlHref(taskId: string): string {
   return `/mission-control?task=${encodeURIComponent(taskId)}`;
 }
 
+export function missionControlShippedOutcomeHref(input: {
+  taskId: string;
+  title?: string;
+  featureId?: string;
+}): string {
+  const label = input.title || input.featureId || input.taskId;
+  return `/mission-control?outcome=${encodeURIComponent(input.taskId)}&label=${encodeURIComponent(label)}`;
+}
+
 /** Stale heartbeat threshold for Command Center hanging-task classification. */
 export const COMMAND_CENTER_STALE_HEARTBEAT_MS = 5 * 60 * 1000;
 

@@ -19,6 +19,10 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseDocument } from "yaml";
+import {
+  quoteJsonString,
+  stringifyCompactJson,
+} from "../format/canonical-json-format.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
@@ -43,7 +47,7 @@ function flattenReference(ref) {
     return ref;
   }
   if (isPlainObject(ref)) {
-    return JSON.stringify(ref);
+    return stringifyCompactJson(ref);
   }
   throw new Error(`Unsupported reference entry: ${String(ref)}`);
 }
@@ -87,7 +91,7 @@ function emitField(key, value) {
     return [
       `${key}:`,
       ...value.map((item) =>
-        typeof item === "string" ? `  - ${item}` : `  - ${JSON.stringify(item)}`,
+        typeof item === "string" ? `  - ${item}` : `  - ${stringifyCompactJson(item)}`,
       ),
     ];
   }
@@ -108,7 +112,7 @@ function emitField(key, value) {
     /^(yes|no|true|false|null|~)$/i.test(scalar) ||
     /^0b/i.test(scalar)
   ) {
-    return [`${key}: ${JSON.stringify(scalar)}`];
+    return [`${key}: ${quoteJsonString(scalar)}`];
   }
   return [`${key}: ${scalar}`];
 }

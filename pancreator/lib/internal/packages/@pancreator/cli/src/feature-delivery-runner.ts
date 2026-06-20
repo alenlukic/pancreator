@@ -107,6 +107,8 @@ export const MAX_STAGE_REMEDIATION_ATTEMPTS = 2;
 export const FEATURE_DELIVERY_AUTO_ADVANCE_RETRY_BUDGET = 5;
 
 const WARNING_REMEDIATION_STAGES = new Set([
+  "plan",
+  "implement",
   "review",
   "test",
   "bookkeeping",
@@ -213,6 +215,11 @@ export interface FeatureDeliveryRunnerLedger {
 export interface FeatureDeliveryTestHooks {
   sdkTransport?: CursorSdkTransport;
   progress?: FeatureDeliverySdkProgressReporter;
+  /**
+   * Test-only: preserve legacy single-attempt auto-chain behavior without
+   * retry loops, so focused unit tests can assert intermediate stage state.
+   */
+  disableAutoChainContinuationRetry?: boolean;
   /** Test-only: injectable transport/progress hooks for SDK runner tests. */
 }
 
@@ -537,6 +544,93 @@ async function validateDesignQaCompanion(repoRoot: string, runDir: string): Prom
   }
 }
 
+async function shouldReuseExistingBrowserLockDesignQaReport(
+  repoRoot: string,
+  designReportRel: string,
+): Promise<boolean> {
+  const abs = resolveRepoPath(repoRoot, designReportRel);
+  if (!existsSync(abs)) {
+    return false;
+  }
+  const content = await readFile(abs, "utf8");
+  const verdict = parseDesignQaVerdict(content);
+  if (verdict.passes !== false || !verdict.excludedFromGate) {
+    return false;
+  }
+  return (
+    /browser is already running .*chrome-profile/iu.test(content) &&
+    /use --isolated to run multiple browser instances/iu.test(content)
+  );
+}
+
+async function shouldReuseExistingTestStageFollowupArtifacts(
+  repoRoot: string,
+  state: FeatureDeliveryRunnerLedger,
+): Promise<boolean> {
+  const runDir = state.artifacts.runDir;
+  const testReportRel = path.posix.join(runDir, "test-report.md");
+  const testReportAbs = resolveRepoPath(repoRoot, testReportRel);
+  if (!existsSync(testReportAbs)) {
+    return false;
+  }
+  const qaMarkdown = await readFile(testReportAbs, "utf8");
+  const designSteps = designStepsEnabled(state.options);
+  let designQaMarkdown: string | undefined;
+  if (designSteps) {
+    const designReportRel = designQaReportRel(runDir);
+    const designReportAbs = resolveRepoPath(repoRoot, designReportRel);
+    if (!existsSync(designReportAbs)) {
+      return false;
+    }
+    designQaMarkdown = await readFile(designReportAbs, "utf8");
+  }
+  return mergedTestStageVerdict({
+    qaMarkdown,
+    designQaMarkdown,
+    designSteps,
+  }).designFollowupOnly;
+}
+
+function buildArtifactReuseEnvelope(input: {
+  state: FeatureDeliveryRunnerLedger;
+  stageId: string;
+  personaId: string;
+  stagePromptPath: string;
+  artifactPath: string;
+  reason: string;
+}): RunnerInvocationEnvelope {
+  return {
+    schemaVersion: "1",
+    runner: "cursor",
+    dryRun: false,
+    invocation: "sdk",
+    personaName: input.personaId,
+    requestId: `artifact_reuse_${newSpanId()}`,
+    userMessage: `Reuse existing artifacts for stage ${input.stageId}.`,
+    resolved: {
+      model: "artifact-reuse",
+      routingDescription: input.reason,
+      toolAllowlist: [],
+      toolDenylist: [],
+      maxTurns: 0,
+      invocation: "sdk",
+      stagePromptPath: input.stagePromptPath,
+      artifactPath: input.artifactPath,
+      ledger: {
+        taskId: input.state.taskId,
+        pipelineId: input.state.pipelineId,
+        stageId: input.stageId,
+        featureId: input.state.featureId,
+      },
+    },
+    sdkResult: {
+      status: "ok",
+      artifactPath: input.artifactPath,
+      resultText: input.reason,
+    },
+  };
+}
+
 export async function invokeFeatureDeliveryEnteringStage(input: {
   repoRoot: string;
   state: FeatureDeliveryRunnerLedger;
@@ -551,6 +645,18 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   const now = input.now ?? new Date();
   const stage = input.pipeline.stages.find((candidate) => candidate.id === input.stageId);
   if (stage?.persona === undefined) {
+    if (input.stageId === "complete") {
+      return buildArtifactReuseEnvelope({
+        state: input.state,
+        stageId: input.stageId,
+        personaId: "none",
+        stagePromptPath:
+          input.state.artifacts.nextPromptFile ??
+          path.posix.join(input.state.artifacts.runDir, "next-prompt.md"),
+        artifactPath: input.state.artifacts.stateFile,
+        reason: "Terminal stage reached; no persona invocation required.",
+      });
+    }
     throw new Error(`Stage ${input.stageId} has no persona for runner invocation.`);
   }
 
@@ -623,35 +729,63 @@ export async function invokeFeatureDeliveryEnteringStage(input: {
   if (designStepsEnabled(input.state.options) && input.stageId === "test") {
     const testReport = path.posix.join(runDir, "test-report.md");
     const designReport = designQaReportRel(runDir);
-    const [qaEnvelope] = await Promise.all([
-      invokePersonaStageWork({
-        repoRoot,
+    const runLogPath = resolveRepoPath(repoRoot, input.state.artifacts.runLogFile);
+    const reuseFollowupArtifacts = await shouldReuseExistingTestStageFollowupArtifacts(
+      repoRoot,
+      input.state,
+    );
+    let qaEnvelope: RunnerInvocationEnvelope;
+    if (reuseFollowupArtifacts) {
+      qaEnvelope = buildArtifactReuseEnvelope({
         state: input.state,
         stageId: input.stageId,
         personaId: stage.persona,
         stagePromptPath,
         artifactPath: testReport,
-        requiredArtifactPaths: [testReport],
-        runner,
-        stageInvocationIndex,
-        now,
-        progress,
-      }),
-      invokePersonaStageWork({
+        reason:
+          "Reused existing test/design QA artifacts with non-blocking follow-up verdicts.",
+      });
+      await appendRunLogRecord(runLogPath, runLogRecordFromRunnerEnvelope(qaEnvelope, input.state, now));
+    } else {
+      const reuseLockedDesignReport = await shouldReuseExistingBrowserLockDesignQaReport(
         repoRoot,
-        state: input.state,
-        stageId: input.stageId,
-        personaId: DESIGN_REVIEWER_PERSONA,
-        stagePromptPath: designQaPromptRel(runDir),
-        artifactPath: designReport,
-        requiredArtifactPaths: [designReport],
-        runner,
-        stageInvocationIndex,
-        now,
-        progress,
-        companionLabel: `Execute design-QA companion for task ${input.state.taskId}.`,
-      }),
-    ]);
+        designReport,
+      );
+      const companions: Promise<RunnerInvocationEnvelope>[] = [
+        invokePersonaStageWork({
+          repoRoot,
+          state: input.state,
+          stageId: input.stageId,
+          personaId: stage.persona,
+          stagePromptPath,
+          artifactPath: testReport,
+          requiredArtifactPaths: [testReport],
+          runner,
+          stageInvocationIndex,
+          now,
+          progress,
+        }),
+      ];
+      if (!reuseLockedDesignReport) {
+        companions.push(
+          invokePersonaStageWork({
+            repoRoot,
+            state: input.state,
+            stageId: input.stageId,
+            personaId: DESIGN_REVIEWER_PERSONA,
+            stagePromptPath: designQaPromptRel(runDir),
+            artifactPath: designReport,
+            requiredArtifactPaths: [designReport],
+            runner,
+            stageInvocationIndex,
+            now,
+            progress,
+            companionLabel: `Execute design-QA companion for task ${input.state.taskId}.`,
+          }),
+        );
+      }
+      [qaEnvelope] = await Promise.all(companions);
+    }
     await validateDesignQaCompanion(repoRoot, runDir);
     let validation = validateStageCompletionArtifacts(repoRoot, input.state, input.stageId);
     const remediationEnabled = await readStageRemediationEnabled(repoRoot, {
@@ -1304,6 +1438,17 @@ export async function trySdkAutoChainAfterStageWork(input: {
     }
     const validation = validateStageCompletionArtifacts(input.repoRoot, input.state, input.completedStageId);
     if (!validation.ok) {
+      const gateBlockReasons = [
+        ...validation.missing.map((artifact) => `Missing required artifact: ${artifact}`),
+        ...validation.warnings.map((warning) => warning.message),
+      ];
+      await writeWorkflowHealthArtifact({
+        repoRoot: input.repoRoot,
+        state: input.state,
+        stageId: input.completedStageId,
+        gateBlockReasons,
+        now: input.now,
+      });
       return false;
     }
     const event = defaultAdvanceEventForStage(input.completedStageId);

@@ -28,6 +28,7 @@ export {
   isTerminalPipelineStatus,
   isRetryTransitionEvent,
   missionControlHref,
+  missionControlShippedOutcomeHref,
   newestStageTelemetryChip,
   taskDisplayLabel,
   taskLevelNextCommand,
@@ -565,6 +566,25 @@ export async function getRunStateForMissionControl(
     return [];
   }
   return [requested];
+}
+
+export async function findShippedOutcomeByTaskId(
+  repoRoot: string,
+  taskId: string,
+): Promise<ShippedOutcome | null> {
+  const outcomes = await loadShippedOutcomes(repoRoot, Number.MAX_SAFE_INTEGER);
+  return outcomes.find((outcome) => outcome.taskId === taskId) ?? null;
+}
+
+export async function getShippedOutcomeRunStateForMissionControl(
+  repoRoot: string,
+  outcomeTaskId: string,
+): Promise<TaskRunStateEnvelope[]> {
+  const shipped = await findShippedOutcomeByTaskId(repoRoot, outcomeTaskId);
+  if (shipped === null) {
+    return [];
+  }
+  return getRunStateForMissionControl(repoRoot, outcomeTaskId);
 }
 
 export type ShippedOutcome = {

@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "max_entries": 5,
-  "generated_at": "2026-06-19T17:54:18.335Z",
+  "generated_at": "2026-06-20T02:55:52.297Z",
   "entries": [
     {
       "audit_id": "51237_0946_introspection-follow-ups-20260619175418",
@@ -11,42 +11,42 @@
       "stage_status": "passed",
       "baseline_audit_id": "70229_0429_command-center-home-ux-remediation-feature-delivery-directive-20260618174500",
       "artifact_paths": {
-        "compliance_result": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/compliance-result.json",
-        "run_dir": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups"
+        "compliance_result": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/compliance-result.json",
+        "run_dir": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups"
       },
       "scope_snapshot": [
         {
-          "path": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
           "exists": true,
           "sha256": "c913753",
           "size_bytes": 9778
         },
         {
-          "path": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/design-qa-report.md",
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/design-qa-report.md",
           "exists": true,
           "sha256": "df25196",
           "size_bytes": 11504
         },
         {
-          "path": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/implementation-report.md",
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/implementation-report.md",
           "exists": true,
           "sha256": "17fe9f0",
           "size_bytes": 8783
         },
         {
-          "path": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/review.md",
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/review.md",
           "exists": true,
           "sha256": "32aceb6",
           "size_bytes": 5743
         },
         {
-          "path": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/test-report.md",
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/test-report.md",
           "exists": true,
           "sha256": "b60ac9f",
           "size_bytes": 8519
         },
         {
-          "path": ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/touch-set.json",
+          "path": ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/touch-set.json",
           "exists": true,
           "sha256": "dfc0af2",
           "size_bytes": 16108
@@ -339,12 +339,12 @@
           ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/review.md",
           ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/test-report.md",
           ".pan/archive/work/172957_06-18-26/70229_0429_command-center-home-ux-remediation-feature-delivery-directive/touch-set.json",
-          ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
-          ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/design-qa-report.md",
-          ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/implementation-report.md",
-          ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/review.md",
-          ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/test-report.md",
-          ".pan/work/172956_06-19-26/51237_0946_introspection-follow-ups/touch-set.json",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/delivery-report.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/design-qa-report.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/implementation-report.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/review.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/test-report.md",
+          ".pan/archive/work/172956_06-19-26/51237_0946_introspection-follow-ups/touch-set.json",
           "client/src/app/api/run-state/route.test.ts",
           "client/src/app/api/run-state/route.ts",
           "client/src/app/page.test.tsx",
