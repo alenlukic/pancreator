@@ -48,11 +48,13 @@ export function RunContextHeader({
   nowMs,
   isPolling,
   onOpenRunLogs,
+  onRunNextCommand,
 }: {
   task: TaskRunStateEnvelope;
   nowMs: number;
   isPolling: boolean;
   onOpenRunLogs: () => void;
+  onRunNextCommand?: (nextCommand: string) => void;
 }) {
   const activeStage = findActiveStage(task);
   const latestEvent = task.runEvents[0];
@@ -88,6 +90,7 @@ export function RunContextHeader({
             type="button"
             className="command-center-action-button command-center-action-cta"
             data-testid="run-summary-primary-action"
+            onClick={() => onRunNextCommand?.(nextCommand)}
           >
             Run next command
           </button>
@@ -103,7 +106,7 @@ export function RunContextHeader({
         )
       }
       disclosures={
-        <MetadataDisclosure label="technical details" testId="run-context-metadata">
+        <MetadataDisclosure label="technical paths and IDs" testId="run-context-metadata">
           <code className="mc-run-context-task-id">{task.taskId}</code>
           <p>Run directory: {task.runDir}</p>
           {task.inboxSource ? <p>Inbox source: {task.inboxSource}</p> : null}

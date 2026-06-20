@@ -12,6 +12,7 @@ import {
   findActiveStage,
   formatLastEventTime,
   missionControlHref,
+  missionControlShippedOutcomeHref,
   newestRunEventTimestamp,
   taskLevelNextCommand,
   type TaskRunStateEnvelope,
@@ -169,6 +170,47 @@ function buildAnomalyRows(
   const defaultLabel = REGION_METADATA.anomalies.defaultRowActionLabel;
 
   for (const task of tasks) {
+    if (task.workflowHealthLoadError !== undefined) {
+      rows.push({
+        id: `workflow-health-load:${task.taskId}`,
+        label: truncateLabel(featureDisplayLabel(task)),
+        status: "Blocked",
+        severity: "Warning",
+        ageIso: new Date(nowMs).toISOString(),
+        ageLabel: "Degraded data",
+        metaHint: "Workflow health unavailable",
+        primaryCta: {
+          label: "Review run health",
+          href: missionControlHref(task.taskId),
+        },
+        overflow: { taskId: task.taskId, runDir: task.runDir },
+      });
+    }
+    const health = task.workflowHealth;
+    if (health !== undefined && health.status !== "healthy") {
+      const topFinding = health.findings[0];
+      rows.push({
+        id: `workflow-health:${task.taskId}`,
+        label: truncateLabel(topFinding?.summary ?? "Workflow health needs attention"),
+        status: health.status === "blocked" ? "Blocked" : "Failed",
+        severity: health.status === "blocked" ? "Blocking" : "Warning",
+        ageIso: health.updated_at,
+        ageLabel: formatLastEventTime(health.updated_at, nowMs),
+        metaHint: `Repairs ${health.repair_count} · Reversals ${health.auto_chain_reversal_count} · Lint ${(health.artifact_lint_status ?? "unknown").replace(/_/gu, " ")}${health.artifact_lint_warning_count !== undefined ? ` (${health.artifact_lint_warning_count})` : ""}`,
+        primaryCta: {
+          label: "Open workflow health",
+          href: missionControlHref(task.taskId),
+        },
+        overflow: {
+          taskId: task.taskId,
+          runDir: task.runDir,
+          inboxSource: task.inboxSource,
+        },
+      });
+    }
+  }
+
+  for (const task of tasks) {
     if (!hasRetryLimitFailure(task)) {
       continue;
     }
@@ -298,7 +340,7 @@ function buildRecentOutcomeRows(shippedOutcomes: ShippedOutcome[], nowMs: number
     ageLabel: formatLastEventTime(outcome.indexedAt, nowMs),
     primaryCta: {
       label: defaultLabel,
-      href: `/mission-control?task=${encodeURIComponent(outcome.taskId)}`,
+      href: missionControlShippedOutcomeHref(outcome),
     },
     overflow: {
       taskId: outcome.taskId,

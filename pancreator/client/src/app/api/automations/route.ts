@@ -4,7 +4,7 @@ import {
   InvalidAutomationIdError,
 } from "@pancreator/scheduler";
 import { getAutomation } from "@pancreator/scheduler";
-import { findRepoRoot } from "@/services/repo-paths";
+import { findHarnessRoot } from "@/services/repo-paths";
 import {
   discoverPersonaSlugs,
   loadAutomationSummaries,
@@ -33,7 +33,7 @@ export async function GET(request: Request): Promise<Response> {
 
   if (automationId) {
     try {
-      const record = await getAutomation(findRepoRoot(), automationId);
+      const record = await getAutomation(findHarnessRoot(), automationId);
       return Response.json(record);
     } catch (error) {
       return validationResponse(error);

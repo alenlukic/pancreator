@@ -31,6 +31,7 @@ export function artifactDisplayLabel(path: string): string {
   if (base === "design-qa-report.md") return "Design QA report";
   if (base === "implementation-report.md") return "Implementation report";
   if (base === "delivery-report.md") return "Delivery report";
+  if (base === "workflow-health.json") return "Workflow health";
   if (base === "index.json") return "Feature index";
   return base;
 }
@@ -52,9 +53,12 @@ export function ArtifactsByStage({
   const featureId = task.featureId ?? "unknown-feature";
 
   useEffect(() => {
-    const paths = FD_STAGE_ORDER.flatMap((stageName) =>
-      stageArtifactPathsForStage({ featureId, runDir: task.runDir, designSteps }, stageName),
-    );
+    const paths = [
+      ...FD_STAGE_ORDER.flatMap((stageName) =>
+        stageArtifactPathsForStage({ featureId, runDir: task.runDir, designSteps }, stageName),
+      ),
+      `${task.runDir}/workflow-health.json`,
+    ];
 
     void (async () => {
       const nextPresence: Record<string, boolean> = {};
