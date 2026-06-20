@@ -50,6 +50,53 @@ export type TaskRunStateEnvelope = {
   stages: StageCell[];
   runEvents: RunLogEvent[];
   sourceWarning?: string;
+  workflowHealth?: WorkflowHealthSummary;
+  workflowHealthLoadError?: string;
+};
+
+export type PointerResolutionStatus =
+  | "Live"
+  | "Archived"
+  | "Missing"
+  | "Needs reconciliation";
+
+export type PointerResolution = {
+  label: string;
+  referencedPath: string;
+  status: PointerResolutionStatus;
+  resolvedPath?: string;
+  action?: string;
+  reason?: string;
+};
+
+export type WorkflowHealthFinding = {
+  code: string;
+  severity: "info" | "warning" | "blocking";
+  summary: string;
+  detail?: string;
+  artifact?: string;
+  pointer?: PointerResolution;
+};
+
+export type WorkflowHealthSummary = {
+  task_id: string;
+  feature_id: string;
+  run_dir: string;
+  status: "healthy" | "needs_attention" | "blocked" | "reconciled";
+  artifact_lint_status?: "pass" | "fail";
+  artifact_lint_warning_count?: number;
+  repair_count: number;
+  auto_chain_reversal_count: number;
+  last_oversight_check_at?: string;
+  companion_artifacts?: Array<{
+    name: string;
+    present: boolean;
+    blockingReason?: string;
+  }>;
+  pointers?: PointerResolution[];
+  gate_block_reasons?: string[];
+  findings: WorkflowHealthFinding[];
+  updated_at: string;
 };
 
 export function taskDisplayLabel(
@@ -63,6 +110,7 @@ export function taskDisplayLabel(
 
 const TERMINAL_PIPELINE_STATUSES = new Set([
   "complete",
+  "complete_with_attention",
   "closed",
   "canceled",
   "cancelled",
@@ -284,6 +332,15 @@ export function detectRetryLimitFailure(runEvents: RunLogEvent[]): RetryLimitFai
 
 export function missionControlHref(taskId: string): string {
   return `/mission-control?task=${encodeURIComponent(taskId)}`;
+}
+
+export function missionControlShippedOutcomeHref(input: {
+  taskId: string;
+  title?: string;
+  featureId?: string;
+}): string {
+  const label = input.title || input.featureId || input.taskId;
+  return `/mission-control?outcome=${encodeURIComponent(input.taskId)}&label=${encodeURIComponent(label)}`;
 }
 
 /** Stale heartbeat threshold for Command Center hanging-task classification. */

@@ -97,12 +97,19 @@ export function MultiRunTable({
                   data-testid={`multi-run-select-${task.taskId}`}
                   onClick={() => onSelectTask(task.taskId)}
                 >
-                  <span className="multi-run-row-label">{featureDisplayLabel(task)}</span>
-                  <span className="multi-run-row-stage">{activeStage?.name ?? "—"}</span>
-                  {hasActiveHumanApprovalGate(task) ? (
-                    <span className="multi-run-gate-badge">human_approval</span>
-                  ) : null}
-                  <span className="multi-run-row-event">{lastEvent}</span>
+                  <span className="multi-run-row-primary">
+                    <span className="multi-run-row-label">{featureDisplayLabel(task)}</span>
+                    <span className="multi-run-row-meta">
+                      <span className="multi-run-row-stage">{activeStage?.name ?? "—"}</span>
+                      <span className="multi-run-row-meta-sep" aria-hidden="true">
+                        ·
+                      </span>
+                      <span className="multi-run-row-event">{lastEvent}</span>
+                      {hasActiveHumanApprovalGate(task) ? (
+                        <span className="multi-run-gate-badge">human_approval</span>
+                      ) : null}
+                    </span>
+                  </span>
                 </button>
                 <button
                   type="button"

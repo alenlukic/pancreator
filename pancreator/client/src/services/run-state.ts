@@ -11,6 +11,7 @@ import {
   type StageCell,
   type StageCellStatus,
   type TaskRunStateEnvelope,
+  type WorkflowHealthSummary,
   isTerminalPipelineStatus,
 } from "./run-state-shared";
 import { decodeCountdownTimestamp, parseRunDirParts } from "./timestamp-decode";
@@ -27,6 +28,7 @@ export {
   isTerminalPipelineStatus,
   isRetryTransitionEvent,
   missionControlHref,
+  missionControlShippedOutcomeHref,
   newestStageTelemetryChip,
   taskDisplayLabel,
   taskLevelNextCommand,
@@ -37,6 +39,7 @@ export {
   type StageCellStatus,
   type StageTelemetryChip,
   type TaskRunStateEnvelope,
+  type WorkflowHealthSummary,
 } from "./run-state-shared";
 
 const execFileAsync = promisify(execFile);
@@ -353,6 +356,64 @@ async function readPersistedState(stateAbs: string): Promise<PersistedState> {
   return parseOperatorAgentJsonText(raw) as PersistedState;
 }
 
+async function discoverTaskStateFile(
+  repoRoot: string,
+  taskId: string,
+): Promise<string | null> {
+  const roots = [
+    path.join(repoRoot, ".pan", "work"),
+    path.join(repoRoot, ".pan", "archive", "work"),
+  ];
+
+  const matches: Array<{ stateAbs: string; rootKind: "work" | "archive" }> = [];
+
+  for (const [index, rootAbs] of roots.entries()) {
+    if (!fs.existsSync(rootAbs)) {
+      continue;
+    }
+    const rootKind = index === 0 ? "work" : "archive";
+    const dayBuckets = await fsp.readdir(rootAbs, { withFileTypes: true });
+    for (const dayEntry of dayBuckets) {
+      if (!dayEntry.isDirectory()) {
+        continue;
+      }
+      const stateAbs = path.join(rootAbs, dayEntry.name, taskId, "state.json");
+      if (!fs.existsSync(stateAbs)) {
+        continue;
+      }
+      try {
+        const state = await readPersistedState(stateAbs);
+        if (state.pipelineId !== undefined && state.pipelineId !== "feature-delivery") {
+          continue;
+        }
+        matches.push({ stateAbs, rootKind });
+      } catch {
+        // skip unreadable state files
+      }
+    }
+  }
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  const workMatch = matches.find((match) => match.rootKind === "work");
+  const archiveMatch = matches.find((match) => match.rootKind === "archive");
+  if (workMatch !== undefined && archiveMatch !== undefined) {
+    try {
+      const workState = await readPersistedState(workMatch.stateAbs);
+      if (workState.status !== "closed") {
+        return workMatch.stateAbs;
+      }
+    } catch {
+      // prefer archive when work state is unreadable
+    }
+    return archiveMatch.stateAbs;
+  }
+
+  return matches[0]!.stateAbs;
+}
+
 async function discoverActiveStateFiles(repoRoot: string): Promise<string[]> {
   const workRoot = path.join(repoRoot, ".pan/work");
   if (!fs.existsSync(workRoot)) {
@@ -393,6 +454,28 @@ async function discoverActiveStateFiles(repoRoot: string): Promise<string[]> {
   return matches;
 }
 
+async function loadWorkflowHealthSummary(
+  repoRoot: string,
+  runDir: string,
+): Promise<{ summary?: WorkflowHealthSummary; error?: string }> {
+  const rel = path.posix.join(runDir, "workflow-health.json");
+  const abs = resolveRepoPath(rel, repoRoot);
+  try {
+    const raw = await fsp.readFile(abs, "utf8");
+    const parsed = parseOperatorAgentJsonText(raw) as WorkflowHealthSummary;
+    if (typeof parsed.task_id !== "string") {
+      return { error: "Workflow health artifact has an invalid shape." };
+    }
+    return { summary: parsed };
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === "ENOENT") {
+      return {};
+    }
+    return { error: "Unable to load workflow health artifact." };
+  }
+}
+
 async function buildTaskEnvelope(
   repoRoot: string,
   stateAbs: string,
@@ -416,6 +499,7 @@ async function buildTaskEnvelope(
   }
 
   const localDecoded = decodedTimestampFields(state.artifacts.runDir, state.taskId);
+  const workflowHealthResult = await loadWorkflowHealthSummary(repoRoot, state.artifacts.runDir);
 
   return {
     taskId: state.taskId,
@@ -429,6 +513,12 @@ async function buildTaskEnvelope(
     stages,
     runEvents,
     ...(panResult.warning !== undefined ? { sourceWarning: panResult.warning } : {}),
+    ...(workflowHealthResult.summary !== undefined
+      ? { workflowHealth: workflowHealthResult.summary }
+      : {}),
+    ...(workflowHealthResult.error !== undefined
+      ? { workflowHealthLoadError: workflowHealthResult.error }
+      : {}),
   };
 }
 
@@ -445,6 +535,56 @@ export async function getActiveRunState(
 
   recordTiming("getActiveRunState", startedAt);
   return envelopes.sort((left, right) => left.taskId.localeCompare(right.taskId));
+}
+
+export async function getTaskRunState(
+  repoRoot: string,
+  taskId: string,
+): Promise<TaskRunStateEnvelope | null> {
+  const stateFile = await discoverTaskStateFile(repoRoot, taskId);
+  if (stateFile === null) {
+    return null;
+  }
+  return buildTaskEnvelope(repoRoot, stateFile);
+}
+
+export async function getRunStateForMissionControl(
+  repoRoot: string,
+  taskId?: string | null,
+): Promise<TaskRunStateEnvelope[]> {
+  if (taskId === undefined || taskId === null || taskId.length === 0) {
+    return getActiveRunState(repoRoot);
+  }
+
+  const activeMatch = (await getActiveRunState(repoRoot)).find((task) => task.taskId === taskId);
+  if (activeMatch !== undefined) {
+    return [activeMatch];
+  }
+
+  const requested = await getTaskRunState(repoRoot, taskId);
+  if (requested === null) {
+    return [];
+  }
+  return [requested];
+}
+
+export async function findShippedOutcomeByTaskId(
+  repoRoot: string,
+  taskId: string,
+): Promise<ShippedOutcome | null> {
+  const outcomes = await loadShippedOutcomes(repoRoot, Number.MAX_SAFE_INTEGER);
+  return outcomes.find((outcome) => outcome.taskId === taskId) ?? null;
+}
+
+export async function getShippedOutcomeRunStateForMissionControl(
+  repoRoot: string,
+  outcomeTaskId: string,
+): Promise<TaskRunStateEnvelope[]> {
+  const shipped = await findShippedOutcomeByTaskId(repoRoot, outcomeTaskId);
+  if (shipped === null) {
+    return [];
+  }
+  return getRunStateForMissionControl(repoRoot, outcomeTaskId);
 }
 
 export type ShippedOutcome = {

@@ -9,6 +9,8 @@ import {
   deriveRunDirFromTaskId,
   excludeReconciledAttentionTasks,
   getActiveRunState,
+  getRunStateForMissionControl,
+  getTaskRunState,
   loadArchivedTaskIds,
   loadShippedOutcomes,
   parseRunLogFile,
@@ -59,6 +61,47 @@ function writeState(
   fs.writeFileSync(path.join(runDir, "state.json"), stringifyCompactJson(state));
 }
 
+function writeArchivedState(
+  root: string,
+  dayBucket: string,
+  taskId: string,
+  overrides: Record<string, unknown> = {},
+): void {
+  const runDir = path.join(root, ".pan/archive/work", dayBucket, taskId);
+  fs.mkdirSync(runDir, { recursive: true });
+  const state = {
+    schemaVersion: "1",
+    pipelineId: "feature-delivery",
+    taskId,
+    featureId: "demo-feature",
+    status: "closed",
+    currentStage: "complete",
+    createdAtIso: "2026-06-02T10:00:00.000Z",
+    source: { inboxEntry: "demo.md", inboxPath: "lib/inbox/in/demo.md" },
+    artifacts: {
+      runDir: `.pan/archive/work/${dayBucket}/${taskId}`,
+      stateFile: `.pan/archive/work/${dayBucket}/${taskId}/state.json`,
+      handoffFile: `.pan/archive/work/${dayBucket}/${taskId}/handoff.md`,
+      runLogFile: `.pan/archive/work/${dayBucket}/${taskId}/run.log.jsonl`,
+    },
+    stages: [
+      { id: "intake", persona: "intake-analyst", label: "Intake", status: "complete", humanGate: "human_approval" },
+      { id: "plan", persona: "tech-lead", label: "Plan", status: "complete", humanGate: "human_approval" },
+      { id: "implement", persona: "coder", label: "Implement", status: "complete" },
+      { id: "review", persona: "reviewer", label: "Review", status: "complete" },
+      { id: "test", persona: "qa-tester", label: "Test", status: "complete" },
+      { id: "report", persona: "tech-writer", label: "Report", status: "complete" },
+      { id: "compliance", persona: "supervisor", label: "Compliance", status: "complete" },
+      { id: "ship", persona: "supervisor", label: "Ship", status: "complete" },
+      { id: "index", persona: "librarian", label: "Index", status: "complete" },
+    ],
+    transitions: [],
+    nextHumanAction: "Artifact closure complete.",
+    ...overrides,
+  };
+  fs.writeFileSync(path.join(runDir, "state.json"), stringifyCompactJson(state));
+}
+
 describe("GET /api/run-state", () => {
   let tempRoot = "";
 
@@ -81,6 +124,57 @@ describe("GET /api/run-state", () => {
       expect(response.status).toBe(200);
       const payload = (await response.json()) as unknown[];
       expect(payload).toEqual([]);
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("returns a completed task when ?task= matches a terminal work run", async () => {
+    writeState(tempRoot, "172973_06-02-26", "88888_0101_shipped-demo", {
+      status: "complete",
+      currentStage: "complete",
+      stages: [
+        { id: "intake", persona: "intake-analyst", label: "Intake", status: "complete", humanGate: "human_approval" },
+        { id: "plan", persona: "tech-lead", label: "Plan", status: "complete", humanGate: "human_approval" },
+        { id: "implement", persona: "coder", label: "Implement", status: "complete" },
+        { id: "review", persona: "reviewer", label: "Review", status: "complete" },
+        { id: "test", persona: "qa-tester", label: "Test", status: "complete" },
+        { id: "report", persona: "tech-writer", label: "Report", status: "complete" },
+        { id: "compliance", persona: "supervisor", label: "Compliance", status: "complete" },
+        { id: "ship", persona: "supervisor", label: "Ship", status: "complete" },
+        { id: "index", persona: "librarian", label: "Index", status: "complete" },
+      ],
+    });
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(
+        new Request("http://localhost/api/run-state?task=88888_0101_shipped-demo"),
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as Array<{ taskId: string; pipelineStatus?: string }>;
+      expect(payload).toHaveLength(1);
+      expect(payload[0]?.taskId).toBe("88888_0101_shipped-demo");
+      expect(payload[0]?.pipelineStatus).toBe("complete");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("loads archived task state for mission-control task lookup", async () => {
+    writeArchivedState(tempRoot, "172973_06-02-26", "88888_0101_archived");
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const envelope = await getTaskRunState(tempRoot, "88888_0101_archived");
+      expect(envelope).not.toBeNull();
+      expect(envelope?.taskId).toBe("88888_0101_archived");
+      expect(envelope?.runDir).toBe(".pan/archive/work/172973_06-02-26/88888_0101_archived");
+      expect(envelope?.pipelineStatus).toBe("closed");
+
+      const merged = await getRunStateForMissionControl(tempRoot, "88888_0101_archived");
+      expect(merged).toHaveLength(1);
+      expect(merged[0]?.taskId).toBe("88888_0101_archived");
     } finally {
       process.chdir(originalRoot);
     }
@@ -698,6 +792,30 @@ describe("GET /api/run-state", () => {
     }
   });
 
+  it("returns workflowHealthErrors in attention reconciliation when artifact is invalid", async () => {
+    writeState(tempRoot, "172973_06-02-26", "65766_0543_demo-feature");
+    const runDir = path.join(
+      tempRoot,
+      ".pan/work/172973_06-02-26/65766_0543_demo-feature",
+    );
+    fs.writeFileSync(path.join(runDir, "workflow-health.json"), "{");
+
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(new Request("http://localhost/api/run-state?view=attention"));
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        reconciliation: { workflowHealthErrors?: Record<string, string> };
+      };
+      expect(payload.reconciliation.workflowHealthErrors?.["65766_0543_demo-feature"]).toContain(
+        "workflow health",
+      );
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
   it("loads shipped outcomes from indexed feature folders", async () => {
     const featureDir = path.join(tempRoot, "lib", "memory", "features", "demo-feature");
     fs.mkdirSync(featureDir, { recursive: true });
@@ -779,6 +897,68 @@ describe("GET /api/run-state", () => {
     try {
       const outcomes = await loadShippedOutcomes(tempRoot, 3);
       expect(outcomes[0]?.indexedAt).toBe("2026-05-26T08:49:45.000Z");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("resolves indexed shipped outcome through outcome query", async () => {
+    const taskId = "65766_0543_demo-feature";
+    writeArchivedState(tempRoot, "172973_06-02-26", taskId);
+    const featureDir = path.join(tempRoot, "lib", "memory", "features", "demo-feature");
+    fs.mkdirSync(featureDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(featureDir, "index.json"),
+      stringifyCompactJson({
+        feature_id: "demo-feature",
+        title: "Demo Feature",
+        task_id: taskId,
+        status: "indexed",
+        indexed_at: "2026-06-02T12:00:00.000Z",
+      }),
+    );
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(
+        new Request(`http://localhost/api/run-state?outcome=${encodeURIComponent(taskId)}`),
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as Array<{ taskId: string; pipelineStatus?: string }>;
+      expect(payload).toHaveLength(1);
+      expect(payload[0]?.taskId).toBe(taskId);
+      expect(payload[0]?.pipelineStatus).toBe("closed");
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("returns empty array for outcome query when shipped index has no match", async () => {
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(
+        new Request("http://localhost/api/run-state?outcome=missing_0101_demo"),
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as unknown[];
+      expect(payload).toEqual([]);
+    } finally {
+      process.chdir(originalRoot);
+    }
+  });
+
+  it("returns empty array for outcome query when task is not indexed as shipped", async () => {
+    writeArchivedState(tempRoot, "172973_06-02-26", "88888_0101_unindexed");
+    const originalRoot = process.cwd();
+    process.chdir(tempRoot);
+    try {
+      const response = await GET(
+        new Request("http://localhost/api/run-state?outcome=88888_0101_unindexed"),
+      );
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as unknown[];
+      expect(payload).toEqual([]);
     } finally {
       process.chdir(originalRoot);
     }

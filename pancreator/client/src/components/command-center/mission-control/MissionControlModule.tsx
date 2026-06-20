@@ -17,12 +17,14 @@ import {
   filterNonTerminalTasks,
   findActiveStage,
   isNonTerminalTask,
+  panArgsFromNextCommand,
   type PanExecuteResult,
   type StageCell,
   type TaskRunStateEnvelope,
 } from "@/services/run-state-shared";
 import { MultiRunTable } from "../pipeline/MultiRunTable";
 import { ArtifactsByStage } from "./ArtifactsByStage";
+import { WorkflowHealthPanel } from "./WorkflowHealthPanel";
 import { MISSION_CONTROL_TOAST_EVENT } from "./remediation";
 import { MissionControlStageRail } from "./MissionControlStageRail";
 import { RetryLimitBanner } from "./RetryLimitBanner";
@@ -35,6 +37,13 @@ const POLL_INTERVAL_MS = 7500;
 export function MissionControlModule() {
   const searchParams = useSearchParams();
   const taskQuery = searchParams.get("task");
+  const outcomeQuery = searchParams.get("outcome");
+  const outcomeLabelQuery = searchParams.get("label");
+  const isShippedOutcomeQuery = outcomeQuery !== null && outcomeQuery.length > 0;
+  const shippedOutcomeLabel =
+    outcomeLabelQuery !== null && outcomeLabelQuery.length > 0
+      ? outcomeLabelQuery
+      : outcomeQuery ?? "this shipped outcome";
 
   const [tasks, setTasks] = useState<TaskRunStateEnvelope[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -61,7 +70,13 @@ export function MissionControlModule() {
     }
     setError(null);
     try {
-      const response = await fetch("/api/run-state");
+      const runStateUrl =
+        isShippedOutcomeQuery
+          ? `/api/run-state?outcome=${encodeURIComponent(outcomeQuery!)}`
+          : taskQuery !== null && taskQuery.length > 0
+            ? `/api/run-state?task=${encodeURIComponent(taskQuery)}`
+            : "/api/run-state";
+      const response = await fetch(runStateUrl);
       if (!response.ok) {
         const data = (await response.json()) as { error?: string };
         if (isInitial) {
@@ -84,7 +99,7 @@ export function MissionControlModule() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [isShippedOutcomeQuery, outcomeQuery, taskQuery]);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -178,8 +193,14 @@ export function MissionControlModule() {
         return fromQuery;
       }
     }
+    if (isShippedOutcomeQuery && outcomeQuery !== null) {
+      const fromOutcome = tasks.find((task) => task.taskId === outcomeQuery);
+      if (fromOutcome !== undefined) {
+        return fromOutcome;
+      }
+    }
     return nonTerminalTasks[0] ?? tasks[0] ?? null;
-  }, [nonTerminalTasks, selectedTaskId, taskQuery, tasks]);
+  }, [isShippedOutcomeQuery, nonTerminalTasks, outcomeQuery, selectedTaskId, taskQuery, tasks]);
 
   useEffect(() => {
     if (selectedTask === null) {
@@ -257,15 +278,53 @@ export function MissionControlModule() {
   }
 
   if (tasks.length === 0) {
+    if (isShippedOutcomeQuery) {
+      return (
+        <div className="mission-control-module" data-testid="mission-control-module">
+          <section
+            className="mc-empty-state mc-shipped-unavailable"
+            data-testid="mission-control-shipped-unavailable"
+          >
+            <h2>Shipped outcome unavailable</h2>
+            <p>
+              Unable to open {shippedOutcomeLabel} from the current shipped index entry. The
+              shipped record may be missing or no longer resolvable.
+            </p>
+            <div className="mc-empty-actions">
+              <Link href="/command-center" className="command-center-row-cta">
+                Return to Home
+              </Link>
+              <button
+                type="button"
+                className="command-center-row-cta-quiet"
+                data-testid="mc-reload-shipped-outcome"
+                onClick={() => void loadRunState({ initial: true })}
+              >
+                Reload shipped outcome
+              </button>
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    const emptyTitle =
+      taskQuery !== null && taskQuery.length > 0 ? "Outcome not available" : "No active runs";
+    const emptyBody =
+      taskQuery !== null && taskQuery.length > 0
+        ? `Unable to load run detail for ${taskQuery}. The task may not exist under active or archived work paths.`
+        : "Start a feature-delivery run from Work Intake or return to Command Center.";
     return (
       <div className="mission-control-module" data-testid="mission-control-module">
         <section className="mc-empty-state" data-testid="mission-control-empty">
-          <h2>No active runs</h2>
-          <p>Start a feature-delivery run from Work Intake or return to Command Center.</p>
+          <h2>{emptyTitle}</h2>
+          <p>{emptyBody}</p>
           <div className="mc-empty-actions">
-            <Link href="/work-intake" className="command-center-start-fd-cta">
-              Start feature delivery
-            </Link>
+            {taskQuery === null || taskQuery.length === 0 ? (
+              <Link href="/work-intake" className="command-center-start-fd-cta">
+                Start feature delivery
+              </Link>
+            ) : null}
             <Link href="/command-center" className="mc-secondary-link">
               Return to command center
             </Link>
@@ -306,6 +365,12 @@ export function MissionControlModule() {
             nowMs={nowMs}
             isPolling={isPolling}
             onOpenRunLogs={() => setLogDrawerOpen(true)}
+            onRunNextCommand={(nextCommand) => {
+              requestMutatingExecute(
+                "Run next command",
+                panArgsFromNextCommand(nextCommand),
+              );
+            }}
           />
           {isNonTerminalTask(selectedTask) ? (
             <div className="mc-intervention-strip" data-testid="mission-control-intervention-strip">
@@ -316,22 +381,22 @@ export function MissionControlModule() {
                 disabled={executeBusy}
                 aria-label={`Pause ${featureDisplayLabel(selectedTask)}`}
                 onClick={() =>
-                  requestMutatingExecute("Pause", `pause ${selectedTask.taskId}`)
+                  requestMutatingExecute("Pause run", `pause ${selectedTask.taskId}`)
                 }
               >
-                Pause
+                Pause run
               </button>
               <button
                 type="button"
                 className="command-center-row-cta-quiet"
                 data-testid="mc-intervention-steer"
                 disabled={executeBusy}
-                aria-label={`Steer ${featureDisplayLabel(selectedTask)}`}
+                aria-label={`Open next prompt for ${featureDisplayLabel(selectedTask)}`}
                 onClick={() =>
                   file.handleOpenNextPrompt(`${selectedTask.runDir}/next-prompt.md`)
                 }
               >
-                Steer
+                Open next prompt
               </button>
               <button
                 type="button"
@@ -341,12 +406,12 @@ export function MissionControlModule() {
                 aria-label={`Abort ${featureDisplayLabel(selectedTask)}`}
                 onClick={() =>
                   requestMutatingExecute(
-                    "Abort",
+                    "Abort run",
                     `abort ${selectedTask.taskId} --reason "operator initiated from Command Center"`,
                   )
                 }
               >
-                Abort
+                Abort run
               </button>
             </div>
           ) : null}
@@ -357,6 +422,12 @@ export function MissionControlModule() {
             selectedStageName={selectedStageName}
             nowMs={nowMs}
             onSelectStage={handleSelectStage}
+          />
+          <WorkflowHealthPanel
+            task={selectedTask}
+            onOpenMissionControl={() => {
+              void loadRunState();
+            }}
           />
           <div className="mc-workspace">
             {selectedStage !== null ? (

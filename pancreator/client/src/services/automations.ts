@@ -11,7 +11,7 @@ import {
   type AutomationRecord,
   type AutomationSummary,
 } from "@pancreator/scheduler";
-import { findRepoRoot } from "./repo-paths";
+import { findHarnessRoot, findRepoRoot } from "./repo-paths";
 
 export type CronPreset = {
   id: string;
@@ -66,38 +66,38 @@ export async function discoverPersonaSlugs(repoRoot: string = findRepoRoot()): P
 }
 
 export async function loadAutomationSummaries(
-  repoRoot: string = findRepoRoot(),
+  harnessRoot: string = findHarnessRoot(),
 ): Promise<AutomationSummary[]> {
-  return listAutomations(repoRoot);
+  return listAutomations(harnessRoot);
 }
 
 export async function loadDueAutomationSummaries(
-  repoRoot: string = findRepoRoot(),
+  harnessRoot: string = findHarnessRoot(),
 ): Promise<AutomationSummary[]> {
-  return listDueAutomations(repoRoot);
+  return listDueAutomations(harnessRoot);
 }
 
 export async function saveAutomationCreate(
   record: AutomationRecord,
-  repoRoot: string = findRepoRoot(),
+  harnessRoot: string = findHarnessRoot(),
 ): Promise<AutomationSummary> {
-  const created = await createAutomation(repoRoot, record);
+  const created = await createAutomation(harnessRoot, record);
   return toAutomationSummary(created);
 }
 
 export async function saveAutomationUpdate(
   record: AutomationRecord,
-  repoRoot: string = findRepoRoot(),
+  harnessRoot: string = findHarnessRoot(),
 ): Promise<AutomationSummary> {
-  const updated = await updateAutomation(repoRoot, record);
+  const updated = await updateAutomation(harnessRoot, record);
   return toAutomationSummary(updated);
 }
 
 export async function removeAutomation(
   automationId: string,
-  repoRoot: string = findRepoRoot(),
+  harnessRoot: string = findHarnessRoot(),
 ): Promise<void> {
-  await deleteAutomation(repoRoot, automationId);
+  await deleteAutomation(harnessRoot, automationId);
 }
 
 export function humanScheduleLabel(schedule: string): string {

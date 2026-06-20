@@ -1,10 +1,10 @@
 import { readRunRecordsNewestFirst, type RunRecord } from "@pancreator/scheduler";
 
-import { findRepoRoot } from "@/services/repo-paths";
+import { findHarnessRoot } from "@/services/repo-paths";
 
 export type { RunRecord };
 
 export async function loadAutomationRunHistory(automationId: string): Promise<RunRecord[]> {
-  const repoRoot = findRepoRoot();
-  return readRunRecordsNewestFirst(repoRoot, automationId);
+  const harnessRoot = findHarnessRoot();
+  return readRunRecordsNewestFirst(harnessRoot, automationId);
 }
