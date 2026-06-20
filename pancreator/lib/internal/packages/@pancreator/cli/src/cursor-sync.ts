@@ -71,17 +71,27 @@ function stripMarkdownFrontmatter(raw: string): string {
   return match ? match[1]!.replace(/^\uFEFF/, "") : raw;
 }
 
-const REBASE_PATH_PREFIXES = [
+const PROJECT_REBASE_PATH_PREFIXES = [
   "pancreator/",
-  "AGENTS.md",
-  "OPERATION.md",
-  "pancreator.yaml",
   "lib/",
   ".pan/",
   ".docs/",
   "tests/",
-  ".cursor/",
 ] as const;
+
+function deliveryOperatingCardPath(projectPrefix: string): string {
+  if (projectPrefix === ".pancreator") {
+    return ".pancreator/AGENTS.md";
+  }
+  return "AGENTS.md";
+}
+
+function deliveryOperationProceduresPath(projectPrefix: string): string {
+  if (projectPrefix === ".pancreator") {
+    return ".pancreator/OPERATION.md";
+  }
+  return "OPERATION.md";
+}
 
 function rebaseProjectionPaths(raw: string, projectPrefix: string): string {
   if (projectPrefix === ".") {
@@ -89,24 +99,34 @@ function rebaseProjectionPaths(raw: string, projectPrefix: string): string {
   }
   const escapedPrefix = projectPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   let rewritten = raw;
-  for (const token of REBASE_PATH_PREFIXES) {
+  for (const token of PROJECT_REBASE_PATH_PREFIXES) {
     const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const tokenReplacement =
       token === "pancreator/" ? `${projectPrefix}/` : `${projectPrefix}/${token}`;
     const slashTokenReplacement =
       token === "pancreator/" ? `/${projectPrefix}/` : `/${projectPrefix}/${token}`;
-    // token form, e.g. `lib/...` or `AGENTS.md`
+    // token form, e.g. `lib/...`
     const tokenRegex = new RegExp(
       `(^|[\\s\\t\\r\\n\`"'([{<>=,;:])${escapedToken}`,
       "gmu",
     );
     rewritten = rewritten.replace(tokenRegex, `$1${tokenReplacement}`);
-    // slash-prefixed token form, e.g. `/lib/...` or `/AGENTS.md`
+    // slash-prefixed token form, e.g. `/lib/...`
     const slashTokenRegex = new RegExp(
       `(^|[\\s\\t\\r\\n\`"'([{<>=,;:])/${escapedToken}`,
       "gmu",
     );
     rewritten = rewritten.replace(slashTokenRegex, `$1${slashTokenReplacement}`);
+  }
+  if (projectPrefix === ".pancreator") {
+    rewritten = rewritten.replace(
+      /(^|[\s`"'([{<>=,;:])(?<!\.)AGENTS\.md/gu,
+      `$1${deliveryOperatingCardPath(projectPrefix)}`,
+    );
+    rewritten = rewritten.replace(
+      /(^|[\s`"'([{<>=,;:])(?<!\.)OPERATION\.md/gu,
+      `$1${deliveryOperationProceduresPath(projectPrefix)}`,
+    );
   }
   // Avoid double-prefixing from overlapping replacements (e.g. pancreator/pancreator/...).
   const dedupeRegex = new RegExp(`/${escapedPrefix}/${escapedPrefix}/`, "g");
@@ -117,7 +137,7 @@ function rebaseProjectionPaths(raw: string, projectPrefix: string): string {
 }
 
 function buildGeneralPurposeRetrievalContract(projectPrefix: string): string[] {
-  const agentsCard = projectPath(projectPrefix, "AGENTS.md");
+  const agentsCard = deliveryOperatingCardPath(projectPrefix);
   const workPrompt = projectPath(
     projectPrefix,
     ".pan/work/<day>/<id>/next-prompt.md",
@@ -159,7 +179,7 @@ function buildGeneralPurposeRetrievalContract(projectPrefix: string): string[] {
   ];
   if (projectPrefix !== ".") {
     steps.push(
-      `Project-root paths in prompts and ledgers are relative to \`${projectPrefix}/\`; resolve them under that prefix from the harness root.`,
+      `Project-root paths in prompts and ledgers are relative to \`${projectPrefix}/\`; resolve them under that prefix from the harness root. Harness-root paths (\`${agentsCard}\`, \`.cursor/**\`, \`.env\`) stay at the harness root unless embedded layout places delivery cards under \`${projectPrefix}/\`.`,
     );
   }
   return steps.map((step, index) => `${index + 1}. ${step}`);

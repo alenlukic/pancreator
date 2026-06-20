@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import {
+  resolveDeliveryOperatingCardRel,
+  resolveDeliveryOperationProceduresRel,
+} from "./delivery-operating-card.js";
+
 const PROJECT_ROOT_RE = /^project_root:\s*["']?([^"'\s#]+)["']?/m;
 
 /** Parses `project_root` from pancreator.yaml text; defaults to `"."`. */
@@ -70,7 +75,31 @@ export function resolveProjectPath(harnessRoot: string, ...segments: string[]): 
   return path.join(projectRootAbs(harnessRoot), ...segments);
 }
 
-/** Resolves a project-relative posix path stored in ledgers and artifacts. */
+/**
+ * Walks upward from `startDir` and returns the outermost directory whose tree
+ * contains a live `pancreator.yaml`. Scheduler and core path helpers expect this
+ * harness root, not the directory that directly contains the config file.
+ */
+export function findHarnessRoot(startDir: string): string {
+  let dir = path.resolve(startDir);
+  let harnessRoot: string | undefined;
+  while (true) {
+    if (resolvePancreatorYamlPath(dir) !== undefined) {
+      harnessRoot = dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  if (harnessRoot === undefined) {
+    throw new Error("Harness root not found");
+  }
+  return harnessRoot;
+}
+
+/** Resolves a project-relative or harness-root posix path stored in ledgers and artifacts. */
 export function resolveRepoPath(harnessRoot: string, relPosix: string): string {
   const norm = relPosix.replace(/\\/gu, "/").replace(/^\/+/u, "");
   if (norm === "pancreator.yaml") {
@@ -82,7 +111,19 @@ export function resolveRepoPath(harnessRoot: string, relPosix: string): string {
       path.join(path.resolve(harnessRoot), "pancreator-model-escalation.yaml")
     );
   }
+  if (norm === "AGENTS.md") {
+    return path.join(path.resolve(harnessRoot), ...resolveDeliveryOperatingCardRel(harnessRoot).split("/"));
+  }
+  if (norm === "OPERATION.md") {
+    return path.join(
+      path.resolve(harnessRoot),
+      ...resolveDeliveryOperationProceduresRel(harnessRoot).split("/"),
+    );
+  }
   if (norm === ".env" || norm.startsWith(".env.")) {
+    return path.join(path.resolve(harnessRoot), ...norm.split("/"));
+  }
+  if (norm === ".cursor" || norm.startsWith(".cursor/")) {
     return path.join(path.resolve(harnessRoot), ...norm.split("/"));
   }
   return resolveProjectPath(harnessRoot, ...norm.split("/"));

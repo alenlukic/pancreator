@@ -10,8 +10,17 @@ Unless marked harness-root, paths in this card, `DOC.REGISTRY`, handbook pages,
 persona specs, pipelines, ledgers, and transient artifacts are
 **project-root-relative**. Resolve them as `<project_root>/<path>` from the
 harness root using live `pancreator.yaml` (`DOC.PANCREATOR_CONFIG`).
-Harness-root paths include `AGENTS.md`, `OPERATION.md`, `.cursor/**`, `.env`,
-and repository tooling outside `project_root`.
+
+Always resolve from the harness root:
+
+- `.cursor/**` and `.env` (sibling of `project_root`, not inside it)
+- `AGENTS.md` and `OPERATION.md` on self-host/greenfield layouts
+- repository tooling outside `project_root`
+
+Embedded layouts (`project_root: ".pancreator"`) place delivery cards at
+`.pancreator/AGENTS.md` and `.pancreator/OPERATION.md`; runtime helpers
+`resolveDeliveryOperatingCardRel` and `resolveDeliveryOperationProceduresRel`
+encode that distinction.
 
 In this repository, `project_root` is `pancreator`.
 

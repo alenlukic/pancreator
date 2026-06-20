@@ -26,17 +26,71 @@ function ensureCursorProjections() {
 ensureCursorProjections();
 
 const AGENTS_DIR = path.join(ROOT, ".cursor", "agents");
-const REBASE_PATH_PREFIXES = [
+const PROJECT_REBASE_PATH_PREFIXES = [
   "pancreator/",
-  "AGENTS.md",
-  "OPERATION.md",
-  "pancreator.yaml",
   "lib/",
   ".pan/",
   ".docs/",
   "tests/",
-  ".cursor/",
 ];
+
+function deliveryOperatingCardPath(projectPrefix) {
+  if (projectPrefix === ".pancreator") {
+    return ".pancreator/AGENTS.md";
+  }
+  return "AGENTS.md";
+}
+
+function deliveryOperationProceduresPath(projectPrefix) {
+  if (projectPrefix === ".pancreator") {
+    return ".pancreator/OPERATION.md";
+  }
+  return "OPERATION.md";
+}
+
+/**
+ * @param {string} raw
+ * @param {string} projectPrefix
+ */
+function rebaseProjectionPaths(raw, projectPrefix) {
+  if (projectPrefix === ".") {
+    return raw;
+  }
+  const escapedPrefix = projectPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let rewritten = raw;
+  for (const token of PROJECT_REBASE_PATH_PREFIXES) {
+    const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tokenReplacement =
+      token === "pancreator/" ? `${projectPrefix}/` : `${projectPrefix}/${token}`;
+    const slashTokenReplacement =
+      token === "pancreator/" ? `/${projectPrefix}/` : `/${projectPrefix}/${token}`;
+    const tokenRegex = new RegExp(
+      `(^|[\\s\\t\\r\\n\`"'([{<>=,;:])${escapedToken}`,
+      "gmu",
+    );
+    rewritten = rewritten.replace(tokenRegex, `$1${tokenReplacement}`);
+    const slashTokenRegex = new RegExp(
+      `(^|[\\s\\t\\r\\n\`"'([{<>=,;:])/${escapedToken}`,
+      "gmu",
+    );
+    rewritten = rewritten.replace(slashTokenRegex, `$1${slashTokenReplacement}`);
+  }
+  if (projectPrefix === ".pancreator") {
+    rewritten = rewritten.replace(
+      /(^|[\s`"'([{<>=,;:])(?<!\.)AGENTS\.md/gu,
+      `$1${deliveryOperatingCardPath(projectPrefix)}`,
+    );
+    rewritten = rewritten.replace(
+      /(^|[\s`"'([{<>=,;:])(?<!\.)OPERATION\.md/gu,
+      `$1${deliveryOperationProceduresPath(projectPrefix)}`,
+    );
+  }
+  const dedupeRegex = new RegExp(`/${escapedPrefix}/${escapedPrefix}/`, "g");
+  rewritten = rewritten.replace(dedupeRegex, `/${projectPrefix}/`);
+  const dedupeNoLeadingSlash = new RegExp(`${escapedPrefix}/${escapedPrefix}/`, "g");
+  rewritten = rewritten.replace(dedupeNoLeadingSlash, `${projectPrefix}/`);
+  return rewritten;
+}
 
 /** @param {string} rel */
 function read(rel) {
@@ -84,40 +138,6 @@ function readProjectRootRel() {
   return match[1];
 }
 
-/**
- * @param {string} raw
- * @param {string} projectPrefix
- */
-function rebaseProjectionPaths(raw, projectPrefix) {
-  if (projectPrefix === ".") {
-    return raw;
-  }
-  const escapedPrefix = projectPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  let rewritten = raw;
-  for (const token of REBASE_PATH_PREFIXES) {
-    const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const tokenReplacement =
-      token === "pancreator/" ? `${projectPrefix}/` : `${projectPrefix}/${token}`;
-    const slashTokenReplacement =
-      token === "pancreator/" ? `/${projectPrefix}/` : `/${projectPrefix}/${token}`;
-    const tokenRegex = new RegExp(
-      `(^|[\\s\\t\\r\\n\`"'([{<>=,;:])${escapedToken}`,
-      "gmu",
-    );
-    rewritten = rewritten.replace(tokenRegex, `$1${tokenReplacement}`);
-    const slashTokenRegex = new RegExp(
-      `(^|[\\s\\t\\r\\n\`"'([{<>=,;:])/${escapedToken}`,
-      "gmu",
-    );
-    rewritten = rewritten.replace(slashTokenRegex, `$1${slashTokenReplacement}`);
-  }
-  const dedupeRegex = new RegExp(`/${escapedPrefix}/${escapedPrefix}/`, "g");
-  rewritten = rewritten.replace(dedupeRegex, `/${projectPrefix}/`);
-  const dedupeNoLeadingSlash = new RegExp(`${escapedPrefix}/${escapedPrefix}/`, "g");
-  rewritten = rewritten.replace(dedupeNoLeadingSlash, `${projectPrefix}/`);
-  return rewritten;
-}
-
 const SOURCE_BACKED = fs
   .readdirSync(AGENTS_DIR)
   .filter((name) => name.endsWith(".md") && name !== "general-purpose.md")
@@ -158,4 +178,6 @@ test("general-purpose remains standalone generated projection", () => {
   assert.equal(frontmatterHasKey(frontmatter, "metadata"), true);
   assert.match(frontmatter, /pancreator-model-tier:\s*standalone/u);
   assert.match(body, /## Retrieval contract/u);
+  assert.match(firstRetrievalStep(body), /Read `AGENTS\.md`/u);
+  assert.doesNotMatch(firstRetrievalStep(body), /Read `pancreator\/AGENTS\.md`/u);
 });

@@ -37,7 +37,8 @@ copying broad path tables into `AGENTS.md`.
 - `PERSONA.*` keys identify canonical persona specs.
 - Agents MUST resolve every key they are instructed to use before acting.
 - Path values in the tables below are project-root-relative; resolve them per
-  `AGENTS.md` path convention.
+  `AGENTS.md` path convention. Harness-root paths such as `.cursor/**` are not
+  registry keys and are resolved separately.
 - Authors MUST update this registry in the same change that creates, renames, or
   retires a key.
 
