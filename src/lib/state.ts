@@ -1,7 +1,7 @@
-import {randomUUID} from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 
-import {invariant} from './errors.js'
+import { invariant } from './errors.js'
 import {
   appendJsonLine,
   fileExists,
@@ -11,7 +11,7 @@ import {
   resolveInside,
   writeJsonAtomic,
 } from './io.js'
-import type {RunState} from './types.js'
+import type { RunState } from './types.js'
 
 /** Current time as an ISO 8601 string. */
 export function now(): string {
@@ -57,19 +57,19 @@ function parseRunState(value: unknown, source: string): RunState {
     invariant(
       typeof value[key] === 'string' && value[key].length > 0,
       `${source}.${key} MUST be a non-empty string.`,
-      {code: 'INVALID_STATE'},
+      { code: 'INVALID_STATE' },
     )
   }
 
   invariant(
     isRecord(value.pending_action),
     `${source}.pending_action MUST be an object.`,
-    {code: 'INVALID_STATE'},
+    { code: 'INVALID_STATE' },
   )
   invariant(
     Array.isArray(value.stage_history),
     `${source}.stage_history MUST be an array.`,
-    {code: 'INVALID_STATE'},
+    { code: 'INVALID_STATE' },
   )
   invariant(isRecord(value.attempts), `${source}.attempts MUST be an object.`, {
     code: 'INVALID_STATE',

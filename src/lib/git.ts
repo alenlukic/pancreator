@@ -1,10 +1,10 @@
-import {spawnSync, type SpawnSyncReturns} from 'node:child_process'
-import {readFileSync, statSync} from 'node:fs'
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
+import { readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 
-import {PanError} from './errors.js'
-import {sha256} from './io.js'
-import type {WorkspaceDelta, WorkspaceSnapshot} from './types.js'
+import { PanError } from './errors.js'
+import { sha256 } from './io.js'
+import type { WorkspaceDelta, WorkspaceSnapshot } from './types.js'
 
 interface RunGitOptions {
   allowFailure?: boolean
@@ -24,7 +24,7 @@ function runGit(
   if (!options.allowFailure && result.status !== 0) {
     throw new PanError(
       `git ${args.join(' ')} failed: ${result.stderr || result.stdout}`,
-      {code: 'GIT_FAILED'},
+      { code: 'GIT_FAILED' },
     )
   }
 
@@ -40,7 +40,7 @@ export function isGitRepository(root: string): boolean {
 }
 
 export function gitHead(root: string): string | null {
-  const result = runGit(root, ['rev-parse', 'HEAD'], {allowFailure: true})
+  const result = runGit(root, ['rev-parse', 'HEAD'], { allowFailure: true })
 
   return result.status === 0 ? result.stdout.trim() : null
 }

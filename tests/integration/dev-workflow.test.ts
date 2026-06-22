@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import {randomUUID} from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,8 +11,8 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../../src/lib/engine.js'
-import {loadWorkflow, stageBySlug} from '../../src/lib/workflow.js'
-import {createFixture, makeOutput, writeJson} from '../helpers.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { createFixture, makeOutput, writeJson } from '../helpers.js'
 
 test('full dev workflow persists gates and reaches operator-approved success', () => {
   const root = createFixture()

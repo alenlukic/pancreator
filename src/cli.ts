@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import {readdirSync} from 'node:fs'
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import {
@@ -12,11 +12,11 @@ import {
   resumeRun,
   submitOutput,
 } from './lib/engine.js'
-import {PanError} from './lib/errors.js'
-import {isGitRepository} from './lib/git.js'
-import {fileExists, findProjectRoot, isRecord, readJson} from './lib/io.js'
-import type {RunState} from './lib/types.js'
-import {validateRepository} from './lib/validation.js'
+import { PanError } from './lib/errors.js'
+import { isGitRepository } from './lib/git.js'
+import { fileExists, findProjectRoot, isRecord, readJson } from './lib/io.js'
+import type { RunState } from './lib/types.js'
+import { validateRepository } from './lib/validation.js'
 
 const HELP = `Pancreator v2 prototype
 
@@ -61,7 +61,7 @@ function option(
 
 function requiredArgument(value: string | undefined, name: string): string {
   if (!value) {
-    throw new PanError(`${name} is required.`, {code: 'INVALID_ARGUMENT'})
+    throw new PanError(`${name} is required.`, { code: 'INVALID_ARGUMENT' })
   }
 
   return value
@@ -100,7 +100,7 @@ function listRuns(root: string): Array<Record<string, unknown>> {
     return []
   }
 
-  return readdirSync(base, {withFileTypes: true})
+  return readdirSync(base, { withFileTypes: true })
     .filter(
       (entry) =>
         entry.isDirectory() &&
@@ -231,12 +231,12 @@ async function main(): Promise<void> {
       const runId = requiredArgument(args[0], 'run-id')
       const state = abortRun(root, runId, option(args, '--note', '') ?? '')
 
-      print({status: state.status, run_id: runId})
+      print({ status: state.status, run_id: runId })
       return
     }
     case 'status': {
       const runId = requiredArgument(args[0], 'run-id')
-      print(getRunStatus(root, runId, {json}), json)
+      print(getRunStatus(root, runId, { json }), json)
       return
     }
     case 'list':
@@ -260,7 +260,7 @@ async function main(): Promise<void> {
           version: process.versions.node,
           supported: nodeMajor >= 22,
         },
-        git: {available_repository: isGitRepository(root)},
+        git: { available_repository: isGitRepository(root) },
         validation,
         constraints: {
           runtime_dependencies: 0,
@@ -295,7 +295,7 @@ main().catch((error: unknown) => {
   const payload = {
     error: known ? error.code : 'UNEXPECTED_ERROR',
     message,
-    ...(known && error.details !== undefined ? {details: error.details} : {}),
+    ...(known && error.details !== undefined ? { details: error.details } : {}),
   }
 
   process.stderr.write(`${JSON.stringify(payload, null, 2)}\n`)

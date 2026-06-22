@@ -1,8 +1,14 @@
-import {readdirSync} from 'node:fs'
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import {invariant} from './errors.js'
-import {fileExists, isRecord, readJson, readText, resolveInside} from './io.js'
+import { invariant } from './errors.js'
+import {
+  fileExists,
+  isRecord,
+  readJson,
+  readText,
+  resolveInside,
+} from './io.js'
 import type {
   Criterion,
   CriterionType,
@@ -43,25 +49,25 @@ function parseCriterion(value: unknown, source: string): Criterion {
   invariant(
     typeof value.id === 'string' && value.id.length > 0,
     `${source}.id MUST be a non-empty string.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
   invariant(
     typeof value.type === 'string' &&
       CRITERION_TYPES.has(value.type as CriterionType),
     `${source}.type MUST be judgment, shell, or state.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
   invariant(
     typeof value.statement === 'string' && value.statement.length > 0,
     `${source}.statement MUST be a non-empty string.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
 
   if (value.hard !== undefined) {
     invariant(
       typeof value.hard === 'boolean',
       `${source}.hard MUST be a boolean when present.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
   }
 
@@ -69,7 +75,7 @@ function parseCriterion(value: unknown, source: string): Criterion {
     invariant(
       typeof value.command === 'string' && value.command.length > 0,
       `${source}.command MUST be a non-empty string for shell criteria.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
   }
 
@@ -77,7 +83,7 @@ function parseCriterion(value: unknown, source: string): Criterion {
     invariant(
       Number.isInteger(value.timeout_ms) && Number(value.timeout_ms) > 0,
       `${source}.timeout_ms MUST be a positive integer when present.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
   }
 
@@ -93,7 +99,7 @@ function parseTransitions(value: unknown, source: string): StageTransitions {
     invariant(
       typeof value[outcome] === 'string' && value[outcome].length > 0,
       `${source}.${outcome} MUST be a non-empty string.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
   }
 
@@ -119,7 +125,7 @@ function parseRequiredData(
       typeof typeName === 'string' &&
         JSON_TYPE_NAMES.has(typeName as JsonTypeName),
       `${source}.${key} MUST name a supported JSON type.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
 
     requiredData[key] = typeName as JsonTypeName
@@ -137,7 +143,7 @@ function parseStage(value: unknown, source: string): StageDefinition {
     invariant(
       typeof value[key] === 'string' && value[key].length > 0,
       `${source}.${key} MUST be a non-empty string.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
   }
 
@@ -145,17 +151,17 @@ function parseStage(value: unknown, source: string): StageDefinition {
     typeof value.workspace_policy === 'string' &&
       WORKSPACE_POLICIES.has(value.workspace_policy as WorkspacePolicy),
     `${source}.workspace_policy MUST be source_allowed, runtime_only, or read_only.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
   invariant(
     typeof value.gate === 'string' && GATES.has(value.gate as StageGate),
     `${source}.gate MUST name a supported gate.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
   invariant(
     typeof value.prompt === 'string' || typeof value.prompt_path === 'string',
     `${source} MUST define prompt or prompt_path.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
   invariant(
     Array.isArray(value.criteria),
@@ -217,7 +223,7 @@ function parseWorkflowIndex(value: unknown, source: string): WorkflowIndex {
     invariant(
       typeof value[key] === 'string' && value[key].length > 0,
       `${source}.${key} MUST be a non-empty string.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
   }
 
@@ -233,7 +239,7 @@ function parseWorkflowIndex(value: unknown, source: string): WorkflowIndex {
     invariant(
       Number.isInteger(value.limits[key]) && Number(value.limits[key]) > 0,
       `${source}.limits.${key} MUST be a positive integer.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
   }
 
@@ -242,7 +248,7 @@ function parseWorkflowIndex(value: unknown, source: string): WorkflowIndex {
       value.stages.length > 0 &&
       value.stages.every((slug) => typeof slug === 'string' && slug.length > 0),
     `${source}.stages MUST be a non-empty string array.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
 
   const workflow: WorkflowIndex = {
@@ -280,11 +286,11 @@ function parseWorkflowDefinition(
     parseStage(stage, `${source}.stages[${indexValue}]`),
   )
   const index = parseWorkflowIndex(
-    {...value, stages: stages.map((stage) => stage.slug)},
+    { ...value, stages: stages.map((stage) => stage.slug) },
     source,
   )
 
-  return {...index, stages}
+  return { ...index, stages }
 }
 
 function assembleWorkflow(
@@ -298,7 +304,7 @@ function assembleWorkflow(
     invariant(
       fileExists(stagePath),
       `${source}: missing stage file stages/${slug}.json.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
 
     const stage = parseStage(readJson(stagePath), `stages/${slug}.json`)
@@ -306,13 +312,13 @@ function assembleWorkflow(
     invariant(
       stage.slug === slug,
       `stages/${slug}.json: stage slug MUST equal '${slug}'.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
 
     return stage
   })
 
-  return {...index, stages}
+  return { ...index, stages }
 }
 
 /** Load and validate a workflow index plus its ordered stage files. */
@@ -348,7 +354,7 @@ export function listWorkflowSlugs(root: string): string[] {
     return []
   }
 
-  return readdirSync(base, {withFileTypes: true})
+  return readdirSync(base, { withFileTypes: true })
     .filter(
       (entry) =>
         entry.isDirectory() &&
@@ -409,7 +415,7 @@ export function validateWorkflow(
   invariant(
     workflow.stages.length > 0,
     `${source}: stages MUST be a non-empty array.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
 
   const slugs = new Set<string>()
@@ -418,7 +424,7 @@ export function validateWorkflow(
     invariant(
       !slugs.has(stage.slug),
       `${source}: duplicate stage '${stage.slug}'.`,
-      {code: 'INVALID_WORKFLOW'},
+      { code: 'INVALID_WORKFLOW' },
     )
     slugs.add(stage.slug)
 
@@ -426,7 +432,7 @@ export function validateWorkflow(
       invariant(
         fileExists(resolveInside(root, stage.prompt_path)),
         `${source}: missing prompt '${stage.prompt_path}'.`,
-        {code: 'INVALID_WORKFLOW'},
+        { code: 'INVALID_WORKFLOW' },
       )
     }
 
@@ -436,7 +442,7 @@ export function validateWorkflow(
       invariant(
         !criterionIds.has(criterion.id),
         `${source}: duplicate criterion '${criterion.id}' in '${stage.slug}'.`,
-        {code: 'INVALID_WORKFLOW'},
+        { code: 'INVALID_WORKFLOW' },
       )
       criterionIds.add(criterion.id)
     }
@@ -445,7 +451,7 @@ export function validateWorkflow(
   invariant(
     slugs.has(workflow.start_stage),
     `${source}: start_stage MUST reference an existing stage.`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
 
   for (const stage of workflow.stages) {
@@ -453,12 +459,12 @@ export function validateWorkflow(
       invariant(
         outcome === 'success' || outcome === 'failure' || outcome === 'blocked',
         `${source}: unsupported transition outcome '${outcome}'.`,
-        {code: 'INVALID_WORKFLOW'},
+        { code: 'INVALID_WORKFLOW' },
       )
       invariant(
         TERMINALS.has(target) || slugs.has(target),
         `${source}: transition '${stage.slug}.${outcome}' targets unknown '${target}'.`,
-        {code: 'INVALID_WORKFLOW'},
+        { code: 'INVALID_WORKFLOW' },
       )
     }
   }
@@ -493,7 +499,7 @@ export function validateWorkflow(
   invariant(
     unreachable.length === 0,
     `${source}: unreachable stages: ${unreachable.join(', ')}`,
-    {code: 'INVALID_WORKFLOW'},
+    { code: 'INVALID_WORKFLOW' },
   )
 
   return workflow

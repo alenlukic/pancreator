@@ -11,11 +11,11 @@
     "summary"
   ],
   "properties": {
-    "schema_version": {"const": 1},
-    "assessment_id": {"type": "string"},
-    "invocation_id": {"type": "string"},
-    "verdict": {"enum": ["pass", "fail", "escalate"]},
-    "criteria": {"type": "array"},
-    "summary": {"type": "string"}
+    "schema_version": { "const": 1 },
+    "assessment_id": { "type": "string" },
+    "invocation_id": { "type": "string" },
+    "verdict": { "enum": ["pass", "fail", "escalate"] },
+    "criteria": { "type": "array" },
+    "summary": { "type": "string" }
   }
 }

@@ -1,4 +1,4 @@
-import {createHash, randomUUID} from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   appendFileSync,
   closeSync,
@@ -13,7 +13,7 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 
-import {errorMessage, invariant, isNodeError, PanError} from './errors.js'
+import { errorMessage, invariant, isNodeError, PanError } from './errors.js'
 
 export function findProjectRoot(start = process.cwd()): string {
   let current = path.resolve(start)
@@ -43,7 +43,7 @@ export function findProjectRoot(start = process.cwd()): string {
     if (parent === current) {
       throw new PanError('Could not locate the Pancreator repository root.', {
         code: 'ROOT_NOT_FOUND',
-        details: {start},
+        details: { start },
       })
     }
 
@@ -52,7 +52,7 @@ export function findProjectRoot(start = process.cwd()): string {
 }
 
 export function ensureDir(dirPath: string): void {
-  mkdirSync(dirPath, {recursive: true})
+  mkdirSync(dirPath, { recursive: true })
 }
 
 export function readJson(filePath: string): unknown {
@@ -61,7 +61,7 @@ export function readJson(filePath: string): unknown {
   } catch (error) {
     throw new PanError(`Failed to read JSON: ${filePath}`, {
       code: 'INVALID_JSON',
-      details: {cause: errorMessage(error)},
+      details: { cause: errorMessage(error) },
     })
   }
 }
@@ -72,7 +72,7 @@ export function readText(filePath: string): string {
   } catch (error) {
     throw new PanError(`Failed to read file: ${filePath}`, {
       code: 'READ_FAILED',
-      details: {cause: errorMessage(error)},
+      details: { cause: errorMessage(error) },
     })
   }
 }
@@ -132,7 +132,7 @@ export function toRepoRelative(
   invariant(
     relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative),
     `Path must remain inside the repository: ${absoluteOrRelativePath}`,
-    {code: 'PATH_ESCAPE'},
+    { code: 'PATH_ESCAPE' },
   )
 
   return relative.split(path.sep).join('/')
@@ -142,7 +142,7 @@ export function resolveInside(root: string, relativePath: string): string {
   invariant(
     relativePath.length > 0,
     'Expected a non-empty repository-relative path.',
-    {code: 'INVALID_PATH'},
+    { code: 'INVALID_PATH' },
   )
 
   const absolute = path.resolve(root, relativePath)
@@ -151,7 +151,7 @@ export function resolveInside(root: string, relativePath: string): string {
   invariant(
     !relative.startsWith('..') && !path.isAbsolute(relative),
     `Path escapes repository root: ${relativePath}`,
-    {code: 'PATH_ESCAPE'},
+    { code: 'PATH_ESCAPE' },
   )
 
   return absolute
@@ -190,7 +190,7 @@ export function withFileLock<T>(lockPath: string, callback: () => T): T {
       }
 
       if (attempt === 0 && !processIsAlive(owner)) {
-        rmSync(lockPath, {force: true})
+        rmSync(lockPath, { force: true })
         continue
       }
 
@@ -198,7 +198,7 @@ export function withFileLock<T>(lockPath: string, callback: () => T): T {
         `Another Pancreator operation holds the lock: ${lockPath}`,
         {
           code: 'LOCK_HELD',
-          details: {owner_pid: owner, cause: errorMessage(error)},
+          details: { owner_pid: owner, cause: errorMessage(error) },
         },
       )
     }
@@ -214,7 +214,7 @@ export function withFileLock<T>(lockPath: string, callback: () => T): T {
     try {
       closeSync(descriptor)
     } finally {
-      rmSync(lockPath, {force: true})
+      rmSync(lockPath, { force: true })
     }
   }
 }

@@ -1,9 +1,9 @@
-import {randomUUID} from 'node:crypto'
-import {copyFileSync} from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
-import {invariant} from './errors.js'
-import {gitWorkspaceSnapshot} from './git.js'
+import { invariant } from './errors.js'
+import { gitWorkspaceSnapshot } from './git.js'
 import {
   ensureDir,
   fileExists,
@@ -17,7 +17,7 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
-import {resolvePolicies} from './policies.js'
+import { resolvePolicies } from './policies.js'
 import {
   renderInvocationMarkdown,
   renderStatus,
@@ -111,7 +111,7 @@ function referencesForRun(state: RunState): Array<{
 function pauseForLimit(root: string, state: RunState, reason: string): void {
   state.status = 'paused'
   state.pause_reason = reason
-  state.pending_action = {type: 'operator_decision'}
+  state.pending_action = { type: 'operator_decision' }
 
   writeDecision(root, state, 'Workflow paused by circuit breaker', reason, [
     `Resume from a chosen stage with: ./bin/pan resume ${state.run_id} --stage <stage>`,
@@ -148,14 +148,14 @@ function applyTransition(
   if (target === 'succeeded' || target === 'failed' || target === 'canceled') {
     state.status = target
     state.current_stage = null
-    state.pending_action = {type: 'none'}
+    state.pending_action = { type: 'none' }
     return
   }
 
   if (target === 'paused') {
     state.status = 'paused'
     state.pause_reason = `Stage '${stage.slug}' reported ${outcome}.`
-    state.pending_action = {type: 'operator_decision'}
+    state.pending_action = { type: 'operator_decision' }
 
     writeDecision(
       root,
@@ -169,7 +169,7 @@ function applyTransition(
 
   state.status = 'running'
   state.current_stage = target
-  state.pending_action = {type: 'prepare_invocation'}
+  state.pending_action = { type: 'prepare_invocation' }
   state.current_invocation = null
 }
 
@@ -182,7 +182,7 @@ function readInvocation(root: string, relativePath: string): Invocation {
   invariant(
     value.schema_version === 1 && typeof value.invocation_id === 'string',
     `${relativePath} MUST contain a valid invocation.`,
-    {code: 'INVALID_INVOCATION'},
+    { code: 'INVALID_INVOCATION' },
   )
 
   return value as unknown as Invocation
@@ -215,29 +215,29 @@ function parseSupervisorAssessment(
   invariant(
     typeof value.assessment_id === 'string' && value.assessment_id.length > 0,
     'Assessment assessment_id MUST be a non-empty string.',
-    {code: 'INVALID_ASSESSMENT'},
+    { code: 'INVALID_ASSESSMENT' },
   )
   invariant(
     typeof value.invocation_id === 'string' && value.invocation_id.length > 0,
     'Assessment invocation_id MUST be a non-empty string.',
-    {code: 'INVALID_ASSESSMENT'},
+    { code: 'INVALID_ASSESSMENT' },
   )
   invariant(
     value.verdict === 'pass' ||
       value.verdict === 'fail' ||
       value.verdict === 'escalate',
     'Assessment verdict MUST be pass, fail, or escalate.',
-    {code: 'INVALID_ASSESSMENT'},
+    { code: 'INVALID_ASSESSMENT' },
   )
   invariant(
     Array.isArray(value.criteria),
     'Assessment criteria MUST be an array.',
-    {code: 'INVALID_ASSESSMENT'},
+    { code: 'INVALID_ASSESSMENT' },
   )
   invariant(
     typeof value.summary === 'string' && value.summary.length > 0,
     'Assessment summary MUST be a non-empty string.',
-    {code: 'INVALID_ASSESSMENT'},
+    { code: 'INVALID_ASSESSMENT' },
   )
 
   return value as unknown as SupervisorAssessment
@@ -304,7 +304,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     title: options.title ?? path.basename(requestPath),
     status: 'running',
     current_stage: workflow.start_stage,
-    pending_action: {type: 'prepare_invocation'},
+    pending_action: { type: 'prepare_invocation' },
     current_invocation: null,
     request: {
       source_path: toRepoRelative(root, source),
@@ -321,7 +321,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     updated_at: now(),
   }
 
-  persist(root, state, 'run_created', {workflow: workflow.slug})
+  persist(root, state, 'run_created', { workflow: workflow.slug })
 
   return state
 }
@@ -356,7 +356,7 @@ export function prepareInvocation(
       'Run is not ready to prepare an invocation.',
       {
         code: 'INVALID_RUN_ACTION',
-        details: {pending: state.pending_action},
+        details: { pending: state.pending_action },
       },
     )
 
@@ -371,9 +371,9 @@ export function prepareInvocation(
         `Stage '${stage.slug}' exceeded ` +
           `${state.limits.max_stage_attempts} attempts.`,
       )
-      persist(root, state, 'run_paused', {reason: state.pause_reason})
+      persist(root, state, 'run_paused', { reason: state.pause_reason })
 
-      return {state, invocation: null}
+      return { state, invocation: null }
     }
 
     state.attempts[stage.slug] = attempt
@@ -423,7 +423,7 @@ export function prepareInvocation(
         gate: stage.gate,
       },
       prompt: loadStagePrompt(root, stage),
-      inputs: {references: referencesForRun(state)},
+      inputs: { references: referencesForRun(state) },
       policies,
       rubric: stage.criteria,
       output: {
@@ -466,7 +466,7 @@ export function prepareInvocation(
       attempt,
     })
 
-    return {state, invocation}
+    return { state, invocation }
   })
 }
 
@@ -511,7 +511,7 @@ export function submitOutput(
   root: string,
   runId: string,
   submittedPath: string,
-): {state: RunState; record: TaskRecord; idempotent?: boolean} {
+): { state: RunState; record: TaskRecord; idempotent?: boolean } {
   return withFileLock(lockPath(root, runId), () => {
     const state = loadState(root, runId)
     const submittedValue = readJson(resolveInside(root, submittedPath))
@@ -540,7 +540,7 @@ export function submitOutput(
     invariant(
       state.pending_action.type === 'invoke_agent',
       'Run is not awaiting stage output.',
-      {code: 'INVALID_RUN_ACTION'},
+      { code: 'INVALID_RUN_ACTION' },
     )
     invariant(state.current_invocation, 'Run has no active invocation.', {
       code: 'INVALID_RUN_ACTION',
@@ -679,7 +679,7 @@ export function submitOutput(
       next_state: nextState,
     })
 
-    return {state, record}
+    return { state, record }
   })
 }
 
@@ -687,7 +687,7 @@ export function assessStage(
   root: string,
   runId: string,
   assessmentPath: string,
-): {state: RunState; assessment: SupervisorAssessment} {
+): { state: RunState; assessment: SupervisorAssessment } {
   return withFileLock(lockPath(root, runId), () => {
     const state = loadState(root, runId)
 
@@ -695,7 +695,7 @@ export function assessStage(
       state.status === 'awaiting_supervisor' &&
         state.pending_action.type === 'supervisor_assessment',
       'Run is not awaiting supervisor assessment.',
-      {code: 'INVALID_RUN_ACTION'},
+      { code: 'INVALID_RUN_ACTION' },
     )
     invariant(state.current_invocation, 'Run has no active invocation.', {
       code: 'INVALID_RUN_ACTION',
@@ -709,7 +709,7 @@ export function assessStage(
     invariant(
       assessment.invocation_id === state.current_invocation.id,
       'Assessment invocation_id MUST match the active invocation.',
-      {code: 'INVALID_ASSESSMENT'},
+      { code: 'INVALID_ASSESSMENT' },
     )
 
     const workflow = loadRunWorkflow(root, state)
@@ -723,7 +723,7 @@ export function assessStage(
     if (assessment.verdict === 'escalate') {
       state.status = 'paused'
       state.pause_reason = assessment.summary
-      state.pending_action = {type: 'operator_decision'}
+      state.pending_action = { type: 'operator_decision' }
 
       writeDecision(
         root,
@@ -747,7 +747,7 @@ export function assessStage(
       verdict: assessment.verdict,
     })
 
-    return {state, assessment}
+    return { state, assessment }
   })
 }
 
@@ -764,12 +764,12 @@ export function decideRun(
       state.status === 'awaiting_operator' &&
         state.pending_action.type === 'operator_approval',
       'Run is not awaiting operator approval.',
-      {code: 'INVALID_RUN_ACTION'},
+      { code: 'INVALID_RUN_ACTION' },
     )
     invariant(
       decision === 'approve' || decision === 'reject',
       'Decision MUST be approve or reject.',
-      {code: 'INVALID_DECISION'},
+      { code: 'INVALID_DECISION' },
     )
 
     const workflow = loadRunWorkflow(root, state)
@@ -811,12 +811,12 @@ export function resumeRun(
 
     state.status = 'running'
     state.current_stage = target
-    state.pending_action = {type: 'prepare_invocation'}
+    state.pending_action = { type: 'prepare_invocation' }
     state.current_invocation = null
     state.pause_reason = null
     state.consecutive_failures = 0
 
-    persist(root, state, 'run_resumed', {stage: target})
+    persist(root, state, 'run_resumed', { stage: target })
 
     return state
   })
@@ -831,14 +831,14 @@ export function abortRun(root: string, runId: string, note = ''): RunState {
         state.status !== 'failed' &&
         state.status !== 'canceled',
       'Run is already terminal.',
-      {code: 'RUN_TERMINAL'},
+      { code: 'RUN_TERMINAL' },
     )
 
     state.status = 'canceled'
     state.current_stage = null
-    state.pending_action = {type: 'none'}
+    state.pending_action = { type: 'none' }
 
-    persist(root, state, 'run_canceled', {note})
+    persist(root, state, 'run_canceled', { note })
 
     return state
   })

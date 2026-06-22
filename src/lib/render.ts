@@ -1,4 +1,4 @@
-import type {Invocation, RunState, StageOutcome, TaskRecord} from './types.js'
+import type { Invocation, RunState, StageOutcome, TaskRecord } from './types.js'
 
 const OUTCOME_EMOJI: Record<StageOutcome, string> = {
   success: '✅',
@@ -12,7 +12,7 @@ function fencedJson(value: unknown): string {
 
 /** Render an invocation card for both the operator and the assigned worker. */
 export function renderInvocationMarkdown(invocation: Invocation): string {
-  const {stage} = invocation
+  const { stage } = invocation
   const requiredData = Object.entries(invocation.output.required_data)
   const references = invocation.inputs.references.length
     ? invocation.inputs.references.map(

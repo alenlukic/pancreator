@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {appendFileSync} from 'node:fs'
+import { appendFileSync } from 'node:fs'
 import path from 'node:path'
-import {createFixture} from '../helpers.js'
-import {createRun, getRunState} from '../../src/lib/engine.js'
+import { createFixture } from '../helpers.js'
+import { createRun, getRunState } from '../../src/lib/engine.js'
 
 test('materialized state recovers from a newer write-ahead event', () => {
   const root = createFixture()

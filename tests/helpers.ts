@@ -1,4 +1,4 @@
-import {execFileSync} from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import {
   cpSync,
   mkdirSync,
@@ -6,7 +6,7 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs'
-import {tmpdir} from 'node:os'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import type {
@@ -33,9 +33,9 @@ export function createFixture(): string {
   mkdirSync(path.join(root, 'runtime', 'logs', 'workflows'), {
     recursive: true,
   })
-  mkdirSync(path.join(root, 'runtime', 'inbox'), {recursive: true})
-  mkdirSync(path.join(root, 'runtime', 'backlog'), {recursive: true})
-  mkdirSync(path.join(root, 'src'), {recursive: true})
+  mkdirSync(path.join(root, 'runtime', 'inbox'), { recursive: true })
+  mkdirSync(path.join(root, 'runtime', 'backlog'), { recursive: true })
+  mkdirSync(path.join(root, 'src'), { recursive: true })
 
   writeFileSync(path.join(root, 'AGENTS.md'), '# fixture\n')
   writeFileSync(
@@ -63,13 +63,13 @@ export function createFixture(): string {
     ),
   )
 
-  execFileSync('git', ['init', '-q'], {cwd: root})
+  execFileSync('git', ['init', '-q'], { cwd: root })
   execFileSync('git', ['config', 'user.email', 'fixture@example.com'], {
     cwd: root,
   })
-  execFileSync('git', ['config', 'user.name', 'Fixture'], {cwd: root})
-  execFileSync('git', ['add', '.'], {cwd: root})
-  execFileSync('git', ['commit', '-qm', 'fixture'], {cwd: root})
+  execFileSync('git', ['config', 'user.name', 'Fixture'], { cwd: root })
+  execFileSync('git', ['add', '.'], { cwd: root })
+  execFileSync('git', ['commit', '-qm', 'fixture'], { cwd: root })
 
   return root
 }
@@ -79,7 +79,7 @@ export function read(pathname: string): unknown {
 }
 
 export function writeJson(pathname: string, value: unknown): void {
-  mkdirSync(path.dirname(pathname), {recursive: true})
+  mkdirSync(path.dirname(pathname), { recursive: true })
   writeFileSync(pathname, `${JSON.stringify(value, null, 2)}\n`)
 }
 
@@ -89,7 +89,7 @@ function requiredData(stage: string): Record<string, unknown> {
       return {
         product_spec: {
           summary: 'A harness',
-          user_stories: [{id: 'US-1', statement: 'Run a workflow'}],
+          user_stories: [{ id: 'US-1', statement: 'Run a workflow' }],
           constraints: ['No runtime dependencies'],
           out_of_scope: [],
           open_questions: [],
@@ -121,7 +121,7 @@ function requiredData(stage: string): Record<string, unknown> {
           notes: ['fixture'],
         },
         acceptance_results: [
-          {id: 'AC-1', result: 'pass', evidence: ['fixture']},
+          { id: 'AC-1', result: 'pass', evidence: ['fixture'] },
         ],
       }
     case 'review':
@@ -129,7 +129,7 @@ function requiredData(stage: string): Record<string, unknown> {
         review: {
           verdict: 'pass',
           findings: [],
-          acceptance_results: [{id: 'AC-1', result: 'pass'}],
+          acceptance_results: [{ id: 'AC-1', result: 'pass' }],
           maintenance_assessment: 'Proportionate',
         },
       }
@@ -146,11 +146,11 @@ function requiredData(stage: string): Record<string, unknown> {
             },
           ],
           defects: [],
-          acceptance_results: [{id: 'AC-1', result: 'pass'}],
+          acceptance_results: [{ id: 'AC-1', result: 'pass' }],
         },
       }
     case 'inspect':
-      return {inspection: {findings: [], verdict: 'pass'}}
+      return { inspection: { findings: [], verdict: 'pass' } }
     case 'ship':
       return {
         release: {
@@ -178,7 +178,7 @@ export function makeOutput(
     `${invocation.invocation_id}.md`
   const artifactAbsolute = path.join(root, artifactRelative)
 
-  mkdirSync(path.dirname(artifactAbsolute), {recursive: true})
+  mkdirSync(path.dirname(artifactAbsolute), { recursive: true })
   writeFileSync(artifactAbsolute, `# ${invocation.stage.title}\n`)
 
   return {
@@ -191,7 +191,7 @@ export function makeOutput(
     invocation_id: invocation.invocation_id,
     result,
     summary: `${invocation.stage.title} completed in fixture.`,
-    artifacts: [{path: artifactRelative, description: 'Fixture artifact'}],
+    artifacts: [{ path: artifactRelative, description: 'Fixture artifact' }],
     criteria: stageDefinition.criteria.map((criterion) => ({
       id: criterion.id,
       result: result === 'success' ? 'pass' : 'fail',

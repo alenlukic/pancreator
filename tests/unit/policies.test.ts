@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createFixture} from '../helpers.js'
-import {loadPolicyCatalog, resolvePolicies} from '../../src/lib/policies.js'
+import { createFixture } from '../helpers.js'
+import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 
 test('policy resolution unions global and stage-specific policies', () => {
   const root = createFixture()

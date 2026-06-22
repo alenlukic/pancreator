@@ -213,16 +213,16 @@ export interface StageHistoryItem {
 }
 
 export type PendingAction =
-  | {type: 'none'}
-  | {type: 'prepare_invocation'}
-  | {type: 'invoke_agent'; persona: string; path: string}
-  | {type: 'supervisor_assessment'; path: string; output_path: string}
+  | { type: 'none' }
+  | { type: 'prepare_invocation' }
+  | { type: 'invoke_agent'; persona: string; path: string }
+  | { type: 'supervisor_assessment'; path: string; output_path: string }
   | {
       type: 'operator_approval'
       stage: string
       proposed_transition: string
     }
-  | {type: 'operator_decision'}
+  | { type: 'operator_decision' }
 
 export interface CurrentInvocationPointer {
   id: string

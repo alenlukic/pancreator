@@ -657,7 +657,6 @@ The repository Prettier configuration automatically owns the following rules:
 - use double quotes for JSX attributes
 - quote object properties only when required
 - include trailing commas wherever supported
-- omit spaces inside object, import, export, and destructuring braces
 - place closing brackets on their own line where Prettier’s syntax printer requires it
 - require parentheses around arrow-function parameters
 - use LF line endings

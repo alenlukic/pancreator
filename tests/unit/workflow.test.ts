@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {rmSync} from 'node:fs'
+import { rmSync } from 'node:fs'
 import path from 'node:path'
-import {createFixture} from '../helpers.js'
+import { createFixture } from '../helpers.js'
 import {
   listWorkflowSlugs,
   loadWorkflow,

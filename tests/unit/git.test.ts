@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {writeFileSync} from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
-import {createFixture} from '../helpers.js'
-import {gitWorkspaceSnapshot, snapshotChanged} from '../../src/lib/git.js'
+import { createFixture } from '../helpers.js'
+import { gitWorkspaceSnapshot, snapshotChanged } from '../../src/lib/git.js'
 
 test('workspace fingerprint detects content changes when status labels stay the same', () => {
   const root = createFixture()

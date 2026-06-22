@@ -1,9 +1,9 @@
-import {readdirSync} from 'node:fs'
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import {invariant} from './errors.js'
-import {isRecord, readJson} from './io.js'
-import type {Policy, PolicyLookupRow, PolicyLookupTable} from './types.js'
+import { invariant } from './errors.js'
+import { isRecord, readJson } from './io.js'
+import type { Policy, PolicyLookupRow, PolicyLookupTable } from './types.js'
 
 interface PolicyContext {
   persona: string
@@ -22,28 +22,28 @@ function parsePolicy(value: unknown, source: string): Policy {
   invariant(
     typeof value.id === 'string' && value.id.length > 0,
     `${source}: policy id MUST be a non-empty string.`,
-    {code: 'INVALID_POLICY'},
+    { code: 'INVALID_POLICY' },
   )
   invariant(
     typeof value.title === 'string' && value.title.length > 0,
     `${source}: policy title MUST be a non-empty string.`,
-    {code: 'INVALID_POLICY'},
+    { code: 'INVALID_POLICY' },
   )
   invariant(
     value.severity === 'hard' || value.severity === 'soft',
     `${source}: policy severity MUST be hard or soft.`,
-    {code: 'INVALID_POLICY'},
+    { code: 'INVALID_POLICY' },
   )
   invariant(
     typeof value.summary === 'string' && value.summary.length > 0,
     `${source}: policy summary MUST be a non-empty string.`,
-    {code: 'INVALID_POLICY'},
+    { code: 'INVALID_POLICY' },
   )
   invariant(
     Array.isArray(value.instructions) &&
       value.instructions.every((item) => typeof item === 'string'),
     `${source}: policy instructions MUST be a string array.`,
-    {code: 'INVALID_POLICY'},
+    { code: 'INVALID_POLICY' },
   )
 
   return value as unknown as Policy
@@ -58,7 +58,7 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
     invariant(
       typeof value[key] === 'string' && value[key].length > 0,
       `${source}: ${key} MUST be a non-empty string.`,
-      {code: 'INVALID_POLICY_LOOKUP'},
+      { code: 'INVALID_POLICY_LOOKUP' },
     )
   }
 
@@ -66,7 +66,7 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
     Array.isArray(value.policies) &&
       value.policies.every((item) => typeof item === 'string'),
     `${source}: policies MUST be a string array.`,
-    {code: 'INVALID_POLICY_LOOKUP'},
+    { code: 'INVALID_POLICY_LOOKUP' },
   )
 
   return value as unknown as PolicyLookupRow

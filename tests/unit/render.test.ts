@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import {renderStatus, renderTaskRecord} from '../../src/lib/render.js'
-import type {TaskRecord} from '../../src/lib/types.js'
+import { renderStatus, renderTaskRecord } from '../../src/lib/render.js'
+import type { TaskRecord } from '../../src/lib/types.js'
 
 function baseRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
   return {
@@ -84,11 +84,11 @@ test('status summary includes the pause reason when present', () => {
     schema_version: 1,
     run_id: 'run-1',
     workflow_slug: 'dev',
-    workflow_snapshot: {path: 'workflow.json', sha256: 'abc'},
+    workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
     title: 'Run',
     status: 'paused',
     current_stage: 'implement',
-    pending_action: {type: 'operator_decision'},
+    pending_action: { type: 'operator_decision' },
     current_invocation: null,
     request: {
       source_path: 'request.md',

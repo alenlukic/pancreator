@@ -1,8 +1,8 @@
-import {spawnSync} from 'node:child_process'
-import {readdirSync} from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import {errorMessage, isNodeError} from './errors.js'
+import { errorMessage, isNodeError } from './errors.js'
 import {
   fileExists,
   isRecord,
@@ -11,13 +11,13 @@ import {
   sha256,
   writeTextAtomic,
 } from './io.js'
-import {gitWorkspaceSnapshot, snapshotChanged, workspaceDelta} from './git.js'
+import { gitWorkspaceSnapshot, snapshotChanged, workspaceDelta } from './git.js'
 import {
   loadPolicyCatalog,
   readPolicyLookupTable,
   resolvePolicies,
 } from './policies.js'
-import {listWorkflowSlugs, loadWorkflow} from './workflow.js'
+import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import type {
   ArtifactReference,
   Criterion,
@@ -86,7 +86,7 @@ function normalizeArtifacts(value: unknown): ArtifactReference[] {
       return []
     }
 
-    return [{path: item.path, description: item.description}]
+    return [{ path: item.path, description: item.description }]
   })
 }
 
@@ -250,7 +250,7 @@ export function validateStageOutput(
     }
   }
 
-  return {errors, output}
+  return { errors, output }
 }
 
 function runShellCheck(
@@ -268,7 +268,7 @@ function runShellCheck(
     shell: true,
     timeout: criterion.timeout_ms ?? 120_000,
     maxBuffer: 10 * 1024 * 1024,
-    env: {...process.env, PAN_WORKFLOW_STAGE: stage.slug},
+    env: { ...process.env, PAN_WORKFLOW_STAGE: stage.slug },
   })
   const safeCriterionId = criterion.id.replaceAll(/[^a-zA-Z0-9_.-]/g, '-')
   const evidencePath = path.join(
@@ -348,7 +348,7 @@ export function evaluateDeterministicCriteria(
   state: RunState,
   stage: StageDefinition,
   beforeSnapshot: WorkspaceSnapshot,
-): {results: DeterministicResult[]; workspace: WorkspaceSnapshot} {
+): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
   const afterSnapshot = gitWorkspaceSnapshot(root)
   const results: DeterministicResult[] = []
 
@@ -365,7 +365,7 @@ export function evaluateDeterministicCriteria(
         : 'Workspace fingerprint is unchanged.',
       delta: changed
         ? workspaceDelta(beforeSnapshot, afterSnapshot)
-        : {added: [], removed: []},
+        : { added: [], removed: [] },
       workspace_fingerprint: afterSnapshot.fingerprint,
     })
   }
@@ -388,13 +388,13 @@ export function evaluateDeterministicCriteria(
     }
   }
 
-  return {results, workspace: afterSnapshot}
+  return { results, workspace: afterSnapshot }
 }
 
 function listMarkdownFiles(directory: string): string[] {
   const files: string[] = []
 
-  for (const entry of readdirSync(directory, {withFileTypes: true})) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const absolute = path.join(directory, entry.name)
 
     if (entry.isDirectory()) {
@@ -517,8 +517,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   const legacyModules = [
-    ...readdirSync(path.join(root, 'src'), {recursive: true}),
-    ...readdirSync(path.join(root, 'tests'), {recursive: true}),
+    ...readdirSync(path.join(root, 'src'), { recursive: true }),
+    ...readdirSync(path.join(root, 'tests'), { recursive: true }),
   ].filter((entry) => typeof entry === 'string' && entry.endsWith('.mjs'))
 
   if (legacyModules.length > 0) {
@@ -529,6 +529,6 @@ export function validateRepository(root: string): RepositoryValidationResult {
     ok: errors.length === 0,
     errors,
     warnings,
-    fingerprint: sha256({errors, warnings}),
+    fingerprint: sha256({ errors, warnings }),
   }
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import {writeFileSync} from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,8 +8,8 @@ import {
   prepareInvocation,
   submitOutput,
 } from '../../src/lib/engine.js'
-import {loadWorkflow, stageBySlug} from '../../src/lib/workflow.js'
-import {createFixture, makeOutput, writeJson} from '../helpers.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { createFixture, makeOutput, writeJson } from '../helpers.js'
 
 test('read-only stage fails when the source workspace changes', () => {
   const root = createFixture()
@@ -35,7 +35,7 @@ test('read-only stage fails when the source workspace changes', () => {
 
   const output = {
     ...makeOutput(root, invocation, stage),
-    data: {inspection: {findings: [], verdict: 'pass'}},
+    data: { inspection: { findings: [], verdict: 'pass' } },
   }
 
   writeJson(path.join(root, invocation.output.path), output)
