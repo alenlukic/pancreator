@@ -1,23 +1,44 @@
-# Prototype validation report
+# TypeScript and governance migration validation
 
-Validated on 2026-06-22 with Node.js 22.14.0 and Git 2.47.x.
+Validated on 2026-06-22 with Node.js 22.16.0 and Git 2.47.3.
 
 ## Results
 
 - `npm run lint`: passed
+  - `prettier --check .`: passed
+  - `tsc --noEmit`: passed with strict type checking enabled
+  - shell syntax validation: passed
+- `npm run build`: passed
 - `npm run validate`: passed with no errors or warnings
 - `npm test`: 15 tests passed, 0 failed
-- `npm run test:coverage`: passed
-  - lines: 86.51%
-  - branches: 72.51%
-  - functions: 90.57%
-- `./bin/pan doctor`: passed; zero external runtime dependencies reported
-- `bash -n bin/pan scripts/lint.sh`: passed
-- Actual-repository smoke run: `init` then `prepare` produced a valid intake
-  invocation card with the upgraded markdown rendering and the new `INTAKE-001`
-  policy in force.
+- `npm run test:coverage`: passed configured thresholds
+  - lines: 82.43%
+  - branches: 71.96%
+  - functions: 90.00%
+- `npm run check`: passed
+- `./bin/pan doctor`: passed
+  - zero runtime dependencies reported
+  - TypeScript and Prettier reported as development tools only
+- Actual-repository smoke run: passed
+  - initialized a `preflight` run against the migrated repository
+  - prepared a valid `inspect` invocation for the reviewer persona
+  - read the resulting materialized run state
+  - removed the generated smoke artifacts and restored the orchestrator event log
 
-## Covered behavior
+## Migration coverage
+
+- all runtime and test modules migrated from `.mjs` to `.ts`
+- strict TypeScript compilation and Node ESM output
+- exact repository Prettier configuration integrated into formatting and lint checks
+- TypeScript style guide installed as normative governance
+- TypeScript policy loaded for development implementation and review stages
+- governance Markdown documents standardized around RFC 2119 and RFC 8174 terms
+- policy summaries and instructions standardized as normative directives
+- repository validation rejects legacy `.mjs` source or tests and missing TypeScript governance
+- Cursor agents and global Pancreator rule reference the TypeScript style contract
+- generated workflow, invocation, and evaluation boundaries use normative requirement language
+
+## Covered runtime behavior
 
 - complete intake -> plan -> implement -> review -> test -> ship path
 - operator gates at intake and ship
@@ -30,13 +51,10 @@ Validated on 2026-06-22 with Node.js 22.14.0 and Git 2.47.x.
 - stale lock recovery
 - write-ahead event recovery of materialized state
 - workflow graph and policy resolution validation
-- markdown-primary execution record rendering, including validation-issue and
-  failure paths
+- Markdown-primary execution record rendering, including validation-issue and failure paths
 
 ## Known validation limits
 
-Cursor itself was not exercised here, so `.cursor` commands, rule discovery,
-subagent model availability, and MCP invocation were validated structurally
-rather than through the Cursor UI. Model strings in `.cursor/agents` are current
-suggestions and may need adjustment to the exact identifiers exposed by the
-operator's Cursor installation.
+Cursor itself was not available in the validation environment. Cursor command discovery, rule application, subagent dispatch, model availability, and MCP invocation were therefore validated structurally rather than through the Cursor UI. Model strings in `.cursor/agents` remain suggested mappings and may require adjustment to the identifiers exposed by the operator's Cursor installation.
+
+The Node.js test runner emitted its standard warning that glob support used by the coverage command is experimental. The command completed successfully and met every configured threshold.

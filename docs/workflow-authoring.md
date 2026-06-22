@@ -24,7 +24,7 @@ Schemas:
 - [`library/schemas/stage.schema.json`](../library/schemas/stage.schema.json) - one stage file.
 
 These schemas are documentation and tooling aids. The dependency-free enforcer
-is the imperative validator in `src/lib/workflow.mjs`, run by `./bin/pan validate`.
+is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate`.
 
 ## Index fields (`workflow.json`)
 
@@ -53,8 +53,8 @@ is the imperative validator in `src/lib/workflow.mjs`, run by `./bin/pan validat
   - `source_allowed` - may modify product source (implement).
   - `runtime_only` - may write only under `runtime/` (intake, plan).
   - `read_only` - may not change any tracked content (review, test, ship).
-  Any policy other than `source_allowed` adds the deterministic criterion
-  `scope.no_unapproved_changes`, so a read-only stage that mutates source fails.
+    Any policy other than `source_allowed` adds the deterministic criterion
+    `scope.no_unapproved_changes`, so a read-only stage that mutates source fails.
 - `gate` - what decides advancement after a valid, successful output:
   - `operator` - pause for explicit operator approval (intake, ship).
   - `supervisor` - pause for independent supervisor judgment of the judgment

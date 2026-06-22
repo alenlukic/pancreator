@@ -1,6 +1,6 @@
 # Pancreator v2 prototype
 
-Pancreator v2 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Plain Node.js and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
+Pancreator v2 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
 
 ## What this prototype proves
 
@@ -18,7 +18,7 @@ Pancreator v2 is a dependency-free, Cursor-native control plane for agent workfl
 - Cursor with project commands/subagents enabled
 - Optional MCP servers configured in Cursor; Pancreator itself does not run or depend on them
 
-There are no npm runtime dependencies and no build step.
+There are no npm runtime dependencies. TypeScript and Prettier are development-only dependencies; `./bin/pan` compiles the project before invoking the CLI.
 
 ## Quick start in Cursor
 
@@ -87,6 +87,17 @@ intake ──operator approval──> plan ──supervisor gate──> implemen
 
 Review and QA do not modify source. Failed review or QA routes to implementation. Ship creates a release packet only; commit, push, PR, merge, publication, and deployment remain operator-owned.
 
+## TypeScript and formatting
+
+Human-authored TypeScript and TSX are governed by [`governance/handbooks/typescript/style-guide.md`](governance/handbooks/typescript/style-guide.md). The checked-in `prettier.config.js` is authoritative for formatter-owned layout.
+
+```sh
+npm install
+npm run format
+npm run typecheck
+npm run build
+```
+
 ## Validation
 
 ```sh
@@ -98,10 +109,10 @@ npm run check
 ./bin/pan doctor
 ```
 
-Coverage uses Node's built-in test coverage; no coverage package is installed.
+Coverage uses Node's built-in test coverage; no coverage runtime package is installed.
 
 ## Design documents
-- [`docs/architecture-review.md`](docs/architecture-review.md): critical design evaluation against current practice
+
 - [`docs/runtime-protocol.md`](docs/runtime-protocol.md): state, gate, retry, evidence, and recovery semantics
 - [`docs/workflow-authoring.md`](docs/workflow-authoring.md): how to define a workflow and its stages
 - [`docs/operator-guide.md`](docs/operator-guide.md): how to inspect and remediate a run

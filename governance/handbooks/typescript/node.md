@@ -1,82 +1,55 @@
 # TypeScript and Node.js handbook
 
-The language baseline for harness and tooling code. The Pancreator harness is
-dependency-free ESM Node.js (`.mjs`); product code may use TypeScript. These
-practices reflect the patterns already in `src/lib` and should be preserved.
+The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
-## Modules and runtime
+Repository TypeScript and TSX MUST conform to [`style-guide.md`](style-guide.md). This handbook adds Node.js runtime and durable-state requirements.
 
-- Use ESM throughout (`import`/`export`, `"type": "module"`). No CommonJS in new
-  code.
-- Prefer Node built-ins over dependencies. The harness has zero runtime
-  dependencies and no build step; keep it that way. A new dependency is a
-  decision with a justification, not a convenience.
-- Target the supported runtime (Node 22+). Use built-in capabilities -
-  `node:test`, `node:crypto`, `structuredClone`, the test runner's coverage -
-  before reaching for a package.
-- Use explicit `node:` import specifiers for built-ins.
+## Modules and dependencies
 
-## Types and shapes
+- Source modules MUST use ES module syntax and NodeNext-compatible `.js` import specifiers.
+- Runtime code SHOULD prefer Node.js built-ins when they provide the required behavior clearly.
+- A runtime dependency MUST NOT be added without explicit operator approval and a documented operational benefit.
+- Development tooling MAY include TypeScript, Prettier, and type declarations required to validate the repository.
+- Exported APIs MUST use named exports.
 
-- In TypeScript, prefer precise types over `any`. Model domain values as branded
-  or literal-union types where a bare `string` would invite mistakes.
-- In untyped ESM, validate shapes explicitly at boundaries. Check
-  `schema_version`, required fields, and value domains before acting on parsed
-  JSON, exactly as `validateStageOutput` does.
-- Keep public function signatures small and named. Pass an options object rather
-  than a long positional list. Document non-obvious contracts with JSDoc.
+## Type boundaries
 
-## Input validation at boundaries
+- Parsed JSON, CLI arguments, subprocess output, and MCP-derived values MUST enter the system as `unknown` until validated.
+- `any` MUST NOT cross a module or API boundary.
+- Runtime validation MUST establish an invariant before a type assertion narrows external data.
+- Domain values SHOULD use unions or interfaces when a bare primitive would permit invalid states.
+- Exported functions SHOULD declare return types when the result is not immediately obvious.
 
-- Validate every input that crosses a file or process boundary: parsed JSON,
-  CLI arguments, command output, and external content. Trust values only after
-  validation.
-- Reject path escapes. Resolve repository-relative paths and confirm they stay
-  inside the project root before any read or write (`resolveInside`,
-  `toRepoRelative`).
-- Raise typed, coded errors. Use a single error type carrying a stable `code`,
-  optional `details`, and an exit code, so the CLI can render machine-readable
-  failures (`PanError`, `invariant`).
+## File I/O and state
 
-## File I/O and durable state
+- Materialized JSON state MUST be written to a unique temporary file and atomically renamed into place.
+- Audit events MUST be appended and MUST NOT be rewritten during ordinary execution.
+- Per-run mutations MUST acquire an exclusive lock and MUST recover a provably stale lock deterministically.
+- Repository-relative paths MUST remain inside the project root.
+- Human-readable JSON MUST use two-space indentation and a trailing newline.
+- JSONL event streams SHOULD remain compact.
+- Hashing inputs MUST be canonicalized when object key order is not semantically meaningful.
 
-- Replace materialized state atomically. Write to a unique temp file, then
-  rename into place (`writeJsonAtomic`, `writeTextAtomic`). Never write a
-  half-formed `state.json`.
-- Keep audit history append-only. Event logs are appended, never rewritten
-  (`appendJsonLine`), so a run is reconstructable from its events.
-- Serialize concurrent mutations. Guard per-run state changes with an exclusive
-  file lock and recover stale locks deterministically (`withFileLock`).
-- Make hashing stable and deterministic. Hash canonicalized input so equal
-  values hash equally regardless of key order (`stableStringify`, `sha256`).
-- Pretty-print JSON written for humans (two-space indent, trailing newline).
-  Machine-only streams (JSONL events) stay compact.
+## Subprocess execution
 
-## Subprocess and shell safety
+- Fixed commands SHOULD use `spawnSync` or `spawn` with an argument array and no shell.
+- A workflow shell criterion MAY use a shell only because its command is reviewed repository configuration rather than agent-generated input.
+- Every subprocess MUST define a timeout and bounded output buffer when the API supports them.
+- Exit code, stdout, stderr, signal, timing, and timeout state SHOULD be preserved as evidence.
+- A timeout MUST fail the criterion rather than leave the workflow hanging.
 
-- Never build a shell command from agent-controlled or external strings.
-- Prefer `spawnSync` with an argument array and no shell for fixed commands.
-  When a stage runs a declared gate command, pass it through a controlled,
-  reviewed path with an explicit timeout and bounded buffer, and capture
-  stdout, stderr, exit code, and timing as evidence.
-- Always set a timeout and a `maxBuffer` for child processes; treat a timeout as
-  a failure, not a hang.
+## Errors and asynchronous code
 
-## Async and errors
+- Caught errors MUST use `unknown` and MUST be narrowed before property access.
+- Internal APIs MUST throw `Error` instances or subclasses.
+- The CLI boundary MUST translate known errors into stable machine-readable codes and actionable messages.
+- A function MUST NOT be marked `async` unless it awaits or intentionally returns a promise contract.
+- Errors MUST be caught only at a boundary that can add context, recover, or render an operator-facing failure.
 
-- Keep the async surface honest. Mark functions `async` only when they await;
-  do not wrap synchronous logic in needless promises.
-- Handle the failure path explicitly. Catch at the boundary that can act on the
-  error, attach context, and re-throw typed errors rather than swallowing them.
-- Fail fast on programmer errors (invariants); degrade gracefully on expected
-  operational errors (a missing optional file, a stale lock).
+## Testing and build
 
-## Testing in Node
-
-- Use the built-in `node:test` runner and `node:assert/strict`.
-- Build realistic fixtures. Construct a temporary repository with the real
-  `library/`, `governance/`, and `.cursor/` inputs rather than mocking I/O, so
-  tests exercise the actual file contracts.
-- Cover the boundaries that matter: path-escape rejection, lock serialization,
-  atomic write/read round-trips, workspace-change detection, and full-workflow
-  transitions. Keep coverage thresholds meaningful, not decorative.
+- Tests MUST use `node:test` and `node:assert/strict` unless the operator approves another framework.
+- Fixtures SHOULD exercise real governance, workflow, and filesystem contracts rather than mocking core I/O.
+- Tests MUST cover path escape rejection, lock recovery, atomic write/read behavior, workspace mutation detection, and workflow transitions when those surfaces change.
+- `npm run format:check`, `npm run typecheck`, `npm run build`, `npm test`, and applicable repository validation MUST pass before completion.
+- Coverage thresholds MUST represent meaningful protection and MUST NOT be lowered only to make a change pass.

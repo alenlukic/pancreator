@@ -1,15 +1,11 @@
-# Handbooks
+# Governance handbooks
 
-Durable engineering guidance that stands behind personas and policies. Handbooks
-are background standards, not stage contracts: the invocation card and its
-embedded policies remain authoritative for any given invocation.
+The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
-- [`eng/engineering.md`](eng/engineering.md) - language-agnostic engineering
-  baseline: scope, maintainability, testing, error handling, security, and agent
-  execution discipline.
-- [`typescript/node.md`](typescript/node.md) - TypeScript and Node.js baseline:
-  ESM, dependency-free built-ins, boundary validation, atomic and append-only
-  I/O, subprocess safety, and testing.
+Handbooks define durable repository standards. An invocation card and its embedded policies MUST remain the authoritative contract for a specific stage. Agents MUST NOT load unrelated handbooks speculatively.
 
-Keep handbooks high-signal. Add a practice here only when it applies broadly
-across work; put invocation-specific rules in policies and stage prompts.
+- [`eng/engineering.md`](eng/engineering.md) defines the language-agnostic engineering baseline.
+- [`typescript/style-guide.md`](typescript/style-guide.md) defines normative TypeScript and TSX style.
+- [`typescript/node.md`](typescript/node.md) defines Node.js runtime and durable-state practices.
+
+A handbook rule SHOULD apply broadly across repository work. Invocation-specific requirements MUST live in policies, workflow stages, or prompts instead. Handbook additions MUST be high-signal and MUST NOT duplicate an existing authoritative rule without a concrete retrieval benefit.

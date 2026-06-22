@@ -4,7 +4,14 @@
   "title": "Pancreator workflow index",
   "description": "The top-level file at library/workflows/<slug>/workflow.json. It declares run-wide settings and the ordered list of stage slugs. Each slug resolves to library/workflows/<slug>/stages/<stage-slug>.json, validated by stage.schema.json. The harness assembles these into one self-contained workflow.snapshot.json per run.",
   "type": "object",
-  "required": ["schema_version", "slug", "title", "start_stage", "limits", "stages"],
+  "required": [
+    "schema_version",
+    "slug",
+    "title",
+    "start_stage",
+    "limits",
+    "stages"
+  ],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
@@ -32,7 +39,11 @@
     "limits": {
       "type": "object",
       "description": "Circuit breakers enforced by the harness. Exceeding any limit pauses the run and writes a decision record.",
-      "required": ["max_total_transitions", "max_stage_attempts", "max_consecutive_failures"],
+      "required": [
+        "max_total_transitions",
+        "max_stage_attempts",
+        "max_consecutive_failures"
+      ],
       "additionalProperties": false,
       "properties": {
         "max_total_transitions": {

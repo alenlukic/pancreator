@@ -1,0 +1,11 @@
+{
+  "id": "TS-001",
+  "title": "TypeScript conformance",
+  "severity": "hard",
+  "summary": "Human-authored TypeScript and TSX MUST conform to the repository TypeScript style guide and configured formatter.",
+  "instructions": [
+    "Agents MUST inspect the normative sections of governance/handbooks/typescript/style-guide.md before implementing or reviewing TypeScript.",
+    "Agents MUST run the configured formatter and type checker before completion and MUST treat formatter output as authoritative.",
+    "Agents MUST NOT inspect Appendix A during ordinary implementation or review unless they are changing formatter configuration or integration."
+  ]
+}

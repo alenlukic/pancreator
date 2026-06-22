@@ -1,65 +1,37 @@
 # Criteria catalog
 
-The shared vocabulary for stage criteria. Each stage in a workflow declares its
-own `criteria[]` inline (now in the per-stage files under
-`library/workflows/<slug>/stages/`). This catalog documents the naming
-conventions and the reusable criterion families so that criteria stay
-consistent across workflows. It is documentation, not a runtime input.
+The terms **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document indicate requirement levels as defined by RFC 2119 and RFC 8174.
 
-## How criteria work
+This catalog defines the shared vocabulary for workflow-stage criteria. Each stage MUST declare its own `criteria[]` inline under `library/workflows/<workflow>/stages/`. This catalog is documentation and MUST NOT be loaded as a runtime contract unless an invocation references it.
 
-A criterion is one checkable claim about a stage's output or its effect on the
-workspace. Every criterion has:
+## Criterion contract
 
-- `id` - dotted, namespaced identifier, `<area>.<claim>` (for example
-  `review.tests_correct`).
-- `type` - how it is evaluated:
-  - `judgment` - evaluated by a reasoning agent (the worker self-evaluates;
-    a supervisor independently re-judges these at a `supervisor` gate).
-  - `shell` - evaluated by the harness rerunning a declared command; the
-    worker's self-claim is never accepted as proof.
-  - `state` - evaluated by the harness against run state and workspace
-    fingerprints.
-- `hard` - if true, a failure (or `not_applicable`) blocks the stage. Soft
-  criteria inform judgment but do not block on their own.
-- `statement` - the claim, written so that "pass" is unambiguous.
+Each criterion MUST represent one independently checkable claim and MUST define:
 
-A stage succeeds only when its output shape is valid, every declared criterion
-has a self-evaluation, no hard criterion is failed or not applicable, the
-workspace mutation policy is respected, and every hard deterministic check
-passes. See [`docs/runtime-protocol.md`](../../docs/runtime-protocol.md).
+- `id`: a stable, namespaced identifier in `<area>.<claim>` form.
+- `type`: `judgment`, `shell`, or `state`.
+- `statement`: a claim phrased so that pass and failure are unambiguous.
+- `hard`: a boolean when failure MUST block the stage; omitted or `false` means advisory.
 
-## Naming conventions
+A `judgment` criterion MUST be evaluated by a reasoning agent. A `shell` criterion MUST be rerun by the harness, and a worker self-claim MUST NOT substitute for command evidence. A `state` criterion MUST be evaluated by the harness against durable run state or workspace fingerprints.
 
-- Namespace by area: `record.*` (operator legibility), `scope.*` (mutation
-  boundaries), `intake.*`, `plan.*`, `implement.*`, `review.*`, `test.*`,
-  `ship.*`, `preflight.*`.
-- One claim per id. If a statement contains "and" across two independently
-  checkable things, split it.
-- Keep ids stable. Evidence and records reference them; renaming an id breaks
-  history.
+A stage MUST NOT succeed unless its output shape is valid, every declared criterion has a self-evaluation, every hard criterion passes, its workspace mutation policy is satisfied, and every hard deterministic check passes.
 
-## Reusable families
+## Naming and stability
 
-These claims recur across stages; reuse the id and tailor the statement.
+- Criterion identifiers MUST be namespaced by responsibility, such as `record.*`, `scope.*`, `intake.*`, `plan.*`, `implement.*`, `review.*`, `test.*`, `ship.*`, or `preflight.*`.
+- A criterion MUST contain one claim. Independently checkable claims joined by “and” SHOULD be split.
+- Criterion identifiers MUST remain stable after evidence references them. A breaking rename MUST include an explicit migration strategy.
 
-- `record.operator_readable` (judgment, hard) - the output gives the operator a
-  concise outcome, blockers, evidence pointers, and the next action.
-- `scope.no_unapproved_changes` (state, hard) - the stage respected its declared
-  workspace mutation policy. Injected automatically by the harness for any stage
-  whose `workspace_policy` is not `source_allowed`.
-- `*.acceptance_met` (judgment, hard) - the relevant acceptance criteria are
-  satisfied and independently verifiable, not merely asserted.
-- `*.tests_correct` (judgment, hard) - tests are meaningful, correctly scoped,
-  and resistant to false positives.
-- `*.maintainable` (judgment, hard) - structural and maintenance risk is
-  appropriate for the requested scope.
-- `*.full_suite` / `*.coverage` (shell, hard) - the complete automated suite and
-  coverage thresholds pass when rerun by the harness.
+## Reusable criterion families
 
-## Deterministic vs judgment
+- `record.operator_readable` MUST require a concise outcome, blockers, evidence pointers, and next action.
+- `scope.no_unapproved_changes` MUST require compliance with the declared workspace mutation policy. The harness MUST inject it for any stage whose `workspace_policy` is not `source_allowed`.
+- `*.acceptance_met` MUST require independently verifiable acceptance evidence rather than an unsupported completion claim.
+- `*.tests_correct` MUST require meaningful tests that are correctly scoped and resistant to false positives.
+- `*.maintainable` MUST require structural and maintenance risk proportionate to the requested scope.
+- `*.full_suite` and `*.coverage` MUST be deterministic shell criteria when the repository exposes applicable commands.
 
-Prefer a deterministic (`shell`/`state`) criterion whenever the claim can be
-checked by a command or by state. Reserve `judgment` for claims that genuinely
-require reasoning - faithfulness, proportionality, maintainability - and route
-those through an independent gate rather than self-certification.
+## Deterministic-first selection
+
+A criterion that can be checked by a command or durable state MUST use `shell` or `state`. A criterion MAY use `judgment` only when it requires semantic reasoning, such as faithfulness, proportionality, or maintainability. Hard judgment criteria SHOULD pass through an independent gate rather than worker self-certification alone.

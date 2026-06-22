@@ -2,10 +2,10 @@
   "id": "GLOBAL-001",
   "title": "Operator-first records",
   "severity": "hard",
-  "summary": "Every durable record starts with a concise operator summary and preserves machine-readable evidence separately.",
+  "summary": "Every durable record MUST begin with a concise operator-facing state, outcome, blocker, and next action.",
   "instructions": [
-    "Lead with current state, outcome, blockers, and the next required action.",
-    "Do not substitute raw logs for a summary; link or point to evidence instead.",
-    "State uncertainty and missing evidence explicitly."
+    "Records MUST lead with current state, outcome, blockers, and the next required action.",
+    "Records MUST NOT substitute raw logs for a summary and SHOULD point to preserved evidence instead.",
+    "Records MUST state uncertainty and missing evidence explicitly."
   ]
 }

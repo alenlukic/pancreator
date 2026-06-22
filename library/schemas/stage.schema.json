@@ -4,7 +4,16 @@
   "title": "Pancreator workflow stage",
   "description": "One stage file at library/workflows/<slug>/stages/<stage-slug>.json. A stage is one unit of delegated work with a persona, a task prompt, a workspace mutation policy, a gate, a declared output shape, criteria, and transitions.",
   "type": "object",
-  "required": ["slug", "title", "persona", "prompt_path", "workspace_policy", "gate", "criteria", "transitions"],
+  "required": [
+    "slug",
+    "title",
+    "persona",
+    "prompt_path",
+    "workspace_policy",
+    "gate",
+    "criteria",
+    "transitions"
+  ],
   "additionalProperties": false,
   "properties": {
     "slug": {
@@ -84,8 +93,8 @@
         },
         "allOf": [
           {
-            "if": { "properties": { "type": { "const": "shell" } } },
-            "then": { "required": ["command"] }
+            "if": {"properties": {"type": {"const": "shell"}}},
+            "then": {"required": ["command"]}
           }
         ]
       }
@@ -96,9 +105,18 @@
       "required": ["success", "failure", "blocked"],
       "additionalProperties": false,
       "properties": {
-        "success": { "type": "string", "description": "Target after a successful, gated outcome." },
-        "failure": { "type": "string", "description": "Remediation target after a failed outcome (often the implement stage)." },
-        "blocked": { "type": "string", "description": "Target when the worker reports a blocker; usually 'paused'." }
+        "success": {
+          "type": "string",
+          "description": "Target after a successful, gated outcome."
+        },
+        "failure": {
+          "type": "string",
+          "description": "Remediation target after a failed outcome (often the implement stage)."
+        },
+        "blocked": {
+          "type": "string",
+          "description": "Target when the worker reports a blocker; usually 'paused'."
+        }
       }
     }
   }

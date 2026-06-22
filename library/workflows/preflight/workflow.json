@@ -9,7 +9,5 @@
     "max_stage_attempts": 1,
     "max_consecutive_failures": 1
   },
-  "stages": [
-    "inspect"
-  ]
+  "stages": ["inspect"]
 }

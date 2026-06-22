@@ -13,14 +13,14 @@
 
 ## Pending actions
 
-| Action | Owner | Meaning |
-| --- | --- | --- |
-| `prepare_invocation` | supervisor/CLI | Generate the next immutable invocation card |
-| `invoke_agent` | supervisor + named worker | Execute the card and write its declared output |
-| `supervisor_assessment` | supervisor | Judge only the listed prose criteria |
-| `operator_approval` | operator | Ratify intake or release preparation |
-| `operator_decision` | operator | Resolve a pause/circuit breaker |
-| `none` | nobody | Run is terminal |
+| Action                  | Owner                     | Meaning                                        |
+| ----------------------- | ------------------------- | ---------------------------------------------- |
+| `prepare_invocation`    | supervisor/CLI            | Generate the next immutable invocation card    |
+| `invoke_agent`          | supervisor + named worker | Execute the card and write its declared output |
+| `supervisor_assessment` | supervisor                | Judge only the listed prose criteria           |
+| `operator_approval`     | operator                  | Ratify intake or release preparation           |
+| `operator_decision`     | operator                  | Resolve a pause/circuit breaker                |
+| `none`                  | nobody                    | Run is terminal                                |
 
 ## Effective stage outcome
 

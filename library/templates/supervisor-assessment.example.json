@@ -5,7 +5,12 @@
   "verdict": "pass",
   "summary": "Why the stage may or may not advance.",
   "criteria": [
-    { "id": "criterion-id", "result": "pass", "evidence": ["artifact path"], "explanation": "Independent reasoning" }
+    {
+      "id": "criterion-id",
+      "result": "pass",
+      "evidence": ["artifact path"],
+      "explanation": "Independent reasoning"
+    }
   ],
   "action_items": []
 }

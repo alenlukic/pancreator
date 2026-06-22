@@ -31,7 +31,7 @@ way. Embed JSON only where it adds precision.
 ```json
 {
   "criteria": [
-    { "id": "AC-1", "result": "pass", "evidence": ["path or observation"] }
+    {"id": "AC-1", "result": "pass", "evidence": ["path or observation"]}
   ],
   "metadata": {}
 }

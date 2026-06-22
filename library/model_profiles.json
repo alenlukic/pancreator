@@ -5,9 +5,21 @@
     "note": "Update suggested_model as Cursor availability changes; the operator may override any invocation."
   },
   "profiles": {
-    "frontier-reasoning": { "suggested_model": "gpt-5.5", "use_for": "Intake, planning, ambiguous supervisory judgment" },
-    "fast-coding": { "suggested_model": "composer-2.5", "use_for": "Bounded implementation from a complete plan" },
-    "strong-code-review": { "suggested_model": "gpt-5.3-codex", "use_for": "Independent code review" },
-    "strong-general": { "suggested_model": "gpt-5.4", "use_for": "QA and release synthesis" }
+    "frontier-reasoning": {
+      "suggested_model": "gpt-5.5",
+      "use_for": "Intake, planning, ambiguous supervisory judgment"
+    },
+    "fast-coding": {
+      "suggested_model": "composer-2.5",
+      "use_for": "Bounded implementation from a complete plan"
+    },
+    "strong-code-review": {
+      "suggested_model": "gpt-5.3-codex",
+      "use_for": "Independent code review"
+    },
+    "strong-general": {
+      "suggested_model": "gpt-5.4",
+      "use_for": "QA and release synthesis"
+    }
   }
 }
