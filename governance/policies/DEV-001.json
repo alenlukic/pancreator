@@ -1,0 +1,11 @@
+{
+  "id": "DEV-001",
+  "title": "Implementation discipline",
+  "severity": "hard",
+  "summary": "Implement only the approved plan and acceptance criteria, with focused tests and minimal structural change.",
+  "instructions": [
+    "Map each material change to an acceptance criterion or an explicitly documented enabling change.",
+    "Do not redesign adjacent systems unless the current plan requires it.",
+    "Run the narrowest useful checks while iterating; the harness reruns declared gate checks independently."
+  ]
+}

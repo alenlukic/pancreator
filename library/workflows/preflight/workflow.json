@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "slug": "preflight",
+  "title": "Repository preflight",
+  "description": "A small deterministic-first workflow for checking harness integrity.",
+  "start_stage": "inspect",
+  "limits": {
+    "max_total_transitions": 3,
+    "max_stage_attempts": 1,
+    "max_consecutive_failures": 1
+  },
+  "stages": [
+    "inspect"
+  ]
+}

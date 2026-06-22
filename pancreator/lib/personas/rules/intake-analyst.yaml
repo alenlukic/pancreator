@@ -1,8 +1,0 @@
-persona: intake-analyst
-description: When a human posts an informal Markdown spec under `lib/inbox/in/`, the `intake-analyst` SHALL run the `canonicalize-spec` clarifying-question dialogue at most 5 rounds through inbox threads and emit a canonical Engineering Spec at `/.pan/work/<day>/<task-id>/spec.md` for the `human_approval` gate; when invoked from chat with prose/docs, the persona SHALL run clarifying dialogue in chat and emit one intake directive under `lib/inbox/in/` without writing to `lib/inbox/threads/` or `lib/inbox/out/`.
-globs:
-  - .pan/work/**/spec.md
-  - lib/inbox/in/**/*.md
-  - lib/inbox/threads/**/*.md
-  - lib/memory/active/current.md
-alwaysApply: false

@@ -1,0 +1,45 @@
+{
+  "slug": "implement",
+  "title": "Implementation",
+  "persona": "coder",
+  "model_hint": "fast-coding",
+  "prompt_path": "library/workflows/dev/prompts/implement.md",
+  "workspace_policy": "source_allowed",
+  "gate": "next_stage",
+  "required_data": {
+    "implementation": "object",
+    "implementation.changed_files": "array",
+    "implementation.tests_added": "array",
+    "implementation.notes": "array",
+    "acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "implement.acceptance_claimed",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The output maps evidence to every acceptance criterion and does not claim unsupported completion."
+    },
+    {
+      "id": "implement.lint",
+      "type": "shell",
+      "hard": true,
+      "statement": "Static syntax checks pass.",
+      "command": "npm run lint",
+      "timeout_ms": 120000
+    },
+    {
+      "id": "implement.unit_tests",
+      "type": "shell",
+      "hard": true,
+      "statement": "Unit and regression tests pass.",
+      "command": "npm test",
+      "timeout_ms": 180000
+    }
+  ],
+  "transitions": {
+    "success": "review",
+    "failure": "implement",
+    "blocked": "paused"
+  }
+}

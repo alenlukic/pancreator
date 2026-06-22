@@ -1,0 +1,11 @@
+{
+  "id": "INTAKE-001",
+  "title": "Faithful intake",
+  "severity": "hard",
+  "summary": "Turn the operator request into a bounded product specification that preserves intent and exposes assumptions instead of inventing scope.",
+  "instructions": [
+    "Preserve the operator's intent; do not broaden, narrow, or design the solution during intake.",
+    "State every assumption explicitly and record unresolved questions rather than guessing.",
+    "Describe observable user outcomes, constraints, and out-of-scope behavior; stop for ratification without approving on the operator's behalf."
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "slug": "ship",
+  "title": "Release preparation",
+  "persona": "release-steward",
+  "model_hint": "strong-general",
+  "prompt_path": "library/workflows/dev/prompts/ship.md",
+  "workspace_policy": "read_only",
+  "gate": "operator",
+  "required_data": {
+    "release": "object",
+    "release.summary": "string",
+    "release.change_list": "array",
+    "release.validation": "array",
+    "release.rollback": "string",
+    "release.commit_message": "string",
+    "release.pr_body": "string"
+  },
+  "criteria": [
+    {
+      "id": "ship.prior_gates_current",
+      "type": "state",
+      "hard": true,
+      "statement": "Review and QA passed against the current workspace fingerprint."
+    },
+    {
+      "id": "ship.release_packet_complete",
+      "type": "judgment",
+      "hard": true,
+      "statement": "The release packet accurately summarizes scope, validation, risks, and rollback."
+    },
+    {
+      "id": "ship.validate",
+      "type": "shell",
+      "hard": true,
+      "statement": "Repository configuration remains valid.",
+      "command": "npm run validate",
+      "timeout_ms": 120000
+    }
+  ],
+  "transitions": {
+    "success": "succeeded",
+    "failure": "ship",
+    "blocked": "paused"
+  }
+}

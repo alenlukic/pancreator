@@ -1,0 +1,45 @@
+{
+  "slug": "test",
+  "title": "Quality assurance",
+  "persona": "qa-tester",
+  "model_hint": "strong-general",
+  "prompt_path": "library/workflows/dev/prompts/test.md",
+  "workspace_policy": "read_only",
+  "gate": "stage_verdict",
+  "required_data": {
+    "test": "object",
+    "test.verdict": "string",
+    "test.cases": "array",
+    "test.defects": "array",
+    "test.acceptance_results": "array"
+  },
+  "criteria": [
+    {
+      "id": "test.manual_cases",
+      "type": "judgment",
+      "hard": true,
+      "statement": "Manual QA cases cover each acceptance criterion or explicitly justify why a case is not applicable."
+    },
+    {
+      "id": "test.full_suite",
+      "type": "shell",
+      "hard": true,
+      "statement": "The complete automated suite passes.",
+      "command": "npm test",
+      "timeout_ms": 180000
+    },
+    {
+      "id": "test.coverage",
+      "type": "shell",
+      "hard": true,
+      "statement": "Built-in coverage thresholds pass.",
+      "command": "npm run test:coverage",
+      "timeout_ms": 240000
+    }
+  ],
+  "transitions": {
+    "success": "ship",
+    "failure": "implement",
+    "blocked": "paused"
+  }
+}

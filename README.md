@@ -1,35 +1,107 @@
-# Pancreator
+# Pancreator v2 prototype
 
-*A simulated product organization for agentic software delivery.*
+Pancreator v2 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Plain Node.js and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
 
-Pancreator gives operators a shared, file-native delivery pipeline: personas,
-pipeline stages, durable memory, inbox workflow, and the `pan` CLI. This
-repository is the harness for running and hardening that loop in real projects.
+## What this prototype proves
 
-**[Operator guide → OPERATION.md](OPERATION.md)**
+- A single Cursor chat can supervise a bounded workflow without an external agent framework.
+- Each run is resumable from repository files and reconstructable from append-only events.
+- Agents receive narrow invocation cards with only applicable policies and prior artifacts.
+- Source mutation boundaries, output shape, workflow topology, retry limits, tests, and coverage are checked by code.
+- Intake and release remain explicit operator gates.
+- Plan evaluation, code review, and QA use distinct authority boundaries instead of letting one agent self-certify the entire run.
 
-## What you get
+## Requirements
 
-| Area | Path |
-|---|---|
-| Operator procedures | [`OPERATION.md`](OPERATION.md) |
-| Personas and pipelines | `pancreator/lib/personas/`, `pancreator/lib/pipelines/` |
-| Active work pointers | `pancreator/lib/memory/active/current.md` |
-| Inbox (local, gitignored) | `pancreator/lib/inbox/in`, `out`, `threads` |
-| CLI policy | `pancreator/pancreator.yaml` |
+- Node.js 22 or newer
+- Git
+- Cursor with project commands/subagents enabled
+- Optional MCP servers configured in Cursor; Pancreator itself does not run or depend on them
 
-## Key paths
+There are no npm runtime dependencies and no build step.
 
-- `pancreator/pancreator.yaml` — live policy and `project_root`
-- `pancreator/lib/memory/active/current.md` — what is active now
-- `pancreator/.pan/work/` — active feature-delivery runs (archived to `pancreator/.pan/archive/work/` after close)
-- `pancreator/lib/internal/packages/` — TypeScript packages (`pan` CLI and runtime)
+## Quick start in Cursor
 
-## Internal surfaces (explicit-read)
+1. Open the repository in Cursor.
+2. Run `/pan-validate` once.
+3. Start a run with `/pan-start <your request>`.
+4. Ratify the intake specification when Cursor presents it.
+5. Continue with `/pan-resume <run-id>` until the next operator gate.
 
-These paths are excluded from default semantic indexing. Humans open them when
-needed; agents load them only when the task requires them.
+The CLI is also directly usable:
 
-- [`AGENTS.md`](AGENTS.md) — agent operating instructions
-- [`pancreator/.docs/`](pancreator/.docs/) — product requirements and bootstrap history
-- `.cursor/` — local Cursor IDE runtime (gitignored; run `pan cursor-sync` after clone; includes managed RTK shell hook policy)
+```sh
+./bin/pan init --workflow dev --request runtime/inbox/request.md
+./bin/pan prepare <run-id>
+./bin/pan status <run-id>
+./bin/pan submit <run-id> <stage-output.json>
+./bin/pan assess <run-id> <assessment.json>
+./bin/pan decide <run-id> approve
+```
+
+## Runtime record layout
+
+```text
+runtime/logs/workflows/<run-id>/
+  state.json                 # current materialized state; never hand-edit
+  events.jsonl               # append-only transition history
+  workflow.snapshot.json     # immutable workflow definition for this run
+  request.md|json            # preserved operator input
+  invocations/               # JSON contract + operator-readable Markdown card
+  outputs/                   # worker stage outputs
+  assessments/               # supervisor judgment requests and responses
+  evidence/                  # deterministic command output
+  records/                   # operator-first task execution records
+  decisions/                 # pause/escalation records
+  artifacts/                 # stage-authored specs and reports
+```
+
+## Library layout
+
+Workflow definitions, personas, prompts, skills, schemas, and templates live
+under `library/`. Each workflow is a slim index plus one file per stage:
+
+```text
+library/workflows/<slug>/
+  workflow.json            # index: run-wide settings + ordered stage slugs
+  stages/<stage>.json      # one file per stage
+  prompts/<stage>.md       # one task brief per stage
+```
+
+See [`docs/workflow-authoring.md`](docs/workflow-authoring.md) for the field
+semantics and the JSON schemas in `library/schemas/`.
+
+## Development workflow
+
+```text
+intake ──operator approval──> plan ──supervisor gate──> implement
+  ^                              |                           |
+  └──────── remediation ─────────┘                           v
+                                     implement <──fail── review
+                                          ^                 |
+                                          └────fail── test <─┘
+                                                        |
+                                                        v
+                                         ship ──operator approval──> succeeded
+```
+
+Review and QA do not modify source. Failed review or QA routes to implementation. Ship creates a release packet only; commit, push, PR, merge, publication, and deployment remain operator-owned.
+
+## Validation
+
+```sh
+npm run lint
+npm run validate
+npm test
+npm run test:coverage
+npm run check
+./bin/pan doctor
+```
+
+Coverage uses Node's built-in test coverage; no coverage package is installed.
+
+## Design documents
+- [`docs/architecture-review.md`](docs/architecture-review.md): critical design evaluation against current practice
+- [`docs/runtime-protocol.md`](docs/runtime-protocol.md): state, gate, retry, evidence, and recovery semantics
+- [`docs/workflow-authoring.md`](docs/workflow-authoring.md): how to define a workflow and its stages
+- [`docs/operator-guide.md`](docs/operator-guide.md): how to inspect and remediate a run

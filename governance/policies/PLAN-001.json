@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-001",
+  "title": "Proportionate planning",
+  "summary": "Produce the smallest implementation-ready plan that maps every requirement to a testable acceptance criterion.",
+  "severity": "hard",
+  "instructions": [
+    "Map every approved user story and requirement to at least one testable acceptance criterion.",
+    "Specify components, likely files, interfaces, data and state changes, risks, and validation methods so implementation needs no further architectural decisions.",
+    "Prefer existing abstractions and reversible changes; justify any new structure, framework, or governance layer against the current requirement."
+  ]
+}

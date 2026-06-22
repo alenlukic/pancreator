@@ -1,0 +1,10 @@
+{
+  "id": "ACTION-001",
+  "title": "Safe source-control actions",
+  "severity": "hard",
+  "summary": "Agents prepare changes and release evidence but do not commit, push, merge, or delete branches without explicit operator approval.",
+  "instructions": [
+    "Never run git commit, git push, gh pr create, gh pr merge, or destructive reset commands unless the current invocation records operator approval.",
+    "Prefer reversible edits and preserve the pre-task workspace state in the execution record."
+  ]
+}

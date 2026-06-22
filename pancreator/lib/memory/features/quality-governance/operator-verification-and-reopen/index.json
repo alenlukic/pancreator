@@ -1,9 +1,0 @@
-{
-  "feature_id": "operator-verification-and-reopen",
-  "title": "Operator verification at close and task reopen",
-  "category": "quality-governance",
-  "status": "indexed",
-  "summary": "Require an operator-facing verification pack at pipeline and ad-hoc close, gate archival on its presence, and provide pan reopen to unarchive closed tasks back to intake or a named stage.",
-  "compressed_from": ["lib/memory/features/operator-verification-and-reopen/spec.md"],
-  "archival_policy": "Durable feature memory stores the compact index and machine-checkable contracts only. Full specs, plans, delivery reports, generated evidence, and run artifacts are intentionally omitted; use git history or .pan/archive paths for forensic reconstruction."
-}

@@ -1,5 +1,0 @@
-persona: qa-tester
-description: When the `feature-delivery` pipeline reaches the `test` stage after `review_passes` is true, the `qa-tester` SHALL run automated verification (lint, typecheck, compliance, and tests) and manual verification against the touch-set, and emit `/.pan/work/<day>/<id>/test-report.md` with a `qa_passes` gate verdict.
-globs:
-  - .pan/work/**/test-report.md
-alwaysApply: false

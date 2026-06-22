@@ -1,6 +1,0 @@
-persona: sme-product
-description: When the `experience-planning` pipeline reaches the `sme-consult` stage or an operator DMs it, the `sme-product` SHALL decompose operator goals into product recommendations — user and job statements, scoped requirements, priority ranking, success metrics, and out-of-scope calls — at `/.pan/work/<day>/<task-id>/product-recommendations.md`.
-globs:
-  - .pan/work/**/product-recommendations.md
-  - lib/memory/smes/sme-product/**
-alwaysApply: false

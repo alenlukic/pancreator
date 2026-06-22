@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://stage/v1",
+  "title": "Pancreator workflow stage",
+  "description": "One stage file at library/workflows/<slug>/stages/<stage-slug>.json. A stage is one unit of delegated work with a persona, a task prompt, a workspace mutation policy, a gate, a declared output shape, criteria, and transitions.",
+  "type": "object",
+  "required": ["slug", "title", "persona", "prompt_path", "workspace_policy", "gate", "criteria", "transitions"],
+  "additionalProperties": false,
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Stage identifier, unique within the workflow. Must match the file name and appear in the workflow index stages[]."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable stage name shown on invocation cards and records."
+    },
+    "persona": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Owner of the stage. Resolves to library/personas/<persona>.md and, for delegated work, to the matching .cursor/agents/<persona>.md subagent."
+    },
+    "model_hint": {
+      "type": "string",
+      "description": "Capability profile, not a vendor model id. Resolves against library/model_profiles.json (e.g. frontier-reasoning, fast-coding). The operator may override per invocation."
+    },
+    "prompt_path": {
+      "type": "string",
+      "description": "Repository-relative path to the stage task brief. Its contents become the Task section of the invocation card."
+    },
+    "workspace_policy": {
+      "enum": ["source_allowed", "runtime_only", "read_only"],
+      "description": "Mutation boundary enforced by the harness via workspace fingerprints. source_allowed: may modify product source. runtime_only: may write only under runtime/ (planning, intake). read_only: may not change any tracked content (review, QA, ship). Any policy other than source_allowed adds the deterministic criterion scope.no_unapproved_changes."
+    },
+    "gate": {
+      "enum": ["operator", "supervisor", "next_stage", "stage_verdict"],
+      "description": "What decides advancement after a successful output. operator: pause for explicit operator approval (intake, ship). supervisor: pause for independent supervisor judgment of the judgment criteria (plan). stage_verdict: the worker's own verdict drives the transition (review, test). next_stage: advance directly to the success transition (implement)."
+    },
+    "required_data": {
+      "type": "object",
+      "description": "Shape contract for the output's data object, as a map of dotted paths to expected JSON types. The harness rejects an output whose data does not match. Type is one of: object, array, string, number, boolean.",
+      "additionalProperties": {
+        "enum": ["object", "array", "string", "number", "boolean"]
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Checkable claims for this stage. See governance/criteria/index.md for naming and families.",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "statement"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_.-]+$",
+            "description": "Namespaced identifier <area>.<claim>, stable across history."
+          },
+          "type": {
+            "enum": ["judgment", "shell", "state"],
+            "description": "judgment: evaluated by a reasoning agent. shell: harness reruns command. state: harness checks run state and fingerprints."
+          },
+          "hard": {
+            "type": "boolean",
+            "description": "If true, failure or not_applicable blocks the stage. Defaults to false."
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The claim, phrased so that pass is unambiguous."
+          },
+          "command": {
+            "type": "string",
+            "description": "Required for type=shell. The exact command the harness reruns; never assembled from agent-controlled values."
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional timeout for a shell criterion. Defaults to 120000."
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "shell" } } },
+            "then": { "required": ["command"] }
+          }
+        ]
+      }
+    },
+    "transitions": {
+      "type": "object",
+      "description": "Outcome routing. Targets are either another stage slug or a terminal status (succeeded, failed, canceled, paused).",
+      "required": ["success", "failure", "blocked"],
+      "additionalProperties": false,
+      "properties": {
+        "success": { "type": "string", "description": "Target after a successful, gated outcome." },
+        "failure": { "type": "string", "description": "Remediation target after a failed outcome (often the implement stage)." },
+        "blocked": { "type": "string", "description": "Target when the worker reports a blocker; usually 'paused'." }
+      }
+    }
+  }
+}

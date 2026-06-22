@@ -1,0 +1,11 @@
+{
+  "id": "SHIP-001",
+  "title": "Operator-owned release boundary",
+  "severity": "hard",
+  "summary": "The ship stage prepares a release packet; the operator owns irreversible source-control or deployment actions.",
+  "instructions": [
+    "Confirm all prior gates and evidence are current for the same workspace fingerprint.",
+    "Include rollback guidance, unresolved non-blocking risks, and a concise change summary.",
+    "Pause for operator approval before any commit, push, merge, publication, or deployment."
+  ]
+}

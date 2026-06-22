@@ -1,0 +1,37 @@
+{
+  "slug": "inspect",
+  "title": "Inspect repository",
+  "persona": "reviewer",
+  "model_hint": "strong-general",
+  "prompt_path": "library/workflows/preflight/prompts/inspect.md",
+  "workspace_policy": "read_only",
+  "gate": "stage_verdict",
+  "required_data": {
+    "inspection": "object",
+    "inspection.findings": "array",
+    "inspection.verdict": "string"
+  },
+  "criteria": [
+    {
+      "id": "preflight.validate",
+      "type": "shell",
+      "hard": true,
+      "statement": "Harness configuration validates.",
+      "command": "npm run validate",
+      "timeout_ms": 120000
+    },
+    {
+      "id": "preflight.tests",
+      "type": "shell",
+      "hard": true,
+      "statement": "Harness tests pass.",
+      "command": "npm test",
+      "timeout_ms": 180000
+    }
+  ],
+  "transitions": {
+    "success": "succeeded",
+    "failure": "failed",
+    "blocked": "paused"
+  }
+}

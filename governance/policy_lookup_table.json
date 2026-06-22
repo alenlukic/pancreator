@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "rows": [
+    { "persona": "*", "workflow": "*", "stage": "*", "policies": ["GLOBAL-001", "GLOBAL-002", "ACTION-001"] },
+    { "persona": "orchestrator", "workflow": "dev", "stage": "intake", "policies": ["INTAKE-001"] },
+    { "persona": "tech-lead", "workflow": "dev", "stage": "plan", "policies": ["PLAN-001"] },
+    { "persona": "coder", "workflow": "dev", "stage": "implement", "policies": ["DEV-001"] },
+    { "persona": "reviewer", "workflow": "dev", "stage": "review", "policies": ["REVIEW-001"] },
+    { "persona": "qa-tester", "workflow": "dev", "stage": "test", "policies": ["TEST-001"] },
+    { "persona": "release-steward", "workflow": "dev", "stage": "ship", "policies": ["SHIP-001"] }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "id": "REVIEW-001",
+  "title": "Independent review",
+  "severity": "hard",
+  "summary": "Review the resulting workspace and evidence independently; do not repair implementation defects in the review stage.",
+  "instructions": [
+    "Verify acceptance criteria, test quality, maintainability, and scope control.",
+    "Record findings with severity, evidence, and an owning remediation stage.",
+    "Fail the gate for any unresolved hard blocker."
+  ]
+}

@@ -1,0 +1,96 @@
+# Workflow authoring
+
+How to define a Pancreator workflow. A workflow is a small, reviewable set of
+JSON files plus one task brief per stage. The harness assembles them, validates
+the graph, and snapshots the result per run.
+
+## File layout
+
+```text
+library/workflows/<slug>/
+  workflow.json            # index: run-wide settings + ordered stage slugs
+  stages/<stage>.json      # one file per stage
+  prompts/<stage>.md       # one task brief per stage
+```
+
+The index lists stages by slug; each slug resolves to `stages/<slug>.json`.
+Splitting stages into their own files keeps each unit small enough to read and
+review on its own. This is the general rule: prefer one file per stage over a
+single dense blob.
+
+Schemas:
+
+- [`library/schemas/workflow.schema.json`](../library/schemas/workflow.schema.json) - the index file.
+- [`library/schemas/stage.schema.json`](../library/schemas/stage.schema.json) - one stage file.
+
+These schemas are documentation and tooling aids. The dependency-free enforcer
+is the imperative validator in `src/lib/workflow.mjs`, run by `./bin/pan validate`.
+
+## Index fields (`workflow.json`)
+
+- `schema_version` - always `1`.
+- `slug` - workflow id and directory name.
+- `title`, `description` - human-readable summary.
+- `start_stage` - slug of the entry stage; must appear in `stages`.
+- `limits` - circuit breakers: `max_total_transitions`, `max_stage_attempts`,
+  `max_consecutive_failures`. Exceeding any pauses the run with a decision
+  record. The harness never silently resets a budget.
+- `stages` - ordered, unique stage slugs.
+
+## Stage fields (`stages/<stage>.json`)
+
+- `slug` - stage id; matches the file name and a slug in the index.
+- `title` - shown on cards and records.
+- `persona` - owner; resolves to `library/personas/<persona>.md` and, for
+  delegated work, the `.cursor/agents/<persona>.md` subagent.
+- `model_hint` - a capability profile, not a vendor model id. Resolves against
+  [`library/model_profiles.json`](../library/model_profiles.json). The operator
+  may override per invocation.
+- `prompt_path` - the stage task brief; its contents become the card's Task
+  section.
+- `workspace_policy` - the mutation boundary the harness enforces with workspace
+  fingerprints:
+  - `source_allowed` - may modify product source (implement).
+  - `runtime_only` - may write only under `runtime/` (intake, plan).
+  - `read_only` - may not change any tracked content (review, test, ship).
+  Any policy other than `source_allowed` adds the deterministic criterion
+  `scope.no_unapproved_changes`, so a read-only stage that mutates source fails.
+- `gate` - what decides advancement after a valid, successful output:
+  - `operator` - pause for explicit operator approval (intake, ship).
+  - `supervisor` - pause for independent supervisor judgment of the judgment
+    criteria (plan).
+  - `stage_verdict` - the worker's own verdict drives the transition (review,
+    test).
+  - `next_stage` - advance directly along the success transition (implement).
+- `required_data` - the output's `data` shape, as dotted paths mapped to JSON
+  types (`object`, `array`, `string`, `number`, `boolean`). The harness rejects
+  an output whose `data` does not match. Example:
+
+  ```json
+  {
+    "engineering_plan": "object",
+    "engineering_plan.approach": "string",
+    "engineering_plan.components": "array",
+    "acceptance_criteria": "array"
+  }
+  ```
+
+- `criteria` - the checkable claims. See
+  [`governance/criteria/index.md`](../governance/criteria/index.md) for naming
+  and types. Prefer `shell`/`state` checks over `judgment` whenever a command or
+  state can decide the claim.
+- `transitions` - `success`, `failure`, and `blocked` targets. A target is
+  another stage slug or a terminal status (`succeeded`, `failed`, `canceled`,
+  `paused`). Every stage must be reachable from `start_stage`.
+
+## Validation rules enforced by the harness
+
+- `schema_version` is `1`; `slug`, `title`, and a non-empty `stages` list exist.
+- Stage slugs are unique; each has a persona, a valid `gate` and
+  `workspace_policy`, an existing `prompt_path`, criteria, and transitions.
+- Criterion ids are unique within a stage; `shell` criteria declare a command.
+- Transition outcomes are `success`/`failure`/`blocked`, and every target is a
+  terminal status or an existing stage.
+- `start_stage` exists and every stage is reachable.
+
+Run `./bin/pan validate` after editing any workflow file.
