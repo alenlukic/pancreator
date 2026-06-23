@@ -40,6 +40,16 @@ The CLI is also directly usable:
 ./bin/pan accept-change <run-id> --note "operator-intentional change"
 ```
 
+### Deliverable workspace
+
+By default a run fingerprints, runs deterministic gate commands against, and enforces scope boundaries on the Pancreator repository root. When the deliverable lives elsewhere — for example a gitignored, self-contained project capsule that is its own Git repository — pass `--workspace`:
+
+```sh
+./bin/pan init --workflow dev --request runtime/inbox/request.md --workspace workdesk/my-project
+```
+
+The harness then fingerprints that directory's Git state (nested repositories included), runs each stage's shell gate in that directory, and evaluates the read-only scope guard there. Without this, work performed inside a gitignored path is invisible to every deterministic check and "success" reflects only the surrounding repository, not the deliverable.
+
 ## Runtime record layout
 
 ```text
@@ -84,9 +94,11 @@ intake ──operator approval──> plan ──supervisor gate──> implemen
                                                         |
                                                         v
                                          ship ──operator approval──> succeeded
+                                          |
+                                          └──operator reject──> implement (or --stage <slug>)
 ```
 
-Review and QA do not modify source. Failed review or QA routes to implementation. Ship creates a release packet only; commit, push, PR, merge, publication, and deployment remain operator-owned.
+Review and QA do not modify source. Failed review or QA routes to implementation. An operator rejection at the ship gate routes remediation back to implementation by default (or to `--stage plan`/another stage), carrying the operator's feedback forward as a required input. Ship creates a release packet only; commit, push, PR, merge, publication, and deployment remain operator-owned.
 
 ## TypeScript and formatting
 

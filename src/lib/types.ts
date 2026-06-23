@@ -156,6 +156,8 @@ export interface Invocation {
   run_id: string
   attempt: number
   created_at: string
+  workspace_root: string
+  gate_overrides?: Record<string, string | false>
   workflow: {
     slug: string
     snapshot_path: string
@@ -190,6 +192,8 @@ export interface DeterministicResult {
   type: 'shell' | 'state'
   hard: boolean
   passed: boolean
+  overridden?: boolean
+  disabled?: boolean
   explanation?: string
   command?: string
   exit_code?: number | null
@@ -231,6 +235,16 @@ export interface CurrentInvocationPointer {
   output_path: string
 }
 
+export interface OperatorFeedbackItem {
+  decision: 'reject'
+  from_stage: string
+  to_stage: string
+  attempt: number
+  note: string
+  path: string
+  timestamp: string
+}
+
 export interface RunState {
   schema_version: 1
   run_id: string
@@ -239,6 +253,8 @@ export interface RunState {
     path: string
     sha256: string
   }
+  workspace_root: string
+  gate_overrides?: Record<string, string | false>
   title: string
   status: RunStatus
   current_stage: string | null
@@ -254,6 +270,7 @@ export interface RunState {
   transition_count: number
   consecutive_failures: number
   stage_history: StageHistoryItem[]
+  operator_feedback?: OperatorFeedbackItem[]
   revision: number
   created_at: string
   updated_at: string

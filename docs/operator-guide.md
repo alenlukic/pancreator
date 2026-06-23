@@ -11,6 +11,10 @@ Use `/pan-start` for a new request and `/pan-resume <run-id>` thereafter. The su
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
+## Targeting a deliverable outside the repository root
+
+If the work lands somewhere other than the Pancreator repository root — most commonly a gitignored project capsule under `workdesk/` that is its own Git repository — start the run with `./bin/pan init ... --workspace workdesk/<project>`. The harness then fingerprints, runs gate commands against, and enforces scope boundaries on that directory. If you omit it for such a run, every "passing" check measured the Pancreator repository instead of your deliverable, and the green status proves nothing about the actual work. The active workspace appears on each invocation card; confirm it matches the deliverable before trusting any gate result.
+
 ## Intake approval
 
 Check that the product specification:
@@ -20,7 +24,7 @@ Check that the product specification:
 - names constraints and out-of-scope behavior
 - exposes open questions rather than hiding assumptions
 
-Approve only with an explicit instruction. Rejection routes back to intake.
+Approve only with an explicit instruction. Rejection routes back to intake and carries your `--note` forward as a required input for the retry.
 
 ## Pauses
 
@@ -38,3 +42,13 @@ The ship packet is a proposal. Before approval, confirm:
 - the proposed commit/PR text accurately describes the diff
 
 Approval marks the workflow succeeded. It does not itself create a commit, PR, merge, or deployment.
+
+### Rejecting a release packet
+
+Rejection routes remediation to the stage that owns the fix and carries your feedback forward to that stage's worker as a required input.
+
+- `./bin/pan decide <run-id> reject --note "<what is wrong>"` sends the run back to implementation by default, then naturally re-runs review, QA, and ship.
+- `./bin/pan decide <run-id> reject --stage plan --note "<what is wrong>"` sends it back to planning when the defect is architectural rather than a coding error.
+- `--stage <slug>` may target any stage in the workflow. The chosen stage and every stage after it restart with fresh attempt budgets, since you are deliberately reworking that segment.
+
+Always include a `--note`. The feedback is written to `artifacts/operator-feedback-<n>.md` and attached to the remediation invocation; without it the worker only knows the prior output was unacceptable.

@@ -22,11 +22,11 @@ import { validateRepository } from './lib/validation.js'
 const HELP = `Pancreator v2 prototype
 
 Usage:
-  pan init --request <repo-relative-file> [--workflow dev] [--title <title>]
+  pan init --request <repo-relative-file> [--workflow dev] [--title <title>] [--workspace <dir>] [--gates <file>]
   pan prepare <run-id>
   pan submit <run-id> <output-json>
   pan assess <run-id> <assessment-json>
-  pan decide <run-id> <approve|reject> [--note <text>]
+  pan decide <run-id> <approve|reject> [--note <text>] [--stage <stage-slug>]
   pan resume <run-id> [--stage <stage-slug>]
   pan accept-change <run-id> [--note <text>]
   pan abort <run-id> [--note <text>]
@@ -140,11 +140,14 @@ async function main(): Promise<void> {
         workflowSlug: option(args, '--workflow', 'dev') ?? 'dev',
         requestPath: option(args, '--request'),
         title: option(args, '--title'),
+        workspace: option(args, '--workspace'),
+        gatesPath: option(args, '--gates'),
       })
 
       print({
         status: 'created',
         run_id: state.run_id,
+        workspace_root: state.workspace_root,
         next_command: `./bin/pan prepare ${state.run_id}`,
         state_path: `runtime/logs/workflows/${state.run_id}/state.json`,
       })
@@ -209,6 +212,7 @@ async function main(): Promise<void> {
         runId,
         decision,
         option(args, '--note', '') ?? '',
+        option(args, '--stage'),
       )
 
       print({

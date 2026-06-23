@@ -39,7 +39,7 @@
   ],
   "transitions": {
     "success": "succeeded",
-    "failure": "ship",
+    "failure": "implement",
     "blocked": "paused"
   }
 }

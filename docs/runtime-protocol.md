@@ -35,6 +35,18 @@ A stage is successful only when all of the following hold:
 
 A `blocked` result pauses. A failure follows the declared remediation transition. A successful result may still wait at a supervisor or operator gate.
 
+## Operator rejection
+
+At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (the ship stage routes to `implement`, intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/operator-feedback-<n>.md` and attached to the remediation invocation as a required input reference.
+
+## Deliverable workspace
+
+Each run declares a deliverable workspace at `./bin/pan init --workspace <dir>`, stored as `workspace_root` in `state.json` and defaulting to the repository root (`.`). The harness fingerprints that directory's Git state, runs every shell gate command with that directory as the working directory, and evaluates `scope.no_unapproved_changes` against it. The target MAY be a nested Git repository, including one the surrounding repository ignores; Git runs with that directory as its working directory and is scoped with a `.` pathspec, so changes inside the deliverable are observed even when the outer repository ignores the path. Each invocation card states the active workspace so the worker and operator can see what is being fingerprinted and gated. A run whose deliverable is not its declared workspace produces deterministic evidence about the wrong files; declare the workspace so the gates measure the actual work.
+
+## Gate overrides
+
+Deterministic shell gates default to the commands declared in the workflow snapshot, which assume a particular project shape. A run MAY supply `./bin/pan init --gates <file>` mapping a shell criterion id to a replacement command, or to `false` to disable that gate. Overrides are stored in `state.gate_overrides`, listed on each invocation card, and recorded on every deterministic result (`overridden` or `disabled`) so a customized or skipped gate is never silent. Use overrides to make gates measure the actual deliverable rather than weakening assurance; disabling a hard gate is an explicit, audited operator choice.
+
 ## Evidence and invalidation
 
 Every deterministic check records:

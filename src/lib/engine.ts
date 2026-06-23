@@ -7,6 +7,7 @@ import { gitWorkspaceSnapshot } from './git.js'
 import {
   ensureDir,
   fileExists,
+  isDirectory,
   isRecord,
   readJson,
   readText,
@@ -35,6 +36,7 @@ import {
 import type {
   DeterministicResult,
   Invocation,
+  OperatorFeedbackItem,
   RunState,
   StageDefinition,
   StageHistoryItem,
@@ -59,6 +61,8 @@ interface CreateRunOptions {
   workflowSlug?: string
   requestPath: string | null
   title?: string | null
+  workspace?: string | null
+  gatesPath?: string | null
 }
 
 interface StatusOptions {
@@ -75,6 +79,73 @@ function loadRunWorkflow(root: string, state: RunState): WorkflowDefinition {
     root,
     resolveInside(root, state.workflow_snapshot.path),
   )
+}
+
+/** Absolute path of the deliverable workspace this run fingerprints and gates. */
+function workspaceDirectory(root: string, state: RunState): string {
+  return resolveInside(root, state.workspace_root || '.')
+}
+
+/**
+ * Resolve an operator-supplied `--workspace` to a repository-relative directory.
+ * Returns `'.'` (the repository root) when no deliverable workspace is given.
+ */
+function normalizeWorkspaceRoot(
+  root: string,
+  workspace: string | null | undefined,
+): string {
+  if (!workspace || workspace === '.' || workspace === './') {
+    return '.'
+  }
+
+  const relative = toRepoRelative(root, workspace)
+
+  invariant(
+    isDirectory(resolveInside(root, relative)),
+    `--workspace must be an existing directory: ${workspace}`,
+    { code: 'WORKSPACE_NOT_FOUND' },
+  )
+
+  return relative
+}
+
+/**
+ * Read an optional gate-override file mapping deterministic shell criterion ids
+ * to a replacement command (string) or `false` to disable that gate. Overrides
+ * let a run apply gates appropriate to its deliverable instead of inheriting
+ * commands that assume a different project shape.
+ */
+function readGateOverrides(
+  root: string,
+  gatesPath: string | null | undefined,
+): Record<string, string | false> | undefined {
+  if (!gatesPath) {
+    return undefined
+  }
+
+  const value = readJson(resolveInside(root, gatesPath))
+
+  invariant(
+    isRecord(value),
+    `--gates file MUST contain an object: ${gatesPath}`,
+    {
+      code: 'INVALID_GATES',
+    },
+  )
+
+  const overrides: Record<string, string | false> = {}
+
+  for (const [criterionId, command] of Object.entries(value)) {
+    invariant(
+      command === false || (typeof command === 'string' && command.length > 0),
+      `--gates['${criterionId}'] MUST be a non-empty command string or false.`,
+      { code: 'INVALID_GATES' },
+    )
+
+    overrides[criterionId] = command
+  }
+
+  return overrides
 }
 
 function referencesForRun(state: RunState): Array<{
@@ -102,6 +173,15 @@ function referencesForRun(state: RunState): Array<{
     }
   }
 
+  for (const feedback of state.operator_feedback ?? []) {
+    references.push({
+      path: feedback.path,
+      description:
+        `Operator rejection feedback ` +
+        `(${feedback.from_stage} → ${feedback.to_stage})`,
+    })
+  }
+
   return references.filter(
     (item, index, all) =>
       all.findIndex((candidate) => candidate.path === item.path) === index,
@@ -119,17 +199,26 @@ function pauseForLimit(root: string, state: RunState, reason: string): void {
   ])
 }
 
+interface TransitionOptions {
+  overrideTarget?: string
+  operatorDirected?: boolean
+}
+
 function applyTransition(
   root: string,
   state: RunState,
   stage: StageDefinition,
   outcome: StageOutcome,
+  options: TransitionOptions = {},
 ): void {
   state.transition_count += 1
-  state.consecutive_failures =
-    outcome === 'failure' ? state.consecutive_failures + 1 : 0
+  state.consecutive_failures = options.operatorDirected
+    ? 0
+    : outcome === 'failure'
+      ? state.consecutive_failures + 1
+      : 0
 
-  const target = stage.transitions[outcome]
+  const target = options.overrideTarget ?? stage.transitions[outcome]
 
   invariant(target, `Stage '${stage.slug}' has no '${outcome}' transition.`, {
     code: 'INVALID_TRANSITION',
@@ -283,6 +372,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   const storedRequest = `runtime/logs/workflows/${id}/request${requestExtension}`
   copyFileSync(source, resolveInside(root, storedRequest))
 
+  const workspaceRoot = normalizeWorkspaceRoot(root, options.workspace)
+  const gateOverrides = readGateOverrides(root, options.gatesPath)
+
   const workflowSnapshot = `runtime/logs/workflows/${id}/workflow.snapshot.json`
   const workflowSnapshotValue = structuredClone(workflow)
 
@@ -301,6 +393,8 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       path: workflowSnapshot,
       sha256: sha256(workflowSnapshotValue),
     },
+    workspace_root: workspaceRoot,
+    ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
     title: options.title ?? path.basename(requestPath),
     status: 'running',
     current_stage: workflow.start_stage,
@@ -321,7 +415,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     updated_at: now(),
   }
 
-  persist(root, state, 'run_created', { workflow: workflow.slug })
+  persist(root, state, 'run_created', {
+    workflow: workflow.slug,
+    workspace_root: workspaceRoot,
+  })
 
   return state
 }
@@ -383,7 +480,7 @@ export function prepareInvocation(
     const jsonPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`
     const markdownPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`
 
-    const workspace = gitWorkspaceSnapshot(root)
+    const workspace = gitWorkspaceSnapshot(workspaceDirectory(root, state))
     const policies = resolvePolicies(root, {
       persona: stage.persona,
       workflow: workflow.slug,
@@ -409,6 +506,8 @@ export function prepareInvocation(
       run_id: runId,
       attempt,
       created_at: now(),
+      workspace_root: state.workspace_root || '.',
+      ...(state.gate_overrides ? { gate_overrides: state.gate_overrides } : {}),
       workflow: {
         slug: workflow.slug,
         snapshot_path: state.workflow_snapshot.path,
@@ -567,6 +666,8 @@ export function submitOutput(
       state,
       stage,
       invocation.workspace_before,
+      workspaceDirectory(root, state),
+      state.gate_overrides ?? {},
     )
     const outcome = effectiveOutcome(
       stage,
@@ -751,11 +852,85 @@ export function assessStage(
   })
 }
 
+/**
+ * Clear attempt counters for the remediation stage and every stage declared
+ * after it, so an operator-directed rewind starts that pipeline segment fresh
+ * instead of inheriting attempts from the run that was rejected.
+ */
+function resetAttemptsFrom(
+  workflow: WorkflowDefinition,
+  state: RunState,
+  fromStage: string,
+): void {
+  const order = workflow.stages.map((candidate) => candidate.slug)
+  const startIndex = order.indexOf(fromStage)
+
+  if (startIndex === -1) {
+    return
+  }
+
+  for (const slug of order.slice(startIndex)) {
+    delete state.attempts[slug]
+  }
+}
+
+/**
+ * Persist operator rejection feedback as a durable artifact and register it on
+ * the run so the remediation worker receives it as an input reference.
+ */
+function recordOperatorFeedback(
+  root: string,
+  state: RunState,
+  fromStage: StageDefinition,
+  toStage: string,
+  note: string,
+): void {
+  const feedback = state.operator_feedback ?? []
+  const index = feedback.length + 1
+  const attempt = state.attempts[fromStage.slug] ?? 1
+  const relativePath =
+    `runtime/logs/workflows/${state.run_id}/artifacts/` +
+    `operator-feedback-${index}.md`
+  const body = [
+    `# Operator rejection: ${fromStage.title} (\`${fromStage.slug}\`)`,
+    '',
+    `**Run** \`${state.run_id}\` · **Rejected attempt** ${attempt} · ` +
+      `**Remediation stage** \`${toStage}\``,
+    '',
+    '## Required changes',
+    '',
+    note.trim().length > 0
+      ? note.trim()
+      : 'The operator rejected this stage without written feedback. ' +
+        'Treat the prior output as unacceptable and re-derive the work.',
+    '',
+    'You MUST address this feedback before the run can reach the operator ' +
+      'gate again.',
+    '',
+  ].join('\n')
+
+  writeTextAtomic(resolveInside(root, relativePath), `${body}\n`)
+
+  const item: OperatorFeedbackItem = {
+    decision: 'reject',
+    from_stage: fromStage.slug,
+    to_stage: toStage,
+    attempt,
+    note,
+    path: relativePath,
+    timestamp: now(),
+  }
+
+  feedback.push(item)
+  state.operator_feedback = feedback
+}
+
 export function decideRun(
   root: string,
   runId: string,
   decision: string,
   note = '',
+  targetStage: string | null = null,
 ): RunState {
   return withFileLock(lockPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -776,16 +951,30 @@ export function decideRun(
     const stage = stageBySlug(workflow, state.current_stage)
 
     state.status = 'running'
-    applyTransition(
-      root,
-      state,
-      stage,
-      decision === 'approve' ? 'success' : 'failure',
-    )
+
+    if (decision === 'approve') {
+      applyTransition(root, state, stage, 'success')
+    } else {
+      let target = stage.transitions.failure
+
+      if (targetStage) {
+        stageBySlug(workflow, targetStage)
+        target = targetStage
+        resetAttemptsFrom(workflow, state, target)
+      }
+
+      recordOperatorFeedback(root, state, stage, target, note)
+      applyTransition(root, state, stage, 'failure', {
+        overrideTarget: target,
+        operatorDirected: Boolean(targetStage),
+      })
+    }
+
     persist(root, state, 'operator_decision_recorded', {
       stage: stage.slug,
       decision,
       note,
+      target_stage: decision === 'reject' ? state.current_stage : null,
     })
 
     return state
@@ -838,7 +1027,9 @@ export function acceptChange(root: string, runId: string, note = ''): RunState {
       code: 'INVALID_RUN_ACTION',
     })
 
-    const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+    const fingerprint = gitWorkspaceSnapshot(
+      workspaceDirectory(root, state),
+    ).fingerprint
 
     state.accepted_workspace_fingerprint = fingerprint
     state.status = 'running'

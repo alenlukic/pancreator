@@ -24,6 +24,12 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         (policy) => `- **${policy.id} · ${policy.title}** — ${policy.summary}`,
       )
     : ['- Only global boundaries apply.']
+  const gateOverrideEntries = Object.entries(invocation.gate_overrides ?? {})
+  const gateOverrideLines = gateOverrideEntries.map(([id, command]) =>
+    command === false
+      ? `- 🚫 **${id}** — disabled by run configuration.`
+      : `- 🛠️ **${id}** — overridden: \`${command}\``,
+  )
   const requiredDataLines = requiredData.length
     ? [
         'Required `data` fields:',
@@ -39,6 +45,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     `**Run** \`${invocation.run_id}\` · **Stage** ${stage.title} ` +
       `(\`${stage.slug}\`) · **Owner** \`${stage.persona}\` · ` +
       `**Attempt** ${invocation.attempt}`,
+    '',
+    `**Workspace** \`${invocation.workspace_root}\` — fingerprints, ` +
+      'deterministic gate commands, and scope checks target this directory.',
     '',
     '## Operator view',
     '',
@@ -66,6 +75,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         `**${criterion.id}** (${criterion.type}) — ${criterion.statement}`,
     ),
     '',
+    ...(gateOverrideLines.length > 0
+      ? ['## 🧪 Gate overrides', '', ...gateOverrideLines, '']
+      : []),
     '## 📤 Output contract',
     '',
     `Write JSON to \`${invocation.output.path}\` using ` +
@@ -83,6 +95,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     fencedJson({
       invocation_id: invocation.invocation_id,
       workflow: invocation.workflow,
+      workspace_root: invocation.workspace_root,
       workspace_fingerprint: invocation.workspace_before.fingerprint,
       model_hint: stage.model_hint,
       workspace_policy: stage.workspace_policy,
@@ -169,6 +182,7 @@ export function renderStatus(state: RunState): string {
     `Run ${state.run_id}`,
     `Status: ${state.status}`,
     `Workflow: ${state.workflow_slug}`,
+    `Workspace: ${state.workspace_root || '.'}`,
     `Current stage: ${state.current_stage ?? 'none'}`,
     `Pending action: ${state.pending_action.type}`,
     `Revision: ${state.revision}`,

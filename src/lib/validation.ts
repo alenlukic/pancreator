@@ -259,11 +259,13 @@ function runShellCheck(
   stage: StageDefinition,
   criterion: Criterion,
   workspaceFingerprint: string,
+  workspaceDir: string,
+  commandOverride?: string,
 ): DeterministicResult {
-  const command = criterion.command ?? ''
+  const command = commandOverride ?? criterion.command ?? ''
   const startedAt = new Date().toISOString()
   const result = spawnSync(command, {
-    cwd: root,
+    cwd: workspaceDir,
     encoding: 'utf8',
     shell: true,
     timeout: criterion.timeout_ms ?? 120_000,
@@ -300,6 +302,12 @@ function runShellCheck(
     type: 'shell',
     hard: Boolean(criterion.hard),
     passed: result.status === 0 && !result.error,
+    ...(commandOverride === undefined
+      ? {}
+      : {
+          overridden: true,
+          explanation: 'Gate command was overridden by run configuration.',
+        }),
     command,
     exit_code: result.status,
     timed_out: isNodeError(result.error) && result.error.code === 'ETIMEDOUT',
@@ -353,8 +361,10 @@ export function evaluateDeterministicCriteria(
   state: RunState,
   stage: StageDefinition,
   beforeSnapshot: WorkspaceSnapshot,
+  workspaceDir: string,
+  gateOverrides: Record<string, string | false> = {},
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
-  const afterSnapshot = gitWorkspaceSnapshot(root)
+  const afterSnapshot = gitWorkspaceSnapshot(workspaceDir)
   const results: DeterministicResult[] = []
 
   if (stage.workspace_policy !== 'source_allowed') {
@@ -377,15 +387,37 @@ export function evaluateDeterministicCriteria(
 
   for (const criterion of stage.criteria) {
     if (criterion.type === 'shell') {
-      results.push(
-        runShellCheck(
-          root,
-          runDirectory,
-          stage,
-          criterion,
-          afterSnapshot.fingerprint,
-        ),
+      const override = Object.prototype.hasOwnProperty.call(
+        gateOverrides,
+        criterion.id,
       )
+        ? gateOverrides[criterion.id]
+        : undefined
+
+      if (override === false) {
+        results.push({
+          id: criterion.id,
+          type: 'shell',
+          hard: Boolean(criterion.hard),
+          passed: true,
+          disabled: true,
+          explanation: 'Gate disabled by run configuration.',
+          command: criterion.command,
+          workspace_fingerprint: afterSnapshot.fingerprint,
+        })
+      } else {
+        results.push(
+          runShellCheck(
+            root,
+            runDirectory,
+            stage,
+            criterion,
+            afterSnapshot.fingerprint,
+            workspaceDir,
+            typeof override === 'string' ? override : undefined,
+          ),
+        )
+      }
     } else if (criterion.type === 'state') {
       results.push(
         evaluateStateCriterion(state, criterion, afterSnapshot.fingerprint),

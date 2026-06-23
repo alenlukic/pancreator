@@ -227,6 +227,10 @@ export function isFile(filePath: string): boolean {
   return existsSync(filePath) && statSync(filePath).isFile()
 }
 
+export function isDirectory(filePath: string): boolean {
+  return existsSync(filePath) && statSync(filePath).isDirectory()
+}
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }

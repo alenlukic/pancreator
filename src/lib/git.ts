@@ -72,8 +72,18 @@ function contentFingerprint(
   return files.sort(([left], [right]) => left.localeCompare(right))
 }
 
-export function gitWorkspaceSnapshot(root: string): WorkspaceSnapshot {
-  if (!isGitRepository(root)) {
+/**
+ * Fingerprint the Git state of a deliverable workspace directory.
+ *
+ * `workspaceDir` MAY be a nested repository (for example a gitignored project
+ * capsule that is its own repository). Git runs with that directory as its
+ * working directory and is scoped to it with a `.` pathspec, so changes inside
+ * the deliverable are observed even when the surrounding repository ignores it.
+ * Paths from Git are relative to that repository's top level, so file contents
+ * are read from the resolved top level rather than from `workspaceDir`.
+ */
+export function gitWorkspaceSnapshot(workspaceDir: string): WorkspaceSnapshot {
+  if (!isGitRepository(workspaceDir)) {
     return {
       kind: 'filesystem',
       fingerprint: sha256('no-git'),
@@ -81,11 +91,22 @@ export function gitWorkspaceSnapshot(root: string): WorkspaceSnapshot {
     }
   }
 
-  const status = runGit(root, [
+  const toplevelResult = runGit(
+    workspaceDir,
+    ['rev-parse', '--show-toplevel'],
+    {
+      allowFailure: true,
+    },
+  )
+  const toplevel =
+    toplevelResult.status === 0 ? toplevelResult.stdout.trim() : workspaceDir
+  const status = runGit(workspaceDir, [
     'status',
     '--porcelain=v1',
     '--untracked-files=all',
     '-z',
+    '--',
+    '.',
   ])
   const entries = status.stdout
     .split('\0')
@@ -97,9 +118,9 @@ export function gitWorkspaceSnapshot(root: string): WorkspaceSnapshot {
     })
     .sort()
 
-  const index = runGit(root, ['ls-files', '--stage', '-z'])
-  const head = gitHead(root)
-  const content = contentFingerprint(root, entries)
+  const index = runGit(workspaceDir, ['ls-files', '--stage', '-z', '--', '.'])
+  const head = gitHead(workspaceDir)
+  const content = contentFingerprint(toplevel, entries)
 
   return {
     kind: 'git',

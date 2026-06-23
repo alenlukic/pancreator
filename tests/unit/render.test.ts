@@ -85,6 +85,7 @@ test('status summary includes the pause reason when present', () => {
     run_id: 'run-1',
     workflow_slug: 'dev',
     workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
+    workspace_root: '.',
     title: 'Run',
     status: 'paused',
     current_stage: 'implement',
