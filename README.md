@@ -37,6 +37,7 @@ The CLI is also directly usable:
 ./bin/pan submit <run-id> <stage-output.json>
 ./bin/pan assess <run-id> <assessment.json>
 ./bin/pan decide <run-id> approve
+./bin/pan accept-change <run-id> --note "operator-intentional change"
 ```
 
 ## Runtime record layout

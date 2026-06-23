@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import {
   abortRun,
+  acceptChange,
   assessStage,
   createRun,
   decideRun,
@@ -27,6 +28,7 @@ Usage:
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject> [--note <text>]
   pan resume <run-id> [--stage <stage-slug>]
+  pan accept-change <run-id> [--note <text>]
   pan abort <run-id> [--note <text>]
   pan status <run-id> [--json]
   pan list [--json]
@@ -223,6 +225,18 @@ async function main(): Promise<void> {
       print({
         status: state.status,
         current_stage: state.current_stage,
+        next_command: `./bin/pan prepare ${runId}`,
+      })
+      return
+    }
+    case 'accept-change': {
+      const runId = requiredArgument(args[0], 'run-id')
+      const state = acceptChange(root, runId, option(args, '--note', '') ?? '')
+
+      print({
+        status: state.status,
+        current_stage: state.current_stage,
+        accepted_workspace_fingerprint: state.accepted_workspace_fingerprint,
         next_command: `./bin/pan prepare ${runId}`,
       })
       return

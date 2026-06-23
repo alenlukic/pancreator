@@ -822,6 +822,51 @@ export function resumeRun(
   })
 }
 
+export function acceptChange(root: string, runId: string, note = ''): RunState {
+  return withFileLock(lockPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      state.status === 'paused' &&
+        state.pending_action.type === 'operator_decision',
+      'Run is not paused for an operator decision.',
+      { code: 'INVALID_RUN_ACTION' },
+    )
+
+    const target = state.current_stage
+    invariant(target, 'Run has no current stage to resume.', {
+      code: 'INVALID_RUN_ACTION',
+    })
+
+    const fingerprint = gitWorkspaceSnapshot(root).fingerprint
+
+    state.accepted_workspace_fingerprint = fingerprint
+    state.status = 'running'
+    state.current_stage = target
+    state.pending_action = { type: 'prepare_invocation' }
+    state.current_invocation = null
+    state.pause_reason = null
+    state.consecutive_failures = 0
+
+    writeDecision(
+      root,
+      state,
+      'Operator accepted an intentional workspace change',
+      note ||
+        'Operator attested the current workspace is intentional; review and QA evidence is honored against the accepted fingerprint.',
+      [`Continue with: ./bin/pan prepare ${state.run_id}`],
+    )
+
+    persist(root, state, 'workspace_change_accepted', {
+      stage: target,
+      accepted_workspace_fingerprint: fingerprint,
+      note,
+    })
+
+    return state
+  })
+}
+
 export function abortRun(root: string, runId: string, note = ''): RunState {
   return withFileLock(lockPath(root, runId), () => {
     const state = loadState(root, runId)

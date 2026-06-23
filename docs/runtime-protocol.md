@@ -62,6 +62,20 @@ Exceeding a limit pauses the run and writes a decision record. The operator may 
 - Inspect: `./bin/pan status <run-id> --json`
 - Resume same stage: `./bin/pan resume <run-id>`
 - Resume chosen stage: `./bin/pan resume <run-id> --stage implement`
+- Accept an intentional change: `./bin/pan accept-change <run-id> --note "reason"`
 - Abort: `./bin/pan abort <run-id> --note "reason"`
+
+### Accepting an intentional workspace change
+
+The `ship.prior_gates_current` gate requires that review and QA evidence was produced against the workspace fingerprint that ship sees. If the operator intentionally changed tracked files (so the current fingerprint differs from the one review/QA certified), the run pauses for an operator decision.
+
+`./bin/pan accept-change <run-id>` lets the operator attest that the current workspace is intentional. It:
+
+- requires the run to be `paused` with a pending `operator_decision`,
+- pins the current workspace fingerprint into `accepted_workspace_fingerprint`,
+- returns the run to `running` at the same stage (no review/test re-loop), and
+- records an auditable decision plus a `workspace_change_accepted` event.
+
+Acceptance is pinned to the exact accepted fingerprint: review and QA must already have passed, and any _further_ tracked-file change after acceptance re-flags the gate. Acceptance only excuses a stale fingerprint; it never substitutes for missing review/QA evidence.
 
 Do not repair state by editing files. A future repair command can be added once real corruption modes are observed.

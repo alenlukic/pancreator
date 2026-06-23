@@ -259,6 +259,7 @@ export interface RunState {
   updated_at: string
   pause_reason?: string | null
   last_decision_path?: string
+  accepted_workspace_fingerprint?: string | null
 }
 
 export interface SupervisorAssessment {
@@ -299,5 +300,5 @@ export interface RepositoryValidationResult {
   ok: boolean
   errors: string[]
   warnings: string[]
-  fingerprint: string
+  report_hash: string
 }

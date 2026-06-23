@@ -308,7 +308,7 @@ function runShellCheck(
   }
 }
 
-function evaluateStateCriterion(
+export function evaluateStateCriterion(
   state: RunState,
   criterion: Criterion,
   workspaceFingerprint: string,
@@ -324,12 +324,17 @@ function evaluateStateCriterion(
       .reverse()
       .find((item) => item.stage === 'test' && item.outcome === 'success')
 
-    passed = Boolean(
-      review && test && test.workspace_fingerprint === workspaceFingerprint,
-    )
-    explanation = passed
-      ? 'Review and QA passed against the current workspace fingerprint.'
-      : 'Passing review/QA evidence is missing or stale.'
+    const fingerprintCurrent =
+      test?.workspace_fingerprint === workspaceFingerprint
+    const operatorAccepted =
+      state.accepted_workspace_fingerprint === workspaceFingerprint
+
+    passed = Boolean(review && test && (fingerprintCurrent || operatorAccepted))
+    explanation = !passed
+      ? 'Passing review/QA evidence is missing or stale.'
+      : fingerprintCurrent
+        ? 'Review and QA passed against the current workspace fingerprint.'
+        : 'Review and QA are stale, but the operator accepted the current workspace as intentional.'
   }
 
   return {
@@ -529,6 +534,6 @@ export function validateRepository(root: string): RepositoryValidationResult {
     ok: errors.length === 0,
     errors,
     warnings,
-    fingerprint: sha256({ errors, warnings }),
+    report_hash: sha256({ errors, warnings }),
   }
 }
