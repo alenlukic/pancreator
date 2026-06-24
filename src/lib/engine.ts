@@ -31,6 +31,7 @@ import {
   renderTaskRecord,
 } from './render.js'
 import {
+  ledgerValidationPath,
   lockPath,
   loadState,
   makeRunId,
@@ -373,6 +374,10 @@ function executeHarnessStage(
   attempt: number,
 ): PrepareInvocationResult {
   const roots = rootsForRun(root, state)
+  const validationPath = toRepoRelative(
+    root,
+    ledgerValidationPath(roots.state_root, state.run_id),
+  )
   const result = validateWorkflowChanges({
     run_id: state.run_id,
     state_root: roots.state_root,
@@ -380,7 +385,6 @@ function executeHarnessStage(
   })
   const outcome: StageOutcome =
     result.status === 'passed' ? 'success' : 'blocked'
-  const validationPath = `workflows/${state.run_id}/ledger-validation.json`
   const historyItem: StageHistoryItem = {
     stage: stage.slug,
     attempt,
@@ -1341,7 +1345,10 @@ export function acceptChange(
     if (waive) {
       const waived = waiveLedgerValidation(roots.state_root, state.run_id)
       state.latest_ledger_validation = waived.status
-      state.latest_ledger_validation_path = `workflows/${state.run_id}/ledger-validation.json`
+      state.latest_ledger_validation_path = toRepoRelative(
+        root,
+        ledgerValidationPath(roots.state_root, state.run_id),
+      )
     }
 
     state.accepted_workspace_fingerprint = fingerprint

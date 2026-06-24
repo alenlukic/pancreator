@@ -107,6 +107,14 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   assert.equal(final.status, 'succeeded')
   assert.equal(final.current_stage, null)
   assert.equal(final.stage_history.length, 7)
+  const validateChangesHistory = final.stage_history.find(
+    (item) => item.stage === 'validate-changes',
+  )
+  assert.ok(validateChangesHistory)
+  assert.equal(
+    validateChangesHistory.output_path,
+    `runtime/workflows/${runId}/ledger-validation.json`,
+  )
   assert.ok(
     final.stage_history
       .filter((item) => item.stage !== 'validate-changes')
