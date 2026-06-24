@@ -2,7 +2,6 @@
   "slug": "implement",
   "title": "Implementation",
   "persona": "coder",
-  "model_hint": "fast-coding",
   "prompt_path": "library/workflows/dev/prompts/implement.md",
   "workspace_policy": "source_allowed",
   "gate": "next_stage",

@@ -2,7 +2,6 @@
   "slug": "test",
   "title": "Quality assurance",
   "persona": "qa-tester",
-  "model_hint": "strong-general",
   "prompt_path": "library/workflows/dev/prompts/test.md",
   "workspace_policy": "read_only",
   "gate": "stage_verdict",

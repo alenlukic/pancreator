@@ -9,15 +9,16 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 1. The active invocation card MUST define the complete task contract for its stage.
 2. `AGENTS.md` MUST define repository-wide operating boundaries.
 3. The run’s `workflow.snapshot.json` MUST define transitions and gates for that run.
-4. Policies embedded in the invocation card MUST govern that invocation.
-5. Agents MUST NOT load broad governance or unrelated run history unless the invocation explicitly requires it.
+4. The run’s `pipeline-config.snapshot.json` MUST define persona-to-model mappings for that run.
+5. Policies embedded in the invocation card MUST govern that invocation.
+6. Agents MUST NOT load broad governance or unrelated run history unless the invocation explicitly requires it.
 
 ## Operating loop
 
 - Runs MUST be created, inspected, advanced, resumed, and aborted through `./bin/pan`.
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
 - Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
-- A named worker stage MUST be delegated to the matching `.cursor/agents/<persona>.md` subagent.
+- A named worker stage MUST be delegated to the matching `.cursor/agents/<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `pipeline.config.json`; run `./bin/pan models --sync` after changing `active_config` or a mapped model.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
 - For `supervisor_assessment`, the supervisor MUST evaluate only the listed judgment criteria and write the declared assessment file.

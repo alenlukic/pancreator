@@ -2,7 +2,6 @@
   "slug": "review",
   "title": "Independent review",
   "persona": "reviewer",
-  "model_hint": "strong-code-review",
   "prompt_path": "library/workflows/dev/prompts/review.md",
   "workspace_policy": "read_only",
   "gate": "stage_verdict",

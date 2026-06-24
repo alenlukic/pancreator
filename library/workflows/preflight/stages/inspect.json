@@ -2,7 +2,6 @@
   "slug": "inspect",
   "title": "Inspect repository",
   "persona": "reviewer",
-  "model_hint": "strong-general",
   "prompt_path": "library/workflows/preflight/prompts/inspect.md",
   "workspace_policy": "read_only",
   "gate": "stage_verdict",

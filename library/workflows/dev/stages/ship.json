@@ -2,7 +2,6 @@
   "slug": "ship",
   "title": "Release preparation",
   "persona": "release-steward",
-  "model_hint": "strong-general",
   "prompt_path": "library/workflows/dev/prompts/ship.md",
   "workspace_policy": "read_only",
   "gate": "operator",

@@ -57,6 +57,7 @@ runtime/logs/workflows/<run-id>/
   state.json                 # current materialized state; never hand-edit
   events.jsonl               # append-only transition history
   workflow.snapshot.json     # immutable workflow definition for this run
+  pipeline-config.snapshot.json # immutable persona-to-model mapping for this run
   request.md|json            # preserved operator input
   invocations/               # JSON contract + operator-readable Markdown card
   outputs/                   # worker stage outputs
@@ -81,6 +82,20 @@ library/workflows/<slug>/
 
 See [`docs/workflow-authoring.md`](docs/workflow-authoring.md) for the field
 semantics and the JSON schemas in `library/schemas/`.
+
+### Pipeline model configuration
+
+`pipeline.config.json` restores V1-style named persona-to-model mappings. The
+active mapping is copied into matching Cursor subagent frontmatter and snapshotted
+for each run. After changing `active_config` or any mapping, synchronize and
+validate it:
+
+```sh
+./bin/pan models --sync
+./bin/pan validate
+```
+
+Invocation cards show both the resolved model and the named configuration. Because Cursor subagent models are project-global, changing and syncing the active mapping while a run is in flight blocks that run's next preparation until its snapshotted mapping is restored.
 
 ## Development workflow
 

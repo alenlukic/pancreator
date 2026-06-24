@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "active_config": "default",
+  "$operator": {
+    "summary": "Named pipeline model configurations. Each configuration maps every workflow persona to the Cursor model that should execute it.",
+    "note": "Change active_config, then run ./bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
+  },
+  "configs": {
+    "default": {
+      "summary": "Balance of focused coding, strong review, and frontier planning.",
+      "personas": {
+        "orchestrator": "auto",
+        "tech-lead": "gpt-5.5[context=272k,reasoning=high,fast=false]",
+        "coder": "composer-2.5[fast=false]",
+        "reviewer": "gpt-5.3-codex[reasoning=high,fast=false]",
+        "qa-tester": "auto",
+        "release-steward": "auto"
+      }
+    },
+    "complex": {
+      "summary": "Higher-reasoning review and QA for complex or high-risk work.",
+      "personas": {
+        "orchestrator": "auto",
+        "tech-lead": "gpt-5.5[context=272k,reasoning=high,fast=false]",
+        "coder": "composer-2.5[fast=false]",
+        "reviewer": "gpt-5.5[context=272k,reasoning=high,fast=false]",
+        "qa-tester": "gpt-5.4[context=272k,reasoning=high,fast=false]",
+        "release-steward": "auto"
+      }
+    },
+    "auto": {
+      "summary": "Cursor-managed routing except for the bounded coding workhorse.",
+      "personas": {
+        "orchestrator": "auto",
+        "tech-lead": "auto",
+        "coder": "composer-2.5[fast=false]",
+        "reviewer": "auto",
+        "qa-tester": "auto",
+        "release-steward": "auto"
+      }
+    }
+  }
+}

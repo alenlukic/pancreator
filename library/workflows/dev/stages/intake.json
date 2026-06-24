@@ -2,7 +2,6 @@
   "slug": "intake",
   "title": "Intake",
   "persona": "orchestrator",
-  "model_hint": "frontier-reasoning",
   "prompt_path": "library/workflows/dev/prompts/intake.md",
   "workspace_policy": "runtime_only",
   "gate": "operator",

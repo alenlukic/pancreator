@@ -2,7 +2,6 @@
   "slug": "plan",
   "title": "Engineering plan",
   "persona": "tech-lead",
-  "model_hint": "frontier-reasoning",
   "prompt_path": "library/workflows/dev/prompts/plan.md",
   "workspace_policy": "runtime_only",
   "gate": "supervisor",

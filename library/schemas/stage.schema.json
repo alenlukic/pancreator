@@ -31,10 +31,6 @@
       "pattern": "^[a-z0-9-]+$",
       "description": "Owner of the stage. Resolves to library/personas/<persona>.md and, for delegated work, to the matching .cursor/agents/<persona>.md subagent."
     },
-    "model_hint": {
-      "type": "string",
-      "description": "Capability profile, not a vendor model id. Resolves against library/model_profiles.json (e.g. frontier-reasoning, fast-coding). The operator may override per invocation."
-    },
     "prompt_path": {
       "type": "string",
       "description": "Repository-relative path to the stage task brief. Its contents become the Task section of the invocation card."
@@ -93,8 +89,16 @@
         },
         "allOf": [
           {
-            "if": { "properties": { "type": { "const": "shell" } } },
-            "then": { "required": ["command"] }
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "shell"
+                }
+              }
+            },
+            "then": {
+              "required": ["command"]
+            }
           }
         ]
       }

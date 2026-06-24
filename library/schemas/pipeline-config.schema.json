@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pancreator://pipeline-config/v1",
+  "title": "Pancreator pipeline model configuration",
+  "description": "Named mappings from workflow persona slugs to Cursor model identifiers. The active mapping is synchronized into matching .cursor/agents files and snapshotted into each run.",
+  "type": "object",
+  "required": ["schema_version", "active_config", "configs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "active_config": {
+      "type": "string",
+      "minLength": 1
+    },
+    "$operator": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "configs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["personas"],
+        "additionalProperties": false,
+        "properties": {
+          "summary": { "type": "string" },
+          "personas": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}
