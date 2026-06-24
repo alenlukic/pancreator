@@ -10,7 +10,14 @@ You own operator dialogue and run lifecycle, not implementation.
 - You MUST read the active invocation or assessment card before expanding context.
 - You MUST act only on the reported `pending_action`.
 - You MUST delegate each named worker stage to its matching Cursor subagent with the invocation card unchanged.
+- For every delegated worker invocation, you MUST persist `invocations/<invocation-id>.delegation.md` containing the unchanged canonical invocation card content before submitting stage output.
 - For a supervisor assessment, you MUST judge only the listed criteria unless the gate explicitly requests broader review.
+
+## Supervisor continuation
+
+- You MUST NOT hand control back to the operator while `pending_action` is one of:
+  `prepare_invocation`, `invoke_agent`, or `supervisor_assessment`.
+- After completing a supervisor-owned action, you MUST re-check `pending_action` and continue the loop until a stop condition is reached (`operator_approval`, `operator_decision`, or `none`).
 
 ## Operator communication
 

@@ -1,4 +1,5 @@
 import type { Invocation, RunState, StageOutcome, TaskRecord } from './types.js'
+import type { InvocationValidationStatus } from './validation.js'
 
 const OUTCOME_EMOJI: Record<StageOutcome, string> = {
   success: '✅',
@@ -183,8 +184,45 @@ export function renderTaskRecord(record: TaskRecord): string {
   return `${sections.join('\n')}\n`
 }
 
+function formatValidationArtifactStatus(
+  label: string,
+  artifactPath: string,
+  load: InvocationValidationStatus['invocation'],
+): string[] {
+  if ('state' in load) {
+    if (load.state === 'missing') {
+      return [`${label}: missing`, `  Artifact: ${artifactPath}`]
+    }
+
+    return [
+      `${label}: malformed`,
+      `  Artifact: ${artifactPath}`,
+      `  Reason: ${load.reason}`,
+    ]
+  }
+
+  const statusLabel = load.status === 'pass' ? 'pass' : 'fail'
+  const lines = [
+    `${label}: ${statusLabel}`,
+    `  Artifact: ${artifactPath}`,
+    `  Summary: ${load.summary}`,
+  ]
+  const failedChecks = load.checks.filter((check) => !check.passed)
+
+  if (failedChecks.length > 0) {
+    lines.push(
+      ...failedChecks.map((check) => `  - ${check.id}: ${check.message}`),
+    )
+  }
+
+  return lines
+}
+
 /** Render a one-screen status summary for `pan status`. */
-export function renderStatus(state: RunState): string {
+export function renderStatus(
+  state: RunState,
+  validationStatus: InvocationValidationStatus | null = null,
+): string {
   const lines = [
     `Run ${state.run_id}`,
     `Status: ${state.status}`,
@@ -204,6 +242,25 @@ export function renderStatus(state: RunState): string {
 
   if (state.pause_reason) {
     lines.push(`Pause reason: ${state.pause_reason}`)
+  }
+
+  if (validationStatus) {
+    lines.push('', '## Validation', '')
+    lines.push(
+      ...formatValidationArtifactStatus(
+        'Invocation validation',
+        validationStatus.invocation_validation_path,
+        validationStatus.invocation,
+      ),
+    )
+    lines.push(
+      ...formatValidationArtifactStatus(
+        'Delegation validation',
+        validationStatus.delegation_validation_path,
+        validationStatus.delegation,
+      ),
+    )
+    lines.push(`Delegation artifact: ${validationStatus.delegation_path}`)
   }
 
   return `${lines.join('\n')}\n`

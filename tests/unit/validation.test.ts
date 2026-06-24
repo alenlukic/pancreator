@@ -3,8 +3,17 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
-import { validateRepository } from '../../src/lib/validation.js'
+import {
+  POLICIES_HEADING,
+  validateDelegationMarkdown,
+  validateInvocationMarkdown,
+  validateRepository,
+} from '../../src/lib/validation.js'
+import { renderInvocationMarkdown } from '../../src/lib/render.js'
+import { resolvePolicies } from '../../src/lib/policies.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../helpers.js'
+import type { Invocation } from '../../src/lib/types.js'
 
 function prepareValidationFixture(root: string): void {
   mkdirSync(path.join(root, 'tests'), { recursive: true })
@@ -142,4 +151,136 @@ test('repository validation requires standalone Cursor agents in every pipeline 
     result.errors.join('\n'),
     /pipeline config 'complex' does not map persona 'investigator'/u,
   )
+})
+
+function fixtureInvocation(root: string, stageSlug: string): Invocation {
+  const workflow = loadWorkflow(root, 'dev')
+  const stage = stageBySlug(workflow, stageSlug)
+  const policies = resolvePolicies(root, {
+    persona: stage.persona,
+    workflow: workflow.slug,
+    stage: stage.slug,
+  })
+
+  return {
+    $operator: {
+      headline: `${stage.title} is ready`,
+      summary: 'Fixture summary',
+      next_action: 'Invoke worker',
+    },
+    schema_version: 1,
+    invocation_id: `${stageSlug}-1-fixture`,
+    run_id: 'run-fixture',
+    attempt: 1,
+    created_at: '2026-06-24T00:00:00.000Z',
+    workspace_root: '.',
+    workflow: {
+      slug: workflow.slug,
+      snapshot_path: 'workflow.snapshot.json',
+      snapshot_sha256: 'abc',
+    },
+    stage: {
+      slug: stage.slug,
+      title: stage.title,
+      persona: stage.persona,
+      model: 'fixture-model',
+      model_config: 'default',
+      workspace_policy: stage.workspace_policy,
+      gate: stage.gate,
+    },
+    prompt: 'Fixture prompt',
+    inputs: { references: [] },
+    policies,
+    rubric: stage.criteria,
+    output: {
+      path: `runtime/logs/workflows/run-fixture/outputs/${stageSlug}.json`,
+      template: 'library/templates/stage-output.example.json',
+      schema: 'library/schemas/stage-output.schema.json',
+      required_data: stage.required_data ?? {},
+    },
+    boundaries: ['Fixture boundary'],
+    workspace_before: {
+      kind: 'filesystem',
+      fingerprint: 'fixture-fingerprint',
+      entries: [],
+    },
+  }
+}
+
+test('invocation validator fails when the policy heading is absent', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const markdown = renderInvocationMarkdown(invocation).replace(
+    POLICIES_HEADING,
+    '## Policies',
+  )
+  const result = validateInvocationMarkdown(invocation, markdown)
+
+  assert.equal(result.passed, false)
+  assert.equal(
+    result.checks.find((check) => check.id === 'policies.heading')?.passed,
+    false,
+  )
+})
+
+test('invocation validator fails when policy text is missing', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const policy = invocation.policies[0]
+  const markdown = renderInvocationMarkdown(invocation).replace(
+    policy.summary,
+    '',
+  )
+  const result = validateInvocationMarkdown(invocation, markdown)
+
+  assert.equal(result.passed, false)
+  assert.equal(
+    result.checks.find((check) => check.id === `policy.${policy.id}.summary`)
+      ?.passed,
+    false,
+  )
+})
+
+test('invocation validator passes for canonical rendered markdown', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const result = validateInvocationMarkdown(
+    invocation,
+    renderInvocationMarkdown(invocation),
+  )
+
+  assert.equal(result.passed, true)
+})
+
+test('delegation validator fails for rewritten prompts', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const canonical = renderInvocationMarkdown(invocation)
+  const result = validateDelegationMarkdown(
+    canonical,
+    'See runtime/logs/workflows/run-fixture/invocations/implement-1-fixture.md',
+  )
+
+  assert.equal(result.passed, false)
+})
+
+test('delegation validator passes for canonical copied markdown', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const canonical = renderInvocationMarkdown(invocation)
+  const result = validateDelegationMarkdown(canonical, canonical)
+
+  assert.equal(result.passed, true)
+})
+
+test('delegation validator normalizes line endings', () => {
+  const root = createFixture()
+  const invocation = fixtureInvocation(root, 'implement')
+  const canonical = renderInvocationMarkdown(invocation)
+  const result = validateDelegationMarkdown(
+    canonical,
+    canonical.replaceAll('\n', '\r\n'),
+  )
+
+  assert.equal(result.passed, true)
 })

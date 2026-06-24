@@ -9,7 +9,12 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 
 test('read-only stage fails when the source workspace changes', () => {
   const root = createFixture()
@@ -39,6 +44,7 @@ test('read-only stage fails when the source workspace changes', () => {
   }
 
   writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
 
   const submitted = submitOutput(root, state.run_id, invocation.output.path)
 

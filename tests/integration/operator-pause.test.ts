@@ -11,7 +11,12 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 
 test('operator pause preserves supervisor gate and resume restores it', () => {
   const root = createFixture()
@@ -47,6 +52,7 @@ test('operator pause preserves supervisor gate and resume restores it', () => {
     path.join(root, planInvocation.output.path),
     makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
   )
+  writeCanonicalDelegation(root, planInvocation)
 
   const submitted = submitOutput(root, runId, planInvocation.output.path)
 
@@ -138,6 +144,7 @@ test('harness pause resume still restarts at prepare_invocation', () => {
   blockedOutput.summary = 'Need operator input before continuing.'
 
   writeJson(path.join(root, planInvocation.output.path), blockedOutput)
+  writeCanonicalDelegation(root, planInvocation)
 
   const submitted = submitOutput(root, runId, planInvocation.output.path)
 

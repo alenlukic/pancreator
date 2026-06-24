@@ -19,10 +19,23 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
 - Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
 - A named worker stage MUST be delegated to the matching `.cursor/agents/<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `project.json`; run `./bin/pan models --sync` after changing `active_config` or a mapped model.
+- For every delegated worker invocation, the supervisor MUST persist `invocations/<invocation-id>.delegation.md` containing the unchanged canonical invocation card content so the harness can validate full in-line policy delivery at submit time.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
 - For `supervisor_assessment`, the supervisor MUST evaluate only the listed judgment criteria and write the declared assessment file.
 - For `operator_approval`, the supervisor MUST present the ratification packet and stop. It MUST NOT approve on the operator’s behalf.
+
+### Supervisor continuation contract
+
+- The supervisor MUST run a continuation loop for every non-terminal run:
+  1. inspect `pending_action`,
+  2. perform only that action,
+  3. re-check `pending_action`.
+- The supervisor MUST continue without operator handoff while `pending_action` is one of:
+  `prepare_invocation`, `invoke_agent`, `supervisor_assessment`.
+- The supervisor MUST stop and request operator input only when `pending_action` is one of:
+  `operator_approval`, `operator_decision`, or when the run is terminal (`none`).
+- The supervisor MUST NOT ask the operator to run `/pan-resume` or equivalent while a supervisor-owned pending action remains.
 
 ## Work modes
 
@@ -73,3 +86,9 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 ## Shell output wrapping
 
 - `rtk` (https://github.com/rtk-ai/rtk) globally wraps Cursor shell commands. Agents MAY see summarized or truncated output and SHOULD rerun with explicit bounded output capture when exact bytes matter (for example checksum or ledger inspection).
+
+## Chat markdown emission
+
+- Before emitting multi-line Markdown code blocks or fenced content to Cursor chat, agents SHOULD validate the text with `node scripts/validate-chat-markdown.mjs` (pipe via stdin or pass a file path).
+- The harness cannot auto-invoke this check before chat emission; agents MUST run it manually when preparing complex fenced output.
+- Validation failures MUST be corrected before sending; common issues include list-prefixed fence openers, unclosed fences, and inline fence pairs on one line.

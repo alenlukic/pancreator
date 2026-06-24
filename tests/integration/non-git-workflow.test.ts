@@ -13,7 +13,12 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 
 test('dev workflow runs to completion without a Git repository', () => {
   const root = createFixture()
@@ -53,6 +58,10 @@ test('dev workflow runs to completion without a Git repository', () => {
     const output = makeOutput(root, invocation, stage)
 
     writeJson(path.join(root, invocation.output.path), output)
+
+    if (stage.persona !== 'orchestrator') {
+      writeCanonicalDelegation(root, invocation)
+    }
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 

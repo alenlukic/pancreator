@@ -14,7 +14,12 @@ import {
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import type { RunState } from '../../src/lib/types.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 
 function advanceToShipGate(root: string, runId: string): RunState {
   const workflow = loadWorkflow(root, 'dev')
@@ -43,6 +48,10 @@ function advanceToShipGate(root: string, runId: string): RunState {
     const output = makeOutput(root, invocation, stage)
 
     writeJson(path.join(root, invocation.output.path), output)
+
+    if (stage.persona !== 'orchestrator') {
+      writeCanonicalDelegation(root, invocation)
+    }
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 

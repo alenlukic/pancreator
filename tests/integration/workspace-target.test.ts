@@ -12,7 +12,12 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 
 function makeNestedRepo(root: string, relative: string): string {
   const repo = path.join(root, relative)
@@ -83,6 +88,10 @@ test('gate overrides replace and disable deterministic shell gates', () => {
     const output = makeOutput(root, invocation, stage)
 
     writeJson(path.join(root, invocation.output.path), output)
+
+    if (stage.persona !== 'orchestrator') {
+      writeCanonicalDelegation(root, invocation)
+    }
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 

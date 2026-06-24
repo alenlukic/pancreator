@@ -55,7 +55,14 @@ import type {
   WorkflowDefinition,
 } from './types.js'
 import {
+  buildValidationArtifact,
+  delegationPath,
+  delegationValidationPath,
   evaluateDeterministicCriteria,
+  invocationValidationPath,
+  loadInvocationValidationStatus,
+  validateDelegationMarkdown,
+  validateInvocationMarkdown,
   validateStageOutput,
 } from './validation.js'
 import {
@@ -840,11 +847,43 @@ export function prepareInvocation(
       workspace_before: workspace,
     }
 
-    writeJsonAtomic(resolveInside(root, jsonPath), invocation)
-    writeTextAtomic(
-      resolveInside(root, markdownPath),
-      renderInvocationMarkdown(invocation),
+    const renderedMarkdown = renderInvocationMarkdown(invocation)
+    const invocationValidation = validateInvocationMarkdown(
+      invocation,
+      renderedMarkdown,
     )
+    const invocationValidationArtifactPath = invocationValidationPath(
+      runId,
+      invocationId,
+    )
+    const invocationValidationArtifact = buildValidationArtifact({
+      run_id: runId,
+      invocation_id: invocationId,
+      kind: 'invocation',
+      status: invocationValidation.passed ? 'pass' : 'fail',
+      checks: invocationValidation.checks,
+      artifact_path: markdownPath,
+    })
+
+    writeJsonAtomic(
+      resolveInside(root, invocationValidationArtifactPath),
+      invocationValidationArtifact,
+    )
+
+    invariant(
+      invocationValidation.passed,
+      'Invocation markdown failed policy manifest validation.',
+      {
+        code: 'INVOCATION_VALIDATION_FAILED',
+        details: {
+          validation_path: invocationValidationArtifactPath,
+          summary: invocationValidationArtifact.summary,
+        },
+      },
+    )
+
+    writeJsonAtomic(resolveInside(root, jsonPath), invocation)
+    writeTextAtomic(resolveInside(root, markdownPath), renderedMarkdown)
 
     state.current_invocation = {
       id: invocationId,
@@ -947,6 +986,62 @@ export function submitOutput(
     const workflow = loadRunWorkflow(root, state)
     const stage = stageBySlug(workflow, state.current_stage)
     const invocation = readInvocation(root, state.current_invocation.json_path)
+
+    if (stage.persona !== 'orchestrator') {
+      const delegationArtifactPath = delegationPath(
+        runId,
+        invocation.invocation_id,
+      )
+      const delegationAbsolute = resolveInside(root, delegationArtifactPath)
+
+      invariant(
+        fileExists(delegationAbsolute),
+        'Delegation artifact is missing for the active invocation.',
+        {
+          code: 'DELEGATION_ARTIFACT_MISSING',
+          details: { path: delegationArtifactPath },
+        },
+      )
+
+      const canonicalMarkdown = readText(
+        resolveInside(root, state.current_invocation.markdown_path),
+      )
+      const delegationMarkdown = readText(delegationAbsolute)
+      const delegationValidation = validateDelegationMarkdown(
+        canonicalMarkdown,
+        delegationMarkdown,
+      )
+      const delegationValidationArtifactPath = delegationValidationPath(
+        runId,
+        invocation.invocation_id,
+      )
+      const delegationValidationArtifact = buildValidationArtifact({
+        run_id: runId,
+        invocation_id: invocation.invocation_id,
+        kind: 'delegation',
+        status: delegationValidation.passed ? 'pass' : 'fail',
+        checks: delegationValidation.checks,
+        artifact_path: delegationArtifactPath,
+      })
+
+      writeJsonAtomic(
+        resolveInside(root, delegationValidationArtifactPath),
+        delegationValidationArtifact,
+      )
+
+      invariant(
+        delegationValidation.passed,
+        'Delegation artifact failed canonical invocation validation.',
+        {
+          code: 'DELEGATION_VALIDATION_FAILED',
+          details: {
+            validation_path: delegationValidationArtifactPath,
+            summary: delegationValidationArtifact.summary,
+          },
+        },
+      )
+    }
+
     const validation = validateStageOutput(
       root,
       stage,
@@ -1588,7 +1683,15 @@ export function getRunStatus(
 ): RunState | string {
   const state = loadState(root, runId)
 
-  return options.json ? state : renderStatus(state)
+  if (options.json) {
+    return state
+  }
+
+  const validationStatus = state.current_invocation
+    ? loadInvocationValidationStatus(root, runId, state.current_invocation.id)
+    : null
+
+  return renderStatus(state, validationStatus)
 }
 
 export function getRunState(root: string, runId: string): RunState {

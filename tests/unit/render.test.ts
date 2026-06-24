@@ -7,6 +7,10 @@ import {
   renderTaskRecord,
 } from '../../src/lib/render.js'
 import { resolvePolicies } from '../../src/lib/policies.js'
+import {
+  buildValidationArtifact,
+  invocationValidationPath,
+} from '../../src/lib/validation.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
 import { createFixture } from '../helpers.js'
 import type { Invocation, TaskRecord } from '../../src/lib/types.js'
@@ -214,4 +218,139 @@ test('invocation cards inline full policy text for every stage', () => {
       }
     }
   }
+})
+
+test('status summary renders a dedicated validation section for pass state', () => {
+  const invocationId = 'implement-1-abcd'
+  const runId = 'run-1'
+  const invocationValidation = buildValidationArtifact({
+    run_id: runId,
+    invocation_id: invocationId,
+    kind: 'invocation',
+    status: 'pass',
+    checks: [{ id: 'policies.heading', passed: true, message: 'ok' }],
+    artifact_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
+  })
+
+  const status = renderStatus(
+    {
+      schema_version: 1,
+      run_id: runId,
+      workflow_slug: 'dev',
+      workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
+      workspace_root: '.',
+      title: 'Run',
+      status: 'running',
+      current_stage: 'implement',
+      pending_action: {
+        type: 'invoke_agent',
+        persona: 'coder',
+        path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
+      },
+      current_invocation: {
+        id: invocationId,
+        json_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`,
+        markdown_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
+        output_path: `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`,
+      },
+      request: {
+        source_path: 'request.md',
+        stored_path: 'runtime/request.md',
+        sha256: 'abc',
+      },
+      revision: 1,
+      transition_count: 1,
+      consecutive_failures: 0,
+      attempts: { implement: 1 },
+      stage_history: [],
+      created_at: '2026-06-22T00:00:00.000Z',
+      updated_at: '2026-06-22T00:00:00.000Z',
+      limits: {
+        max_total_transitions: 18,
+        max_stage_attempts: 3,
+        max_consecutive_failures: 3,
+      },
+    },
+    {
+      invocation: invocationValidation,
+      delegation: { state: 'missing' },
+      invocation_validation_path: invocationValidationPath(runId, invocationId),
+      delegation_validation_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation-validation.json`,
+      delegation_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation.md`,
+    },
+  )
+
+  assert.match(status, /## Validation/)
+  assert.match(status, /Invocation validation: pass/)
+  assert.match(status, /Delegation validation: missing/)
+})
+
+test('status summary surfaces validation failure reasons', () => {
+  const invocationId = 'plan-1-abcd'
+  const runId = 'run-1'
+  const delegationValidation = buildValidationArtifact({
+    run_id: runId,
+    invocation_id: invocationId,
+    kind: 'delegation',
+    status: 'fail',
+    checks: [
+      {
+        id: 'delegation.canonical_equality',
+        passed: false,
+        message: 'Delegation artifact MUST equal the canonical invocation card',
+      },
+    ],
+    artifact_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation.md`,
+  })
+
+  const status = renderStatus(
+    {
+      schema_version: 1,
+      run_id: runId,
+      workflow_slug: 'dev',
+      workflow_snapshot: { path: 'workflow.json', sha256: 'abc' },
+      workspace_root: '.',
+      title: 'Run',
+      status: 'running',
+      current_stage: 'plan',
+      pending_action: {
+        type: 'invoke_agent',
+        persona: 'tech-lead',
+        path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
+      },
+      current_invocation: {
+        id: invocationId,
+        json_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`,
+        markdown_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`,
+        output_path: `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`,
+      },
+      request: {
+        source_path: 'request.md',
+        stored_path: 'runtime/request.md',
+        sha256: 'abc',
+      },
+      revision: 1,
+      transition_count: 1,
+      consecutive_failures: 0,
+      attempts: { plan: 1 },
+      stage_history: [],
+      created_at: '2026-06-22T00:00:00.000Z',
+      updated_at: '2026-06-22T00:00:00.000Z',
+      limits: {
+        max_total_transitions: 18,
+        max_stage_attempts: 3,
+        max_consecutive_failures: 3,
+      },
+    },
+    {
+      invocation: { state: 'missing' },
+      delegation: delegationValidation,
+      invocation_validation_path: invocationValidationPath(runId, invocationId),
+      delegation_validation_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation-validation.json`,
+      delegation_path: `runtime/logs/workflows/${runId}/invocations/${invocationId}.delegation.md`,
+    },
+  )
+
+  assert.match(status, /Delegation validation: fail/)
+  assert.match(status, /delegation\.canonical_equality/)
 })

@@ -11,6 +11,26 @@ Use `/pan-start` for a new request and `/pan-resume <run-id>` thereafter. The su
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
+### Supervisor continuation contract
+
+- The supervisor MUST run a continuation loop for every non-terminal run:
+  1. inspect `pending_action`,
+  2. perform only that action,
+  3. re-check `pending_action`.
+- The supervisor MUST continue without operator handoff while `pending_action` is one of:
+  `prepare_invocation`, `invoke_agent`, `supervisor_assessment`.
+- The supervisor MUST stop and request operator input only when `pending_action` is one of:
+  `operator_approval`, `operator_decision`, or when the run is terminal (`none`).
+- The supervisor MUST NOT ask the operator to run `/pan-resume` or equivalent while a supervisor-owned pending action remains.
+
+## Invocation and delegation validation
+
+Each prepared invocation writes `invocations/<invocation-id>.invocation-validation.json`. If prepare fails with invocation validation errors, read that artifact for the failing policy checks before retrying.
+
+Delegated worker stages require `invocations/<invocation-id>.delegation.md` containing the unchanged canonical invocation card. Before `./bin/pan submit`, confirm that file exists and matches the invocation markdown exactly (aside from line-ending normalization). Submit rejection with `DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` means the run stays on the same invocation; write or fix the delegation artifact, then submit again.
+
+`./bin/pan status` includes a dedicated validation section with invocation and delegation validation state, artifact paths, and short failure reasons when applicable.
+
 ## Choose a work mode
 
 Use `systematic` by default. `/pan-start` executes the governed `dev` workflow

@@ -10,6 +10,16 @@
 - Every invocation has a unique ID and one canonical output path.
 - Repeating `pan prepare` while an invocation is pending returns the same invocation.
 - Output from any other invocation ID is rejected.
+- Every prepared invocation writes `invocations/<invocation-id>.invocation-validation.json` beside the invocation files. Prepare fails closed when the rendered card omits required policy snapshot text.
+- Every delegated worker invocation requires `invocations/<invocation-id>.delegation.md` containing the unchanged canonical invocation card. Submit rejects advancement when delegation validation is missing or failed and writes `invocations/<invocation-id>.delegation-validation.json`.
+
+## Invocation and delegation validation
+
+During `prepare`, the harness validates the rendered invocation markdown against the invocation-time policy snapshot and writes `invocations/<invocation-id>.invocation-validation.json`. Prepare fails closed when validation fails; the artifact records the failing checks.
+
+During `submit`, the harness validates `invocations/<invocation-id>.delegation.md` against the canonical invocation markdown, writes `invocations/<invocation-id>.delegation-validation.json`, and rejects advancement before stage history changes when the delegation artifact is missing or invalid. Orchestrator-owned stages that complete in the current chat do not require a delegation artifact.
+
+`./bin/pan status` renders a dedicated validation section from the active invocation's validation artifacts. Missing or malformed artifacts are reported as observable state rather than crashing status.
 
 ## Pending actions
 
@@ -21,6 +31,18 @@
 | `operator_approval`     | operator                  | Ratify intake or release preparation              |
 | `operator_decision`     | operator                  | Resolve a pause/circuit breaker or operator pause |
 | `none`                  | nobody                    | Run is terminal                                   |
+
+### Supervisor continuation contract
+
+- The supervisor MUST run a continuation loop for every non-terminal run:
+  1. inspect `pending_action`,
+  2. perform only that action,
+  3. re-check `pending_action`.
+- The supervisor MUST continue without operator handoff while `pending_action` is one of:
+  `prepare_invocation`, `invoke_agent`, `supervisor_assessment`.
+- The supervisor MUST stop and request operator input only when `pending_action` is one of:
+  `operator_approval`, `operator_decision`, or when the run is terminal (`none`).
+- The supervisor MUST NOT ask the operator to run `/pan-resume` or equivalent while a supervisor-owned pending action remains.
 
 ## Effective stage outcome
 

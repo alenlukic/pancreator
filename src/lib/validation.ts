@@ -6,6 +6,7 @@ import { errorMessage, isNodeError } from './errors.js'
 import {
   fileExists,
   isRecord,
+  readJson,
   readText,
   resolveInside,
   sha256,
@@ -39,6 +40,247 @@ import type {
   StageOutcome,
   WorkspaceSnapshot,
 } from './types.js'
+
+export const POLICIES_HEADING = '## 📜 Policies in force'
+
+export interface ValidationCheck {
+  id: string
+  passed: boolean
+  message: string
+}
+
+export interface ValidationResultArtifact {
+  schema_version: 1
+  run_id: string
+  invocation_id: string
+  kind: 'invocation' | 'delegation'
+  status: 'pass' | 'fail'
+  summary: string
+  checks: ValidationCheck[]
+  validated_at: string
+  artifact_path: string
+}
+
+export type ValidationArtifactLoad =
+  | ValidationResultArtifact
+  | { state: 'missing' }
+  | { state: 'malformed'; reason: string }
+
+export interface InvocationValidationStatus {
+  invocation: ValidationArtifactLoad
+  delegation: ValidationArtifactLoad
+  invocation_validation_path: string
+  delegation_validation_path: string
+  delegation_path: string
+}
+
+export function normalizeMarkdownContent(content: string): string {
+  return content.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+}
+
+export function invocationValidationPath(
+  runId: string,
+  invocationId: string,
+): string {
+  return (
+    `runtime/logs/workflows/${runId}/invocations/` +
+    `${invocationId}.invocation-validation.json`
+  )
+}
+
+export function delegationPath(runId: string, invocationId: string): string {
+  return (
+    `runtime/logs/workflows/${runId}/invocations/` +
+    `${invocationId}.delegation.md`
+  )
+}
+
+export function delegationValidationPath(
+  runId: string,
+  invocationId: string,
+): string {
+  return (
+    `runtime/logs/workflows/${runId}/invocations/` +
+    `${invocationId}.delegation-validation.json`
+  )
+}
+
+export function buildValidationArtifact(options: {
+  run_id: string
+  invocation_id: string
+  kind: 'invocation' | 'delegation'
+  status: 'pass' | 'fail'
+  checks: ValidationCheck[]
+  artifact_path: string
+  validated_at?: string
+}): ValidationResultArtifact {
+  const failed = options.checks.filter((check) => !check.passed)
+  const summary =
+    options.status === 'pass'
+      ? `All ${options.checks.length} validation check(s) passed.`
+      : `${failed.length} check(s) failed: ${failed.map((check) => check.id).join(', ')}`
+
+  return {
+    schema_version: 1,
+    run_id: options.run_id,
+    invocation_id: options.invocation_id,
+    kind: options.kind,
+    status: options.status,
+    summary,
+    checks: options.checks,
+    validated_at: options.validated_at ?? new Date().toISOString(),
+    artifact_path: options.artifact_path,
+  }
+}
+
+export function validateInvocationMarkdown(
+  invocation: Invocation,
+  markdown: string,
+): { passed: boolean; checks: ValidationCheck[] } {
+  const checks: ValidationCheck[] = []
+  const normalized = normalizeMarkdownContent(markdown)
+
+  checks.push({
+    id: 'policies.non_empty',
+    passed: invocation.policies.length > 0,
+    message:
+      invocation.policies.length > 0
+        ? `${invocation.policies.length} policies in invocation snapshot`
+        : 'invocation.policies MUST NOT be empty',
+  })
+
+  checks.push({
+    id: 'policies.heading',
+    passed: normalized.includes(POLICIES_HEADING),
+    message: normalized.includes(POLICIES_HEADING)
+      ? 'Policy section heading is present'
+      : `Markdown MUST contain '${POLICIES_HEADING}'`,
+  })
+
+  for (const policy of invocation.policies) {
+    const header = `**${policy.id} · ${policy.title}**`
+
+    checks.push({
+      id: `policy.${policy.id}.header`,
+      passed: normalized.includes(header),
+      message: normalized.includes(header)
+        ? `Policy ${policy.id} header is present`
+        : `Markdown MUST include policy id and title for ${policy.id}`,
+    })
+
+    checks.push({
+      id: `policy.${policy.id}.summary`,
+      passed: normalized.includes(policy.summary),
+      message: normalized.includes(policy.summary)
+        ? `Policy ${policy.id} summary is present`
+        : `Markdown MUST include policy ${policy.id} summary text`,
+    })
+
+    for (const [index, instruction] of policy.instructions.entries()) {
+      checks.push({
+        id: `policy.${policy.id}.instruction.${index + 1}`,
+        passed: normalized.includes(instruction),
+        message: normalized.includes(instruction)
+          ? `Policy ${policy.id} instruction ${index + 1} is present`
+          : `Markdown MUST include policy ${policy.id} instruction ${index + 1}`,
+      })
+    }
+  }
+
+  return {
+    passed: checks.every((check) => check.passed),
+    checks,
+  }
+}
+
+export function validateDelegationMarkdown(
+  canonicalMarkdown: string,
+  delegationMarkdown: string,
+): { passed: boolean; checks: ValidationCheck[] } {
+  const canonical = normalizeMarkdownContent(canonicalMarkdown)
+  const delegation = normalizeMarkdownContent(delegationMarkdown)
+  const canonicalNormalized = canonical.endsWith('\n')
+    ? canonical
+    : `${canonical}\n`
+  const delegationNormalized = delegation.endsWith('\n')
+    ? delegation
+    : `${delegation}\n`
+  const passed = canonicalNormalized === delegationNormalized
+
+  return {
+    passed,
+    checks: [
+      {
+        id: 'delegation.canonical_equality',
+        passed,
+        message: passed
+          ? 'Delegation artifact matches canonical invocation markdown'
+          : 'Delegation artifact MUST equal the canonical invocation card after line-ending normalization',
+      },
+    ],
+  }
+}
+
+export function loadValidationArtifact(
+  root: string,
+  relativePath: string,
+): ValidationArtifactLoad {
+  try {
+    const absolute = resolveInside(root, relativePath)
+
+    if (!fileExists(absolute)) {
+      return { state: 'missing' }
+    }
+
+    const value = readJson(absolute)
+
+    if (
+      !isRecord(value) ||
+      value.schema_version !== 1 ||
+      typeof value.run_id !== 'string' ||
+      typeof value.invocation_id !== 'string' ||
+      (value.kind !== 'invocation' && value.kind !== 'delegation') ||
+      (value.status !== 'pass' && value.status !== 'fail') ||
+      typeof value.summary !== 'string' ||
+      !Array.isArray(value.checks) ||
+      typeof value.validated_at !== 'string' ||
+      typeof value.artifact_path !== 'string'
+    ) {
+      return {
+        state: 'malformed',
+        reason: 'Validation artifact has invalid shape',
+      }
+    }
+
+    return value as unknown as ValidationResultArtifact
+  } catch (error) {
+    return { state: 'malformed', reason: errorMessage(error) }
+  }
+}
+
+export function loadInvocationValidationStatus(
+  root: string,
+  runId: string,
+  invocationId: string,
+): InvocationValidationStatus {
+  const invocationValidationPathValue = invocationValidationPath(
+    runId,
+    invocationId,
+  )
+  const delegationValidationPathValue = delegationValidationPath(
+    runId,
+    invocationId,
+  )
+  const delegationPathValue = delegationPath(runId, invocationId)
+
+  return {
+    invocation: loadValidationArtifact(root, invocationValidationPathValue),
+    delegation: loadValidationArtifact(root, delegationValidationPathValue),
+    invocation_validation_path: invocationValidationPathValue,
+    delegation_validation_path: delegationValidationPathValue,
+    delegation_path: delegationPathValue,
+  }
+}
 
 export interface StageOutputValidation {
   errors: string[]

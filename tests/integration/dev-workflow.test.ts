@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -15,7 +15,12 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 
 test('full dev workflow persists gates and reaches operator-approved success', () => {
   const root = createFixture()
@@ -57,10 +62,20 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     assert.equal(invocation.stage.model_config, modelConfig)
     assert.ok(invocation.stage.model.length > 0)
 
+    const invocationValidationPath = path.join(
+      root,
+      `runtime/logs/workflows/${runId}/invocations/${invocation.invocation_id}.invocation-validation.json`,
+    )
+    assert.ok(existsSync(invocationValidationPath))
+
     const stage = stageBySlug(workflow, stageSlug)
     const output = makeOutput(root, invocation, stage)
 
     writeJson(path.join(root, invocation.output.path), output)
+
+    if (stage.persona !== 'orchestrator') {
+      writeCanonicalDelegation(root, invocation)
+    }
 
     const submitted = submitOutput(root, runId, invocation.output.path)
 
@@ -174,6 +189,7 @@ test('paused remediation note is attached to the next implement invocation', () 
     path.join(root, planInvocation.output.path),
     makeOutput(root, planInvocation, stageBySlug(workflow, 'plan')),
   )
+  writeCanonicalDelegation(root, planInvocation)
   const planSubmitted = submitOutput(root, runId, planInvocation.output.path)
   assert.equal(planSubmitted.state.status, 'awaiting_supervisor')
 
@@ -206,6 +222,7 @@ test('paused remediation note is attached to the next implement invocation', () 
   )
   blockedOutput.summary = 'Implementation paused for a remediation restart.'
   writeJson(path.join(root, implementInvocation.output.path), blockedOutput)
+  writeCanonicalDelegation(root, implementInvocation)
 
   const implementSubmitted = submitOutput(
     root,

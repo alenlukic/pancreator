@@ -14,7 +14,12 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
-import { createFixture, makeOutput, writeJson } from '../helpers.js'
+import {
+  createFixture,
+  makeOutput,
+  writeCanonicalDelegation,
+  writeJson,
+} from '../helpers.js'
 import type { StageOutcome } from '../../src/lib/types.js'
 
 test('accept-change re-baselines a stale fingerprint so ship approves without a review/test re-loop', () => {
@@ -49,6 +54,10 @@ test('accept-change re-baselines a stale fingerprint so ship approves without a 
     const output = makeOutput(root, invocation, stage, outcome)
 
     writeJson(path.join(root, invocation.output.path), output)
+
+    if (stage.persona !== 'orchestrator') {
+      writeCanonicalDelegation(root, invocation)
+    }
 
     return {
       invocation,

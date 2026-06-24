@@ -169,6 +169,23 @@ function requiredData(stage: string): Record<string, unknown> {
   }
 }
 
+export function writeCanonicalDelegation(
+  root: string,
+  invocation: Invocation,
+): void {
+  const markdownRelative =
+    `runtime/logs/workflows/${invocation.run_id}/invocations/` +
+    `${invocation.invocation_id}.md`
+  const delegationRelative =
+    `runtime/logs/workflows/${invocation.run_id}/invocations/` +
+    `${invocation.invocation_id}.delegation.md`
+  const markdownAbsolute = path.join(root, markdownRelative)
+  const delegationAbsolute = path.join(root, delegationRelative)
+
+  mkdirSync(path.dirname(delegationAbsolute), { recursive: true })
+  writeFileSync(delegationAbsolute, readFileSync(markdownAbsolute, 'utf8'))
+}
+
 export function makeOutput(
   root: string,
   invocation: Invocation,
