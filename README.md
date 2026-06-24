@@ -50,6 +50,16 @@ By default a run fingerprints, runs deterministic gate commands against, and enf
 
 The harness then fingerprints that directory's Git state (nested repositories included), runs each stage's shell gate in that directory, and evaluates the read-only scope guard there. Without this, work performed inside a gitignored path is invisible to every deterministic check and "success" reflects only the surrounding repository, not the deliverable.
 
+## Embedded installation
+
+To add Pancreator to another repository, use the installer and read the detailed guide:
+
+```sh
+./bin/pancreator-install --target /path/to/your-project
+```
+
+See [`docs/embedded-installation.md`](docs/embedded-installation.md) for generated files, verification, partial-install behavior, and cleanup.
+
 ## Runtime record layout
 
 ```text

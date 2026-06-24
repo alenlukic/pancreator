@@ -10,6 +10,7 @@ import type {
   WorkspaceIndexEntry,
 } from '../types.js'
 import {
+  isNonBlockingGeneratedArtifact,
   loadWorkspaceIndex,
   readWorkflowBaseline,
   reconcileWorkspaceIndex,
@@ -170,6 +171,10 @@ export function validateWorkflowChanges(
     const observedChecksum = checksumAt(observed.index.entries, relativePath)
 
     if (expectedChecksum !== observedChecksum) {
+      if (isNonBlockingGeneratedArtifact(options.roots, relativePath)) {
+        continue
+      }
+
       const code =
         expectedChecksum === null
           ? 'unledgered.creation'

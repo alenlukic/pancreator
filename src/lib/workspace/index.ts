@@ -36,6 +36,81 @@ import type {
 } from '../types.js'
 import { isExcludedPath, normalizeWorkspacePath } from './roots.js'
 
+const DEFAULT_GENERATED_PATH_PREFIXES = [
+  'dist',
+  'node_modules',
+  'coverage',
+] as const
+
+const DEFAULT_GENERATED_PATHS = new Set([
+  'package-lock.json',
+  'tsconfig.tsbuildinfo',
+])
+
+/** Whether a path is an expected generated artifact that must not block gates. */
+export function isNonBlockingGeneratedArtifact(
+  roots: ResolvedRoots,
+  relativePath: string,
+): boolean {
+  if (isExcludedPath(roots, relativePath)) {
+    return true
+  }
+
+  let normalized: string
+
+  try {
+    normalized = normalizeWorkspacePath(relativePath)
+  } catch {
+    return false
+  }
+
+  if (DEFAULT_GENERATED_PATHS.has(normalized)) {
+    return true
+  }
+
+  for (const prefix of DEFAULT_GENERATED_PATH_PREFIXES) {
+    if (normalized === prefix || normalized.startsWith(`${prefix}/`)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function snapshotEntryPath(entry: string): string {
+  const colonIndex = entry.lastIndexOf(':')
+
+  return colonIndex === -1 ? entry : entry.slice(0, colonIndex)
+}
+
+/** Paths whose snapshot deltas should block non-source workflow stages. */
+export function blockingWorkspacePathsFromSnapshots(
+  before: WorkspaceSnapshot,
+  after: WorkspaceSnapshot,
+  roots: ResolvedRoots,
+): string[] {
+  const beforeByPath = new Map(
+    before.entries.map((entry) => [snapshotEntryPath(entry), entry]),
+  )
+  const afterByPath = new Map(
+    after.entries.map((entry) => [snapshotEntryPath(entry), entry]),
+  )
+  const paths = new Set([...beforeByPath.keys(), ...afterByPath.keys()])
+  const blocking: string[] = []
+
+  for (const relativePath of paths) {
+    if (beforeByPath.get(relativePath) === afterByPath.get(relativePath)) {
+      continue
+    }
+
+    if (!isNonBlockingGeneratedArtifact(roots, relativePath)) {
+      blocking.push(relativePath)
+    }
+  }
+
+  return blocking.sort()
+}
+
 function fileChecksum(filePath: string): string {
   return sha256(readFileSync(filePath))
 }

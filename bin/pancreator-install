@@ -1,0 +1,352 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PANCREATOR_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+TARGET_DIR=""
+MODE=""
+NON_INTERACTIVE=0
+CHOICE=""
+SMOKE_RUN=0
+
+usage() {
+  cat <<'EOF'
+Embed Pancreator into a target project.
+
+Usage:
+  pancreator-install --target <dir> [options]
+  pancreator-install --smoke
+
+Options:
+  --target <dir>           Target project directory (required unless --smoke)
+  --pancreator-root <dir>  Pancreator checkout (default: parent of this script)
+  --repair                 Repair a partial installation (non-interactive)
+  --clean                  Remove Pancreator-owned files and reinstall (non-interactive)
+  --yes                    Idempotent rerun for a complete installation (non-interactive)
+  --choice <r|c|a>         Deterministic partial-install choice (smoke/test harness)
+  --smoke                  Run scripted smoke verification against dummy projects
+  -h, --help               Show this help
+
+Interactive partial installs prompt:
+  [r] repair   fix missing configuration
+  [c] clean    remove .pancreator and reinstall
+  [a] abort    exit without changes
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target)
+      TARGET_DIR="${2:-}"
+      shift 2
+      ;;
+    --pancreator-root)
+      PANCREATOR_ROOT="${2:-}"
+      shift 2
+      ;;
+    --repair)
+      MODE="repair"
+      NON_INTERACTIVE=1
+      shift
+      ;;
+    --clean)
+      MODE="clean"
+      NON_INTERACTIVE=1
+      shift
+      ;;
+    --yes)
+      MODE="yes"
+      NON_INTERACTIVE=1
+      shift
+      ;;
+    --choice)
+      CHOICE="${2:-}"
+      shift 2
+      ;;
+    --smoke)
+      SMOKE_RUN=1
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+run_smoke() {
+  local smoke_root failures step fresh_project complete_project repair_project clean_project abort_project
+
+  smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-smoke.XXXXXX")"
+  failures=0
+
+  smoke_step() {
+    step="$1"
+    shift
+    echo "smoke: $step"
+    if ! "$@"; then
+      echo "smoke: FAILED $step" >&2
+      failures=$((failures + 1))
+    fi
+  }
+
+  smoke_project() {
+    mktemp -d "${smoke_root}/project.XXXXXX"
+  }
+
+  smoke_verify_config() {
+    local project="$1"
+    test -f "$project/.pancreator/project.json" \
+      && test -f "$project/.pancreator/install.json" \
+      && test -d "$project/.pancreator/runtime/inbox"
+  }
+
+  fresh_project="$(smoke_project)"
+  smoke_step "fresh install" bash "$0" --target "$fresh_project" --pancreator-root "$PANCREATOR_ROOT"
+  smoke_step "verify fresh install" smoke_verify_config "$fresh_project"
+
+  complete_project="$(smoke_project)"
+  smoke_step "complete install for idempotent rerun" bash "$0" --target "$complete_project" --pancreator-root "$PANCREATOR_ROOT"
+  smoke_step "idempotent rerun (--yes)" bash "$0" --target "$complete_project" --pancreator-root "$PANCREATOR_ROOT" --yes
+
+  repair_project="$(smoke_project)"
+  mkdir -p "$repair_project/.pancreator"
+  printf '{"schema_version":1}\n' >"$repair_project/.pancreator/project.json"
+  smoke_step "partial install repair (--choice r)" bash "$0" --target "$repair_project" --pancreator-root "$PANCREATOR_ROOT" --choice r
+  smoke_step "verify repair" smoke_verify_config "$repair_project"
+
+  clean_project="$(smoke_project)"
+  mkdir -p "$clean_project/.pancreator"
+  printf 'stale\n' >"$clean_project/.pancreator/stale.txt"
+  smoke_step "partial install clean (--choice c)" bash "$0" --target "$clean_project" --pancreator-root "$PANCREATOR_ROOT" --choice c
+  smoke_step "verify clean removed stale file" test ! -f "$clean_project/.pancreator/stale.txt"
+  smoke_step "verify clean reinstall" smoke_verify_config "$clean_project"
+
+  abort_project="$(smoke_project)"
+  mkdir -p "$abort_project/.pancreator"
+  smoke_step "partial install abort (--choice a)" bash "$0" --target "$abort_project" --pancreator-root "$PANCREATOR_ROOT" --choice a
+  smoke_step "verify abort left partial state" test -d "$abort_project/.pancreator" && test ! -f "$abort_project/.pancreator/project.json"
+
+  rm -rf "$smoke_root"
+
+  if [[ "$failures" -gt 0 ]]; then
+    echo "smoke: $failures step(s) failed" >&2
+    exit 1
+  fi
+
+  echo "smoke: all steps passed"
+}
+
+if [[ "$SMOKE_RUN" -eq 1 ]]; then
+  run_smoke
+  exit 0
+fi
+
+if [[ -z "$TARGET_DIR" ]]; then
+  echo "Error: --target is required." >&2
+  usage >&2
+  exit 1
+fi
+
+if [[ ! -d "$PANCREATOR_ROOT" ]]; then
+  echo "Error: Pancreator root does not exist: $PANCREATOR_ROOT" >&2
+  exit 1
+fi
+
+TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
+
+if [[ ! -d "$TARGET_DIR" ]]; then
+  echo "Error: target directory does not exist: $TARGET_DIR" >&2
+  exit 1
+fi
+
+PANCREATOR_DIR="$TARGET_DIR/.pancreator"
+PROJECT_JSON="$PANCREATOR_DIR/project.json"
+RUNTIME_DIR="$PANCREATOR_DIR/runtime"
+INBOX_DIR="$RUNTIME_DIR/inbox"
+INSTALL_MARKER="$PANCREATOR_DIR/install.json"
+
+workspace_id() {
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$TARGET_DIR" | shasum -a 256 | cut -c1-16
+  else
+    printf '%s' "$TARGET_DIR" | openssl dgst -sha256 | awk '{print substr($2, 1, 16)}'
+  fi
+}
+
+write_project_json() {
+  local workspace="$1"
+  mkdir -p "$PANCREATOR_DIR"
+  cat >"$PROJECT_JSON" <<EOF
+{
+  "schema_version": 1,
+  "workspace_id": "$workspace",
+  "state_root": ".pancreator/runtime",
+  "tracking": {
+    "include": ["**/*"],
+    "exclude": [
+      "dist/**",
+      "node_modules/**",
+      "coverage/**",
+      "package-lock.json",
+      "tsconfig.tsbuildinfo"
+    ]
+  }
+}
+EOF
+}
+
+write_install_marker() {
+  cat >"$INSTALL_MARKER" <<EOF
+{
+  "schema_version": 1,
+  "pancreator_root": "$PANCREATOR_ROOT",
+  "installed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+}
+
+create_runtime_layout() {
+  mkdir -p "$INBOX_DIR" "$RUNTIME_DIR/logs/workflows" "$RUNTIME_DIR/backlog"
+}
+
+install_complete() {
+  local workspace
+  workspace="$(workspace_id)"
+  write_project_json "$workspace"
+  write_install_marker
+  create_runtime_layout
+  echo "Pancreator embedded in $TARGET_DIR"
+  echo "  project config: .pancreator/project.json"
+  echo "  state root:     .pancreator/runtime"
+  echo ""
+  echo "Start a workflow from the Pancreator checkout:"
+  echo "  $PANCREATOR_ROOT/bin/pan init --workflow dev --request runtime/inbox/request.md --workspace $TARGET_DIR"
+}
+
+remove_pancreator_owned() {
+  if [[ -d "$PANCREATOR_DIR" ]]; then
+    rm -rf "$PANCREATOR_DIR"
+  fi
+}
+
+is_complete_install() {
+  [[ -f "$PROJECT_JSON" && -f "$INSTALL_MARKER" && -d "$INBOX_DIR" ]]
+}
+
+is_partial_install() {
+  if [[ -d "$PANCREATOR_DIR" ]] && ! is_complete_install; then
+    return 0
+  fi
+
+  return 1
+}
+
+apply_partial_choice() {
+  local choice="$1"
+
+  case "$choice" in
+    r | R)
+      MODE="repair"
+      ;;
+    c | C)
+      MODE="clean"
+      ;;
+    a | A | '')
+      echo "Aborted."
+      exit 0
+      ;;
+    *)
+      echo "Invalid choice. Aborted." >&2
+      exit 1
+      ;;
+  esac
+}
+
+prompt_partial_choice() {
+  if [[ -n "$CHOICE" ]]; then
+    apply_partial_choice "$CHOICE"
+    return
+  fi
+
+  if [[ "$NON_INTERACTIVE" -eq 1 ]]; then
+    echo "Error: partial installation detected; supply --repair or --clean." >&2
+    exit 1
+  fi
+
+  if [[ ! -t 0 ]]; then
+    echo "Error: partial installation detected in non-interactive mode; supply --repair or --clean." >&2
+    exit 1
+  fi
+
+  echo "Partial Pancreator installation detected in $TARGET_DIR."
+  echo "Choose: [r] repair, [c] clean install, [a] abort"
+  read -r -p "> " choice
+  apply_partial_choice "$choice"
+}
+
+if is_complete_install; then
+  if [[ -z "$MODE" ]]; then
+    if [[ "$NON_INTERACTIVE" -eq 1 ]]; then
+      echo "Error: installation already complete; supply --yes for idempotent rerun." >&2
+      exit 1
+    fi
+
+    MODE="yes"
+  fi
+
+  case "$MODE" in
+    yes)
+      install_complete
+      echo "Idempotent rerun completed."
+      exit 0
+      ;;
+    clean)
+      remove_pancreator_owned
+      install_complete
+      echo "Clean reinstall completed."
+      exit 0
+      ;;
+    repair)
+      install_complete
+      echo "Repair completed."
+      exit 0
+      ;;
+    *)
+      echo "Error: installation already complete; supply --yes, --repair, or --clean." >&2
+      exit 1
+      ;;
+  esac
+fi
+
+if is_partial_install; then
+  if [[ -z "$MODE" ]]; then
+    prompt_partial_choice
+  fi
+
+  case "$MODE" in
+    repair)
+      install_complete
+      echo "Repair completed."
+      exit 0
+      ;;
+    clean)
+      remove_pancreator_owned
+      install_complete
+      echo "Clean reinstall completed."
+      exit 0
+      ;;
+    *)
+      echo "Error: partial installation requires --repair or --clean." >&2
+      exit 1
+      ;;
+  esac
+fi
+
+install_complete

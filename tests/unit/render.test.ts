@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { renderStatus, renderTaskRecord } from '../../src/lib/render.js'
-import type { TaskRecord } from '../../src/lib/types.js'
+import {
+  renderInvocationMarkdown,
+  renderStatus,
+  renderTaskRecord,
+} from '../../src/lib/render.js'
+import { resolvePolicies } from '../../src/lib/policies.js'
+import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { createFixture } from '../helpers.js'
+import type { Invocation, TaskRecord } from '../../src/lib/types.js'
 
 function baseRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
   return {
@@ -113,4 +120,98 @@ test('status summary includes the pause reason when present', () => {
 
   assert.match(status, /Status: paused/)
   assert.match(status, /Pause reason: Maximum consecutive failures exceeded\./)
+})
+
+function baseInvocation(
+  root: string,
+  workflowSlug: string,
+  stageSlug: string,
+): Invocation {
+  const workflow = loadWorkflow(root, workflowSlug)
+  const stage = stageBySlug(workflow, stageSlug)
+  const policies = resolvePolicies(root, {
+    persona: stage.persona,
+    workflow: workflow.slug,
+    stage: stage.slug,
+  })
+
+  return {
+    $operator: {
+      headline: `${stage.title} is ready`,
+      summary: 'Fixture summary',
+      next_action: 'Invoke worker',
+    },
+    schema_version: 1,
+    invocation_id: `${stageSlug}-1-fixture`,
+    run_id: 'run-fixture',
+    attempt: 1,
+    created_at: '2026-06-24T00:00:00.000Z',
+    workspace_root: '.',
+    workflow: {
+      slug: workflow.slug,
+      snapshot_path: 'workflow.snapshot.json',
+      snapshot_sha256: 'abc',
+    },
+    stage: {
+      slug: stage.slug,
+      title: stage.title,
+      persona: stage.persona,
+      model: 'fixture-model',
+      model_config: 'default',
+      workspace_policy: stage.workspace_policy,
+      gate: stage.gate,
+    },
+    prompt: 'Fixture prompt',
+    inputs: { references: [] },
+    policies,
+    rubric: stage.criteria,
+    output: {
+      path: `runtime/logs/workflows/run-fixture/outputs/${stageSlug}.json`,
+      template: 'library/templates/stage-output.example.json',
+      schema: 'library/schemas/stage-output.schema.json',
+      required_data: stage.required_data ?? {},
+    },
+    boundaries: ['Fixture boundary'],
+    workspace_before: {
+      kind: 'filesystem',
+      fingerprint: 'fixture-fingerprint',
+      entries: [],
+    },
+  }
+}
+
+test('invocation cards inline full policy text for every stage', () => {
+  const root = createFixture()
+  const stages = ['intake', 'plan', 'implement', 'review', 'test', 'ship']
+
+  for (const stageSlug of stages) {
+    const markdown = renderInvocationMarkdown(
+      baseInvocation(root, 'dev', stageSlug),
+    )
+    const policies = resolvePolicies(root, {
+      persona: stageBySlug(loadWorkflow(root, 'dev'), stageSlug).persona,
+      workflow: 'dev',
+      stage: stageSlug,
+    })
+
+    assert.match(markdown, /## 📜 Policies in force/)
+
+    for (const policy of policies) {
+      assert.match(
+        markdown,
+        new RegExp(`\\*\\*${policy.id} · ${policy.title}\\*\\*`),
+      )
+      assert.match(
+        markdown,
+        new RegExp(policy.summary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      )
+
+      for (const instruction of policy.instructions) {
+        assert.match(
+          markdown,
+          new RegExp(instruction.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+        )
+      }
+    }
+  }
 })

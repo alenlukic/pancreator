@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "active_config": "complex",
+  "active_config": "default",
   "$operator": {
     "summary": "Named pipeline model configurations. Each configuration maps every workflow persona to the Cursor model that should execute it.",
     "note": "Change active_config, then run ./bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
@@ -9,7 +9,7 @@
     "default": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
       "personas": {
-        "orchestrator": "gemini-3.5-flash",
+        "orchestrator": "gpt-5.3-codex[reasoning=high,fast=false]",
         "tech-lead": "gpt-5.5[context=272k,reasoning=high,fast=false]",
         "coder": "composer-2.5[fast=false]",
         "reviewer": "gpt-5.3-codex[reasoning=high,fast=false]",

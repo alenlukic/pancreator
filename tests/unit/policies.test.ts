@@ -55,3 +55,17 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'TS-001',
   ])
 })
+
+test('policy registry content remains canonical for inlining', () => {
+  const root = createFixture()
+  const catalog = loadPolicyCatalog(root)
+  const action = catalog.get('ACTION-001')
+
+  assert.ok(action)
+  assert.equal(action.title, 'Safe source-control actions')
+  assert.match(
+    action.summary,
+    /MUST NOT perform irreversible source-control actions/,
+  )
+  assert.equal(action.instructions.length, 2)
+})

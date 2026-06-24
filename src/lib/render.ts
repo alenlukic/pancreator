@@ -20,9 +20,15 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       )
     : ['- No prior artifacts; start from the request.']
   const policies = invocation.policies.length
-    ? invocation.policies.map(
-        (policy) => `- **${policy.id} · ${policy.title}** — ${policy.summary}`,
-      )
+    ? invocation.policies.flatMap((policy) => {
+        const lines = [
+          `- **${policy.id} · ${policy.title}**`,
+          `  ${policy.summary}`,
+          ...policy.instructions.map((instruction) => `  - ${instruction}`),
+        ]
+
+        return [lines.join('\n')]
+      })
     : ['- Only global boundaries apply.']
   const gateOverrideEntries = Object.entries(invocation.gate_overrides ?? {})
   const gateOverrideLines = gateOverrideEntries.map(([id, command]) =>

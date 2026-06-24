@@ -18,7 +18,10 @@ import {
   readPolicyLookupTable,
   resolvePolicies,
 } from './policies.js'
-import { snapshotWorkspace } from './workspace/index.js'
+import {
+  blockingWorkspacePathsFromSnapshots,
+  snapshotWorkspace,
+} from './workspace/index.js'
 import { resolveRoots } from './workspace/roots.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import type {
@@ -359,13 +362,6 @@ export function evaluateStateCriterion(
   }
 }
 
-function snapshotChanged(
-  before: WorkspaceSnapshot,
-  after: WorkspaceSnapshot,
-): boolean {
-  return before.fingerprint !== after.fingerprint
-}
-
 function workspaceDelta(
   before: WorkspaceSnapshot,
   after: WorkspaceSnapshot,
@@ -397,7 +393,12 @@ export function evaluateDeterministicCriteria(
   const results: DeterministicResult[] = []
 
   if (stage.workspace_policy !== 'source_allowed') {
-    const changed = snapshotChanged(beforeSnapshot, afterSnapshot)
+    const blockingPaths = blockingWorkspacePathsFromSnapshots(
+      beforeSnapshot,
+      afterSnapshot,
+      roots,
+    )
+    const changed = blockingPaths.length > 0
 
     results.push({
       id: 'scope.no_unapproved_changes',
@@ -405,7 +406,7 @@ export function evaluateDeterministicCriteria(
       hard: true,
       passed: !changed,
       explanation: changed
-        ? 'Workspace changed during a stage that forbids source changes.'
+        ? `Workspace changed during a stage that forbids source changes: ${blockingPaths.join(', ')}.`
         : 'Workspace fingerprint is unchanged.',
       delta: changed
         ? workspaceDelta(beforeSnapshot, afterSnapshot)
