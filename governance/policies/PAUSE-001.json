@@ -1,0 +1,12 @@
+{
+  "id": "PAUSE-001",
+  "title": "Operator pause authority",
+  "severity": "hard",
+  "summary": "Operators MAY pause an active workflow at any time and MAY modify tracked workspace files while the run is paused.",
+  "instructions": [
+    "Operators MUST use `./bin/pan pause <run-id> [--note <reason>]` to pause a non-terminal run; agents MUST NOT hand-edit run state to pause.",
+    "While a run is paused by the operator, the operator MAY modify tracked files in the deliverable workspace without using the changes protocol.",
+    "Operators MUST resume with `./bin/pan resume <run-id>` to continue from the saved gate, or `./bin/pan resume <run-id> --stage <slug>` to restart at a chosen stage.",
+    "Agents MUST NOT resume or abort on the operator's behalf unless the active invocation explicitly records operator approval for that action."
+  ]
+}

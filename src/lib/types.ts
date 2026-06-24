@@ -366,6 +366,11 @@ export interface OperatorFeedbackItem {
   timestamp: string
 }
 
+export interface OperatorPauseContext {
+  prior_status: 'running' | 'awaiting_supervisor' | 'awaiting_operator'
+  prior_pending_action: PendingAction
+}
+
 export interface RunState {
   schema_version: 1
   run_id: string
@@ -407,6 +412,7 @@ export interface RunState {
   created_at: string
   updated_at: string
   pause_reason?: string | null
+  operator_pause?: OperatorPauseContext | null
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
 }

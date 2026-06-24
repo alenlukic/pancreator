@@ -38,6 +38,7 @@ The CLI is also directly usable:
 ./bin/pan submit <run-id> <stage-output.json>
 ./bin/pan assess <run-id> <assessment.json>
 ./bin/pan decide <run-id> approve
+./bin/pan pause <run-id> [--note "<reason>"]
 ./bin/pan set-stage <run-id> --stage <stage> --note "reason for repair"
 ./bin/pan accept-change <run-id> --note "operator-intentional change"
 ```

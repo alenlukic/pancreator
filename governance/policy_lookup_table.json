@@ -5,7 +5,7 @@
       "persona": "*",
       "workflow": "*",
       "stage": "*",
-      "policies": ["GLOBAL-001", "GLOBAL-002", "ACTION-001"]
+      "policies": ["GLOBAL-001", "GLOBAL-002", "ACTION-001", "PAUSE-001"]
     },
     {
       "persona": "coder",

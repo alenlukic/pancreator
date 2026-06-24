@@ -13,14 +13,14 @@
 
 ## Pending actions
 
-| Action                  | Owner                     | Meaning                                        |
-| ----------------------- | ------------------------- | ---------------------------------------------- |
-| `prepare_invocation`    | supervisor/CLI            | Generate the next immutable invocation card    |
-| `invoke_agent`          | supervisor + named worker | Execute the card and write its declared output |
-| `supervisor_assessment` | supervisor                | Judge only the listed prose criteria           |
-| `operator_approval`     | operator                  | Ratify intake or release preparation           |
-| `operator_decision`     | operator                  | Resolve a pause/circuit breaker                |
-| `none`                  | nobody                    | Run is terminal                                |
+| Action                  | Owner                     | Meaning                                           |
+| ----------------------- | ------------------------- | ------------------------------------------------- |
+| `prepare_invocation`    | supervisor/CLI            | Generate the next immutable invocation card       |
+| `invoke_agent`          | supervisor + named worker | Execute the card and write its declared output    |
+| `supervisor_assessment` | supervisor                | Judge only the listed prose criteria              |
+| `operator_approval`     | operator                  | Ratify intake or release preparation              |
+| `operator_decision`     | operator                  | Resolve a pause/circuit breaker or operator pause |
+| `none`                  | nobody                    | Run is terminal                                   |
 
 ## Effective stage outcome
 
@@ -102,11 +102,16 @@ Exceeding a limit pauses the run and writes a decision record. The operator may 
 ## Recovery
 
 - Inspect: `./bin/pan status <run-id> --json`
+- Operator pause: `./bin/pan pause <run-id> [--note "reason"]`
 - Resume same stage: `./bin/pan resume <run-id>`
 - Resume chosen stage: `./bin/pan resume <run-id> --stage implement`
 - Repair directly to any stage: `./bin/pan set-stage <run-id> --stage <stage> --note "reason"`
 - Accept an intentional change: `./bin/pan accept-change <run-id> --note "reason"`
 - Abort: `./bin/pan abort <run-id> --note "reason"`
+
+### Operator pause
+
+Operators MAY pause any non-terminal run at any time with `./bin/pan pause <run-id> [--note "reason"]`. The harness saves the current gate (`running`, `awaiting_supervisor`, or `awaiting_operator`) and its pending action. While paused, operators MAY modify tracked files in the deliverable workspace without the changes protocol. `./bin/pan resume <run-id>` restores the saved gate; `--stage` overrides that restoration and restarts at the chosen stage with `prepare_invocation`, matching harness-pause resume semantics.
 
 ### Accepting an intentional workspace change
 

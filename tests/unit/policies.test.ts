@@ -18,6 +18,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
+    'PAUSE-001',
     'TS-001',
   ])
 })
@@ -36,6 +37,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
+    'PAUSE-001',
     'REVIEW-001',
     'TS-001',
   ])
@@ -51,6 +53,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
+    'PAUSE-001',
     'TEST-001',
     'TS-001',
   ])
@@ -82,6 +85,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'ACTION-001',
     'GLOBAL-001',
     'GLOBAL-002',
+    'PAUSE-001',
     'WORK-001',
   ])
 
@@ -95,6 +99,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
+    'PAUSE-001',
     'SPOT-001',
     'TS-001',
     'WORK-001',

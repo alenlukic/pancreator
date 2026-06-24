@@ -10,6 +10,7 @@ import {
   decideRun,
   getRunStatus,
   getRunState,
+  pauseRun,
   prepareInvocation,
   resumeRun,
   setRunStage,
@@ -47,6 +48,7 @@ Usage:
   pan submit <run-id> <output-json>
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject> [--note <text>] [--stage <stage-slug>]
+  pan pause <run-id> [--note <text>]
   pan resume <run-id> [--stage <stage-slug>] [--note <text>]
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
   pan accept-change <run-id> [--note <text>] [--waive]
@@ -288,6 +290,19 @@ async function main(): Promise<void> {
         status: state.status,
         next_stage: state.current_stage,
         pending_action: state.pending_action,
+      })
+      return
+    }
+    case 'pause': {
+      const runId = requiredArgument(args[0], 'run-id')
+      const state = pauseRun(root, runId, option(args, '--note', '') ?? '')
+
+      print({
+        status: state.status,
+        current_stage: state.current_stage,
+        pause_reason: state.pause_reason,
+        pending_action: state.pending_action,
+        decision_path: state.last_decision_path,
       })
       return
     }

@@ -44,6 +44,7 @@ import type {
   DeterministicResult,
   Invocation,
   OperatorFeedbackItem,
+  OperatorPauseContext,
   RunState,
   StageDefinition,
   StageHistoryItem,
@@ -1347,6 +1348,7 @@ export function setRunStage(
     state.pending_action = { type: 'prepare_invocation' }
     state.current_invocation = null
     state.pause_reason = null
+    state.operator_pause = null
     state.accepted_workspace_fingerprint = null
     state.transition_count = 0
     state.consecutive_failures = 0
@@ -1356,6 +1358,54 @@ export function setRunStage(
       to_stage: stageSlug,
       note_path: relativePath,
     })
+
+    return state
+  })
+}
+
+export function pauseRun(root: string, runId: string, note = ''): RunState {
+  return withFileLock(lockPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      state.status !== 'succeeded' &&
+        state.status !== 'failed' &&
+        state.status !== 'canceled',
+      'Run is already terminal.',
+      { code: 'RUN_TERMINAL' },
+    )
+
+    const reason =
+      note.trim().length > 0 ? note.trim() : 'Operator paused the workflow.'
+
+    if (state.status !== 'paused') {
+      invariant(
+        state.status === 'running' ||
+          state.status === 'awaiting_supervisor' ||
+          state.status === 'awaiting_operator',
+        `Run cannot be paused from status '${state.status}'.`,
+        { code: 'INVALID_RUN_ACTION' },
+      )
+
+      state.operator_pause = {
+        prior_status: state.status,
+        prior_pending_action: JSON.parse(
+          JSON.stringify(state.pending_action),
+        ) as OperatorPauseContext['prior_pending_action'],
+      }
+    }
+
+    state.status = 'paused'
+    state.pause_reason = reason
+    state.pending_action = { type: 'operator_decision' }
+
+    writeDecision(root, state, 'Operator paused the workflow', reason, [
+      `Resume with: ./bin/pan resume ${state.run_id}`,
+      `Or abort with: ./bin/pan abort ${state.run_id}`,
+      'While paused, you may modify tracked files in the workspace as needed.',
+    ])
+
+    persist(root, state, 'operator_pause', { note: reason })
 
     return state
   })
@@ -1375,6 +1425,37 @@ export function resumeRun(
     })
 
     const workflow = loadRunWorkflow(root, state)
+    const savedPause = state.operator_pause
+
+    if (savedPause && !stageSlug) {
+      if (note.trim().length > 0) {
+        const source = stageBySlug(
+          workflow,
+          state.current_stage ?? workflow.start_stage,
+        )
+
+        recordOperatorFeedback(
+          root,
+          state,
+          source,
+          state.current_stage ?? workflow.start_stage,
+          'resume',
+          note,
+        )
+      }
+
+      state.status = savedPause.prior_status
+      state.pending_action = savedPause.prior_pending_action
+      state.operator_pause = null
+      state.pause_reason = null
+
+      persist(root, state, 'run_resumed', {
+        restored_status: savedPause.prior_status,
+      })
+
+      return state
+    }
+
     const target = stageSlug ?? state.current_stage ?? workflow.start_stage
 
     stageBySlug(workflow, target)
@@ -1392,6 +1473,7 @@ export function resumeRun(
     state.pending_action = { type: 'prepare_invocation' }
     state.current_invocation = null
     state.pause_reason = null
+    state.operator_pause = null
     state.consecutive_failures = 0
 
     persist(root, state, 'run_resumed', { stage: target })
@@ -1491,6 +1573,7 @@ export function abortRun(root: string, runId: string, note = ''): RunState {
     state.status = 'canceled'
     state.current_stage = null
     state.pending_action = { type: 'none' }
+    state.operator_pause = null
 
     persist(root, state, 'run_canceled', { note })
 

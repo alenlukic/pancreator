@@ -61,9 +61,19 @@ Approve only with an explicit instruction. Rejection routes back to intake and c
 
 ## Pauses
 
-A pause is not a generic failure. Read `last_decision_path` in `state.json` or use `/pan-status`. Typical causes are missing evidence, an agent-declared blocker, or a circuit breaker.
+A pause is not a generic failure. Read `last_decision_path` in `state.json` or use `/pan-status`. Typical causes are missing evidence, an agent-declared blocker, a circuit breaker, or an explicit operator pause.
 
-Resume from the stage that owns the remediation. Do not resume from review or test when the defect belongs to implementation.
+### Operator pause
+
+Operators MAY pause any non-terminal run at any time:
+
+```sh
+./bin/pan pause <run-id> [--note "<reason>"]
+```
+
+While paused, you MAY modify tracked files in the deliverable workspace as you see fit without using the changes protocol. Resume with `./bin/pan resume <run-id>` to continue from the saved gate (supervisor assessment, operator approval, or prepare). Use `./bin/pan resume <run-id> --stage <slug>` when you intentionally want to restart at a different stage instead.
+
+Resume from the stage that owns the remediation when the pause was harness-initiated (blocker, circuit breaker, or ledger anomaly). Do not resume from review or test when the defect belongs to implementation.
 
 - `./bin/pan resume <run-id> --stage implement --note "<required changes>"` restarts implementation and attaches the note to the next invocation card as remediation input.
 
