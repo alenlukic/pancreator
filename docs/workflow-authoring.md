@@ -39,7 +39,7 @@ is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate
 
 ## Pipeline model configuration
 
-`pipeline.config.json` is the single source of truth for persona-to-model selection.
+`project.json` is the single source of truth for persona-to-model selection.
 It contains named configurations such as `default`, `complex`, `auto`, and `fable`.
 Every named configuration MUST map every checked-in Cursor agent persona, including standalone command personas that are not referenced by a workflow.
 
@@ -66,7 +66,7 @@ mapping before resuming the run.
 - `persona` - owner; resolves to `library/personas/<persona>.md` and, for
   delegated work, the `.cursor/agents/<persona>.md` subagent. The run resolves
   the persona to a model through the active named mapping in
-  [`pipeline.config.json`](../pipeline.config.json), then snapshots that mapping
+  [`project.json`](../project.json), then snapshots that mapping
   so an in-flight run cannot drift when the live config changes.
 - `prompt_path` - the stage task brief; its contents become the card's Task
   section.

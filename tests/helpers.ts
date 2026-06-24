@@ -27,10 +27,7 @@ export function createFixture(): string {
     })
   }
 
-  cpSync(
-    path.join(REPO_ROOT, 'pipeline.config.json'),
-    path.join(root, 'pipeline.config.json'),
-  )
+  cpSync(path.join(REPO_ROOT, 'project.json'), path.join(root, 'project.json'))
 
   mkdirSync(path.join(root, 'runtime', 'logs', 'orchestrator'), {
     recursive: true,

@@ -58,7 +58,7 @@ test('resolveRoots keeps installation tracked during self-development', () => {
 
 test('resolveRoots applies state-root precedence', () => {
   const workspace = makeWorkspace('precedence')
-  const configPath = path.join(workspace, '.pancreator', 'project.json')
+  const configPath = path.join(workspace, 'project.json')
   const envStateRoot = path.join(workspace, 'env-runtime')
   const explicitStateRoot = path.join(workspace, 'explicit-runtime')
 

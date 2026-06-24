@@ -55,6 +55,6 @@ Validated on 2026-06-22 with Node.js 22.16.0 and Git 2.47.3.
 
 ## Known validation limits
 
-Cursor itself was not available in the validation environment. Cursor command discovery, rule application, subagent dispatch, model availability, and MCP invocation were therefore validated structurally rather than through the Cursor UI. Model strings are governed by `pipeline.config.json`; validation checks active-config coverage and Cursor-agent frontmatter synchronization. Availability of those identifiers inside the operator's Cursor installation still requires live Cursor verification.
+Cursor itself was not available in the validation environment. Cursor command discovery, rule application, subagent dispatch, model availability, and MCP invocation were therefore validated structurally rather than through the Cursor UI. Model strings are governed by `project.json`; validation checks active-config coverage and Cursor-agent frontmatter synchronization. Availability of those identifiers inside the operator's Cursor installation still requires live Cursor verification.
 
 The Node.js test runner emitted its standard warning that glob support used by the coverage command is experimental. The command completed successfully and met every configured threshold.

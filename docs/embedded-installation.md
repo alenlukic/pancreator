@@ -16,13 +16,13 @@ From the Pancreator checkout:
 ./bin/pancreator-install --target /path/to/your-project
 ```
 
-The installer writes Pancreator-owned configuration under `.pancreator/` in the target project. It does not modify application source outside that directory.
+The installer writes Pancreator-owned configuration under `.pancreator/` in the target project and creates `project.json` at the project root. It does not modify other application source.
 
 ## Generated files
 
 | Path                                  | Purpose                                                               |
 | ------------------------------------- | --------------------------------------------------------------------- |
-| `.pancreator/project.json`            | Workspace identity, state root, and tracking include/exclude patterns |
+| `project.json`                        | Workspace identity, state root, and tracking include/exclude patterns |
 | `.pancreator/install.json`            | Records the Pancreator checkout used for installation                 |
 | `.pancreator/runtime/inbox/`          | Drop zone for operator requests                                       |
 | `.pancreator/runtime/logs/workflows/` | Per-run workflow records for the embedded workspace                   |
@@ -35,7 +35,7 @@ The installer writes Pancreator-owned configuration under `.pancreator/` in the 
 After installation, confirm the configuration exists:
 
 ```sh
-test -f /path/to/your-project/.pancreator/project.json
+test -f /path/to/your-project/project.json
 test -d /path/to/your-project/.pancreator/runtime/inbox
 ```
 

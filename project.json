@@ -1,5 +1,18 @@
 {
   "schema_version": 1,
+  "workspace_id": "pancreator-self-dev",
+  "workspace_root": ".",
+  "state_root": "runtime",
+  "tracking": {
+    "include": ["**/*"],
+    "exclude": [
+      "dist/**",
+      "node_modules/**",
+      "coverage/**",
+      "package-lock.json",
+      "tsconfig.tsbuildinfo"
+    ]
+  },
   "active_config": "default",
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",

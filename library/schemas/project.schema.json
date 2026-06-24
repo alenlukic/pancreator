@@ -1,14 +1,45 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "pancreator://pipeline-config/v1",
-  "title": "Pancreator pipeline model configuration",
-  "description": "Named mappings from checked-in Cursor persona slugs to model identifiers. The active mapping is synchronized into matching .cursor/agents files and snapshotted into each run.",
+  "$id": "pancreator://project/v1",
+  "title": "Pancreator project configuration",
+  "description": "Workspace identity, state root, tracking patterns, and named persona-to-model mappings for a Pancreator workspace.",
   "type": "object",
-  "required": ["schema_version", "active_config", "configs"],
-  "additionalProperties": false,
+  "required": ["schema_version"],
   "properties": {
     "schema_version": {
       "const": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspace_root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "state_root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tracking": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     },
     "active_config": {
       "type": "string",

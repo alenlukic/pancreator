@@ -113,7 +113,7 @@ semantics and the JSON schemas in `library/schemas/`.
 
 ### Pipeline model configuration
 
-`pipeline.config.json` restores V1-style named persona-to-model mappings. The
+`project.json` restores V1-style named persona-to-model mappings. The
 active mapping is copied into matching Cursor subagent frontmatter and snapshotted
 for each run. After changing `active_config` or any mapping, synchronize and
 validate it:

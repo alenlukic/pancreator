@@ -52,7 +52,7 @@ export interface CursorAgentModelChange {
   changed: boolean
 }
 
-const CONFIG_PATH = 'pipeline.config.json'
+const CONFIG_PATH = 'project.json'
 
 function parseNamedConfig(value: unknown, source: string): NamedPipelineConfig {
   invariant(isRecord(value), `${source} MUST be an object.`, {

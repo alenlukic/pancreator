@@ -42,7 +42,7 @@ function isDescendantPath(parent: string, candidate: string): boolean {
 }
 
 function parseProjectConfig(workspaceRoot: string): ProjectConfig | null {
-  const configPath = path.join(workspaceRoot, '.pancreator', 'project.json')
+  const configPath = path.join(workspaceRoot, 'project.json')
 
   if (!fileExists(configPath)) {
     return null

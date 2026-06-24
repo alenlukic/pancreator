@@ -127,7 +127,7 @@ test('repository validation requires code-review and QA stages to load TypeScrip
 test('repository validation requires standalone Cursor agents in every pipeline config', () => {
   const root = createFixture()
   prepareValidationFixture(root)
-  const configPath = path.join(root, 'pipeline.config.json')
+  const configPath = path.join(root, 'project.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     configs: Record<string, { personas: Record<string, string> }>
   }

@@ -129,7 +129,7 @@ test('run preparation rejects live pipeline-config drift from its snapshot', () 
     workflowSlug: 'dev',
     requestPath: 'request.md',
   })
-  const configPath = path.join(root, 'pipeline.config.json')
+  const configPath = path.join(root, 'project.json')
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
     active_config: string
   }

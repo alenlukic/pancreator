@@ -125,7 +125,7 @@ Do not repair state by editing files. Use `pan set-stage` for an audited stage r
 
 ## Pipeline model snapshot
 
-At run creation, the harness resolves `pipeline.config.json.active_config`, verifies
+At run creation, the harness resolves `project.json` `active_config`, verifies
 that projected Cursor agent models are synchronized, and writes
 `pipeline-config.snapshot.json` into the run directory. Each invocation resolves
 its persona from that snapshot and records both `stage.model` and

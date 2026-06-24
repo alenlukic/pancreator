@@ -73,7 +73,7 @@ test('embedded installer creates project configuration on a skeleton project', (
     assert.equal(result.status, 0)
 
     const config = JSON.parse(
-      readFileSync(path.join(project, '.pancreator', 'project.json'), 'utf8'),
+      readFileSync(path.join(project, 'project.json'), 'utf8'),
     ) as {
       schema_version: number
       workspace_id: string
@@ -111,10 +111,7 @@ test('embedded installer repairs partial installations', () => {
 
   try {
     mkdirSync(path.join(project, '.pancreator'), { recursive: true })
-    writeFileSync(
-      path.join(project, '.pancreator', 'project.json'),
-      '{"schema_version":1}\n',
-    )
+    writeFileSync(path.join(project, 'project.json'), '{"schema_version":1}\n')
 
     const result = runInstaller(project, ['--repair'])
 
@@ -122,7 +119,7 @@ test('embedded installer repairs partial installations', () => {
     assert.match(result.stdout, /Repair completed/)
 
     const config = JSON.parse(
-      readFileSync(path.join(project, '.pancreator', 'project.json'), 'utf8'),
+      readFileSync(path.join(project, 'project.json'), 'utf8'),
     ) as { tracking: { exclude: string[] } }
 
     assert.ok(config.tracking.exclude.includes('dist/**'))
@@ -170,10 +167,7 @@ test('embedded installer partial-install --choice r repairs interactively', () =
 
   try {
     mkdirSync(path.join(project, '.pancreator'), { recursive: true })
-    writeFileSync(
-      path.join(project, '.pancreator', 'project.json'),
-      '{"schema_version":1}\n',
-    )
+    writeFileSync(path.join(project, 'project.json'), '{"schema_version":1}\n')
 
     const result = runInstaller(project, ['--choice', 'r'])
 
@@ -203,8 +197,7 @@ test('embedded installer partial-install --choice c cleans and reinstalls', () =
       readFileSync(path.join(project, '.pancreator', 'stale.txt')),
     )
     assert.ok(
-      readFileSync(path.join(project, '.pancreator', 'project.json'), 'utf8')
-        .length > 0,
+      readFileSync(path.join(project, 'project.json'), 'utf8').length > 0,
     )
   } finally {
     rmSync(project, { recursive: true, force: true })
@@ -221,9 +214,7 @@ test('embedded installer partial-install --choice a aborts without changes', () 
 
     assert.equal(result.status, 0)
     assert.match(result.stdout, /Aborted/)
-    assert.throws(() =>
-      readFileSync(path.join(project, '.pancreator', 'project.json')),
-    )
+    assert.throws(() => readFileSync(path.join(project, 'project.json')))
   } finally {
     rmSync(project, { recursive: true, force: true })
   }

@@ -102,7 +102,7 @@ run_smoke() {
 
   smoke_verify_config() {
     local project="$1"
-    test -f "$project/.pancreator/project.json" \
+    test -f "$project/project.json" \
       && test -f "$project/.pancreator/install.json" \
       && test -d "$project/.pancreator/runtime/inbox"
   }
@@ -117,7 +117,7 @@ run_smoke() {
 
   repair_project="$(smoke_project)"
   mkdir -p "$repair_project/.pancreator"
-  printf '{"schema_version":1}\n' >"$repair_project/.pancreator/project.json"
+  printf '{"schema_version":1}\n' >"$repair_project/project.json"
   smoke_step "partial install repair (--choice r)" bash "$0" --target "$repair_project" --pancreator-root "$PANCREATOR_ROOT" --choice r
   smoke_step "verify repair" smoke_verify_config "$repair_project"
 
@@ -131,7 +131,7 @@ run_smoke() {
   abort_project="$(smoke_project)"
   mkdir -p "$abort_project/.pancreator"
   smoke_step "partial install abort (--choice a)" bash "$0" --target "$abort_project" --pancreator-root "$PANCREATOR_ROOT" --choice a
-  smoke_step "verify abort left partial state" test -d "$abort_project/.pancreator" && test ! -f "$abort_project/.pancreator/project.json"
+  smoke_step "verify abort left partial state" test -d "$abort_project/.pancreator" && test ! -f "$abort_project/project.json"
 
   rm -rf "$smoke_root"
 
@@ -167,7 +167,7 @@ if [[ ! -d "$TARGET_DIR" ]]; then
 fi
 
 PANCREATOR_DIR="$TARGET_DIR/.pancreator"
-PROJECT_JSON="$PANCREATOR_DIR/project.json"
+PROJECT_JSON="$TARGET_DIR/project.json"
 RUNTIME_DIR="$PANCREATOR_DIR/runtime"
 INBOX_DIR="$RUNTIME_DIR/inbox"
 INSTALL_MARKER="$PANCREATOR_DIR/install.json"
@@ -223,7 +223,7 @@ install_complete() {
   write_install_marker
   create_runtime_layout
   echo "Pancreator embedded in $TARGET_DIR"
-  echo "  project config: .pancreator/project.json"
+  echo "  project config: project.json"
   echo "  state root:     .pancreator/runtime"
   echo ""
   echo "Start a workflow from the Pancreator checkout:"
