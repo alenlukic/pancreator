@@ -9,22 +9,22 @@
     "default": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
       "personas": {
-        "orchestrator": "auto",
+        "orchestrator": "gemini-3.5-flash",
         "tech-lead": "gpt-5.5[context=272k,reasoning=high,fast=false]",
         "coder": "composer-2.5[fast=false]",
         "reviewer": "gpt-5.3-codex[reasoning=high,fast=false]",
-        "qa-tester": "auto",
+        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
         "release-steward": "auto"
       }
     },
     "complex": {
       "summary": "Higher-reasoning review and QA for complex or high-risk work.",
       "personas": {
-        "orchestrator": "auto",
-        "tech-lead": "gpt-5.5[context=272k,reasoning=high,fast=false]",
-        "coder": "composer-2.5[fast=false]",
-        "reviewer": "gpt-5.5[context=272k,reasoning=high,fast=false]",
-        "qa-tester": "gpt-5.4[context=272k,reasoning=high,fast=false]",
+        "orchestrator": "gemini-3.5-flash",
+        "tech-lead": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
+        "coder": "gpt-5.3-codex[reasoning=high,fast=false]",
+        "reviewer": "gpt-5.4[context=272k,reasoning=high,fast=false]",
+        "qa-tester": "gpt-5.3-codex[reasoning=high,fast=false]",
         "release-steward": "auto"
       }
     },
