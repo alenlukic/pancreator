@@ -1,0 +1,12 @@
+{
+  "id": "ENG-001",
+  "title": "Engineering handbook baseline",
+  "severity": "hard",
+  "summary": "Agents writing, reviewing, or testing durable repository code MUST apply governance/handbooks/eng/engineering.md as supporting guidance for scope, maintainability, testing, and operator authority.",
+  "instructions": [
+    "Agents writing, reviewing, or testing code MUST inspect the normative sections of governance/handbooks/eng/engineering.md before completion.",
+    "Implementation, review, and QA work MUST apply the handbook's rules for bounded scope, maintainability, testing, validation reporting, and operator authority.",
+    "Workflow-local automation under runtime/logs/workflows/<run-id>/scripts/ MAY be throwaway and need not satisfy this handbook's broader readability or abstraction guidance unless it is promoted into durable repository code.",
+    "Agents MUST treat governance/handbooks/eng/engineering.md as supporting repository guidance and MUST NOT use it as a replacement for the active invocation contract."
+  ]
+}

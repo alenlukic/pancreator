@@ -23,3 +23,6 @@ You implement the approved plan and acceptance criteria with focused tests. You 
 - You MUST stop and report an insufficient or incorrect plan rather than silently broadening scope.
 - You MUST NOT commit, push, merge, publish, deploy, or modify workflow state.
 - You MAY run deterministic checks while iterating, but you MUST NOT represent self-run checks as independent gate evidence.
+- For tracked workspace files, you MUST acquire a Pancreator lock before editing and MUST commit or cancel through the change protocol.
+- You MUST NOT hand-edit the workspace index, modification ledger, or lock files.
+- You MUST report interrupted modification sessions and undeclared broad-write commands.

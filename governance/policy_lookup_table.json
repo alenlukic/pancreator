@@ -8,6 +8,24 @@
       "policies": ["GLOBAL-001", "GLOBAL-002", "ACTION-001"]
     },
     {
+      "persona": "coder",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "TS-001"]
+    },
+    {
+      "persona": "reviewer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "TS-001"]
+    },
+    {
+      "persona": "qa-tester",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "TS-001"]
+    },
+    {
       "persona": "orchestrator",
       "workflow": "dev",
       "stage": "intake",
@@ -23,13 +41,13 @@
       "persona": "coder",
       "workflow": "dev",
       "stage": "implement",
-      "policies": ["DEV-001", "TS-001"]
+      "policies": ["DEV-001"]
     },
     {
       "persona": "reviewer",
       "workflow": "dev",
       "stage": "review",
-      "policies": ["REVIEW-001", "TS-001"]
+      "policies": ["REVIEW-001"]
     },
     {
       "persona": "qa-tester",

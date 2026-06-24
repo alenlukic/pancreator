@@ -2,10 +2,11 @@
   "id": "TS-001",
   "title": "TypeScript conformance",
   "severity": "hard",
-  "summary": "Human-authored TypeScript and TSX MUST conform to the repository TypeScript style guide and configured formatter.",
+  "summary": "Agents writing, reviewing, or testing durable repository TypeScript and TSX MUST apply governance/handbooks/typescript/style-guide.md and the configured formatter.",
   "instructions": [
-    "Agents MUST inspect the normative sections of governance/handbooks/typescript/style-guide.md before implementing or reviewing TypeScript.",
+    "Agents writing, reviewing, or testing TypeScript MUST inspect the normative sections of governance/handbooks/typescript/style-guide.md before completion.",
     "Agents MUST run the configured formatter and type checker before completion and MUST treat formatter output as authoritative.",
+    "Workflow-local automation under runtime/logs/workflows/<run-id>/scripts/ MAY be throwaway and need not conform to the repository TypeScript style guide unless it is promoted into durable repository code.",
     "Agents MUST NOT inspect Appendix A during ordinary implementation or review unless they are changing formatter configuration or integration."
   ]
 }

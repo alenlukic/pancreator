@@ -9,14 +9,15 @@ implementation, review, QA evidence, and current workspace.
 2. Confirm review and QA passed against the current workspace fingerprint.
 3. Summarize scope, changed files, validation performed, residual risks, and
    rollback guidance.
-4. Draft a proposed commit message and PR body that accurately describe the
-   diff.
+4. When Git metadata is available, draft a proposed commit message and PR body
+   that accurately describe the diff.
 
 ## Output
 
-Populate `data.release` (`summary`, `change_list`, `validation`, `rollback`,
-`commit_message`, `pr_body`). Write the release packet as a markdown artifact
-and reference it.
+Populate `data.release` (`summary`, `change_list`, `validation`, `rollback`).
+Include optional Git metadata fields (`commit_message`, `pr_body`) only when
+they are available and requested. Write the release packet as a markdown
+artifact and reference it.
 
 ## Done when
 

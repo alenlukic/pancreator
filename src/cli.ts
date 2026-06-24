@@ -9,6 +9,7 @@ import {
   createRun,
   decideRun,
   getRunStatus,
+  getRunState,
   prepareInvocation,
   resumeRun,
   submitOutput,
@@ -19,9 +20,23 @@ import {
   loadPipelineConfig,
   syncCursorAgentModels,
 } from './lib/pipeline-config.js'
-import { fileExists, findProjectRoot, isRecord, readJson } from './lib/io.js'
+import {
+  fileExists,
+  findProjectRoot,
+  isRecord,
+  readJson,
+  resolveInside,
+} from './lib/io.js'
 import type { RunState } from './lib/types.js'
 import { validateRepository } from './lib/validation.js'
+import {
+  beginTrackedModification,
+  cancelTrackedModification,
+  commitTrackedModification,
+} from './lib/workspace/changes.js'
+import { snapshotWorkspace } from './lib/workspace/index.js'
+import { resolveRoots } from './lib/workspace/roots.js'
+import { validateWorkflowChanges } from './lib/workspace/validate-changes.js'
 
 const HELP = `Pancreator v2 prototype
 
@@ -31,9 +46,14 @@ Usage:
   pan submit <run-id> <output-json>
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject> [--note <text>] [--stage <stage-slug>]
-  pan resume <run-id> [--stage <stage-slug>]
-  pan accept-change <run-id> [--note <text>]
+  pan resume <run-id> [--stage <stage-slug>] [--note <text>]
+  pan accept-change <run-id> [--note <text>] [--waive]
   pan abort <run-id> [--note <text>]
+  pan changes begin <run-id> <path>
+  pan changes commit <run-id> <path> --lock <lock-id>
+  pan changes cancel <run-id> <path> --lock <lock-id>
+  pan workspace reconcile [--workspace <dir>] [--state-root <dir>] [--adopt]
+  pan workflow validate-changes <run-id>
   pan status <run-id> [--json]
   pan list [--json]
   pan models [--sync] [--json]
@@ -98,6 +118,45 @@ function parseRunState(value: unknown, source: string): RunState {
   }
 
   return value as unknown as RunState
+}
+
+function activeModificationContext(root: string, runId: string) {
+  const state = getRunState(root, runId)
+
+  if (state.status !== 'running') {
+    throw new PanError('Run must be running to modify tracked files.', {
+      code: 'RUN_NOT_RUNNING',
+    })
+  }
+
+  if (!state.current_stage) {
+    throw new PanError('Run has no active stage.', {
+      code: 'INVALID_RUN_ACTION',
+    })
+  }
+
+  const stageAttempt = state.attempts[state.current_stage] ?? 1
+  const invocationId =
+    state.current_invocation?.id ??
+    `${state.current_stage}-${stageAttempt}-manual`
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: resolveInside(root, state.workspace_root),
+    state_root: state.state_root,
+  })
+
+  return {
+    state,
+    roots,
+    context: {
+      state_root: roots.state_root,
+      roots,
+      workflow_id: runId,
+      stage: state.current_stage,
+      stage_attempt: stageAttempt,
+      invocation_id: invocationId,
+    },
+  }
 }
 
 function listRuns(root: string): Array<Record<string, unknown>> {
@@ -232,7 +291,12 @@ async function main(): Promise<void> {
     }
     case 'resume': {
       const runId = requiredArgument(args[0], 'run-id')
-      const state = resumeRun(root, runId, option(args, '--stage'))
+      const state = resumeRun(
+        root,
+        runId,
+        option(args, '--stage'),
+        option(args, '--note', '') ?? '',
+      )
 
       print({
         status: state.status,
@@ -243,12 +307,18 @@ async function main(): Promise<void> {
     }
     case 'accept-change': {
       const runId = requiredArgument(args[0], 'run-id')
-      const state = acceptChange(root, runId, option(args, '--note', '') ?? '')
+      const state = acceptChange(
+        root,
+        runId,
+        option(args, '--note', '') ?? '',
+        hasFlag(args, '--waive'),
+      )
 
       print({
         status: state.status,
         current_stage: state.current_stage,
         accepted_workspace_fingerprint: state.accepted_workspace_fingerprint,
+        latest_ledger_validation: state.latest_ledger_validation,
         next_command: `./bin/pan prepare ${runId}`,
       })
       return
@@ -258,6 +328,128 @@ async function main(): Promise<void> {
       const state = abortRun(root, runId, option(args, '--note', '') ?? '')
 
       print({ status: state.status, run_id: runId })
+      return
+    }
+    case 'changes': {
+      const subcommand = requiredArgument(args[0], 'changes-subcommand')
+      const runId = requiredArgument(args[1], 'run-id')
+      const trackedPath = requiredArgument(args[2], 'path')
+      const active = activeModificationContext(root, runId)
+
+      if (subcommand === 'begin') {
+        const result = beginTrackedModification(active.context, trackedPath)
+
+        print({
+          status: 'locked',
+          run_id: runId,
+          path: trackedPath,
+          lock_id: result.lock.lock_id,
+          expected_checksum: result.expected_checksum,
+        })
+        return
+      }
+
+      const lockId = option(args, '--lock')
+
+      if (!lockId) {
+        throw new PanError('--lock is required for commit and cancel.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      if (subcommand === 'commit') {
+        const result = commitTrackedModification(
+          active.context,
+          trackedPath,
+          lockId,
+        )
+
+        print({
+          status: 'committed',
+          run_id: runId,
+          path: trackedPath,
+          lock_id: lockId,
+          operation: result.operation,
+          sequence: result.entry?.sequence ?? null,
+        })
+        return
+      }
+
+      if (subcommand === 'cancel') {
+        const lock = cancelTrackedModification(
+          active.context,
+          trackedPath,
+          lockId,
+        )
+
+        print({
+          status: 'cancelled',
+          run_id: runId,
+          path: trackedPath,
+          lock_id: lock.lock_id,
+        })
+        return
+      }
+
+      throw new PanError(`Unknown changes subcommand: ${subcommand}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'workspace': {
+      const subcommand = requiredArgument(args[0], 'workspace-subcommand')
+
+      if (subcommand !== 'reconcile') {
+        throw new PanError(`Unknown workspace subcommand: ${subcommand}`, {
+          code: 'UNKNOWN_COMMAND',
+        })
+      }
+
+      const workspaceRoot = option(args, '--workspace', '.') ?? '.'
+      const roots = resolveRoots({
+        installation_root: root,
+        workspace_root: resolveInside(root, workspaceRoot),
+        state_root: option(args, '--state-root'),
+      })
+      const result = snapshotWorkspace(roots, hasFlag(args, '--adopt'))
+
+      print({
+        status: hasFlag(args, '--adopt') ? 'adopted' : 'observed',
+        workspace_root: roots.workspace_root,
+        state_root: roots.state_root,
+        scope_hash: roots.scope_hash,
+        fingerprint: result.snapshot.fingerprint,
+        changed_paths: result.changed_paths,
+        deleted_paths: result.deleted_paths,
+      })
+      return
+    }
+    case 'workflow': {
+      const subcommand = requiredArgument(args[0], 'workflow-subcommand')
+
+      if (subcommand !== 'validate-changes') {
+        throw new PanError(`Unknown workflow subcommand: ${subcommand}`, {
+          code: 'UNKNOWN_COMMAND',
+        })
+      }
+
+      const runId = requiredArgument(args[1], 'run-id')
+      const state = getRunState(root, runId)
+      const roots = resolveRoots({
+        installation_root: root,
+        workspace_root: resolveInside(root, state.workspace_root),
+        state_root: state.state_root,
+      })
+      const result = validateWorkflowChanges({
+        run_id: runId,
+        state_root: roots.state_root,
+        roots,
+      })
+
+      print({
+        run_id: runId,
+        status: result.status,
+        anomalies: result.anomalies.length,
+      })
       return
     }
     case 'status': {

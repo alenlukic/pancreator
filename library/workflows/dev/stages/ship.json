@@ -10,9 +10,7 @@
     "release.summary": "string",
     "release.change_list": "array",
     "release.validation": "array",
-    "release.rollback": "string",
-    "release.commit_message": "string",
-    "release.pr_body": "string"
+    "release.rollback": "string"
   },
   "criteria": [
     {

@@ -13,6 +13,7 @@ import type {
   Criterion,
   CriterionType,
   JsonTypeName,
+  StageExecutor,
   StageDefinition,
   StageGate,
   StageTransitions,
@@ -28,6 +29,7 @@ const GATES = new Set<StageGate>([
   'next_stage',
   'stage_verdict',
 ])
+const EXECUTORS = new Set<StageExecutor>(['agent', 'harness'])
 const WORKSPACE_POLICIES = new Set<WorkspacePolicy>([
   'source_allowed',
   'runtime_only',
@@ -158,6 +160,14 @@ function parseStage(value: unknown, source: string): StageDefinition {
     `${source}.gate MUST name a supported gate.`,
     { code: 'INVALID_WORKFLOW' },
   )
+  if (value.executor !== undefined) {
+    invariant(
+      typeof value.executor === 'string' &&
+        EXECUTORS.has(value.executor as StageExecutor),
+      `${source}.executor MUST be agent or harness when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
   invariant(
     typeof value.prompt === 'string' || typeof value.prompt_path === 'string',
     `${source} MUST define prompt or prompt_path.`,
@@ -193,6 +203,10 @@ function parseStage(value: unknown, source: string): StageDefinition {
 
   if (typeof value.prompt_sha256 === 'string') {
     stage.prompt_sha256 = value.prompt_sha256
+  }
+
+  if (typeof value.executor === 'string') {
+    stage.executor = value.executor as StageExecutor
   }
 
   const requiredData = parseRequiredData(

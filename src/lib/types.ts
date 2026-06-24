@@ -17,6 +17,8 @@ export type StageGate =
   | 'next_stage'
   | 'stage_verdict'
 
+export type StageExecutor = 'agent' | 'harness'
+
 export type CriterionType = 'judgment' | 'shell' | 'state'
 
 export type CriterionResultValue = 'pass' | 'fail' | 'not_applicable'
@@ -54,6 +56,7 @@ export interface StageDefinition {
   slug: string
   title: string
   persona: string
+  executor?: StageExecutor
   prompt?: string
   prompt_path?: string
   prompt_sha256?: string
@@ -103,6 +106,123 @@ export interface WorkspaceSnapshot {
   fingerprint: string
   entries: string[]
   head?: string | null
+}
+
+export type WorkspaceEntryKind = 'file' | 'symlink'
+
+export interface WorkspaceIndexEntry {
+  kind: WorkspaceEntryKind
+  checksum: string
+  size: number
+  modified_at_ms: number
+}
+
+export interface WorkspaceIndex {
+  schema_version: 1
+  workspace_id: string
+  workspace_root: string
+  scope_hash: string
+  updated_at_ms: number
+  entries: Record<string, WorkspaceIndexEntry>
+}
+
+export interface ActiveWorkflowLease {
+  schema_version: 1
+  workspace_id: string
+  workflow_id: string
+  acquired_at_ms: number
+  process_id?: number
+}
+
+export interface WorkflowBaseline {
+  schema_version: 1
+  workflow_id: string
+  workspace_id: string
+  workspace_root: string
+  state_root: string
+  installation_root: string
+  created_at_ms: number
+  configuration_hash: string
+  scope_hash: string
+  entries: Record<string, WorkspaceIndexEntry>
+}
+
+export interface FileLock {
+  schema_version: 1
+  lock_id: string
+  path: string
+  canonical_path: string
+  workflow_id: string
+  stage: string
+  stage_attempt: number
+  invocation_id: string
+  acquired_at_ms: number
+  expected_checksum: string | null
+}
+
+export type LedgerOperation = 'create' | 'modify' | 'delete'
+
+export interface ModificationLedgerEntry {
+  schema_version: 1
+  sequence: number
+  path: string
+  operation: LedgerOperation
+  before_checksum: string | null
+  after_checksum: string | null
+  workflow_id: string
+  stage: string
+  stage_attempt: number
+  invocation_id: string
+  modified_at_ms: number
+  lock_id: string
+}
+
+export interface LedgerAnomaly {
+  id: string
+  code: string
+  severity: 'hard'
+  path?: string
+  sequence?: number
+  expected?: string | null
+  observed?: string | null
+  summary: string
+  details: string
+  suggested_actions: Array<'accept' | 'restart-stage' | 'spot-fix' | 'abort'>
+}
+
+export interface LedgerValidationResult {
+  schema_version: 1
+  workflow_id: string
+  status: 'passed' | 'operator-review-required' | 'waived'
+  validated_at_ms: number
+  baseline_scope_hash: string
+  current_scope_hash: string
+  ledger_entry_count: number
+  modified_path_count: number
+  anomalies: LedgerAnomaly[]
+}
+
+export interface TrackingConfig {
+  include?: string[]
+  exclude?: string[]
+}
+
+export interface ProjectConfig {
+  schema_version: 1
+  workspace_id?: string
+  workspace_root?: string
+  state_root?: string
+  tracking?: TrackingConfig
+}
+
+export interface ResolvedRoots {
+  installation_root: string
+  workspace_root: string
+  state_root: string
+  workspace_id: string
+  include: string[]
+  exclude: string[]
+  scope_hash: string
 }
 
 export interface WorkspaceDelta {
@@ -166,6 +286,7 @@ export interface Invocation {
     slug: string
     title: string
     persona: string
+    executor?: StageExecutor
     model: string
     model_config: string
     workspace_policy: WorkspacePolicy
@@ -236,7 +357,7 @@ export interface CurrentInvocationPointer {
 }
 
 export interface OperatorFeedbackItem {
-  decision: 'reject'
+  decision: 'reject' | 'resume'
   from_stage: string
   to_stage: string
   attempt: number
@@ -259,6 +380,12 @@ export interface RunState {
     sha256: string
   }
   workspace_root: string
+  workspace_id?: string
+  installation_root?: string
+  state_root?: string
+  scope_hash?: string
+  latest_ledger_validation?: LedgerValidationResult['status']
+  latest_ledger_validation_path?: string
   gate_overrides?: Record<string, string | false>
   title: string
   status: RunStatus

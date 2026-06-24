@@ -1,0 +1,22 @@
+{
+  "slug": "validate-changes",
+  "title": "Validate changes",
+  "persona": "orchestrator",
+  "executor": "harness",
+  "prompt_path": "library/workflows/dev/prompts/validate-changes.md",
+  "workspace_policy": "read_only",
+  "gate": "next_stage",
+  "criteria": [
+    {
+      "id": "validate-changes.integrity",
+      "type": "state",
+      "hard": true,
+      "statement": "Baseline, ledger, index, lock, and filesystem state are internally consistent."
+    }
+  ],
+  "transitions": {
+    "success": "ship",
+    "failure": "paused",
+    "blocked": "paused"
+  }
+}

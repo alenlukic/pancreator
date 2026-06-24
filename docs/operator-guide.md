@@ -45,6 +45,21 @@ A pause is not a generic failure. Read `last_decision_path` in `state.json` or u
 
 Resume from the stage that owns the remediation. Do not resume from review or test when the defect belongs to implementation.
 
+- `./bin/pan resume <run-id> --stage implement --note "<required changes>"` restarts implementation and attaches the note to the next invocation card as remediation input.
+
+## Cooperative lock contract
+
+While a mutating workflow is active, avoid editing tracked files outside
+Pancreator. Pancreator locks are cooperative evidence records only; they do not
+prevent editors, scripts, or other processes from writing files. External edits
+may surface as unledgered anomalies during `validate-changes`.
+
+Use the protocol commands when a worker modifies tracked files:
+
+- `./bin/pan changes begin <run-id> <path>`
+- `./bin/pan changes commit <run-id> <path> --lock <lock-id>`
+- `./bin/pan changes cancel <run-id> <path> --lock <lock-id>`
+
 ## Release approval
 
 The ship packet is a proposal. Before approval, confirm:

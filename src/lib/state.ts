@@ -13,36 +13,54 @@ import {
 } from './io.js'
 import type { RunState } from './types.js'
 
-/** Current time as an ISO 8601 string. */
 export function now(): string {
   return new Date().toISOString()
 }
 
-/** Generate a sortable, unique run id from the current timestamp. */
 export function makeRunId(): string {
   const timestamp = new Date().toISOString().replaceAll(/[-:.]/g, '')
 
   return `${timestamp}-${randomUUID().slice(0, 8)}`
 }
 
-/** Absolute path to a run directory under runtime/logs/workflows. */
 export function runDir(root: string, runId: string): string {
   return path.join(root, 'runtime', 'logs', 'workflows', runId)
 }
 
-/** Absolute path to a run materialized state file. */
 export function statePath(root: string, runId: string): string {
   return path.join(runDir(root, runId), 'state.json')
 }
 
-/** Absolute path to a run append-only event log. */
 export function eventPath(root: string, runId: string): string {
   return path.join(runDir(root, runId), 'events.jsonl')
 }
 
-/** Absolute path to a run exclusive lock file. */
 export function lockPath(root: string, runId: string): string {
   return path.join(runDir(root, runId), '.lock')
+}
+
+export function indexPath(stateRoot: string): string {
+  return path.join(stateRoot, 'workspace', 'index.json')
+}
+
+export function leasePath(stateRoot: string): string {
+  return path.join(stateRoot, 'workspace', 'active-workflow.json')
+}
+
+export function lockDir(stateRoot: string): string {
+  return path.join(stateRoot, 'locks')
+}
+
+export function baselinePath(stateRoot: string, runId: string): string {
+  return path.join(stateRoot, 'workflows', runId, 'baseline.json')
+}
+
+export function ledgerPath(stateRoot: string, runId: string): string {
+  return path.join(stateRoot, 'workflows', runId, 'modifications.jsonl')
+}
+
+export function ledgerValidationPath(stateRoot: string, runId: string): string {
+  return path.join(stateRoot, 'workflows', runId, 'ledger-validation.json')
 }
 
 function parseRunState(value: unknown, source: string): RunState {

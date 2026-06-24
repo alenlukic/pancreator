@@ -35,6 +35,20 @@ A stage is successful only when all of the following hold:
 
 A `blocked` result pauses. A failure follows the declared remediation transition. A successful result may still wait at a supervisor or operator gate.
 
+## Workspace change tracking
+
+Pancreator tracks accepted workspace state with a checksum index at
+`<state-root>/workspace/index.json`, a per-workflow immutable baseline at
+`<state-root>/workflows/<run-id>/baseline.json`, cooperative file locks under
+`<state-root>/locks/`, and an append-only ledger at
+`<state-root>/workflows/<run-id>/modifications.jsonl`.
+
+Mutating workflows run a harness-owned deterministic `validate-changes` stage
+before ship. The stage compares baseline, ledger, accepted index, filesystem,
+and active locks. Any hard anomaly yields
+`operator-review-required` in `ledger-validation.json` and pauses the run for
+operator adjudication.
+
 ## Operator rejection
 
 At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (the ship stage routes to `implement`, intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/operator-feedback-<n>.md` and attached to the remediation invocation as a required input reference.

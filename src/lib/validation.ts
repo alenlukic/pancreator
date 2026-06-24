@@ -11,7 +11,6 @@ import {
   sha256,
   writeTextAtomic,
 } from './io.js'
-import { gitWorkspaceSnapshot, snapshotChanged, workspaceDelta } from './git.js'
 import { loadPipelineConfig, syncCursorAgentModels } from './pipeline-config.js'
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import {
@@ -19,6 +18,8 @@ import {
   readPolicyLookupTable,
   resolvePolicies,
 } from './policies.js'
+import { snapshotWorkspace } from './workspace/index.js'
+import { resolveRoots } from './workspace/roots.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import type {
   ArtifactReference,
@@ -27,6 +28,7 @@ import type {
   DeterministicResult,
   Invocation,
   JsonTypeName,
+  Policy,
   RepositoryValidationResult,
   RunState,
   StageDefinition,
@@ -357,6 +359,26 @@ export function evaluateStateCriterion(
   }
 }
 
+function snapshotChanged(
+  before: WorkspaceSnapshot,
+  after: WorkspaceSnapshot,
+): boolean {
+  return before.fingerprint !== after.fingerprint
+}
+
+function workspaceDelta(
+  before: WorkspaceSnapshot,
+  after: WorkspaceSnapshot,
+): { added: string[]; removed: string[] } {
+  const beforeSet = new Set(before.entries)
+  const afterSet = new Set(after.entries)
+
+  return {
+    added: [...afterSet].filter((entry) => !beforeSet.has(entry)),
+    removed: [...beforeSet].filter((entry) => !afterSet.has(entry)),
+  }
+}
+
 export function evaluateDeterministicCriteria(
   root: string,
   runDirectory: string,
@@ -366,7 +388,12 @@ export function evaluateDeterministicCriteria(
   workspaceDir: string,
   gateOverrides: Record<string, string | false> = {},
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
-  const afterSnapshot = gitWorkspaceSnapshot(workspaceDir)
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: workspaceDir,
+    state_root: state.state_root,
+  })
+  const afterSnapshot = snapshotWorkspace(roots, false).snapshot
   const results: DeterministicResult[] = []
 
   if (stage.workspace_policy !== 'source_allowed') {
@@ -446,7 +473,66 @@ function listMarkdownFiles(directory: string): string[] {
   return files
 }
 
-function validateGovernance(root: string, errors: string[]): void {
+const CODE_REVIEW_PERSONAS = new Set(['coder', 'reviewer', 'qa-tester'])
+
+interface HandbookPolicyRequirement {
+  handbook_path: string
+  label: string
+  personas: Set<string>
+}
+
+const HANDBOOK_POLICY_REQUIREMENTS: HandbookPolicyRequirement[] = [
+  {
+    handbook_path: 'governance/handbooks/eng/engineering.md',
+    label: 'engineering handbook',
+    personas: CODE_REVIEW_PERSONAS,
+  },
+  {
+    handbook_path: 'governance/handbooks/typescript/style-guide.md',
+    label: 'TypeScript handbook',
+    personas: CODE_REVIEW_PERSONAS,
+  },
+]
+
+function validateHandbookPolicyCoverage(
+  root: string,
+  catalog: Map<string, Policy>,
+  requirement: HandbookPolicyRequirement,
+  errors: string[],
+): Set<string> {
+  const handbookAbsolute = path.join(root, requirement.handbook_path)
+
+  if (!fileExists(handbookAbsolute)) {
+    errors.push(`missing required file: ${requirement.handbook_path}`)
+    return new Set<string>()
+  }
+
+  const policyIds = new Set<string>()
+  const matches = [...catalog.values()].filter((policy) =>
+    [policy.summary, ...policy.instructions].some((text) =>
+      text.includes(requirement.handbook_path),
+    ),
+  )
+
+  if (matches.length === 0) {
+    errors.push(
+      `${requirement.handbook_path} MUST be referenced by at least one policy`,
+    )
+    return policyIds
+  }
+
+  for (const policy of matches) {
+    policyIds.add(policy.id)
+  }
+
+  return policyIds
+}
+
+function validateGovernance(
+  root: string,
+  catalog: Map<string, Policy>,
+  errors: string[],
+): Map<string, Set<string>> {
   const governanceRoot = path.join(root, 'governance')
   const directivePattern = /\b(?:MUST(?: NOT)?|SHOULD(?: NOT)?|MAY)\b/u
 
@@ -459,7 +545,7 @@ function validateGovernance(root: string, errors: string[]): void {
     }
   }
 
-  for (const policy of loadPolicyCatalog(root).values()) {
+  for (const policy of catalog.values()) {
     if (!directivePattern.test(policy.summary)) {
       errors.push(`${policy.id} summary MUST use an RFC 2119 directive`)
     }
@@ -472,6 +558,17 @@ function validateGovernance(root: string, errors: string[]): void {
       }
     }
   }
+
+  const handbookPolicies = new Map<string, Set<string>>()
+
+  for (const requirement of HANDBOOK_POLICY_REQUIREMENTS) {
+    handbookPolicies.set(
+      requirement.handbook_path,
+      validateHandbookPolicyCoverage(root, catalog, requirement, errors),
+    )
+  }
+
+  return handbookPolicies
 }
 
 export function validateRepository(root: string): RepositoryValidationResult {
@@ -483,6 +580,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'prettier.config.js',
     'tsconfig.json',
     'governance/policy_lookup_table.json',
+    'governance/handbooks/eng/engineering.md',
     'governance/handbooks/typescript/style-guide.md',
     'pipeline.config.json',
     'library/schemas/pipeline-config.schema.json',
@@ -501,6 +599,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   let pipelineConfig: LoadedPipelineConfig | null = null
+  let handbookPolicies = new Map<string, Set<string>>()
 
   try {
     pipelineConfig = loadPipelineConfig(root)
@@ -525,7 +624,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
       }
     }
 
-    validateGovernance(root, errors)
+    handbookPolicies = validateGovernance(root, catalog, errors)
   } catch (error) {
     errors.push(errorMessage(error))
   }
@@ -538,11 +637,33 @@ export function validateRepository(root: string): RepositoryValidationResult {
 
       for (const stage of workflow.stages) {
         workflowPersonas.add(stage.persona)
-        resolvePolicies(root, {
+        const policies = resolvePolicies(root, {
           persona: stage.persona,
           workflow: workflow.slug,
           stage: stage.slug,
         })
+
+        for (const requirement of HANDBOOK_POLICY_REQUIREMENTS) {
+          if (!requirement.personas.has(stage.persona)) {
+            continue
+          }
+
+          const handbookPolicyIds =
+            handbookPolicies.get(requirement.handbook_path) ?? new Set<string>()
+          const hasHandbookPolicy = policies.some((policy) =>
+            handbookPolicyIds.has(policy.id),
+          )
+
+          if (hasHandbookPolicy) {
+            continue
+          }
+
+          errors.push(
+            `workflow stage '${workflow.slug}/${stage.slug}' persona ` +
+              `'${stage.persona}' MUST load a policy for the ` +
+              `${requirement.label}`,
+          )
+        }
 
         const personaPath = path.join(
           root,

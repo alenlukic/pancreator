@@ -31,6 +31,10 @@
       "pattern": "^[a-z0-9-]+$",
       "description": "Owner of the stage. Resolves to library/personas/<persona>.md and, for delegated work, to the matching .cursor/agents/<persona>.md subagent."
     },
+    "executor": {
+      "enum": ["agent", "harness"],
+      "description": "Execution mode. agent delegates to a worker persona. harness runs deterministic runtime logic without delegation."
+    },
     "prompt_path": {
       "type": "string",
       "description": "Repository-relative path to the stage task brief. Its contents become the Task section of the invocation card."

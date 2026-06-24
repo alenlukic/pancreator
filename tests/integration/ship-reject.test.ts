@@ -25,10 +25,16 @@ function advanceToShipGate(root: string, runId: string): RunState {
     'implement',
     'review',
     'test',
+    'validate-changes',
     'ship',
   ]) {
     const prepared = prepareInvocation(root, runId)
     const invocation = prepared.invocation
+
+    if (stageSlug === 'validate-changes') {
+      assert.equal(invocation, null)
+      continue
+    }
 
     assert.ok(invocation)
     assert.equal(invocation.stage.slug, stageSlug)

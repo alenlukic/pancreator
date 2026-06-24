@@ -21,7 +21,7 @@ const REPO_ROOT = process.cwd()
 export function createFixture(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
-  for (const entry of ['governance', 'library', '.cursor']) {
+  for (const entry of ['governance', 'library', '.cursor', '.pancreator']) {
     cpSync(path.join(REPO_ROOT, entry), path.join(root, entry), {
       recursive: true,
     })

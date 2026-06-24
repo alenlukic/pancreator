@@ -31,8 +31,16 @@ test('accept-change re-baselines a stale fingerprint so ship approves without a 
     stageSlug: string,
     outcome: StageOutcome = 'success',
   ) => {
-    const prepared = prepareInvocation(root, runId)
-    const invocation = prepared.invocation
+    let prepared = prepareInvocation(root, runId)
+    let invocation = prepared.invocation
+
+    while (!invocation) {
+      const run = getRunState(root, runId)
+
+      assert.ok(run.current_stage, 'run should still have a stage to prepare')
+      prepared = prepareInvocation(root, runId)
+      invocation = prepared.invocation
+    }
 
     assert.ok(invocation)
     assert.equal(invocation.stage.slug, stageSlug)
@@ -89,20 +97,29 @@ test('accept-change re-baselines a stale fingerprint so ship approves without a 
     'export const base = true\nexport const intentional = true\n',
   )
 
-  // Ship attempt 1: the steward pauses for an operator decision.
-  const blocked = submitStage('ship', 'blocked')
+  // validate-changes runs before ship and pauses for operator adjudication.
+  const preparedValidation = prepareInvocation(root, runId)
 
-  assert.equal(blocked.submitted.state.status, 'paused')
-  assert.equal(blocked.submitted.state.pending_action.type, 'operator_decision')
+  assert.equal(preparedValidation.invocation, null)
+  assert.equal(preparedValidation.state.status, 'paused')
+  assert.equal(
+    preparedValidation.state.pending_action.type,
+    'operator_decision',
+  )
 
-  // Operator attests the change is intentional.
-  const accepted = acceptChange(root, runId, 'gitignore tweak was intentional')
+  // Operator waives anomalies and adopts the current workspace state.
+  const accepted = acceptChange(
+    root,
+    runId,
+    'intentional post-QA workspace update',
+    true,
+  )
 
   assert.equal(accepted.status, 'running')
   assert.equal(accepted.current_stage, 'ship')
   assert.ok(accepted.accepted_workspace_fingerprint)
 
-  // Ship attempt 2: gate passes against the accepted baseline, not a stale rerun.
+  // Ship attempt: gate passes against the accepted baseline, not a stale rerun.
   const shipped = submitStage('ship', 'success')
 
   assert.equal(shipped.submitted.record.outcome, 'success')

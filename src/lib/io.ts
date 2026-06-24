@@ -6,6 +6,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -14,6 +15,37 @@ import {
 import path from 'node:path'
 
 import { errorMessage, invariant, isNodeError, PanError } from './errors.js'
+
+function isPathWithinRoot(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate)
+
+  return (
+    relative === '' ||
+    (!relative.startsWith('..') && !path.isAbsolute(relative))
+  )
+}
+
+function resolveCanonicalBoundaryPath(targetPath: string): string {
+  if (fileExists(targetPath)) {
+    return canonicalize(targetPath)
+  }
+
+  let ancestor = targetPath
+
+  while (!fileExists(ancestor)) {
+    const parent = path.dirname(ancestor)
+
+    invariant(parent !== ancestor, 'Path escapes repository root.', {
+      code: 'PATH_ESCAPE',
+    })
+    ancestor = parent
+  }
+
+  const canonicalAncestor = canonicalize(ancestor)
+  const remainder = path.relative(ancestor, targetPath)
+
+  return path.resolve(canonicalAncestor, remainder)
+}
 
 export function findProjectRoot(start = process.cwd()): string {
   let current = path.resolve(start)
@@ -126,8 +158,19 @@ export function toRepoRelative(
   root: string,
   absoluteOrRelativePath: string,
 ): string {
-  const absolute = path.resolve(root, absoluteOrRelativePath)
-  const relative = path.relative(root, absolute)
+  const canonicalRoot = canonicalize(root)
+  const absolute = path.isAbsolute(absoluteOrRelativePath)
+    ? path.resolve(absoluteOrRelativePath)
+    : path.resolve(canonicalRoot, absoluteOrRelativePath)
+  const boundaryPath = resolveCanonicalBoundaryPath(absolute)
+
+  invariant(
+    isPathWithinRoot(canonicalRoot, boundaryPath),
+    `Path must remain inside the repository: ${absoluteOrRelativePath}`,
+    { code: 'PATH_ESCAPE' },
+  )
+
+  const relative = path.relative(canonicalRoot, absolute)
 
   invariant(
     relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative),
@@ -139,22 +182,42 @@ export function toRepoRelative(
 }
 
 export function resolveInside(root: string, relativePath: string): string {
+  const canonicalRoot = canonicalize(root)
+
   invariant(
     relativePath.length > 0,
     'Expected a non-empty repository-relative path.',
     { code: 'INVALID_PATH' },
   )
 
-  const absolute = path.resolve(root, relativePath)
-  const relative = path.relative(root, absolute)
+  const absolute = path.resolve(canonicalRoot, relativePath)
+  const relative = path.relative(canonicalRoot, absolute)
 
   invariant(
     !relative.startsWith('..') && !path.isAbsolute(relative),
     `Path escapes repository root: ${relativePath}`,
     { code: 'PATH_ESCAPE' },
   )
+  invariant(
+    isPathWithinRoot(canonicalRoot, resolveCanonicalBoundaryPath(absolute)),
+    `Path escapes repository root: ${relativePath}`,
+    { code: 'PATH_ESCAPE' },
+  )
 
   return absolute
+}
+
+export function canonicalize(filePath: string): string {
+  const resolved = path.resolve(filePath)
+
+  try {
+    return realpathSync.native(resolved)
+  } catch (error) {
+    throw new PanError(`Failed to canonicalize path: ${filePath}`, {
+      code: 'PATH_NOT_FOUND',
+      details: { cause: errorMessage(error) },
+    })
+  }
 }
 
 function processIsAlive(pid: number): boolean {

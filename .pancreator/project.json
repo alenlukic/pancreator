@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "workspace_id": "pancreator-self-dev",
+  "workspace_root": ".",
+  "state_root": "runtime",
+  "tracking": {
+    "include": ["**/*"],
+    "exclude": [
+      "dist/**",
+      "node_modules/**",
+      "coverage/**",
+      "package-lock.json",
+      "tsconfig.tsbuildinfo"
+    ]
+  }
+}

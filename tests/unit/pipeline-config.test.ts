@@ -12,19 +12,26 @@ import {
 } from '../../src/lib/pipeline-config.js'
 import { createFixture } from '../helpers.js'
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 test('pipeline config loads the active named persona mapping', () => {
   const root = createFixture()
   const loaded = loadPipelineConfig(root)
+  const config = JSON.parse(
+    readFileSync(path.join(root, 'pipeline.config.json'), 'utf8'),
+  ) as { active_config: string }
 
-  assert.equal(loaded.name, 'default')
+  assert.equal(loaded.name, config.active_config)
   assert.equal(
     resolvePersonaModel(loaded.config, 'coder'),
-    'composer-2.5[fast=false]',
+    loaded.config.personas.coder,
   )
 
   const snapshot = makePipelineConfigSnapshot(loaded)
 
-  assert.equal(snapshot.name, 'default')
+  assert.equal(snapshot.name, loaded.name)
   assert.equal(snapshot.personas.reviewer, loaded.config.personas.reviewer)
 })
 
@@ -63,6 +70,6 @@ test('cursor agent sync projects the active mapping into frontmatter', () => {
 
   assert.match(
     readFileSync(agentPath, 'utf8'),
-    /^model: composer-2\.5\[fast=false\]$/mu,
+    new RegExp(`^model: ${escapeRegex(loaded.config.personas.coder)}$`, 'mu'),
   )
 })

@@ -7,6 +7,7 @@ Policies MUST be small, globally identified JSON modules. `governance/policy_loo
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
 - `ACTION-001` — safe source-control actions
+- `ENG-001` — engineering handbook baseline
 - `INTAKE-001` — faithful intake
 - `PLAN-001` — proportionate planning
 - `DEV-001` — implementation discipline

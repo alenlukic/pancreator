@@ -2,8 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { invariant } from './errors.js'
-import { gitWorkspaceSnapshot } from './git.js'
+import { invariant, PanError } from './errors.js'
 import {
   ensureDir,
   fileExists,
@@ -63,6 +62,19 @@ import {
   loadWorkflowFile,
   stageBySlug,
 } from './workflow.js'
+import {
+  acquireActiveWorkflowLease,
+  readActiveWorkflowLease,
+  releaseActiveWorkflowLease,
+  snapshotWorkspace,
+  writeWorkflowBaseline,
+} from './workspace/index.js'
+import { listFileLocks } from './workspace/locks.js'
+import { resolveRoots } from './workspace/roots.js'
+import {
+  validateWorkflowChanges,
+  waiveLedgerValidation,
+} from './workspace/validate-changes.js'
 
 interface CreateRunOptions {
   workflowSlug?: string
@@ -135,6 +147,110 @@ function assertRunPipelineConfigCurrent(
 /** Absolute path of the deliverable workspace this run fingerprints and gates. */
 function workspaceDirectory(root: string, state: RunState): string {
   return resolveInside(root, state.workspace_root || '.')
+}
+
+function rootsForRun(root: string, state: RunState) {
+  return resolveRoots({
+    installation_root: root,
+    workspace_root: workspaceDirectory(root, state),
+    state_root: state.state_root,
+  })
+}
+
+function ensureMutatingWorkflowInitialized(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+): void {
+  if (stage.workspace_policy !== 'source_allowed') {
+    return
+  }
+
+  const roots = rootsForRun(root, state)
+
+  state.workspace_id = roots.workspace_id
+  state.installation_root = roots.installation_root
+  state.state_root = roots.state_root
+  state.scope_hash = roots.scope_hash
+
+  const existingLease = readActiveWorkflowLease(roots.state_root)
+
+  if (existingLease && existingLease.workflow_id !== state.run_id) {
+    throw new PanError(
+      `Mutating workflow lease is held by ${existingLease.workflow_id}.`,
+      {
+        code: 'WORKFLOW_LEASE_HELD',
+        details: { workflow_id: existingLease.workflow_id },
+      },
+    )
+  }
+
+  if (!existingLease) {
+    acquireActiveWorkflowLease(roots.state_root, {
+      schema_version: 1,
+      workspace_id: roots.workspace_id,
+      workflow_id: state.run_id,
+      acquired_at_ms: Date.now(),
+      process_id: process.pid,
+    })
+  }
+
+  const reconciled = snapshotWorkspace(roots, true)
+  const lockConflicts = listFileLocks(roots.state_root).filter(
+    (lock) => lock.workflow_id !== state.run_id,
+  )
+
+  invariant(
+    lockConflicts.length === 0,
+    'Cannot start mutating stage while unrelated file locks are present.',
+    { code: 'LOCK_HELD' },
+  )
+
+  writeWorkflowBaseline(
+    roots.state_root,
+    state.run_id,
+    roots,
+    reconciled.index,
+    sha256({
+      workspace_id: roots.workspace_id,
+      scope_hash: roots.scope_hash,
+      workspace_root: roots.workspace_root,
+      state_root: roots.state_root,
+    }),
+  )
+}
+
+function releaseWorkflowLeaseIfHeld(state: RunState): void {
+  if (!state.state_root) {
+    return
+  }
+
+  const lease = readActiveWorkflowLease(state.state_root)
+
+  if (lease?.workflow_id === state.run_id) {
+    const remainingLocks = listFileLocks(state.state_root).filter(
+      (lock) => lock.workflow_id === state.run_id,
+    )
+
+    invariant(
+      remainingLocks.length === 0,
+      'Workflow cannot close while workflow-owned file locks remain.',
+      { code: 'LOCK_HELD' },
+    )
+    releaseActiveWorkflowLease(state.state_root, state.run_id)
+  }
+}
+
+function workspaceSnapshotForRun(root: string, state: RunState) {
+  const roots = rootsForRun(root, state)
+  const snapshot = snapshotWorkspace(roots, false)
+
+  state.workspace_id = roots.workspace_id
+  state.installation_root = roots.installation_root
+  state.state_root = roots.state_root
+  state.scope_hash = roots.scope_hash
+
+  return snapshot.snapshot
 }
 
 /**
@@ -228,7 +344,7 @@ function referencesForRun(state: RunState): Array<{
     references.push({
       path: feedback.path,
       description:
-        `Operator rejection feedback ` +
+        `Operator remediation feedback ` +
         `(${feedback.from_stage} → ${feedback.to_stage})`,
     })
   }
@@ -248,6 +364,65 @@ function pauseForLimit(root: string, state: RunState, reason: string): void {
     `Resume from a chosen stage with: ./bin/pan resume ${state.run_id} --stage <stage>`,
     `Or abort with: ./bin/pan abort ${state.run_id}`,
   ])
+}
+
+function executeHarnessStage(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+  attempt: number,
+): PrepareInvocationResult {
+  const roots = rootsForRun(root, state)
+  const result = validateWorkflowChanges({
+    run_id: state.run_id,
+    state_root: roots.state_root,
+    roots,
+  })
+  const outcome: StageOutcome =
+    result.status === 'passed' ? 'success' : 'blocked'
+  const validationPath = `workflows/${state.run_id}/ledger-validation.json`
+  const historyItem: StageHistoryItem = {
+    stage: stage.slug,
+    attempt,
+    invocation_id: `${stage.slug}-${attempt}-harness`,
+    output_path: validationPath,
+    outcome,
+    submitted_at: now(),
+    workspace_fingerprint: workspaceSnapshotForRun(root, state).fingerprint,
+    validation_errors: [],
+    deterministic: [],
+  }
+
+  state.stage_history.push(historyItem)
+  state.latest_ledger_validation = result.status
+  state.latest_ledger_validation_path = validationPath
+
+  if (result.status === 'passed') {
+    applyTransition(root, state, stage, 'success')
+  } else {
+    state.status = 'paused'
+    state.pending_action = { type: 'operator_decision' }
+    state.pause_reason = `validate-changes detected ${result.anomalies.length} anomaly/anomalies.`
+    writeDecision(
+      root,
+      state,
+      'validate-changes requires operator adjudication',
+      state.pause_reason,
+      [
+        `Review ${state.latest_ledger_validation_path} before deciding.`,
+        `Waive with: ./bin/pan accept-change ${state.run_id} --waive`,
+        `Restart at a stage with: ./bin/pan resume ${state.run_id} --stage <stage>`,
+      ],
+    )
+  }
+
+  persist(root, state, 'harness_stage_executed', {
+    stage: stage.slug,
+    attempt,
+    status: result.status,
+  })
+
+  return { state, invocation: null }
 }
 
 interface TransitionOptions {
@@ -286,6 +461,7 @@ function applyTransition(
   }
 
   if (target === 'succeeded' || target === 'failed' || target === 'canceled') {
+    releaseWorkflowLeaseIfHeld(state)
     state.status = target
     state.current_stage = null
     state.pending_action = { type: 'none' }
@@ -451,6 +627,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   copyFileSync(source, resolveInside(root, storedRequest))
 
   const workspaceRoot = normalizeWorkspaceRoot(root, options.workspace)
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: resolveInside(root, workspaceRoot),
+  })
   const gateOverrides = readGateOverrides(root, options.gatesPath)
 
   const workflowSnapshot = `runtime/logs/workflows/${id}/workflow.snapshot.json`
@@ -485,6 +665,10 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
       sha256: sha256(pipelineConfigSnapshotValue),
     },
     workspace_root: workspaceRoot,
+    workspace_id: roots.workspace_id,
+    installation_root: roots.installation_root,
+    state_root: roots.state_root,
+    scope_hash: roots.scope_hash,
     ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
     title: options.title ?? path.basename(requestPath),
     status: 'running',
@@ -510,6 +694,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     workflow: workflow.slug,
     pipeline_config: pipelineConfig.name,
     workspace_root: workspaceRoot,
+    state_root: roots.state_root,
   })
 
   return state
@@ -572,12 +757,18 @@ export function prepareInvocation(
 
     state.attempts[stage.slug] = attempt
 
+    ensureMutatingWorkflowInitialized(root, state, stage)
+
+    if (stage.executor === 'harness') {
+      return executeHarnessStage(root, state, stage, attempt)
+    }
+
     const invocationId = `${stage.slug}-${attempt}-${randomUUID().slice(0, 8)}`
     const outputPath = `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`
     const jsonPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`
     const markdownPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`
 
-    const workspace = gitWorkspaceSnapshot(workspaceDirectory(root, state))
+    const workspace = workspaceSnapshotForRun(root, state)
     const policies = resolvePolicies(root, {
       persona: stage.persona,
       workflow: workflow.slug,
@@ -614,6 +805,7 @@ export function prepareInvocation(
         slug: stage.slug,
         title: stage.title,
         persona: stage.persona,
+        ...(stage.executor ? { executor: stage.executor } : {}),
         model,
         model_config: pipelineConfig.name,
         workspace_policy: stage.workspace_policy,
@@ -634,6 +826,7 @@ export function prepareInvocation(
         `You MUST respect workspace policy '${stage.workspace_policy}'.`,
         'You MUST write only the declared output and evidence.',
         'You MUST NOT alter workflow state directly.',
+        'While a mutating workflow is active, external edits to tracked files MUST be avoided because cooperative locks cannot block non-harness writers.',
         'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
       ],
       workspace_before: workspace,
@@ -973,7 +1166,7 @@ function resetAttemptsFrom(
 }
 
 /**
- * Persist operator rejection feedback as a durable artifact and register it on
+ * Persist operator remediation feedback as a durable artifact and register it on
  * the run so the remediation worker receives it as an input reference.
  */
 function recordOperatorFeedback(
@@ -981,6 +1174,7 @@ function recordOperatorFeedback(
   state: RunState,
   fromStage: StageDefinition,
   toStage: string,
+  decision: OperatorFeedbackItem['decision'],
   note: string,
 ): void {
   const feedback = state.operator_feedback ?? []
@@ -989,10 +1183,12 @@ function recordOperatorFeedback(
   const relativePath =
     `runtime/logs/workflows/${state.run_id}/artifacts/` +
     `operator-feedback-${index}.md`
+  const heading =
+    decision === 'reject' ? 'Operator rejection' : 'Operator remediation note'
   const body = [
-    `# Operator rejection: ${fromStage.title} (\`${fromStage.slug}\`)`,
+    `# ${heading}: ${fromStage.title} (\`${fromStage.slug}\`)`,
     '',
-    `**Run** \`${state.run_id}\` · **Rejected attempt** ${attempt} · ` +
+    `**Run** \`${state.run_id}\` · **Source attempt** ${attempt} · ` +
       `**Remediation stage** \`${toStage}\``,
     '',
     '## Required changes',
@@ -1010,7 +1206,7 @@ function recordOperatorFeedback(
   writeTextAtomic(resolveInside(root, relativePath), `${body}\n`)
 
   const item: OperatorFeedbackItem = {
-    decision: 'reject',
+    decision,
     from_stage: fromStage.slug,
     to_stage: toStage,
     attempt,
@@ -1061,7 +1257,7 @@ export function decideRun(
         resetAttemptsFrom(workflow, state, target)
       }
 
-      recordOperatorFeedback(root, state, stage, target, note)
+      recordOperatorFeedback(root, state, stage, target, 'reject', note)
       applyTransition(root, state, stage, 'failure', {
         overrideTarget: target,
         operatorDirected: Boolean(targetStage),
@@ -1083,6 +1279,7 @@ export function resumeRun(
   root: string,
   runId: string,
   stageSlug: string | null = null,
+  note = '',
 ): RunState {
   return withFileLock(lockPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -1095,6 +1292,14 @@ export function resumeRun(
     const target = stageSlug ?? state.current_stage ?? workflow.start_stage
 
     stageBySlug(workflow, target)
+    const source = stageBySlug(
+      workflow,
+      state.current_stage ?? workflow.start_stage,
+    )
+
+    if (note.trim().length > 0) {
+      recordOperatorFeedback(root, state, source, target, 'resume', note)
+    }
 
     state.status = 'running'
     state.current_stage = target
@@ -1109,7 +1314,12 @@ export function resumeRun(
   })
 }
 
-export function acceptChange(root: string, runId: string, note = ''): RunState {
+export function acceptChange(
+  root: string,
+  runId: string,
+  note = '',
+  waive = false,
+): RunState {
   return withFileLock(lockPath(root, runId), () => {
     const state = loadState(root, runId)
 
@@ -1124,31 +1334,52 @@ export function acceptChange(root: string, runId: string, note = ''): RunState {
     invariant(target, 'Run has no current stage to resume.', {
       code: 'INVALID_RUN_ACTION',
     })
+    const roots = rootsForRun(root, state)
+    const snapshot = snapshotWorkspace(roots, waive)
+    const fingerprint = snapshot.snapshot.fingerprint
 
-    const fingerprint = gitWorkspaceSnapshot(
-      workspaceDirectory(root, state),
-    ).fingerprint
+    if (waive) {
+      const waived = waiveLedgerValidation(roots.state_root, state.run_id)
+      state.latest_ledger_validation = waived.status
+      state.latest_ledger_validation_path = `workflows/${state.run_id}/ledger-validation.json`
+    }
 
     state.accepted_workspace_fingerprint = fingerprint
     state.status = 'running'
-    state.current_stage = target
-    state.pending_action = { type: 'prepare_invocation' }
     state.current_invocation = null
     state.pause_reason = null
     state.consecutive_failures = 0
 
+    if (waive) {
+      const workflow = loadRunWorkflow(root, state)
+      const stage = stageBySlug(workflow, target)
+
+      state.current_stage = target
+      applyTransition(root, state, stage, 'success', {
+        operatorDirected: true,
+      })
+    } else {
+      state.current_stage = target
+      state.pending_action = { type: 'prepare_invocation' }
+    }
+
     writeDecision(
       root,
       state,
-      'Operator accepted an intentional workspace change',
+      waive
+        ? 'Operator waived validate-changes anomalies'
+        : 'Operator accepted an intentional workspace change',
       note ||
-        'Operator attested the current workspace is intentional; review and QA evidence is honored against the accepted fingerprint.',
+        (waive
+          ? 'Operator waived validate-changes anomalies and adopted the current workspace index as accepted state.'
+          : 'Operator attested the current workspace is intentional; review and QA evidence is honored against the accepted fingerprint.'),
       [`Continue with: ./bin/pan prepare ${state.run_id}`],
     )
 
     persist(root, state, 'workspace_change_accepted', {
       stage: target,
       accepted_workspace_fingerprint: fingerprint,
+      waived_validation: waive,
       note,
     })
 
