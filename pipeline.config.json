@@ -22,7 +22,7 @@
     "complex": {
       "summary": "Higher-reasoning review and QA for complex or high-risk work.",
       "personas": {
-        "orchestrator": "gemini-3.5-flash",
+        "orchestrator": "gpt-5.3-codex[reasoning=high,fast=false]",
         "tech-lead": "claude-opus-4-8[thinking=true,context=300k,effort=high,fast=false]",
         "coder": "gpt-5.3-codex[reasoning=high,fast=false]",
         "reviewer": "gpt-5.4[context=272k,reasoning=high,fast=false]",
@@ -41,7 +41,7 @@
         "reviewer": "auto",
         "qa-tester": "auto",
         "release-steward": "auto",
-        "investigator": "gpt-5.3-codex[reasoning=high,fast=false]",
+        "investigator": "auto",
         "spotfixer": "composer-2.5[fast=false]"
       }
     }
