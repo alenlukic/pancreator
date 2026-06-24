@@ -13,6 +13,7 @@ recurring job. Read the skill relevant to your current step.
 - [`evaluate-evidence.md`](evaluate-evidence.md) - judge whether evidence
   supports a criterion.
 - [`scope-control.md`](scope-control.md) - keep a change minimal and bounded.
+- [`spotfix.md`](spotfix.md) - execute or escalate one operator-selected lightweight change.
 
 ## Stage-aligned
 

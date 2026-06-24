@@ -12,6 +12,7 @@ import {
   getRunState,
   prepareInvocation,
   resumeRun,
+  setRunStage,
   submitOutput,
 } from './lib/engine.js'
 import { PanError } from './lib/errors.js'
@@ -47,6 +48,7 @@ Usage:
   pan assess <run-id> <assessment-json>
   pan decide <run-id> <approve|reject> [--note <text>] [--stage <stage-slug>]
   pan resume <run-id> [--stage <stage-slug>] [--note <text>]
+  pan set-stage <run-id> --stage <stage-slug> --note <reason>
   pan accept-change <run-id> [--note <text>] [--waive]
   pan abort <run-id> [--note <text>]
   pan changes begin <run-id> <path>
@@ -301,6 +303,33 @@ async function main(): Promise<void> {
       print({
         status: state.status,
         current_stage: state.current_stage,
+        next_command: `./bin/pan prepare ${runId}`,
+      })
+      return
+    }
+    case 'set-stage': {
+      const runId = requiredArgument(args[0], 'run-id')
+      const stage = option(args, '--stage')
+      const note = option(args, '--note')
+
+      if (!stage) {
+        throw new PanError('--stage is required for set-stage.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      if (!note || note.trim().length === 0) {
+        throw new PanError('--note is required for set-stage.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const state = setRunStage(root, runId, stage, note)
+
+      print({
+        status: state.status,
+        current_stage: state.current_stage,
+        pending_action: state.pending_action,
         next_command: `./bin/pan prepare ${runId}`,
       })
       return

@@ -11,6 +11,7 @@ import {
   getRunState,
   prepareInvocation,
   resumeRun,
+  setRunStage,
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
@@ -240,4 +241,67 @@ test('paused remediation note is attached to the next implement invocation', () 
 
   const feedbackBody = readFileSync(path.join(root, feedback.path), 'utf8')
   assert.match(feedbackBody, /refactor it before proceeding/u)
+})
+
+test('operator set-stage bypasses transitions and injects repair context', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Fixture run',
+  })
+  const runId = state.run_id
+  const originalInvocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(originalInvocation)
+  assert.equal(originalInvocation.stage.slug, 'intake')
+
+  const note =
+    'Repair the run by independently reviewing the current workspace.'
+  const repaired = setRunStage(root, runId, 'review', note)
+
+  assert.equal(repaired.status, 'running')
+  assert.equal(repaired.current_stage, 'review')
+  assert.equal(repaired.pending_action.type, 'prepare_invocation')
+  assert.equal(repaired.current_invocation, null)
+  assert.equal(repaired.transition_count, 0)
+  assert.equal(repaired.consecutive_failures, 0)
+  assert.equal(repaired.operator_feedback?.at(-1)?.decision, 'set-stage')
+
+  const invocation = prepareInvocation(root, runId).invocation
+  assert.ok(invocation)
+  assert.equal(invocation.stage.slug, 'review')
+  assert.equal(invocation.attempt, 1)
+
+  const feedback = getRunState(root, runId).operator_feedback?.at(-1)
+  assert.ok(feedback)
+  assert.equal(feedback.from_stage, 'intake')
+  assert.equal(feedback.to_stage, 'review')
+  assert.ok(
+    invocation.inputs.references.some(
+      (reference) =>
+        reference.path === feedback.path &&
+        reference.description.startsWith('Operator stage repair'),
+    ),
+  )
+
+  const feedbackBody = readFileSync(path.join(root, feedback.path), 'utf8')
+  assert.match(feedbackBody, /independently reviewing the current workspace/u)
+})
+
+test('operator set-stage requires a valid target and non-empty repair note', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  })
+
+  assert.throws(
+    () => setRunStage(root, state.run_id, 'review', '   '),
+    /Stage repair note MUST be non-empty/u,
+  )
+  assert.throws(
+    () => setRunStage(root, state.run_id, 'missing', 'repair target'),
+    /Workflow dev has no stage 'missing'/u,
+  )
 })

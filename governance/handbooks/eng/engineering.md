@@ -25,7 +25,10 @@ This handbook defines the repository-wide engineering baseline. An agent MUST re
 ## Testing and validation
 
 - Tests MUST target observable behavior rather than incidental implementation structure.
-- Unit tests SHOULD cover isolated logic, integration tests SHOULD cover cross-boundary behavior, and regression tests MUST preserve previously observed failures.
+- Core functionality means every new or changed deterministic observable behavior and acceptance criterion, including the primary success path and each material branch.
+- Likely edge cases means reasonably reachable boundary, empty, missing, invalid, and error states implied by changed input shapes, contracts, nullable values, or prior regressions. It does not require exhaustive permutations of equivalent inputs.
+- Unit tests MUST cover core functionality and likely edge cases when the behavior can be isolated meaningfully. Integration or regression tests MUST be used instead when they are the narrower truthful proof, and the substitution MUST be reported.
+- Integration tests SHOULD cover cross-boundary behavior, and regression tests MUST preserve previously observed failures.
 - A new regression test SHOULD be demonstrated to fail without the corresponding fix when practical.
 - Test setup and helpers SHOULD be shared when doing so does not obscure the scenario.
 - Validation commands declared by the repository MUST run before completion.

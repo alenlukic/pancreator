@@ -342,11 +342,14 @@ function referencesForRun(state: RunState): Array<{
   }
 
   for (const feedback of state.operator_feedback ?? []) {
+    const label =
+      feedback.decision === 'set-stage'
+        ? 'Operator stage repair'
+        : 'Operator remediation feedback'
+
     references.push({
       path: feedback.path,
-      description:
-        `Operator remediation feedback ` +
-        `(${feedback.from_stage} → ${feedback.to_stage})`,
+      description: `${label} (${feedback.from_stage} → ${feedback.to_stage})`,
     })
   }
 
@@ -1273,6 +1276,85 @@ export function decideRun(
       decision,
       note,
       target_stage: decision === 'reject' ? state.current_stage : null,
+    })
+
+    return state
+  })
+}
+
+/**
+ * Move a run to an operator-selected stage outside normal workflow transitions.
+ * The operator contract requires any executing worker process to be terminated
+ * before this function is invoked; the durable state cannot observe process
+ * lifetime, so the action is audited rather than inferred.
+ */
+export function setRunStage(
+  root: string,
+  runId: string,
+  stageSlug: string,
+  note: string,
+): RunState {
+  return withFileLock(lockPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(note.trim().length > 0, 'Stage repair note MUST be non-empty.', {
+      code: 'REPAIR_NOTE_REQUIRED',
+    })
+
+    const workflow = loadRunWorkflow(root, state)
+    stageBySlug(workflow, stageSlug)
+
+    const fromStage = state.current_stage ?? state.status
+    const sourceAttempt = state.current_stage
+      ? (state.attempts[state.current_stage] ?? 0)
+      : 0
+    const feedback = state.operator_feedback ?? []
+    const index = feedback.length + 1
+    const relativePath =
+      `runtime/logs/workflows/${state.run_id}/artifacts/` +
+      `operator-feedback-${index}.md`
+    const body = [
+      '# Operator stage repair',
+      '',
+      `**Run** \`${state.run_id}\` · **Previous state** \`${fromStage}\` · ` +
+        `**Target stage** \`${stageSlug}\``,
+      '',
+      '## Repair reason',
+      '',
+      note.trim(),
+      '',
+      'This operator-directed repair bypassed normal workflow transitions. ' +
+        'You MUST treat the reason above as required input for this stage.',
+      '',
+    ].join('\n')
+
+    writeTextAtomic(resolveInside(root, relativePath), `${body}\n`)
+
+    feedback.push({
+      decision: 'set-stage',
+      from_stage: fromStage,
+      to_stage: stageSlug,
+      attempt: sourceAttempt,
+      note,
+      path: relativePath,
+      timestamp: now(),
+    })
+    state.operator_feedback = feedback
+
+    resetAttemptsFrom(workflow, state, stageSlug)
+    state.status = 'running'
+    state.current_stage = stageSlug
+    state.pending_action = { type: 'prepare_invocation' }
+    state.current_invocation = null
+    state.pause_reason = null
+    state.accepted_workspace_fingerprint = null
+    state.transition_count = 0
+    state.consecutive_failures = 0
+
+    persist(root, state, 'operator_stage_set', {
+      from_stage: fromStage,
+      to_stage: stageSlug,
+      note_path: relativePath,
     })
 
     return state

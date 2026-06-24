@@ -590,6 +590,15 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/schemas/stage.schema.json',
     '.cursor/commands/pan-start.md',
     '.cursor/commands/pan-resume.md',
+    '.cursor/commands/pan-debug.md',
+    '.cursor/commands/pan-spotfix.md',
+    '.cursor/agents/investigator.md',
+    '.cursor/agents/spotfixer.md',
+    'library/personas/investigator.md',
+    'library/personas/spotfixer.md',
+    'library/skills/spotfix.md',
+    'governance/policies/WORK-001.json',
+    'governance/policies/SPOT-001.json',
     'src/cli.ts',
   ]
 
@@ -697,11 +706,38 @@ export function validateRepository(root: string): RepositoryValidationResult {
     }
   }
 
+  const cursorAgentPersonas = new Set<string>()
+  const cursorAgentDirectory = path.join(root, '.cursor', 'agents')
+
+  if (fileExists(cursorAgentDirectory)) {
+    for (const entry of readdirSync(cursorAgentDirectory, {
+      withFileTypes: true,
+    })) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) {
+        continue
+      }
+
+      const persona = entry.name.slice(0, -3)
+      cursorAgentPersonas.add(persona)
+
+      if (
+        !fileExists(path.join(root, 'library', 'personas', `${persona}.md`))
+      ) {
+        errors.push(`missing persona: library/personas/${persona}.md`)
+      }
+    }
+  }
+
+  const configuredPersonas = new Set([
+    ...workflowPersonas,
+    ...cursorAgentPersonas,
+  ])
+
   if (pipelineConfig) {
     for (const [configName, config] of Object.entries(
       pipelineConfig.file.configs,
     )) {
-      for (const persona of workflowPersonas) {
+      for (const persona of configuredPersonas) {
         if (!config.personas[persona]) {
           errors.push(
             `pipeline config '${configName}' does not map persona '${persona}'`,

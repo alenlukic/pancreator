@@ -357,7 +357,7 @@ export interface CurrentInvocationPointer {
 }
 
 export interface OperatorFeedbackItem {
-  decision: 'reject' | 'resume'
+  decision: 'reject' | 'resume' | 'set-stage'
   from_stage: string
   to_stage: string
   attempt: number

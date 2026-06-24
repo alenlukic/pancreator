@@ -11,6 +11,24 @@ Use `/pan-start` for a new request and `/pan-resume <run-id>` thereafter. The su
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
+## Choose a work mode
+
+Use `systematic` by default. `/pan-start` executes the governed `dev` workflow
+with planning, implementation, independent review, QA, and release preparation.
+
+Use `/pan-debug <problem>` when the cause or remediation scope is unclear. The
+investigator does not modify source; it returns root cause, proposed remediation,
+numbered acceptance criteria, and a `lightweight` or `systematic` recommendation.
+
+Use `/pan-spotfix <request>` only when the operator deliberately selects
+lightweight execution and the request satisfies `WORK-001`: one coherent change,
+no unresolved structural decision, no more than three core implementation files
+in one bounded subsystem, and existing checks that can prove correctness. The
+spotfixer performs at most three implementation-validation cycles. Failure or
+scope expansion creates `runtime/inbox/spotfix-escalation-*.md` for systematic
+routing. Do not run it while a mutating workflow agent is active in the same
+workspace.
+
 ## Select pipeline models
 
 `pipeline.config.json` is the source of truth for named persona-to-model mappings. Set `active_config` to one of the declared configurations, then project that mapping into the Cursor worker agents:
@@ -48,6 +66,19 @@ A pause is not a generic failure. Read `last_decision_path` in `state.json` or u
 Resume from the stage that owns the remediation. Do not resume from review or test when the defect belongs to implementation.
 
 - `./bin/pan resume <run-id> --stage implement --note "<required changes>"` restarts implementation and attaches the note to the next invocation card as remediation input.
+
+### Operator stage repair
+
+`./bin/pan set-stage <run-id> --stage <stage> --note "<reason for repair>"`
+moves the run directly to any stage without following the current transition. It
+clears the active invocation, resets the target segment's attempt budget and the
+transition/failure circuit-breaker counters, records an `operator_stage_set`
+event, and attaches the repair note to the next invocation.
+
+This command is operator-only. Never invoke it while a pipeline agent is still
+executing; terminate that process first so an obsolete worker cannot continue
+writing after the run has moved. Use it for deliberate state repair, not normal
+review or QA remediation.
 
 ## Cooperative lock contract
 

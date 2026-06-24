@@ -60,6 +60,18 @@
       "workflow": "dev",
       "stage": "ship",
       "policies": ["SHIP-001"]
+    },
+    {
+      "persona": "investigator",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["WORK-001"]
+    },
+    {
+      "persona": "spotfixer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["ENG-001", "TS-001", "WORK-001", "SPOT-001"]
     }
   ]
 }

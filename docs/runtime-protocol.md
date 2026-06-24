@@ -53,6 +53,22 @@ operator adjudication.
 
 At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (the ship stage routes to `implement`, intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/operator-feedback-<n>.md` and attached to the remediation invocation as a required input reference.
 
+## Operator stage repair
+
+`./bin/pan set-stage <run-id> --stage <stage> --note "<reason>"` is an
+operator-only escape hatch that may target any stage regardless of the run's
+current stage or status. It validates the target against the run's immutable
+workflow snapshot, clears the active invocation, resets attempts from the target
+forward, resets transition and consecutive-failure budgets, and makes
+`prepare_invocation` the next action.
+
+The command writes an operator-feedback artifact and an `operator_stage_set`
+event. The artifact is included in the next invocation's input references, so
+the target worker receives the reason for repair. Durable state cannot observe
+whether a Cursor worker process is still executing; the operator MUST terminate
+any executing pipeline agent before invoking the command. Agents MUST NOT invoke
+it.
+
 ## Deliverable workspace
 
 Each run declares a deliverable workspace at `./bin/pan init --workspace <dir>`, stored as `workspace_root` in `state.json` and defaulting to the repository root (`.`). The harness fingerprints that directory's Git state, runs every shell gate command with that directory as the working directory, and evaluates `scope.no_unapproved_changes` against it. The target MAY be a nested Git repository, including one the surrounding repository ignores; Git runs with that directory as its working directory and is scoped with a `.` pathspec, so changes inside the deliverable are observed even when the outer repository ignores the path. Each invocation card states the active workspace so the worker and operator can see what is being fingerprinted and gated. A run whose deliverable is not its declared workspace produces deterministic evidence about the wrong files; declare the workspace so the gates measure the actual work.
@@ -88,6 +104,7 @@ Exceeding a limit pauses the run and writes a decision record. The operator may 
 - Inspect: `./bin/pan status <run-id> --json`
 - Resume same stage: `./bin/pan resume <run-id>`
 - Resume chosen stage: `./bin/pan resume <run-id> --stage implement`
+- Repair directly to any stage: `./bin/pan set-stage <run-id> --stage <stage> --note "reason"`
 - Accept an intentional change: `./bin/pan accept-change <run-id> --note "reason"`
 - Abort: `./bin/pan abort <run-id> --note "reason"`
 
@@ -104,7 +121,7 @@ The `ship.prior_gates_current` gate requires that review and QA evidence was pro
 
 Acceptance is pinned to the exact accepted fingerprint: review and QA must already have passed, and any _further_ tracked-file change after acceptance re-flags the gate. Acceptance only excuses a stale fingerprint; it never substitutes for missing review/QA evidence.
 
-Do not repair state by editing files. A future repair command can be added once real corruption modes are observed.
+Do not repair state by editing files. Use `pan set-stage` for an audited stage repair and preserve the reason in `--note`.
 
 ## Pipeline model snapshot
 

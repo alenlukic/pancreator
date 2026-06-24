@@ -123,3 +123,23 @@ test('repository validation requires code-review and QA stages to load TypeScrip
     /workflow stage 'dev\/test' persona 'qa-tester' MUST load a policy for the TypeScript handbook/u,
   )
 })
+
+test('repository validation requires standalone Cursor agents in every pipeline config', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const configPath = path.join(root, 'pipeline.config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    configs: Record<string, { personas: Record<string, string> }>
+  }
+
+  delete config.configs.complex?.personas.investigator
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assert.match(
+    result.errors.join('\n'),
+    /pipeline config 'complex' does not map persona 'investigator'/u,
+  )
+})

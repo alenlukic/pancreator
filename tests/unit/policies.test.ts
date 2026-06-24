@@ -69,3 +69,34 @@ test('policy registry content remains canonical for inlining', () => {
   )
   assert.equal(action.instructions.length, 2)
 })
+
+test('standalone remediation personas load their work-mode policies', () => {
+  const root = createFixture()
+
+  const investigatorIds = resolvePolicies(root, {
+    persona: 'investigator',
+    workflow: 'standalone',
+    stage: 'debug',
+  }).map((policy) => policy.id)
+  assert.deepEqual(investigatorIds, [
+    'ACTION-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'WORK-001',
+  ])
+
+  const spotfixerIds = resolvePolicies(root, {
+    persona: 'spotfixer',
+    workflow: 'standalone',
+    stage: 'spotfix',
+  }).map((policy) => policy.id)
+  assert.deepEqual(spotfixerIds, [
+    'ACTION-001',
+    'ENG-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'SPOT-001',
+    'TS-001',
+    'WORK-001',
+  ])
+})
