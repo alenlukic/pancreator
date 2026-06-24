@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "active_config": "default",
+  "active_config": "complex",
   "$operator": {
     "summary": "Named pipeline model configurations. Each configuration maps every workflow persona to the Cursor model that should execute it.",
     "note": "Change active_config, then run ./bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
