@@ -37,15 +37,36 @@ is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate
   record. The harness never silently resets a budget.
 - `stages` - ordered, unique stage slugs.
 
+## Pipeline model configuration
+
+`pipeline.config.json` is the single source of truth for persona-to-model selection.
+It contains named configurations such as `default`, `complex`, `auto`, and `fable`.
+Every named configuration MUST map every persona referenced by any workflow.
+
+After changing `active_config` or a model value, run:
+
+```sh
+./bin/pan models --sync
+```
+
+This projects the active mapping into matching `.cursor/agents/<persona>.md`
+frontmatter. `./bin/pan validate` fails when a workflow persona is unmapped, a
+worker agent is missing, or an agent model has drifted from the active config.
+New runs copy the active mapping to `pipeline-config.snapshot.json`; every
+invocation records the resolved model and configuration name. Because Cursor
+subagent files are project-global, preparing an existing run fails if the live
+active mapping no longer matches its snapshot. Restore and resynchronize that
+mapping before resuming the run.
+
 ## Stage fields (`stages/<stage>.json`)
 
 - `slug` - stage id; matches the file name and a slug in the index.
 - `title` - shown on cards and records.
 - `persona` - owner; resolves to `library/personas/<persona>.md` and, for
-  delegated work, the `.cursor/agents/<persona>.md` subagent.
-- `model_hint` - a capability profile, not a vendor model id. Resolves against
-  [`library/model_profiles.json`](../library/model_profiles.json). The operator
-  may override per invocation.
+  delegated work, the `.cursor/agents/<persona>.md` subagent. The run resolves
+  the persona to a model through the active named mapping in
+  [`pipeline.config.json`](../pipeline.config.json), then snapshots that mapping
+  so an in-flight run cannot drift when the live config changes.
 - `prompt_path` - the stage task brief; its contents become the card's Task
   section.
 - `workspace_policy` - the mutation boundary the harness enforces with workspace

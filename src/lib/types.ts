@@ -54,7 +54,6 @@ export interface StageDefinition {
   slug: string
   title: string
   persona: string
-  model_hint?: string
   prompt?: string
   prompt_path?: string
   prompt_sha256?: string
@@ -167,7 +166,8 @@ export interface Invocation {
     slug: string
     title: string
     persona: string
-    model_hint?: string
+    model: string
+    model_config: string
     workspace_policy: WorkspacePolicy
     gate: StageGate
   }
@@ -250,6 +250,11 @@ export interface RunState {
   run_id: string
   workflow_slug: string
   workflow_snapshot: {
+    path: string
+    sha256: string
+  }
+  pipeline_config?: {
+    name: string
     path: string
     sha256: string
   }

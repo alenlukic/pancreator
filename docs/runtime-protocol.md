@@ -2,7 +2,7 @@
 
 ## Run invariants
 
-- One run executes one workflow snapshot.
+- One run executes one workflow snapshot and one pipeline model-config snapshot.
 - A run has exactly one current stage or a terminal status.
 - A run exposes exactly one pending action.
 - State changes occur under a per-run exclusive file lock.
@@ -91,3 +91,16 @@ The `ship.prior_gates_current` gate requires that review and QA evidence was pro
 Acceptance is pinned to the exact accepted fingerprint: review and QA must already have passed, and any _further_ tracked-file change after acceptance re-flags the gate. Acceptance only excuses a stale fingerprint; it never substitutes for missing review/QA evidence.
 
 Do not repair state by editing files. A future repair command can be added once real corruption modes are observed.
+
+## Pipeline model snapshot
+
+At run creation, the harness resolves `pipeline.config.json.active_config`, verifies
+that projected Cursor agent models are synchronized, and writes
+`pipeline-config.snapshot.json` into the run directory. Each invocation resolves
+its persona from that snapshot and records both `stage.model` and
+`stage.model_config`. Preparing a snapshotted run requires the live active mapping and projected
+Cursor-agent frontmatter to still match that snapshot. A configuration switch
+therefore blocks older runs until their mapping is restored; this prevents an
+invocation card from claiming one model while Cursor executes another. Runs
+created before model snapshots use the current live mapping for backward
+compatibility.

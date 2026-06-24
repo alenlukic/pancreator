@@ -15,6 +15,10 @@ import {
 } from './lib/engine.js'
 import { PanError } from './lib/errors.js'
 import { isGitRepository } from './lib/git.js'
+import {
+  loadPipelineConfig,
+  syncCursorAgentModels,
+} from './lib/pipeline-config.js'
 import { fileExists, findProjectRoot, isRecord, readJson } from './lib/io.js'
 import type { RunState } from './lib/types.js'
 import { validateRepository } from './lib/validation.js'
@@ -32,6 +36,7 @@ Usage:
   pan abort <run-id> [--note <text>]
   pan status <run-id> [--json]
   pan list [--json]
+  pan models [--sync] [--json]
   pan validate [--json]
   pan doctor [--json]
 
@@ -148,6 +153,7 @@ async function main(): Promise<void> {
         status: 'created',
         run_id: state.run_id,
         workspace_root: state.workspace_root,
+        pipeline_config: state.pipeline_config?.name,
         next_command: `./bin/pan prepare ${state.run_id}`,
         state_path: `runtime/logs/workflows/${state.run_id}/state.json`,
       })
@@ -171,6 +177,8 @@ async function main(): Promise<void> {
         run_id: runId,
         stage: result.invocation.stage.slug,
         persona: result.invocation.stage.persona,
+        model: result.invocation.stage.model,
+        model_config: result.invocation.stage.model_config,
         invocation_json: result.state.current_invocation?.json_path,
         invocation_markdown: result.state.current_invocation?.markdown_path,
         expected_output: result.state.current_invocation?.output_path,
@@ -260,6 +268,24 @@ async function main(): Promise<void> {
     case 'list':
       print(listRuns(root), true)
       return
+    case 'models': {
+      const loaded = loadPipelineConfig(root)
+      const changes = syncCursorAgentModels(root, loaded, {
+        write: hasFlag(args, '--sync'),
+      })
+
+      print(
+        {
+          active_config: loaded.name,
+          summary: loaded.config.summary,
+          personas: loaded.config.personas,
+          sync_requested: hasFlag(args, '--sync'),
+          changed_agents: changes.filter((entry) => entry.changed),
+        },
+        true,
+      )
+      return
+    }
     case 'validate': {
       const result = validateRepository(root)
       print(result, true)
@@ -271,6 +297,7 @@ async function main(): Promise<void> {
     }
     case 'doctor': {
       const validation = validateRepository(root)
+      const pipelineConfig = loadPipelineConfig(root)
       const nodeMajor = Number(process.versions.node.split('.')[0])
       const result = {
         ok: validation.ok && nodeMajor >= 22,
@@ -279,6 +306,10 @@ async function main(): Promise<void> {
           supported: nodeMajor >= 22,
         },
         git: { available_repository: isGitRepository(root) },
+        pipeline_config: {
+          active: pipelineConfig.name,
+          personas: pipelineConfig.config.personas,
+        },
         validation,
         constraints: {
           runtime_dependencies: 0,

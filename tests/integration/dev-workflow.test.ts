@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -24,6 +25,12 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   })
   const runId = state.run_id
 
+  assert.equal(state.pipeline_config?.name, 'default')
+  assert.match(
+    state.pipeline_config?.path ?? '',
+    /pipeline-config\.snapshot\.json$/u,
+  )
+
   for (const stageSlug of [
     'intake',
     'plan',
@@ -37,6 +44,8 @@ test('full dev workflow persists gates and reaches operator-approved success', (
 
     assert.ok(invocation)
     assert.equal(invocation.stage.slug, stageSlug)
+    assert.equal(invocation.stage.model_config, 'default')
+    assert.ok(invocation.stage.model.length > 0)
 
     const stage = stageBySlug(workflow, stageSlug)
     const output = makeOutput(root, invocation, stage)
@@ -90,4 +99,24 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   assert.equal(final.current_stage, null)
   assert.equal(final.stage_history.length, 6)
   assert.ok(final.stage_history.every((item) => item.record_path))
+})
+
+test('run preparation rejects live pipeline-config drift from its snapshot', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+  })
+  const configPath = path.join(root, 'pipeline.config.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+    active_config: string
+  }
+
+  config.active_config = 'fable'
+  writeJson(configPath, config)
+
+  assert.throws(
+    () => prepareInvocation(root, state.run_id),
+    /live active mapping has changed/u,
+  )
 })

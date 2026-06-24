@@ -20,6 +20,13 @@ import {
 } from './io.js'
 import { resolvePolicies } from './policies.js'
 import {
+  loadPipelineConfig,
+  loadPipelineConfigSnapshot,
+  makePipelineConfigSnapshot,
+  resolvePersonaModel,
+  syncCursorAgentModels,
+} from './pipeline-config.js'
+import {
   renderInvocationMarkdown,
   renderStatus,
   renderTaskRecord,
@@ -78,6 +85,50 @@ function loadRunWorkflow(root: string, state: RunState): WorkflowDefinition {
   return loadWorkflowFile(
     root,
     resolveInside(root, state.workflow_snapshot.path),
+  )
+}
+
+function loadRunPipelineConfig(root: string, state: RunState) {
+  if (state.pipeline_config) {
+    return loadPipelineConfigSnapshot(root, state.pipeline_config.path)
+  }
+
+  return makePipelineConfigSnapshot(loadPipelineConfig(root))
+}
+
+function assertRunPipelineConfigCurrent(
+  root: string,
+  state: RunState,
+  snapshot: ReturnType<typeof loadRunPipelineConfig>,
+): void {
+  if (!state.pipeline_config) {
+    return
+  }
+
+  const live = loadPipelineConfig(root)
+  const sameConfig =
+    live.name === snapshot.name &&
+    sha256(live.config.personas) === sha256(snapshot.personas)
+
+  invariant(
+    sameConfig,
+    `Run '${state.run_id}' uses pipeline config '${snapshot.name}', but the ` +
+      `live active mapping has changed. Restore that mapping and run ` +
+      './bin/pan models --sync before resuming this run.',
+    { code: 'PIPELINE_CONFIG_DRIFT' },
+  )
+
+  const agentModelDrift = syncCursorAgentModels(root, live).filter(
+    (entry) => entry.changed,
+  )
+
+  invariant(
+    agentModelDrift.length === 0,
+    'Cursor agent models do not match the run pipeline config. Run ./bin/pan models --sync.',
+    {
+      code: 'PIPELINE_CONFIG_NOT_SYNCED',
+      details: { agents: agentModelDrift.map((entry) => entry.path) },
+    },
   )
 }
 
@@ -347,6 +398,33 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   })
 
   const workflow = loadWorkflow(root, workflowSlug)
+  const pipelineConfig = loadPipelineConfig(root)
+
+  for (const stage of workflow.stages) {
+    resolvePersonaModel(pipelineConfig.config, stage.persona)
+
+    if (stage.persona !== 'orchestrator') {
+      invariant(
+        fileExists(path.join(root, '.cursor', 'agents', `${stage.persona}.md`)),
+        `Missing Cursor agent for persona '${stage.persona}'.`,
+        { code: 'MISSING_CURSOR_AGENT' },
+      )
+    }
+  }
+
+  const agentModelDrift = syncCursorAgentModels(root, pipelineConfig).filter(
+    (entry) => entry.changed,
+  )
+
+  invariant(
+    agentModelDrift.length === 0,
+    'Cursor agent models do not match the active pipeline config. Run ./bin/pan models --sync.',
+    {
+      code: 'PIPELINE_CONFIG_NOT_SYNCED',
+      details: { agents: agentModelDrift.map((entry) => entry.path) },
+    },
+  )
+
   const source = resolveInside(root, requestPath)
 
   invariant(fileExists(source), `Request file does not exist: ${requestPath}`, {
@@ -385,6 +463,14 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
   writeJsonAtomic(resolveInside(root, workflowSnapshot), workflowSnapshotValue)
 
+  const pipelineConfigSnapshot = `runtime/logs/workflows/${id}/pipeline-config.snapshot.json`
+  const pipelineConfigSnapshotValue = makePipelineConfigSnapshot(pipelineConfig)
+
+  writeJsonAtomic(
+    resolveInside(root, pipelineConfigSnapshot),
+    pipelineConfigSnapshotValue,
+  )
+
   const state: RunState = {
     schema_version: 1,
     run_id: id,
@@ -392,6 +478,11 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     workflow_snapshot: {
       path: workflowSnapshot,
       sha256: sha256(workflowSnapshotValue),
+    },
+    pipeline_config: {
+      name: pipelineConfig.name,
+      path: pipelineConfigSnapshot,
+      sha256: sha256(pipelineConfigSnapshotValue),
     },
     workspace_root: workspaceRoot,
     ...(gateOverrides ? { gate_overrides: gateOverrides } : {}),
@@ -417,6 +508,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
   persist(root, state, 'run_created', {
     workflow: workflow.slug,
+    pipeline_config: pipelineConfig.name,
     workspace_root: workspaceRoot,
   })
 
@@ -459,6 +551,11 @@ export function prepareInvocation(
 
     const workflow = loadRunWorkflow(root, state)
     const stage = stageBySlug(workflow, state.current_stage)
+    const pipelineConfig = loadRunPipelineConfig(root, state)
+
+    assertRunPipelineConfigCurrent(root, state, pipelineConfig)
+
+    const model = resolvePersonaModel(pipelineConfig, stage.persona)
     const attempt = (state.attempts[stage.slug] ?? 0) + 1
 
     if (attempt > state.limits.max_stage_attempts) {
@@ -488,17 +585,17 @@ export function prepareInvocation(
     })
     const nextAction =
       stage.persona === 'orchestrator'
-        ? `Complete this stage in the current chat, write ${outputPath}, ` +
-          'then submit it.'
-        : `Invoke the '${stage.persona}' Cursor subagent with this card, ` +
-          `then submit ${outputPath}.`
+        ? `Complete this stage in the current chat with model '${model}' ` +
+          `when available, write ${outputPath}, then submit it.`
+        : `Invoke the '${stage.persona}' Cursor subagent configured for ` +
+          `'${model}' with this card, then submit ${outputPath}.`
 
     const invocation: Invocation = {
       $operator: {
         headline: `${stage.title} is ready`,
         summary:
-          `The harness prepared attempt ${attempt} with ` +
-          `${policies.length} scoped policies and a workspace fingerprint.`,
+          `The harness prepared attempt ${attempt} with model '${model}', ` +
+          `${policies.length} scoped policies, and a workspace fingerprint.`,
         next_action: nextAction,
       },
       schema_version: 1,
@@ -517,7 +614,8 @@ export function prepareInvocation(
         slug: stage.slug,
         title: stage.title,
         persona: stage.persona,
-        model_hint: stage.model_hint,
+        model,
+        model_config: pipelineConfig.name,
         workspace_policy: stage.workspace_policy,
         gate: stage.gate,
       },

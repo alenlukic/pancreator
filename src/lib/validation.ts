@@ -12,6 +12,8 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { gitWorkspaceSnapshot, snapshotChanged, workspaceDelta } from './git.js'
+import { loadPipelineConfig, syncCursorAgentModels } from './pipeline-config.js'
+import type { LoadedPipelineConfig } from './pipeline-config.js'
 import {
   loadPolicyCatalog,
   readPolicyLookupTable,
@@ -482,6 +484,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'tsconfig.json',
     'governance/policy_lookup_table.json',
     'governance/handbooks/typescript/style-guide.md',
+    'pipeline.config.json',
+    'library/schemas/pipeline-config.schema.json',
     'library/schemas/stage-output.schema.json',
     'library/schemas/workflow.schema.json',
     'library/schemas/stage.schema.json',
@@ -494,6 +498,14 @@ export function validateRepository(root: string): RepositoryValidationResult {
     if (!fileExists(path.join(root, relative))) {
       errors.push(`missing required file: ${relative}`)
     }
+  }
+
+  let pipelineConfig: LoadedPipelineConfig | null = null
+
+  try {
+    pipelineConfig = loadPipelineConfig(root)
+  } catch (error) {
+    errors.push(errorMessage(error))
   }
 
   try {
@@ -518,11 +530,14 @@ export function validateRepository(root: string): RepositoryValidationResult {
     errors.push(errorMessage(error))
   }
 
+  const workflowPersonas = new Set<string>()
+
   for (const slug of listWorkflowSlugs(root)) {
     try {
       const workflow = loadWorkflow(root, slug)
 
       for (const stage of workflow.stages) {
+        workflowPersonas.add(stage.persona)
         resolvePolicies(root, {
           persona: stage.persona,
           workflow: workflow.slug,
@@ -539,9 +554,48 @@ export function validateRepository(root: string): RepositoryValidationResult {
         if (!fileExists(personaPath)) {
           errors.push(`missing persona: library/personas/${stage.persona}.md`)
         }
+
+        if (stage.persona !== 'orchestrator') {
+          const agentPath = path.join(
+            root,
+            '.cursor',
+            'agents',
+            `${stage.persona}.md`,
+          )
+
+          if (!fileExists(agentPath)) {
+            errors.push(
+              `missing Cursor agent: .cursor/agents/${stage.persona}.md`,
+            )
+          }
+        }
       }
     } catch (error) {
       errors.push(errorMessage(error))
+    }
+  }
+
+  if (pipelineConfig) {
+    for (const [configName, config] of Object.entries(
+      pipelineConfig.file.configs,
+    )) {
+      for (const persona of workflowPersonas) {
+        if (!config.personas[persona]) {
+          errors.push(
+            `pipeline config '${configName}' does not map persona '${persona}'`,
+          )
+        }
+      }
+    }
+
+    for (const entry of syncCursorAgentModels(root, pipelineConfig)) {
+      if (entry.changed) {
+        errors.push(
+          `${entry.path} model '${entry.previous_model ?? 'missing'}' does not ` +
+            `match active pipeline config '${pipelineConfig.name}' model ` +
+            `'${entry.model}'; run ./bin/pan models --sync`,
+        )
+      }
     }
   }
 

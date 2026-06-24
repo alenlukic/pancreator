@@ -11,6 +11,19 @@ Use `/pan-start` for a new request and `/pan-resume <run-id>` thereafter. The su
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
+## Select pipeline models
+
+`pipeline.config.json` is the source of truth for named persona-to-model mappings. Set `active_config` to one of the declared configurations, then project that mapping into the Cursor worker agents:
+
+```sh
+./bin/pan models --sync
+./bin/pan validate
+```
+
+Run `./bin/pan models` without `--sync` to preview the active mapping and any drift without changing files.
+
+Each new run snapshots the active configuration in `runtime/logs/workflows/<run-id>/pipeline-config.snapshot.json`. Invocation cards resolve their model from that snapshot. Because Cursor executes the model declared in `.cursor/agents/<persona>.md`, preparing an older run after switching configurations is blocked until the projected agent models again match that run's snapshot. This prevents the card from claiming one model while Cursor launches another.
+
 ## Targeting a deliverable outside the repository root
 
 If the work lands somewhere other than the Pancreator repository root — most commonly a gitignored project capsule under `workdesk/` that is its own Git repository — start the run with `./bin/pan init ... --workspace workdesk/<project>`. The harness then fingerprints, runs gate commands against, and enforces scope boundaries on that directory. If you omit it for such a run, every "passing" check measured the Pancreator repository instead of your deliverable, and the green status proves nothing about the actual work. The active workspace appears on each invocation card; confirm it matches the deliverable before trusting any gate result.

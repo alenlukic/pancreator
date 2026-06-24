@@ -183,10 +183,6 @@ function parseStage(value: unknown, source: string): StageDefinition {
     transitions: parseTransitions(value.transitions, `${source}.transitions`),
   }
 
-  if (typeof value.model_hint === 'string') {
-    stage.model_hint = value.model_hint
-  }
-
   if (typeof value.prompt === 'string') {
     stage.prompt = value.prompt
   }

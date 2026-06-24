@@ -44,7 +44,7 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     `**Run** \`${invocation.run_id}\` · **Stage** ${stage.title} ` +
       `(\`${stage.slug}\`) · **Owner** \`${stage.persona}\` · ` +
-      `**Attempt** ${invocation.attempt}`,
+      `**Model** \`${stage.model}\` · **Attempt** ${invocation.attempt}`,
     '',
     `**Workspace** \`${invocation.workspace_root}\` — fingerprints, ` +
       'deterministic gate commands, and scope checks target this directory.',
@@ -97,7 +97,8 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
       workflow: invocation.workflow,
       workspace_root: invocation.workspace_root,
       workspace_fingerprint: invocation.workspace_before.fingerprint,
-      model_hint: stage.model_hint,
+      model: stage.model,
+      model_config: stage.model_config,
       workspace_policy: stage.workspace_policy,
       gate: stage.gate,
     }),
@@ -182,6 +183,7 @@ export function renderStatus(state: RunState): string {
     `Run ${state.run_id}`,
     `Status: ${state.status}`,
     `Workflow: ${state.workflow_slug}`,
+    `Model config: ${state.pipeline_config?.name ?? 'live default'}`,
     `Workspace: ${state.workspace_root || '.'}`,
     `Current stage: ${state.current_stage ?? 'none'}`,
     `Pending action: ${state.pending_action.type}`,
