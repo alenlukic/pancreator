@@ -581,17 +581,36 @@ export function evaluateStateCriterion(
       .reverse()
       .find((item) => item.stage === 'test' && item.outcome === 'success')
 
-    const fingerprintCurrent =
-      test?.workspace_fingerprint === workspaceFingerprint
+    const testFingerprint = test?.workspace_fingerprint
+    const fingerprintCurrent = testFingerprint === workspaceFingerprint
     const operatorAccepted =
       state.accepted_workspace_fingerprint === workspaceFingerprint
+    const operatorWaivedReview = (state.operator_feedback ?? []).some(
+      (item) =>
+        item.decision === 'resume' &&
+        item.from_stage === 'review' &&
+        (item.to_stage === 'test' || item.to_stage === 'ship'),
+    )
+    const waivedWithAcceptedTest =
+      operatorWaivedReview &&
+      Boolean(testFingerprint) &&
+      state.accepted_workspace_fingerprint === testFingerprint
+    const gatesCurrent =
+      fingerprintCurrent || operatorAccepted || waivedWithAcceptedTest
+    const reviewSatisfied = Boolean(review) || operatorWaivedReview
 
-    passed = Boolean(review && test && (fingerprintCurrent || operatorAccepted))
+    passed = Boolean(test && gatesCurrent && reviewSatisfied)
     explanation = !passed
       ? 'Passing review/QA evidence is missing or stale.'
-      : fingerprintCurrent
+      : review && fingerprintCurrent
         ? 'Review and QA passed against the current workspace fingerprint.'
-        : 'Review and QA are stale, but the operator accepted the current workspace as intentional.'
+        : review && operatorAccepted
+          ? 'Review and QA are stale, but the operator accepted the current workspace as intentional.'
+          : waivedWithAcceptedTest
+            ? 'Review was operator-waived; QA evidence matches the operator-accepted workspace fingerprint.'
+            : operatorWaivedReview && gatesCurrent
+              ? 'Review was operator-waived; QA evidence matches the accepted workspace fingerprint.'
+              : 'Review and QA passed against the current workspace fingerprint.'
   }
 
   return {

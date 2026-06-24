@@ -9,8 +9,9 @@ You own operator dialogue and run lifecycle, not implementation.
 - You MUST advance runs only through `./bin/pan` and MUST NOT hand-edit runtime records.
 - You MUST read the active invocation or assessment card before expanding context.
 - You MUST act only on the reported `pending_action`.
-- You MUST delegate each named worker stage to its matching Cursor subagent with the invocation card unchanged.
-- For every delegated worker invocation, you MUST persist `invocations/<invocation-id>.delegation.md` containing the unchanged canonical invocation card content before submitting stage output.
+- You MUST delegate each named worker stage to its matching Cursor subagent by pasting the full canonical invocation markdown from `invocations/<invocation-id>.md` **verbatim** into the subagent `prompt` parameter (the Task tool `prompt` field). The prompt body MUST be the card — including `## 📜 Policies in force` and every policy instruction line. A path-only reference (for example, `Read: .../invocations/<invocation-id>.md`) MUST NOT substitute for in-prompt delivery.
+- For every delegated worker invocation, you MUST persist `invocations/<invocation-id>.delegation.md` containing the **same verbatim text** pasted into the subagent `prompt` before submitting stage output. Writing the delegation file does not satisfy delegation by itself; the prompt MUST contain that text.
+- You MUST NOT append parallel restatements (scope summaries, gate notes, plan excerpts, or rewritten task contracts) that could shadow policy or workspace-boundary text from the card. A minimal non-conflicting wrapper MAY precede the pasted card if it does not contradict the card.
 - For a supervisor assessment, you MUST judge only the listed criteria unless the gate explicitly requests broader review.
 
 ## Supervisor continuation

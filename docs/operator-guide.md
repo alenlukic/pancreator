@@ -27,7 +27,19 @@ Raw JSONL and shell output are diagnostic surfaces, not the default conversation
 
 Each prepared invocation writes `invocations/<invocation-id>.invocation-validation.json`. If prepare fails with invocation validation errors, read that artifact for the failing policy checks before retrying.
 
-Delegated worker stages require `invocations/<invocation-id>.delegation.md` containing the unchanged canonical invocation card. Before `./bin/pan submit`, confirm that file exists and matches the invocation markdown exactly (aside from line-ending normalization). Submit rejection with `DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` means the run stays on the same invocation; write or fix the delegation artifact, then submit again.
+### Delegation prompt delivery (supervisor)
+
+When `pending_action` is `invoke_agent`, the supervisor MUST:
+
+1. Read the full canonical invocation markdown at `invocations/<invocation-id>.md`.
+2. Paste that markdown **verbatim** into the subagent `prompt` parameter (the Task tool `prompt` field). The prompt body MUST be the card — especially `## 📜 Policies in force` and every policy instruction line.
+3. Persist `invocations/<invocation-id>.delegation.md` containing the **same verbatim text** pasted into the prompt.
+
+A path-only reference (for example, `Read: .../invocations/<invocation-id>.md` plus a supervisor summary) MUST NOT substitute for in-prompt delivery. The delegation artifact records what was actually delegated; it is not a separate summary artifact.
+
+The supervisor MUST NOT append parallel restatements (scope summaries, gate notes, plan excerpts) that could shadow policy or workspace-boundary text from the card. A minimal non-conflicting wrapper MAY precede the pasted card.
+
+Before `./bin/pan submit`, confirm `.delegation.md` exists and matches the invocation markdown exactly (aside from line-ending normalization). Submit rejection with `DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` means the run stays on the same invocation; fix the delegation artifact and ensure the subagent prompt contained the full card, then submit again.
 
 `./bin/pan status` includes a dedicated validation section with invocation and delegation validation state, artifact paths, and short failure reasons when applicable.
 

@@ -11,13 +11,23 @@
 - Repeating `pan prepare` while an invocation is pending returns the same invocation.
 - Output from any other invocation ID is rejected.
 - Every prepared invocation writes `invocations/<invocation-id>.invocation-validation.json` beside the invocation files. Prepare fails closed when the rendered card omits required policy snapshot text.
-- Every delegated worker invocation requires `invocations/<invocation-id>.delegation.md` containing the unchanged canonical invocation card. Submit rejects advancement when delegation validation is missing or failed and writes `invocations/<invocation-id>.delegation-validation.json`.
+- Every delegated worker invocation requires the supervisor to paste the full canonical invocation markdown verbatim into the subagent `prompt` parameter and to persist `invocations/<invocation-id>.delegation.md` containing that same verbatim text. Path-only references to the card file MUST NOT substitute for in-prompt delivery. Submit rejects advancement when delegation validation is missing or failed and writes `invocations/<invocation-id>.delegation-validation.json`.
 
 ## Invocation and delegation validation
 
 During `prepare`, the harness validates the rendered invocation markdown against the invocation-time policy snapshot and writes `invocations/<invocation-id>.invocation-validation.json`. Prepare fails closed when validation fails; the artifact records the failing checks.
 
-During `submit`, the harness validates `invocations/<invocation-id>.delegation.md` against the canonical invocation markdown, writes `invocations/<invocation-id>.delegation-validation.json`, and rejects advancement before stage history changes when the delegation artifact is missing or invalid. Orchestrator-owned stages that complete in the current chat do not require a delegation artifact.
+During `submit`, the harness validates `invocations/<invocation-id>.delegation.md` against the canonical invocation markdown, writes `invocations/<invocation-id>.delegation-validation.json`, and rejects advancement before stage history changes when the delegation artifact is missing or invalid. The delegation artifact MUST contain the same verbatim invocation markdown the supervisor pasted into the subagent `prompt`; it is the audit record of in-prompt delivery, not a parallel summary. Orchestrator-owned stages that complete in the current chat do not require a delegation artifact.
+
+### Supervisor delegation contract
+
+For `invoke_agent`, the supervisor MUST:
+
+1. Read `invocations/<invocation-id>.md` in full.
+2. Paste its entire contents verbatim into the subagent `prompt` parameter (Task tool `prompt` field), including `## 📜 Policies in force` and every policy instruction line.
+3. Persist `invocations/<invocation-id>.delegation.md` with that same verbatim text.
+
+Path-only delegation (for example, instructing the worker to read the card file) does not satisfy the contract. The supervisor MUST NOT append restatements that could shadow policy or workspace-boundary text from the card; a minimal non-conflicting wrapper MAY precede the pasted card.
 
 `./bin/pan status` renders a dedicated validation section from the active invocation's validation artifacts. Missing or malformed artifacts are reported as observable state rather than crashing status.
 
