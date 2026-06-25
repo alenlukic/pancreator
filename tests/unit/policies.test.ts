@@ -18,7 +18,6 @@ test('policy resolution unions global and stage-specific policies', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'PAUSE-001',
     'TS-001',
   ])
 })
@@ -37,7 +36,6 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'PAUSE-001',
     'REVIEW-001',
     'TS-001',
   ])
@@ -53,7 +51,6 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'PAUSE-001',
     'TEST-001',
     'TS-001',
   ])
@@ -73,7 +70,7 @@ test('policy registry content remains canonical for inlining', () => {
   assert.equal(action.instructions.length, 2)
 })
 
-test('orchestration and release guidance resolve through canonical policies', () => {
+test('orchestration and release guidance resolve with required policy dependencies', () => {
   const root = createFixture()
   const orchestratorIds = resolvePolicies(root, {
     persona: 'orchestrator',
@@ -86,11 +83,25 @@ test('orchestration and release guidance resolve through canonical policies', ()
     stage: 'ship',
   }).map((policy) => policy.id)
 
-  assert.ok(orchestratorIds.includes('ORCH-001'))
-  assert.ok(orchestratorIds.includes('INVOCATION-001'))
-  assert.ok(orchestratorIds.includes('WAIVER-001'))
-  assert.ok(releaseIds.includes('WAIVER-001'))
-  assert.ok(releaseIds.includes('SHIP-001'))
+  assert.deepEqual(orchestratorIds, [
+    'ACTION-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'INTAKE-001',
+    'INVOCATION-001',
+    'ORCH-001',
+    'PAUSE-001',
+    'WAIVER-001',
+    'WORK-001',
+  ])
+  assert.deepEqual(releaseIds, [
+    'ACTION-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'SHIP-001',
+    'WAIVER-001',
+    'WORK-001',
+  ])
 })
 
 test('standalone remediation personas load their work-mode policies', () => {
@@ -105,7 +116,6 @@ test('standalone remediation personas load their work-mode policies', () => {
     'ACTION-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'PAUSE-001',
     'WORK-001',
   ])
 
@@ -119,7 +129,6 @@ test('standalone remediation personas load their work-mode policies', () => {
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
-    'PAUSE-001',
     'SPOT-001',
     'TS-001',
     'WORK-001',

@@ -5,13 +5,19 @@
       "persona": "*",
       "workflow": "*",
       "stage": "*",
-      "policies": ["GLOBAL-001", "GLOBAL-002", "ACTION-001", "PAUSE-001"]
+      "policies": ["GLOBAL-001", "GLOBAL-002", "ACTION-001"]
     },
     {
       "persona": "orchestrator",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ORCH-001", "INVOCATION-001", "WAIVER-001"]
+      "policies": [
+        "ORCH-001",
+        "INVOCATION-001",
+        "PAUSE-001",
+        "WAIVER-001",
+        "WORK-001"
+      ]
     },
     {
       "persona": "coder",
@@ -65,7 +71,7 @@
       "persona": "release-steward",
       "workflow": "dev",
       "stage": "ship",
-      "policies": ["SHIP-001", "WAIVER-001"]
+      "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
     },
     {
       "persona": "investigator",

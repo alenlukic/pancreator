@@ -133,6 +133,41 @@ test('repository validation requires code-review and QA stages to load TypeScrip
   )
 })
 
+test('repository validation requires lookup rows to load referenced policy dependencies', () => {
+  const root = createFixture()
+  prepareValidationFixture(root)
+  const lookupPath = path.join(root, 'governance', 'policy_lookup_table.json')
+  const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
+    rows: Array<{
+      persona: string
+      workflow: string
+      stage: string
+      policies: string[]
+    }>
+  }
+
+  lookup.rows = lookup.rows.map((row) =>
+    row.persona === 'release-steward' &&
+    row.workflow === 'dev' &&
+    row.stage === 'ship'
+      ? {
+          ...row,
+          policies: row.policies.filter((policy) => policy !== 'WORK-001'),
+        }
+      : row,
+  )
+
+  writeFileSync(lookupPath, `${JSON.stringify(lookup, null, 2)}\n`)
+
+  const result = validateRepository(root)
+
+  assert.equal(result.ok, false)
+  assert.match(
+    result.errors.join('\n'),
+    /loads WAIVER-001 without referenced policy WORK-001/u,
+  )
+})
+
 test('repository validation requires standalone Cursor agents in every pipeline config', () => {
   const root = createFixture()
   prepareValidationFixture(root)

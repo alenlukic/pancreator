@@ -33,6 +33,8 @@ import type {
   Invocation,
   JsonTypeName,
   Policy,
+  PolicyLookupRow,
+  PolicyLookupTable,
   RepositoryValidationResult,
   RunState,
   StageDefinition,
@@ -755,6 +757,7 @@ function listMarkdownFiles(directory: string): string[] {
 }
 
 const CODE_REVIEW_PERSONAS = new Set(['coder', 'reviewer', 'qa-tester'])
+const POLICY_REFERENCE_PATTERN = /\b[A-Z][A-Z0-9]*-\d{3}\b/gu
 
 interface HandbookPolicyRequirement {
   handbook_path: string
@@ -852,6 +855,65 @@ function validateGovernance(
   return handbookPolicies
 }
 
+function lookupPatternCovers(provider: string, consumer: string): boolean {
+  return provider === '*' || provider === consumer
+}
+
+function lookupRowCovers(
+  provider: PolicyLookupRow,
+  consumer: PolicyLookupRow,
+): boolean {
+  return (
+    lookupPatternCovers(provider.persona, consumer.persona) &&
+    lookupPatternCovers(provider.workflow, consumer.workflow) &&
+    lookupPatternCovers(provider.stage, consumer.stage)
+  )
+}
+
+function referencedPolicyIds(policy: Policy): Set<string> {
+  const text = [policy.summary, ...policy.instructions].join('\n')
+  return new Set(text.match(POLICY_REFERENCE_PATTERN) ?? [])
+}
+
+function validatePolicyLookupDependencies(
+  catalog: Map<string, Policy>,
+  lookup: PolicyLookupTable,
+  errors: string[],
+): void {
+  for (const policy of catalog.values()) {
+    for (const referencedId of referencedPolicyIds(policy)) {
+      if (!catalog.has(referencedId)) {
+        errors.push(`${policy.id} references missing policy ${referencedId}`)
+      }
+    }
+  }
+
+  for (const [index, row] of lookup.rows.entries()) {
+    const available = new Set(
+      lookup.rows
+        .filter((candidate) => lookupRowCovers(candidate, row))
+        .flatMap((candidate) => candidate.policies),
+    )
+
+    for (const policyId of row.policies) {
+      const policy = catalog.get(policyId)
+
+      if (!policy) {
+        continue
+      }
+
+      for (const referencedId of referencedPolicyIds(policy)) {
+        if (catalog.has(referencedId) && !available.has(referencedId)) {
+          errors.push(
+            `policy lookup row ${index} (${row.persona}/${row.workflow}/${row.stage}) ` +
+              `loads ${policyId} without referenced policy ${referencedId}`,
+          )
+        }
+      }
+    }
+  }
+}
+
 export function validateRepository(root: string): RepositoryValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
@@ -913,6 +975,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
         }
       }
     }
+
+    validatePolicyLookupDependencies(catalog, lookup, errors)
 
     handbookPolicies = validateGovernance(root, catalog, errors)
   } catch (error) {
