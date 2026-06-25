@@ -6,6 +6,7 @@
   "instructions": [
     "Each material change MUST map to an acceptance criterion or an explicitly documented enabling change.",
     "Agents MUST NOT redesign adjacent systems unless the approved plan requires it.",
-    "Agents SHOULD run the narrowest useful checks while iterating, and the harness MUST rerun declared deterministic gates independently."
+    "Agents SHOULD run the narrowest useful checks while iterating, and the harness MUST rerun declared deterministic gates independently.",
+    "Before submission, the implementation record, changed-file claims, acceptance evidence, and referenced summary artifact MUST run their resolved policy-bound validators under VALID-001."
   ]
 }

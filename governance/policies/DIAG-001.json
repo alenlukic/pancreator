@@ -1,0 +1,14 @@
+{
+  "id": "DIAG-001",
+  "title": "Evidence-based investigation",
+  "severity": "hard",
+  "summary": "Investigation MUST establish evidence, root cause or bounded hypotheses, testable acceptance criteria, and exactly one work-mode recommendation without modifying the repository.",
+  "instructions": [
+    "The investigator MUST distinguish observed facts from hypotheses and MUST reproduce or otherwise establish the reported problem when practical.",
+    "The proposed remediation MUST address the causal defect rather than only its symptom and MUST remain the smallest recommendation supported by the evidence.",
+    "The investigation artifact MUST contain the required problem summary, evidence, root cause, remediation, numbered acceptance criteria, work-mode recommendation, risks and unknowns, and next-action sections.",
+    "The work-mode recommendation MUST select exactly one of lightweight or systematic and MUST apply every relevant WORK-001 threshold explicitly; any uncertain threshold MUST result in systematic.",
+    "The investigation artifact MUST run its resolved structural and traceability validators under VALID-001 before it is represented as implementation-ready.",
+    "The investigator MUST NOT modify source, workflow state, or durable runtime records and MUST NOT represent missing evidence as a confirmed root cause."
+  ]
+}

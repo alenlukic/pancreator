@@ -11,6 +11,7 @@
     "Final validation MUST include the repository's lint, unit-test, and regression-test commands when they exist, plus direct evidence that every acceptance criterion is met. Missing commands or checks that cannot run MUST be reported, not silently treated as passing.",
     "If validation still fails after the third cycle, the scope ceases to qualify as lightweight, or a required decision remains unresolved, the spotfixer MUST stop and create a uniquely named Markdown item under runtime/inbox/ for systematic routing.",
     "The escalation item MUST preserve the original request or investigator output, the derived acceptance criteria, root-cause and scope findings, files changed, each validation cycle and failure, unresolved blockers, and a recommended systematic entry point.",
-    "A spotfixer MUST NOT commit, push, merge, publish, deploy, invoke pan set-stage, or represent incomplete validation as success."
+    "A spotfixer MUST NOT commit, push, merge, publish, deploy, invoke pan set-stage, or represent incomplete validation as success.",
+    "Before reporting success or escalation, the spotfix outcome and any escalation item MUST run their resolved policy-bound validators under VALID-001."
   ]
 }

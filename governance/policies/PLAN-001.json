@@ -6,6 +6,7 @@
   "instructions": [
     "Every approved user story and requirement MUST map to at least one testable acceptance criterion.",
     "The plan MUST specify components, likely files, interfaces, state changes, risks, and validation methods sufficiently to avoid unresolved architectural decisions during implementation.",
-    "The plan SHOULD prefer existing abstractions and reversible changes and MUST justify any new framework, structure, or governance layer against the current requirement."
+    "The plan SHOULD prefer existing abstractions and reversible changes and MUST justify any new framework, structure, or governance layer against the current requirement.",
+    "Before submission, the engineering-plan data, acceptance-criteria traceability, and referenced plan artifact MUST run their resolved policy-bound validators under VALID-001."
   ]
 }

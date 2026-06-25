@@ -5,7 +5,13 @@
       "persona": "*",
       "workflow": "*",
       "stage": "*",
-      "policies": ["GLOBAL-001", "GLOBAL-002", "ACTION-001"]
+      "policies": [
+        "GLOBAL-001",
+        "GLOBAL-002",
+        "ACTION-001",
+        "AUTO-001",
+        "VALID-001"
+      ]
     },
     {
       "persona": "orchestrator",
@@ -23,19 +29,25 @@
       "persona": "coder",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "TS-001"]
+      "policies": ["ENG-001", "TS-001", "CONTRACT-001"]
     },
     {
       "persona": "reviewer",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "TS-001"]
+      "policies": ["ENG-001", "TS-001", "CONTRACT-001"]
     },
     {
       "persona": "qa-tester",
       "workflow": "*",
       "stage": "*",
       "policies": ["ENG-001", "TS-001"]
+    },
+    {
+      "persona": "tech-lead",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["CONTRACT-001"]
     },
     {
       "persona": "orchestrator",
@@ -77,13 +89,13 @@
       "persona": "investigator",
       "workflow": "*",
       "stage": "*",
-      "policies": ["WORK-001"]
+      "policies": ["DIAG-001", "WORK-001"]
     },
     {
       "persona": "spotfixer",
       "workflow": "*",
       "stage": "*",
-      "policies": ["ENG-001", "TS-001", "WORK-001", "SPOT-001"]
+      "policies": ["ENG-001", "TS-001", "WORK-001", "SPOT-001", "CONTRACT-001"]
     }
   ]
 }

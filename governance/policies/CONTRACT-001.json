@@ -1,0 +1,14 @@
+{
+  "id": "CONTRACT-001",
+  "title": "Deterministic contract coverage",
+  "severity": "hard",
+  "summary": "Agents creating or modifying machine-checkable normative contracts MUST assign policy ownership and deterministic automation or validator coverage.",
+  "instructions": [
+    "When an agent creates or modifies a normative requirement for an output shape, required artifact, traceability relationship, deterministic operation, or machine-checkable invariant, the agent MUST identify its owning policy and a registered automation or validator id, or MUST include an explicit implementation specification when the registry capability does not yet exist.",
+    "Validator and automation definitions MUST live in one canonical registry; policies and applicability rules MUST reference stable ids and MUST NOT duplicate executable paths or command definitions.",
+    "Applicable automation and validation requirements MUST be derived from the policies resolved for an invocation and MUST NOT be maintained in an independent second applicability map that can drift from policy selection.",
+    "Repository validation MUST fail for a missing policy owner, unknown requirement id, duplicate registry id, missing executable, invalid target declaration, or policy-bound requirement whose executable contract cannot be resolved once the registry capability is active.",
+    "A requirement that cannot be checked deterministically MUST be marked as judgment-only with a rationale and MUST NOT be represented as covered by a superficial structural validator.",
+    "Generated invocation manifests MAY persist resolved requirement ids, versions, paths, arguments, targets, and failure routes for auditability, but agents MUST receive only the entries relevant to the active invocation."
+  ]
+}

@@ -6,6 +6,7 @@
   "instructions": [
     "Intake MUST preserve the operator's intent and MUST NOT broaden, narrow, or prematurely design the solution.",
     "Every assumption MUST be explicit, and unresolved questions MUST be recorded rather than guessed.",
-    "The product specification MUST describe observable outcomes, constraints, and out-of-scope behavior and MUST stop for operator ratification."
+    "The product specification MUST describe observable outcomes, constraints, and out-of-scope behavior and MUST stop for operator ratification.",
+    "Before submission, the product-spec data and referenced operator artifact MUST run their resolved policy-bound validators under VALID-001."
   ]
 }

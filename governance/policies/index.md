@@ -6,6 +6,9 @@ Policies MUST be small, globally identified JSON modules. `governance/policy_loo
 
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
+- `AUTO-001` — deterministic automation authority
+- `VALID-001` — policy-bound artifact validation
+- `CONTRACT-001` — deterministic contract coverage
 - `ACTION-001` — safe source-control actions
 - `PAUSE-001` — operator pause authority and workspace edits while paused
 - `ORCH-001` — supervisor continuation and stop conditions
@@ -19,6 +22,7 @@ Policies MUST be small, globally identified JSON modules. `governance/policy_loo
 - `REVIEW-001` — independent review
 - `TEST-001` — evidence-based QA
 - `SHIP-001` — operator-owned release boundary
+- `DIAG-001` — evidence-based investigation
 - `WORK-001` — systematic versus lightweight work-mode determination
 - `SPOT-001` — bounded lightweight spotfix execution and escalation
 

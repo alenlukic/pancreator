@@ -1,0 +1,14 @@
+{
+  "id": "AUTO-001",
+  "title": "Deterministic automation authority",
+  "severity": "hard",
+  "summary": "Agents MUST use declared repository automation for deterministic operations and MUST NOT reproduce the same operation manually.",
+  "instructions": [
+    "When the active invocation declares an automation requirement, the agent MUST invoke the named automation against the declared target with the declared arguments before performing the affected operation.",
+    "Agents MUST treat durable repository automation as authoritative over ad hoc shell sequences or per-run scripts and MUST NOT manually recreate its behavior unless the requirement declares an explicit fallback.",
+    "When no durable automation exists, an agent MAY create a task-specific script under runtime/logs/workflows/<run-id>/scripts/ only for the current run and MUST test its core behavior and likely edge cases before relying on it.",
+    "A missing executable, non-zero exit, timeout, malformed result, or target mismatch MUST be reported as an automation failure and MUST follow the requirement's declared failure route; agents MUST NOT bypass the failure by asserting an equivalent manual result.",
+    "The exact command, target, result, and evidence path MUST be recorded for every required automation invocation.",
+    "Harness-owned operations and gates MUST remain harness-owned even when an agent runs the same automation for early feedback."
+  ]
+}

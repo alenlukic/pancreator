@@ -6,6 +6,7 @@
   "instructions": [
     "Review MUST verify acceptance criteria, test quality, maintainability, and scope control against evidence.",
     "Each finding MUST include severity, evidence, and an owning remediation stage.",
-    "The review gate MUST fail when any hard blocker remains unresolved."
+    "The review gate MUST fail when any hard blocker remains unresolved.",
+    "Before submission, review findings, acceptance-criterion coverage, verdict consistency, and the referenced review artifact MUST run their resolved policy-bound validators under VALID-001."
   ]
 }

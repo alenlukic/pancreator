@@ -6,6 +6,7 @@
   "instructions": [
     "Records MUST lead with current state, outcome, blockers, and the next required action.",
     "Records MUST NOT substitute raw logs for a summary and SHOULD point to preserved evidence instead.",
-    "Records MUST state uncertainty and missing evidence explicitly."
+    "Records MUST state uncertainty and missing evidence explicitly.",
+    "When a record has a resolved validator requirement, the record MUST pass VALID-001 before completion."
   ]
 }
