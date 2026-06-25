@@ -17,7 +17,12 @@ import {
   readFileLock,
   releaseFileLock,
 } from './locks.js'
-import { loadWorkspaceIndex, saveWorkspaceIndex } from './index.js'
+import {
+  loadWorkspaceIndex,
+  reconcileWorkspaceIndex,
+  saveWorkspaceIndex,
+  workspaceSnapshotFromIndex,
+} from './index.js'
 import { normalizeWorkspacePath, resolveWorkspacePath } from './roots.js'
 
 export interface ModificationContext {
@@ -38,6 +43,21 @@ export interface CommitModificationResult {
   lock: FileLock
   operation: 'create' | 'modify' | 'delete' | 'noop'
   entry: ModificationLedgerEntry | null
+}
+
+export interface AdoptAuthorizedChangesContext {
+  state_root: string
+  roots: ResolvedRoots
+  workflow_id: string
+  stage: string
+  stage_attempt: number
+  authorization_id: string
+}
+
+export interface AdoptAuthorizedChangesResult {
+  workspace_fingerprint: string
+  changed_paths: string[]
+  deleted_paths: string[]
 }
 
 function canonicalPathForTarget(absolutePath: string): string {
@@ -75,6 +95,58 @@ function requireIndex(stateRoot: string): WorkspaceIndex {
   }
 
   return index
+}
+
+/**
+ * Adopt operator-authored changes made during an explicit workflow pause.
+ * The accepted index is advanced and each content delta is recorded in the
+ * workflow ledger so later integrity validation can distinguish authorized
+ * pause work from an unledgered external write.
+ */
+export function adoptAuthorizedWorkspaceChanges(
+  context: AdoptAuthorizedChangesContext,
+): AdoptAuthorizedChangesResult {
+  const accepted = requireIndex(context.state_root)
+  const observed = reconcileWorkspaceIndex(context.roots, accepted)
+  const changedPaths = [...observed.changed_paths].sort()
+  const deletedPaths = [...observed.deleted_paths].sort()
+  const deltaPaths = [...new Set([...changedPaths, ...deletedPaths])].sort()
+
+  for (const relativePath of deltaPaths) {
+    const beforeChecksum = accepted.entries[relativePath]?.checksum ?? null
+    const afterChecksum = observed.index.entries[relativePath]?.checksum ?? null
+    let operation: 'create' | 'modify' | 'delete'
+
+    if (beforeChecksum === null) {
+      operation = 'create'
+    } else if (afterChecksum === null) {
+      operation = 'delete'
+    } else {
+      operation = 'modify'
+    }
+
+    appendLedgerEntry(context.state_root, context.workflow_id, {
+      path: relativePath,
+      operation,
+      before_checksum: beforeChecksum,
+      after_checksum: afterChecksum,
+      workflow_id: context.workflow_id,
+      stage: context.stage,
+      stage_attempt: context.stage_attempt,
+      invocation_id: context.authorization_id,
+      modified_at_ms: Date.now(),
+      lock_id: context.authorization_id,
+    })
+  }
+
+  saveWorkspaceIndex(context.state_root, observed.index)
+
+  return {
+    workspace_fingerprint: workspaceSnapshotFromIndex(observed.index)
+      .fingerprint,
+    changed_paths: changedPaths,
+    deleted_paths: deletedPaths,
+  }
 }
 
 export function beginTrackedModification(

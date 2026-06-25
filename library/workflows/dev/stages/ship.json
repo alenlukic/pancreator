@@ -10,14 +10,16 @@
     "release.summary": "string",
     "release.change_list": "array",
     "release.validation": "array",
-    "release.rollback": "string"
+    "release.rollback": "string",
+    "release.waivers": "array",
+    "release.follow_up_cases": "array"
   },
   "criteria": [
     {
       "id": "ship.prior_gates_current",
       "type": "state",
       "hard": true,
-      "statement": "Review and QA passed against the current workspace fingerprint."
+      "statement": "Review and QA are satisfied by current successful evidence or explicit fingerprint-bound operator waivers."
     },
     {
       "id": "ship.release_packet_complete",

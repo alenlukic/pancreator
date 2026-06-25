@@ -44,7 +44,9 @@ import type {
   DeterministicResult,
   Invocation,
   OperatorFeedbackItem,
+  OperatorGateWaiver,
   OperatorPauseContext,
+  OperatorWorkspaceRatification,
   RunState,
   StageDefinition,
   StageHistoryItem,
@@ -53,6 +55,7 @@ import type {
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
+  WorkspaceIndex,
 } from './types.js'
 import {
   buildValidationArtifact,
@@ -73,11 +76,15 @@ import {
 } from './workflow.js'
 import {
   acquireActiveWorkflowLease,
+  loadWorkspaceIndex,
   readActiveWorkflowLease,
   releaseActiveWorkflowLease,
+  saveWorkspaceIndex,
   snapshotWorkspace,
+  workspaceSnapshotFromIndex,
   writeWorkflowBaseline,
 } from './workspace/index.js'
+import { adoptAuthorizedWorkspaceChanges } from './workspace/changes.js'
 import { listFileLocks } from './workspace/locks.js'
 import { resolveRoots } from './workspace/roots.js'
 import {
@@ -166,15 +173,7 @@ function rootsForRun(root: string, state: RunState) {
   })
 }
 
-function ensureMutatingWorkflowInitialized(
-  root: string,
-  state: RunState,
-  stage: StageDefinition,
-): void {
-  if (stage.workspace_policy !== 'source_allowed') {
-    return
-  }
-
+function acquireRunWorkspaceTracking(root: string, state: RunState) {
   const roots = rootsForRun(root, state)
 
   state.workspace_id = roots.workspace_id
@@ -204,22 +203,29 @@ function ensureMutatingWorkflowInitialized(
     })
   }
 
-  const reconciled = snapshotWorkspace(roots, true)
   const lockConflicts = listFileLocks(roots.state_root).filter(
     (lock) => lock.workflow_id !== state.run_id,
   )
 
   invariant(
     lockConflicts.length === 0,
-    'Cannot start mutating stage while unrelated file locks are present.',
+    'Cannot start tracked workspace mutation while unrelated file locks are present.',
     { code: 'LOCK_HELD' },
   )
 
+  return roots
+}
+
+function writeRunWorkspaceBaseline(
+  state: RunState,
+  roots: ReturnType<typeof rootsForRun>,
+  index: WorkspaceIndex,
+): void {
   writeWorkflowBaseline(
     roots.state_root,
     state.run_id,
     roots,
-    reconciled.index,
+    index,
     sha256({
       workspace_id: roots.workspace_id,
       scope_hash: roots.scope_hash,
@@ -227,6 +233,21 @@ function ensureMutatingWorkflowInitialized(
       state_root: roots.state_root,
     }),
   )
+}
+
+function ensureMutatingWorkflowInitialized(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+): void {
+  if (stage.workspace_policy !== 'source_allowed') {
+    return
+  }
+
+  const roots = acquireRunWorkspaceTracking(root, state)
+  const reconciled = snapshotWorkspace(roots, true)
+
+  writeRunWorkspaceBaseline(state, roots, reconciled.index)
 }
 
 function releaseWorkflowLeaseIfHeld(state: RunState): void {
@@ -358,6 +379,27 @@ function referencesForRun(state: RunState): Array<{
     references.push({
       path: feedback.path,
       description: `${label} (${feedback.from_stage} → ${feedback.to_stage})`,
+    })
+  }
+
+  for (const waiver of state.operator_gate_waivers ?? []) {
+    references.push({
+      path: waiver.artifact_path,
+      description: `Operator gate waiver for ${waiver.stage}`,
+    })
+
+    if (waiver.spotfix_case_path) {
+      references.push({
+        path: waiver.spotfix_case_path,
+        description: 'Open deferred spotfix case',
+      })
+    }
+  }
+
+  for (const ratification of state.operator_workspace_ratifications ?? []) {
+    references.push({
+      path: ratification.artifact_path,
+      description: `Operator-paused workspace ratification for ${ratification.stage}`,
     })
   }
 
@@ -1458,6 +1500,154 @@ export function setRunStage(
   })
 }
 
+function readPauseWorkspaceIndex(
+  root: string,
+  pause: OperatorPauseContext,
+): WorkspaceIndex | null {
+  if (!pause.workspace_index_path) {
+    return null
+  }
+
+  const value = readJson(resolveInside(root, pause.workspace_index_path))
+
+  invariant(
+    isRecord(value) &&
+      value.schema_version === 1 &&
+      typeof value.workspace_id === 'string' &&
+      typeof value.workspace_root === 'string' &&
+      typeof value.scope_hash === 'string' &&
+      isRecord(value.entries),
+    'Operator pause workspace index is invalid.',
+    { code: 'INVALID_PAUSE_WORKSPACE_INDEX' },
+  )
+
+  return value as unknown as WorkspaceIndex
+}
+
+function ratifyPausedWorkspaceChanges(
+  root: string,
+  state: RunState,
+  pause: OperatorPauseContext,
+  note: string,
+): OperatorWorkspaceRatification | null {
+  const before = pause.workspace_before
+  if (!before) {
+    return null
+  }
+
+  const initialRoots = rootsForRun(root, state)
+  const current = snapshotWorkspace(initialRoots, false)
+
+  if (current.snapshot.fingerprint === before.fingerprint) {
+    return null
+  }
+
+  const roots = acquireRunWorkspaceTracking(root, state)
+  let acceptedIndex = loadWorkspaceIndex(roots.state_root)
+
+  if (!acceptedIndex) {
+    acceptedIndex = readPauseWorkspaceIndex(root, pause)
+
+    invariant(
+      acceptedIndex,
+      'Workspace index is missing and the pause has no recoverable start index.',
+      { code: 'MISSING_WORKSPACE_INDEX' },
+    )
+    saveWorkspaceIndex(roots.state_root, acceptedIndex)
+  }
+
+  const acceptedSnapshot = workspaceSnapshotFromIndex(acceptedIndex)
+
+  invariant(
+    acceptedSnapshot.fingerprint === before.fingerprint,
+    'Workspace already diverged before the operator pause; use accept-change or restart the owning stage instead of auto-ratifying the pause delta.',
+    { code: 'PREEXISTING_WORKSPACE_DIVERGENCE' },
+  )
+
+  writeRunWorkspaceBaseline(state, roots, acceptedIndex)
+
+  const ratificationId = `pause-${randomUUID()}`
+  const adopted = adoptAuthorizedWorkspaceChanges({
+    state_root: roots.state_root,
+    roots,
+    workflow_id: state.run_id,
+    stage: state.current_stage ?? 'unknown',
+    stage_attempt: state.current_stage
+      ? (state.attempts[state.current_stage] ?? 0)
+      : 0,
+    authorization_id: ratificationId,
+  })
+  const ratifications = state.operator_workspace_ratifications ?? []
+  const relativePath =
+    `runtime/logs/workflows/${state.run_id}/artifacts/` +
+    `operator-pause-ratification-${ratifications.length + 1}.md`
+  const body = [
+    '# Operator-paused workspace ratification',
+    '',
+    `**Run** \`${state.run_id}\` · **Stage** \`${state.current_stage ?? 'none'}\``,
+    '',
+    'The operator explicitly paused the workflow before making these tracked-file changes. The harness recorded the resulting delta in the workflow ledger and adopted the resulting workspace fingerprint.',
+    '',
+    `**Accepted fingerprint:** \`${adopted.workspace_fingerprint}\``,
+    '',
+    '## Changed paths',
+    '',
+    ...(adopted.changed_paths.length > 0
+      ? adopted.changed_paths.map((item) => `- \`${item}\``)
+      : ['- None']),
+    '',
+    '## Deleted paths',
+    '',
+    ...(adopted.deleted_paths.length > 0
+      ? adopted.deleted_paths.map((item) => `- \`${item}\``)
+      : ['- None']),
+    '',
+    '## Operator note',
+    '',
+    note.trim().length > 0 ? note.trim() : 'No additional note supplied.',
+    '',
+  ].join('\n')
+
+  writeTextAtomic(resolveInside(root, relativePath), `${body}\n`)
+
+  const ratification: OperatorWorkspaceRatification = {
+    ratification_id: ratificationId,
+    stage: state.current_stage ?? 'unknown',
+    workspace_fingerprint: adopted.workspace_fingerprint,
+    changed_paths: adopted.changed_paths,
+    deleted_paths: adopted.deleted_paths,
+    note,
+    artifact_path: relativePath,
+    timestamp: now(),
+  }
+
+  ratifications.push(ratification)
+  state.operator_workspace_ratifications = ratifications
+  state.accepted_workspace_fingerprint = adopted.workspace_fingerprint
+
+  return ratification
+}
+
+function invalidatePausedInvocation(state: RunState): void {
+  if (state.current_invocation && state.current_stage) {
+    const wasSubmitted = state.stage_history.some(
+      (item) => item.invocation_id === state.current_invocation?.id,
+    )
+
+    if (!wasSubmitted) {
+      const attempts = state.attempts[state.current_stage] ?? 0
+
+      if (attempts > 0) {
+        state.attempts[state.current_stage] = attempts - 1
+      }
+    }
+  }
+
+  state.status = 'running'
+  state.pending_action = { type: 'prepare_invocation' }
+  state.current_invocation = null
+}
+
 export function pauseRun(root: string, runId: string, note = ''): RunState {
   return withFileLock(lockPath(root, runId), () => {
     const state = loadState(root, runId)
@@ -1482,11 +1672,25 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
         { code: 'INVALID_RUN_ACTION' },
       )
 
+      const roots = rootsForRun(root, state)
+      const workspace = snapshotWorkspace(roots, false)
+      const workspaceIndexPath =
+        `runtime/logs/workflows/${state.run_id}/artifacts/` +
+        `operator-pause-workspace-${state.revision + 1}.json`
+
+      writeJsonAtomic(resolveInside(root, workspaceIndexPath), workspace.index)
+
+      state.workspace_id = roots.workspace_id
+      state.installation_root = roots.installation_root
+      state.state_root = roots.state_root
+      state.scope_hash = roots.scope_hash
       state.operator_pause = {
         prior_status: state.status,
         prior_pending_action: JSON.parse(
           JSON.stringify(state.pending_action),
         ) as OperatorPauseContext['prior_pending_action'],
+        workspace_before: workspace.snapshot,
+        workspace_index_path: workspaceIndexPath,
       }
     }
 
@@ -1521,6 +1725,9 @@ export function resumeRun(
 
     const workflow = loadRunWorkflow(root, state)
     const savedPause = state.operator_pause
+    const ratification = savedPause
+      ? ratifyPausedWorkspaceChanges(root, state, savedPause, note)
+      : null
 
     if (savedPause && !stageSlug) {
       if (note.trim().length > 0) {
@@ -1539,16 +1746,26 @@ export function resumeRun(
         )
       }
 
-      state.status = savedPause.prior_status
-      state.pending_action = savedPause.prior_pending_action
+      if (ratification) {
+        invalidatePausedInvocation(state)
+      } else {
+        state.status = savedPause.prior_status
+        state.pending_action = savedPause.prior_pending_action
+      }
+
       state.operator_pause = null
       state.pause_reason = null
 
       persist(root, state, 'run_resumed', {
-        restored_status: savedPause.prior_status,
+        restored_status: ratification ? 'running' : savedPause.prior_status,
+        workspace_ratification: ratification?.ratification_id ?? null,
       })
 
       return state
+    }
+
+    if (ratification) {
+      invalidatePausedInvocation(state)
     }
 
     const target = stageSlug ?? state.current_stage ?? workflow.start_stage
@@ -1571,9 +1788,370 @@ export function resumeRun(
     state.operator_pause = null
     state.consecutive_failures = 0
 
-    persist(root, state, 'run_resumed', { stage: target })
+    persist(root, state, 'run_resumed', {
+      stage: target,
+      workspace_ratification: ratification?.ratification_id ?? null,
+    })
 
     return state
+  })
+}
+
+export interface WaiveGateOptions {
+  stageSlug?: string | null
+  criterionIds: string[]
+  note: string
+  deferredAcceptanceCriteria?: string[]
+  createSpotfixCase?: boolean
+}
+
+function normalizeIdentifiers(values: string[]): string[] {
+  return [...new Set(values.map((item) => item.trim()).filter(Boolean))].sort()
+}
+
+function failedHardCriteria(
+  stage: StageDefinition,
+  record: TaskRecord,
+  assessment: SupervisorAssessment | null = null,
+): string[] {
+  const self = new Map(
+    (assessment?.criteria ?? record.evaluation.self).map((item) => [
+      item.id,
+      item,
+    ]),
+  )
+  const deterministic = new Map(
+    record.evaluation.deterministic.map((item) => [item.id, item]),
+  )
+
+  return stage.criteria
+    .filter((criterion) => {
+      if (!criterion.hard) {
+        return false
+      }
+
+      if (criterion.type === 'judgment') {
+        return self.get(criterion.id)?.result === 'fail'
+      }
+
+      return deterministic.get(criterion.id)?.passed === false
+    })
+    .map((criterion) => criterion.id)
+    .sort()
+}
+
+function writeSpotfixCase(
+  root: string,
+  state: RunState,
+  waiverId: string,
+  stage: StageDefinition,
+  history: StageHistoryItem,
+  criterionIds: string[],
+  acceptanceCriteria: string[],
+  note: string,
+  sourceEvidencePath: string,
+): string {
+  const timestamp = now().replaceAll(/[-:.]/gu, '')
+  const relativePath =
+    `runtime/inbox/spotfix-case-${timestamp}-${state.run_id.slice(-8)}-` +
+    `${stage.slug}.md`
+  const body = [
+    '# Deferred spotfix case',
+    '',
+    `**Source run** \`${state.run_id}\` · **Waiver** \`${waiverId}\` · ` +
+      `**Stage** \`${stage.slug}\` · **Attempt** ${history.attempt}`,
+    '',
+    '## Status',
+    '',
+    'open — lightweight eligibility MUST be re-verified under `WORK-001` before editing.',
+    '',
+    '## Deferred acceptance criteria',
+    '',
+    ...acceptanceCriteria.map((item) => `- \`${item}\``),
+    '',
+    '## Waived gate criteria',
+    '',
+    ...criterionIds.map((item) => `- \`${item}\``),
+    '',
+    '## Operator rationale and bounded scope',
+    '',
+    note.trim(),
+    '',
+    '## Evidence',
+    '',
+    `- Gate evidence: \`${sourceEvidencePath}\``,
+    `- Stage output: \`${history.output_path}\``,
+    ...(history.record_path
+      ? [`- Execution record: \`${history.record_path}\``]
+      : []),
+    `- Workspace fingerprint: \`${history.workspace_fingerprint}\``,
+    '',
+    '## Required next action',
+    '',
+    'Run `/pan-spotfix` with this file as the preserved input only when the remaining work is still one coherent bounded change. Otherwise route it through the systematic workflow.',
+    '',
+  ].join('\n')
+
+  writeTextAtomic(resolveInside(root, relativePath), `${body}\n`)
+
+  return relativePath
+}
+
+/**
+ * Record an explicit operator waiver for every failed hard criterion on the
+ * latest attempt of a paused stage, then advance as though that stage passed.
+ * The waiver is bound to the exact invocation and workspace fingerprint.
+ */
+export function waiveGate(
+  root: string,
+  runId: string,
+  options: WaiveGateOptions,
+): { state: RunState; waiver: OperatorGateWaiver } {
+  return withFileLock(lockPath(root, runId), () => {
+    const state = loadState(root, runId)
+
+    invariant(
+      state.status === 'paused' &&
+        state.pending_action.type === 'operator_decision',
+      'Run is not paused for an operator decision.',
+      { code: 'INVALID_RUN_ACTION' },
+    )
+    invariant(
+      options.note.trim().length > 0,
+      'Waiver note MUST be non-empty.',
+      {
+        code: 'WAIVER_NOTE_REQUIRED',
+      },
+    )
+
+    const workflow = loadRunWorkflow(root, state)
+    const stageSlug = options.stageSlug ?? state.current_stage
+
+    invariant(stageSlug, 'Run has no stage to waive.', {
+      code: 'INVALID_RUN_ACTION',
+    })
+    invariant(
+      state.current_stage === stageSlug,
+      'A gate waiver MUST target the run current stage.',
+      { code: 'INVALID_WAIVER_STAGE' },
+    )
+
+    const stage = stageBySlug(workflow, stageSlug)
+
+    invariant(
+      stage.executor !== 'harness',
+      'Harness stages require accept-change adjudication, not a gate waiver.',
+      {
+        code: 'INVALID_WAIVER_STAGE',
+      },
+    )
+
+    const history = [...state.stage_history]
+      .reverse()
+      .find((item) => item.stage === stageSlug)
+
+    invariant(history, 'No stage attempt is available to waive.', {
+      code: 'NO_FAILED_GATE',
+    })
+
+    const assessmentPath =
+      `runtime/logs/workflows/${state.run_id}/assessments/` +
+      `assessment-${history.invocation_id}.json`
+    const assessment =
+      stage.gate === 'supervisor' &&
+      fileExists(resolveInside(root, assessmentPath))
+        ? parseSupervisorAssessment(
+            readJson(resolveInside(root, assessmentPath)),
+            assessmentPath,
+          )
+        : null
+
+    if (assessment) {
+      invariant(
+        assessment.invocation_id === history.invocation_id,
+        'Supervisor assessment does not belong to the latest stage attempt.',
+        { code: 'INVALID_WAIVER_TARGET' },
+      )
+    }
+
+    invariant(
+      history?.outcome === 'failure' || assessment?.verdict === 'fail',
+      'No failed stage attempt is available to waive.',
+      {
+        code: 'NO_FAILED_GATE',
+      },
+    )
+    invariant(
+      history.validation_errors.length === 0,
+      'Malformed stage output cannot be waived; repair and resubmit the stage.',
+      { code: 'INVALID_WAIVER_TARGET' },
+    )
+    invariant(history.record_path, 'Failed stage record is missing.', {
+      code: 'INVALID_WAIVER_TARGET',
+    })
+
+    const record = readTaskRecord(
+      root,
+      history.record_path.replace(/\.md$/u, '.json'),
+    )
+    const blockers = failedHardCriteria(stage, record, assessment)
+    const requested = normalizeIdentifiers(options.criterionIds)
+    const sourceEvidencePath =
+      assessment?.verdict === 'fail' ? assessmentPath : history.record_path
+
+    invariant(
+      blockers.length > 0,
+      'The failed attempt has no declared hard criterion failure to waive.',
+      {
+        code: 'NO_FAILED_GATE',
+      },
+    )
+    invariant(
+      requested.length > 0,
+      'At least one --criteria value is required.',
+      {
+        code: 'INVALID_WAIVER_CRITERIA',
+      },
+    )
+    invariant(
+      requested.length === blockers.length &&
+        requested.every((criterionId) => blockers.includes(criterionId)),
+      `Waiver criteria MUST exactly match the failed hard criteria: ${blockers.join(', ')}.`,
+      {
+        code: 'INVALID_WAIVER_CRITERIA',
+        details: { failed_hard_criteria: blockers, requested },
+      },
+    )
+
+    const roots = rootsForRun(root, state)
+    const workspace = snapshotWorkspace(roots, false).snapshot
+
+    invariant(
+      workspace.fingerprint === history.workspace_fingerprint,
+      'Workspace changed after the failed gate. Ratify the workspace change or rerun the owning stage before waiving its gate.',
+      { code: 'STALE_WAIVER_FINGERPRINT' },
+    )
+
+    const deferred = normalizeIdentifiers(
+      options.deferredAcceptanceCriteria ?? [],
+    )
+
+    if (options.createSpotfixCase) {
+      invariant(
+        deferred.length > 0,
+        '--spotfix requires at least one deferred acceptance criterion.',
+        { code: 'INVALID_SPOTFIX_CASE' },
+      )
+    } else {
+      invariant(
+        deferred.length === 0,
+        'Deferred acceptance criteria require --spotfix so the follow-up is tracked.',
+        { code: 'INVALID_SPOTFIX_CASE' },
+      )
+    }
+
+    const waivers = state.operator_gate_waivers ?? []
+    const waiverId = `waiver-${randomUUID()}`
+    const artifactPath =
+      `runtime/logs/workflows/${state.run_id}/artifacts/` +
+      `gate-waiver-${waivers.length + 1}.md`
+    const spotfixCasePath = options.createSpotfixCase
+      ? writeSpotfixCase(
+          root,
+          state,
+          waiverId,
+          stage,
+          history,
+          requested,
+          deferred,
+          options.note,
+          sourceEvidencePath,
+        )
+      : undefined
+    const body = [
+      '# Operator gate waiver',
+      '',
+      `**Run** \`${state.run_id}\` · **Stage** \`${stage.slug}\` · ` +
+        `**Invocation** \`${history.invocation_id}\` · **Attempt** ${history.attempt}`,
+      '',
+      `**Workspace fingerprint:** \`${workspace.fingerprint}\``,
+      `**Gate evidence:** \`${sourceEvidencePath}\``,
+      '',
+      '## Waived hard criteria',
+      '',
+      ...requested.map((item) => `- \`${item}\``),
+      '',
+      '## Operator rationale',
+      '',
+      options.note.trim(),
+      '',
+      ...(deferred.length > 0
+        ? [
+            '## Deferred acceptance criteria',
+            '',
+            ...deferred.map((item) => `- \`${item}\``),
+            '',
+            `**Spotfix case:** \`${spotfixCasePath}\``,
+            '',
+          ]
+        : []),
+      'This waiver is valid only for the invocation and workspace fingerprint above. A later attempt or workspace change does not inherit it.',
+      '',
+    ].join('\n')
+
+    writeTextAtomic(resolveInside(root, artifactPath), `${body}\n`)
+
+    const waiver: OperatorGateWaiver = {
+      waiver_id: waiverId,
+      stage: stage.slug,
+      source_invocation_id: history.invocation_id,
+      source_attempt: history.attempt,
+      source_evidence_path: sourceEvidencePath,
+      criterion_ids: requested,
+      workspace_fingerprint: workspace.fingerprint,
+      note: options.note,
+      artifact_path: artifactPath,
+      deferred_acceptance_criteria: deferred,
+      ...(spotfixCasePath ? { spotfix_case_path: spotfixCasePath } : {}),
+      timestamp: now(),
+    }
+
+    waivers.push(waiver)
+    state.operator_gate_waivers = waivers
+    state.status = 'running'
+    state.pause_reason = null
+    state.operator_pause = null
+    state.current_invocation = null
+    state.consecutive_failures = 0
+
+    if (stage.gate === 'operator') {
+      state.status = 'awaiting_operator'
+      state.current_stage = stage.slug
+      state.pending_action = {
+        type: 'operator_approval',
+        stage: stage.slug,
+        proposed_transition: stage.transitions.success,
+      }
+    } else {
+      applyTransition(root, state, stage, 'success', {
+        operatorDirected: true,
+      })
+    }
+
+    state.last_decision_path = artifactPath
+
+    persist(root, state, 'operator_gate_waived', {
+      waiver_id: waiverId,
+      stage: stage.slug,
+      source_invocation_id: history.invocation_id,
+      source_attempt: history.attempt,
+      source_evidence_path: sourceEvidencePath,
+      criterion_ids: requested,
+      workspace_fingerprint: workspace.fingerprint,
+      spotfix_case_path: spotfixCasePath ?? null,
+    })
+
+    return { state, waiver }
   })
 }
 

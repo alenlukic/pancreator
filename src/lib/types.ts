@@ -369,6 +369,34 @@ export interface OperatorFeedbackItem {
 export interface OperatorPauseContext {
   prior_status: 'running' | 'awaiting_supervisor' | 'awaiting_operator'
   prior_pending_action: PendingAction
+  workspace_before?: WorkspaceSnapshot
+  workspace_index_path?: string
+}
+
+export interface OperatorWorkspaceRatification {
+  ratification_id: string
+  stage: string
+  workspace_fingerprint: string
+  changed_paths: string[]
+  deleted_paths: string[]
+  note: string
+  artifact_path: string
+  timestamp: string
+}
+
+export interface OperatorGateWaiver {
+  waiver_id: string
+  stage: string
+  source_invocation_id: string
+  source_attempt: number
+  source_evidence_path: string
+  criterion_ids: string[]
+  workspace_fingerprint: string
+  note: string
+  artifact_path: string
+  deferred_acceptance_criteria: string[]
+  spotfix_case_path?: string
+  timestamp: string
 }
 
 export interface RunState {
@@ -413,6 +441,8 @@ export interface RunState {
   updated_at: string
   pause_reason?: string | null
   operator_pause?: OperatorPauseContext | null
+  operator_workspace_ratifications?: OperatorWorkspaceRatification[]
+  operator_gate_waivers?: OperatorGateWaiver[]
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
 }

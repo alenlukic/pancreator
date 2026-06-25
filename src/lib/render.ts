@@ -244,6 +244,36 @@ export function renderStatus(
     lines.push(`Pause reason: ${state.pause_reason}`)
   }
 
+  if ((state.operator_gate_waivers ?? []).length > 0) {
+    lines.push('', '## Operator gate waivers', '')
+
+    for (const waiver of state.operator_gate_waivers ?? []) {
+      lines.push(
+        `- ${waiver.stage} attempt ${waiver.source_attempt}: ` +
+          `${waiver.criterion_ids.join(', ')} ` +
+          `(${waiver.artifact_path})`,
+      )
+
+      if (waiver.spotfix_case_path) {
+        lines.push(`  Follow-up: ${waiver.spotfix_case_path}`)
+      }
+    }
+  }
+
+  if ((state.operator_workspace_ratifications ?? []).length > 0) {
+    const latest = state.operator_workspace_ratifications?.at(-1)
+
+    if (latest) {
+      lines.push(
+        '',
+        '## Latest workspace ratification',
+        '',
+        `Fingerprint: ${latest.workspace_fingerprint}`,
+        `Artifact: ${latest.artifact_path}`,
+      )
+    }
+  }
+
   if (validationStatus) {
     lines.push('', '## Validation', '')
     lines.push(

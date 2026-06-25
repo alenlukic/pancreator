@@ -576,40 +576,59 @@ export function evaluateStateCriterion(
   if (criterion.id === 'ship.prior_gates_current') {
     const review = [...state.stage_history]
       .reverse()
-      .find((item) => item.stage === 'review' && item.outcome === 'success')
+      .find((item) => item.stage === 'review')
     const test = [...state.stage_history]
       .reverse()
-      .find((item) => item.stage === 'test' && item.outcome === 'success')
+      .find((item) => item.stage === 'test')
+
+    const waiverFor = (stage: string, invocationId: string | undefined) =>
+      (state.operator_gate_waivers ?? []).find(
+        (waiver) =>
+          waiver.stage === stage &&
+          waiver.source_invocation_id === invocationId &&
+          waiver.workspace_fingerprint ===
+            state.stage_history.find(
+              (item) => item.invocation_id === invocationId,
+            )?.workspace_fingerprint,
+      )
+
+    const reviewWaiver = waiverFor('review', review?.invocation_id)
+    const testWaiver = waiverFor('test', test?.invocation_id)
+    const reviewSatisfied =
+      review?.outcome === 'success' || Boolean(reviewWaiver)
+    const testSatisfied = test?.outcome === 'success' || Boolean(testWaiver)
 
     const testFingerprint = test?.workspace_fingerprint
     const fingerprintCurrent = testFingerprint === workspaceFingerprint
     const operatorAccepted =
       state.accepted_workspace_fingerprint === workspaceFingerprint
-    const operatorWaivedReview = (state.operator_feedback ?? []).some(
-      (item) =>
-        item.decision === 'resume' &&
-        item.from_stage === 'review' &&
-        (item.to_stage === 'test' || item.to_stage === 'ship'),
-    )
-    const waivedWithAcceptedTest =
-      operatorWaivedReview &&
+    const acceptedEvidenceFingerprint =
       Boolean(testFingerprint) &&
       state.accepted_workspace_fingerprint === testFingerprint
     const gatesCurrent =
-      fingerprintCurrent || operatorAccepted || waivedWithAcceptedTest
-    const reviewSatisfied = Boolean(review) || operatorWaivedReview
+      fingerprintCurrent || operatorAccepted || acceptedEvidenceFingerprint
+    const fingerprintBasis = fingerprintCurrent
+      ? 'current workspace fingerprint'
+      : 'operator-accepted workspace fingerprint'
 
-    passed = Boolean(test && gatesCurrent && reviewSatisfied)
+    passed = Boolean(test && gatesCurrent && reviewSatisfied && testSatisfied)
     explanation = !passed
       ? 'Passing review/QA evidence is missing or stale.'
-      : review && fingerprintCurrent
-        ? 'Review and QA passed against the current workspace fingerprint.'
-        : review && operatorAccepted
-          ? 'Review and QA are stale, but the operator accepted the current workspace as intentional.'
-          : waivedWithAcceptedTest
-            ? 'Review was operator-waived; QA evidence matches the operator-accepted workspace fingerprint.'
-            : operatorWaivedReview && gatesCurrent
-              ? 'Review was operator-waived; QA evidence matches the accepted workspace fingerprint.'
+      : reviewWaiver || testWaiver
+        ? `Operator-waived ${[
+            reviewWaiver ? 'review' : null,
+            testWaiver ? 'QA' : null,
+          ]
+            .filter(Boolean)
+            .join(
+              ' and ',
+            )} evidence satisfies the gate; remaining evidence matches the ${fingerprintBasis}.`
+        : review?.outcome === 'success' && fingerprintCurrent
+          ? 'Review and QA passed against the current workspace fingerprint.'
+          : review?.outcome === 'success' && operatorAccepted
+            ? 'Review and QA are stale, but the operator accepted the current workspace as intentional.'
+            : acceptedEvidenceFingerprint
+              ? 'Review and QA evidence matches the operator-accepted workspace fingerprint.'
               : 'Review and QA passed against the current workspace fingerprint.'
   }
 

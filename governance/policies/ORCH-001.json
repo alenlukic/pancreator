@@ -1,0 +1,12 @@
+{
+  "id": "ORCH-001",
+  "title": "Supervisor continuation",
+  "severity": "hard",
+  "summary": "The supervisor MUST continue each non-terminal run until the harness reaches an operator-owned or terminal pending action.",
+  "instructions": [
+    "The supervisor MUST inspect `pending_action`, perform only that action, and re-check `pending_action` after every harness transition.",
+    "The supervisor MUST continue without operator handoff while `pending_action` is `prepare_invocation`, `invoke_agent`, or `supervisor_assessment`.",
+    "The supervisor MUST stop for operator input only when `pending_action` is `operator_approval`, `operator_decision`, or `none`.",
+    "The supervisor MUST NOT ask the operator to resume a run while a supervisor-owned pending action remains."
+  ]
+}

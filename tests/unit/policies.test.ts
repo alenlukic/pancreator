@@ -73,6 +73,26 @@ test('policy registry content remains canonical for inlining', () => {
   assert.equal(action.instructions.length, 2)
 })
 
+test('orchestration and release guidance resolve through canonical policies', () => {
+  const root = createFixture()
+  const orchestratorIds = resolvePolicies(root, {
+    persona: 'orchestrator',
+    workflow: 'dev',
+    stage: 'intake',
+  }).map((policy) => policy.id)
+  const releaseIds = resolvePolicies(root, {
+    persona: 'release-steward',
+    workflow: 'dev',
+    stage: 'ship',
+  }).map((policy) => policy.id)
+
+  assert.ok(orchestratorIds.includes('ORCH-001'))
+  assert.ok(orchestratorIds.includes('INVOCATION-001'))
+  assert.ok(orchestratorIds.includes('WAIVER-001'))
+  assert.ok(releaseIds.includes('WAIVER-001'))
+  assert.ok(releaseIds.includes('SHIP-001'))
+})
+
 test('standalone remediation personas load their work-mode policies', () => {
   const root = createFixture()
 

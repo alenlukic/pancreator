@@ -10,26 +10,22 @@
 - Every invocation has a unique ID and one canonical output path.
 - Repeating `pan prepare` while an invocation is pending returns the same invocation.
 - Output from any other invocation ID is rejected.
-- Every prepared invocation writes `invocations/<invocation-id>.invocation-validation.json` beside the invocation files. Prepare fails closed when the rendered card omits required policy snapshot text.
-- Every delegated worker invocation requires the supervisor to paste the full canonical invocation markdown verbatim into the subagent `prompt` parameter and to persist `invocations/<invocation-id>.delegation.md` containing that same verbatim text. Path-only references to the card file MUST NOT substitute for in-prompt delivery. Submit rejects advancement when delegation validation is missing or failed and writes `invocations/<invocation-id>.delegation-validation.json`.
+- Invocation preparation and delegation conform to `INVOCATION-001`; their
+  validation artifacts make policy delivery observable and fail closed.
 
 ## Invocation and delegation validation
 
-During `prepare`, the harness validates the rendered invocation markdown against the invocation-time policy snapshot and writes `invocations/<invocation-id>.invocation-validation.json`. Prepare fails closed when validation fails; the artifact records the failing checks.
+During `prepare`, the harness validates the rendered invocation markdown against
+the invocation-time policy snapshot and writes
+`invocations/<invocation-id>.invocation-validation.json`. During `submit`, it
+validates the delegation audit artifact and writes
+`invocations/<invocation-id>.delegation-validation.json` before stage history
+can advance. `INVOCATION-001` defines the canonical delivery contract and the
+orchestrator-owned-stage exception.
 
-During `submit`, the harness validates `invocations/<invocation-id>.delegation.md` against the canonical invocation markdown, writes `invocations/<invocation-id>.delegation-validation.json`, and rejects advancement before stage history changes when the delegation artifact is missing or invalid. The delegation artifact MUST contain the same verbatim invocation markdown the supervisor pasted into the subagent `prompt`; it is the audit record of in-prompt delivery, not a parallel summary. Orchestrator-owned stages that complete in the current chat do not require a delegation artifact.
-
-### Supervisor delegation contract
-
-For `invoke_agent`, the supervisor MUST:
-
-1. Read `invocations/<invocation-id>.md` in full.
-2. Paste its entire contents verbatim into the subagent `prompt` parameter (Task tool `prompt` field), including `## 📜 Policies in force` and every policy instruction line.
-3. Persist `invocations/<invocation-id>.delegation.md` with that same verbatim text.
-
-Path-only delegation (for example, instructing the worker to read the card file) does not satisfy the contract. The supervisor MUST NOT append restatements that could shadow policy or workspace-boundary text from the card; a minimal non-conflicting wrapper MAY precede the pasted card.
-
-`./bin/pan status` renders a dedicated validation section from the active invocation's validation artifacts. Missing or malformed artifacts are reported as observable state rather than crashing status.
+`./bin/pan status` renders a dedicated validation section from the active
+invocation's validation artifacts. Missing or malformed artifacts are reported
+as observable state rather than crashing status.
 
 ## Pending actions
 
@@ -44,15 +40,8 @@ Path-only delegation (for example, instructing the worker to read the card file)
 
 ### Supervisor continuation contract
 
-- The supervisor MUST run a continuation loop for every non-terminal run:
-  1. inspect `pending_action`,
-  2. perform only that action,
-  3. re-check `pending_action`.
-- The supervisor MUST continue without operator handoff while `pending_action` is one of:
-  `prepare_invocation`, `invoke_agent`, `supervisor_assessment`.
-- The supervisor MUST stop and request operator input only when `pending_action` is one of:
-  `operator_approval`, `operator_decision`, or when the run is terminal (`none`).
-- The supervisor MUST NOT ask the operator to run `/pan-resume` or equivalent while a supervisor-owned pending action remains.
+`ORCH-001` defines how the supervisor consumes `pending_action`, which actions it
+must continue through, and where operator handoff is required.
 
 ## Effective stage outcome
 
@@ -109,6 +98,21 @@ Each run declares a deliverable workspace at `./bin/pan init --workspace <dir>`,
 
 Deterministic shell gates default to the commands declared in the workflow snapshot, which assume a particular project shape. A run MAY supply `./bin/pan init --gates <file>` mapping a shell criterion id to a replacement command, or to `false` to disable that gate. Overrides are stored in `state.gate_overrides`, listed on each invocation card, and recorded on every deterministic result (`overridden` or `disabled`) so a customized or skipped gate is never silent. Use overrides to make gates measure the actual deliverable rather than weakening assurance; disabling a hard gate is an explicit, audited operator choice.
 
+## Operator gate waivers
+
+An operator MAY waive failed hard criteria from a non-harness workflow stage
+with `./bin/pan waive-gate`. `WAIVER-001` defines the constraints. The waiver is
+bound to the failed attempt, the complete set of failed hard criterion IDs, and
+that attempt's exact workspace fingerprint. Missing or malformed output,
+workspace drift, partial criterion selection, and harness-stage failures are not
+waivable through this mechanism.
+
+The waiver becomes stage-history evidence rather than rewriting the failed
+attempt as successful. Downstream gates may honor the explicit waiver, while
+status and release artifacts continue to identify the exception. Deferred
+acceptance criteria require `--spotfix`, which creates a linked inbox case; that
+case must independently qualify for lightweight work under `WORK-001`.
+
 ## Evidence and invalidation
 
 Every deterministic check records:
@@ -139,11 +143,12 @@ Exceeding a limit pauses the run and writes a decision record. The operator may 
 - Resume chosen stage: `./bin/pan resume <run-id> --stage implement`
 - Repair directly to any stage: `./bin/pan set-stage <run-id> --stage <stage> --note "reason"`
 - Accept an intentional change: `./bin/pan accept-change <run-id> --note "reason"`
+- Waive a failed workflow gate: `./bin/pan waive-gate <run-id> --criteria <ids> --note "reason"`
 - Abort: `./bin/pan abort <run-id> --note "reason"`
 
 ### Operator pause
 
-Operators MAY pause any non-terminal run at any time with `./bin/pan pause <run-id> [--note "reason"]`. The harness saves the current gate (`running`, `awaiting_supervisor`, or `awaiting_operator`) and its pending action. While paused, operators MAY modify tracked files in the deliverable workspace without the changes protocol. `./bin/pan resume <run-id>` restores the saved gate; `--stage` overrides that restoration and restarts at the chosen stage with `prepare_invocation`, matching harness-pause resume semantics.
+Operators MAY pause any non-terminal run at any time with `./bin/pan pause <run-id> [--note "reason"]`. The harness saves the current gate, pending action, and workspace snapshot. While paused, operators MAY modify tracked files in the deliverable workspace without the changes protocol. Every resume, including one with `--stage`, reconciles pause-period changes into the workspace ledger, records a ratification artifact, accepts the resulting fingerprint, and invalidates a stale prepared invocation. A normal resume restores the saved gate; `--stage` restarts at the chosen stage with `prepare_invocation`. The harness refuses to auto-ratify divergence that already existed when the pause began.
 
 ### Accepting an intentional workspace change
 

@@ -4,7 +4,8 @@
   "severity": "hard",
   "summary": "The ship stage MUST prepare a release packet, and the operator MUST own irreversible release actions.",
   "instructions": [
-    "The release packet MUST confirm that prior gates and evidence are current for the same workspace fingerprint.",
+    "The release packet MUST confirm that prior gates are satisfied by current evidence or explicit fingerprint-bound operator acceptance and waivers.",
+    "The release packet MUST enumerate active operator gate waivers, deferred acceptance criteria, and linked spotfix cases rather than describing waived gates as ordinary passes.",
     "The release packet MUST include rollback guidance, unresolved non-blocking risks, and a concise change summary.",
     "The workflow MUST pause for operator approval before commit, push, merge, publication, or deployment."
   ]

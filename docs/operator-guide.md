@@ -11,37 +11,27 @@ Use `/pan-start` for a new request and `/pan-resume <run-id>` thereafter. The su
 
 Raw JSONL and shell output are diagnostic surfaces, not the default conversation.
 
-### Supervisor continuation contract
+### Supervisor continuation
 
-- The supervisor MUST run a continuation loop for every non-terminal run:
-  1. inspect `pending_action`,
-  2. perform only that action,
-  3. re-check `pending_action`.
-- The supervisor MUST continue without operator handoff while `pending_action` is one of:
-  `prepare_invocation`, `invoke_agent`, `supervisor_assessment`.
-- The supervisor MUST stop and request operator input only when `pending_action` is one of:
-  `operator_approval`, `operator_decision`, or when the run is terminal (`none`).
-- The supervisor MUST NOT ask the operator to run `/pan-resume` or equivalent while a supervisor-owned pending action remains.
+`ORCH-001` is the normative continuation policy. In practice, keep advancing
+supervisor-owned `pending_action` values and stop only at an operator-owned or
+terminal action.
 
 ## Invocation and delegation validation
 
-Each prepared invocation writes `invocations/<invocation-id>.invocation-validation.json`. If prepare fails with invocation validation errors, read that artifact for the failing policy checks before retrying.
+`INVOCATION-001` is the normative invocation-card and delegation policy. Each
+prepared invocation writes
+`invocations/<invocation-id>.invocation-validation.json`. If prepare fails,
+read that artifact for the failing checks before retrying.
 
-### Delegation prompt delivery (supervisor)
+When `pending_action` is `invoke_agent`, deliver the canonical invocation card
+according to `INVOCATION-001` and persist its delegation audit artifact. Before
+`./bin/pan submit`, confirm delegation validation passed. Rejection with
+`DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` leaves the run
+on the same invocation so delivery can be corrected and resubmitted.
 
-When `pending_action` is `invoke_agent`, the supervisor MUST:
-
-1. Read the full canonical invocation markdown at `invocations/<invocation-id>.md`.
-2. Paste that markdown **verbatim** into the subagent `prompt` parameter (the Task tool `prompt` field). The prompt body MUST be the card — especially `## 📜 Policies in force` and every policy instruction line.
-3. Persist `invocations/<invocation-id>.delegation.md` containing the **same verbatim text** pasted into the prompt.
-
-A path-only reference (for example, `Read: .../invocations/<invocation-id>.md` plus a supervisor summary) MUST NOT substitute for in-prompt delivery. The delegation artifact records what was actually delegated; it is not a separate summary artifact.
-
-The supervisor MUST NOT append parallel restatements (scope summaries, gate notes, plan excerpts) that could shadow policy or workspace-boundary text from the card. A minimal non-conflicting wrapper MAY precede the pasted card.
-
-Before `./bin/pan submit`, confirm `.delegation.md` exists and matches the invocation markdown exactly (aside from line-ending normalization). Submit rejection with `DELEGATION_ARTIFACT_MISSING` or `DELEGATION_VALIDATION_FAILED` means the run stays on the same invocation; fix the delegation artifact and ensure the subagent prompt contained the full card, then submit again.
-
-`./bin/pan status` includes a dedicated validation section with invocation and delegation validation state, artifact paths, and short failure reasons when applicable.
+`./bin/pan status` includes a dedicated validation section with invocation and
+delegation validation state, artifact paths, and short failure reasons.
 
 ## Choose a work mode
 
@@ -103,11 +93,43 @@ Operators MAY pause any non-terminal run at any time:
 ./bin/pan pause <run-id> [--note "<reason>"]
 ```
 
-While paused, you MAY modify tracked files in the deliverable workspace as you see fit without using the changes protocol. Resume with `./bin/pan resume <run-id>` to continue from the saved gate (supervisor assessment, operator approval, or prepare). Use `./bin/pan resume <run-id> --stage <slug>` when you intentionally want to restart at a different stage instead.
+While paused, you MAY modify tracked files in the deliverable workspace without
+using the changes protocol. On resume, including resume with `--stage`,
+Pancreator compares the workspace to the pause-start snapshot. Authorized
+changes are added to the workspace ledger under a ratification artifact, the
+new fingerprint is accepted, and any prepared invocation is invalidated so it
+can be regenerated against the changed workspace. Changes that predated the
+pause are not silently ratified. Resume with `./bin/pan resume <run-id>` or
+deliberately restart at a different stage with `--stage <slug>`.
 
 Resume from the stage that owns the remediation when the pause was harness-initiated (blocker, circuit breaker, or ledger anomaly). Do not resume from review or test when the defect belongs to implementation.
 
 - `./bin/pan resume <run-id> --stage implement --note "<required changes>"` restarts implementation and attaches the note to the next invocation card as remediation input.
+
+### Waiving a failed workflow gate
+
+Use a gate waiver only for a failed non-harness workflow stage whose remaining
+misses are understood and intentionally accepted:
+
+```sh
+./bin/pan waive-gate <run-id> \
+  --criteria <failed-id[,failed-id...]> \
+  --note "<reason>" \
+  [--stage <stage>] \
+  [--defer <acceptance-id[,acceptance-id...]> --spotfix]
+```
+
+`WAIVER-001` is normative. The command is fail-closed: the listed criterion IDs
+must exactly match every failed hard criterion from the latest failed attempt,
+and the workspace must still match that attempt's fingerprint. A generic resume
+note is not a waiver. Harness anomalies continue to use their purpose-built
+operator commands.
+
+When bounded acceptance misses are deferred with `--defer ... --spotfix`, the
+waiver creates an inbox case recording the misses and source evidence. The case
+is intake evidence only: it must still satisfy `WORK-001` before lightweight
+execution. Waivers and open follow-up cases remain visible in status and the
+release packet.
 
 ### Operator stage repair
 
@@ -139,7 +161,9 @@ Use the protocol commands when a worker modifies tracked files:
 
 The ship packet is a proposal. Before approval, confirm:
 
-- review and QA passed against the current workspace
+- review and QA passed against the current workspace, or any exceptions are
+  explicit fingerprint-bound waivers
+- deferred acceptance criteria have an owned follow-up case
 - residual risks are acceptable
 - rollback guidance is credible
 - the proposed commit/PR text accurately describes the diff

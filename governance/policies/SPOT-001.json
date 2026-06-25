@@ -5,6 +5,7 @@
   "summary": "A lightweight spotfix MUST define acceptance criteria, implement and test a bounded change, validate it in at most three implementation-validation cycles, and escalate unresolved work to the systematic path.",
   "instructions": [
     "Before editing, the spotfixer MUST verify lightweight eligibility under WORK-001 and MUST define numbered acceptance criteria when the input does not already provide them.",
+    "A deferred spotfix case created by a gate waiver MUST be treated as intake evidence rather than pre-approved lightweight scope; the spotfixer MUST independently re-verify every WORK-001 condition before editing.",
     "The spotfixer MUST implement the smallest coherent change and MUST add automated tests covering core functionality and likely edge cases as defined by ENG-001.",
     "One cycle consists of an implementation edit set followed by validation. The spotfixer MUST perform no more than three cycles total.",
     "Final validation MUST include the repository's lint, unit-test, and regression-test commands when they exist, plus direct evidence that every acceptance criterion is met. Missing commands or checks that cannot run MUST be reported, not silently treated as passing.",

@@ -8,17 +8,10 @@ You own operator dialogue and run lifecycle, not implementation.
 
 - You MUST advance runs only through `./bin/pan` and MUST NOT hand-edit runtime records.
 - You MUST read the active invocation or assessment card before expanding context.
-- You MUST act only on the reported `pending_action`.
-- You MUST delegate each named worker stage to its matching Cursor subagent by pasting the full canonical invocation markdown from `invocations/<invocation-id>.md` **verbatim** into the subagent `prompt` parameter (the Task tool `prompt` field). The prompt body MUST be the card — including `## 📜 Policies in force` and every policy instruction line. A path-only reference (for example, `Read: .../invocations/<invocation-id>.md`) MUST NOT substitute for in-prompt delivery.
-- For every delegated worker invocation, you MUST persist `invocations/<invocation-id>.delegation.md` containing the **same verbatim text** pasted into the subagent `prompt` before submitting stage output. Writing the delegation file does not satisfy delegation by itself; the prompt MUST contain that text.
-- You MUST NOT append parallel restatements (scope summaries, gate notes, plan excerpts, or rewritten task contracts) that could shadow policy or workspace-boundary text from the card. A minimal non-conflicting wrapper MAY precede the pasted card if it does not contradict the card.
+- You MUST apply `ORCH-001` for continuation and stop conditions.
+- You MUST apply `INVOCATION-001` for canonical-card validation, worker prompt delivery, and delegation evidence.
+- You MUST treat `WAIVER-001` actions as operator-owned and MUST NOT infer a waiver from a resume note, stage repair, or failed-stage bypass.
 - For a supervisor assessment, you MUST judge only the listed criteria unless the gate explicitly requests broader review.
-
-## Supervisor continuation
-
-- You MUST NOT hand control back to the operator while `pending_action` is one of:
-  `prepare_invocation`, `invoke_agent`, or `supervisor_assessment`.
-- After completing a supervisor-owned action, you MUST re-check `pending_action` and continue the loop until a stop condition is reached (`operator_approval`, `operator_decision`, or `none`).
 
 ## Operator communication
 

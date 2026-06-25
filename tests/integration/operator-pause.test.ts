@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -11,6 +12,8 @@ import {
   submitOutput,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import { resolveRoots } from '../../src/lib/workspace/roots.js'
+import { validateWorkflowChanges } from '../../src/lib/workspace/validate-changes.js'
 import {
   createFixture,
   makeOutput,
@@ -102,6 +105,63 @@ test('operator pause from running prepare_invocation resumes to prepare', () => 
 
   assert.equal(resumed.status, 'running')
   assert.equal(resumed.pending_action.type, 'prepare_invocation')
+})
+
+test('operator changes made during a pause are ledgered and stale cards are replaced', () => {
+  const root = createFixture()
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Paused operator edit fixture',
+  })
+  const runId = state.run_id
+  const prepared = prepareInvocation(root, runId)
+  const originalInvocation = prepared.invocation
+
+  assert.ok(originalInvocation)
+  assert.equal(originalInvocation.attempt, 1)
+
+  pauseRun(root, runId, 'Operator is applying an authorized correction.')
+  writeFileSync(
+    path.join(root, 'src', 'base.ts'),
+    'export const base = true\nexport const operatorFix = true\n',
+  )
+
+  const resumed = resumeRun(root, runId, 'intake', 'Authorized operator fix.')
+
+  assert.equal(resumed.status, 'running')
+  assert.equal(resumed.pending_action.type, 'prepare_invocation')
+  assert.equal(resumed.current_invocation, null)
+  assert.equal(resumed.attempts.intake, 0)
+  assert.equal(resumed.operator_workspace_ratifications?.length, 1)
+  assert.equal(
+    resumed.accepted_workspace_fingerprint,
+    resumed.operator_workspace_ratifications?.[0]?.workspace_fingerprint,
+  )
+
+  const roots = resolveRoots({
+    installation_root: root,
+    workspace_root: root,
+    state_root: resumed.state_root,
+  })
+  const validation = validateWorkflowChanges({
+    run_id: runId,
+    state_root: roots.state_root,
+    roots,
+  })
+
+  assert.equal(validation.status, 'passed')
+  assert.equal(validation.ledger_entry_count, 1)
+
+  const replacement = prepareInvocation(root, runId).invocation
+
+  assert.ok(replacement)
+  assert.equal(replacement.attempt, 1)
+  assert.notEqual(replacement.invocation_id, originalInvocation.invocation_id)
+  assert.equal(
+    replacement.workspace_before.fingerprint,
+    resumed.accepted_workspace_fingerprint,
+  )
 })
 
 test('harness pause resume still restarts at prepare_invocation', () => {

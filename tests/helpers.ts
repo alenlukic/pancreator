@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -22,9 +23,11 @@ export function createFixture(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
   for (const entry of ['governance', 'library', '.cursor', '.pancreator']) {
-    cpSync(path.join(REPO_ROOT, entry), path.join(root, entry), {
-      recursive: true,
-    })
+    const source = path.join(REPO_ROOT, entry)
+
+    if (existsSync(source)) {
+      cpSync(source, path.join(root, entry), { recursive: true })
+    }
   }
 
   cpSync(path.join(REPO_ROOT, 'project.json'), path.join(root, 'project.json'))
@@ -160,6 +163,8 @@ function requiredData(stage: string): Record<string, unknown> {
           change_list: [],
           validation: ['review', 'test'],
           rollback: 'Revert changes',
+          waivers: [],
+          follow_up_cases: [],
           commit_message: 'Build harness',
           pr_body: 'Prototype',
         },

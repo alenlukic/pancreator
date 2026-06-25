@@ -1,0 +1,13 @@
+{
+  "id": "INVOCATION-001",
+  "title": "Canonical invocation delivery",
+  "severity": "hard",
+  "summary": "The supervisor MUST validate and deliver each canonical invocation card without contract-shadowing rewrites.",
+  "instructions": [
+    "Before delegation, the supervisor MUST use the harness-produced invocation validation artifact and MUST NOT delegate a card whose validation status is failed or missing.",
+    "For a named worker stage, the supervisor MUST paste the full canonical invocation Markdown verbatim into the subagent prompt; a path-only reference or summary MUST NOT substitute for the card.",
+    "The supervisor MUST persist the exact delegated prompt body to the matching `.delegation.md` artifact before stage submission so the harness can validate delivery.",
+    "The supervisor MUST NOT append parallel scope, policy, gate, or plan restatements that could shadow the canonical card; a minimal non-conflicting persona label MAY precede it.",
+    "A missing or mismatched delegation artifact MUST be repaired against the same active invocation rather than bypassed or represented as successful delivery."
+  ]
+}

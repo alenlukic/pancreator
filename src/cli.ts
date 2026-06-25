@@ -15,6 +15,7 @@ import {
   resumeRun,
   setRunStage,
   submitOutput,
+  waiveGate,
 } from './lib/engine.js'
 import { PanError } from './lib/errors.js'
 import { isGitRepository } from './lib/git.js'
@@ -51,6 +52,7 @@ Usage:
   pan pause <run-id> [--note <text>]
   pan resume <run-id> [--stage <stage-slug>] [--note <text>]
   pan set-stage <run-id> --stage <stage-slug> --note <reason>
+  pan waive-gate <run-id> --criteria <id[,id...]> --note <reason> [--stage <stage-slug>] [--defer <AC-id[,AC-id...]> --spotfix]
   pan accept-change <run-id> [--note <text>] [--waive]
   pan abort <run-id> [--note <text>]
   pan changes begin <run-id> <path>
@@ -100,6 +102,17 @@ function requiredArgument(value: string | undefined, name: string): string {
 
 function hasFlag(args: string[], name: string): boolean {
   return args.includes(name)
+}
+
+function commaSeparatedOption(args: string[], name: string): string[] {
+  const value = option(args, name)
+
+  return value
+    ? value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : []
 }
 
 function print(value: unknown, asJson = false): void {
@@ -364,6 +377,41 @@ async function main(): Promise<void> {
         accepted_workspace_fingerprint: state.accepted_workspace_fingerprint,
         latest_ledger_validation: state.latest_ledger_validation,
         next_command: `./bin/pan prepare ${runId}`,
+      })
+      return
+    }
+    case 'waive-gate': {
+      const runId = requiredArgument(args[0], 'run-id')
+      const criteria = commaSeparatedOption(args, '--criteria')
+      const note = option(args, '--note')
+
+      if (criteria.length === 0) {
+        throw new PanError('--criteria is required for waive-gate.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      if (!note || note.trim().length === 0) {
+        throw new PanError('--note is required for waive-gate.', {
+          code: 'INVALID_ARGUMENT',
+        })
+      }
+
+      const result = waiveGate(root, runId, {
+        stageSlug: option(args, '--stage'),
+        criterionIds: criteria,
+        note,
+        deferredAcceptanceCriteria: commaSeparatedOption(args, '--defer'),
+        createSpotfixCase: hasFlag(args, '--spotfix'),
+      })
+
+      print({
+        status: result.state.status,
+        current_stage: result.state.current_stage,
+        pending_action: result.state.pending_action,
+        waiver_id: result.waiver.waiver_id,
+        waiver_artifact: result.waiver.artifact_path,
+        spotfix_case: result.waiver.spotfix_case_path ?? null,
       })
       return
     }

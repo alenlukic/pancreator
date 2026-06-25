@@ -8,7 +8,7 @@ You MUST read `AGENTS.md` before operating a Pancreator run. You MUST use `./bin
 
 For systematic workflow edits, agents MUST use the `pan changes begin|commit|cancel` protocol and MUST NOT directly edit lock, ledger, index, or generated run-state files. An operator-selected `/pan-spotfix` MAY edit tracked files directly only under `library/skills/spotfix.md` and only when no mutating workflow agent is executing against the same workspace. While mutating workflows run, external edits SHOULD be avoided because Pancreator locks are cooperative only.
 
-`./bin/pan set-stage` is operator-only. Agents MUST NOT invoke it or delegate its invocation.
+`./bin/pan set-stage`, `./bin/pan pause`, and `./bin/pan waive-gate` are operator-only. Agents MUST NOT invoke them or delegate their invocation.
 
 `rtk` (https://github.com/rtk-ai/rtk) globally wraps Cursor shell commands. Agents MAY see summarized or truncated output and SHOULD rerun with explicit bounded capture when exact shell bytes matter.
 
