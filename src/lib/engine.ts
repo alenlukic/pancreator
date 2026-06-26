@@ -20,11 +20,7 @@ import {
 import { finalizeWorkflowArtifacts } from '../migrations/finalize-workflow-artifacts.js'
 import { makeStageArtifactId } from './naming.js'
 import { resolvePolicies } from './policies.js'
-import {
-  artifactJsonPath,
-  artifactRecordMarkdownPath,
-  isClosedRunStatus,
-} from './workflow-artifacts.js'
+import { artifactJsonPath, isClosedRunStatus } from './workflow-artifacts.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import {
   inferTargetKind,
@@ -41,11 +37,7 @@ import {
   resolvePersonaModel,
   syncCursorAgentModels,
 } from './pipeline-config.js'
-import {
-  renderInvocationMarkdown,
-  renderStatus,
-  renderTaskRecord,
-} from './render.js'
+import { renderInvocationMarkdown, renderStatus } from './render.js'
 import {
   ledgerValidationPath,
   lockPath,
@@ -400,7 +392,7 @@ function referencesForRun(state: RunState): Array<{
     if (item.record_path) {
       references.push({
         path: item.record_path,
-        description: `${item.stage} execution record`,
+        description: `${item.stage} execution record JSON`,
       })
     }
   }
@@ -1397,18 +1389,10 @@ export function submitOutput(
       timestamp: now(),
     }
     const recordJsonPath = artifactJsonPath(runId, invocation.invocation_id)
-    const recordMarkdownPath = artifactRecordMarkdownPath(
-      runId,
-      invocation.invocation_id,
-    )
 
     writeJsonAtomic(resolveInside(root, recordJsonPath), record)
-    writeTextAtomic(
-      resolveInside(root, recordMarkdownPath),
-      renderTaskRecord(record),
-    )
 
-    historyItem.record_path = recordMarkdownPath
+    historyItem.record_path = recordJsonPath
 
     persistRun(root, state, 'stage_output_submitted', {
       stage: stage.slug,

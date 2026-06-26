@@ -35,10 +35,9 @@ renumbered from `99` through `93` to `06` through `00`. A workflow run supports
 at most 100 stage occurrences. The finalizer is idempotent and can be invoked
 manually with `npm run finalize:workflow-artifacts -- <run-id> [root]`.
 
-Execution-record JSON is stored in `artifacts/json/<artifact-id>.json`.
-Stage-authored Markdown is stored in `artifacts/markdown/<artifact-id>.md`, and
-the rendered execution record is stored beside it as
-`artifacts/markdown/<artifact-id>.record.md`.
+Execution records are stored only as machine-readable JSON in
+`artifacts/json/<artifact-id>.json`. Stage-authored Markdown and other
+operator-facing documents are stored under `artifacts/markdown/`.
 
 Supervisor assessment files retain the invocation artifact ID as their sortable
 prefix: `<invocation-id>.assessment-request.json` and
@@ -46,7 +45,8 @@ prefix: `<invocation-id>.assessment-request.json` and
 
 Legacy runtime records are migrated with `npm run migrate:workflow-names`. The
 migration is idempotent, chooses open or terminal numbering from run status,
-consolidates legacy `records/` and flat `artifacts/` contents, removes an empty
+consolidates legacy `records/` and flat `artifacts/` contents, removes redundant
+rendered execution-record Markdown, removes an empty
 legacy `--help` run directory, and updates persisted references alongside names.
 
 ## Invocation and delegation validation

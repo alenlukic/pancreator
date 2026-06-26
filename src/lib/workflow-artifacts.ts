@@ -61,16 +61,6 @@ export function artifactMarkdownPath(
   return `runtime/logs/workflows/${runId}/artifacts/markdown/${artifactId}.md`
 }
 
-export function artifactRecordMarkdownPath(
-  runId: string,
-  artifactId: string,
-): string {
-  return (
-    `runtime/logs/workflows/${runId}/artifacts/markdown/` +
-    `${artifactId}.record.md`
-  )
-}
-
 export function isClosedRunStatus(status: RunStatus): boolean {
   return status === 'succeeded' || status === 'failed' || status === 'canceled'
 }
@@ -677,34 +667,81 @@ function toRepoRelative(root: string, absolute: string): string {
   return path.relative(root, absolute).split(path.sep).join('/')
 }
 
-function layoutMoves(root: string, runDirectory: string): FileMove[] {
+interface FileRemoval {
+  source: string
+  sourceRelative: string
+  targetRelative: string
+}
+
+interface ArtifactLayoutPlan {
+  moves: FileMove[]
+  removals: FileRemoval[]
+}
+
+function recordJsonTarget(
+  artifactRoot: string,
+  relativeMarkdownPath: string,
+): string {
+  const normalized = relativeMarkdownPath.endsWith('.record.md')
+    ? relativeMarkdownPath.slice(0, -'.record.md'.length)
+    : relativeMarkdownPath.slice(0, -path.extname(relativeMarkdownPath).length)
+
+  return path.join(artifactRoot, 'json', `${normalized}.json`)
+}
+
+function removal(
+  root: string,
+  artifactRoot: string,
+  source: string,
+  relativeMarkdownPath: string,
+): FileRemoval {
+  const target = recordJsonTarget(artifactRoot, relativeMarkdownPath)
+
+  return {
+    source,
+    sourceRelative: toRepoRelative(root, source),
+    targetRelative: toRepoRelative(root, target),
+  }
+}
+
+function layoutPlan(root: string, runDirectory: string): ArtifactLayoutPlan {
   const artifactRoot = path.join(runDirectory, 'artifacts')
   const recordsRoot = path.join(runDirectory, 'records')
   const moves: FileMove[] = []
+  const removals: FileRemoval[] = []
 
   for (const source of listFiles(recordsRoot)) {
-    const name = path.basename(source)
-    const extension = path.extname(name)
-    let target: string
+    const relative = path.relative(recordsRoot, source)
+    const extension = path.extname(source)
 
     if (extension === '.json') {
-      target = path.join(artifactRoot, 'json', name)
-    } else if (extension === '.md') {
-      const stem = name.slice(0, -extension.length)
+      const target = path.join(artifactRoot, 'json', relative)
 
-      target = path.join(artifactRoot, 'markdown', `${stem}.record.md`)
+      moves.push({
+        source,
+        target,
+        sourceRelative: toRepoRelative(root, source),
+        targetRelative: toRepoRelative(root, target),
+      })
+    } else if (extension === '.md') {
+      removals.push(removal(root, artifactRoot, source, relative))
     } else {
       invariant(false, `Unsupported record artifact: ${source}`, {
         code: 'UNSUPPORTED_RECORD_ARTIFACT',
       })
     }
+  }
 
-    moves.push({
-      source,
-      target,
-      sourceRelative: toRepoRelative(root, source),
-      targetRelative: toRepoRelative(root, target),
-    })
+  const markdownRoot = path.join(artifactRoot, 'markdown')
+
+  for (const source of listFiles(markdownRoot)) {
+    if (!source.endsWith('.record.md')) {
+      continue
+    }
+
+    removals.push(
+      removal(root, artifactRoot, source, path.relative(markdownRoot, source)),
+    )
   }
 
   if (existsSync(artifactRoot)) {
@@ -721,6 +758,13 @@ function layoutMoves(root: string, runDirectory: string): FileMove[] {
 
       for (const source of files) {
         const relative = path.relative(artifactRoot, source)
+
+        if (source.endsWith('.record.md')) {
+          removals.push(removal(root, artifactRoot, source, relative))
+
+          continue
+        }
+
         const targetDirectory = source.endsWith('.json') ? 'json' : 'markdown'
         const target = path.join(artifactRoot, targetDirectory, relative)
 
@@ -734,7 +778,7 @@ function layoutMoves(root: string, runDirectory: string): FileMove[] {
     }
   }
 
-  return moves
+  return { moves, removals }
 }
 
 function applyLayoutMoves(moves: FileMove[]): void {
@@ -763,18 +807,25 @@ function applyLayoutMoves(moves: FileMove[]): void {
   }
 }
 
+function applyLayoutRemovals(removals: FileRemoval[]): void {
+  for (const item of removals) {
+    rmSync(item.source, { force: true })
+  }
+}
+
 function consolidateArtifactLayout(
   root: string,
   runDirectory: string,
-): { moved: number; mappings: Map<string, string> } {
+): { changed: number; mappings: Map<string, string> } {
   const artifactRoot = path.join(runDirectory, 'artifacts')
 
   mkdirSync(path.join(artifactRoot, 'json'), { recursive: true })
   mkdirSync(path.join(artifactRoot, 'markdown'), { recursive: true })
 
-  const moves = layoutMoves(root, runDirectory)
+  const plan = layoutPlan(root, runDirectory)
 
-  applyLayoutMoves(moves)
+  applyLayoutMoves(plan.moves)
+  applyLayoutRemovals(plan.removals)
   rmSync(path.join(runDirectory, 'records'), { recursive: true, force: true })
 
   for (const entry of readdirSync(artifactRoot, { withFileTypes: true })) {
@@ -790,10 +841,12 @@ function consolidateArtifactLayout(
     }
   }
 
+  const changes = [...plan.moves, ...plan.removals]
+
   return {
-    moved: moves.length,
+    changed: changes.length,
     mappings: new Map(
-      moves.map((move) => [move.sourceRelative, move.targetRelative]),
+      changes.map((item) => [item.sourceRelative, item.targetRelative]),
     ),
   }
 }
@@ -864,7 +917,7 @@ export function rewriteWorkflowArtifacts(
 
   return {
     artifact_files: artifactFiles,
-    layout_files: layout.moved,
+    layout_files: layout.changed,
     updated_files: updatedFiles.size,
   }
 }

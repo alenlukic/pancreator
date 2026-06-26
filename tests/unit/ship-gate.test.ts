@@ -53,7 +53,7 @@ function waiverFor(
     stage: item.stage,
     source_invocation_id: item.invocation_id,
     source_attempt: item.attempt,
-    source_evidence_path: `runtime/logs/workflows/run-1/artifacts/markdown/${item.invocation_id}.record.md`,
+    source_evidence_path: `runtime/logs/workflows/run-1/artifacts/json/${item.invocation_id}.json`,
     criterion_ids: [`${item.stage}.acceptance_met`],
     workspace_fingerprint: item.workspace_fingerprint,
     note: 'Operator accepts one bounded deferred criterion.',

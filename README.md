@@ -94,7 +94,7 @@ runtime/logs/workflows/<run-id>/
   decisions/                 # pause/escalation records
   artifacts/
     json/                     # machine-readable execution records and metadata
-    markdown/                 # stage-authored reports and rendered execution records
+    markdown/                 # stage-authored reports and operator artifacts
 ```
 
 Run directories use `<days-to-2200-01-01>_<MMM-DD>_<uuid-suffix>`. The day
@@ -113,10 +113,9 @@ prefixes against the actual stage count so the last occurrence is `00`. A
 seven-stage run is renumbered from `99` through `93` to `06` through `00`.
 Workflow runs therefore support at most 100 stage occurrences.
 
-Execution-record JSON is stored in `artifacts/json/<artifact-id>.json`.
-Stage-authored Markdown is stored in `artifacts/markdown/<artifact-id>.md`, and
-the rendered execution record is stored beside it as
-`artifacts/markdown/<artifact-id>.record.md`.
+Execution records are stored only as machine-readable JSON in
+`artifacts/json/<artifact-id>.json`. Stage-authored Markdown and other
+operator-facing documents are stored under `artifacts/markdown/`.
 
 Migrate legacy runtime records after updating the repository:
 
@@ -126,7 +125,8 @@ npm run migrate:workflow-names
 
 The migration renames workflow directories under both runtime roots, applies the
 correct open or terminal artifact sequence, consolidates legacy `records/` and
-flat `artifacts/` contents into the typed artifact directories, removes an empty
+flat `artifacts/` contents into the typed artifact directories, removes redundant
+rendered execution-record Markdown, removes an empty
 legacy `--help` run directory, and rewrites persisted references. It is
 idempotent.
 

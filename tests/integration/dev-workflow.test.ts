@@ -153,7 +153,13 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   assert.ok(
     final.stage_history
       .filter((item) => item.stage !== 'validate-changes')
-      .every((item) => item.record_path),
+      .every((item) => item.record_path?.endsWith('.json')),
+  )
+  assert.equal(
+    final.stage_history.some((item) =>
+      item.record_path?.endsWith('.record.md'),
+    ),
+    false,
   )
 })
 

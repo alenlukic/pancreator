@@ -1,11 +1,5 @@
-import type { Invocation, RunState, StageOutcome, TaskRecord } from './types.js'
+import type { Invocation, RunState } from './types.js'
 import type { InvocationValidationStatus } from './validation.js'
-
-const OUTCOME_EMOJI: Record<StageOutcome, string> = {
-  success: '✅',
-  blocked: '⏸️',
-  failure: '❌',
-}
 
 function fencedJson(value: unknown): string {
   return ['```json', JSON.stringify(value, null, 2), '```'].join('\n')
@@ -132,76 +126,6 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
   ]
 
   return `${lines.join('\n')}\n`
-}
-
-/** Render the operator-facing execution record for one submitted stage. */
-export function renderTaskRecord(record: TaskRecord): string {
-  const checks = record.evaluation.deterministic.length
-    ? record.evaluation.deterministic.map((item) => {
-        const evidence = item.evidence_path
-          ? ` — \`${item.evidence_path}\``
-          : ''
-        const explanation = item.explanation ? ` — ${item.explanation}` : ''
-
-        return (
-          `- ${item.passed ? '✅' : '❌'} **${item.id}**` +
-          evidence +
-          explanation
-        )
-      })
-    : ['- No deterministic checks were declared for this stage.']
-  const artifacts = record.artifacts.length
-    ? record.artifacts.map((item) => `- \`${item.path}\` — ${item.description}`)
-    : ['- No durable artifacts declared.']
-  const risks = [
-    ...record.risks.map((item) => `- ⚠️ Risk: ${item}`),
-    ...record.unknowns.map((item) => `- ❓ Unknown: ${item}`),
-  ]
-
-  const sections = [
-    `# ${OUTCOME_EMOJI[record.outcome]} ${record.stage.title}: ` +
-      record.outcome,
-    '',
-    record.summary,
-    '',
-    `**Next state:** ${record.next_state}`,
-    '',
-    '## 📦 Work completed',
-    '',
-    ...artifacts,
-    '',
-    '## 🔍 Checks',
-    '',
-    ...checks,
-  ]
-
-  if (record.evaluation.validation_errors.length > 0) {
-    sections.push(
-      '',
-      '## ❌ Output validation issues',
-      '',
-      ...record.evaluation.validation_errors.map((item) => `- ${item}`),
-    )
-  }
-
-  sections.push(
-    '',
-    '## ⚠️ Risks and unknowns',
-    '',
-    ...(risks.length > 0 ? risks : ['- None declared.']),
-    '',
-    '## Technical appendix',
-    '',
-    fencedJson({
-      run_id: record.run_id,
-      invocation_id: record.invocation_id,
-      persona: record.stage.persona,
-      workspace_fingerprint: record.workspace_fingerprint,
-      timestamp: record.timestamp,
-    }),
-  )
-
-  return `${sections.join('\n')}\n`
 }
 
 function formatValidationArtifactStatus(

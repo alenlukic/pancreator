@@ -221,7 +221,7 @@ test('workflow migration finalizes closed runs and consolidates artifacts', () =
           `${invocationId}.record.md`,
         ),
       ),
-      true,
+      false,
     )
   })
 
@@ -231,6 +231,16 @@ test('workflow migration finalizes closed runs and consolidates artifacts', () =
       'utf8',
     ),
     new RegExp(`${newRunId}.*${newInvocationIds[3]}`, 'u'),
+  )
+  const migratedState = readFileSync(
+    path.join(migratedLogDirectory, 'state.json'),
+    'utf8',
+  )
+
+  assert.doesNotMatch(migratedState, /\.record\.md/u)
+  assert.match(
+    migratedState,
+    new RegExp(`artifacts/json/${newInvocationIds[0]}\\.json`, 'u'),
   )
   assert.deepEqual(migrateWorkflowNames(root), {
     run_directories: 0,

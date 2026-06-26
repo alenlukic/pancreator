@@ -51,7 +51,6 @@ Validated on 2026-06-22 with Node.js 22.16.0 and Git 2.47.3.
 - stale lock recovery
 - write-ahead event recovery of materialized state
 - workflow graph and policy resolution validation
-- Markdown-primary execution record rendering, including validation-issue and failure paths
 
 ## Known validation limits
 
