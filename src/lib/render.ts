@@ -31,6 +31,23 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         return [lines.join('\n')]
       })
     : ['- Only global boundaries apply.']
+  const requirementRows = invocation.requirements
+    ? [
+        '| Policy | Requirement | Registry | Phase | Executor | Target | Success | Failure route |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- |',
+        ...[
+          ...invocation.requirements.automation_requirements,
+          ...invocation.requirements.validation_requirements,
+        ].map(
+          (requirement) =>
+            `| ${requirement.policy_id} | ${requirement.requirement_id} | ` +
+            `${requirement.registry_id}@${requirement.registry_version} | ` +
+            `${requirement.phase} | ${requirement.executor} | ` +
+            `${requirement.resolved_target ?? requirement.target} | ` +
+            `${requirement.success_condition} | ${requirement.failure_route} |`,
+        ),
+      ]
+    : []
   const gateOverrideEntries = Object.entries(invocation.gate_overrides ?? {})
   const gateOverrideLines = gateOverrideEntries.map(([id, command]) =>
     command === false
@@ -74,6 +91,9 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     ...policies,
     '',
+    ...(requirementRows.length > 0
+      ? ['## ✅ Validation requirements', '', ...requirementRows, '']
+      : []),
     '## 🎯 Rubric',
     '',
     ...invocation.rubric.map(

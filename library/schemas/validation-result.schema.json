@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ValidationResult",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "requirement_id",
+    "policy_id",
+    "registry_id",
+    "registry_version",
+    "handler",
+    "command",
+    "target_path",
+    "started_at",
+    "finished_at",
+    "exit_code",
+    "status",
+    "executor",
+    "issues",
+    "evidence_paths"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "requirement_id": { "type": "string" },
+    "policy_id": { "type": "string" },
+    "registry_id": { "type": "string" },
+    "registry_version": { "type": "string" },
+    "handler": { "type": "string" },
+    "command": { "type": "string" },
+    "target_path": { "type": "string" },
+    "target_checksum": { "type": "string" },
+    "started_at": { "type": "string" },
+    "finished_at": { "type": "string" },
+    "exit_code": { "type": "integer" },
+    "status": {
+      "enum": ["passed", "failed", "blocked", "invalid"]
+    },
+    "executor": { "enum": ["agent", "harness"] },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "pointer": { "type": "string" },
+          "line": { "type": "integer" }
+        }
+      }
+    },
+    "evidence_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "workspace_fingerprint": { "type": "string" }
+  }
+}

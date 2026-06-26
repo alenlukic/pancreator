@@ -69,9 +69,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 
 ## Validation
 
-- Harness code or configuration changes MUST run `npm run check` before completion.
-- `./bin/pan doctor` SHOULD be used to verify the local environment and projected Cursor surfaces.
-- Validation results and any uncompleted validation MUST be reported honestly.
+Policy-bound validation requirements are governed by `VALID-001`, `ENG-001`, and `AUTO-001`. The harness resolves applicable requirements per invocation; see `docs/validation-framework.md` for architecture and authoring.
 
 ## Shell output wrapping
 

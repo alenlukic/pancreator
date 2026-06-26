@@ -8,5 +8,17 @@
     "Each manual case MUST record setup, action, expected result, actual result, and evidence.",
     "Product defects MUST route to implementation, while test-harness defects MUST route to the owning validation surface.",
     "Before submission, manual-case structure, acceptance-criterion coverage, defect routing, verdict consistency, and the referenced QA artifact MUST run their resolved policy-bound validators under VALID-001."
+  ],
+  "requirements": [
+    {
+      "id": "qa-validate",
+      "registry_id": "QA-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "invocation.output.path",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    }
   ]
 }

@@ -13,5 +13,20 @@
     "The escalation item MUST preserve the original request or investigator output, the derived acceptance criteria, root-cause and scope findings, files changed, each validation cycle and failure, unresolved blockers, and a recommended systematic entry point.",
     "A spotfixer MUST NOT commit, push, merge, publish, deploy, invoke pan set-stage, or represent incomplete validation as success.",
     "Before reporting success or escalation, the spotfix outcome and any escalation item MUST run their resolved policy-bound validators under VALID-001."
+  ],
+  "requirements": [
+    {
+      "id": "spotfix-validate",
+      "registry_id": "SPOTFIX-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "spotfix"
+      }
+    }
   ]
 }

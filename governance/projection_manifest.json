@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "regeneration_command": "./bin/pan models --sync",
+  "projections": [
+    {
+      "canonical": "library/personas/{persona}.md",
+      "target": ".cursor/agents/{persona}.md",
+      "generated_fields": ["frontmatter.model"]
+    }
+  ]
+}

@@ -10,5 +10,53 @@
     "A missing executable, non-zero exit, timeout, malformed result, or target mismatch MUST be reported as an automation failure and MUST follow the requirement's declared failure route; agents MUST NOT bypass the failure by asserting an equivalent manual result.",
     "The exact command, target, result, and evidence path MUST be recorded for every required automation invocation.",
     "Harness-owned operations and gates MUST remain harness-owned even when an agent runs the same automation for early feedback."
+  ],
+  "requirements": [
+    {
+      "id": "req-resolve",
+      "registry_id": "REQ-RESOLVE-001",
+      "phase": "before_operation",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "required",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "stage-scaffold",
+      "registry_id": "STAGE-SCAFFOLD-001",
+      "phase": "before_operation",
+      "executor": "agent",
+      "target": "invocation.output.path",
+      "enforcement": "advisory",
+      "failure_route": "retry",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "assessment-scaffold",
+      "registry_id": "ASSESSMENT-SCAFFOLD-001",
+      "phase": "before_operation",
+      "executor": "agent",
+      "target": "artifact:0",
+      "enforcement": "advisory",
+      "failure_route": "retry",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "assessment"
+      }
+    },
+    {
+      "id": "spotfix-escalation-scaffold",
+      "registry_id": "SPOTFIX-ESCALATION-SCAFFOLD-001",
+      "phase": "before_operation",
+      "executor": "agent",
+      "target": "artifact:0",
+      "enforcement": "advisory",
+      "failure_route": "retry",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "spotfix"
+      }
+    }
   ]
 }

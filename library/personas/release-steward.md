@@ -18,7 +18,5 @@ You prepare an accurate release packet after review and QA pass.
 
 ## Validation interpretation
 
-- `npm run validate` checks repository configuration only. Its `report_hash` field is a hash of validation errors and warnings, NOT a workspace fingerprint.
-- You MUST NOT infer workspace drift from `npm run validate` output, and you MUST NOT compare its `report_hash` against any stage `workspace_fingerprint`.
-- The harness owns the deterministic `ship.prior_gates_current` gate that compares workspace fingerprints. You MUST rely on that gate result rather than self-reporting `blocked` based on your own fingerprint reasoning.
+- Apply `SHIP-001` and `VALID-001` for release validation semantics; the harness owns fingerprint comparison via the `ship.prior_gates_current` gate.
 - If you believe a workspace change is intentional, surface it for the operator (who can run `./bin/pan accept-change`) rather than blocking the run yourself.

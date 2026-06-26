@@ -9,5 +9,30 @@
     "The supervisor MUST persist the exact delegated prompt body to the matching `.delegation.md` artifact before stage submission so the harness can validate delivery.",
     "The supervisor MUST NOT append parallel scope, policy, gate, or plan restatements that could shadow the canonical card; a minimal non-conflicting persona label MAY precede it.",
     "A missing or mismatched delegation artifact MUST be repaired against the same active invocation rather than bypassed or represented as successful delivery."
+  ],
+  "requirements": [
+    {
+      "id": "invocation-validate",
+      "registry_id": "INVOCATION-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "artifact:0",
+      "enforcement": "authoritative",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "delegation-validate",
+      "registry_id": "DELEGATION-VALIDATE-001",
+      "phase": "submit",
+      "executor": "harness",
+      "target": "artifact:0",
+      "enforcement": "authoritative",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "arguments": {
+        "canonical": "invocation.markdown.path"
+      }
+    }
   ]
 }

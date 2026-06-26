@@ -4,7 +4,7 @@
   "severity": "hard",
   "summary": "A hard gate MAY be waived only by an explicit operator action scoped to the failed criteria, source invocation, and exact failed-attempt workspace fingerprint.",
   "instructions": [
-    "The operator MUST use `./bin/pan waive-gate` with a non-empty rationale, and the requested criterion identifiers MUST exactly match every failed hard criterion on the latest attempt of the current stage.",
+    "The operator MUST use the harness waive-gate command with a non-empty rationale, and the requested criterion identifiers MUST exactly match every failed hard criterion on the latest attempt of the current stage.",
     "The harness MUST reject waivers for malformed stage output, harness-owned integrity stages, missing failed evidence, or a workspace fingerprint that changed after the failed attempt.",
     "Each waiver MUST be recorded as an auditable artifact and MUST expire for any later invocation or different workspace fingerprint; a resume note or stage repair MUST NOT be inferred as a waiver.",
     "When unmet acceptance criteria are deferred, the operator MUST identify them explicitly and MUST create a tracked spotfix case only when the completed criteria remain independently valid and the residual work appears bounded under WORK-001.",

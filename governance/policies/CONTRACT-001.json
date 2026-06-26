@@ -10,5 +10,37 @@
     "Repository validation MUST fail for a missing policy owner, unknown requirement id, duplicate registry id, missing executable, invalid target declaration, or policy-bound requirement whose executable contract cannot be resolved once the registry capability is active.",
     "A requirement that cannot be checked deterministically MUST be marked as judgment-only with a rationale and MUST NOT be represented as covered by a superficial structural validator.",
     "Generated invocation manifests MAY persist resolved requirement ids, versions, paths, arguments, targets, and failure routes for auditability, but agents MUST receive only the entries relevant to the active invocation."
+  ],
+  "requirements": [
+    {
+      "id": "registry-validate",
+      "registry_id": "REGISTRY-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "directive-audit",
+      "registry_id": "DIRECTIVE-AUDIT-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "projection-validate",
+      "registry_id": "PROJECTION-VALIDATE-001",
+      "phase": "gate",
+      "executor": "harness",
+      "target": "repository",
+      "enforcement": "authoritative",
+      "failure_route": "blocked",
+      "evidence_class": "validation-result"
+    }
   ]
 }

@@ -11,5 +11,20 @@
     "Implementation work MUST add unit tests for core functionality and likely edge cases unless the behavior cannot be isolated meaningfully. In that case, the nearest appropriate integration or regression test MUST be added and the substitution MUST be explained.",
     "Workflow-local automation under runtime/logs/workflows/<run-id>/scripts/ MAY be throwaway and need not satisfy this handbook's broader readability or abstraction guidance unless it is promoted into durable repository code.",
     "Agents MUST treat governance/handbooks/eng/engineering.md as supporting repository guidance and MUST NOT use it as a replacement for the active invocation contract."
+  ],
+  "requirements": [
+    {
+      "id": "eng-test-validate",
+      "registry_id": "SPOTFIX-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "advisory",
+      "failure_route": "retry",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "spotfix"
+      }
+    }
   ]
 }

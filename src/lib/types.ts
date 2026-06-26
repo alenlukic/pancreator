@@ -81,12 +81,105 @@ export interface WorkflowDefinition extends Omit<WorkflowIndex, 'stages'> {
   stages: StageDefinition[]
 }
 
+export type RequirementPhase =
+  | 'before_operation'
+  | 'pre_submit'
+  | 'submit'
+  | 'gate'
+
+export type RequirementExecutor = 'agent' | 'harness' | 'both'
+
+export type RequirementEnforcement = 'advisory' | 'required' | 'authoritative'
+
+export type RequirementFailureRoute =
+  | 'retry'
+  | 'stage_failure'
+  | 'blocked'
+  | 'operator_decision'
+  | string
+
+export interface PolicyRequirement {
+  id: string
+  registry_id: string
+  phase: RequirementPhase
+  executor: RequirementExecutor
+  target: string
+  arguments?: Record<string, string>
+  enforcement: RequirementEnforcement
+  failure_route: RequirementFailureRoute
+  evidence_class: string
+  applicability?: Record<string, string>
+}
+
 export interface Policy {
   id: string
   title: string
   severity: 'hard' | 'soft'
   summary: string
   instructions: string[]
+  requirements?: PolicyRequirement[]
+}
+
+export interface ResolvedRequirement {
+  policy_id: string
+  requirement_id: string
+  registry_id: string
+  registry_version: string
+  kind: 'automation' | 'validator'
+  phase: RequirementPhase
+  executor: RequirementExecutor
+  target: string
+  resolved_target?: string
+  arguments: Record<string, string>
+  enforcement: RequirementEnforcement
+  failure_route: RequirementFailureRoute
+  evidence_class: string
+  success_condition: string
+}
+
+export interface RequirementManifest {
+  schema_version: 1
+  automation_requirements: ResolvedRequirement[]
+  validation_requirements: ResolvedRequirement[]
+  policy_versions: Record<string, string>
+  registry_version: string
+  registry_hash: string
+  resolved_targets: Record<string, string>
+  unresolved_bindings: string[]
+  manifest_hash: string
+}
+
+export type RequirementResultStatus =
+  | 'passed'
+  | 'failed'
+  | 'blocked'
+  | 'invalid'
+
+export interface RequirementIssue {
+  code: string
+  message: string
+  pointer?: string
+  line?: number
+}
+
+export interface RequirementValidationResult {
+  schema_version: 1
+  requirement_id: string
+  policy_id: string
+  registry_id: string
+  registry_version: string
+  handler: string
+  command: string
+  target_path: string
+  target_checksum?: string
+  started_at: string
+  finished_at: string
+  exit_code: number
+  status: RequirementResultStatus
+  executor: 'agent' | 'harness'
+  issues: RequirementIssue[]
+  evidence_paths: string[]
+  workspace_fingerprint?: string
 }
 
 export interface PolicyLookupRow {
@@ -297,6 +390,7 @@ export interface Invocation {
     references: InvocationReference[]
   }
   policies: Policy[]
+  requirements?: RequirementManifest
   rubric: Criterion[]
   output: {
     path: string

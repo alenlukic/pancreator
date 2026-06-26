@@ -10,5 +10,20 @@
     "The work-mode recommendation MUST select exactly one of lightweight or systematic and MUST apply every relevant WORK-001 threshold explicitly; any uncertain threshold MUST result in systematic.",
     "The investigation artifact MUST run its resolved structural and traceability validators under VALID-001 before it is represented as implementation-ready.",
     "The investigator MUST NOT modify source, workflow state, or durable runtime records and MUST NOT represent missing evidence as a confirmed root cause."
+  ],
+  "requirements": [
+    {
+      "id": "investigation-validate",
+      "registry_id": "INVESTIGATION-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "investigation"
+      }
+    }
   ]
 }

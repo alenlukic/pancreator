@@ -3,7 +3,13 @@ import path from 'node:path'
 
 import { invariant } from './errors.js'
 import { isRecord, readJson } from './io.js'
-import type { Policy, PolicyLookupRow, PolicyLookupTable } from './types.js'
+import type {
+  Policy,
+  PolicyLookupRow,
+  PolicyLookupTable,
+  PolicyRequirement,
+} from './types.js'
+import { isValidPolicyRequirement } from './requirements/types.js'
 
 interface PolicyContext {
   persona: string
@@ -46,7 +52,31 @@ function parsePolicy(value: unknown, source: string): Policy {
     { code: 'INVALID_POLICY' },
   )
 
-  return value as unknown as Policy
+  let requirements: PolicyRequirement[] | undefined
+
+  if (value.requirements !== undefined) {
+    invariant(
+      Array.isArray(value.requirements),
+      `${source}: requirements MUST be an array when present.`,
+      { code: 'INVALID_POLICY' },
+    )
+
+    requirements = []
+
+    for (const [index, item] of value.requirements.entries()) {
+      invariant(
+        isValidPolicyRequirement(item),
+        `${source}: requirements[${index}] is invalid.`,
+        { code: 'INVALID_POLICY' },
+      )
+      requirements.push(item)
+    }
+  }
+
+  return {
+    ...(value as unknown as Policy),
+    requirements,
+  }
 }
 
 function parseLookupRow(value: unknown, source: string): PolicyLookupRow {

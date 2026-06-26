@@ -18,6 +18,15 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { resolvePolicies } from './policies.js'
+import { resolveRequirements } from './requirements/resolve.js'
+import {
+  inferTargetKind,
+  isPassingResult,
+  registryStageSlug,
+  resolveRequirementTargetPath,
+  runRequirement,
+} from './requirements/run.js'
+import { loadRegistry } from './requirements/registry.js'
 import {
   loadPipelineConfig,
   loadPipelineConfigSnapshot,
@@ -52,6 +61,7 @@ import type {
   StageHistoryItem,
   StageOutcome,
   StageOutput,
+  RequirementFailureRoute,
   SupervisorAssessment,
   TaskRecord,
   WorkflowDefinition,
@@ -757,6 +767,132 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   return state
 }
 
+const INLINE_SUBMIT_VALIDATORS = new Set([
+  'INVOCATION-VALIDATE-001',
+  'DELEGATION-VALIDATE-001',
+  'STAGE-OUTPUT-VALIDATE-002',
+])
+
+function outcomeFromFailureRoutes(
+  routes: RequirementFailureRoute[],
+): StageOutcome | null {
+  if (routes.length === 0) {
+    return null
+  }
+
+  if (
+    routes.some((route) => route === 'blocked' || route === 'operator_decision')
+  ) {
+    return 'blocked'
+  }
+
+  return 'failure'
+}
+
+function runHarnessAuthoritativeValidators(
+  root: string,
+  runId: string,
+  invocation: Invocation,
+  workspaceFingerprint: string,
+  submittedValue: Record<string, unknown>,
+  runState?: Record<string, unknown>,
+): { errors: string[]; validatorOutcome: StageOutcome | null } {
+  const errors: string[] = []
+  const failedRoutes: RequirementFailureRoute[] = []
+
+  if (!invocation.requirements) {
+    return { errors, validatorOutcome: null }
+  }
+
+  const catalog = loadRegistry(root)
+
+  for (const requirement of invocation.requirements.validation_requirements) {
+    if (INLINE_SUBMIT_VALIDATORS.has(requirement.registry_id)) {
+      continue
+    }
+
+    if (
+      requirement.target === 'repository' ||
+      requirement.resolved_target === '.'
+    ) {
+      continue
+    }
+
+    if (requirement.executor === 'agent') {
+      continue
+    }
+
+    if (
+      requirement.phase !== 'pre_submit' &&
+      requirement.phase !== 'submit' &&
+      requirement.phase !== 'gate'
+    ) {
+      continue
+    }
+
+    if (
+      requirement.enforcement !== 'authoritative' &&
+      requirement.enforcement !== 'required'
+    ) {
+      continue
+    }
+
+    const entry = catalog.entries.get(requirement.registry_id)
+
+    if (!entry) {
+      continue
+    }
+
+    if (requirement.registry_id.includes('ASSESSMENT')) {
+      continue
+    }
+
+    const requiredStage = registryStageSlug(requirement.registry_id)
+
+    if (requiredStage && requiredStage !== invocation.stage.slug) {
+      continue
+    }
+
+    const targetPath =
+      resolveRequirementTargetPath(
+        requirement,
+        invocation.output.path,
+        submittedValue as Record<string, unknown>,
+      ) ?? invocation.output.path
+    const targetKind = inferTargetKind(targetPath)
+
+    if (!entry.target_types.includes(targetKind)) {
+      continue
+    }
+
+    const result = runRequirement({
+      root,
+      runId,
+      requirement,
+      targetPath,
+      executor: 'harness',
+      workspaceFingerprint,
+      invocation: invocation as unknown as Record<string, unknown>,
+      runState,
+      catalog,
+      persist: true,
+    })
+
+    if (!isPassingResult(result)) {
+      errors.push(
+        `harness validator ${requirement.registry_id} failed: ` +
+          result.issues.map((issue) => issue.message).join('; '),
+      )
+      failedRoutes.push(requirement.failure_route)
+    }
+  }
+
+  return {
+    errors,
+    validatorOutcome: outcomeFromFailureRoutes(failedRoutes),
+  }
+}
+
 export function prepareInvocation(
   root: string,
   runId: string,
@@ -831,6 +967,12 @@ export function prepareInvocation(
       workflow: workflow.slug,
       stage: stage.slug,
     })
+    const requirements = resolveRequirements(root, {
+      persona: stage.persona,
+      workflow: workflow.slug,
+      stage: stage.slug,
+      invocation: { output_path: outputPath },
+    })
     const nextAction =
       stage.persona === 'orchestrator'
         ? `Complete this stage in the current chat with model '${model}' ` +
@@ -871,6 +1013,7 @@ export function prepareInvocation(
       prompt: loadStagePrompt(root, stage),
       inputs: { references: referencesForRun(state) },
       policies,
+      requirements,
       rubric: stage.criteria,
       output: {
         path: outputPath,
@@ -954,9 +1097,14 @@ function effectiveOutcome(
   output: StageOutput,
   validationErrors: string[],
   deterministic: DeterministicResult[],
+  validatorOutcome: StageOutcome | null = null,
 ): StageOutcome {
   if (validationErrors.length > 0) {
-    return 'failure'
+    return validatorOutcome === 'blocked' ? 'blocked' : 'failure'
+  }
+
+  if (validatorOutcome) {
+    return validatorOutcome
   }
 
   if (output.result === 'blocked') {
@@ -1105,11 +1253,24 @@ export function submitOutput(
       workspaceDirectory(root, state),
       state.gate_overrides ?? {},
     )
+    const harnessValidation = runHarnessAuthoritativeValidators(
+      root,
+      runId,
+      invocation,
+      evaluated.workspace.fingerprint,
+      submittedValue as Record<string, unknown>,
+      state as unknown as Record<string, unknown>,
+    )
+    const allValidationErrors = [
+      ...validation.errors,
+      ...harnessValidation.errors,
+    ]
     const outcome = effectiveOutcome(
       stage,
       validation.output,
-      validation.errors,
+      allValidationErrors,
       evaluated.results,
+      harnessValidation.validatorOutcome,
     )
     const historyItem: StageHistoryItem = {
       stage: stage.slug,
@@ -1119,7 +1280,7 @@ export function submitOutput(
       outcome,
       submitted_at: now(),
       workspace_fingerprint: evaluated.workspace.fingerprint,
-      validation_errors: validation.errors,
+      validation_errors: allValidationErrors,
       deterministic: evaluated.results,
     }
 

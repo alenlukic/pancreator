@@ -11,5 +11,17 @@
     "Validation evidence MUST identify the governing policy, validator id and version, executable path, target path, target checksum when available, command, outcome, and evidence artifact path.",
     "The invocation card MUST contain only the resolved validator requirements for that invocation and MUST NOT inline the full validator catalog or unrelated validation rules.",
     "Out-of-workflow execution MUST resolve policy-bound validator requirements through the same repository resolver and MUST NOT invent a separate validator set."
+  ],
+  "requirements": [
+    {
+      "id": "stage-output-validate",
+      "registry_id": "STAGE-OUTPUT-VALIDATE-002",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "invocation.output.path",
+      "enforcement": "authoritative",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    }
   ]
 }

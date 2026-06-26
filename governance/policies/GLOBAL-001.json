@@ -8,5 +8,27 @@
     "Records MUST NOT substitute raw logs for a summary and SHOULD point to preserved evidence instead.",
     "Records MUST state uncertainty and missing evidence explicitly.",
     "When a record has a resolved validator requirement, the record MUST pass VALID-001 before completion."
+  ],
+  "requirements": [
+    {
+      "id": "stage-output-validate",
+      "registry_id": "STAGE-OUTPUT-VALIDATE-002",
+      "phase": "submit",
+      "executor": "harness",
+      "target": "invocation.output.path",
+      "enforcement": "authoritative",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    },
+    {
+      "id": "operator-artifact-validate",
+      "registry_id": "OPERATOR-ARTIFACT-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result"
+    }
   ]
 }

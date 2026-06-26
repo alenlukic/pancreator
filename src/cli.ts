@@ -28,10 +28,29 @@ import {
   findProjectRoot,
   isRecord,
   readJson,
+  readText,
   resolveInside,
+  writeTextAtomic,
 } from './lib/io.js'
 import type { RunState } from './lib/types.js'
 import { validateRepository } from './lib/validation.js'
+import { buildValidationMap } from './lib/requirements/map.js'
+import { loadRegistry } from './lib/requirements/registry.js'
+import { resolveRequirements } from './lib/requirements/resolve.js'
+import {
+  inferTargetKind,
+  isPassingResult,
+  registryStageSlug,
+  resolveRequirementTargetPath,
+  runRequirement,
+} from './lib/requirements/run.js'
+import type { ResolvedRequirement } from './lib/types.js'
+import {
+  readInvocationFromPath,
+  scaffoldAssessment,
+  scaffoldStageOutput,
+} from './lib/requirements/scaffold.js'
+import { auditDirectives } from './lib/governance/audit-directives.js'
 import {
   beginTrackedModification,
   cancelTrackedModification,
@@ -65,6 +84,13 @@ Usage:
   pan models [--sync] [--json]
   pan validate [--json]
   pan doctor [--json]
+  pan requirements resolve --persona <p> --workflow <w> --stage <s> [--json]
+  pan output scaffold <run-id> --invocation <path> --output <path> [--force]
+  pan output validate <run-id> --file <path> [--json]
+  pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
+  pan governance audit-directives [--json]
+  pan validation-map [--json]
+  pan spotfix scaffold-escalation --input <path> --output <path>
 
 The harness does not invoke models. Cursor's supervisor reads invocation cards,
 delegates to named Cursor subagents, and returns structured output to this CLI.
@@ -92,7 +118,10 @@ function option(
   return value
 }
 
-function requiredArgument(value: string | undefined, name: string): string {
+function requiredArgument(
+  value: string | null | undefined,
+  name: string,
+): string {
   if (!value) {
     throw new PanError(`${name} is required.`, { code: 'INVALID_ARGUMENT' })
   }
@@ -203,6 +232,100 @@ function listRuns(root: string): Array<Record<string, unknown>> {
       pending_action: state.pending_action.type,
       updated_at: state.updated_at,
     }))
+}
+
+function runAgentPreSubmitValidators(
+  root: string,
+  runId: string,
+  invocation: Record<string, unknown>,
+  requirements: ResolvedRequirement[],
+  filePath: string,
+  submittedValue: Record<string, unknown>,
+): Array<{
+  requirement: ResolvedRequirement
+  result: ReturnType<typeof runRequirement>
+}> {
+  const catalog = loadRegistry(root)
+  const stageSlug =
+    isRecord(invocation.stage) && typeof invocation.stage.slug === 'string'
+      ? invocation.stage.slug
+      : ''
+
+  return requirements.flatMap((requirement) => {
+    const entry = catalog.entries.get(requirement.registry_id)
+
+    if (!entry) {
+      return []
+    }
+
+    if (requirement.registry_id.includes('ASSESSMENT')) {
+      return []
+    }
+
+    const requiredStage = registryStageSlug(requirement.registry_id)
+
+    if (requiredStage && requiredStage !== stageSlug) {
+      return []
+    }
+
+    const targetPath = resolveRequirementTargetPath(
+      requirement,
+      filePath,
+      submittedValue,
+    )
+
+    if (!targetPath) {
+      return [
+        {
+          requirement,
+          result: {
+            schema_version: 1 as const,
+            requirement_id: requirement.requirement_id,
+            policy_id: requirement.policy_id,
+            registry_id: requirement.registry_id,
+            registry_version: requirement.registry_version,
+            handler: 'unresolved-target',
+            command: `pan output validate --registry ${requirement.registry_id}`,
+            target_path: requirement.target,
+            started_at: new Date().toISOString(),
+            finished_at: new Date().toISOString(),
+            exit_code: 1,
+            status: 'failed' as const,
+            executor: 'agent' as const,
+            issues: [
+              {
+                code: 'target.unresolved',
+                message: `Could not resolve target ${requirement.target}`,
+              },
+            ],
+            evidence_paths: [],
+          },
+        },
+      ]
+    }
+
+    const targetKind = inferTargetKind(targetPath)
+
+    if (!entry.target_types.includes(targetKind)) {
+      return []
+    }
+
+    return [
+      {
+        requirement,
+        result: runRequirement({
+          root,
+          runId,
+          requirement,
+          targetPath,
+          executor: 'agent',
+          invocation,
+          catalog,
+          persist: true,
+        }),
+      },
+    ]
+  })
 }
 
 async function main(): Promise<void> {
@@ -569,6 +692,202 @@ async function main(): Promise<void> {
         true,
       )
       return
+    }
+    case 'validation-map': {
+      print(buildValidationMap(root), hasFlag(args, '--json'))
+      return
+    }
+    case 'governance': {
+      const sub = args[0]
+
+      if (sub === 'audit-directives') {
+        print(auditDirectives(root), hasFlag(args, '--json'))
+        return
+      }
+
+      throw new PanError(
+        `Unknown governance subcommand: ${sub ?? '(missing)'}`,
+        {
+          code: 'UNKNOWN_COMMAND',
+        },
+      )
+    }
+    case 'requirements': {
+      const sub = args[0]
+
+      if (sub === 'resolve') {
+        const persona = requiredArgument(option(args, '--persona'), '--persona')
+        const workflow = requiredArgument(
+          option(args, '--workflow'),
+          '--workflow',
+        )
+        const stage = requiredArgument(option(args, '--stage'), '--stage')
+        const outputPath = option(args, '--output-path') ?? undefined
+
+        print(
+          resolveRequirements(root, {
+            persona,
+            workflow,
+            stage,
+            ...(outputPath ? { invocation: { output_path: outputPath } } : {}),
+          }),
+          hasFlag(args, '--json'),
+        )
+        return
+      }
+
+      throw new PanError(
+        `Unknown requirements subcommand: ${sub ?? '(missing)'}`,
+        {
+          code: 'UNKNOWN_COMMAND',
+        },
+      )
+    }
+    case 'output': {
+      const sub = args[0]
+
+      if (sub === 'scaffold') {
+        requiredArgument(args[1], 'run-id')
+        const invocationPath = requiredArgument(
+          option(args, '--invocation'),
+          '--invocation',
+        )
+        const outputPath = requiredArgument(
+          option(args, '--output'),
+          '--output',
+        )
+        const invocation = readInvocationFromPath(root, invocationPath)
+        print(
+          scaffoldStageOutput(
+            root,
+            invocation,
+            outputPath,
+            hasFlag(args, '--force'),
+          ),
+          true,
+        )
+        return
+      }
+
+      if (sub === 'validate') {
+        const runId = requiredArgument(args[1], 'run-id')
+        const filePath = requiredArgument(option(args, '--file'), '--file')
+        const invocationPath = requiredArgument(
+          option(args, '--invocation'),
+          '--invocation',
+        )
+        const invocation = readInvocationFromPath(root, invocationPath)
+        const submittedValue = readJson(
+          resolveInside(root, filePath),
+        ) as Record<string, unknown>
+        const agentRequirements = [
+          ...(invocation.requirements?.validation_requirements ?? []),
+          ...(invocation.requirements?.automation_requirements ?? []),
+        ].filter(
+          (item) =>
+            (item.phase === 'pre_submit' ||
+              item.phase === 'before_operation') &&
+            (item.executor === 'agent' || item.executor === 'both') &&
+            item.enforcement !== 'advisory',
+        )
+
+        if (agentRequirements.length === 0) {
+          throw new PanError(
+            'No agent-owned pre-submit requirements resolved.',
+            {
+              code: 'INVALID_ARGUMENT',
+            },
+          )
+        }
+
+        const results = runAgentPreSubmitValidators(
+          root,
+          runId,
+          invocation as unknown as Record<string, unknown>,
+          agentRequirements,
+          filePath,
+          submittedValue,
+        )
+        const passed = results.every((item) => isPassingResult(item.result))
+
+        print(
+          hasFlag(args, '--json')
+            ? { passed, results }
+            : results
+                .map(
+                  (item) =>
+                    `${item.requirement.registry_id}: ${item.result.status}`,
+                )
+                .join('\n'),
+          hasFlag(args, '--json'),
+        )
+
+        if (!passed) {
+          process.exitCode = 1
+        }
+
+        return
+      }
+
+      throw new PanError(`Unknown output subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
+    }
+    case 'assessment': {
+      const sub = args[0]
+
+      if (sub === 'scaffold') {
+        const invocationPath = requiredArgument(
+          option(args, '--invocation'),
+          '--invocation',
+        )
+        const outputPath = requiredArgument(
+          option(args, '--output'),
+          '--output',
+        )
+        const invocation = readInvocationFromPath(root, invocationPath)
+
+        print(
+          scaffoldAssessment(
+            root,
+            invocation.invocation_id,
+            outputPath,
+            invocation.rubric.map((item) => item.id),
+            hasFlag(args, '--force'),
+          ),
+          true,
+        )
+        return
+      }
+
+      throw new PanError(
+        `Unknown assessment subcommand: ${sub ?? '(missing)'}`,
+        {
+          code: 'UNKNOWN_COMMAND',
+        },
+      )
+    }
+    case 'spotfix': {
+      const sub = args[0]
+
+      if (sub === 'scaffold-escalation') {
+        const inputPath = requiredArgument(option(args, '--input'), '--input')
+        const outputPath = requiredArgument(
+          option(args, '--output'),
+          '--output',
+        )
+        const content = readText(resolveInside(root, inputPath))
+        writeTextAtomic(
+          resolveInside(root, outputPath),
+          `# Escalation\n\n${content}\n`,
+        )
+        print({ path: outputPath, status: 'scaffolded' }, true)
+        return
+      }
+
+      throw new PanError(`Unknown spotfix subcommand: ${sub ?? '(missing)'}`, {
+        code: 'UNKNOWN_COMMAND',
+      })
     }
     case 'validate': {
       const result = validateRepository(root)

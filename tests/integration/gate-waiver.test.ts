@@ -7,6 +7,7 @@ import test from 'node:test'
 import {
   assessStage,
   createRun,
+  getRunState,
   pauseRun,
   prepareInvocation,
   setRunStage,
@@ -51,6 +52,7 @@ test('explicit gate waiver advances a bounded miss and tracks its spotfix case',
   assert.ok(acceptance)
   acceptance.result = 'fail'
   acceptance.explanation = 'AC-9 is bounded and remains incomplete.'
+  reviewOutput.result = 'failure'
 
   writeJson(path.join(root, reviewInvocation.output.path), reviewOutput)
   writeCanonicalDelegation(root, reviewInvocation)
@@ -114,7 +116,13 @@ test('explicit gate waiver advances a bounded miss and tracks its spotfix case',
 
   writeJson(
     path.join(root, shipInvocation.output.path),
-    makeOutput(root, shipInvocation, stageBySlug(workflow, 'ship')),
+    makeOutput(
+      root,
+      shipInvocation,
+      stageBySlug(workflow, 'ship'),
+      'success',
+      getRunState(root, runId),
+    ),
   )
   writeCanonicalDelegation(root, shipInvocation)
 
@@ -223,6 +231,8 @@ test('gate waivers reject partial criteria and post-failure workspace drift', ()
     criterion.result = 'fail'
     criterion.explanation = `${criterionId} remains unresolved.`
   }
+
+  output.result = 'failure'
 
   writeJson(path.join(root, invocation.output.path), output)
   writeCanonicalDelegation(root, invocation)

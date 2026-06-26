@@ -14,6 +14,14 @@ import {
 } from './io.js'
 import { loadPipelineConfig, syncCursorAgentModels } from './pipeline-config.js'
 import type { LoadedPipelineConfig } from './pipeline-config.js'
+import { auditDirectives } from './governance/audit-directives.js'
+import { HANDLER_IDS } from './requirements/handlers.js'
+import { loadRegistry, validateRegistry } from './requirements/registry.js'
+import {
+  resolveRequirements,
+  validatePolicyRequirements,
+} from './requirements/resolve.js'
+import { validateProjectionDrift } from './projection.js'
 import {
   loadPolicyCatalog,
   readPolicyLookupTable,
@@ -44,6 +52,7 @@ import type {
 } from './types.js'
 
 export const POLICIES_HEADING = '## 📜 Policies in force'
+export const REQUIREMENTS_HEADING = '## ✅ Validation requirements'
 
 export interface ValidationCheck {
   id: string
@@ -185,6 +194,31 @@ export function validateInvocationMarkdown(
         message: normalized.includes(instruction)
           ? `Policy ${policy.id} instruction ${index + 1} is present`
           : `Markdown MUST include policy ${policy.id} instruction ${index + 1}`,
+      })
+    }
+  }
+
+  if (invocation.requirements) {
+    checks.push({
+      id: 'requirements.heading',
+      passed: normalized.includes(REQUIREMENTS_HEADING),
+      message: normalized.includes(REQUIREMENTS_HEADING)
+        ? 'Requirements section heading is present'
+        : `Markdown MUST contain '${REQUIREMENTS_HEADING}'`,
+    })
+
+    for (const requirement of [
+      ...invocation.requirements.automation_requirements,
+      ...invocation.requirements.validation_requirements,
+    ]) {
+      const row = `| ${requirement.policy_id} | ${requirement.requirement_id} |`
+
+      checks.push({
+        id: `requirement.${requirement.policy_id}.${requirement.requirement_id}`,
+        passed: normalized.includes(row),
+        message: normalized.includes(row)
+          ? `Requirement ${requirement.requirement_id} is rendered`
+          : `Markdown MUST include requirement row for ${requirement.requirement_id}`,
       })
     }
   }
@@ -482,6 +516,26 @@ export function validateStageOutput(
 
     if (criterion.hard && evaluation.result === 'not_applicable') {
       errors.push(`hard criterion '${criterion.id}' MUST NOT be not_applicable`)
+    }
+
+    if (evaluation.result === 'pass' && evaluation.evidence.length === 0) {
+      errors.push(`criteria '${criterion.id}' pass claim MUST include evidence`)
+    }
+  }
+
+  if (output.result === 'success') {
+    const failedSelf = output.criteria.some((item) => item.result === 'fail')
+
+    if (failedSelf) {
+      errors.push('result success contradicts failed criterion self-evaluation')
+    }
+  }
+
+  const knownCriterionIds = new Set(stage.criteria.map((item) => item.id))
+
+  for (const item of output.criteria) {
+    if (!knownCriterionIds.has(item.id)) {
+      errors.push(`unknown criteria result: ${item.id}`)
     }
   }
 
@@ -925,6 +979,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'governance/policy_lookup_table.json',
     'governance/handbooks/eng/engineering.md',
     'governance/handbooks/typescript/style-guide.md',
+    'governance/validation_registry.json',
+    'governance/directive_exemptions.json',
+    'governance/projection_manifest.json',
+    'docs/validation-framework.md',
     'project.json',
     'library/schemas/project.schema.json',
     'library/schemas/stage-output.schema.json',
@@ -977,6 +1035,33 @@ export function validateRepository(root: string): RepositoryValidationResult {
     }
 
     validatePolicyLookupDependencies(catalog, lookup, errors)
+
+    if (fileExists(path.join(root, 'governance', 'validation_registry.json'))) {
+      const registry = loadRegistry(root)
+      errors.push(...validateRegistry(registry, HANDLER_IDS))
+      errors.push(...validatePolicyRequirements(root, registry))
+
+      for (const row of lookup.rows) {
+        try {
+          resolveRequirements(root, {
+            persona: row.persona,
+            workflow: row.workflow,
+            stage: row.stage,
+          })
+        } catch (error) {
+          errors.push(
+            `requirement resolution failed for ${row.persona}/${row.workflow}/${row.stage}: ${errorMessage(error)}`,
+          )
+        }
+      }
+    }
+
+    const directiveAudit = auditDirectives(root)
+    errors.push(...directiveAudit.errors)
+    warnings.push(...directiveAudit.warnings)
+
+    const projection = validateProjectionDrift(root)
+    errors.push(...projection.errors)
 
     handbookPolicies = validateGovernance(root, catalog, errors)
   } catch (error) {

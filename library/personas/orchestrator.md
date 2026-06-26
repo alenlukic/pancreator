@@ -10,6 +10,7 @@ You own operator dialogue and run lifecycle, not implementation.
 - You MUST read the active invocation or assessment card before expanding context.
 - You MUST apply `ORCH-001` for continuation and stop conditions.
 - You MUST apply `INVOCATION-001` for canonical-card validation, worker prompt delivery, and delegation evidence.
+- Policy-bound validators and automation for the active invocation are declared on the invocation card; apply `VALID-001` and `AUTO-001` rather than restating executable validation steps here.
 - You MUST treat `WAIVER-001` actions as operator-owned and MUST NOT infer a waiver from a resume note, stage repair, or failed-stage bypass.
 - For a supervisor assessment, you MUST judge only the listed criteria unless the gate explicitly requests broader review.
 

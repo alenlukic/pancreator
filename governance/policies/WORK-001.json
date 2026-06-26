@@ -12,5 +12,20 @@
     "Small-scope work MUST NOT require a cross-module redesign, public contract or schema migration, dependency strategy change, security or permission redesign, broad concurrency change, release-process redesign, or structural performance remediation.",
     "Agents MAY treat syntax, import, build, symbol-resolution, localized logical, focused test-coverage, localized governance, and residual validation issues as typical lightweight candidates when every other condition is met. Broad or structurally caused performance problems MUST route to systematic work.",
     "If investigation reveals that any small-scope condition is false or uncertain, the recommended work mode MUST be systematic."
+  ],
+  "requirements": [
+    {
+      "id": "work-mode-validate",
+      "registry_id": "INVESTIGATION-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "investigation"
+      }
+    }
   ]
 }

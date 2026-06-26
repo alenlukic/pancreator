@@ -8,5 +8,20 @@
     "The supervisor MUST continue without operator handoff while `pending_action` is `prepare_invocation`, `invoke_agent`, or `supervisor_assessment`.",
     "The supervisor MUST stop for operator input only when `pending_action` is `operator_approval`, `operator_decision`, or `none`.",
     "The supervisor MUST NOT ask the operator to resume a run while a supervisor-owned pending action remains."
+  ],
+  "requirements": [
+    {
+      "id": "assessment-validate",
+      "registry_id": "ASSESSMENT-VALIDATE-001",
+      "phase": "submit",
+      "executor": "harness",
+      "target": "artifact:0",
+      "enforcement": "authoritative",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "assessment"
+      }
+    }
   ]
 }
