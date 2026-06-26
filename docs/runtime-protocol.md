@@ -20,19 +20,34 @@
 the UTC duration from the run creation instant to the anchor divided by one day.
 
 Stage-scoped artifact IDs are
-`<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. The reverse step is the
-three-digit value `999 - stage sequence in the run`, where the first stage
-occurrence is sequence `0`. Each prepared worker invocation and executed harness
-stage consumes the next sequence. Sequence `0` is `999`, sequence `8` is `991`, and sequence
-`994` is `005`. Retries and workflow loops receive their actual chronological
-sequence rather than reusing the stage's position in the workflow definition.
+`<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. While a run is open,
+the reverse step is the two-digit value `99 - stage sequence in the run`, where
+the first stage occurrence is sequence `0`. Each prepared worker invocation and
+executed harness stage consumes the next sequence. Sequence `0` is `99` and
+sequence `8` is `91`. Retries and workflow loops receive their actual
+chronological sequence rather than reusing the stage's position in the workflow
+definition.
+
+When a run becomes terminal (`succeeded`, `failed`, or `canceled`), the harness
+automatically invokes the artifact finalizer. It renumbers all stage occurrences
+against the actual count so the final occurrence is `00`; a seven-stage run is
+renumbered from `99` through `93` to `06` through `00`. A workflow run supports
+at most 100 stage occurrences. The finalizer is idempotent and can be invoked
+manually with `npm run finalize:workflow-artifacts -- <run-id> [root]`.
+
+Execution-record JSON is stored in `artifacts/json/<artifact-id>.json`.
+Stage-authored Markdown is stored in `artifacts/markdown/<artifact-id>.md`, and
+the rendered execution record is stored beside it as
+`artifacts/markdown/<artifact-id>.record.md`.
 
 Supervisor assessment files retain the invocation artifact ID as their sortable
 prefix: `<invocation-id>.assessment-request.json` and
 `<invocation-id>.assessment.json`.
 
 Legacy runtime records are migrated with `npm run migrate:workflow-names`. The
-migration is idempotent and updates persisted references alongside names.
+migration is idempotent, chooses open or terminal numbering from run status,
+consolidates legacy `records/` and flat `artifacts/` contents, removes an empty
+legacy `--help` run directory, and updates persisted references alongside names.
 
 ## Invocation and delegation validation
 
@@ -93,7 +108,7 @@ operator adjudication.
 
 ## Operator rejection
 
-At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (the ship stage routes to `implement`, intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/operator-feedback-<n>.md` and attached to the remediation invocation as a required input reference.
+At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (the ship stage routes to `implement`, intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/markdown/operator-feedback-<n>.md` and attached to the remediation invocation as a required input reference.
 
 ## Operator stage repair
 

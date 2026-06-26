@@ -25,8 +25,7 @@ function writeWorkflowSnapshot(runDirectory: string): void {
     path.join(runDirectory, 'workflow.snapshot.json'),
     `${JSON.stringify({
       stages: [{ slug: 'intake' }, { slug: 'implement' }, { slug: 'review' }],
-    })}
-`,
+    })}\n`,
   )
 }
 
@@ -62,7 +61,63 @@ function writeInvocation(
   )
 }
 
-test('workflow naming migration uses chronological run sequence', () => {
+function writeState(
+  runDirectory: string,
+  runId: string,
+  status: 'running' | 'succeeded',
+  invocationIds: string[],
+): void {
+  write(
+    path.join(runDirectory, 'state.json'),
+    `${JSON.stringify({
+      schema_version: 1,
+      run_id: runId,
+      workflow_slug: 'dev',
+      title: 'fixture',
+      status,
+      pending_action: {
+        type: status === 'running' ? 'prepare_invocation' : 'none',
+      },
+      stage_history: invocationIds.map((invocationId, index) => ({
+        invocation_id: invocationId,
+        submitted_at: new Date(Date.UTC(2026, 5, 22, 21, index)).toISOString(),
+        record_path: `runtime/logs/workflows/${runId}/records/${invocationId}.md`,
+      })),
+      attempts: {},
+    })}\n`,
+  )
+}
+
+function writeLegacyArtifacts(
+  runDirectory: string,
+  runId: string,
+  invocationIds: string[],
+): void {
+  invocationIds.forEach((invocationId) => {
+    write(
+      path.join(runDirectory, 'artifacts', `${invocationId}.md`),
+      `Artifact ${invocationId}\n`,
+    )
+    write(
+      path.join(runDirectory, 'records', `${invocationId}.json`),
+      `${JSON.stringify({
+        run_id: runId,
+        invocation_id: invocationId,
+        artifacts: [
+          {
+            path: `runtime/logs/workflows/${runId}/artifacts/${invocationId}.md`,
+          },
+        ],
+      })}\n`,
+    )
+    write(
+      path.join(runDirectory, 'records', `${invocationId}.md`),
+      `Record ${invocationId}\n`,
+    )
+  })
+}
+
+test('workflow migration finalizes closed runs and consolidates artifacts', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-migration-'))
   const oldRunId = '20260622T212254051Z-5f354f23'
   const newRunId = migratedRunId(oldRunId)
@@ -79,37 +134,30 @@ test('workflow naming migration uses chronological run sequence', () => {
     'review-2-42e65dfc',
   ]
   const newInvocationIds = [
-    '999_intake-1_02e65dfc',
-    '998_implement-1_12e65dfc',
-    '997_review-1_22e65dfc',
-    '996_implement-2_32e65dfc',
-    '995_review-2_42e65dfc',
+    '04_intake-1_02e65dfc',
+    '03_implement-1_12e65dfc',
+    '02_review-1_22e65dfc',
+    '01_implement-2_32e65dfc',
+    '00_review-2_42e65dfc',
   ]
 
   writeWorkflowSnapshot(logDirectory)
   writeEvents(logDirectory, oldInvocationIds)
+  writeState(logDirectory, oldRunId, 'succeeded', oldInvocationIds)
+  writeLegacyArtifacts(logDirectory, oldRunId, oldInvocationIds)
+  write(
+    path.join(
+      logDirectory,
+      'evidence',
+      '997_implement-2_d75285b9-installation-smoke.log',
+    ),
+    'Stage-owned evidence whose artifact-like filename is not an invocation.\n',
+  )
 
   oldInvocationIds.forEach((invocationId, index) => {
     writeInvocation(logDirectory, oldRunId, invocationId, index)
   })
 
-  const assessedInvocationId = oldInvocationIds[2]
-
-  write(
-    path.join(
-      logDirectory,
-      'assessments',
-      `assessment-${assessedInvocationId}.request.json`,
-    ),
-    `${JSON.stringify({
-      run_id: oldRunId,
-      invocation_id: assessedInvocationId,
-    })}\n`,
-  )
-  write(
-    path.join(stateDirectory, 'baseline.json'),
-    `${JSON.stringify({ workflow_id: oldRunId })}\n`,
-  )
   write(
     path.join(stateDirectory, 'modifications.jsonl'),
     `${JSON.stringify({
@@ -117,10 +165,9 @@ test('workflow naming migration uses chronological run sequence', () => {
       invocation_id: oldInvocationIds[3],
     })}\n`,
   )
-  write(
-    path.join(root, 'runtime/logs/orchestrator/events.jsonl'),
-    `${JSON.stringify({ run_id: oldRunId })}\n`,
-  )
+  mkdirSync(path.join(root, 'runtime/logs/workflows/--help'), {
+    recursive: true,
+  })
 
   const summary = migrateWorkflowNames(root)
   const migratedLogDirectory = path.join(
@@ -132,11 +179,12 @@ test('workflow naming migration uses chronological run sequence', () => {
 
   assert.equal(summary.run_directories, 1)
   assert.equal(summary.state_directories, 1)
-  assert.equal(summary.artifact_files, 6)
+  assert.equal(summary.removed_invalid_directories, 1)
   assert.equal(existsSync(logDirectory), false)
   assert.equal(existsSync(migratedLogDirectory), true)
   assert.equal(existsSync(stateDirectory), false)
   assert.equal(existsSync(migratedStateDirectory), true)
+  assert.equal(existsSync(path.join(migratedLogDirectory, 'records')), false)
 
   newInvocationIds.forEach((invocationId) => {
     assert.equal(
@@ -145,18 +193,38 @@ test('workflow naming migration uses chronological run sequence', () => {
       ),
       true,
     )
+    assert.equal(
+      existsSync(
+        path.join(
+          migratedLogDirectory,
+          'artifacts/json',
+          `${invocationId}.json`,
+        ),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(
+          migratedLogDirectory,
+          'artifacts/markdown',
+          `${invocationId}.md`,
+        ),
+      ),
+      true,
+    )
+    assert.equal(
+      existsSync(
+        path.join(
+          migratedLogDirectory,
+          'artifacts/markdown',
+          `${invocationId}.record.md`,
+        ),
+      ),
+      true,
+    )
   })
 
-  assert.equal(
-    existsSync(
-      path.join(
-        migratedLogDirectory,
-        'assessments',
-        `${newInvocationIds[2]}.assessment-request.json`,
-      ),
-    ),
-    true,
-  )
   assert.match(
     readFileSync(
       path.join(migratedStateDirectory, 'modifications.jsonl'),
@@ -168,11 +236,13 @@ test('workflow naming migration uses chronological run sequence', () => {
     run_directories: 0,
     state_directories: 0,
     artifact_files: 0,
+    artifact_layout_files: 0,
     updated_files: 0,
+    removed_invalid_directories: 0,
   })
 })
 
-test('workflow naming migration repairs prior stage-grouped prefixes', () => {
+test('workflow migration repairs in-flight prefixes without finalizing', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'pancreator-migration-'))
   const runId = '63379_Jun-22_5f354f23'
   const runDirectory = path.join(root, 'runtime/logs/workflows', runId)
@@ -184,29 +254,23 @@ test('workflow naming migration repairs prior stage-grouped prefixes', () => {
     '996_review-2_42e65dfc',
   ]
   const sequencedInvocationIds = [
-    '999_intake-1_02e65dfc',
-    '998_implement-1_12e65dfc',
-    '997_review-1_22e65dfc',
-    '996_implement-2_32e65dfc',
-    '995_review-2_42e65dfc',
+    '99_intake-1_02e65dfc',
+    '98_implement-1_12e65dfc',
+    '97_review-1_22e65dfc',
+    '96_implement-2_32e65dfc',
+    '95_review-2_42e65dfc',
   ]
 
   writeWorkflowSnapshot(runDirectory)
   writeEvents(runDirectory, groupedInvocationIds)
-  write(
-    path.join(runDirectory, 'request.md'),
-    'Cross-run reference: 994_review-2_71ad38d4\n',
-  )
+  writeState(runDirectory, runId, 'running', groupedInvocationIds)
+  writeLegacyArtifacts(runDirectory, runId, groupedInvocationIds)
 
   groupedInvocationIds.forEach((invocationId, index) => {
     writeInvocation(runDirectory, runId, invocationId, index)
   })
 
-  const summary = migrateWorkflowNames(root)
-
-  assert.equal(summary.run_directories, 0)
-  assert.equal(summary.state_directories, 0)
-  assert.equal(summary.artifact_files, 4)
+  migrateWorkflowNames(root)
 
   sequencedInvocationIds.forEach((invocationId) => {
     assert.equal(
@@ -216,15 +280,13 @@ test('workflow naming migration repairs prior stage-grouped prefixes', () => {
       true,
     )
   })
-  assert.equal(
-    readFileSync(path.join(runDirectory, 'request.md'), 'utf8'),
-    'Cross-run reference: 994_review-2_71ad38d4\n',
-  )
 
   assert.deepEqual(migrateWorkflowNames(root), {
     run_directories: 0,
     state_directories: 0,
     artifact_files: 0,
+    artifact_layout_files: 0,
     updated_files: 0,
+    removed_invalid_directories: 0,
   })
 })

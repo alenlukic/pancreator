@@ -18,6 +18,7 @@
     "lint": "bash bin/lint.sh",
     "validate:chat-markdown": "npm run build --silent && node dist/src/lib/validators/markdown-validator.js",
     "migrate:workflow-names": "npm run build --silent && node dist/src/migrations/migrate-workflow-names.js",
+    "finalize:workflow-artifacts": "npm run build --silent && node dist/src/migrations/finalize-workflow-artifacts.js",
     "test": "npm run build --silent && node --test dist/tests/**/*.test.js",
     "test:unit": "npm run build --silent && node --test dist/tests/unit/*.test.js",
     "test:migrations": "npm run build --silent && node --test dist/tests/migrations/*.test.js",

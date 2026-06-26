@@ -29,7 +29,7 @@ function baseRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
     summary: 'Implemented the feature and mapped evidence to each criterion.',
     artifacts: [
       {
-        path: 'runtime/logs/workflows/run-1/artifacts/implement.md',
+        path: 'runtime/logs/workflows/run-1/artifacts/markdown/implement.md',
         description: 'Implementation summary',
       },
     ],

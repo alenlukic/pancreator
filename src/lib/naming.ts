@@ -41,12 +41,53 @@ export function pipelineStepPrefix(stageSequence: number): string {
   invariant(
     Number.isInteger(stageSequence) &&
       stageSequence >= 0 &&
-      stageSequence <= 999,
-    'Stage sequence MUST be an integer between 0 and 999.',
+      stageSequence <= 99,
+    'Stage sequence MUST be an integer between 0 and 99.',
     { code: 'INVALID_STAGE_SEQUENCE' },
   )
 
-  return String(999 - stageSequence).padStart(3, '0')
+  return String(99 - stageSequence).padStart(2, '0')
+}
+
+export function completedPipelineStepPrefix(
+  stageSequence: number,
+  totalStages: number,
+): string {
+  invariant(
+    Number.isInteger(totalStages) && totalStages > 0 && totalStages <= 100,
+    'Total stages MUST be an integer between 1 and 100.',
+    { code: 'INVALID_STAGE_COUNT' },
+  )
+  invariant(
+    Number.isInteger(stageSequence) &&
+      stageSequence >= 0 &&
+      stageSequence < totalStages,
+    'Stage sequence MUST identify an occurrence within the completed run.',
+    { code: 'INVALID_STAGE_SEQUENCE' },
+  )
+
+  return String(totalStages - stageSequence - 1).padStart(2, '0')
+}
+
+export function makeCompletedStageArtifactId(
+  stageSequence: number,
+  totalStages: number,
+  stageSlug: string,
+  stageIteration: number,
+  uuidSuffix = randomUUID().slice(0, 8),
+): string {
+  invariant(stageSlug.length > 0, 'Stage slug MUST be non-empty.', {
+    code: 'INVALID_STAGE_SLUG',
+  })
+  invariant(
+    Number.isInteger(stageIteration) && stageIteration > 0,
+    'Stage iteration MUST be a positive integer.',
+    { code: 'INVALID_STAGE_ITERATION' },
+  )
+
+  const prefix = completedPipelineStepPrefix(stageSequence, totalStages)
+
+  return `${prefix}_${stageSlug}-${stageIteration}_${uuidSuffix}`
 }
 
 export function makeStageArtifactId(

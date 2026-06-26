@@ -178,4 +178,4 @@ Rejection routes remediation to the stage that owns the fix and carries your fee
 - `./bin/pan decide <run-id> reject --stage plan --note "<what is wrong>"` sends it back to planning when the defect is architectural rather than a coding error.
 - `--stage <slug>` may target any stage in the workflow. The chosen stage and every stage after it restart with fresh attempt budgets, since you are deliberately reworking that segment.
 
-Always include a `--note`. The feedback is written to `artifacts/operator-feedback-<n>.md` and attached to the remediation invocation; without it the worker only knows the prior output was unacceptable.
+Always include a `--note`. The feedback is written to `artifacts/markdown/operator-feedback-<n>.md` and attached to the remediation invocation; without it the worker only knows the prior output was unacceptable.

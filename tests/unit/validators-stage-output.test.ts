@@ -71,7 +71,9 @@ function baseOutput(
     criteria: stage.criteria.map((criterion) => ({
       id: criterion.id,
       result: 'pass',
-      evidence: ['runtime/logs/workflows/run-test/artifacts/evidence.md'],
+      evidence: [
+        'runtime/logs/workflows/run-test/artifacts/markdown/evidence.md',
+      ],
       explanation: 'Fixture evidence',
     })),
     risks: [],

@@ -10,7 +10,7 @@
   "summary": "Concise, operator-first description of the work and outcome. Detail belongs in the referenced markdown artifact.",
   "artifacts": [
     {
-      "path": "runtime/logs/workflows/<run>/artifacts/<invocation>.md",
+      "path": "runtime/logs/workflows/<run>/artifacts/markdown/<invocation>.md",
       "description": "Primary operator-readable deliverable for this stage."
     }
   ],

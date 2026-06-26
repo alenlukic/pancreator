@@ -333,6 +333,11 @@ async function main(): Promise<void> {
   const [command = 'help', ...args] = process.argv.slice(2)
   const json = hasFlag(args, '--json')
 
+  if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
+    print(HELP)
+    return
+  }
+
   switch (command) {
     case 'help':
     case '--help':

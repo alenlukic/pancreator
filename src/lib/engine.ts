@@ -17,8 +17,14 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
+import { finalizeWorkflowArtifacts } from '../migrations/finalize-workflow-artifacts.js'
 import { makeStageArtifactId } from './naming.js'
 import { resolvePolicies } from './policies.js'
+import {
+  artifactJsonPath,
+  artifactRecordMarkdownPath,
+  isClosedRunStatus,
+} from './workflow-artifacts.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import {
   inferTargetKind,
@@ -119,6 +125,23 @@ interface StatusOptions {
 export interface PrepareInvocationResult {
   state: RunState
   invocation: Invocation | null
+}
+
+function persistRun(
+  root: string,
+  state: RunState,
+  eventType: string,
+  payload: Record<string, unknown> = {},
+): void {
+  persist(root, state, eventType, payload)
+
+  if (!isClosedRunStatus(state.status)) {
+    return
+  }
+
+  const summary = finalizeWorkflowArtifacts(root, state.run_id, state)
+
+  persist(root, state, 'workflow_artifacts_finalized', { ...summary })
 }
 
 function loadRunWorkflow(root: string, state: RunState): WorkflowDefinition {
@@ -490,7 +513,7 @@ function executeHarnessStage(
     )
   }
 
-  persist(root, state, 'harness_stage_executed', {
+  persistRun(root, state, 'harness_stage_executed', {
     stage: stage.slug,
     attempt,
     invocation_id: invocationId,
@@ -690,9 +713,9 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     'outputs',
     'assessments',
     'evidence',
-    'records',
     'decisions',
-    'artifacts',
+    'artifacts/json',
+    'artifacts/markdown',
   ]) {
     ensureDir(path.join(directory, child))
   }
@@ -765,7 +788,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     updated_at: now(),
   }
 
-  persist(root, state, 'run_created', {
+  persistRun(root, state, 'run_created', {
     workflow: workflow.slug,
     pipeline_config: pipelineConfig.name,
     workspace_root: workspaceRoot,
@@ -951,7 +974,7 @@ export function prepareInvocation(
         `Stage '${stage.slug}' exceeded ` +
           `${state.limits.max_stage_attempts} attempts.`,
       )
-      persist(root, state, 'run_paused', { reason: state.pause_reason })
+      persistRun(root, state, 'run_paused', { reason: state.pause_reason })
 
       return { state, invocation: null }
     }
@@ -1094,7 +1117,7 @@ export function prepareInvocation(
       path: markdownPath,
     }
 
-    persist(root, state, 'invocation_prepared', {
+    persistRun(root, state, 'invocation_prepared', {
       invocation_id: invocationId,
       stage: stage.slug,
       attempt,
@@ -1160,7 +1183,7 @@ export function submitOutput(
       : undefined
 
     if (existing?.record_path) {
-      const recordPath = existing.record_path.replace(/\.md$/u, '.json')
+      const recordPath = artifactJsonPath(runId, existing.invocation_id)
 
       return {
         state,
@@ -1373,18 +1396,21 @@ export function submitOutput(
       next_state: nextState,
       timestamp: now(),
     }
-    const recordBase =
-      `runtime/logs/workflows/${runId}/records/` + invocation.invocation_id
+    const recordJsonPath = artifactJsonPath(runId, invocation.invocation_id)
+    const recordMarkdownPath = artifactRecordMarkdownPath(
+      runId,
+      invocation.invocation_id,
+    )
 
-    writeJsonAtomic(resolveInside(root, `${recordBase}.json`), record)
+    writeJsonAtomic(resolveInside(root, recordJsonPath), record)
     writeTextAtomic(
-      resolveInside(root, `${recordBase}.md`),
+      resolveInside(root, recordMarkdownPath),
       renderTaskRecord(record),
     )
 
-    historyItem.record_path = `${recordBase}.md`
+    historyItem.record_path = recordMarkdownPath
 
-    persist(root, state, 'stage_output_submitted', {
+    persistRun(root, state, 'stage_output_submitted', {
       stage: stage.slug,
       invocation_id: invocation.invocation_id,
       outcome,
@@ -1454,7 +1480,7 @@ export function assessStage(
       )
     }
 
-    persist(root, state, 'supervisor_assessment_recorded', {
+    persistRun(root, state, 'supervisor_assessment_recorded', {
       stage: stage.slug,
       verdict: assessment.verdict,
     })
@@ -1501,7 +1527,7 @@ function recordOperatorFeedback(
   const index = feedback.length + 1
   const attempt = state.attempts[fromStage.slug] ?? 1
   const relativePath =
-    `runtime/logs/workflows/${state.run_id}/artifacts/` +
+    `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
     `operator-feedback-${index}.md`
   const heading =
     decision === 'reject' ? 'Operator rejection' : 'Operator remediation note'
@@ -1584,7 +1610,7 @@ export function decideRun(
       })
     }
 
-    persist(root, state, 'operator_decision_recorded', {
+    persistRun(root, state, 'operator_decision_recorded', {
       stage: stage.slug,
       decision,
       note,
@@ -1624,7 +1650,7 @@ export function setRunStage(
     const feedback = state.operator_feedback ?? []
     const index = feedback.length + 1
     const relativePath =
-      `runtime/logs/workflows/${state.run_id}/artifacts/` +
+      `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
       `operator-feedback-${index}.md`
     const body = [
       '# Operator stage repair',
@@ -1665,7 +1691,7 @@ export function setRunStage(
     state.transition_count = 0
     state.consecutive_failures = 0
 
-    persist(root, state, 'operator_stage_set', {
+    persistRun(root, state, 'operator_stage_set', {
       from_stage: fromStage,
       to_stage: stageSlug,
       note_path: relativePath,
@@ -1754,7 +1780,7 @@ function ratifyPausedWorkspaceChanges(
   })
   const ratifications = state.operator_workspace_ratifications ?? []
   const relativePath =
-    `runtime/logs/workflows/${state.run_id}/artifacts/` +
+    `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
     `operator-pause-ratification-${ratifications.length + 1}.md`
   const body = [
     '# Operator-paused workspace ratification',
@@ -1850,7 +1876,7 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
       const roots = rootsForRun(root, state)
       const workspace = snapshotWorkspace(roots, false)
       const workspaceIndexPath =
-        `runtime/logs/workflows/${state.run_id}/artifacts/` +
+        `runtime/logs/workflows/${state.run_id}/artifacts/json/` +
         `operator-pause-workspace-${state.revision + 1}.json`
 
       writeJsonAtomic(resolveInside(root, workspaceIndexPath), workspace.index)
@@ -1879,7 +1905,7 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
       'While paused, you may modify tracked files in the workspace as needed.',
     ])
 
-    persist(root, state, 'operator_pause', { note: reason })
+    persistRun(root, state, 'operator_pause', { note: reason })
 
     return state
   })
@@ -1931,7 +1957,7 @@ export function resumeRun(
       state.operator_pause = null
       state.pause_reason = null
 
-      persist(root, state, 'run_resumed', {
+      persistRun(root, state, 'run_resumed', {
         restored_status: ratification ? 'running' : savedPause.prior_status,
         workspace_ratification: ratification?.ratification_id ?? null,
       })
@@ -1963,7 +1989,7 @@ export function resumeRun(
     state.operator_pause = null
     state.consecutive_failures = 0
 
-    persist(root, state, 'run_resumed', {
+    persistRun(root, state, 'run_resumed', {
       stage: target,
       workspace_ratification: ratification?.ratification_id ?? null,
     })
@@ -2167,7 +2193,7 @@ export function waiveGate(
 
     const record = readTaskRecord(
       root,
-      history.record_path.replace(/\.md$/u, '.json'),
+      artifactJsonPath(state.run_id, history.invocation_id),
     )
     const blockers = failedHardCriteria(stage, record, assessment)
     const requested = normalizeIdentifiers(options.criterionIds)
@@ -2228,7 +2254,7 @@ export function waiveGate(
     const waivers = state.operator_gate_waivers ?? []
     const waiverId = `waiver-${randomUUID()}`
     const artifactPath =
-      `runtime/logs/workflows/${state.run_id}/artifacts/` +
+      `runtime/logs/workflows/${state.run_id}/artifacts/markdown/` +
       `gate-waiver-${waivers.length + 1}.md`
     const spotfixCasePath = options.createSpotfixCase
       ? writeSpotfixCase(
@@ -2315,7 +2341,7 @@ export function waiveGate(
 
     state.last_decision_path = artifactPath
 
-    persist(root, state, 'operator_gate_waived', {
+    persistRun(root, state, 'operator_gate_waived', {
       waiver_id: waiverId,
       stage: stage.slug,
       source_invocation_id: history.invocation_id,
@@ -2395,7 +2421,7 @@ export function acceptChange(
       [`Continue with: ./bin/pan prepare ${state.run_id}`],
     )
 
-    persist(root, state, 'workspace_change_accepted', {
+    persistRun(root, state, 'workspace_change_accepted', {
       stage: target,
       accepted_workspace_fingerprint: fingerprint,
       waived_validation: waive,
@@ -2421,9 +2447,10 @@ export function abortRun(root: string, runId: string, note = ''): RunState {
     state.status = 'canceled'
     state.current_stage = null
     state.pending_action = { type: 'none' }
+    state.current_invocation = null
     state.operator_pause = null
 
-    persist(root, state, 'run_canceled', { note })
+    persistRun(root, state, 'run_canceled', { note })
 
     return state
   })

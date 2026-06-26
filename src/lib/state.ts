@@ -63,6 +63,10 @@ export function nextStageSequence(root: string, runId: string): number {
 }
 
 export function lockPath(root: string, runId: string): string {
+  invariant(fileExists(statePath(root, runId)), `Unknown run: ${runId}`, {
+    code: 'RUN_NOT_FOUND',
+  })
+
   return path.join(runDir(root, runId), '.lock')
 }
 

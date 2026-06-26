@@ -34,7 +34,7 @@ test('read-only stage fails when the source workspace changes', () => {
   )
 
   const stage = stageBySlug(workflow, 'inspect')
-  const artifact = `runtime/logs/workflows/${state.run_id}/artifacts/inspect.md`
+  const artifact = `runtime/logs/workflows/${state.run_id}/artifacts/markdown/inspect.md`
 
   writeFileSync(path.join(root, artifact), '# inspect\n')
 

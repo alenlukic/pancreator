@@ -52,7 +52,7 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   for (const [stageSequence, stageSlug] of stageSlugs.entries()) {
     const prepared = prepareInvocation(root, runId)
     const invocation = prepared.invocation
-    const expectedPrefix = String(999 - stageSequence).padStart(3, '0')
+    const expectedPrefix = String(99 - stageSequence).padStart(2, '0')
 
     if (stageSlug === 'validate-changes') {
       assert.equal(invocation, null)
@@ -134,6 +134,14 @@ test('full dev workflow persists gates and reaches operator-approved success', (
   assert.equal(final.status, 'succeeded')
   assert.equal(final.current_stage, null)
   assert.equal(final.stage_history.length, 7)
+  assert.deepEqual(
+    final.stage_history.map((item) => item.invocation_id.slice(0, 2)),
+    ['06', '05', '04', '03', '02', '01', '00'],
+  )
+  assert.equal(
+    existsSync(path.join(root, `runtime/logs/workflows/${runId}/records`)),
+    false,
+  )
   const validateChangesHistory = final.stage_history.find(
     (item) => item.stage === 'validate-changes',
   )
@@ -283,7 +291,7 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
 
   assert.ok(originalInvocation)
   assert.equal(originalInvocation.stage.slug, 'intake')
-  assert.match(originalInvocation.invocation_id, /^999_intake-1_/u)
+  assert.match(originalInvocation.invocation_id, /^99_intake-1_/u)
 
   const note =
     'Repair the run by independently reviewing the current workspace.'
@@ -301,7 +309,7 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
   assert.ok(invocation)
   assert.equal(invocation.stage.slug, 'review')
   assert.equal(invocation.attempt, 1)
-  assert.match(invocation.invocation_id, /^998_review-1_/u)
+  assert.match(invocation.invocation_id, /^98_review-1_/u)
 
   const feedback = getRunState(root, runId).operator_feedback?.at(-1)
   assert.ok(feedback)

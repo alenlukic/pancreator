@@ -651,7 +651,8 @@ test('release validator rejects waiver fingerprint mismatch', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'pan-release-waiver-'))
   const target = 'output.json'
   const absolute = path.join(root, target)
-  const artifactPath = 'runtime/logs/workflows/run-1/artifacts/review-waiver.md'
+  const artifactPath =
+    'runtime/logs/workflows/run-1/artifacts/markdown/review-waiver.md'
 
   mkdirSync(path.dirname(path.join(root, artifactPath)), { recursive: true })
   writeFileSync(path.join(root, artifactPath), '# waiver\n')

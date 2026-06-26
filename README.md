@@ -91,9 +91,10 @@ runtime/logs/workflows/<run-id>/
   outputs/                   # worker stage outputs
   assessments/               # supervisor judgment requests and responses
   evidence/                  # deterministic command output
-  records/                   # operator-first task execution records
   decisions/                 # pause/escalation records
-  artifacts/                 # stage-authored specs and reports
+  artifacts/
+    json/                     # machine-readable execution records and metadata
+    markdown/                 # stage-authored reports and rendered execution records
 ```
 
 Run directories use `<days-to-2200-01-01>_<MMM-DD>_<uuid-suffix>`. The day
@@ -101,12 +102,21 @@ component is `floor((2200-01-01T00:00:00Z - now) / 1 day)`, evaluated from the
 run's UTC creation instant.
 
 Stage-scoped artifact IDs use
-`<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. `reverse-step` is the
-three-digit value `999 - stage sequence in the run`, where the first stage
-occurrence is sequence `0`. Each prepared worker invocation and executed harness
-stage consumes the next sequence. Thus sequence `0` is `999`, sequence `8` is `991`, and
-sequence `994` is `005`. This makes lexicographic sorting show later stage
-executions first, including retries and workflow loops.
+`<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. While a run is open,
+`reverse-step` is the two-digit value `99 - stage sequence in the run`, where the
+first stage occurrence is sequence `0`. Thus sequence `0` is `99` and sequence
+`8` is `91`. Each prepared worker invocation and executed harness stage consumes
+the next sequence, including retries and workflow loops.
+
+When a run reaches a terminal status, Pancreator automatically compacts the
+prefixes against the actual stage count so the last occurrence is `00`. A
+seven-stage run is renumbered from `99` through `93` to `06` through `00`.
+Workflow runs therefore support at most 100 stage occurrences.
+
+Execution-record JSON is stored in `artifacts/json/<artifact-id>.json`.
+Stage-authored Markdown is stored in `artifacts/markdown/<artifact-id>.md`, and
+the rendered execution record is stored beside it as
+`artifacts/markdown/<artifact-id>.record.md`.
 
 Migrate legacy runtime records after updating the repository:
 
@@ -114,9 +124,11 @@ Migrate legacy runtime records after updating the repository:
 npm run migrate:workflow-names
 ```
 
-The migration renames workflow directories under both runtime roots, renames
-stage artifacts under `runtime/logs/workflows`, and rewrites persisted run and
-artifact references. It is idempotent.
+The migration renames workflow directories under both runtime roots, applies the
+correct open or terminal artifact sequence, consolidates legacy `records/` and
+flat `artifacts/` contents into the typed artifact directories, removes an empty
+legacy `--help` run directory, and rewrites persisted references. It is
+idempotent.
 
 ## Library layout
 

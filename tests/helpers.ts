@@ -339,7 +339,7 @@ export function makeOutput(
   runState?: RunState,
 ): StageOutput {
   const artifactRelative =
-    `runtime/logs/workflows/${invocation.run_id}/artifacts/` +
+    `runtime/logs/workflows/${invocation.run_id}/artifacts/markdown/` +
     `${invocation.invocation_id}.md`
   const artifactAbsolute = path.join(root, artifactRelative)
 
