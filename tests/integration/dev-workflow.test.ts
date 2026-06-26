@@ -39,7 +39,7 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     /pipeline-config\.snapshot\.json$/u,
   )
 
-  for (const stageSlug of [
+  const stageSlugs = [
     'intake',
     'plan',
     'implement',
@@ -47,17 +47,28 @@ test('full dev workflow persists gates and reaches operator-approved success', (
     'test',
     'validate-changes',
     'ship',
-  ]) {
+  ]
+
+  for (const [stageSequence, stageSlug] of stageSlugs.entries()) {
     const prepared = prepareInvocation(root, runId)
     const invocation = prepared.invocation
+    const expectedPrefix = String(999 - stageSequence).padStart(3, '0')
 
     if (stageSlug === 'validate-changes') {
       assert.equal(invocation, null)
       assert.equal(prepared.state.current_stage, 'ship')
+      assert.match(
+        prepared.state.stage_history.at(-1)?.invocation_id ?? '',
+        new RegExp(`^${expectedPrefix}_validate-changes-1_`, 'u'),
+      )
       continue
     }
 
     assert.ok(invocation)
+    assert.match(
+      invocation.invocation_id,
+      new RegExp(`^${expectedPrefix}_${stageSlug}-1_`, 'u'),
+    )
     assert.equal(invocation.stage.slug, stageSlug)
     assert.equal(invocation.stage.model_config, modelConfig)
     assert.ok(invocation.stage.model.length > 0)
@@ -272,6 +283,7 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
 
   assert.ok(originalInvocation)
   assert.equal(originalInvocation.stage.slug, 'intake')
+  assert.match(originalInvocation.invocation_id, /^999_intake-1_/u)
 
   const note =
     'Repair the run by independently reviewing the current workspace.'
@@ -289,6 +301,7 @@ test('operator set-stage bypasses transitions and injects repair context', () =>
   assert.ok(invocation)
   assert.equal(invocation.stage.slug, 'review')
   assert.equal(invocation.attempt, 1)
+  assert.match(invocation.invocation_id, /^998_review-1_/u)
 
   const feedback = getRunState(root, runId).operator_feedback?.at(-1)
   assert.ok(feedback)

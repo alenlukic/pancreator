@@ -6,4 +6,4 @@ cd "$ROOT"
 
 npm run format:check
 npm run typecheck
-bash -n bin/pan scripts/*.sh
+bash -n bin/pan bin/*.sh

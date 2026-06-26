@@ -56,7 +56,12 @@ test('repository validation requires a policy to reference each engineering hand
 test('repository validation requires code-review and QA stages to load engineering handbook policies', () => {
   const root = createFixture()
   prepareValidationFixture(root)
-  const lookupPath = path.join(root, 'governance', 'policy_lookup_table.json')
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
   const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
     rows: Array<{ persona: string }>
   }
@@ -108,7 +113,12 @@ test('repository validation requires a policy to reference the TypeScript handbo
 test('repository validation requires code-review and QA stages to load TypeScript handbook policies', () => {
   const root = createFixture()
   prepareValidationFixture(root)
-  const lookupPath = path.join(root, 'governance', 'policy_lookup_table.json')
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
   const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
     rows: Array<{ persona: string; policies: string[] }>
   }
@@ -136,7 +146,12 @@ test('repository validation requires code-review and QA stages to load TypeScrip
 test('repository validation requires lookup rows to load referenced policy dependencies', () => {
   const root = createFixture()
   prepareValidationFixture(root)
-  const lookupPath = path.join(root, 'governance', 'policy_lookup_table.json')
+  const lookupPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'policy_lookup_table.json',
+  )
   const lookup = JSON.parse(readFileSync(lookupPath, 'utf8')) as {
     rows: Array<{
       persona: string

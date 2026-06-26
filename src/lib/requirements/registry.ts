@@ -86,7 +86,7 @@ function parseEntry(value: unknown, source: string): RegistryEntry {
   }
 }
 
-/** Load the canonical validation registry from governance/validation_registry.json. */
+/** Load the canonical validation registry from governance/registries/validation_registry.json. */
 export function loadRegistry(root: string): RegistryCatalog {
   const cached = registryCache.get(root)
 
@@ -94,7 +94,7 @@ export function loadRegistry(root: string): RegistryCatalog {
     return cached
   }
 
-  const source = 'governance/validation_registry.json'
+  const source = 'governance/registries/validation_registry.json'
   const value = readJson(path.join(root, source))
 
   invariant(isRecord(value), `${source} MUST contain an object.`, {

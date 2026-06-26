@@ -17,6 +17,7 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
+import { makeStageArtifactId } from './naming.js'
 import { resolvePolicies } from './policies.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import {
@@ -44,6 +45,7 @@ import {
   lockPath,
   loadState,
   makeRunId,
+  nextStageSequence,
   now,
   persist,
   runDir,
@@ -448,10 +450,15 @@ function executeHarnessStage(
   })
   const outcome: StageOutcome =
     result.status === 'passed' ? 'success' : 'blocked'
+  const invocationId = makeStageArtifactId(
+    nextStageSequence(root, state.run_id),
+    stage.slug,
+    attempt,
+  )
   const historyItem: StageHistoryItem = {
     stage: stage.slug,
     attempt,
-    invocation_id: `${stage.slug}-${attempt}-harness`,
+    invocation_id: invocationId,
     output_path: validationPath,
     outcome,
     submitted_at: now(),
@@ -486,6 +493,7 @@ function executeHarnessStage(
   persist(root, state, 'harness_stage_executed', {
     stage: stage.slug,
     attempt,
+    invocation_id: invocationId,
     status: result.status,
   })
 
@@ -956,7 +964,11 @@ export function prepareInvocation(
       return executeHarnessStage(root, state, stage, attempt)
     }
 
-    const invocationId = `${stage.slug}-${attempt}-${randomUUID().slice(0, 8)}`
+    const invocationId = makeStageArtifactId(
+      nextStageSequence(root, runId),
+      stage.slug,
+      attempt,
+    )
     const outputPath = `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`
     const jsonPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`
     const markdownPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`
@@ -1252,6 +1264,7 @@ export function submitOutput(
       invocation.workspace_before,
       workspaceDirectory(root, state),
       state.gate_overrides ?? {},
+      invocation.invocation_id,
     )
     const harnessValidation = runHarnessAuthoritativeValidators(
       root,
@@ -1291,10 +1304,11 @@ export function submitOutput(
     if (outcome === 'success' && stage.gate === 'supervisor') {
       const assessmentId = `assessment-${invocation.invocation_id}`
       const assessmentPath =
-        `runtime/logs/workflows/${runId}/assessments/` + `${assessmentId}.json`
+        `runtime/logs/workflows/${runId}/assessments/` +
+        `${invocation.invocation_id}.assessment.json`
       const cardPath =
         `runtime/logs/workflows/${runId}/assessments/` +
-        `${assessmentId}.request.json`
+        `${invocation.invocation_id}.assessment-request.json`
 
       writeJsonAtomic(resolveInside(root, cardPath), {
         $operator: {
@@ -2117,7 +2131,7 @@ export function waiveGate(
 
     const assessmentPath =
       `runtime/logs/workflows/${state.run_id}/assessments/` +
-      `assessment-${history.invocation_id}.json`
+      `${history.invocation_id}.assessment.json`
     const assessment =
       stage.gate === 'supervisor' &&
       fileExists(resolveInside(root, assessmentPath))

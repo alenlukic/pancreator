@@ -566,6 +566,7 @@ function runShellCheck(
   workspaceFingerprint: string,
   workspaceDir: string,
   commandOverride?: string,
+  artifactId = stage.slug,
 ): DeterministicResult {
   const command = commandOverride ?? criterion.command ?? ''
   const startedAt = new Date().toISOString()
@@ -581,7 +582,7 @@ function runShellCheck(
   const evidencePath = path.join(
     runDirectory,
     'evidence',
-    `${stage.slug}-${safeCriterionId}.log`,
+    `${artifactId}-${safeCriterionId}.log`,
   )
   const combined = [
     `$ ${command}`,
@@ -719,6 +720,7 @@ export function evaluateDeterministicCriteria(
   beforeSnapshot: WorkspaceSnapshot,
   workspaceDir: string,
   gateOverrides: Record<string, string | false> = {},
+  artifactId = stage.slug,
 ): { results: DeterministicResult[]; workspace: WorkspaceSnapshot } {
   const roots = resolveRoots({
     installation_root: root,
@@ -781,6 +783,7 @@ export function evaluateDeterministicCriteria(
             afterSnapshot.fingerprint,
             workspaceDir,
             typeof override === 'string' ? override : undefined,
+            artifactId,
           ),
         )
       }
@@ -976,12 +979,12 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'package.json',
     'prettier.config.js',
     'tsconfig.json',
-    'governance/policy_lookup_table.json',
+    'governance/registries/policy_lookup_table.json',
     'governance/handbooks/eng/engineering.md',
     'governance/handbooks/typescript/style-guide.md',
-    'governance/validation_registry.json',
-    'governance/directive_exemptions.json',
-    'governance/projection_manifest.json',
+    'governance/registries/validation_registry.json',
+    'governance/registries/directive_exemptions.json',
+    'governance/registries/projection_manifest.json',
     'docs/validation-framework.md',
     'project.json',
     'library/schemas/project.schema.json',

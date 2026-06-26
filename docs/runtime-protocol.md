@@ -13,6 +13,27 @@
 - Invocation preparation and delegation conform to `INVOCATION-001`; their
   validation artifacts make policy delivery observable and fail closed.
 
+## Runtime naming
+
+`DATETIME_ANCHOR` is `2200-01-01T00:00:00.000Z`. A run ID is
+`<days-to-anchor>_<MMM-DD>_<uuid-suffix>`, where days-to-anchor is the floor of
+the UTC duration from the run creation instant to the anchor divided by one day.
+
+Stage-scoped artifact IDs are
+`<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. The reverse step is the
+three-digit value `999 - stage sequence in the run`, where the first stage
+occurrence is sequence `0`. Each prepared worker invocation and executed harness
+stage consumes the next sequence. Sequence `0` is `999`, sequence `8` is `991`, and sequence
+`994` is `005`. Retries and workflow loops receive their actual chronological
+sequence rather than reusing the stage's position in the workflow definition.
+
+Supervisor assessment files retain the invocation artifact ID as their sortable
+prefix: `<invocation-id>.assessment-request.json` and
+`<invocation-id>.assessment.json`.
+
+Legacy runtime records are migrated with `npm run migrate:workflow-names`. The
+migration is idempotent and updates persisted references alongside names.
+
 ## Invocation and delegation validation
 
 During `prepare`, the harness validates the rendered invocation markdown against

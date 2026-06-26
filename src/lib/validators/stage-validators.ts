@@ -141,13 +141,21 @@ function assessmentVerdictForInvocation(
   runId: string,
   invocationId: string,
 ): string | null {
-  const assessmentPath = path.join(
+  const assessmentsDirectory = path.join(
     root,
     'runtime/logs/workflows',
     runId,
     'assessments',
+  )
+  const currentPath = path.join(
+    assessmentsDirectory,
+    `${invocationId}.assessment.json`,
+  )
+  const legacyPath = path.join(
+    assessmentsDirectory,
     `assessment-${invocationId}.json`,
   )
+  const assessmentPath = fileExists(currentPath) ? currentPath : legacyPath
 
   if (!fileExists(assessmentPath)) {
     return null
@@ -174,11 +182,12 @@ function latestPlanOutputPathFromOutputs(
     return null
   }
 
+  const planPattern = /^(?:\d{3}_)?plan-(\d+)[-_]/u
   const planFiles = readdirSync(outputsDir)
-    .filter((entry) => /^plan-\d+-/u.test(entry))
+    .filter((entry) => planPattern.test(entry))
     .sort((left, right) => {
-      const leftNumber = Number(/^plan-(\d+)-/u.exec(left)?.[1] ?? 0)
-      const rightNumber = Number(/^plan-(\d+)-/u.exec(right)?.[1] ?? 0)
+      const leftNumber = Number(planPattern.exec(left)?.[1] ?? 0)
+      const rightNumber = Number(planPattern.exec(right)?.[1] ?? 0)
 
       return leftNumber - rightNumber
     })

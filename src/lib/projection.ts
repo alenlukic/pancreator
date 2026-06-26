@@ -44,7 +44,12 @@ function validateGeneratedField(
 /** Validate declared Cursor projection drift against canonical sources. */
 export function validateProjectionDrift(root: string): ProjectionDriftResult {
   const errors: string[] = []
-  const manifestPath = path.join(root, 'governance', 'projection_manifest.json')
+  const manifestPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'projection_manifest.json',
+  )
   const value = readJson(manifestPath)
 
   if (!isRecord(value)) {

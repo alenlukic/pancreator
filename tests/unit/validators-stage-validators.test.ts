@@ -47,7 +47,7 @@ function writeAssessment(
 
   mkdirSync(assessmentsDir, { recursive: true })
   writeFileSync(
-    path.join(assessmentsDir, `assessment-${invocationId}.json`),
+    path.join(assessmentsDir, `${invocationId}.assessment.json`),
     `${JSON.stringify({ invocation_id: invocationId, verdict })}\n`,
   )
 }

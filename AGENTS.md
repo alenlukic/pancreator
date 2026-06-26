@@ -77,6 +77,6 @@ Policy-bound validation requirements are governed by `VALID-001`, `ENG-001`, and
 
 ## Chat markdown emission
 
-- Before emitting multi-line Markdown code blocks or fenced content to Cursor chat, agents SHOULD validate the text with `node scripts/validate-chat-markdown.mjs` (pipe via stdin or pass a file path).
+- Before emitting multi-line Markdown code blocks or fenced content to Cursor chat, agents SHOULD validate the text with `npm run validate:chat-markdown` (pipe via stdin) or `npm run validate:chat-markdown -- <file>`.
 - The harness cannot auto-invoke this check before chat emission; agents MUST run it manually when preparing complex fenced output.
 - Validation failures MUST be corrected before sending; common issues include list-prefixed fence openers, unclosed fences, and inline fence pairs on one line.

@@ -103,7 +103,7 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
 }
 
 function loadLookupTable(root: string): PolicyLookupTable {
-  const source = 'governance/policy_lookup_table.json'
+  const source = 'governance/registries/policy_lookup_table.json'
   const value = readJson(path.join(root, source))
 
   invariant(isRecord(value), `${source} MUST contain an object.`, {

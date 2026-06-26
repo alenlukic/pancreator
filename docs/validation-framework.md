@@ -6,9 +6,11 @@
 
 **Next action:** Add new validators by registering a handler, adding a registry entry, and referencing the registry id from the owning policy's `requirements[]`.
 
+Governance registries are indexed in [`governance/registries/index.md`](../governance/registries/index.md).
+
 ## Architecture
 
-1. **Canonical registry** — `governance/validation_registry.json` defines every durable automation and validator by stable id (handler, version, targets, timeout, side-effect declaration).
+1. **Canonical registry** — `governance/registries/validation_registry.json` defines every durable automation and validator by stable id (handler, version, targets, timeout, side-effect declaration).
 2. **Policy metadata** — each `governance/policies/*.json` MAY declare `requirements[]` that reference registry ids (never executable paths).
 3. **Resolver** — `resolveRequirements` derives applicability from `resolvePolicies` output only; no second lookup table exists.
 4. **Invocation manifest** — `prepareInvocation` snapshots the resolved manifest into `Invocation.requirements` and renders a compact requirements table.
@@ -18,7 +20,7 @@
 ## Authoring a new validator
 
 1. Implement a handler in `src/lib/requirements/handlers.ts` (or `src/lib/validators/`).
-2. Add a registry entry to `governance/validation_registry.json`.
+2. Add a registry entry to `governance/registries/validation_registry.json`.
 3. Add a `requirements[]` item to the owning policy JSON referencing the registry id.
 4. Add unit tests for success and failure cases.
 5. Run `npm run check`.

@@ -21,7 +21,12 @@ test('registry loads and validates known handlers', () => {
 
 test('registry rejects duplicate ids', () => {
   const root = createFixture()
-  const registryPath = path.join(root, 'governance', 'validation_registry.json')
+  const registryPath = path.join(
+    root,
+    'governance',
+    'registries',
+    'validation_registry.json',
+  )
   const registry = JSON.parse(readFileSync(registryPath, 'utf8')) as {
     entries: Array<{ id: string }>
   }

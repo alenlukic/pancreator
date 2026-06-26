@@ -96,6 +96,28 @@ runtime/logs/workflows/<run-id>/
   artifacts/                 # stage-authored specs and reports
 ```
 
+Run directories use `<days-to-2200-01-01>_<MMM-DD>_<uuid-suffix>`. The day
+component is `floor((2200-01-01T00:00:00Z - now) / 1 day)`, evaluated from the
+run's UTC creation instant.
+
+Stage-scoped artifact IDs use
+`<reverse-step>_<stage>-<stage-iteration>_<uuid-suffix>`. `reverse-step` is the
+three-digit value `999 - stage sequence in the run`, where the first stage
+occurrence is sequence `0`. Each prepared worker invocation and executed harness
+stage consumes the next sequence. Thus sequence `0` is `999`, sequence `8` is `991`, and
+sequence `994` is `005`. This makes lexicographic sorting show later stage
+executions first, including retries and workflow loops.
+
+Migrate legacy runtime records after updating the repository:
+
+```sh
+npm run migrate:workflow-names
+```
+
+The migration renames workflow directories under both runtime roots, renames
+stage artifacts under `runtime/logs/workflows`, and rewrites persisted run and
+artifact references. It is idempotent.
+
 ## Library layout
 
 Workflow definitions, personas, prompts, skills, schemas, and templates live
@@ -154,6 +176,7 @@ npm install
 npm run format
 npm run typecheck
 npm run build
+npm run validate:chat-markdown -- <file>
 ```
 
 ## Validation

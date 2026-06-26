@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
+import { makeWorkflowRunId } from './naming.js'
 import {
   appendJsonLine,
   fileExists,
@@ -18,9 +19,7 @@ export function now(): string {
 }
 
 export function makeRunId(): string {
-  const timestamp = new Date().toISOString().replaceAll(/[-:.]/g, '')
-
-  return `${timestamp}-${randomUUID().slice(0, 8)}`
+  return makeWorkflowRunId()
 }
 
 export function runDir(root: string, runId: string): string {
@@ -33,6 +32,34 @@ export function statePath(root: string, runId: string): string {
 
 export function eventPath(root: string, runId: string): string {
   return path.join(runDir(root, runId), 'events.jsonl')
+}
+
+export function nextStageSequence(root: string, runId: string): number {
+  const eventsFile = eventPath(root, runId)
+
+  if (!fileExists(eventsFile)) {
+    return 0
+  }
+
+  let sequence = 0
+
+  for (const line of readText(eventsFile).split('\n')) {
+    if (line.trim().length === 0) {
+      continue
+    }
+
+    const event: unknown = JSON.parse(line)
+
+    if (
+      isRecord(event) &&
+      (event.type === 'invocation_prepared' ||
+        event.type === 'harness_stage_executed')
+    ) {
+      sequence += 1
+    }
+  }
+
+  return sequence
 }
 
 export function lockPath(root: string, runId: string): string {
