@@ -6,6 +6,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
+- `OUTPUT-001` — quiet command output and Cursor-like SDK progress
 - `AUTO-001` — deterministic automation authority
 - `VALID-001` — policy-bound artifact validation
 - `CONTRACT-001` — deterministic contract coverage

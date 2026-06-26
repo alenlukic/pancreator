@@ -204,8 +204,13 @@ npm run check
 
 Coverage uses Node's built-in test coverage; no coverage runtime package is installed.
 
+Successful build, lint, format, test, and aggregate check scripts are quiet by
+default. Set
+`PAN_VERBOSE=1` to stream their full output while diagnosing a problem.
+
 ## Design documents
 
 - [`docs/runtime-protocol.md`](docs/runtime-protocol.md): state, gate, retry, evidence, and recovery semantics
 - [`docs/workflow-authoring.md`](docs/workflow-authoring.md): how to define a workflow and its stages
 - [`docs/operator-guide.md`](docs/operator-guide.md): how to inspect and remediate a run
+- [`docs/output-verbosity.md`](docs/output-verbosity.md): quiet npm scripts and Cursor SDK invocation logging
