@@ -17,8 +17,6 @@
     "typecheck": "./bin/run-quiet -- tsc --noEmit",
     "lint": "./bin/run-quiet -- ./bin/lint",
     "validate:chat-markdown": "./bin/validate-chat-markdown",
-    "migrate:workflow-names": "npm run build && node dist/src/migrations/migrate-workflow-names.js",
-    "finalize:workflow-artifacts": "npm run build && node dist/src/migrations/finalize-workflow-artifacts.js",
     "test": "npm run build && ./bin/run-quiet -- node --test dist/tests/**/*.test.js",
     "test:unit": "npm run build && ./bin/run-quiet -- node --test dist/tests/unit/*.test.js",
     "test:migrations": "npm run build && ./bin/run-quiet -- node --test dist/tests/migrations/*.test.js",

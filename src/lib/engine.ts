@@ -18,10 +18,13 @@ import {
   writeJsonAtomic,
   writeTextAtomic,
 } from './io.js'
-import { finalizeWorkflowArtifacts } from '../migrations/finalize-workflow-artifacts.js'
 import { makeStageArtifactId } from './naming.js'
 import { resolvePolicies } from './policies.js'
-import { artifactJsonPath, isClosedRunStatus } from './workflow-artifacts.js'
+import {
+  artifactJsonPath,
+  finalizeWorkflowArtifacts,
+  isClosedRunStatus,
+} from './workflow-artifacts.js'
 import { resolveRequirements } from './requirements/resolve.js'
 import {
   inferTargetKind,
