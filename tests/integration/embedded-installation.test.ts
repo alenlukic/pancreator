@@ -12,7 +12,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 const REPO_ROOT = process.cwd()
-const INSTALLER = path.join(REPO_ROOT, 'bin', 'pancreator-install')
+const INSTALLER = path.join(REPO_ROOT, 'bin', 'install')
 
 function makeSkeletonProject(): string {
   const project = mkdtempSync(path.join(tmpdir(), 'pancreator-embed-'))

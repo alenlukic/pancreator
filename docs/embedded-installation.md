@@ -13,7 +13,7 @@ Install Pancreator into another repository so the harness can fingerprint, gate,
 From the Pancreator checkout:
 
 ```sh
-./bin/pancreator-install --target /path/to/your-project
+./bin/install --target /path/to/your-project
 ```
 
 The installer writes Pancreator-owned configuration under `.pancreator/` in the target project and creates `project.json` at the project root. It does not modify other application source.
@@ -44,7 +44,7 @@ test -d /path/to/your-project/.pancreator/runtime/inbox
 Run the installer smoke harness from the Pancreator checkout:
 
 ```sh
-./bin/pancreator-install --smoke
+./bin/install --smoke
 ```
 
 The smoke run creates temporary skeleton projects, exercises fresh install, idempotent `--yes` rerun, and partial-install `[r]`/`[c]`/`[a]` branches via the deterministic `--choice` harness, then reports `smoke: all steps passed` on success.
@@ -70,7 +70,7 @@ The invocation card should show the embedded path as the workspace root.
 When installation is already complete, rerunning the installer without flags repeats the configuration write and reports success. In non-interactive contexts (CI or piped stdin), pass `--yes`:
 
 ```sh
-./bin/pancreator-install --target /path/to/your-project --yes
+./bin/install --target /path/to/your-project --yes
 ```
 
 ## Partial installations
@@ -86,16 +86,16 @@ If `.pancreator/` exists but required files are missing, the installer detects a
 **Non-interactive mode** requires an explicit choice:
 
 ```sh
-./bin/pancreator-install --target /path/to/your-project --repair
-./bin/pancreator-install --target /path/to/your-project --clean
+./bin/install --target /path/to/your-project --repair
+./bin/install --target /path/to/your-project --clean
 ```
 
 **Smoke and test harness** can supply the interactive choice deterministically:
 
 ```sh
-./bin/pancreator-install --target /path/to/your-project --choice r
-./bin/pancreator-install --target /path/to/your-project --choice c
-./bin/pancreator-install --target /path/to/your-project --choice a
+./bin/install --target /path/to/your-project --choice r
+./bin/install --target /path/to/your-project --choice c
+./bin/install --target /path/to/your-project --choice a
 ```
 
 `--choice` routes through the same repair, clean, and abort branches as the interactive prompt.
@@ -113,14 +113,14 @@ This removes only Pancreator-owned paths. It does not revert changes made during
 A clean reinstall removes `.pancreator/` first, then writes fresh configuration:
 
 ```sh
-./bin/pancreator-install --target /path/to/your-project --clean
+./bin/install --target /path/to/your-project --clean
 ```
 
 ## Options reference
 
 ```sh
-./bin/pancreator-install --target <dir> [--pancreator-root <dir>] [--repair | --clean | --yes | --choice <r|c|a>]
-./bin/pancreator-install --smoke
+./bin/install --target <dir> [--pancreator-root <dir>] [--repair | --clean | --yes | --choice <r|c|a>]
+./bin/install --smoke
 ```
 
 - `--target` — required unless `--smoke`; the project directory to embed Pancreator into

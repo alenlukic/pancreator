@@ -73,7 +73,7 @@ checks exist. Unresolved or expanded work is preserved in a uniquely named
 To add Pancreator to another repository, use the installer and read the detailed guide:
 
 ```sh
-./bin/pancreator-install --target /path/to/your-project
+./bin/install --target /path/to/your-project
 ```
 
 See [`docs/embedded-installation.md`](docs/embedded-installation.md) for generated files, verification, partial-install behavior, and cleanup.

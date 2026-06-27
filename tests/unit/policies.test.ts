@@ -15,6 +15,7 @@ test('policy resolution unions global and stage-specific policies', () => {
   assert.deepEqual(ids, [
     'ACTION-001',
     'AUTO-001',
+    'BIN-001',
     'CONTRACT-001',
     'DEV-001',
     'ENG-001',
@@ -38,6 +39,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
   assert.deepEqual(reviewIds, [
     'ACTION-001',
     'AUTO-001',
+    'BIN-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',
@@ -57,6 +59,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
   assert.deepEqual(testIds, [
     'ACTION-001',
     'AUTO-001',
+    'BIN-001',
     'ENG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -97,6 +100,7 @@ test('orchestration and release guidance resolve with required policy dependenci
   assert.deepEqual(orchestratorIds, [
     'ACTION-001',
     'AUTO-001',
+    'BIN-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'INTAKE-001',
@@ -111,6 +115,7 @@ test('orchestration and release guidance resolve with required policy dependenci
   assert.deepEqual(releaseIds, [
     'ACTION-001',
     'AUTO-001',
+    'BIN-001',
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
@@ -132,6 +137,7 @@ test('standalone remediation personas load their work-mode policies', () => {
   assert.deepEqual(investigatorIds, [
     'ACTION-001',
     'AUTO-001',
+    'BIN-001',
     'DIAG-001',
     'GLOBAL-001',
     'GLOBAL-002',
@@ -148,6 +154,7 @@ test('standalone remediation personas load their work-mode policies', () => {
   assert.deepEqual(spotfixerIds, [
     'ACTION-001',
     'AUTO-001',
+    'BIN-001',
     'CONTRACT-001',
     'ENG-001',
     'GLOBAL-001',

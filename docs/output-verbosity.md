@@ -4,7 +4,7 @@
 
 ## npm scripts
 
-Verification-oriented scripts run through `scripts/run-quiet.mjs`. The wrapper
+Verification-oriented scripts run through `bin/run-quiet`. The wrapper
 captures stdout and stderr, emits nothing when the command succeeds, and replays
 the captured output when it fails. npm lifecycle banners are disabled by the
 repository `.npmrc`. The aggregate `npm run check` command applies the same
@@ -24,6 +24,7 @@ Deterministic coverage:
 
 - `tests/unit/quiet-command.test.ts`
 - `tests/unit/npm-verbosity.test.ts`
+- `tests/unit/bin-layout.test.ts`
 
 ## Cursor SDK invocations
 

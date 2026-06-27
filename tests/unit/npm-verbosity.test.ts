@@ -8,7 +8,7 @@ interface PackageManifest {
 }
 
 const ROOT = process.cwd()
-const QUIET_RUNNER = 'scripts/run-quiet.mjs'
+const QUIET_RUNNER = 'bin/run-quiet'
 
 test('verification npm scripts use the quiet command wrapper', () => {
   const manifest = JSON.parse(

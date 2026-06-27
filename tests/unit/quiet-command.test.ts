@@ -3,7 +3,7 @@ import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
 import path from 'node:path'
 import test from 'node:test'
 
-const QUIET_RUNNER = path.join(process.cwd(), 'scripts', 'run-quiet.mjs')
+const QUIET_RUNNER = path.join(process.cwd(), 'bin', 'run-quiet')
 const PROCESS_TIMEOUT_MS = 30_000
 const PROCESS_MAX_BUFFER = 1024 * 1024
 
@@ -11,19 +11,15 @@ function runQuiet(
   source: string,
   options: { verbose?: boolean } = {},
 ): SpawnSyncReturns<string> {
-  return spawnSync(
-    process.execPath,
-    [QUIET_RUNNER, '--', process.execPath, '-e', source],
-    {
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        ...(options.verbose ? { PAN_VERBOSE: '1' } : {}),
-      },
-      timeout: PROCESS_TIMEOUT_MS,
-      maxBuffer: PROCESS_MAX_BUFFER,
+  return spawnSync(QUIET_RUNNER, ['--', process.execPath, '-e', source], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...(options.verbose ? { PAN_VERBOSE: '1' } : {}),
     },
-  )
+    timeout: PROCESS_TIMEOUT_MS,
+    maxBuffer: PROCESS_MAX_BUFFER,
+  })
 }
 
 test('quiet command suppresses successful stdout and stderr', () => {

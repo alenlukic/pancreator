@@ -15,8 +15,8 @@ usage() {
 Embed Pancreator into a target project.
 
 Usage:
-  pancreator-install --target <dir> [options]
-  pancreator-install --smoke
+  install --target <dir> [options]
+  install --smoke
 
 Options:
   --target <dir>           Target project directory (required unless --smoke)

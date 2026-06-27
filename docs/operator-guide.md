@@ -68,7 +68,7 @@ Each new run snapshots the active configuration in `runtime/logs/workflows/<run-
 
 If the work lands somewhere other than the Pancreator repository root — most commonly a gitignored project capsule under `workdesk/` that is its own Git repository — start the run with `./bin/pan init ... --workspace workdesk/<project>`. The harness then fingerprints, runs gate commands against, and enforces scope boundaries on that directory. If you omit it for such a run, every "passing" check measured the Pancreator repository instead of your deliverable, and the green status proves nothing about the actual work. The active workspace appears on each invocation card; confirm it matches the deliverable before trusting any gate result.
 
-To bootstrap Pancreator configuration in a new target repository, run `./bin/pancreator-install --target <path>` from the Pancreator checkout. See [`docs/embedded-installation.md`](embedded-installation.md) for verification, partial-install prompts, and cleanup.
+To bootstrap Pancreator configuration in a new target repository, run `./bin/install --target <path>` from the Pancreator checkout. See [`docs/embedded-installation.md`](embedded-installation.md) for verification, partial-install prompts, and cleanup.
 
 ## Intake approval
 
