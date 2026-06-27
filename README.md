@@ -24,10 +24,11 @@ There are no npm runtime dependencies. TypeScript and Prettier are development-o
 
 1. Open the repository in Cursor.
 2. Run `/pan-validate` once.
-3. Use `/pan-start <your request>` for systematic delivery.
-4. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
-5. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
-6. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
+3. Use `/pan-decompose <intake spec>` when a request may be too large for one efficient workflow run.
+4. Use `/pan-start <your request>` for systematic delivery.
+5. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
+6. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
+7. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
 
 The CLI is also directly usable:
 
@@ -55,6 +56,8 @@ By default a run fingerprints, runs deterministic gate commands against, and enf
 The harness then fingerprints that directory's Git state (nested repositories included), runs each stage's shell gate in that directory, and evaluates the read-only scope guard there. Without this, work performed inside a gitignored path is invisible to every deterministic check and "success" reflects only the surrounding repository, not the deliverable.
 
 ## Work modes
+
+`/pan-decompose` is an optional pre-workflow assessment for unusually broad intake. It applies `DECOMP-001`, defaults to retaining one larger systematic run, and decomposes only when independently valuable chunks cross a conservative complexity threshold and save more execution risk than the extra workflow overhead they create. File count and technical-layer boundaries are never sufficient by themselves. The validated packet is written under `runtime/inbox/` and contains either one retained intake or a small dependency-ordered set of standalone `/pan-start` chunks.
 
 `systematic` is the default and executes a governed workflow such as `dev`.
 `lightweight` is an explicit operator choice through `/pan-spotfix`; it is limited

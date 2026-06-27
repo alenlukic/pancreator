@@ -109,6 +109,7 @@ export function registryStageSlug(registryId: string): string | null {
     'REVIEW-VALIDATE-001': 'review',
     'QA-VALIDATE-001': 'test',
     'RELEASE-VALIDATE-001': 'ship',
+    'DECOMPOSITION-VALIDATE-001': 'decompose',
     'INVESTIGATION-VALIDATE-001': 'investigate',
     'SPOTFIX-VALIDATE-001': 'spotfix',
   }

@@ -63,3 +63,21 @@ test('workflow invocations omit assessment and spotfix scaffolds', () => {
   assert.ok(!registryIds.includes('SPOTFIX-ESCALATION-SCAFFOLD-001'))
   assert.ok(!registryIds.includes('SPOTFIX-VALIDATE-001'))
 })
+
+test('decomposition requirements bind the standalone artifact validator', () => {
+  const root = createFixture()
+  const target = 'runtime/inbox/decomposition.md'
+  const manifest = resolveRequirements(root, {
+    persona: 'decomposer',
+    workflow: 'standalone',
+    stage: 'decompose',
+    invocation_kind: 'decomposition',
+    invocation: { artifact_paths: [target] },
+  })
+  const requirement = manifest.validation_requirements.find(
+    (item) => item.registry_id === 'DECOMPOSITION-VALIDATE-001',
+  )
+
+  assert.ok(requirement)
+  assert.equal(requirement.resolved_target, target)
+})

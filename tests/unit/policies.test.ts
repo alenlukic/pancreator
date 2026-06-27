@@ -126,6 +126,26 @@ test('orchestration and release guidance resolve with required policy dependenci
   ])
 })
 
+test('decomposer loads conservative decomposition governance', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'decomposer',
+    workflow: 'standalone',
+    stage: 'decompose',
+  }).map((policy) => policy.id)
+
+  assert.deepEqual(ids, [
+    'ACTION-001',
+    'AUTO-001',
+    'BIN-001',
+    'DECOMP-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'OUTPUT-001',
+    'VALID-001',
+  ])
+})
+
 test('standalone remediation personas load their work-mode policies', () => {
   const root = createFixture()
 

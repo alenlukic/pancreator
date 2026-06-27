@@ -33,6 +33,7 @@ import {
   writeTextAtomic,
 } from './lib/io.js'
 import type { RunState } from './lib/types.js'
+import type { InvocationKind } from './lib/requirements/types.js'
 import { validateRepository } from './lib/validation.js'
 import { buildValidationMap } from './lib/requirements/map.js'
 import { loadRegistry } from './lib/requirements/registry.js'
@@ -84,7 +85,8 @@ Usage:
   pan models [--sync] [--json]
   pan validate [--json]
   pan doctor [--json]
-  pan requirements resolve --persona <p> --workflow <w> --stage <s> [--json]
+  pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
+  pan requirements run --persona <p> --workflow <w> --stage <s> --kind <kind> --registry <id> --target <path> [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
@@ -142,6 +144,37 @@ function commaSeparatedOption(args: string[], name: string): string[] {
         .map((item) => item.trim())
         .filter(Boolean)
     : []
+}
+
+const INVOCATION_KINDS = new Set<InvocationKind>([
+  'workflow',
+  'assessment',
+  'spotfix',
+  'investigation',
+  'decomposition',
+])
+
+function invocationKindOption(
+  args: string[],
+  required = false,
+): InvocationKind | undefined {
+  const value = option(args, '--kind')
+
+  if (!value) {
+    if (required) {
+      throw new PanError('--kind is required.', { code: 'INVALID_ARGUMENT' })
+    }
+
+    return undefined
+  }
+
+  if (!INVOCATION_KINDS.has(value as InvocationKind)) {
+    throw new PanError(`Unknown invocation kind: ${value}`, {
+      code: 'INVALID_ARGUMENT',
+    })
+  }
+
+  return value as InvocationKind
 }
 
 function print(value: unknown, asJson = false): void {
@@ -728,16 +761,101 @@ async function main(): Promise<void> {
         )
         const stage = requiredArgument(option(args, '--stage'), '--stage')
         const outputPath = option(args, '--output-path') ?? undefined
+        const invocationKind = invocationKindOption(args)
 
         print(
           resolveRequirements(root, {
             persona,
             workflow,
             stage,
-            ...(outputPath ? { invocation: { output_path: outputPath } } : {}),
+            ...(invocationKind ? { invocation_kind: invocationKind } : {}),
+            ...(outputPath
+              ? {
+                  invocation: {
+                    output_path: outputPath,
+                    artifact_paths: [outputPath],
+                  },
+                }
+              : {}),
           }),
           hasFlag(args, '--json'),
         )
+        return
+      }
+
+      if (sub === 'run') {
+        const persona = requiredArgument(option(args, '--persona'), '--persona')
+        const workflow = requiredArgument(
+          option(args, '--workflow'),
+          '--workflow',
+        )
+        const stage = requiredArgument(option(args, '--stage'), '--stage')
+        const invocationKind = invocationKindOption(args, true)
+        const registryId = requiredArgument(
+          option(args, '--registry'),
+          '--registry',
+        )
+        const targetPath = requiredArgument(
+          option(args, '--target'),
+          '--target',
+        )
+        const manifest = resolveRequirements(root, {
+          persona,
+          workflow,
+          stage,
+          invocation_kind: invocationKind,
+          invocation: {
+            output_path: targetPath,
+            artifact_paths: [targetPath],
+          },
+        })
+        const requirements = [
+          ...manifest.automation_requirements,
+          ...manifest.validation_requirements,
+        ].filter((item) => item.registry_id === registryId)
+
+        if (requirements.length !== 1) {
+          throw new PanError(
+            requirements.length === 0
+              ? `Registry ${registryId} did not resolve for this context.`
+              : `Registry ${registryId} resolved more than once for this context.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const catalog = loadRegistry(root)
+        const entry = catalog.entries.get(registryId)
+        const targetKind = inferTargetKind(targetPath)
+
+        if (entry?.kind !== 'validator') {
+          throw new PanError(
+            `Registry ${registryId} is not a standalone validator.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        if (!entry.target_types.includes(targetKind)) {
+          throw new PanError(
+            `Registry ${registryId} does not accept target kind ${targetKind}.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const result = runRequirement({
+          root,
+          requirement: requirements[0],
+          targetPath,
+          executor: 'agent',
+          catalog,
+          persist: false,
+        })
+
+        print(result, hasFlag(args, '--json'))
+
+        if (!isPassingResult(result)) {
+          process.exitCode = 1
+        }
+
         return
       }
 

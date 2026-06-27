@@ -33,6 +33,12 @@ on the same invocation so delivery can be corrected and resubmitted.
 `./bin/pan status` includes a dedicated validation section with invocation and
 delegation validation state, artifact paths, and short failure reasons.
 
+## Assess unusually large intake
+
+Use `/pan-decompose <intake spec>` before starting a workflow when the request may contain multiple independently valuable outcomes or prerequisite decisions. `DECOMP-001` is intentionally conservative: the decomposer defaults to one larger run, requires every proposed chunk to be independently testable and safely completable, and then requires either a hard decomposition trigger or broad complexity pressure across several dimensions. File count, frontend/backend boundaries, tests, documentation, and implementation phases are not valid split boundaries by themselves.
+
+The decomposer also compares reduced implementation, review, and remediation risk against the repeated intake, planning, review, QA, release, and coordination cost of additional runs. Marginal cases remain intact. Valid decompositions normally contain two to four dependency-ordered chunks, preserve requirement traceability, and write a validated packet under `runtime/inbox/` whose chunks can be passed directly to `/pan-start`.
+
 ## Choose a work mode
 
 Use `systematic` by default. `/pan-start` executes the governed `dev` workflow

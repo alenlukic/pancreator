@@ -16,6 +16,7 @@ import {
   type ArtifactProfile,
 } from '../validators/operator-artifact.js'
 import {
+  validateDecompositionArtifact,
   validateImplementationClaims,
   validateIntakeOutput,
   validateInvestigationArtifact,
@@ -140,6 +141,7 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'review-validate': validateReviewOutput,
   'qa-validate': validateQaOutput,
   'release-validate': validateReleaseOutput,
+  'decomposition-validate': validateDecompositionArtifact,
   'investigation-validate': validateInvestigationArtifact,
   'spotfix-validate': validateSpotfixOutcome,
   'spotfix-escalation-scaffold': () => passed(),

@@ -33,6 +33,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - `lightweight` MAY be selected only by an explicit operator invocation of `/pan-spotfix` and MUST apply `WORK-001`, `SPOT-001`, and `library/skills/spotfix.md`.
 - A request qualifies as lightweight only when it is one coherent small-scope change under `WORK-001`. Uncertain or expanded scope MUST route to `systematic`.
 - `/pan-debug` MUST delegate to the non-mutating investigator, which MUST identify root cause, define acceptance criteria, and recommend exactly one work mode.
+- `/pan-decompose` MUST apply `DECOMP-001` before workflow execution, default to retaining one larger systematic run, and write only its validated decomposition artifact under `runtime/inbox/`.
 - A lightweight spotfix MUST NOT run while a mutating workflow agent is executing against the same workspace.
 
 ## Safety and scope

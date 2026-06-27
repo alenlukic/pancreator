@@ -170,6 +170,18 @@
       "side_effect_free": true
     },
     {
+      "id": "DECOMPOSITION-VALIDATE-001",
+      "kind": "validator",
+      "version": "1",
+      "handler": "decomposition-validate",
+      "input_contract": "decomposition-markdown",
+      "result_schema": "validation-result-v1",
+      "target_types": ["markdown-artifact"],
+      "default_timeout_ms": 30000,
+      "deterministic": true,
+      "side_effect_free": true
+    },
+    {
       "id": "INVESTIGATION-VALIDATE-001",
       "kind": "validator",
       "version": "1",

@@ -88,6 +88,12 @@
       "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
     },
     {
+      "persona": "decomposer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DECOMP-001"]
+    },
+    {
       "persona": "investigator",
       "workflow": "*",
       "stage": "*",
