@@ -523,6 +523,15 @@ export interface OperatorGateWaiver {
   timestamp: string
 }
 
+export interface StageFailureTracker {
+  last_signature: string[]
+  repeat_count: number
+}
+
+export type SameReasonFailureTrackers = Partial<
+  Record<'review' | 'test', StageFailureTracker>
+>
+
 export interface RunState {
   schema_version: 1
   run_id: string
@@ -569,6 +578,7 @@ export interface RunState {
   operator_gate_waivers?: OperatorGateWaiver[]
   last_decision_path?: string
   accepted_workspace_fingerprint?: string | null
+  same_reason_failures?: SameReasonFailureTrackers
 }
 
 export interface SupervisorAssessment {

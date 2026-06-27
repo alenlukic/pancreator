@@ -54,6 +54,7 @@ import {
   writeDecision,
 } from './state.js'
 import type {
+  CriterionEvaluation,
   DeterministicResult,
   Invocation,
   OperatorFeedbackItem,
@@ -61,7 +62,9 @@ import type {
   OperatorPauseContext,
   OperatorWorkspaceRatification,
   RunState,
+  SameReasonFailureTrackers,
   StageDefinition,
+  StageFailureTracker,
   StageHistoryItem,
   StageOutcome,
   StageOutput,
@@ -384,6 +387,136 @@ function pauseForLimit(root: string, state: RunState, reason: string): void {
 
   writeDecision(root, state, 'Workflow paused by circuit breaker', reason, [
     `Resume from a chosen stage with: ./bin/pan resume ${state.run_id} --stage <stage>`,
+    `Or abort with: ./bin/pan abort ${state.run_id}`,
+  ])
+}
+
+const SAME_REASON_TRACKED_STAGES = new Set(['review', 'test'])
+const VALIDATION_ONLY_SIGNATURE = ['__validation__']
+
+function isSameReasonTrackedStage(
+  state: RunState,
+  stageSlug: string,
+): stageSlug is 'review' | 'test' {
+  return (
+    state.workflow_slug === 'dev' && SAME_REASON_TRACKED_STAGES.has(stageSlug)
+  )
+}
+
+function sameReasonTrackers(state: RunState): SameReasonFailureTrackers {
+  return (state.same_reason_failures ??= {})
+}
+
+function clearSameReasonTracker(
+  state: RunState,
+  stageSlug: 'review' | 'test',
+): void {
+  const trackers = state.same_reason_failures
+  if (!trackers?.[stageSlug]) {
+    return
+  }
+
+  delete trackers[stageSlug]
+  if (Object.keys(trackers).length === 0) {
+    delete state.same_reason_failures
+  }
+}
+
+function clearAllSameReasonTrackers(state: RunState): void {
+  if (!state.same_reason_failures) {
+    return
+  }
+
+  delete state.same_reason_failures
+}
+
+function collectHardFailureSignature(
+  stage: StageDefinition,
+  selfCriteria: CriterionEvaluation[],
+  deterministic: DeterministicResult[],
+  validationErrors: string[],
+): string[] {
+  const self = new Map(selfCriteria.map((item) => [item.id, item]))
+  const det = new Map(deterministic.map((item) => [item.id, item]))
+  const failed = stage.criteria
+    .filter((criterion) => {
+      if (!criterion.hard) {
+        return false
+      }
+
+      if (criterion.type === 'judgment') {
+        return self.get(criterion.id)?.result === 'fail'
+      }
+
+      return det.get(criterion.id)?.passed === false
+    })
+    .map((criterion) => criterion.id)
+    .sort()
+
+  if (failed.length === 0 && validationErrors.length > 0) {
+    return [...VALIDATION_ONLY_SIGNATURE]
+  }
+
+  return failed
+}
+
+function isSameReasonSignature(current: string[], prior: string[]): boolean {
+  if (prior.length === 0) {
+    return false
+  }
+
+  const currentSet = new Set(current)
+
+  return prior.every((criterionId) => currentSet.has(criterionId))
+}
+
+function recordSameReasonFailure(
+  state: RunState,
+  stageSlug: 'review' | 'test',
+  signature: string[],
+): boolean {
+  const trackers = sameReasonTrackers(state)
+  const existing = trackers[stageSlug]
+
+  if (existing && isSameReasonSignature(signature, existing.last_signature)) {
+    const updated: StageFailureTracker = {
+      last_signature: signature,
+      repeat_count: existing.repeat_count + 1,
+    }
+
+    trackers[stageSlug] = updated
+
+    return updated.repeat_count >= 2
+  }
+
+  trackers[stageSlug] = {
+    last_signature: signature,
+    repeat_count: 1,
+  }
+
+  return false
+}
+
+function pauseForSameReasonFailure(
+  root: string,
+  state: RunState,
+  stage: StageDefinition,
+): void {
+  const tracker = isSameReasonTrackedStage(state, stage.slug)
+    ? state.same_reason_failures?.[stage.slug]
+    : undefined
+  const signature = tracker?.last_signature.join(', ') ?? 'unknown'
+  const reason =
+    `Stage '${stage.slug}' failed twice consecutively for the same ` +
+    `deterministic reason (${signature}).`
+
+  state.status = 'paused'
+  state.pause_reason = reason
+  state.pending_action = { type: 'operator_decision' }
+
+  writeDecision(root, state, 'Same-reason retry limit reached', reason, [
+    `Resume from a chosen stage with: ./bin/pan resume ${state.run_id} --stage <stage>`,
+    `Waive the failed gate with: ./bin/pan waive-gate ${state.run_id} --criteria <ids>`,
     `Or abort with: ./bin/pan abort ${state.run_id}`,
   ])
 }
@@ -1317,9 +1450,41 @@ export function submitOutput(
       state.status = 'awaiting_operator'
       nextState = 'awaiting operator approval'
     } else {
-      applyTransition(root, state, stage, outcome)
-      nextState =
-        state.status === 'running' ? state.current_stage : state.status
+      if (
+        outcome === 'success' &&
+        isSameReasonTrackedStage(state, stage.slug)
+      ) {
+        clearSameReasonTracker(state, stage.slug)
+      }
+
+      let sameReasonPauseTriggered = false
+
+      if (
+        outcome === 'failure' &&
+        isSameReasonTrackedStage(state, stage.slug)
+      ) {
+        const signature = collectHardFailureSignature(
+          stage,
+          validation.output.criteria,
+          evaluated.results,
+          allValidationErrors,
+        )
+
+        sameReasonPauseTriggered = recordSameReasonFailure(
+          state,
+          stage.slug,
+          signature,
+        )
+      }
+
+      if (sameReasonPauseTriggered) {
+        pauseForSameReasonFailure(root, state, stage)
+        nextState = 'paused'
+      } else {
+        applyTransition(root, state, stage, outcome)
+        nextState =
+          state.status === 'running' ? state.current_stage : state.status
+      }
     }
 
     const record: TaskRecord = {
@@ -1622,6 +1787,7 @@ export function setRunStage(
     state.operator_feedback = feedback
 
     resetAttemptsFrom(workflow, state, stageSlug)
+    clearAllSameReasonTrackers(state)
     state.status = 'running'
     state.current_stage = stageSlug
     state.pending_action = { type: 'prepare_invocation' }
@@ -2260,6 +2426,9 @@ export function waiveGate(
 
     waivers.push(waiver)
     state.operator_gate_waivers = waivers
+    if (isSameReasonTrackedStage(state, stage.slug)) {
+      clearSameReasonTracker(state, stage.slug)
+    }
     state.status = 'running'
     state.pause_reason = null
     state.operator_pause = null
