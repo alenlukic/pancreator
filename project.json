@@ -13,7 +13,7 @@
       "tsconfig.tsbuildinfo"
     ]
   },
-  "active_config": "complex-planning",
+  "active_config": "simple",
   "$operator": {
     "summary": "Named model configurations. Each configuration maps every checked-in Cursor persona to the model that should execute it.",
     "note": "Change active_config, then run ./bin/pan models --sync. New runs snapshot the active mapping so later config edits do not change an in-flight run."
@@ -22,7 +22,7 @@
     "simple": {
       "summary": "Simple and fast configuration for quick tasks.",
       "personas": {
-        "orchestrator": "auto",
+        "orchestrator": "gpt-5.3-codex[reasoning=high,fast=false]",
         "tech-lead": "gpt-5.4[context=272k,reasoning=high,fast=false]",
         "coder": "composer-2.5[fast=false]",
         "reviewer": "gpt-5.3-codex[reasoning=high,fast=false]",
@@ -35,7 +35,7 @@
     "default": {
       "summary": "Balance of focused coding, strong review, and frontier planning.",
       "personas": {
-        "orchestrator": "auto",
+        "orchestrator": "gpt-5.3-codex[reasoning=high,fast=false]",
         "tech-lead": "gpt-5.5[context=272k,reasoning=high,fast=false]",
         "coder": "composer-2.5[fast=false]",
         "reviewer": "gpt-5.3-codex[reasoning=high,fast=false]",
