@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process'
-import { readdirSync } from 'node:fs'
+import { readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 import { errorMessage, isNodeError } from './errors.js'
 import {
+  ensureDir,
   fileExists,
   isRecord,
   readJson,
@@ -106,6 +107,37 @@ export function delegationPath(runId: string, invocationId: string): string {
     `runtime/logs/workflows/${runId}/invocations/` +
     `${invocationId}.delegation.md`
   )
+}
+
+const MISPLACED_DELEGATION_RELATIVE_PATH = '.delegation.md'
+
+/** Relocate a workspace-root delegation artifact to the invocation-scoped path. */
+export function relocateMisplacedDelegationArtifact(
+  root: string,
+  runId: string,
+  invocationId: string,
+): boolean {
+  const misplacedAbsolute = resolveInside(
+    root,
+    MISPLACED_DELEGATION_RELATIVE_PATH,
+  )
+
+  if (!fileExists(misplacedAbsolute)) {
+    return false
+  }
+
+  const targetRelative = delegationPath(runId, invocationId)
+  const targetAbsolute = resolveInside(root, targetRelative)
+
+  ensureDir(path.dirname(targetAbsolute))
+
+  if (!fileExists(targetAbsolute)) {
+    writeTextAtomic(targetAbsolute, readText(misplacedAbsolute))
+  }
+
+  rmSync(misplacedAbsolute, { force: true })
+
+  return true
 }
 
 export function delegationValidationPath(

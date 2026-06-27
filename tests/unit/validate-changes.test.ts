@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -193,6 +193,33 @@ test('blocking workspace paths ignore generated dist artifacts', () => {
   const blocking = blockingWorkspacePathsFromSnapshots(before, after, roots)
 
   assert.deepEqual(blocking, [])
+})
+
+test('blocking workspace paths ignore misplaced root delegation artifacts', () => {
+  const workspace = makeWorkspace()
+  const roots = resolveRoots({
+    installation_root: workspace,
+    workspace_root: workspace,
+  })
+  const before = snapshotWorkspace(roots, false).snapshot
+
+  writeFileSync(path.join(workspace, '.delegation.md'), '# delegated prompt\n')
+
+  const after = snapshotWorkspace(roots, false).snapshot
+  const blocking = blockingWorkspacePathsFromSnapshots(before, after, roots)
+
+  assert.deepEqual(blocking, [])
+
+  rmSync(path.join(workspace, '.delegation.md'))
+
+  const removed = snapshotWorkspace(roots, false).snapshot
+  const blockingAfterRemoval = blockingWorkspacePathsFromSnapshots(
+    after,
+    removed,
+    roots,
+  )
+
+  assert.deepEqual(blockingAfterRemoval, [])
 })
 
 test('scope guard allows dist changes during read-only stages', () => {

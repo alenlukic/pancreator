@@ -78,6 +78,7 @@ import {
   evaluateDeterministicCriteria,
   invocationValidationPath,
   loadInvocationValidationStatus,
+  relocateMisplacedDelegationArtifact,
   validateDelegationMarkdown,
   validateInvocationMarkdown,
   validateStageOutput,
@@ -927,6 +928,7 @@ export function prepareInvocation(
     const outputPath = `runtime/logs/workflows/${runId}/outputs/${invocationId}.json`
     const jsonPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.json`
     const markdownPath = `runtime/logs/workflows/${runId}/invocations/${invocationId}.md`
+    const delegationArtifactPath = delegationPath(runId, invocationId)
 
     const workspace = workspaceSnapshotForRun(root, state)
     const policies = resolvePolicies(root, {
@@ -945,7 +947,8 @@ export function prepareInvocation(
         ? `Complete this stage in the current chat with model '${model}' ` +
           `when available, write ${outputPath}, then submit it.`
         : `Invoke the '${stage.persona}' Cursor subagent configured for ` +
-          `'${model}' with this card, then submit ${outputPath}.`
+          `'${model}' with this card, write delegation evidence to ` +
+          `${delegationArtifactPath}, then submit ${outputPath}.`
 
     const invocation: Invocation = {
       $operator: {
@@ -999,6 +1002,11 @@ export function prepareInvocation(
         'You MUST read this invocation card before broader repository context.',
         `You MUST respect workspace policy '${stage.workspace_policy}'.`,
         'You MUST write only the declared output and evidence.',
+        ...(stage.persona === 'orchestrator'
+          ? []
+          : [
+              `You MUST persist delegation evidence to ${delegationArtifactPath} and MUST NOT write workspace-root .delegation.md.`,
+            ]),
         'You MUST NOT alter workflow state directly.',
         'While a mutating workflow is active, external edits to tracked files MUST be avoided because cooperative locks cannot block non-harness writers.',
         'You MUST NOT commit, push, merge, publish, deploy, or perform destructive source-control actions.',
@@ -1152,6 +1160,8 @@ export function submitOutput(
     const invocation = readInvocation(root, state.current_invocation.json_path)
 
     if (stage.persona !== 'orchestrator') {
+      relocateMisplacedDelegationArtifact(root, runId, invocation.invocation_id)
+
       const delegationArtifactPath = delegationPath(
         runId,
         invocation.invocation_id,
