@@ -52,6 +52,27 @@ export interface StageTransitions {
   blocked: string
 }
 
+export type StageContextRequest = 'required' | 'conditional' | 'omit'
+
+export type StageContextSelection = 'latest' | 'latest_success'
+
+export interface StageContextStageSelector {
+  stage: string
+  selection: StageContextSelection
+}
+
+export interface StageContextDefinition {
+  request: StageContextRequest
+  required_stage_outputs?: StageContextStageSelector[]
+  conditional_stage_outputs?: StageContextStageSelector[]
+  prior_attempts?: number
+  operator_feedback?: number
+  include_active_waivers?: boolean
+  include_workspace_ratifications?: boolean
+  include_latest_ledger_validation?: boolean
+  legacy_full_history?: boolean
+}
+
 export interface StageDefinition {
   slug: string
   title: string
@@ -62,6 +83,7 @@ export interface StageDefinition {
   prompt_sha256?: string
   workspace_policy: WorkspacePolicy
   gate: StageGate
+  context: StageContextDefinition
   required_data?: Record<string, JsonTypeName>
   criteria: Criterion[]
   transitions: StageTransitions
@@ -352,9 +374,16 @@ export interface StageOutput {
   data: Record<string, unknown>
 }
 
+export type InvocationReferenceRetrieval =
+  | 'required'
+  | 'conditional'
+  | 'index_only'
+
 export interface InvocationReference {
   path: string
   description: string
+  retrieval?: InvocationReferenceRetrieval
+  condition?: string
 }
 
 export interface Invocation {
@@ -388,6 +417,7 @@ export interface Invocation {
   prompt: string
   inputs: {
     references: InvocationReference[]
+    missing_required?: string[]
   }
   policies: Policy[]
   requirements?: RequirementManifest

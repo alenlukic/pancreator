@@ -11,6 +11,7 @@
     "prompt_path",
     "workspace_policy",
     "gate",
+    "context",
     "criteria",
     "transitions"
   ],
@@ -46,6 +47,54 @@
     "gate": {
       "enum": ["operator", "supervisor", "next_stage", "stage_verdict"],
       "description": "What decides advancement after a successful output. operator: pause for explicit operator approval (intake, ship). supervisor: pause for independent supervisor judgment of the judgment criteria (plan). stage_verdict: the worker's own verdict drives the transition (review, test). next_stage: advance directly to the success transition (implement)."
+    },
+    "context": {
+      "type": "object",
+      "description": "Stage-scoped context projection. Required inputs are read before work; conditional references are opened only on their declared trigger; omitted history remains discoverable through a generated context manifest.",
+      "required": ["request"],
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "enum": ["required", "conditional", "omit"],
+          "description": "Whether the original operator request is a required input, a fallback reference, or omitted from the stage card."
+        },
+        "required_stage_outputs": {
+          "type": "array",
+          "description": "Effective stage outputs the worker must read. Missing selectors are surfaced explicitly on the invocation card.",
+          "items": {
+            "$ref": "#/$defs/contextStageSelector"
+          }
+        },
+        "conditional_stage_outputs": {
+          "type": "array",
+          "description": "Stage outputs that remain available but should be read only when required inputs do not resolve the task or unresolved remediation evidence requires them.",
+          "items": {
+            "$ref": "#/$defs/contextStageSelector"
+          }
+        },
+        "prior_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum prior attempts of the current stage to include as required remediation context."
+        },
+        "operator_feedback": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum most-recent operator feedback artifacts targeting this stage to include as required inputs."
+        },
+        "include_active_waivers": {
+          "type": "boolean",
+          "description": "Include only waivers still bound to the latest stage attempt and current workspace fingerprint."
+        },
+        "include_workspace_ratifications": {
+          "type": "boolean",
+          "description": "Include the latest operator workspace ratification matching the current fingerprint."
+        },
+        "include_latest_ledger_validation": {
+          "type": "boolean",
+          "description": "Include the latest harness-owned validate-changes ledger result."
+        }
+      }
     },
     "required_data": {
       "type": "object",
@@ -124,6 +173,23 @@
         "blocked": {
           "type": "string",
           "description": "Target when the worker reports a blocker; usually 'paused'."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "contextStageSelector": {
+      "type": "object",
+      "required": ["stage", "selection"],
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "selection": {
+          "enum": ["latest", "latest_success"],
+          "description": "latest selects the newest attempt regardless of outcome; latest_success selects the newest successful attempt."
         }
       }
     }

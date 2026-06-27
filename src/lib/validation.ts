@@ -33,6 +33,7 @@ import {
 } from './workspace/index.js'
 import { resolveRoots } from './workspace/roots.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
+import { activeOperatorGateWaivers } from './waivers.js'
 import type {
   ArtifactReference,
   Criterion,
@@ -52,7 +53,8 @@ import type {
 } from './types.js'
 
 export const POLICIES_HEADING = '## 📜 Policies in force'
-export const REQUIREMENTS_HEADING = '## ✅ Validation requirements'
+export const AGENT_REQUIREMENTS_HEADING = '## ✅ Agent validation requirements'
+export const HARNESS_REQUIREMENTS_HEADING = '## 🧰 Harness-owned checks'
 
 export interface ValidationCheck {
   id: string
@@ -199,18 +201,38 @@ export function validateInvocationMarkdown(
   }
 
   if (invocation.requirements) {
-    checks.push({
-      id: 'requirements.heading',
-      passed: normalized.includes(REQUIREMENTS_HEADING),
-      message: normalized.includes(REQUIREMENTS_HEADING)
-        ? 'Requirements section heading is present'
-        : `Markdown MUST contain '${REQUIREMENTS_HEADING}'`,
-    })
-
-    for (const requirement of [
+    const requirements = [
       ...invocation.requirements.automation_requirements,
       ...invocation.requirements.validation_requirements,
-    ]) {
+    ]
+    const agentRequirements = requirements.filter(
+      (requirement) => requirement.executor !== 'harness',
+    )
+    const harnessRequirements = requirements.filter(
+      (requirement) => requirement.executor === 'harness',
+    )
+
+    if (agentRequirements.length > 0) {
+      checks.push({
+        id: 'requirements.agent_heading',
+        passed: normalized.includes(AGENT_REQUIREMENTS_HEADING),
+        message: normalized.includes(AGENT_REQUIREMENTS_HEADING)
+          ? 'Agent requirements section heading is present'
+          : `Markdown MUST contain '${AGENT_REQUIREMENTS_HEADING}'`,
+      })
+    }
+
+    if (harnessRequirements.length > 0) {
+      checks.push({
+        id: 'requirements.harness_heading',
+        passed: normalized.includes(HARNESS_REQUIREMENTS_HEADING),
+        message: normalized.includes(HARNESS_REQUIREMENTS_HEADING)
+          ? 'Harness requirements section heading is present'
+          : `Markdown MUST contain '${HARNESS_REQUIREMENTS_HEADING}'`,
+      })
+    }
+
+    for (const requirement of agentRequirements) {
       const row = `| ${requirement.policy_id} | ${requirement.requirement_id} |`
 
       checks.push({
@@ -219,6 +241,20 @@ export function validateInvocationMarkdown(
         message: normalized.includes(row)
           ? `Requirement ${requirement.requirement_id} is rendered`
           : `Markdown MUST include requirement row for ${requirement.requirement_id}`,
+      })
+    }
+
+    for (const requirement of harnessRequirements) {
+      const line =
+        `\`${requirement.registry_id}@${requirement.registry_version}\` — ` +
+        `${requirement.requirement_id} (${requirement.phase})`
+
+      checks.push({
+        id: `requirement.${requirement.policy_id}.${requirement.requirement_id}`,
+        passed: normalized.includes(line),
+        message: normalized.includes(line)
+          ? `Harness requirement ${requirement.requirement_id} is rendered`
+          : `Markdown MUST include harness requirement ${requirement.requirement_id}`,
       })
     }
   }
@@ -638,15 +674,12 @@ export function evaluateStateCriterion(
       .reverse()
       .find((item) => item.stage === 'test')
 
+    const activeWaivers = activeOperatorGateWaivers(state, workspaceFingerprint)
     const waiverFor = (stage: string, invocationId: string | undefined) =>
-      (state.operator_gate_waivers ?? []).find(
+      activeWaivers.find(
         (waiver) =>
           waiver.stage === stage &&
-          waiver.source_invocation_id === invocationId &&
-          waiver.workspace_fingerprint ===
-            state.stage_history.find(
-              (item) => item.invocation_id === invocationId,
-            )?.workspace_fingerprint,
+          waiver.source_invocation_id === invocationId,
       )
 
     const reviewWaiver = waiverFor('review', review?.invocation_id)

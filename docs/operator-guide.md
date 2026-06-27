@@ -79,7 +79,7 @@ Check that the product specification:
 - names constraints and out-of-scope behavior
 - exposes open questions rather than hiding assumptions
 
-Approve only with an explicit instruction. Rejection routes back to intake and carries your `--note` forward as a required input for the retry.
+Approve only with an explicit instruction. Rejection routes back to intake and carries your latest `--note` forward as a required input for the retry; older feedback remains in the generated context manifest.
 
 ## Pauses
 
@@ -104,7 +104,7 @@ deliberately restart at a different stage with `--stage <slug>`.
 
 Resume from the stage that owns the remediation when the pause was harness-initiated (blocker, circuit breaker, or ledger anomaly). Do not resume from review or test when the defect belongs to implementation.
 
-- `./bin/pan resume <run-id> --stage implement --note "<required changes>"` restarts implementation and attaches the note to the next invocation card as remediation input.
+- `./bin/pan resume <run-id> --stage implement --note "<required changes>"` restarts implementation and attaches the latest note to the next invocation card as required remediation input.
 
 ### Waiving a failed workflow gate
 

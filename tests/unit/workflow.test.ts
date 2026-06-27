@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { rmSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import {
@@ -47,6 +47,27 @@ test('loader fails when an indexed stage file is missing', () => {
     () => loadWorkflow(root, 'dev'),
     /missing stage file stages\/ship\.json/,
   )
+})
+
+test('live stage files require an explicit context projection', () => {
+  const root = createFixture()
+  const stagePath = path.join(
+    root,
+    'library',
+    'workflows',
+    'dev',
+    'stages',
+    'ship.json',
+  )
+  const stage = JSON.parse(readFileSync(stagePath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  delete stage.context
+  writeFileSync(stagePath, `${JSON.stringify(stage)}\n`)
+
+  assert.throws(() => loadWorkflow(root, 'dev'), /context MUST be defined/)
 })
 
 test('workflow validation rejects unknown transition targets', () => {

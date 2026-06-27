@@ -6,6 +6,7 @@ import { fileExists, isRecord, readJson, readText } from '../io.js'
 import { loadRegistry } from '../requirements/registry.js'
 import { hasHeading, parseMarkdown } from '../markdown.js'
 import type { HandlerInput, HandlerResult } from '../requirements/types.js'
+import { activeOperatorGateWaivers } from '../waivers.js'
 
 const REVIEW_SEVERITIES = new Set(['blocker', 'high', 'medium', 'low'])
 const WORK_MODES = new Set(['systematic', 'lightweight'])
@@ -1133,6 +1134,22 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
   const runWaivers = Array.isArray(input.runState?.operator_gate_waivers)
     ? input.runState.operator_gate_waivers
     : []
+  const workspaceBefore = isRecord(input.invocation?.workspace_before)
+    ? input.invocation.workspace_before
+    : null
+  const currentFingerprint =
+    workspaceBefore && typeof workspaceBefore.fingerprint === 'string'
+      ? workspaceBefore.fingerprint
+      : undefined
+  const activeRunWaivers = activeOperatorGateWaivers(
+    {
+      stage_history: input.runState?.stage_history,
+      operator_gate_waivers: runWaivers,
+      accepted_workspace_fingerprint:
+        input.runState?.accepted_workspace_fingerprint,
+    },
+    currentFingerprint,
+  )
   const runDeferred = Array.isArray(
     input.runState?.deferred_acceptance_criteria,
   )
@@ -1259,11 +1276,7 @@ export function validateReleaseOutput(input: HandlerInput): HandlerResult {
     }
   }
 
-  for (const waiver of runWaivers) {
-    if (!isRecord(waiver) || typeof waiver.waiver_id !== 'string') {
-      continue
-    }
-
+  for (const waiver of activeRunWaivers) {
     const disclosed = waivers.find(
       (item) => isRecord(item) && item.waiver_id === waiver.waiver_id,
     )

@@ -213,6 +213,7 @@ test('scope guard allows dist changes during read-only stages', () => {
     persona: 'qa-tester',
     workspace_policy: 'read_only',
     gate: 'stage_verdict',
+    context: { request: 'omit' },
     criteria: [],
     transitions: { success: 'ship', failure: 'implement', blocked: 'paused' },
   }

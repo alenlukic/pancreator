@@ -5,6 +5,9 @@
   "prompt_path": "library/workflows/preflight/prompts/inspect.md",
   "workspace_policy": "read_only",
   "gate": "stage_verdict",
+  "context": {
+    "request": "required"
+  },
   "required_data": {
     "inspection": "object",
     "inspection.findings": "array",

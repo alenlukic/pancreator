@@ -63,6 +63,38 @@ orchestrator-owned-stage exception.
 invocation's validation artifacts. Missing or malformed artifacts are reported
 as observable state rather than crashing status.
 
+## Invocation context projection
+
+Each agent stage declares a `context` projection in its stage definition. During
+`prepare`, the harness resolves only the effective stage outputs, bounded prior
+attempts, targeted operator feedback, and active exception evidence required by
+that stage.
+
+Invocation references have three retrieval classes:
+
+- `required`: the worker MUST read the artifact before stage work.
+- `conditional`: the worker reads the artifact only when its rendered condition
+  applies.
+- `index_only`: the worker MUST NOT expand the reference merely because it is
+  listed.
+
+The harness writes
+`invocations/<invocation-id>.context-manifest.json` when workflow records are
+omitted from the card or required context is unavailable. The manifest preserves
+full traceability without making superseded history part of the default model
+context. It may be opened only to resolve a named inconsistency, missing
+disposition, provenance question, or missing required input.
+
+For selected stage outputs, the semantic output is the primary reference. The
+matching execution record is conditional provenance evidence rather than a
+second required read. A required selector that cannot be resolved is surfaced
+under `Missing required context`; the worker MUST report the gap instead of
+inventing state.
+
+Immutable workflow snapshots created before context projections existed retain
+legacy all-history input behavior for compatibility. New runs use the scoped
+`context` declarations in the current workflow files.
+
 ## Pending actions
 
 | Action                  | Owner                     | Meaning                                           |
@@ -108,7 +140,7 @@ operator adjudication.
 
 ## Operator rejection
 
-At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (the ship stage routes to `implement`, intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/markdown/operator-feedback-<n>.md` and attached to the remediation invocation as a required input reference.
+At an operator gate, `./bin/pan decide <run-id> reject` follows the stage's declared `failure` transition (the ship stage routes to `implement`, intake retries `intake`). The operator MAY override the remediation target with `--stage <slug>`, which is restricted to a real stage in the workflow. An overridden target, and every stage declared after it, restarts with a fresh attempt budget, and consecutive-failure tracking is cleared because the rewind is an explicit human decision rather than an automated retry. In all cases the operator's `--note` is written to `artifacts/markdown/operator-feedback-<n>.md`. The most recent feedback targeting the remediation stage is attached as a required input; older feedback remains discoverable through the context manifest.
 
 ## Operator stage repair
 
@@ -120,8 +152,9 @@ forward, resets transition and consecutive-failure budgets, and makes
 `prepare_invocation` the next action.
 
 The command writes an operator-feedback artifact and an `operator_stage_set`
-event. The artifact is included in the next invocation's input references, so
-the target worker receives the reason for repair. Durable state cannot observe
+event. The most recent artifact targeting the repaired stage is included as a required
+input, so the target worker receives the repair reason without inheriting older,
+superseded feedback by default. Durable state cannot observe
 whether a Cursor worker process is still executing; the operator MUST terminate
 any executing pipeline agent before invoking the command. Agents MUST NOT invoke
 it.

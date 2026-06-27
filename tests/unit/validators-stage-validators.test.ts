@@ -686,13 +686,32 @@ test('release validator rejects waiver fingerprint mismatch', () => {
       registry_id: 'RELEASE-VALIDATE-001',
       arguments: {},
     },
+    invocation: {
+      workspace_before: {
+        fingerprint: 'fp-actual',
+      },
+    },
     runState: {
+      stage_history: [
+        {
+          stage: 'review',
+          invocation_id: 'review-1',
+          workspace_fingerprint: 'fp-actual',
+        },
+      ],
       operator_gate_waivers: [
         {
           waiver_id: 'waiver-review',
+          stage: 'review',
+          source_invocation_id: 'review-1',
+          source_attempt: 1,
           workspace_fingerprint: 'fp-actual',
           artifact_path: artifactPath,
           source_evidence_path: artifactPath,
+          criterion_ids: ['review.complete'],
+          note: 'accepted risk',
+          deferred_acceptance_criteria: [],
+          timestamp: '2026-06-26T12:00:00.000Z',
         },
       ],
     },
@@ -703,6 +722,81 @@ test('release validator rejects waiver fingerprint mismatch', () => {
     result.issues.some(
       (issue) => issue.code === 'release.waiver_fingerprint_mismatch',
     ),
+  )
+})
+
+test('release validator ignores waivers superseded by a later attempt', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pan-release-stale-waiver-'))
+  const target = 'output.json'
+  const absolute = path.join(root, target)
+  const artifactPath =
+    'runtime/logs/workflows/run-1/artifacts/markdown/review-waiver.md'
+
+  mkdirSync(path.dirname(path.join(root, artifactPath)), { recursive: true })
+  writeFileSync(path.join(root, artifactPath), '# waiver\n')
+  writeFileSync(
+    absolute,
+    `${JSON.stringify({
+      data: {
+        release: {
+          summary: 'ready',
+          change_list: [],
+          validation: [],
+          rollback: 'revert commit',
+          waivers: [],
+          follow_up_cases: [],
+        },
+      },
+    })}\n`,
+  )
+
+  const result = validateReleaseOutput({
+    root,
+    targetPath: target,
+    requirement: {
+      policy_id: 'SHIP-001',
+      requirement_id: 'release-validate',
+      registry_id: 'RELEASE-VALIDATE-001',
+      arguments: {},
+    },
+    invocation: {
+      workspace_before: {
+        fingerprint: 'fp-current',
+      },
+    },
+    runState: {
+      stage_history: [
+        {
+          stage: 'review',
+          invocation_id: 'review-1',
+          workspace_fingerprint: 'fp-old',
+        },
+        {
+          stage: 'review',
+          invocation_id: 'review-2',
+          workspace_fingerprint: 'fp-current',
+        },
+      ],
+      operator_gate_waivers: [
+        {
+          waiver_id: 'waiver-review-old',
+          stage: 'review',
+          source_invocation_id: 'review-1',
+          source_attempt: 1,
+          workspace_fingerprint: 'fp-old',
+          artifact_path: artifactPath,
+          source_evidence_path: artifactPath,
+          criterion_ids: ['review.complete'],
+          note: 'superseded',
+          deferred_acceptance_criteria: [],
+          timestamp: '2026-06-26T12:00:00.000Z',
+        },
+      ],
+    },
+  })
+
+  assert.ok(
+    !result.issues.some((issue) => issue.code === 'release.waiver_undisclosed'),
   )
 })
 

@@ -5,6 +5,40 @@
   "prompt_path": "library/workflows/dev/prompts/ship.md",
   "workspace_policy": "read_only",
   "gate": "operator",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "implement",
+        "selection": "latest"
+      },
+      {
+        "stage": "review",
+        "selection": "latest"
+      },
+      {
+        "stage": "test",
+        "selection": "latest"
+      },
+      {
+        "stage": "validate-changes",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1,
+    "include_active_waivers": true,
+    "include_workspace_ratifications": true,
+    "include_latest_ledger_validation": true
+  },
   "required_data": {
     "release": "object",
     "release.summary": "string",

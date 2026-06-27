@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { buildInvocationInputs } from './context.js'
 import { invariant, PanError } from './errors.js'
 import {
   ensureDir,
@@ -370,70 +371,6 @@ function readGateOverrides(
   }
 
   return overrides
-}
-
-function referencesForRun(state: RunState): Array<{
-  path: string
-  description: string
-}> {
-  const references = [
-    {
-      path: state.request.stored_path,
-      description: 'Original operator request',
-    },
-  ]
-
-  for (const item of state.stage_history) {
-    references.push({
-      path: item.output_path,
-      description: `${item.stage} stage output (${item.outcome})`,
-    })
-
-    if (item.record_path) {
-      references.push({
-        path: item.record_path,
-        description: `${item.stage} execution record JSON`,
-      })
-    }
-  }
-
-  for (const feedback of state.operator_feedback ?? []) {
-    const label =
-      feedback.decision === 'set-stage'
-        ? 'Operator stage repair'
-        : 'Operator remediation feedback'
-
-    references.push({
-      path: feedback.path,
-      description: `${label} (${feedback.from_stage} → ${feedback.to_stage})`,
-    })
-  }
-
-  for (const waiver of state.operator_gate_waivers ?? []) {
-    references.push({
-      path: waiver.artifact_path,
-      description: `Operator gate waiver for ${waiver.stage}`,
-    })
-
-    if (waiver.spotfix_case_path) {
-      references.push({
-        path: waiver.spotfix_case_path,
-        description: 'Open deferred spotfix case',
-      })
-    }
-  }
-
-  for (const ratification of state.operator_workspace_ratifications ?? []) {
-    references.push({
-      path: ratification.artifact_path,
-      description: `Operator-paused workspace ratification for ${ratification.stage}`,
-    })
-  }
-
-  return references.filter(
-    (item, index, all) =>
-      all.findIndex((candidate) => candidate.path === item.path) === index,
-  )
 }
 
 function pauseForLimit(root: string, state: RunState, reason: string): void {
@@ -1038,7 +975,14 @@ export function prepareInvocation(
         gate: stage.gate,
       },
       prompt: loadStagePrompt(root, stage),
-      inputs: { references: referencesForRun(state) },
+      inputs: buildInvocationInputs({
+        root,
+        state,
+        stage,
+        attempt,
+        invocationId,
+        workspaceFingerprint: workspace.fingerprint,
+      }),
       policies,
       requirements,
       rubric: stage.criteria,

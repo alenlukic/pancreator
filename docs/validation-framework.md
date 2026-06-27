@@ -13,7 +13,7 @@ Governance registries are indexed in [`governance/registries/index.md`](../gover
 1. **Canonical registry** — `governance/registries/validation_registry.json` defines every durable automation and validator by stable id (handler, version, targets, timeout, side-effect declaration).
 2. **Policy metadata** — each `governance/policies/*.json` MAY declare `requirements[]` that reference registry ids (never executable paths).
 3. **Resolver** — `resolveRequirements` derives applicability from `resolvePolicies` output only; no second lookup table exists.
-4. **Invocation manifest** — `prepareInvocation` snapshots the resolved manifest into `Invocation.requirements` and renders a compact requirements table.
+4. **Invocation manifest** — `prepareInvocation` snapshots the resolved manifest into `Invocation.requirements` and renders an agent requirements table plus a separate harness-owned checks section.
 5. **Execution** — in-process typed handlers behind `./bin/pan` produce versioned validation-result artifacts under `runtime/logs/workflows/<run>/validations/`.
 6. **Generated map** — `./bin/pan validation-map` joins policy lookup, requirement metadata, and registry for operator audits.
 

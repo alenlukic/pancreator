@@ -13,6 +13,10 @@ import type {
   Criterion,
   CriterionType,
   JsonTypeName,
+  StageContextDefinition,
+  StageContextRequest,
+  StageContextSelection,
+  StageContextStageSelector,
   StageExecutor,
   StageDefinition,
   StageGate,
@@ -36,6 +40,15 @@ const WORKSPACE_POLICIES = new Set<WorkspacePolicy>([
   'read_only',
 ])
 const CRITERION_TYPES = new Set<CriterionType>(['judgment', 'shell', 'state'])
+const CONTEXT_REQUESTS = new Set<StageContextRequest>([
+  'required',
+  'conditional',
+  'omit',
+])
+const CONTEXT_SELECTIONS = new Set<StageContextSelection>([
+  'latest',
+  'latest_success',
+])
 const JSON_TYPE_NAMES = new Set<JsonTypeName>([
   'object',
   'array',
@@ -108,6 +121,135 @@ function parseTransitions(value: unknown, source: string): StageTransitions {
   return value as unknown as StageTransitions
 }
 
+function parseContextSelectors(
+  value: unknown,
+  source: string,
+): StageContextStageSelector[] | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  invariant(Array.isArray(value), `${source} MUST be an array when present.`, {
+    code: 'INVALID_WORKFLOW',
+  })
+
+  return value.map((item, index) => {
+    const itemSource = `${source}[${index}]`
+
+    invariant(isRecord(item), `${itemSource} MUST be an object.`, {
+      code: 'INVALID_WORKFLOW',
+    })
+    invariant(
+      typeof item.stage === 'string' && item.stage.length > 0,
+      `${itemSource}.stage MUST be a non-empty string.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+    invariant(
+      typeof item.selection === 'string' &&
+        CONTEXT_SELECTIONS.has(item.selection as StageContextSelection),
+      `${itemSource}.selection MUST be latest or latest_success.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+
+    return {
+      stage: item.stage as string,
+      selection: item.selection as StageContextSelection,
+    }
+  })
+}
+
+function parseContext(
+  value: unknown,
+  source: string,
+  allowLegacyContext: boolean,
+): StageContextDefinition {
+  if (value === undefined) {
+    invariant(allowLegacyContext, `${source} MUST be defined.`, {
+      code: 'INVALID_WORKFLOW',
+    })
+
+    return { request: 'required', legacy_full_history: true }
+  }
+
+  invariant(isRecord(value), `${source} MUST be an object.`, {
+    code: 'INVALID_WORKFLOW',
+  })
+  invariant(
+    typeof value.request === 'string' &&
+      CONTEXT_REQUESTS.has(value.request as StageContextRequest),
+    `${source}.request MUST be required, conditional, or omit.`,
+    { code: 'INVALID_WORKFLOW' },
+  )
+
+  for (const key of ['prior_attempts', 'operator_feedback'] as const) {
+    if (value[key] === undefined) {
+      continue
+    }
+
+    invariant(
+      Number.isInteger(value[key]) && Number(value[key]) >= 0,
+      `${source}.${key} MUST be a non-negative integer when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
+
+  for (const key of [
+    'include_active_waivers',
+    'include_workspace_ratifications',
+    'include_latest_ledger_validation',
+  ] as const) {
+    if (value[key] === undefined) {
+      continue
+    }
+
+    invariant(
+      typeof value[key] === 'boolean',
+      `${source}.${key} MUST be a boolean when present.`,
+      { code: 'INVALID_WORKFLOW' },
+    )
+  }
+
+  const requiredStageOutputs = parseContextSelectors(
+    value.required_stage_outputs,
+    `${source}.required_stage_outputs`,
+  )
+  const conditionalStageOutputs = parseContextSelectors(
+    value.conditional_stage_outputs,
+    `${source}.conditional_stage_outputs`,
+  )
+
+  return {
+    request: value.request as StageContextRequest,
+    ...(requiredStageOutputs
+      ? { required_stage_outputs: requiredStageOutputs }
+      : {}),
+    ...(conditionalStageOutputs
+      ? { conditional_stage_outputs: conditionalStageOutputs }
+      : {}),
+    ...(value.prior_attempts !== undefined
+      ? { prior_attempts: value.prior_attempts as number }
+      : {}),
+    ...(value.operator_feedback !== undefined
+      ? { operator_feedback: value.operator_feedback as number }
+      : {}),
+    ...(value.include_active_waivers !== undefined
+      ? { include_active_waivers: value.include_active_waivers as boolean }
+      : {}),
+    ...(value.include_workspace_ratifications !== undefined
+      ? {
+          include_workspace_ratifications:
+            value.include_workspace_ratifications as boolean,
+        }
+      : {}),
+    ...(value.include_latest_ledger_validation !== undefined
+      ? {
+          include_latest_ledger_validation:
+            value.include_latest_ledger_validation as boolean,
+        }
+      : {}),
+  }
+}
+
 function parseRequiredData(
   value: unknown,
   source: string,
@@ -136,7 +278,11 @@ function parseRequiredData(
   return requiredData
 }
 
-function parseStage(value: unknown, source: string): StageDefinition {
+function parseStage(
+  value: unknown,
+  source: string,
+  allowLegacyContext = false,
+): StageDefinition {
   invariant(isRecord(value), `${source} MUST contain an object.`, {
     code: 'INVALID_WORKFLOW',
   })
@@ -187,6 +333,11 @@ function parseStage(value: unknown, source: string): StageDefinition {
     persona: value.persona as string,
     workspace_policy: value.workspace_policy as WorkspacePolicy,
     gate: value.gate as StageGate,
+    context: parseContext(
+      value.context,
+      `${source}.context`,
+      allowLegacyContext,
+    ),
     criteria: value.criteria.map((criterion, index) =>
       parseCriterion(criterion, `${source}.criteria[${index}]`),
     ),
@@ -293,7 +444,7 @@ function parseWorkflowDefinition(
   })
 
   const stages = value.stages.map((stage, indexValue) =>
-    parseStage(stage, `${source}.stages[${indexValue}]`),
+    parseStage(stage, `${source}.stages[${indexValue}]`, true),
   )
   const index = parseWorkflowIndex(
     { ...value, stages: stages.map((stage) => stage.slug) },
@@ -455,6 +606,21 @@ export function validateWorkflow(
         { code: 'INVALID_WORKFLOW' },
       )
       criterionIds.add(criterion.id)
+    }
+  }
+
+  for (const stage of workflow.stages) {
+    const selectors = [
+      ...(stage.context.required_stage_outputs ?? []),
+      ...(stage.context.conditional_stage_outputs ?? []),
+    ]
+
+    for (const selector of selectors) {
+      invariant(
+        slugs.has(selector.stage),
+        `${source}: context selector '${stage.slug}' targets unknown stage '${selector.stage}'.`,
+        { code: 'INVALID_WORKFLOW' },
+      )
     }
   }
 

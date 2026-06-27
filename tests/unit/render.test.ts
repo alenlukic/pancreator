@@ -275,3 +275,40 @@ test('status summary surfaces validation failure reasons', () => {
   assert.match(status, /Delegation validation: fail/)
   assert.match(status, /delegation\.canonical_equality/)
 })
+
+test('invocation cards distinguish required, conditional, and indexed context', () => {
+  const root = createFixture()
+  const invocation = baseInvocation(root, 'dev', 'review')
+  invocation.inputs = {
+    references: [
+      {
+        path: 'required.json',
+        description: 'Effective implementation output',
+        retrieval: 'required',
+      },
+      {
+        path: 'conditional.json',
+        description: 'Execution provenance',
+        retrieval: 'conditional',
+        condition: 'Read only to verify provenance.',
+      },
+      {
+        path: 'manifest.json',
+        description: 'Complete workflow context index',
+        retrieval: 'index_only',
+        condition: 'Read only to resolve a named inconsistency.',
+      },
+    ],
+    missing_required: ["latest success output for stage 'plan'"],
+  }
+
+  const markdown = renderInvocationMarkdown(invocation)
+
+  assert.match(markdown, /### Required inputs/u)
+  assert.match(markdown, /`required\.json` — Effective implementation output/u)
+  assert.match(markdown, /### Conditional references/u)
+  assert.match(markdown, /Read when: Read only to verify provenance\./u)
+  assert.match(markdown, /### Context index/u)
+  assert.match(markdown, /### Missing required context/u)
+  assert.match(markdown, /latest success output for stage 'plan'/u)
+})

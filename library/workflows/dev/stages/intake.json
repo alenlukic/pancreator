@@ -5,6 +5,11 @@
   "prompt_path": "library/workflows/dev/prompts/intake.md",
   "workspace_policy": "runtime_only",
   "gate": "operator",
+  "context": {
+    "request": "required",
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
   "required_data": {
     "product_spec": "object",
     "product_spec.summary": "string",

@@ -5,6 +5,17 @@
   "prompt_path": "library/workflows/dev/prompts/plan.md",
   "workspace_policy": "runtime_only",
   "gate": "supervisor",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
   "required_data": {
     "engineering_plan": "object",
     "engineering_plan.approach": "string",

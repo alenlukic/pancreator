@@ -178,6 +178,7 @@ intake ──operator approval──> plan ──supervisor gate──> implemen
 ```
 
 Review and QA do not modify source. Failed review or QA routes to implementation unless the operator records a policy-conforming, fingerprint-bound gate waiver. Bounded deferred acceptance misses may open a linked spot-fix intake case, but lightweight eligibility is still evaluated independently. An operator rejection at the ship gate routes remediation back to implementation by default (or to `--stage plan`/another stage), carrying the operator's feedback forward as a required input. Ship creates a release packet only; commit, push, PR, merge, publication, and deployment remain operator-owned.
+For stage-scoped required, conditional, and index-only invocation inputs, see [Invocation context projection](docs/runtime-protocol.md#invocation-context-projection).
 
 ## TypeScript and formatting
 

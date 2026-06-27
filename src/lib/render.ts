@@ -9,11 +9,19 @@ function fencedJson(value: unknown): string {
 export function renderInvocationMarkdown(invocation: Invocation): string {
   const { stage } = invocation
   const requiredData = Object.entries(invocation.output.required_data)
-  const references = invocation.inputs.references.length
-    ? invocation.inputs.references.map(
-        (item) => `- \`${item.path}\` — ${item.description}`,
-      )
-    : ['- No prior artifacts; start from the request.']
+  const referenceLines = (
+    retrieval: 'required' | 'conditional' | 'index_only',
+  ) =>
+    invocation.inputs.references
+      .filter((item) => (item.retrieval ?? 'required') === retrieval)
+      .flatMap((item) => [
+        `- \`${item.path}\` — ${item.description}`,
+        ...(item.condition ? [`  - Read when: ${item.condition}`] : []),
+      ])
+  const requiredReferences = referenceLines('required')
+  const conditionalReferences = referenceLines('conditional')
+  const indexReferences = referenceLines('index_only')
+  const missingRequired = invocation.inputs.missing_required ?? []
   const policies = invocation.policies.length
     ? invocation.policies.flatMap((policy) => {
         const lines = [
@@ -25,14 +33,23 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         return [lines.join('\n')]
       })
     : ['- Only global boundaries apply.']
-  const requirementRows = invocation.requirements
+  const requirements = invocation.requirements
+    ? [
+        ...invocation.requirements.automation_requirements,
+        ...invocation.requirements.validation_requirements,
+      ]
+    : []
+  const agentRequirements = requirements.filter(
+    (requirement) => requirement.executor !== 'harness',
+  )
+  const harnessRequirements = requirements.filter(
+    (requirement) => requirement.executor === 'harness',
+  )
+  const requirementRows = agentRequirements.length
     ? [
         '| Policy | Requirement | Registry | Phase | Executor | Target | Success | Failure route |',
         '| --- | --- | --- | --- | --- | --- | --- | --- |',
-        ...[
-          ...invocation.requirements.automation_requirements,
-          ...invocation.requirements.validation_requirements,
-        ].map(
+        ...agentRequirements.map(
           (requirement) =>
             `| ${requirement.policy_id} | ${requirement.requirement_id} | ` +
             `${requirement.registry_id}@${requirement.registry_version} | ` +
@@ -42,6 +59,11 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
         ),
       ]
     : []
+  const harnessRequirementLines = harnessRequirements.map(
+    (requirement) =>
+      `- \`${requirement.registry_id}@${requirement.registry_version}\` — ` +
+      `${requirement.requirement_id} (${requirement.phase}); harness-owned, no agent action.`,
+  )
   const gateOverrideEntries = Object.entries(invocation.gate_overrides ?? {})
   const gateOverrideLines = gateOverrideEntries.map(([id, command]) =>
     command === false
@@ -79,14 +101,35 @@ export function renderInvocationMarkdown(invocation: Invocation): string {
     '',
     '## 📥 Inputs',
     '',
-    ...references,
+    '### Required inputs',
     '',
+    ...(requiredReferences.length > 0
+      ? requiredReferences
+      : ['- No required artifact inputs.']),
+    '',
+    ...(conditionalReferences.length > 0
+      ? ['### Conditional references', '', ...conditionalReferences, '']
+      : []),
+    ...(indexReferences.length > 0
+      ? ['### Context index', '', ...indexReferences, '']
+      : []),
+    ...(missingRequired.length > 0
+      ? [
+          '### Missing required context',
+          '',
+          ...missingRequired.map((item) => `- ${item}`),
+          '',
+        ]
+      : []),
     '## 📜 Policies in force',
     '',
     ...policies,
     '',
     ...(requirementRows.length > 0
-      ? ['## ✅ Validation requirements', '', ...requirementRows, '']
+      ? ['## ✅ Agent validation requirements', '', ...requirementRows, '']
+      : []),
+    ...(harnessRequirementLines.length > 0
+      ? ['## 🧰 Harness-owned checks', '', ...harnessRequirementLines, '']
       : []),
     '## 🎯 Rubric',
     '',

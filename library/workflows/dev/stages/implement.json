@@ -5,6 +5,31 @@
   "prompt_path": "library/workflows/dev/prompts/implement.md",
   "workspace_policy": "source_allowed",
   "gate": "next_stage",
+  "context": {
+    "request": "conditional",
+    "required_stage_outputs": [
+      {
+        "stage": "intake",
+        "selection": "latest_success"
+      },
+      {
+        "stage": "plan",
+        "selection": "latest_success"
+      }
+    ],
+    "conditional_stage_outputs": [
+      {
+        "stage": "review",
+        "selection": "latest"
+      },
+      {
+        "stage": "test",
+        "selection": "latest"
+      }
+    ],
+    "prior_attempts": 1,
+    "operator_feedback": 1
+  },
   "required_data": {
     "implementation": "object",
     "implementation.changed_files": "array",

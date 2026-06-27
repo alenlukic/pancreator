@@ -84,6 +84,23 @@ mapping before resuming the run.
   - `stage_verdict` - the worker's own verdict drives the transition (review,
     test).
   - `next_stage` - advance directly along the success transition (implement).
+- `context` - the deterministic stage-scoped input projection:
+  - `request` declares the original request as `required`, `conditional`, or
+    `omit`.
+  - `required_stage_outputs` selects effective outputs that MUST be read.
+  - `conditional_stage_outputs` keeps records available behind an explicit
+    retrieval condition.
+  - `prior_attempts` and `operator_feedback` bound remediation history by count.
+  - ship-like stages MAY include active waivers, current workspace
+    ratifications, and the latest ledger validation.
+
+  Each stage-output selector declares `stage` and `selection`. Use
+  `latest_success` for ratified/effective upstream results and `latest` when a
+  failed result may still be authoritative evidence, such as a waived review.
+  The harness lists execution records as conditional provenance rather than a
+  second required read and writes omitted history to an index-only context
+  manifest.
+
 - `required_data` - the output's `data` shape, as dotted paths mapped to JSON
   types (`object`, `array`, `string`, `number`, `boolean`). The harness rejects
   an output whose `data` does not match. Example:
@@ -108,8 +125,9 @@ mapping before resuming the run.
 ## Validation rules enforced by the harness
 
 - `schema_version` is `1`; `slug`, `title`, and a non-empty `stages` list exist.
-- Stage slugs are unique; each has a persona, a valid `gate` and
+- Stage slugs are unique; each has a persona, a valid `gate`, `context`, and
   `workspace_policy`, an existing `prompt_path`, criteria, and transitions.
+- Context selectors target real stages and use `latest` or `latest_success`.
 - Criterion ids are unique within a stage; `shell` criteria declare a command.
 - Transition outcomes are `success`/`failure`/`blocked`, and every target is a
   terminal status or an existing stage.
