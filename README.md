@@ -82,6 +82,10 @@ cd /path/to/your-project
 ./.pancreator/bin/pan validate
 ```
 
+If the target already has a `.gitignore`, the installer adds `.pancreator/`
+idempotently and preserves the rest of the file; it does not create a new
+`.gitignore` for targets that lack one.
+
 The harness lives at `.pancreator/`; Pancreator agents, commands, and its rule
 are merged into the target `.cursor/`. Existing `.cursor` state triggers a
 warning and conflicting files are backed up before replacement.

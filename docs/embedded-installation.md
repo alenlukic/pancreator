@@ -49,6 +49,11 @@ cd /path/to/target-repository
     backups/cursor/         # replaced operator Cursor files, when needed
 ```
 
+When the target already has a `.gitignore`, installation and refresh add a
+single `.pancreator/` entry while preserving all existing content. The installer
+does not create a target `.gitignore` when none exists. This keeps the embedded
+harness and its target-specific runtime state local to the checkout.
+
 The target root does **not** receive a Pancreator `project.json`. The installed
 configuration lives at `.pancreator/project.json` with:
 

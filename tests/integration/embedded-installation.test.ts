@@ -204,6 +204,48 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
   }
 })
 
+test('embedded installer manages an existing target gitignore without creating one', () => {
+  const withGitignore = makeSkeletonProject()
+  const equivalentRule = makeSkeletonProject()
+  const withoutGitignore = makeSkeletonProject()
+
+  try {
+    writeFileSync(path.join(withGitignore, '.gitignore'), 'node_modules/')
+
+    const first = runInstaller(withGitignore)
+    const second = runInstaller(withGitignore, ['--yes'])
+
+    assert.equal(first.status, 0, first.stderr)
+    assert.equal(second.status, 0, second.stderr)
+    assert.equal(
+      readFileSync(path.join(withGitignore, '.gitignore'), 'utf8'),
+      'node_modules/\n.pancreator/\n',
+    )
+
+    writeFileSync(
+      path.join(equivalentRule, '.gitignore'),
+      '/.pancreator/\nlocal-only/\n',
+    )
+
+    const equivalent = runInstaller(equivalentRule)
+
+    assert.equal(equivalent.status, 0, equivalent.stderr)
+    assert.equal(
+      readFileSync(path.join(equivalentRule, '.gitignore'), 'utf8'),
+      '/.pancreator/\nlocal-only/\n',
+    )
+
+    const absent = runInstaller(withoutGitignore)
+
+    assert.equal(absent.status, 0, absent.stderr)
+    assert.equal(existsSync(path.join(withoutGitignore, '.gitignore')), false)
+  } finally {
+    rmSync(withGitignore, { recursive: true, force: true })
+    rmSync(equivalentRule, { recursive: true, force: true })
+    rmSync(withoutGitignore, { recursive: true, force: true })
+  }
+})
+
 test('embedded installer ignores source-checkout Cursor files', () => {
   const project = makeSkeletonProject()
   const source = createReleaseFixture()

@@ -121,7 +121,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 run_smoke() {
-  local smoke_root failures fresh_project existing_cursor_project partial_project
+  local smoke_root failures fresh_project existing_cursor_project partial_project no_gitignore_project
 
   smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-smoke.XXXXXX")"
   failures=0
@@ -139,7 +139,11 @@ run_smoke() {
   }
 
   smoke_project() {
-    mktemp -d "${smoke_root}/project.XXXXXX"
+    local project
+
+    project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
+    printf 'node_modules/\n' >"$project/.gitignore"
+    printf '%s' "$project"
   }
 
   smoke_verify() {
@@ -152,6 +156,10 @@ run_smoke() {
       && test -L "$project/.pancreator/.cursor" \
       && test -f "$project/.cursor/commands/pan-start.md" \
       && test -f "$project/.cursor/agents/coder.md" \
+      && grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
+        "$project/.gitignore" \
+      && test "$(grep -Ec '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
+        "$project/.gitignore")" -eq 1 \
       && test ! -e "$project/.pancreator/workdesk" \
       && test ! -e "$project/.pancreator/runtime/workflows"
   }
@@ -162,6 +170,7 @@ run_smoke() {
   smoke_step "verify fresh install" smoke_verify "$fresh_project"
   smoke_step "idempotent refresh" bash "$0" --target "$fresh_project" \
     --pancreator-root "$PANCREATOR_ROOT" --yes --skip-dependencies
+  smoke_step "verify idempotent refresh" smoke_verify "$fresh_project"
 
   existing_cursor_project="$(smoke_project)"
   mkdir -p "$existing_cursor_project/.cursor/rules"
@@ -177,6 +186,13 @@ run_smoke() {
   smoke_step "partial install repair" bash "$0" --target "$partial_project" \
     --pancreator-root "$PANCREATOR_ROOT" --choice r --skip-dependencies
   smoke_step "verify repair" smoke_verify "$partial_project"
+
+  no_gitignore_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
+  smoke_step "install without target gitignore" bash "$0" \
+    --target "$no_gitignore_project" --pancreator-root "$PANCREATOR_ROOT" \
+    --skip-dependencies
+  smoke_step "do not create target gitignore" test ! -e \
+    "$no_gitignore_project/.gitignore"
 
   rm -rf "$smoke_root"
 
@@ -408,6 +424,25 @@ Conflicting Pancreator-owned paths are replaced and backed up under:
 WARNING
 }
 
+ensure_target_gitignore() {
+  local gitignore="$TARGET_DIR/.gitignore"
+
+  if [[ ! -f "$gitignore" ]]; then
+    return
+  fi
+
+  if grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' "$gitignore"; then
+    return
+  fi
+
+  if [[ -s "$gitignore" && -n "$(tail -c 1 "$gitignore")" ]]; then
+    printf '\n' >>"$gitignore"
+  fi
+
+  printf '.pancreator/\n' >>"$gitignore"
+  echo "Added .pancreator/ to $gitignore"
+}
+
 create_runtime_layout() {
   mkdir -p "$INBOX_DIR" "$RUNTIME_DIR/logs/workflows" "$RUNTIME_DIR/backlog"
 }
@@ -514,6 +549,7 @@ install_payload() {
   trap 'rm -rf "$staging"' RETURN
 
   prepare_staging_payload "$staging"
+  ensure_target_gitignore
 
   mkdir -p "$PANCREATOR_DIR" "$CURSOR_DIR"
   create_runtime_layout
