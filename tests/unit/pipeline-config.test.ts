@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -8,13 +8,8 @@ import {
   makePipelineConfigSnapshot,
   parsePipelineConfig,
   resolvePersonaModel,
-  syncCursorAgentModels,
 } from '../../src/lib/pipeline-config.js'
 import { createFixture } from '../helpers.js'
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 test('pipeline config loads the active named persona mapping', () => {
   const root = createFixture()
@@ -46,30 +41,5 @@ test('pipeline config rejects an undefined active config', () => {
         },
       }),
     /active_config 'missing' is not defined/u,
-  )
-})
-
-test('cursor agent sync projects the active mapping into frontmatter', () => {
-  const root = createFixture()
-  const loaded = loadPipelineConfig(root)
-  const agentPath = path.join(root, '.cursor', 'agents', 'coder.md')
-  const raw = readFileSync(agentPath, 'utf8')
-
-  writeFileSync(
-    agentPath,
-    raw.replace(/^model:.*$/mu, 'model: intentionally-wrong'),
-  )
-
-  const preview = syncCursorAgentModels(root, loaded)
-  const coderPreview = preview.find((entry) => entry.persona === 'coder')
-
-  assert.equal(coderPreview?.changed, true)
-  assert.equal(coderPreview?.previous_model, 'intentionally-wrong')
-
-  syncCursorAgentModels(root, loaded, { write: true })
-
-  assert.match(
-    readFileSync(agentPath, 'utf8'),
-    new RegExp(`^model: ${escapeRegex(loaded.config.personas.coder)}$`, 'mu'),
   )
 })

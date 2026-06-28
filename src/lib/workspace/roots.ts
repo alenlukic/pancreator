@@ -2,15 +2,9 @@ import { accessSync, constants, lstatSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from '../errors.js'
-import {
-  canonicalize,
-  ensureDir,
-  fileExists,
-  isRecord,
-  readJson,
-  sha256,
-} from '../io.js'
-import type { ProjectConfig, ResolvedRoots } from '../types.js'
+import { canonicalize, ensureDir, fileExists, sha256 } from '../io.js'
+import { readProjectConfig } from '../project-config.js'
+import type { ResolvedRoots } from '../types.js'
 
 export interface ResolveRootsOptions {
   installation_root: string
@@ -39,27 +33,6 @@ function isDescendantPath(parent: string, candidate: string): boolean {
     !relative.startsWith('..') &&
     !path.isAbsolute(relative)
   )
-}
-
-function parseProjectConfig(workspaceRoot: string): ProjectConfig | null {
-  const configPath = path.join(workspaceRoot, 'project.json')
-
-  if (!fileExists(configPath)) {
-    return null
-  }
-
-  const value = readJson(configPath)
-
-  invariant(
-    isRecord(value) &&
-      value.schema_version === 1 &&
-      (value.workspace_id === undefined ||
-        typeof value.workspace_id === 'string'),
-    `Invalid project configuration: ${configPath}`,
-    { code: 'INVALID_PROJECT_CONFIG' },
-  )
-
-  return value as unknown as ProjectConfig
 }
 
 function ensureWritableDirectory(directoryPath: string): void {
@@ -129,7 +102,7 @@ export function resolveRoots(options: ResolveRootsOptions): ResolvedRoots {
   )
 
   const workspaceRoot = canonicalize(workspaceRootCandidate)
-  const projectConfig = parseProjectConfig(workspaceRoot)
+  const projectConfig = readProjectConfig(installationRoot)
   const configuredStateRoot =
     options.state_root ??
     process.env.PANCREATOR_STATE_ROOT ??
@@ -142,7 +115,7 @@ export function resolveRoots(options: ResolveRootsOptions): ResolvedRoots {
     stateRootCandidate = configuredStateRoot
   } else {
     relativeStateRoot = normalizeRelativeStateRoot(configuredStateRoot)
-    stateRootCandidate = path.resolve(workspaceRoot, relativeStateRoot)
+    stateRootCandidate = path.resolve(installationRoot, relativeStateRoot)
   }
 
   const stateRoot = fileExists(stateRootCandidate)
@@ -151,8 +124,8 @@ export function resolveRoots(options: ResolveRootsOptions): ResolvedRoots {
 
   if (relativeStateRoot !== null) {
     invariant(
-      isPathWithinRoot(workspaceRoot, stateRoot),
-      'State root must stay within the workspace root.',
+      isPathWithinRoot(installationRoot, stateRoot),
+      'State root must stay within the installation root.',
       { code: 'PATH_ESCAPE' },
     )
   }

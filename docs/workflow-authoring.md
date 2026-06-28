@@ -41,7 +41,7 @@ is the imperative validator in `src/lib/workflow.ts`, run by `./bin/pan validate
 
 `project.json` is the single source of truth for persona-to-model selection.
 It contains named configurations such as `default`, `complex`, `auto`, and `fable`.
-Every named configuration MUST map every checked-in Cursor agent persona, including standalone command personas that are not referenced by a workflow.
+Every named configuration MUST map every canonical Cursor agent template under `library/cursor/agents/`, including standalone command personas that are not referenced by a workflow.
 
 After changing `active_config` or a model value, run:
 
@@ -49,10 +49,7 @@ After changing `active_config` or a model value, run:
 ./bin/pan models --sync
 ```
 
-This projects the active mapping into matching `.cursor/agents/<persona>.md`
-frontmatter. `./bin/pan validate` fails when a checked-in Cursor agent is
-unmapped, its canonical `library/personas/<persona>.md` file is missing, a
-workflow worker is missing, or an agent model has drifted from the active config.
+This regenerates the ignored local `.cursor/` surface from the canonical sources declared in `governance/registries/projection_manifest.json`, including the active model mapping in `.cursor/agents/<persona>.md` frontmatter. `./bin/pan validate` validates the canonical projection sources even when local `.cursor/` output is absent; when a local projection exists, it also fails on drift. It also fails when a canonical agent template is unmapped, its `library/personas/<persona>.md` contract is missing, or a workflow worker template is missing.
 New runs copy the active mapping to `pipeline-config.snapshot.json`; every
 invocation records the resolved model and configuration name. Because Cursor
 subagent files are project-global, preparing an existing run fails if the live

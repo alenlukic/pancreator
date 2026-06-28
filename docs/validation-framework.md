@@ -36,3 +36,20 @@ Failure routes (`retry`, `stage_failure`, `blocked`, `operator_decision`) are de
 - `./bin/pan assessment scaffold`
 - `./bin/pan governance audit-directives`
 - `./bin/pan validation-map`
+
+## Standalone artifact validation
+
+Standalone personas can resolve and run their policy-bound validators without creating a workflow run:
+
+```sh
+./bin/pan requirements run \
+  --persona decomposer \
+  --workflow standalone \
+  --stage decompose \
+  --kind decomposition \
+  --registry DECOMPOSITION-VALIDATE-001 \
+  --target runtime/inbox/decomposition-<id>.md \
+  --json
+```
+
+The command only runs a validator that resolves from the supplied policy context and accepts the inferred target type. It exits nonzero when validation does not pass.

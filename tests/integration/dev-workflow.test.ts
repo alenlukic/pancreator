@@ -9,12 +9,15 @@ import {
   createRun,
   decideRun,
   getRunState,
+  pauseRun,
   prepareInvocation,
   resumeRun,
   setRunStage,
   submitOutput,
+  waiveGate,
 } from '../../src/lib/engine.js'
 import { loadWorkflow, stageBySlug } from '../../src/lib/workflow.js'
+import type { StageDefinition, StageOutcome } from '../../src/lib/types.js'
 import {
   createFixture,
   makeOutput,
@@ -348,4 +351,304 @@ test('operator set-stage requires a valid target and non-empty repair note', () 
     () => setRunStage(root, state.run_id, 'missing', 'repair target'),
     /Workflow dev has no stage 'missing'/u,
   )
+})
+
+function submitStageOutput(
+  root: string,
+  runId: string,
+  stage: StageDefinition,
+  result: StageOutcome,
+  failedCriterionIds: string[] = [],
+) {
+  const invocation = prepareInvocation(root, runId).invocation
+
+  assert.ok(invocation)
+
+  const output = makeOutput(root, invocation, stage, result)
+  output.result = result
+
+  for (const criterion of output.criteria) {
+    criterion.result = failedCriterionIds.includes(criterion.id)
+      ? 'fail'
+      : 'pass'
+  }
+
+  writeJson(path.join(root, invocation.output.path), output)
+  writeCanonicalDelegation(root, invocation)
+
+  return submitOutput(root, runId, invocation.output.path)
+}
+
+test('review same-reason failure twice pauses for operator_decision', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Same-reason review fixture',
+  })
+  const runId = state.run_id
+  const reviewStage = stageBySlug(workflow, 'review')
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'review', 'Seed review for same-reason testing.')
+
+  const first = submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+
+  assert.equal(first.state.status, 'running')
+  assert.equal(first.state.current_stage, 'implement')
+  assert.equal(first.state.same_reason_failures?.review?.repeat_count, 1)
+
+  submitStageOutput(root, runId, implementStage, 'success')
+
+  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+
+  assert.equal(second.state.status, 'paused')
+  assert.equal(second.state.pending_action.type, 'operator_decision')
+  assert.equal(second.state.current_stage, 'review')
+  assert.match(second.state.pause_reason ?? '', /same deterministic reason/u)
+})
+
+test('test same-reason failure twice pauses for operator_decision', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Same-reason test fixture',
+  })
+  const runId = state.run_id
+  const reviewStage = stageBySlug(workflow, 'review')
+  const testStage = stageBySlug(workflow, 'test')
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'test', 'Seed test for same-reason testing.')
+
+  const first = submitStageOutput(root, runId, testStage, 'failure', [
+    'test.manual_cases',
+  ])
+
+  assert.equal(first.state.current_stage, 'implement')
+  assert.equal(first.state.same_reason_failures?.test?.repeat_count, 1)
+
+  submitStageOutput(root, runId, implementStage, 'success')
+  submitStageOutput(root, runId, reviewStage, 'success')
+
+  const second = submitStageOutput(root, runId, testStage, 'failure', [
+    'test.manual_cases',
+  ])
+
+  assert.equal(second.state.status, 'paused')
+  assert.equal(second.state.pending_action.type, 'operator_decision')
+  assert.equal(second.state.current_stage, 'test')
+})
+
+test('different review failure reasons keep remediation route to implement', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Different-reason review fixture',
+  })
+  const runId = state.run_id
+  const reviewStage = stageBySlug(workflow, 'review')
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(
+    root,
+    runId,
+    'review',
+    'Seed review for different-reason testing.',
+  )
+
+  submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+  submitStageOutput(root, runId, implementStage, 'success')
+
+  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.tests_correct',
+  ])
+
+  assert.equal(second.state.status, 'running')
+  assert.equal(second.state.current_stage, 'implement')
+  assert.equal(second.state.same_reason_failures?.review?.repeat_count, 1)
+  assert.deepEqual(second.state.same_reason_failures?.review?.last_signature, [
+    'review.tests_correct',
+  ])
+})
+
+test('strict superset review failures trigger same-reason pause', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Superset review fixture',
+  })
+  const runId = state.run_id
+  const reviewStage = stageBySlug(workflow, 'review')
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'review', 'Seed review for superset testing.')
+
+  submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+  submitStageOutput(root, runId, implementStage, 'success')
+
+  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+    'review.tests_correct',
+  ])
+
+  assert.equal(second.state.status, 'paused')
+  assert.equal(second.state.pending_action.type, 'operator_decision')
+})
+
+test('same-reason tracker resets on stage pass, waive-gate, and set-stage', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Same-reason reset fixture',
+  })
+  const runId = state.run_id
+  const reviewStage = stageBySlug(workflow, 'review')
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'review', 'Seed review for reset testing.')
+  submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+  assert.equal(
+    getRunState(root, runId).same_reason_failures?.review?.repeat_count,
+    1,
+  )
+
+  setRunStage(
+    root,
+    runId,
+    'review',
+    'Operator repair clears same-reason memory.',
+  )
+  assert.equal(getRunState(root, runId).same_reason_failures?.review, undefined)
+
+  submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+  submitStageOutput(root, runId, implementStage, 'success')
+  submitStageOutput(root, runId, reviewStage, 'success')
+  assert.equal(getRunState(root, runId).same_reason_failures?.review, undefined)
+
+  setRunStage(root, runId, 'review', 'Prepare waiver reset coverage.')
+  const failed = submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+  assert.equal(failed.state.current_stage, 'implement')
+  submitStageOutput(root, runId, implementStage, 'success')
+  const paused = submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+  assert.equal(paused.state.status, 'paused')
+
+  const waived = waiveGate(root, runId, {
+    stageSlug: 'review',
+    criterionIds: ['review.acceptance_met'],
+    note: 'Bounded review miss is isolated and does not block downstream validation.',
+  })
+
+  assert.equal(waived.state.status, 'running')
+  assert.equal(waived.state.current_stage, 'test')
+  assert.equal(getRunState(root, runId).same_reason_failures?.review, undefined)
+})
+
+test('set-stage to implement clears tracked review same-reason memory', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Set-stage to implement reset fixture',
+  })
+  const runId = state.run_id
+  const reviewStage = stageBySlug(workflow, 'review')
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'review', 'Seed review for set-stage reset testing.')
+  submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+  assert.equal(
+    getRunState(root, runId).same_reason_failures?.review?.repeat_count,
+    1,
+  )
+  assert.equal(getRunState(root, runId).current_stage, 'implement')
+
+  setRunStage(
+    root,
+    runId,
+    'implement',
+    'Operator repair targets implement and clears review memory.',
+  )
+  assert.equal(getRunState(root, runId).same_reason_failures?.review, undefined)
+
+  submitStageOutput(root, runId, implementStage, 'success')
+
+  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+
+  assert.equal(second.state.status, 'running')
+  assert.equal(second.state.current_stage, 'implement')
+  assert.equal(second.state.same_reason_failures?.review?.repeat_count, 1)
+})
+
+test('ordinary resume preserves same-reason tracker across implement work', () => {
+  const root = createFixture()
+  const workflow = loadWorkflow(root, 'dev')
+  const state = createRun(root, {
+    workflowSlug: 'dev',
+    requestPath: 'request.md',
+    title: 'Resume preserves tracker fixture',
+  })
+  const runId = state.run_id
+  const reviewStage = stageBySlug(workflow, 'review')
+  const implementStage = stageBySlug(workflow, 'implement')
+
+  setRunStage(root, runId, 'review', 'Seed review for resume testing.')
+  submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+  assert.equal(
+    getRunState(root, runId).same_reason_failures?.review?.repeat_count,
+    1,
+  )
+
+  pauseRun(root, runId, 'Operator pauses before remediation continues.')
+  resumeRun(
+    root,
+    runId,
+    'implement',
+    'Resume remediation without forgiving review.',
+  )
+  assert.equal(
+    getRunState(root, runId).same_reason_failures?.review?.repeat_count,
+    1,
+  )
+
+  submitStageOutput(root, runId, implementStage, 'success')
+
+  const second = submitStageOutput(root, runId, reviewStage, 'failure', [
+    'review.acceptance_met',
+  ])
+
+  assert.equal(second.state.status, 'paused')
+  assert.equal(second.state.pending_action.type, 'operator_decision')
 })

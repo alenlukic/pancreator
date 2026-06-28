@@ -9,6 +9,7 @@ import type {
   PolicyLookupTable,
   PolicyRequirement,
 } from './types.js'
+import { isSelfDevelopmentInstallation } from './project-config.js'
 import { isValidPolicyRequirement } from './requirements/types.js'
 
 interface PolicyContext {
@@ -93,6 +94,13 @@ function parseLookupRow(value: unknown, source: string): PolicyLookupRow {
   }
 
   invariant(
+    value.installation_scope === undefined ||
+      value.installation_scope === 'all' ||
+      value.installation_scope === 'self_development',
+    `${source}: installation_scope MUST be all or self_development when present.`,
+    { code: 'INVALID_POLICY_LOOKUP' },
+  )
+  invariant(
     Array.isArray(value.policies) &&
       value.policies.every((item) => typeof item === 'string'),
     `${source}: policies MUST be a string array.`,
@@ -156,6 +164,7 @@ export function resolvePolicies(
   const lookup = loadLookupTable(root)
   const catalog = loadPolicyCatalog(root)
   const policyIds = new Set<string>()
+  const selfDevelopment = isSelfDevelopmentInstallation(root)
 
   for (const row of lookup.rows) {
     const applies =
@@ -164,6 +173,10 @@ export function resolvePolicies(
       matches(row.stage, context.stage)
 
     if (!applies) {
+      continue
+    }
+
+    if (row.installation_scope === 'self_development' && !selfDevelopment) {
       continue
     }
 

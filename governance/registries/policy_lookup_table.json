@@ -12,7 +12,8 @@
         "AUTO-001",
         "VALID-001",
         "OUTPUT-001",
-        "BIN-001"
+        "BIN-001",
+        "PRIMER-001"
       ]
     },
     {
@@ -83,9 +84,28 @@
     },
     {
       "persona": "release-steward",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["PR-001"]
+    },
+    {
+      "persona": "release-steward",
       "workflow": "dev",
       "stage": "ship",
       "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]
+    },
+    {
+      "persona": "release-steward",
+      "workflow": "dev",
+      "stage": "ship",
+      "installation_scope": "self_development",
+      "policies": ["VERSION-001"]
+    },
+    {
+      "persona": "decomposer",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["DECOMP-001"]
     },
     {
       "persona": "investigator",

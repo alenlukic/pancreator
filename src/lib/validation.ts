@@ -1,9 +1,10 @@
 import { spawnSync } from 'node:child_process'
-import { readdirSync } from 'node:fs'
+import { readdirSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 import { errorMessage, isNodeError } from './errors.js'
 import {
+  ensureDir,
   fileExists,
   isRecord,
   readJson,
@@ -12,7 +13,7 @@ import {
   sha256,
   writeTextAtomic,
 } from './io.js'
-import { loadPipelineConfig, syncCursorAgentModels } from './pipeline-config.js'
+import { loadPipelineConfig } from './pipeline-config.js'
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { HANDLER_IDS } from './requirements/handlers.js'
@@ -34,6 +35,7 @@ import {
 import { resolveRoots } from './workspace/roots.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import { activeOperatorGateWaivers } from './waivers.js'
+import { validateReleaseMetadata } from './versioning.js'
 import type {
   ArtifactReference,
   Criterion,
@@ -106,6 +108,37 @@ export function delegationPath(runId: string, invocationId: string): string {
     `runtime/logs/workflows/${runId}/invocations/` +
     `${invocationId}.delegation.md`
   )
+}
+
+const MISPLACED_DELEGATION_RELATIVE_PATH = '.delegation.md'
+
+/** Relocate a workspace-root delegation artifact to the invocation-scoped path. */
+export function relocateMisplacedDelegationArtifact(
+  root: string,
+  runId: string,
+  invocationId: string,
+): boolean {
+  const misplacedAbsolute = resolveInside(
+    root,
+    MISPLACED_DELEGATION_RELATIVE_PATH,
+  )
+
+  if (!fileExists(misplacedAbsolute)) {
+    return false
+  }
+
+  const targetRelative = delegationPath(runId, invocationId)
+  const targetAbsolute = resolveInside(root, targetRelative)
+
+  ensureDir(path.dirname(targetAbsolute))
+
+  if (!fileExists(targetAbsolute)) {
+    writeTextAtomic(targetAbsolute, readText(misplacedAbsolute))
+  }
+
+  rmSync(misplacedAbsolute, { force: true })
+
+  return true
 }
 
 export function delegationValidationPath(
@@ -1009,7 +1042,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
   const warnings: string[] = []
   const required = [
     'AGENTS.md',
+    'CHANGELOG.md',
+    'VERSION',
     'package.json',
+    'package-lock.json',
     'prettier.config.js',
     'tsconfig.json',
     'governance/registries/policy_lookup_table.json',
@@ -1024,15 +1060,27 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/schemas/stage-output.schema.json',
     'library/schemas/workflow.schema.json',
     'library/schemas/stage.schema.json',
-    '.cursor/commands/pan-start.md',
-    '.cursor/commands/pan-resume.md',
-    '.cursor/commands/pan-debug.md',
-    '.cursor/commands/pan-spotfix.md',
-    '.cursor/agents/investigator.md',
-    '.cursor/agents/spotfixer.md',
+    'library/cursor/commands/pan-start.md',
+    'library/cursor/commands/pan-resume.md',
+    'library/cursor/commands/pan-debug.md',
+    'library/cursor/commands/pan-decompose.md',
+    'library/cursor/commands/pan-build-docs.md',
+    'library/cursor/commands/pan-spotfix.md',
+    'library/cursor/commands/pan-write-pr.md',
+    'library/cursor/agents/decomposer.md',
+    'library/cursor/agents/librarian.md',
+    'library/cursor/agents/investigator.md',
+    'library/cursor/agents/spotfixer.md',
+    'library/personas/decomposer.md',
+    'library/personas/librarian.md',
     'library/personas/investigator.md',
     'library/personas/spotfixer.md',
     'library/skills/spotfix.md',
+    'library/skills/write-pr-description.md',
+    'release/index.json',
+    'governance/policies/DECOMP-001.json',
+    'governance/policies/PRIMER-001.json',
+    'governance/policies/PR-001.json',
     'governance/policies/WORK-001.json',
     'governance/policies/SPOT-001.json',
     'src/cli.ts',
@@ -1043,6 +1091,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
       errors.push(`missing required file: ${relative}`)
     }
   }
+
+  errors.push(...validateReleaseMetadata(root).errors)
 
   let pipelineConfig: LoadedPipelineConfig | null = null
   let handbookPolicies = new Map<string, Set<string>>()
@@ -1154,14 +1204,15 @@ export function validateRepository(root: string): RepositoryValidationResult {
         if (stage.persona !== 'orchestrator') {
           const agentPath = path.join(
             root,
-            '.cursor',
+            'library',
+            'cursor',
             'agents',
             `${stage.persona}.md`,
           )
 
           if (!fileExists(agentPath)) {
             errors.push(
-              `missing Cursor agent: .cursor/agents/${stage.persona}.md`,
+              `missing Cursor agent template: library/cursor/agents/${stage.persona}.md`,
             )
           }
         }
@@ -1172,7 +1223,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   const cursorAgentPersonas = new Set<string>()
-  const cursorAgentDirectory = path.join(root, '.cursor', 'agents')
+  const cursorAgentDirectory = path.join(root, 'library', 'cursor', 'agents')
 
   if (fileExists(cursorAgentDirectory)) {
     for (const entry of readdirSync(cursorAgentDirectory, {
@@ -1210,19 +1261,13 @@ export function validateRepository(root: string): RepositoryValidationResult {
         }
       }
     }
-
-    for (const entry of syncCursorAgentModels(root, pipelineConfig)) {
-      if (entry.changed) {
-        errors.push(
-          `${entry.path} model '${entry.previous_model ?? 'missing'}' does not ` +
-            `match active pipeline config '${pipelineConfig.name}' model ` +
-            `'${entry.model}'; run ./bin/pan models --sync`,
-        )
-      }
-    }
   }
 
-  for (const directory of ['.cursor/agents', '.cursor/commands', 'src/lib']) {
+  for (const directory of [
+    'library/cursor/agents',
+    'library/cursor/commands',
+    'src/lib',
+  ]) {
     const absolute = path.join(root, directory)
 
     if (fileExists(absolute) && readdirSync(absolute).length === 0) {

@@ -10,12 +10,14 @@ import { auditDirectives } from '../governance/audit-directives.js'
 import { validateProjectionDrift } from '../projection.js'
 import type { HandlerInput, HandlerResult, ValidatorHandler } from './types.js'
 import { validateAssessment } from '../validators/assessment.js'
+import { validateTargetRepoPrimer } from '../validators/target-repo-primer.js'
 import {
   validateOperatorArtifact,
   validateStageOutputStrict,
   type ArtifactProfile,
 } from '../validators/operator-artifact.js'
 import {
+  validateDecompositionArtifact,
   validateImplementationClaims,
   validateIntakeOutput,
   validateInvestigationArtifact,
@@ -140,6 +142,8 @@ export const HANDLERS: Record<string, ValidatorHandler> = {
   'review-validate': validateReviewOutput,
   'qa-validate': validateQaOutput,
   'release-validate': validateReleaseOutput,
+  'decomposition-validate': validateDecompositionArtifact,
+  'target-repo-primer-validate': validateTargetRepoPrimer,
   'investigation-validate': validateInvestigationArtifact,
   'spotfix-validate': validateSpotfixOutcome,
   'spotfix-escalation-scaffold': () => passed(),

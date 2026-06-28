@@ -1,0 +1,17 @@
+---
+description: Pancreator v2 workflow control rules
+alwaysApply: true
+---
+The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY use RFC 2119 meanings.
+
+You MUST read `AGENTS.md` and `runtime/target-repo-primer.md` before expanding repository context. You MUST NOT follow primer references unless a concrete task-specific need requires the referenced file. You MUST use `./bin/pan` and MUST NOT hand-edit runtime state. You MUST read the active invocation card before expanding context. Operator approvals and irreversible actions MUST remain operator-owned. TypeScript changes MUST conform to `governance/handbooks/typescript/style-guide.md`.
+
+For systematic workflow edits, agents MUST use the `pan changes begin|commit|cancel` protocol and MUST NOT directly edit lock, ledger, index, or generated run-state files. An operator-selected `/pan-spotfix` MAY edit tracked files directly only under `library/skills/spotfix.md` and only when no mutating workflow agent is executing against the same workspace. While mutating workflows run, external edits SHOULD be avoided because Pancreator locks are cooperative only.
+
+`./bin/pan set-stage`, `./bin/pan pause`, and `./bin/pan waive-gate` are operator-only. Agents MUST NOT invoke them or delegate their invocation.
+
+`rtk` (https://github.com/rtk-ai/rtk) globally wraps Cursor shell commands. Agents MAY see summarized or truncated output and SHOULD rerun with explicit bounded capture when exact shell bytes matter.
+
+`workdesk/` is a separate, private repository and the canonical embedded-installation validation target. You MUST NOT track or commit its contents from Pancreator. Installation work MAY refresh `workdesk/.pancreator` and Pancreator-owned `workdesk/.cursor` files; all target work MUST follow `workdesk/AGENTS.md` and preserve the source/target Git boundary.
+
+Version recommendations and `VERSION-001` apply only when `project.json.installation_mode` is `self_development`. The release steward MUST NOT edit release metadata or create commits; the operator records a release commit first and adds its hash to `release/index.json` in a later metadata commit.

@@ -33,6 +33,18 @@ on the same invocation so delivery can be corrected and resubmitted.
 `./bin/pan status` includes a dedicated validation section with invocation and
 delegation validation state, artifact paths, and short failure reasons.
 
+## Build the target repository primer
+
+Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The librarian inspects representative code, repository instructions and documentation, setup/build/install/test scripts, manifests, and bounded Git history, then writes the validated primer to `runtime/target-repo-primer.md` (`.pancreator/runtime/target-repo-primer.md` when embedded).
+
+Every agent reads this primer before expanding repository context. It is a navigation aid rather than an instruction to preload all referenced files: agents may follow a primer path only when the active task creates a concrete need for that file.
+
+## Assess unusually large intake
+
+Use `/pan-decompose <intake spec>` before starting a workflow when the request may contain multiple independently valuable outcomes or prerequisite decisions. `DECOMP-001` is intentionally conservative: the decomposer defaults to one larger run, requires every proposed chunk to be independently testable and safely completable, and then requires either a hard decomposition trigger or broad complexity pressure across several dimensions. File count, frontend/backend boundaries, tests, documentation, and implementation phases are not valid split boundaries by themselves.
+
+The decomposer also compares reduced implementation, review, and remediation risk against the repeated intake, planning, review, QA, release, and coordination cost of additional runs. Marginal cases remain intact. Valid decompositions normally contain two to four dependency-ordered chunks, preserve requirement traceability, and write a validated packet under `runtime/inbox/` whose chunks can be passed directly to `/pan-start`.
+
 ## Choose a work mode
 
 Use `systematic` by default. `/pan-start` executes the governed `dev` workflow
@@ -53,7 +65,7 @@ workspace.
 
 ## Select pipeline models
 
-`project.json` is the source of truth for named persona-to-model mappings. Set `active_config` to one of the declared configurations, then project that mapping into the Cursor worker agents:
+`project.json` is the source of truth for named persona-to-model mappings. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
 
 ```sh
 ./bin/pan models --sync
@@ -66,9 +78,9 @@ Each new run snapshots the active configuration in `runtime/logs/workflows/<run-
 
 ## Targeting a deliverable outside the repository root
 
-If the work lands somewhere other than the Pancreator repository root — most commonly a gitignored project capsule under `workdesk/` that is its own Git repository — start the run with `./bin/pan init ... --workspace workdesk/<project>`. The harness then fingerprints, runs gate commands against, and enforces scope boundaries on that directory. If you omit it for such a run, every "passing" check measured the Pancreator repository instead of your deliverable, and the green status proves nothing about the actual work. The active workspace appears on each invocation card; confirm it matches the deliverable before trusting any gate result.
+For ordinary target work, install Pancreator into the target repository and open that target in Cursor. `.pancreator/project.json` sets `workspace_root` to `..`, so workflow fingerprints, gate commands, and scope guards apply to the target automatically. Confirm the workspace shown on each invocation card before trusting gate results. `--workspace` remains an explicit override for exceptional self-development or migration work, not the default deployment model.
 
-To bootstrap Pancreator configuration in a new target repository, run `./bin/install --target <path>` from the Pancreator checkout. See [`docs/embedded-installation.md`](embedded-installation.md) for verification, partial-install prompts, and cleanup.
+Bootstrap a target with `./bin/install --target <path>` from the Pancreator source checkout, then run `./.pancreator/bin/pan doctor` and `./.pancreator/bin/pan validate` from the target. See [`docs/embedded-installation.md`](embedded-installation.md) for Cursor merge semantics, versioned updates, partial-install prompts, and cleanup.
 
 ## Intake approval
 
@@ -156,6 +168,12 @@ Use the protocol commands when a worker modifies tracked files:
 - `./bin/pan changes begin <run-id> <path>`
 - `./bin/pan changes commit <run-id> <path> --lock <lock-id>`
 - `./bin/pan changes cancel <run-id> <path> --lock <lock-id>`
+
+## Write a standalone PR description
+
+Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
+
+The command is read-only apart from its generated Markdown artifact. It does not create, update, or merge a pull request and stops when the base is invalid, the comparison is ambiguous, or there is no delta to describe.
 
 ## Release approval
 

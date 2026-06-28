@@ -1,0 +1,22 @@
+{
+  "id": "VERSION-001",
+  "title": "Pancreator self-development Semantic Versioning and changelog recommendation",
+  "severity": "hard",
+  "summary": "A Pancreator self-development release packet MUST apply Semantic Versioning, keep release metadata synchronized, maintain the Common Changelog entry, and preserve the release-to-commit index boundary.",
+  "instructions": [
+    "This policy MUST apply only when the active installation is explicitly marked as Pancreator self-development in project.json.",
+    "The release steward MUST read VERSION, package.json, package-lock.json, CHANGELOG.md, and release/index.json, then populate release.versioning with current_version, recommendation, proposed_version, rationale, compatibility, and release_index_action.",
+    "VERSION, package.json.version, and the root package-lock.json version MUST be identical complete Semantic Versioning values in MAJOR.MINOR.PATCH form, with valid optional prerelease or build metadata only when intentionally used.",
+    "recommendation MUST be exactly major, minor, patch, or neither.",
+    "The release steward MUST recommend major when the completed work introduces a backward-incompatible installed layout, command contract, durable-state schema, governance contract, or update path that requires target migration.",
+    "The release steward MUST recommend minor when the completed work adds a backward-compatible operator capability, workflow, persona, validation behavior, or material installation behavior.",
+    "The release steward MUST recommend patch when the completed work only corrects backward-compatible defects in existing behavior.",
+    "The release steward MUST recommend neither for documentation, tests, internal refactors, and maintenance that do not materially change installed or operator-facing behavior.",
+    "For major, proposed_version MUST be the next <major+1>.0.0 version; for minor, it MUST be <major>.<minor+1>.0; for patch, it MUST be <major>.<minor>.<patch+1>; for neither, it MUST preserve the current version.",
+    "CHANGELOG.md MUST follow Common Changelog structure, place the semantically latest release first, use Changed, Added, Removed, and Fixed groups in that order when present, describe impact in imperative mood, and link each change to the best available commit, pull request, issue, or repository document.",
+    "Before release approval, the release steward MUST verify that the latest CHANGELOG.md entry matches proposed_version and the actual release delta, or identify the exact changelog correction required before the release commit.",
+    "The release steward MUST NOT edit VERSION, package.json, package-lock.json, CHANGELOG.md, release/index.json, create a commit, or invent a commit hash.",
+    "The operator MUST synchronize version metadata and CHANGELOG.md in the release commit, then add that immutable commit to release/index.json in a separate metadata commit.",
+    "release_index_action MUST describe both operator actions and MUST NOT imply that the release commit can contain its own hash."
+  ]
+}

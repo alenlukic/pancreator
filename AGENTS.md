@@ -13,12 +13,20 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 5. Policies embedded in the invocation card MUST govern that invocation.
 6. Agents MUST NOT load broad governance or unrelated run history unless the invocation explicitly requires it.
 
+## Target repository primer
+
+- `PRIMER-001` governs the target-repository primer at `runtime/target-repo-primer.md`.
+- Before expanding repository context, every agent MUST read the primer. A missing or unbuilt primer blocks substantive repository work except for the librarian rebuilding it through `/pan-build-docs`.
+- The primer is orientation, not authority. Agents MUST NOT open or search files merely because the primer references them; a referenced file MAY be read only for a concrete task-specific need.
+- The operator request, this file, the active invocation card, and applicable policies retain precedence over primer content.
+
 ## Operating loop
 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
 - Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
-- A named worker stage MUST be delegated to the matching `.cursor/agents/<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `project.json`; run `./bin/pan models --sync` after changing `active_config` or a mapped model.
+- A named worker stage MUST be delegated to the matching locally projected `.cursor/agents/<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `project.json`; run `./bin/pan models --sync` after cloning or changing `active_config` or a mapped model.
+- `.cursor/` MUST remain fully gitignored and MUST be treated as disposable local configuration. Canonical Cursor agents, commands, and rules live under `library/cursor/` and are declared by `governance/registries/projection_manifest.json`; source or installation code MUST NOT treat `.cursor/` as authoritative input.
 - The supervisor MUST apply `INVOCATION-001` for canonical-card validation, prompt delivery, and delegation evidence. Detailed delegation instructions MUST live in that policy rather than parallel restatements here.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.
@@ -33,6 +41,7 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - `lightweight` MAY be selected only by an explicit operator invocation of `/pan-spotfix` and MUST apply `WORK-001`, `SPOT-001`, and `library/skills/spotfix.md`.
 - A request qualifies as lightweight only when it is one coherent small-scope change under `WORK-001`. Uncertain or expanded scope MUST route to `systematic`.
 - `/pan-debug` MUST delegate to the non-mutating investigator, which MUST identify root cause, define acceptance criteria, and recommend exactly one work mode.
+- `/pan-decompose` MUST apply `DECOMP-001` before workflow execution, default to retaining one larger systematic run, and write only its validated decomposition artifact under `runtime/inbox/`.
 - A lightweight spotfix MUST NOT run while a mutating workflow agent is executing against the same workspace.
 
 ## Safety and scope
@@ -52,14 +61,21 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Agents MUST NOT hand-edit workspace index, ledger, lock, or generated run records.
 - If a modification is interrupted, agents MUST report it rather than deleting evidence.
 
-## Nested project repositories (`workdesk/`)
+## Embedded validation target (`workdesk/`)
 
-- `workdesk/` is a **separate, private git repository** (remote `github.com:alenlukic/workdesk`) nested inside this checkout. It houses small personal projects and is frequently the target of development work.
-- `workdesk/` is listed in this repository's `.gitignore`. It is NOT part of the Pancreator repository.
+- `workdesk/` is a **separate, private git repository** (remote `github.com:alenlukic/workdesk`) nested inside this checkout and gitignored by Pancreator.
+- It is the canonical local target for validating the inverse embedding model: the source checkout installs Pancreator into `workdesk/.pancreator`, while Workdesk remains the workspace and Git owner.
 - Agents MUST NOT stage, commit, or otherwise track `workdesk/` contents from the Pancreator repository, and MUST NOT add `workdesk/` paths to Pancreator commits.
-- When working inside `workdesk/`, the agent MUST read `workdesk/AGENTS.md` and the relevant subproject's own `AGENTS.md` (for example `workdesk/career/AGENTS.md`) and MUST treat those as the authoritative operating cards for that work.
-- Git operations inside `workdesk/` act on the `workdesk` repository, not Pancreator. The operator-owned action boundaries in **Safety and scope** apply equally there: agents MUST NOT commit, push, merge, or rewrite history without explicit operator authorization recorded for that action.
-- Code MUST NOT cross the boundary: Pancreator code MUST NOT import or depend on `workdesk/` projects, and `workdesk/` projects MUST NOT import or invoke Pancreator harness code.
+- Before changing the target, agents MUST read `workdesk/AGENTS.md`. Git operations inside `workdesk/` act on the Workdesk repository and remain subject to the operator-owned action boundaries in **Safety and scope**.
+- Pancreator source code MUST NOT import Workdesk application code. Workdesk application code MUST NOT depend on Pancreator internals; the generated `.pancreator/` harness and root `.cursor/` projection are tooling boundaries, not application dependencies.
+- Installation and update validation MAY create or refresh `workdesk/.pancreator` and Pancreator-owned files under `workdesk/.cursor` only when the active task explicitly covers installation infrastructure.
+
+## Self-development release boundary
+
+- `project.json.installation_mode` MUST be `self_development` only in the Pancreator source checkout. Target installs MUST use `embedded`.
+- `VERSION-001` and release-version recommendations apply only to Pancreator self-development workflow ship stages. They MUST NOT be injected into target-repository workflows.
+- The release steward MAY recommend `major`, `minor`, `patch`, or `neither`, but MUST NOT edit `VERSION`, `package.json`, `package-lock.json`, `CHANGELOG.md`, or `release/index.json`, create commits, or invent commit hashes.
+- Release metadata MUST use complete Semantic Versioning (`MAJOR.MINOR.PATCH`). The release commit MUST synchronize `VERSION`, npm metadata, and the current Common Changelog entry before its version-to-commit mapping is added to `release/index.json` in a later metadata commit.
 
 ## TypeScript
 

@@ -1,4 +1,3 @@
-import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { invariant } from './errors.js'
@@ -9,7 +8,6 @@ import {
   readText,
   resolveInside,
   sha256,
-  writeTextAtomic,
 } from './io.js'
 
 export interface NamedPipelineConfig {
@@ -42,14 +40,6 @@ export interface PipelineConfigSnapshot {
   source_sha256: string
   summary?: string
   personas: Record<string, string>
-}
-
-export interface CursorAgentModelChange {
-  persona: string
-  path: string
-  previous_model: string | null
-  model: string
-  changed: boolean
 }
 
 const CONFIG_PATH = 'project.json'
@@ -227,89 +217,4 @@ export function resolvePersonaModel(
   )
 
   return model
-}
-
-function agentFrontmatter(raw: string, source: string): RegExpExecArray {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---/u.exec(raw)
-
-  invariant(match, `${source} MUST start with YAML frontmatter.`, {
-    code: 'INVALID_CURSOR_AGENT',
-  })
-
-  return match
-}
-
-export function readCursorAgentModel(
-  raw: string,
-  source: string,
-): string | null {
-  const match = agentFrontmatter(raw, source)
-  const model = /^model:\s*(.+)$/mu.exec(match[1] ?? '')?.[1]?.trim()
-
-  return model?.replace(/^['"]|['"]$/gu, '') ?? null
-}
-
-export function setCursorAgentModel(
-  raw: string,
-  model: string,
-  source: string,
-): { content: string; previousModel: string | null; changed: boolean } {
-  const match = agentFrontmatter(raw, source)
-  const frontmatter = match[1] ?? ''
-  const modelPattern = /^model:\s*.*$/mu
-  const previousModel = readCursorAgentModel(raw, source)
-  const nextFrontmatter = modelPattern.test(frontmatter)
-    ? frontmatter.replace(modelPattern, `model: ${model}`)
-    : `${frontmatter}\nmodel: ${model}`
-  const content = raw.replace(match[0], `---\n${nextFrontmatter}\n---`)
-
-  return { content, previousModel, changed: content !== raw }
-}
-
-export function syncCursorAgentModels(
-  root: string,
-  loaded: LoadedPipelineConfig,
-  options: { write?: boolean } = {},
-): CursorAgentModelChange[] {
-  const agentsDirectory = path.join(root, '.cursor', 'agents')
-
-  if (!fileExists(agentsDirectory)) {
-    return []
-  }
-
-  const changes: CursorAgentModelChange[] = []
-
-  for (const entry of readdirSync(agentsDirectory, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith('.md')) {
-      continue
-    }
-
-    const persona = entry.name.slice(0, -3)
-    const model = loaded.config.personas[persona]
-
-    if (!model) {
-      continue
-    }
-
-    const relativePath = `.cursor/agents/${entry.name}`
-    const filePath = path.join(agentsDirectory, entry.name)
-    const raw = readText(filePath)
-    const result = setCursorAgentModel(raw, model, relativePath)
-
-    if (options.write && result.changed) {
-      writeTextAtomic(filePath, result.content)
-    }
-
-    changes.push({
-      persona,
-      path: relativePath,
-      previous_model: result.previousModel,
-      model,
-      changed: result.changed,
-    })
-  }
-
-  return changes.sort((left, right) =>
-    left.persona.localeCompare(right.persona),
-  )
 }

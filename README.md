@@ -1,6 +1,6 @@
-# Pancreator v2 prototype
+# Pancreator v2.0.0
 
-Pancreator v2 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
+Pancreator v2.0.0 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
 
 ## What this prototype proves
 
@@ -22,12 +22,16 @@ There are no npm runtime dependencies. TypeScript and Prettier are development-o
 
 ## Quick start in Cursor
 
-1. Open the repository in Cursor.
-2. Run `/pan-validate` once.
-3. Use `/pan-start <your request>` for systematic delivery.
-4. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
-5. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
-6. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
+1. Run `./bin/pan models --sync` once after cloning to generate the ignored local `.cursor/` projection.
+2. Open or reload the repository in Cursor.
+3. Run `/pan-validate` once.
+4. Run `/pan-build-docs` to build or refresh `runtime/target-repo-primer.md`.
+5. Use `/pan-decompose <intake spec>` when a request may be too large for one efficient workflow run.
+6. Use `/pan-start <your request>` for systematic delivery.
+7. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
+8. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
+9. Use `/pan-write-pr [base-branch]` to draft a PR description from the current branch and worktree; the base defaults to `main`.
+10. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
 
 The CLI is also directly usable:
 
@@ -44,17 +48,21 @@ The CLI is also directly usable:
 ./bin/pan waive-gate <run-id> --criteria <id[,id...]> --note "accepted exception"
 ```
 
-### Deliverable workspace
+### Workspace model
 
-By default a run fingerprints, runs deterministic gate commands against, and enforces scope boundaries on the Pancreator repository root. When the deliverable lives elsewhere — for example a gitignored, self-contained project capsule that is its own Git repository — pass `--workspace`:
+The source checkout is Pancreator's self-development environment. Normal use
+installs the harness into a target repository at `.pancreator/`; the target root
+then becomes the configured workspace automatically. Manual `--workspace`
+overrides remain available for exceptional self-development and migration work,
+but they are not the normal target-repository interface.
 
-```sh
-./bin/pan init --workflow dev --request runtime/inbox/request.md --workspace workdesk/my-project
-```
+### Target repository primer
 
-The harness then fingerprints that directory's Git state (nested repositories included), runs each stage's shell gate in that directory, and evaluates the read-only scope guard there. Without this, work performed inside a gitignored path is invisible to every deterministic check and "success" reflects only the surrounding repository, not the deliverable.
+`/pan-build-docs` delegates to the librarian persona to scan the target repository and rebuild `runtime/target-repo-primer.md`. The primer records verified administrative commands, a Mermaid architecture overview, key paths, public interfaces, and gotchas. Every agent reads it before expanding repository context but must not follow its file references unless the active task specifically requires those files.
 
 ## Work modes
+
+`/pan-decompose` is an optional pre-workflow assessment for unusually broad intake. It applies `DECOMP-001`, defaults to retaining one larger systematic run, and decomposes only when independently valuable chunks cross a conservative complexity threshold and save more execution risk than the extra workflow overhead they create. File count and technical-layer boundaries are never sufficient by themselves. The validated packet is written under `runtime/inbox/` and contains either one retained intake or a small dependency-ordered set of standalone `/pan-start` chunks.
 
 `systematic` is the default and executes a governed workflow such as `dev`.
 `lightweight` is an explicit operator choice through `/pan-spotfix`; it is limited
@@ -68,15 +76,39 @@ lint, unit tests, regression tests, and acceptance-criteria evidence when those
 checks exist. Unresolved or expanded work is preserved in a uniquely named
 `runtime/inbox/spotfix-escalation-*.md` item for systematic routing.
 
+### Standalone PR descriptions
+
+`/pan-write-pr [base-branch]` invokes the release steward without creating a workflow run. It compares the current branch and complete worktree against the merge base with `main` by default, or against one explicitly supplied base ref. The generated body is saved under `runtime/pr-descriptions/` and surfaced in chat; the command never creates, updates, or merges a pull request.
+
 ## Embedded installation
 
-To add Pancreator to another repository, use the installer and read the detailed guide:
+Install Pancreator from this source checkout into the repository that Cursor
+will manage:
 
 ```sh
 ./bin/install --target /path/to/your-project
+cd /path/to/your-project
+./.pancreator/bin/pan doctor
+./.pancreator/bin/pan validate
 ```
 
-See [`docs/embedded-installation.md`](docs/embedded-installation.md) for generated files, verification, partial-install behavior, and cleanup.
+If the target already has a `.gitignore`, the installer adds `.pancreator/`
+idempotently and preserves the rest of the file; it does not create a new
+`.gitignore` for targets that lack one.
+
+The harness lives at `.pancreator/`; Pancreator agents, commands, and its rule
+are merged into the target `.cursor/`. Existing `.cursor` state triggers a
+warning and conflicting files are backed up before replacement.
+
+Clean unindexed release candidates and dirty development snapshots can be
+installed for validation, but only indexed releases can use automatic updates.
+For an indexed release update, initiate the fast-forward from Pancreator:
+
+```sh
+./bin/update --target /path/to/your-project
+```
+
+See [`CHANGELOG.md`](CHANGELOG.md) for release history and [`docs/embedded-installation.md`](docs/embedded-installation.md) for the installed boundary, Semantic Versioning/index protocol, update guarantees, partial-install behavior, and cleanup.
 
 ## Runtime record layout
 
@@ -132,10 +164,7 @@ idempotent.
 
 ## Library layout
 
-Workflow definitions, personas, prompts, skills, schemas, and templates live
-under `library/`. Standalone command personas such as `investigator` and
-`spotfixer` use the same canonical-persona plus projected-Cursor-agent pattern as
-workflow personas. Each workflow is a slim index plus one file per stage:
+Workflow definitions, personas, prompts, skills, schemas, templates, and canonical Cursor projection sources live under `library/`. `.cursor/` is ignored local output, never source authority. `governance/registries/projection_manifest.json` maps `library/cursor/` agents, commands, and rules into the local or embedded Cursor surface. Standalone command personas such as `investigator` and `spotfixer` use the same canonical-persona plus projected-Cursor-agent pattern as workflow personas. Each workflow is a slim index plus one file per stage:
 
 ```text
 library/workflows/<slug>/
@@ -149,9 +178,7 @@ semantics and the JSON schemas in `library/schemas/`.
 
 ### Pipeline model configuration
 
-`project.json` restores V1-style named persona-to-model mappings. The
-active mapping is copied into matching Cursor subagent frontmatter and snapshotted
-for each run. After changing `active_config` or any mapping, synchronize and
+`project.json` restores V1-style named persona-to-model mappings. The active mapping is rendered from canonical `library/cursor/agents/` templates into ignored local Cursor subagent frontmatter and snapshotted for each run. After changing `active_config` or any mapping, synchronize and
 validate it:
 
 ```sh

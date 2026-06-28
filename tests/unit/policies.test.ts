@@ -1,5 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 
@@ -22,6 +24,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'TS-001',
     'VALID-001',
   ])
@@ -45,6 +48,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'REVIEW-001',
     'TS-001',
     'VALID-001',
@@ -64,6 +68,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'TEST-001',
     'TS-001',
     'VALID-001',
@@ -108,6 +113,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'ORCH-001',
     'OUTPUT-001',
     'PAUSE-001',
+    'PRIMER-001',
     'VALID-001',
     'WAIVER-001',
     'WORK-001',
@@ -119,10 +125,55 @@ test('orchestration and release guidance resolve with required policy dependenci
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PR-001',
+    'PRIMER-001',
     'SHIP-001',
     'VALID-001',
+    'VERSION-001',
     'WAIVER-001',
     'WORK-001',
+  ])
+})
+
+test('self-development version policy is excluded from embedded installations', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'project.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const releaseIds = resolvePolicies(root, {
+    persona: 'release-steward',
+    workflow: 'dev',
+    stage: 'ship',
+  }).map((policy) => policy.id)
+
+  assert.ok(!releaseIds.includes('VERSION-001'))
+  assert.ok(releaseIds.includes('SHIP-001'))
+})
+
+test('decomposer loads conservative decomposition governance', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'decomposer',
+    workflow: 'standalone',
+    stage: 'decompose',
+  }).map((policy) => policy.id)
+
+  assert.deepEqual(ids, [
+    'ACTION-001',
+    'AUTO-001',
+    'BIN-001',
+    'DECOMP-001',
+    'GLOBAL-001',
+    'GLOBAL-002',
+    'OUTPUT-001',
+    'PRIMER-001',
+    'VALID-001',
   ])
 })
 
@@ -142,6 +193,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'VALID-001',
     'WORK-001',
   ])
@@ -160,9 +212,22 @@ test('standalone remediation personas load their work-mode policies', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'SPOT-001',
     'TS-001',
     'VALID-001',
     'WORK-001',
   ])
+})
+
+test('librarian loads target primer governance', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'build-docs',
+  }).map((policy) => policy.id)
+
+  assert.ok(ids.includes('PRIMER-001'))
+  assert.ok(ids.includes('VALID-001'))
 })

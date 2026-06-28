@@ -47,6 +47,17 @@ const DEFAULT_GENERATED_PATHS = new Set([
   'tsconfig.tsbuildinfo',
 ])
 
+const MISPLACED_DELEGATION_PATH = '.delegation.md'
+
+/** Root-level delegation file mistakenly written outside runtime/. */
+function isMisplacedDelegationArtifact(relativePath: string): boolean {
+  try {
+    return normalizeWorkspacePath(relativePath) === MISPLACED_DELEGATION_PATH
+  } catch {
+    return false
+  }
+}
+
 /** Whether a path is an expected generated artifact that must not block gates. */
 export function isNonBlockingGeneratedArtifact(
   roots: ResolvedRoots,
@@ -100,6 +111,10 @@ export function blockingWorkspacePathsFromSnapshots(
 
   for (const relativePath of paths) {
     if (beforeByPath.get(relativePath) === afterByPath.get(relativePath)) {
+      continue
+    }
+
+    if (isMisplacedDelegationArtifact(relativePath)) {
       continue
     }
 

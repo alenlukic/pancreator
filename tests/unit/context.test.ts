@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -215,6 +215,38 @@ test('ship context selects effective records and indexes superseded history', ()
     true,
   )
   assert.deepEqual(inputs.missing_required, undefined)
+  assert.equal(byPath.get('VERSION')?.retrieval, 'required')
+  assert.equal(byPath.get('release/index.json')?.retrieval, 'required')
+})
+
+test('embedded ship context omits Pancreator self-development release metadata', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'project.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const inputs = buildInvocationInputs({
+    root,
+    state: stateWith([]),
+    stage: stageBySlug(loadWorkflow(root, 'dev'), 'ship'),
+    attempt: 1,
+    invocationId: 'ship-embedded',
+    workspaceFingerprint: 'fp-current',
+  })
+
+  assert.equal(
+    inputs.references.some((item) => item.path === 'VERSION'),
+    false,
+  )
+  assert.equal(
+    inputs.references.some((item) => item.path === 'release/index.json'),
+    false,
+  )
 })
 
 test('missing required stage outputs are explicit instead of triggering broad scans', () => {

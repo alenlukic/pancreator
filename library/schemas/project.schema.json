@@ -78,6 +78,9 @@
           }
         }
       }
+    },
+    "installation_mode": {
+      "enum": ["self_development", "embedded"]
     }
   }
 }

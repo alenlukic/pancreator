@@ -18,11 +18,10 @@ import {
   waiveGate,
 } from './lib/engine.js'
 import { PanError } from './lib/errors.js'
+import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { isGitRepository } from './lib/git.js'
-import {
-  loadPipelineConfig,
-  syncCursorAgentModels,
-} from './lib/pipeline-config.js'
+import { loadPipelineConfig } from './lib/pipeline-config.js'
+import { syncCursorProjection } from './lib/projection.js'
 import {
   fileExists,
   findProjectRoot,
@@ -33,6 +32,7 @@ import {
   writeTextAtomic,
 } from './lib/io.js'
 import type { RunState } from './lib/types.js'
+import type { InvocationKind } from './lib/requirements/types.js'
 import { validateRepository } from './lib/validation.js'
 import { buildValidationMap } from './lib/requirements/map.js'
 import { loadRegistry } from './lib/requirements/registry.js'
@@ -60,9 +60,7 @@ import { snapshotWorkspace } from './lib/workspace/index.js'
 import { resolveRoots } from './lib/workspace/roots.js'
 import { validateWorkflowChanges } from './lib/workspace/validate-changes.js'
 
-const HELP = `Pancreator v2 prototype
-
-Usage:
+const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow dev] [--title <title>] [--workspace <dir>] [--gates <file>]
   pan prepare <run-id>
   pan submit <run-id> <output-json>
@@ -84,7 +82,8 @@ Usage:
   pan models [--sync] [--json]
   pan validate [--json]
   pan doctor [--json]
-  pan requirements resolve --persona <p> --workflow <w> --stage <s> [--json]
+  pan requirements resolve --persona <p> --workflow <w> --stage <s> [--kind <kind>] [--output-path <path>] [--json]
+  pan requirements run --persona <p> --workflow <w> --stage <s> --kind <kind> --registry <id> --target <path> [--json]
   pan output scaffold <run-id> --invocation <path> --output <path> [--force]
   pan output validate <run-id> --file <path> [--json]
   pan assessment scaffold <run-id> --invocation <path> --output <path> [--force]
@@ -95,6 +94,17 @@ Usage:
 The harness does not invoke models. Cursor's supervisor reads invocation cards,
 delegates to named Cursor subagents, and returns structured output to this CLI.
 `
+
+function helpText(root: string): string {
+  const versionPath = path.join(root, 'VERSION')
+  const version = fileExists(versionPath)
+    ? readText(versionPath).trim()
+    : 'unknown'
+
+  return `Pancreator v${version}
+
+${HELP_BODY}`
+}
 
 function option(
   args: string[],
@@ -144,6 +154,38 @@ function commaSeparatedOption(args: string[], name: string): string[] {
     : []
 }
 
+const INVOCATION_KINDS = new Set<InvocationKind>([
+  'workflow',
+  'assessment',
+  'spotfix',
+  'investigation',
+  'decomposition',
+  'documentation',
+])
+
+function invocationKindOption(
+  args: string[],
+  required = false,
+): InvocationKind | undefined {
+  const value = option(args, '--kind')
+
+  if (!value) {
+    if (required) {
+      throw new PanError('--kind is required.', { code: 'INVALID_ARGUMENT' })
+    }
+
+    return undefined
+  }
+
+  if (!INVOCATION_KINDS.has(value as InvocationKind)) {
+    throw new PanError(`Unknown invocation kind: ${value}`, {
+      code: 'INVALID_ARGUMENT',
+    })
+  }
+
+  return value as InvocationKind
+}
+
 function print(value: unknown, asJson = false): void {
   if (asJson || typeof value !== 'string') {
     process.stdout.write(`${JSON.stringify(value, null, 2)}\n`)
@@ -187,7 +229,7 @@ function activeModificationContext(root: string, runId: string) {
     `${state.current_stage}-${stageAttempt}-manual`
   const roots = resolveRoots({
     installation_root: root,
-    workspace_root: resolveInside(root, state.workspace_root),
+    workspace_root: path.resolve(root, state.workspace_root),
     state_root: state.state_root,
   })
 
@@ -330,11 +372,13 @@ function runAgentPreSubmitValidators(
 
 async function main(): Promise<void> {
   const root = findProjectRoot()
+  const help = helpText(root)
+  const pan = panCommand(root)
   const [command = 'help', ...args] = process.argv.slice(2)
   const json = hasFlag(args, '--json')
 
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
-    print(HELP)
+    print(help)
     return
   }
 
@@ -342,7 +386,7 @@ async function main(): Promise<void> {
     case 'help':
     case '--help':
     case '-h':
-      print(HELP)
+      print(help)
       return
     case 'init': {
       const state = createRun(root, {
@@ -358,7 +402,7 @@ async function main(): Promise<void> {
         run_id: state.run_id,
         workspace_root: state.workspace_root,
         pipeline_config: state.pipeline_config?.name,
-        next_command: `./bin/pan prepare ${state.run_id}`,
+        next_command: `${pan} prepare ${state.run_id}`,
         state_path: `runtime/logs/workflows/${state.run_id}/state.json`,
       })
       return
@@ -459,7 +503,7 @@ async function main(): Promise<void> {
       print({
         status: state.status,
         current_stage: state.current_stage,
-        next_command: `./bin/pan prepare ${runId}`,
+        next_command: `${pan} prepare ${runId}`,
       })
       return
     }
@@ -486,7 +530,7 @@ async function main(): Promise<void> {
         status: state.status,
         current_stage: state.current_stage,
         pending_action: state.pending_action,
-        next_command: `./bin/pan prepare ${runId}`,
+        next_command: `${pan} prepare ${runId}`,
       })
       return
     }
@@ -504,7 +548,7 @@ async function main(): Promise<void> {
         current_stage: state.current_stage,
         accepted_workspace_fingerprint: state.accepted_workspace_fingerprint,
         latest_ledger_validation: state.latest_ledger_validation,
-        next_command: `./bin/pan prepare ${runId}`,
+        next_command: `${pan} prepare ${runId}`,
       })
       return
     }
@@ -624,10 +668,11 @@ async function main(): Promise<void> {
         })
       }
 
-      const workspaceRoot = option(args, '--workspace', '.') ?? '.'
+      const workspaceRoot =
+        option(args, '--workspace') ?? configuredWorkspaceRoot(root)
       const roots = resolveRoots({
         installation_root: root,
-        workspace_root: resolveInside(root, workspaceRoot),
+        workspace_root: path.resolve(root, workspaceRoot),
         state_root: option(args, '--state-root'),
       })
       const result = snapshotWorkspace(roots, hasFlag(args, '--adopt'))
@@ -656,7 +701,7 @@ async function main(): Promise<void> {
       const state = getRunState(root, runId)
       const roots = resolveRoots({
         installation_root: root,
-        workspace_root: resolveInside(root, state.workspace_root),
+        workspace_root: path.resolve(root, state.workspace_root),
         state_root: state.state_root,
       })
       const result = validateWorkflowChanges({
@@ -682,7 +727,7 @@ async function main(): Promise<void> {
       return
     case 'models': {
       const loaded = loadPipelineConfig(root)
-      const changes = syncCursorAgentModels(root, loaded, {
+      const changes = syncCursorProjection(root, {
         write: hasFlag(args, '--sync'),
       })
 
@@ -692,7 +737,7 @@ async function main(): Promise<void> {
           summary: loaded.config.summary,
           personas: loaded.config.personas,
           sync_requested: hasFlag(args, '--sync'),
-          changed_agents: changes.filter((entry) => entry.changed),
+          changed_projections: changes.filter((entry) => entry.changed),
         },
         true,
       )
@@ -728,16 +773,101 @@ async function main(): Promise<void> {
         )
         const stage = requiredArgument(option(args, '--stage'), '--stage')
         const outputPath = option(args, '--output-path') ?? undefined
+        const invocationKind = invocationKindOption(args)
 
         print(
           resolveRequirements(root, {
             persona,
             workflow,
             stage,
-            ...(outputPath ? { invocation: { output_path: outputPath } } : {}),
+            ...(invocationKind ? { invocation_kind: invocationKind } : {}),
+            ...(outputPath
+              ? {
+                  invocation: {
+                    output_path: outputPath,
+                    artifact_paths: [outputPath],
+                  },
+                }
+              : {}),
           }),
           hasFlag(args, '--json'),
         )
+        return
+      }
+
+      if (sub === 'run') {
+        const persona = requiredArgument(option(args, '--persona'), '--persona')
+        const workflow = requiredArgument(
+          option(args, '--workflow'),
+          '--workflow',
+        )
+        const stage = requiredArgument(option(args, '--stage'), '--stage')
+        const invocationKind = invocationKindOption(args, true)
+        const registryId = requiredArgument(
+          option(args, '--registry'),
+          '--registry',
+        )
+        const targetPath = requiredArgument(
+          option(args, '--target'),
+          '--target',
+        )
+        const manifest = resolveRequirements(root, {
+          persona,
+          workflow,
+          stage,
+          invocation_kind: invocationKind,
+          invocation: {
+            output_path: targetPath,
+            artifact_paths: [targetPath],
+          },
+        })
+        const requirements = [
+          ...manifest.automation_requirements,
+          ...manifest.validation_requirements,
+        ].filter((item) => item.registry_id === registryId)
+
+        if (requirements.length !== 1) {
+          throw new PanError(
+            requirements.length === 0
+              ? `Registry ${registryId} did not resolve for this context.`
+              : `Registry ${registryId} resolved more than once for this context.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const catalog = loadRegistry(root)
+        const entry = catalog.entries.get(registryId)
+        const targetKind = inferTargetKind(targetPath)
+
+        if (entry?.kind !== 'validator') {
+          throw new PanError(
+            `Registry ${registryId} is not a standalone validator.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        if (!entry.target_types.includes(targetKind)) {
+          throw new PanError(
+            `Registry ${registryId} does not accept target kind ${targetKind}.`,
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        const result = runRequirement({
+          root,
+          requirement: requirements[0],
+          targetPath,
+          executor: 'agent',
+          catalog,
+          persist: false,
+        })
+
+        print(result, hasFlag(args, '--json'))
+
+        if (!isPassingResult(result)) {
+          process.exitCode = 1
+        }
+
         return
       }
 
@@ -940,7 +1070,7 @@ async function main(): Promise<void> {
       return
     }
     default:
-      throw new PanError(`Unknown command: ${command}\n\n${HELP}`, {
+      throw new PanError(`Unknown command: ${command}\n\n${help}`, {
         code: 'UNKNOWN_COMMAND',
       })
   }

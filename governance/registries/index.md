@@ -8,7 +8,7 @@ lives in this directory:
 - `policy_lookup_table.json` selects policies by persona, workflow, and stage.
 - `validation_registry.json` defines durable automation and validator handlers.
 - `directive_exemptions.json` records reviewed directive-audit exemptions.
-- `projection_manifest.json` declares generated projections from canonical files.
+- `projection_manifest.json` declares generated projections from canonical `library/` or `src/` files into disposable local surfaces such as `.cursor/`.
 
 Policy modules remain under `governance/policies/`; handbooks remain under
 `governance/handbooks/`.

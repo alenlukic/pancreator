@@ -3,36 +3,56 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PANCREATOR_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SOURCE_COMMIT_OVERRIDE=""
+SOURCE_DIRTY_OVERRIDE=""
+SOURCE_INDEXED_OVERRIDE=""
 
 TARGET_DIR=""
 MODE=""
 NON_INTERACTIVE=0
 CHOICE=""
 SMOKE_RUN=0
+SKIP_DEPENDENCIES=0
+
+SOURCE_PAYLOAD_ENTRIES=(
+  .npmrc
+  .prettierignore
+  README.md
+  CHANGELOG.md
+  VERSION
+  bin
+  docs
+  governance
+  library
+  package-lock.json
+  package.json
+  prettier.config.js
+  src
+  tests
+  tsconfig.json
+)
+GENERATED_PAYLOAD_ENTRIES=(AGENTS.md .gitignore dist node_modules)
 
 usage() {
-  cat <<'EOF'
-Embed Pancreator into a target project.
+  cat <<'USAGE'
+Install Pancreator into a target repository.
 
 Usage:
   install --target <dir> [options]
   install --smoke
 
 Options:
-  --target <dir>           Target project directory (required unless --smoke)
-  --pancreator-root <dir>  Pancreator checkout (default: parent of this script)
-  --repair                 Repair a partial installation (non-interactive)
-  --clean                  Remove Pancreator-owned files and reinstall (non-interactive)
-  --yes                    Idempotent rerun for a complete installation (non-interactive)
-  --choice <r|c|a>         Deterministic partial-install choice (smoke/test harness)
-  --smoke                  Run scripted smoke verification against dummy projects
+  --target <dir>           Target repository (required unless --smoke)
+  --pancreator-root <dir>  Pancreator checkout or release payload
+  --repair                 Repair a partial installation
+  --clean                  Remove .pancreator and reinstall
+  --yes                    Idempotently refresh a complete installation
+  --smoke                  Run scripted installer verification
   -h, --help               Show this help
 
-Interactive partial installs prompt:
-  [r] repair   fix missing configuration
-  [c] clean    remove .pancreator and reinstall
-  [a] abort    exit without changes
-EOF
+A complete installation contains the harness at <target>/.pancreator and merges
+Pancreator commands, subagents, and rules into <target>/.cursor.
+USAGE
 }
 
 while [[ $# -gt 0 ]]; do
@@ -43,6 +63,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     --pancreator-root)
       PANCREATOR_ROOT="${2:-}"
+      shift 2
+      ;;
+    --source-commit)
+      SOURCE_COMMIT_OVERRIDE="${2:-}"
+      shift 2
+      ;;
+    --source-dirty)
+      SOURCE_DIRTY_OVERRIDE="${2:-}"
+      shift 2
+      ;;
+    --source-indexed)
+      SOURCE_INDEXED_OVERRIDE="${2:-}"
       shift 2
       ;;
     --repair)
@@ -60,9 +92,18 @@ while [[ $# -gt 0 ]]; do
       NON_INTERACTIVE=1
       shift
       ;;
+    --update)
+      MODE="update"
+      NON_INTERACTIVE=1
+      shift
+      ;;
     --choice)
       CHOICE="${2:-}"
       shift 2
+      ;;
+    --skip-dependencies)
+      SKIP_DEPENDENCIES=1
+      shift
       ;;
     --smoke)
       SMOKE_RUN=1
@@ -81,15 +122,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 run_smoke() {
-  local smoke_root failures step fresh_project complete_project repair_project clean_project abort_project
+  local smoke_root failures fresh_project existing_cursor_project partial_project no_gitignore_project
 
   smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-smoke.XXXXXX")"
   failures=0
 
   smoke_step() {
-    step="$1"
+    local step="$1"
     shift
+
     echo "smoke: $step"
+
     if ! "$@"; then
       echo "smoke: FAILED $step" >&2
       failures=$((failures + 1))
@@ -97,41 +140,61 @@ run_smoke() {
   }
 
   smoke_project() {
-    mktemp -d "${smoke_root}/project.XXXXXX"
+    local project
+
+    project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
+    printf 'node_modules/\n' >"$project/.gitignore"
+    printf '%s' "$project"
   }
 
-  smoke_verify_config() {
+  smoke_verify() {
     local project="$1"
-    test -f "$project/project.json" \
+
+    test -x "$project/.pancreator/bin/pan" \
+      && test -f "$project/.pancreator/project.json" \
       && test -f "$project/.pancreator/install.json" \
-      && test -d "$project/.pancreator/runtime/inbox"
+      && test -d "$project/.pancreator/runtime/inbox" \
+      && test -f "$project/.pancreator/runtime/target-repo-primer.md" \
+      && test -L "$project/.pancreator/.cursor" \
+      && test -f "$project/.cursor/commands/pan-start.md" \
+      && test -f "$project/.cursor/agents/coder.md" \
+      && grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
+        "$project/.gitignore" \
+      && test "$(grep -Ec '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' \
+        "$project/.gitignore")" -eq 1 \
+      && test ! -e "$project/.pancreator/workdesk" \
+      && test ! -e "$project/.pancreator/runtime/workflows"
   }
 
   fresh_project="$(smoke_project)"
-  smoke_step "fresh install" bash "$0" --target "$fresh_project" --pancreator-root "$PANCREATOR_ROOT"
-  smoke_step "verify fresh install" smoke_verify_config "$fresh_project"
+  smoke_step "fresh install" bash "$0" --target "$fresh_project" \
+    --pancreator-root "$PANCREATOR_ROOT" --skip-dependencies
+  smoke_step "verify fresh install" smoke_verify "$fresh_project"
+  smoke_step "idempotent refresh" bash "$0" --target "$fresh_project" \
+    --pancreator-root "$PANCREATOR_ROOT" --yes --skip-dependencies
+  smoke_step "verify idempotent refresh" smoke_verify "$fresh_project"
 
-  complete_project="$(smoke_project)"
-  smoke_step "complete install for idempotent rerun" bash "$0" --target "$complete_project" --pancreator-root "$PANCREATOR_ROOT"
-  smoke_step "idempotent rerun (--yes)" bash "$0" --target "$complete_project" --pancreator-root "$PANCREATOR_ROOT" --yes
+  existing_cursor_project="$(smoke_project)"
+  mkdir -p "$existing_cursor_project/.cursor/rules"
+  printf 'custom\n' >"$existing_cursor_project/.cursor/rules/custom.mdc"
+  smoke_step "existing cursor merge" bash "$0" \
+    --target "$existing_cursor_project" --pancreator-root "$PANCREATOR_ROOT" \
+    --skip-dependencies
+  smoke_step "preserve custom cursor file" test -f \
+    "$existing_cursor_project/.cursor/rules/custom.mdc"
 
-  repair_project="$(smoke_project)"
-  mkdir -p "$repair_project/.pancreator"
-  printf '{"schema_version":1}\n' >"$repair_project/project.json"
-  smoke_step "partial install repair (--choice r)" bash "$0" --target "$repair_project" --pancreator-root "$PANCREATOR_ROOT" --choice r
-  smoke_step "verify repair" smoke_verify_config "$repair_project"
+  partial_project="$(smoke_project)"
+  mkdir -p "$partial_project/.pancreator"
+  smoke_step "partial install repair" bash "$0" --target "$partial_project" \
+    --pancreator-root "$PANCREATOR_ROOT" --choice r --skip-dependencies
+  smoke_step "verify repair" smoke_verify "$partial_project"
 
-  clean_project="$(smoke_project)"
-  mkdir -p "$clean_project/.pancreator"
-  printf 'stale\n' >"$clean_project/.pancreator/stale.txt"
-  smoke_step "partial install clean (--choice c)" bash "$0" --target "$clean_project" --pancreator-root "$PANCREATOR_ROOT" --choice c
-  smoke_step "verify clean removed stale file" test ! -f "$clean_project/.pancreator/stale.txt"
-  smoke_step "verify clean reinstall" smoke_verify_config "$clean_project"
-
-  abort_project="$(smoke_project)"
-  mkdir -p "$abort_project/.pancreator"
-  smoke_step "partial install abort (--choice a)" bash "$0" --target "$abort_project" --pancreator-root "$PANCREATOR_ROOT" --choice a
-  smoke_step "verify abort left partial state" test -d "$abort_project/.pancreator" && test ! -f "$abort_project/project.json"
+  no_gitignore_project="$(mktemp -d "${smoke_root}/project.XXXXXX")"
+  smoke_step "install without target gitignore" bash "$0" \
+    --target "$no_gitignore_project" --pancreator-root "$PANCREATOR_ROOT" \
+    --skip-dependencies
+  smoke_step "do not create target gitignore" test ! -e \
+    "$no_gitignore_project/.gitignore"
 
   rm -rf "$smoke_root"
 
@@ -154,98 +217,254 @@ if [[ -z "$TARGET_DIR" ]]; then
   exit 1
 fi
 
+if [[ ! -d "$TARGET_DIR" ]]; then
+  echo "Error: target directory does not exist: $TARGET_DIR" >&2
+  exit 1
+fi
+
 if [[ ! -d "$PANCREATOR_ROOT" ]]; then
   echo "Error: Pancreator root does not exist: $PANCREATOR_ROOT" >&2
   exit 1
 fi
 
 TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
+PANCREATOR_ROOT="$(cd "$PANCREATOR_ROOT" && pwd)"
 
-if [[ ! -d "$TARGET_DIR" ]]; then
-  echo "Error: target directory does not exist: $TARGET_DIR" >&2
+for required in VERSION project.json package.json package-lock.json bin/install-support; do
+  if [[ ! -e "$PANCREATOR_ROOT/$required" ]]; then
+    echo "Error: invalid Pancreator payload; missing $required" >&2
+    exit 1
+  fi
+done
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: Node.js 22 or newer is required." >&2
+  exit 1
+fi
+
+NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+
+if [[ "$NODE_MAJOR" -lt 22 ]]; then
+  echo "Error: Node.js 22 or newer is required; found $(node --version)." >&2
   exit 1
 fi
 
 PANCREATOR_DIR="$TARGET_DIR/.pancreator"
-PROJECT_JSON="$TARGET_DIR/project.json"
+PROJECT_JSON="$PANCREATOR_DIR/project.json"
 RUNTIME_DIR="$PANCREATOR_DIR/runtime"
 INBOX_DIR="$RUNTIME_DIR/inbox"
 INSTALL_MARKER="$PANCREATOR_DIR/install.json"
+CURSOR_DIR="$TARGET_DIR/.cursor"
 
-workspace_id() {
-  if command -v shasum >/dev/null 2>&1; then
-    printf '%s' "$TARGET_DIR" | shasum -a 256 | cut -c1-16
+VERSION="$(tr -d '[:space:]' <"$PANCREATOR_ROOT/VERSION")"
+
+if [[ -z "$VERSION" ]]; then
+  echo "Error: VERSION must be non-empty." >&2
+  exit 1
+fi
+
+release_commit_for_version() {
+  local version="$1"
+  local index="$PANCREATOR_ROOT/release/index.json"
+
+  if [[ ! -f "$index" ]]; then
+    return 1
+  fi
+
+  node -e '
+    const fs = require("node:fs")
+    const [file, version] = process.argv.slice(1)
+    const value = JSON.parse(fs.readFileSync(file, "utf8"))
+    const release = value.releases?.find((entry) => entry.version === version)
+    if (!release || typeof release.commit !== "string") process.exit(2)
+    process.stdout.write(release.commit)
+  ' "$index" "$version"
+}
+
+resolve_source_metadata() {
+  local head indexed
+
+  if [[ -n "$SOURCE_COMMIT_OVERRIDE" ]]; then
+    case "$SOURCE_INDEXED_OVERRIDE" in
+      true | false)
+        SOURCE_COMMIT="$SOURCE_COMMIT_OVERRIDE"
+        SOURCE_INDEXED="$SOURCE_INDEXED_OVERRIDE"
+        return
+        ;;
+      *)
+        echo "Error: --source-indexed must be true or false when --source-commit is supplied." >&2
+        exit 1
+        ;;
+    esac
+  fi
+
+  if ! git -C "$PANCREATOR_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Error: release payload requires --source-commit when it has no Git metadata." >&2
+    exit 1
+  fi
+
+  head="$(git -C "$PANCREATOR_ROOT" rev-parse HEAD)"
+
+  if [[ "$SOURCE_DIRTY" == "true" ]]; then
+    SOURCE_COMMIT="$head"
+    SOURCE_INDEXED=false
+    return
+  fi
+
+  if ! indexed="$(release_commit_for_version "$VERSION")"; then
+    SOURCE_COMMIT="$head"
+    SOURCE_INDEXED=false
+    return
+  fi
+
+  if ! git -C "$PANCREATOR_ROOT" cat-file -e "${indexed}^{commit}" 2>/dev/null; then
+    echo "Error: indexed release commit is unavailable: $indexed" >&2
+    exit 1
+  fi
+
+  if ! git -C "$PANCREATOR_ROOT" merge-base --is-ancestor "$indexed" "$head"; then
+    echo "Error: indexed release $VERSION is not an ancestor of the current checkout." >&2
+    exit 1
+  fi
+
+  if ! git -C "$PANCREATOR_ROOT" diff --quiet "$indexed" "$head" -- \
+    .gitignore project.json "${SOURCE_PAYLOAD_ENTRIES[@]}"; then
+    echo "Error: installed harness inputs differ from indexed release $VERSION." >&2
+    echo "Complete the Pancreator self-development release flow or increment VERSION before installing this clean checkout." >&2
+    exit 1
+  fi
+
+  SOURCE_COMMIT="$indexed"
+  SOURCE_INDEXED=true
+}
+
+source_dirty() {
+  if [[ -n "$SOURCE_DIRTY_OVERRIDE" ]]; then
+    case "$SOURCE_DIRTY_OVERRIDE" in
+      true | false)
+        printf '%s' "$SOURCE_DIRTY_OVERRIDE"
+        return
+        ;;
+      *)
+        echo "Error: --source-dirty must be true or false." >&2
+        exit 1
+        ;;
+    esac
+  fi
+
+  if [[ -n "$(git -C "$PANCREATOR_ROOT" status --porcelain --untracked-files=all 2>/dev/null)" ]]; then
+    printf 'true'
   else
-    printf '%s' "$TARGET_DIR" | openssl dgst -sha256 | awk '{print substr($2, 1, 16)}'
+    printf 'false'
   fi
 }
 
-write_project_json() {
-  local workspace="$1"
-  mkdir -p "$PANCREATOR_DIR"
-  cat >"$PROJECT_JSON" <<EOF
-{
-  "schema_version": 1,
-  "workspace_id": "$workspace",
-  "state_root": ".pancreator/runtime",
-  "tracking": {
-    "include": ["**/*"],
-    "exclude": [
-      "dist/**",
-      "node_modules/**",
-      "coverage/**",
-      "package-lock.json",
-      "tsconfig.tsbuildinfo"
-    ]
-  }
-}
-EOF
+SOURCE_DIRTY="$(source_dirty)"
+SOURCE_COMMIT=""
+SOURCE_INDEXED=""
+resolve_source_metadata
+
+workspace_identity() {
+  local remote roots
+
+  remote="$(git -C "$TARGET_DIR" config --get remote.origin.url 2>/dev/null || true)"
+
+  if [[ -n "$remote" ]]; then
+    printf 'git-remote:%s' "$remote"
+    return
+  fi
+
+  roots="$(git -C "$TARGET_DIR" rev-list --max-parents=0 HEAD 2>/dev/null | sort | tr '\n' ',' || true)"
+
+  if [[ -n "$roots" ]]; then
+    printf 'git-roots:%s' "$roots"
+    return
+  fi
+
+  printf 'path:%s' "$TARGET_DIR"
 }
 
-write_install_marker() {
-  cat >"$INSTALL_MARKER" <<EOF
-{
-  "schema_version": 1,
-  "pancreator_root": "$PANCREATOR_ROOT",
-  "installed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+workspace_id() {
+  local identity
+  identity="$(workspace_identity)"
+
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "$identity" | shasum -a 256 | cut -c1-16
+  else
+    printf '%s' "$identity" | openssl dgst -sha256 | awk '{print substr($2, 1, 16)}'
+  fi
 }
-EOF
+
+payload_entries_csv() {
+  local entries=("${SOURCE_PAYLOAD_ENTRIES[@]}" "${GENERATED_PAYLOAD_ENTRIES[@]}")
+  local joined=""
+  local entry
+
+  for entry in "${entries[@]}"; do
+    if [[ -n "$joined" ]]; then
+      joined+=","
+    fi
+    joined+="$entry"
+  done
+
+  printf '%s' "$joined"
+}
+
+cursor_warning() {
+  cat <<WARNING
+
+######################################################################
+# PANCREATOR: EXISTING .cursor DIRECTORY DETECTED                     #
+######################################################################
+Pancreator assumes a pristine agentic/harness environment. Existing
+.cursor files will be retained where they do not conflict, but custom
+agents, commands, rules, or settings may cause unexpected behavior.
+Conflicting Pancreator-owned paths are replaced and backed up under:
+  $PANCREATOR_DIR/backups/cursor/
+######################################################################
+
+WARNING
+}
+
+ensure_target_gitignore() {
+  local gitignore="$TARGET_DIR/.gitignore"
+
+  if [[ ! -f "$gitignore" ]]; then
+    return
+  fi
+
+  if grep -Eq '^[[:space:]]*/?\.pancreator/?[[:space:]]*$' "$gitignore"; then
+    return
+  fi
+
+  if [[ -s "$gitignore" && -n "$(tail -c 1 "$gitignore")" ]]; then
+    printf '\n' >>"$gitignore"
+  fi
+
+  printf '.pancreator/\n' >>"$gitignore"
+  echo "Added .pancreator/ to $gitignore"
 }
 
 create_runtime_layout() {
   mkdir -p "$INBOX_DIR" "$RUNTIME_DIR/logs/workflows" "$RUNTIME_DIR/backlog"
-}
 
-install_complete() {
-  local workspace
-  workspace="$(workspace_id)"
-  write_project_json "$workspace"
-  write_install_marker
-  create_runtime_layout
-  echo "Pancreator embedded in $TARGET_DIR"
-  echo "  project config: project.json"
-  echo "  state root:     .pancreator/runtime"
-  echo ""
-  echo "Start a workflow from the Pancreator checkout:"
-  echo "  $PANCREATOR_ROOT/bin/pan init --workflow dev --request runtime/inbox/request.md --workspace $TARGET_DIR"
-}
-
-remove_pancreator_owned() {
-  if [[ -d "$PANCREATOR_DIR" ]]; then
-    rm -rf "$PANCREATOR_DIR"
+  if [[ ! -f "$RUNTIME_DIR/target-repo-primer.md" ]]; then
+    cp "$PANCREATOR_ROOT/library/templates/target-repo-primer.md" \
+      "$RUNTIME_DIR/target-repo-primer.md"
   fi
 }
 
 is_complete_install() {
-  [[ -f "$PROJECT_JSON" && -f "$INSTALL_MARKER" && -d "$INBOX_DIR" ]]
+  [[ -x "$PANCREATOR_DIR/bin/pan" \
+    && -f "$PROJECT_JSON" \
+    && -f "$INSTALL_MARKER" \
+    && -d "$INBOX_DIR" \
+    && -L "$PANCREATOR_DIR/.cursor" \
+    && -f "$CURSOR_DIR/commands/pan-start.md" ]]
 }
 
 is_partial_install() {
-  if [[ -d "$PANCREATOR_DIR" ]] && ! is_complete_install; then
-    return 0
-  fi
-
-  return 1
+  [[ -d "$PANCREATOR_DIR" ]] && ! is_complete_install
 }
 
 apply_partial_choice() {
@@ -275,13 +494,8 @@ prompt_partial_choice() {
     return
   fi
 
-  if [[ "$NON_INTERACTIVE" -eq 1 ]]; then
+  if [[ "$NON_INTERACTIVE" -eq 1 || ! -t 0 ]]; then
     echo "Error: partial installation detected; supply --repair or --clean." >&2
-    exit 1
-  fi
-
-  if [[ ! -t 0 ]]; then
-    echo "Error: partial installation detected in non-interactive mode; supply --repair or --clean." >&2
     exit 1
   fi
 
@@ -291,38 +505,165 @@ prompt_partial_choice() {
   apply_partial_choice "$choice"
 }
 
-if is_complete_install; then
-  if [[ -z "$MODE" ]]; then
-    if [[ "$NON_INTERACTIVE" -eq 1 ]]; then
-      echo "Error: installation already complete; supply --yes for idempotent rerun." >&2
+prepare_staging_payload() {
+  local staging="$1"
+  local entry
+
+  mkdir -p "$staging"
+
+  for entry in "${SOURCE_PAYLOAD_ENTRIES[@]}"; do
+    if [[ ! -e "$PANCREATOR_ROOT/$entry" ]]; then
+      echo "Error: Pancreator payload entry is missing: $entry" >&2
       exit 1
     fi
 
+    cp -Rp "$PANCREATOR_ROOT/$entry" "$staging/$entry"
+  done
+
+  cp "$PANCREATOR_ROOT/library/templates/embedded-AGENTS.md" \
+    "$staging/AGENTS.md"
+  cp "$PANCREATOR_ROOT/library/templates/embedded-gitignore" \
+    "$staging/.gitignore"
+
+  if [[ "$SKIP_DEPENDENCIES" -eq 0 ]]; then
+    if ! command -v npm >/dev/null 2>&1; then
+      echo "Error: npm is required to build the embedded harness." >&2
+      exit 1
+    fi
+
+    (
+      cd "$staging"
+      npm ci --ignore-scripts --no-audit --no-fund --loglevel=error
+      npm run build --silent
+    )
+  fi
+}
+
+remove_previous_payload() {
+  local entry
+
+  for entry in "${SOURCE_PAYLOAD_ENTRIES[@]}" "${GENERATED_PAYLOAD_ENTRIES[@]}"; do
+    rm -rf "$PANCREATOR_DIR/$entry"
+  done
+}
+
+install_payload() {
+  local cursor_preexisting="$1"
+  local previous_marker="${2:-$INSTALL_MARKER}"
+  local staging backup_root cursor_manifest installed_at entry
+
+  staging="$(mktemp -d "${TMPDIR:-/tmp}/pancreator-install.XXXXXX")"
+  trap 'rm -rf "$staging"' RETURN
+
+  prepare_staging_payload "$staging"
+  ensure_target_gitignore
+
+  mkdir -p "$PANCREATOR_DIR" "$CURSOR_DIR"
+  create_runtime_layout
+
+  if [[ "$cursor_preexisting" == "true" ]]; then
+    cursor_warning
+  fi
+
+  installed_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  backup_root="$PANCREATOR_DIR/backups/cursor/${installed_at//:/-}"
+  cursor_manifest="$staging/cursor-manifest.json"
+
+  node "$PANCREATOR_ROOT/bin/install-support" project-cursor \
+    --source-root "$PANCREATOR_ROOT" \
+    --target-root "$TARGET_DIR" \
+    --manifest-out "$cursor_manifest" \
+    --backup-root "$backup_root" \
+    --previous-marker "$previous_marker"
+
+  remove_previous_payload
+
+  for entry in "${SOURCE_PAYLOAD_ENTRIES[@]}" "${GENERATED_PAYLOAD_ENTRIES[@]}"; do
+    if [[ -e "$staging/$entry" ]]; then
+      cp -Rp "$staging/$entry" "$PANCREATOR_DIR/$entry"
+    fi
+  done
+
+  node "$PANCREATOR_ROOT/bin/install-support" write-project \
+    --source "$PANCREATOR_ROOT/project.json" \
+    --destination "$PROJECT_JSON" \
+    --workspace-id "$(workspace_id)"
+
+  rm -rf "$PANCREATOR_DIR/.cursor"
+  ln -s ../.cursor "$PANCREATOR_DIR/.cursor"
+
+  node "$PANCREATOR_ROOT/bin/install-support" write-marker \
+    --destination "$INSTALL_MARKER" \
+    --cursor-manifest "$cursor_manifest" \
+    --version "$VERSION" \
+    --source-commit "$SOURCE_COMMIT" \
+    --source-dirty "$SOURCE_DIRTY" \
+    --source-indexed "$SOURCE_INDEXED" \
+    --installed-at "$installed_at" \
+    --payload-entries "$(payload_entries_csv)"
+
+  rm -rf "$staging"
+  trap - RETURN
+
+  echo "Pancreator $VERSION installed in $PANCREATOR_DIR"
+  echo "  workspace:      $TARGET_DIR"
+  echo "  harness config: $PROJECT_JSON"
+  echo "  runtime state:  $RUNTIME_DIR"
+  echo "  Cursor surface: $CURSOR_DIR"
+
+  if [[ "$SOURCE_DIRTY" == "true" ]]; then
+    echo ""
+    echo "Development snapshot: source worktree is dirty."
+    echo "Automatic release updates will remain disabled for this install."
+  elif [[ "$SOURCE_INDEXED" != "true" ]]; then
+    echo ""
+    echo "Unindexed release candidate: version $VERSION has no release-index entry yet."
+    echo "Automatic release updates will remain disabled for this install."
+  fi
+
+  echo ""
+  echo "Run from the target repository:"
+  echo "  ./.pancreator/bin/pan doctor"
+  echo "  ./.pancreator/bin/pan init --workflow dev --request runtime/inbox/request.md"
+}
+
+CURSOR_PREEXISTING=false
+
+if [[ -d "$CURSOR_DIR" && ! -f "$INSTALL_MARKER" ]]; then
+  CURSOR_PREEXISTING=true
+fi
+
+if is_complete_install; then
+  if [[ -z "$MODE" ]]; then
     MODE="yes"
   fi
 
   case "$MODE" in
-    yes)
-      install_complete
-      echo "Idempotent rerun completed."
-      exit 0
+    yes | repair)
+      install_payload false
+      echo "Installation refresh completed."
+      ;;
+    update)
+      install_payload false
+      echo "Fast-forward update completed."
       ;;
     clean)
-      remove_pancreator_owned
-      install_complete
+      previous_marker_copy="$(mktemp "${TMPDIR:-/tmp}/pancreator-marker.XXXXXX")"
+      trap 'rm -f "$previous_marker_copy"' EXIT
+      cp "$INSTALL_MARKER" "$previous_marker_copy"
+      rm -rf "$PANCREATOR_DIR"
+      install_payload "$CURSOR_PREEXISTING" "$previous_marker_copy"
+      rm -f "$previous_marker_copy"
+      trap - EXIT
       echo "Clean reinstall completed."
-      exit 0
-      ;;
-    repair)
-      install_complete
-      echo "Repair completed."
-      exit 0
       ;;
     *)
-      echo "Error: installation already complete; supply --yes, --repair, or --clean." >&2
+      echo "Error: unsupported mode for complete installation: $MODE" >&2
       exit 1
       ;;
   esac
+
+  exit 0
 fi
 
 if is_partial_install; then
@@ -332,21 +673,21 @@ if is_partial_install; then
 
   case "$MODE" in
     repair)
-      install_complete
+      install_payload "$CURSOR_PREEXISTING"
       echo "Repair completed."
-      exit 0
       ;;
     clean)
-      remove_pancreator_owned
-      install_complete
+      rm -rf "$PANCREATOR_DIR"
+      install_payload "$CURSOR_PREEXISTING"
       echo "Clean reinstall completed."
-      exit 0
       ;;
     *)
       echo "Error: partial installation requires --repair or --clean." >&2
       exit 1
       ;;
   esac
+
+  exit 0
 fi
 
-install_complete
+install_payload "$CURSOR_PREEXISTING"

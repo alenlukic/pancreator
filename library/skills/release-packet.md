@@ -14,7 +14,12 @@ the irreversible action; it makes the decision easy and safe.
 - Validation: which gates passed and against which workspace fingerprint.
 - Residual risks: every unresolved non-blocking risk, stated plainly.
 - Rollback: a credible way to undo the change.
-- Proposed commit message and PR body that accurately describe the diff.
+- Proposed commit message when Git metadata is available.
+- PR description artifact at
+  `runtime/logs/workflows/<run-id>/artifacts/markdown/pr-description.md`,
+  produced via `write-pr-description.md` (suggested conventional-commit title
+  on line 1, then Summary, Changelist, and optional Delivery Pipeline
+  Manifest).
 
 ## Checks before proposing
 

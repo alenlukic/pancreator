@@ -24,6 +24,8 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `REVIEW-001` — independent review
 - `TEST-001` — evidence-based QA
 - `SHIP-001` — operator-owned release boundary
+- `PR-001` — grounded pull-request description generation
+- `DECOMP-001` — conservative intake-scope decomposition
 - `DIAG-001` — evidence-based investigation
 - `WORK-001` — systematic versus lightweight work-mode determination
 - `SPOT-001` — bounded lightweight spotfix execution and escalation

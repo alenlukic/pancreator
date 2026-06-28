@@ -1,0 +1,36 @@
+{
+  "id": "DECOMP-001",
+  "title": "Conservative scope decomposition",
+  "severity": "hard",
+  "summary": "Intake scope MUST remain intact by default and MAY be decomposed only when independently valuable chunks materially reduce execution risk without creating disproportionate workflow overhead or coordination cost.",
+  "instructions": [
+    "The decomposer MUST default to retain. Large file count, many implementation layers, or a long prose specification MUST NOT independently trigger decomposition.",
+    "Before decomposition, every proposed chunk MUST pass the independence gate: it has one coherent operator outcome, independently testable acceptance criteria, a valid standalone completion state, and no dependency on a later chunk except through an explicit stable interface or durable artifact.",
+    "A split MUST NOT be organized only by technical layer, file type, implementation phase, test work, documentation work, or agent specialty. Supporting tests, documentation, migration work, and governance changes SHOULD remain with the operator outcome they enable.",
+    "Shared schema, data migration, security, permission, rollout, or compatibility work MUST remain atomic with its consuming behavior unless the foundation is independently useful, safely deployable, and verifiable before downstream work begins.",
+    "The request MAY be decomposed only when the independence gate passes and either at least one hard trigger is present or at least four strong pressure indicators are present across at least three distinct complexity dimensions.",
+    "The decomposer MUST treat hard triggers as limited to: multiple independently ratifiable or releasable operator outcomes that each justify a systematic run; a prerequisite discovery or foundation step that must resolve a stable contract before downstream scope can be planned safely; or multiple independent high-risk migrations or rollout surfaces that require separate validation and rollback decisions.",
+    "The decomposer MUST count strong pressure indicators from: more than twelve non-duplicative acceptance criteria spanning multiple outcomes; three or more bounded subsystems with limited shared state; three or more material contract, persistence, security, operational, or governance change domains; three or more independent validation environments, owners, or rollback surfaces; three or more independently reviewable workstreams that can avoid shared-file contention; or unresolved decisions concentrated in a prerequisite whose outcome would materially invalidate downstream planning.",
+    "The decomposer MUST explicitly compare the expected reduction in implementation, review, and remediation risk against the added intake, planning, review, QA, release, and coordination overhead of additional workflow runs. Marginal cases MUST remain one larger chunk.",
+    "A decomposition SHOULD contain two to four chunks. More than five chunks MUST include an explicit justification showing why each chunk passes the independence gate and why adjacent chunks cannot be merged without materially increasing risk.",
+    "No chunk SHOULD be smaller than one economically meaningful systematic run. Small supporting changes MUST be merged into the nearest owning outcome unless they are a necessary independently verifiable prerequisite.",
+    "Chunk dependencies MUST form a directed acyclic graph, MUST minimize dependency edges, and MUST identify stable handoff contracts. Bidirectional dependencies or repeated shared-file ownership SHOULD cause chunks to be merged or resequenced.",
+    "Every original requirement, constraint, out-of-scope statement, and open question MUST appear in requirement traceability exactly once as owned, shared, or intentionally deferred. The decomposer MUST NOT silently drop, broaden, or invent scope.",
+    "The decomposition artifact MUST run its resolved policy-bound validator under VALID-001 before it is presented as complete."
+  ],
+  "requirements": [
+    {
+      "id": "decomposition-validate",
+      "registry_id": "DECOMPOSITION-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "decomposition"
+      }
+    }
+  ]
+}
