@@ -36,18 +36,20 @@ test('release metadata validation requires synchronized version files', () => {
 
 test('release metadata validation requires the changelog latest release to match VERSION', () => {
   const root = createFixture()
+  const version = readFileSync(path.join(root, 'VERSION'), 'utf8').trim()
   const changelogPath = path.join(root, 'CHANGELOG.md')
   const changelog = readFileSync(changelogPath, 'utf8').replace(
-    '## [2.0.0] - 2026-06-28',
-    '## [2.0.1] - 2026-06-28',
+    `## [${version}] - 2026-06-28`,
+    '## [999.0.0] - 2026-06-28',
   )
 
   writeFileSync(changelogPath, changelog)
 
   const result = validateReleaseMetadata(root)
 
-  assert.match(
-    result.errors.join('\n'),
-    /CHANGELOG\.md latest release MUST match VERSION \(2\.0\.0\)/u,
+  assert.ok(
+    result.errors.includes(
+      `CHANGELOG.md latest release MUST match VERSION (${version})`,
+    ),
   )
 })
