@@ -61,14 +61,14 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Agents MUST NOT hand-edit workspace index, ledger, lock, or generated run records.
 - If a modification is interrupted, agents MUST report it rather than deleting evidence.
 
-## Embedded validation target (`workdesk/`)
+## Embedded installation validation
 
-- `workdesk/` is a **separate, private git repository** (remote `github.com:alenlukic/workdesk`) nested inside this checkout and gitignored by Pancreator.
-- It is the canonical local target for validating the inverse embedding model: the source checkout installs Pancreator into `workdesk/.pancreator`, while Workdesk remains the workspace and Git owner.
-- Agents MUST NOT stage, commit, or otherwise track `workdesk/` contents from the Pancreator repository, and MUST NOT add `workdesk/` paths to Pancreator commits.
-- Before changing the target, agents MUST read `workdesk/AGENTS.md`. Git operations inside `workdesk/` act on the Workdesk repository and remain subject to the operator-owned action boundaries in **Safety and scope**.
-- Pancreator source code MUST NOT import Workdesk application code. Workdesk application code MUST NOT depend on Pancreator internals; the generated `.pancreator/` harness and root `.cursor/` projection are tooling boundaries, not application dependencies.
-- Installation and update validation MAY create or refresh `workdesk/.pancreator` and Pancreator-owned files under `workdesk/.cursor` only when the active task explicitly covers installation infrastructure.
+- Validate embedded installation against an external target repository with `./bin/install --target /path/to/target-repository`.
+- The target repository MUST remain the Git and workspace owner; Pancreator installs into `<target>/.pancreator`.
+- Agents MUST NOT stage, commit, or otherwise track target-repository contents from the Pancreator source checkout.
+- Before changing a target, agents MUST read that repository's `AGENTS.md`. Git operations inside the target act on that repository and remain subject to the operator-owned action boundaries in **Safety and scope**.
+- Pancreator source code MUST NOT import target application code. Target application code MUST NOT depend on Pancreator internals; the generated `.pancreator/` harness and root `.cursor/` projection are tooling boundaries, not application dependencies.
+- Installation and update validation MAY create or refresh `<target>/.pancreator` and Pancreator-owned files under `<target>/.cursor` only when the active task explicitly covers installation infrastructure.
 
 ## Self-development release boundary
 
