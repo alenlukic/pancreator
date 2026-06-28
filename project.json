@@ -89,5 +89,6 @@
         "spotfixer": "composer-2.5[fast=false]"
       }
     }
-  }
+  },
+  "installation_mode": "self_development"
 }

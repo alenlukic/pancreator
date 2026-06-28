@@ -19,6 +19,12 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { makeStageArtifactId } from './naming.js'
+import {
+  configuredWorkspaceRoot,
+  isEmbeddedInstallation,
+  isSelfDevelopmentInstallation,
+  panCommand,
+} from './project-config.js'
 import { resolvePolicies } from './policies.js'
 import {
   artifactJsonPath,
@@ -177,7 +183,7 @@ function assertRunPipelineConfigCurrent(
     sameConfig,
     `Run '${state.run_id}' uses pipeline config '${snapshot.name}', but the ` +
       `live active mapping has changed. Restore that mapping and run ` +
-      './bin/pan models --sync before resuming this run.',
+      `${panCommand(root)} models --sync before resuming this run.`,
     { code: 'PIPELINE_CONFIG_DRIFT' },
   )
 
@@ -187,7 +193,7 @@ function assertRunPipelineConfigCurrent(
 
   invariant(
     agentModelDrift.length === 0,
-    'Cursor agent models do not match the run pipeline config. Run ./bin/pan models --sync.',
+    `Cursor agent models do not match the run pipeline config. Run ${panCommand(root)} models --sync.`,
     {
       code: 'PIPELINE_CONFIG_NOT_SYNCED',
       details: { agents: agentModelDrift.map((entry) => entry.path) },
@@ -197,7 +203,7 @@ function assertRunPipelineConfigCurrent(
 
 /** Absolute path of the deliverable workspace this run fingerprints and gates. */
 function workspaceDirectory(root: string, state: RunState): string {
-  return resolveInside(root, state.workspace_root || '.')
+  return path.resolve(root, state.workspace_root || '.')
 }
 
 function rootsForRun(root: string, state: RunState) {
@@ -319,26 +325,28 @@ function workspaceSnapshotForRun(root: string, state: RunState) {
 }
 
 /**
- * Resolve an operator-supplied `--workspace` to a repository-relative directory.
- * Returns `'.'` (the repository root) when no deliverable workspace is given.
+ * Resolve an operator-supplied workspace relative to the Pancreator installation.
+ * Embedded installations intentionally target a parent directory, so the stored
+ * path MAY contain `..` while every file operation remains bounded by resolveRoots.
  */
 function normalizeWorkspaceRoot(
   root: string,
   workspace: string | null | undefined,
 ): string {
-  if (!workspace || workspace === '.' || workspace === './') {
-    return '.'
-  }
-
-  const relative = toRepoRelative(root, workspace)
+  const requested = workspace ?? configuredWorkspaceRoot(root)
+  const absolute = path.isAbsolute(requested)
+    ? path.resolve(requested)
+    : path.resolve(root, requested)
 
   invariant(
-    isDirectory(resolveInside(root, relative)),
-    `--workspace must be an existing directory: ${workspace}`,
+    isDirectory(absolute),
+    `--workspace must be an existing directory: ${requested}`,
     { code: 'WORKSPACE_NOT_FOUND' },
   )
 
-  return relative
+  const relative = path.relative(root, absolute)
+
+  return relative.length === 0 ? '.' : relative.split(path.sep).join('/')
 }
 
 /**
@@ -386,8 +394,8 @@ function pauseForLimit(root: string, state: RunState, reason: string): void {
   state.pending_action = { type: 'operator_decision' }
 
   writeDecision(root, state, 'Workflow paused by circuit breaker', reason, [
-    `Resume from a chosen stage with: ./bin/pan resume ${state.run_id} --stage <stage>`,
-    `Or abort with: ./bin/pan abort ${state.run_id}`,
+    `Resume from a chosen stage with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+    `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
   ])
 }
 
@@ -515,9 +523,9 @@ function pauseForSameReasonFailure(
   state.pending_action = { type: 'operator_decision' }
 
   writeDecision(root, state, 'Same-reason retry limit reached', reason, [
-    `Resume from a chosen stage with: ./bin/pan resume ${state.run_id} --stage <stage>`,
-    `Waive the failed gate with: ./bin/pan waive-gate ${state.run_id} --criteria <ids>`,
-    `Or abort with: ./bin/pan abort ${state.run_id}`,
+    `Resume from a chosen stage with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
+    `Waive the failed gate with: ${panCommand(root)} waive-gate ${state.run_id} --criteria <ids>`,
+    `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
   ])
 }
 
@@ -573,8 +581,8 @@ function executeHarnessStage(
       state.pause_reason,
       [
         `Review ${state.latest_ledger_validation_path} before deciding.`,
-        `Waive with: ./bin/pan accept-change ${state.run_id} --waive`,
-        `Restart at a stage with: ./bin/pan resume ${state.run_id} --stage <stage>`,
+        `Waive with: ${panCommand(root)} accept-change ${state.run_id} --waive`,
+        `Restart at a stage with: ${panCommand(root)} resume ${state.run_id} --stage <stage>`,
       ],
     )
   }
@@ -642,7 +650,7 @@ function applyTransition(
       state,
       'Workflow needs operator input',
       state.pause_reason,
-      [`Resume with: ./bin/pan resume ${state.run_id}`],
+      [`Resume with: ${panCommand(root)} resume ${state.run_id}`],
     )
     return
   }
@@ -758,7 +766,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
 
   invariant(
     agentModelDrift.length === 0,
-    'Cursor agent models do not match the active pipeline config. Run ./bin/pan models --sync.',
+    `Cursor agent models do not match the active pipeline config. Run ${panCommand(root)} models --sync.`,
     {
       code: 'PIPELINE_CONFIG_NOT_SYNCED',
       details: { agents: agentModelDrift.map((entry) => entry.path) },
@@ -793,7 +801,7 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
   const workspaceRoot = normalizeWorkspaceRoot(root, options.workspace)
   const roots = resolveRoots({
     installation_root: root,
-    workspace_root: resolveInside(root, workspaceRoot),
+    workspace_root: path.resolve(root, workspaceRoot),
   })
   const gateOverrides = readGateOverrides(root, options.gatesPath)
 
@@ -1083,6 +1091,24 @@ export function prepareInvocation(
           `'${model}' with this card, write delegation evidence to ` +
           `${delegationArtifactPath}, then submit ${outputPath}.`
 
+    const requiredData = { ...(stage.required_data ?? {}) }
+
+    if (
+      stage.persona === 'release-steward' &&
+      stage.slug === 'ship' &&
+      isSelfDevelopmentInstallation(root)
+    ) {
+      Object.assign(requiredData, {
+        'release.versioning': 'object',
+        'release.versioning.current_version': 'string',
+        'release.versioning.recommendation': 'string',
+        'release.versioning.proposed_version': 'string',
+        'release.versioning.rationale': 'string',
+        'release.versioning.compatibility': 'string',
+        'release.versioning.release_index_action': 'string',
+      })
+    }
+
     const invocation: Invocation = {
       $operator: {
         headline: `${stage.title} is ready`,
@@ -1129,10 +1155,15 @@ export function prepareInvocation(
         path: outputPath,
         template: 'library/templates/stage-output.example.json',
         schema: 'library/schemas/stage-output.schema.json',
-        required_data: stage.required_data ?? {},
+        required_data: requiredData,
       },
       boundaries: [
         'You MUST read this invocation card before broader repository context.',
+        ...(isEmbeddedInstallation(root)
+          ? [
+              'Harness-relative paths beginning runtime/, library/, or governance/ are rooted at .pancreator/ when accessed from the target repository in Cursor.',
+            ]
+          : []),
         `You MUST respect workspace policy '${stage.workspace_policy}'.`,
         'You MUST write only the declared output and evidence.',
         ...(stage.persona === 'orchestrator'
@@ -2007,8 +2038,8 @@ export function pauseRun(root: string, runId: string, note = ''): RunState {
     state.pending_action = { type: 'operator_decision' }
 
     writeDecision(root, state, 'Operator paused the workflow', reason, [
-      `Resume with: ./bin/pan resume ${state.run_id}`,
-      `Or abort with: ./bin/pan abort ${state.run_id}`,
+      `Resume with: ${panCommand(root)} resume ${state.run_id}`,
+      `Or abort with: ${panCommand(root)} abort ${state.run_id}`,
       'While paused, you may modify tracked files in the workspace as needed.',
     ])
 
@@ -2528,7 +2559,7 @@ export function acceptChange(
         (waive
           ? 'Operator waived validate-changes anomalies and adopted the current workspace index as accepted state.'
           : 'Operator attested the current workspace is intentional; review and QA evidence is honored against the accepted fingerprint.'),
-      [`Continue with: ./bin/pan prepare ${state.run_id}`],
+      [`Continue with: ${panCommand(root)} prepare ${state.run_id}`],
     )
 
     persistRun(root, state, 'workspace_change_accepted', {

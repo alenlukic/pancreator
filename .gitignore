@@ -6,7 +6,13 @@
 **/node_modules/
 **/*.log
 
-.cursor/
+.cursor/*
+!.cursor/agents/
+!.cursor/agents/*.md
+!.cursor/commands/
+!.cursor/commands/*.md
+!.cursor/rules/
+!.cursor/rules/*.mdc
 .vscode/
 
 projects/

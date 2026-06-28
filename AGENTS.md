@@ -53,14 +53,21 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Agents MUST NOT hand-edit workspace index, ledger, lock, or generated run records.
 - If a modification is interrupted, agents MUST report it rather than deleting evidence.
 
-## Nested project repositories (`workdesk/`)
+## Embedded validation target (`workdesk/`)
 
-- `workdesk/` is a **separate, private git repository** (remote `github.com:alenlukic/workdesk`) nested inside this checkout. It houses small personal projects and is frequently the target of development work.
-- `workdesk/` is listed in this repository's `.gitignore`. It is NOT part of the Pancreator repository.
+- `workdesk/` is a **separate, private git repository** (remote `github.com:alenlukic/workdesk`) nested inside this checkout and gitignored by Pancreator.
+- It is the canonical local target for validating the inverse embedding model: the source checkout installs Pancreator into `workdesk/.pancreator`, while Workdesk remains the workspace and Git owner.
 - Agents MUST NOT stage, commit, or otherwise track `workdesk/` contents from the Pancreator repository, and MUST NOT add `workdesk/` paths to Pancreator commits.
-- When working inside `workdesk/`, the agent MUST read `workdesk/AGENTS.md` and the relevant subproject's own `AGENTS.md` (for example `workdesk/career/AGENTS.md`) and MUST treat those as the authoritative operating cards for that work.
-- Git operations inside `workdesk/` act on the `workdesk` repository, not Pancreator. The operator-owned action boundaries in **Safety and scope** apply equally there: agents MUST NOT commit, push, merge, or rewrite history without explicit operator authorization recorded for that action.
-- Code MUST NOT cross the boundary: Pancreator code MUST NOT import or depend on `workdesk/` projects, and `workdesk/` projects MUST NOT import or invoke Pancreator harness code.
+- Before changing the target, agents MUST read `workdesk/AGENTS.md`. Git operations inside `workdesk/` act on the Workdesk repository and remain subject to the operator-owned action boundaries in **Safety and scope**.
+- Pancreator source code MUST NOT import Workdesk application code. Workdesk application code MUST NOT depend on Pancreator internals; the generated `.pancreator/` harness and root `.cursor/` projection are tooling boundaries, not application dependencies.
+- Installation and update validation MAY create or refresh `workdesk/.pancreator` and Pancreator-owned files under `workdesk/.cursor` only when the active task explicitly covers installation infrastructure.
+
+## Self-development release boundary
+
+- `project.json.installation_mode` MUST be `self_development` only in the Pancreator source checkout. Target installs MUST use `embedded`.
+- `VERSION-001` and release-version recommendations apply only to Pancreator self-development workflow ship stages. They MUST NOT be injected into target-repository workflows.
+- The release steward MAY recommend `major`, `minor`, or `neither`, but MUST NOT edit `VERSION`, update `release/index.json`, create commits, or invent commit hashes.
+- A release commit MUST exist before its version-to-commit mapping is added to `release/index.json` in a later metadata commit.
 
 ## TypeScript
 

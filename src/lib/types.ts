@@ -208,6 +208,7 @@ export interface PolicyLookupRow {
   persona: string
   workflow: string
   stage: string
+  installation_scope?: 'all' | 'self_development'
   policies: string[]
 }
 
@@ -328,6 +329,7 @@ export interface ProjectConfig {
   workspace_root?: string
   state_root?: string
   tracking?: TrackingConfig
+  installation_mode?: 'self_development' | 'embedded'
 }
 
 export interface ResolvedRoots {

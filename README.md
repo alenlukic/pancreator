@@ -1,6 +1,6 @@
-# Pancreator v2 prototype
+# Pancreator v0.1
 
-Pancreator v2 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
+Pancreator v0.1 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
 
 ## What this prototype proves
 
@@ -45,15 +45,13 @@ The CLI is also directly usable:
 ./bin/pan waive-gate <run-id> --criteria <id[,id...]> --note "accepted exception"
 ```
 
-### Deliverable workspace
+### Workspace model
 
-By default a run fingerprints, runs deterministic gate commands against, and enforces scope boundaries on the Pancreator repository root. When the deliverable lives elsewhere — for example a gitignored, self-contained project capsule that is its own Git repository — pass `--workspace`:
-
-```sh
-./bin/pan init --workflow dev --request runtime/inbox/request.md --workspace workdesk/my-project
-```
-
-The harness then fingerprints that directory's Git state (nested repositories included), runs each stage's shell gate in that directory, and evaluates the read-only scope guard there. Without this, work performed inside a gitignored path is invisible to every deterministic check and "success" reflects only the surrounding repository, not the deliverable.
+The source checkout is Pancreator's self-development environment. Normal use
+installs the harness into a target repository at `.pancreator/`; the target root
+then becomes the configured workspace automatically. Manual `--workspace`
+overrides remain available for exceptional self-development and migration work,
+but they are not the normal target-repository interface.
 
 ## Work modes
 
@@ -73,13 +71,31 @@ checks exist. Unresolved or expanded work is preserved in a uniquely named
 
 ## Embedded installation
 
-To add Pancreator to another repository, use the installer and read the detailed guide:
+Install Pancreator from this source checkout into the repository that Cursor
+will manage:
 
 ```sh
 ./bin/install --target /path/to/your-project
+cd /path/to/your-project
+./.pancreator/bin/pan doctor
+./.pancreator/bin/pan validate
 ```
 
-See [`docs/embedded-installation.md`](docs/embedded-installation.md) for generated files, verification, partial-install behavior, and cleanup.
+The harness lives at `.pancreator/`; Pancreator agents, commands, and its rule
+are merged into the target `.cursor/`. Existing `.cursor` state triggers a
+warning and conflicting files are backed up before replacement.
+
+Clean unindexed release candidates and dirty development snapshots can be
+installed for validation, but only indexed releases can use automatic updates.
+For an indexed v0 release update, initiate the fast-forward from Pancreator:
+
+```sh
+./bin/update --target /path/to/your-project
+```
+
+See [`docs/embedded-installation.md`](docs/embedded-installation.md) for the
+installed boundary, version/index protocol, update guarantees, partial-install
+behavior, and cleanup.
 
 ## Runtime record layout
 

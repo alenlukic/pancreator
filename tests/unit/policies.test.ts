@@ -1,5 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import { createFixture } from '../helpers.js'
 import { loadPolicyCatalog, resolvePolicies } from '../../src/lib/policies.js'
 
@@ -121,9 +123,31 @@ test('orchestration and release guidance resolve with required policy dependenci
     'OUTPUT-001',
     'SHIP-001',
     'VALID-001',
+    'VERSION-001',
     'WAIVER-001',
     'WORK-001',
   ])
+})
+
+test('self-development version policy is excluded from embedded installations', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'project.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const releaseIds = resolvePolicies(root, {
+    persona: 'release-steward',
+    workflow: 'dev',
+    stage: 'ship',
+  }).map((policy) => policy.id)
+
+  assert.ok(!releaseIds.includes('VERSION-001'))
+  assert.ok(releaseIds.includes('SHIP-001'))
 })
 
 test('decomposer loads conservative decomposition governance', () => {

@@ -1,6 +1,6 @@
 {
   "name": "pancreator-v2-prototype",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Cursor-native agent workflow harness prototype with a dependency-free runtime.",

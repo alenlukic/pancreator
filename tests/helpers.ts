@@ -279,9 +279,31 @@ function requiredData(
         }
       }
 
+      const projectConfig = root
+        ? (JSON.parse(
+            readFileSync(path.join(root, 'project.json'), 'utf8'),
+          ) as { installation_mode?: string })
+        : null
+      const versioning =
+        projectConfig?.installation_mode === 'self_development'
+          ? {
+              versioning: {
+                current_version: '0.1',
+                recommendation: 'neither',
+                proposed_version: '0.1',
+                rationale:
+                  'Fixture release does not change the installed contract.',
+                compatibility: 'Backward compatible.',
+                release_index_action:
+                  'Create the release commit first, then add its hash in a separate index metadata commit.',
+              },
+            }
+          : {}
+
       return {
         release: {
           summary: 'Ready',
+          ...versioning,
           change_list: root ? gitChangedFiles(root) : [],
           validation: [
             {

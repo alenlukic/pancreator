@@ -1,0 +1,18 @@
+{
+  "id": "VERSION-001",
+  "title": "Pancreator self-development version recommendation",
+  "severity": "hard",
+  "summary": "A Pancreator self-development release packet MUST recommend a major increment, minor increment, or no version change and preserve the release-to-commit index boundary.",
+  "instructions": [
+    "This policy MUST apply only when the active installation is explicitly marked as Pancreator self-development in project.json.",
+    "The release steward MUST read VERSION and release/index.json, then populate release.versioning with current_version, recommendation, proposed_version, rationale, compatibility, and release_index_action.",
+    "recommendation MUST be exactly major, minor, or neither.",
+    "The release steward MUST recommend major when the completed work introduces a backward-incompatible installed layout, command contract, durable-state schema, governance contract, or update path that requires target migration.",
+    "The release steward MUST recommend minor when the completed work adds a backward-compatible operator capability, workflow, persona, validation behavior, or material installation behavior.",
+    "The release steward MUST recommend neither for documentation, tests, internal refactors, and bounded fixes that do not materially change the installed or operator-facing contract.",
+    "For major, proposed_version MUST be the next <major+1>.0 version; for minor, it MUST be <major>.<minor+1>; for neither, it MUST preserve the current version.",
+    "The release steward MUST NOT edit VERSION, release/index.json, create a commit, or invent a commit hash.",
+    "The operator MUST create the release commit containing the exact installable payload before adding its version-to-commit mapping to release/index.json in a separate metadata commit.",
+    "release_index_action MUST describe both operator actions and MUST NOT imply that the release commit can contain its own hash."
+  ]
+}

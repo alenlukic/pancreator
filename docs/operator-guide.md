@@ -72,9 +72,9 @@ Each new run snapshots the active configuration in `runtime/logs/workflows/<run-
 
 ## Targeting a deliverable outside the repository root
 
-If the work lands somewhere other than the Pancreator repository root — most commonly a gitignored project capsule under `workdesk/` that is its own Git repository — start the run with `./bin/pan init ... --workspace workdesk/<project>`. The harness then fingerprints, runs gate commands against, and enforces scope boundaries on that directory. If you omit it for such a run, every "passing" check measured the Pancreator repository instead of your deliverable, and the green status proves nothing about the actual work. The active workspace appears on each invocation card; confirm it matches the deliverable before trusting any gate result.
+For ordinary target work, install Pancreator into the target repository and open that target in Cursor. `.pancreator/project.json` sets `workspace_root` to `..`, so workflow fingerprints, gate commands, and scope guards apply to the target automatically. Confirm the workspace shown on each invocation card before trusting gate results. `--workspace` remains an explicit override for exceptional self-development or migration work, not the default deployment model.
 
-To bootstrap Pancreator configuration in a new target repository, run `./bin/install --target <path>` from the Pancreator checkout. See [`docs/embedded-installation.md`](embedded-installation.md) for verification, partial-install prompts, and cleanup.
+Bootstrap a target with `./bin/install --target <path>` from the Pancreator source checkout, then run `./.pancreator/bin/pan doctor` and `./.pancreator/bin/pan validate` from the target. See [`docs/embedded-installation.md`](embedded-installation.md) for Cursor merge semantics, versioned updates, partial-install prompts, and cleanup.
 
 ## Intake approval
 

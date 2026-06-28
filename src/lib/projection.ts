@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { fileExists, isRecord, readJson, readText } from './io.js'
+import { panCommand } from './project-config.js'
 import {
   loadPipelineConfig,
   readCursorAgentModel,
@@ -55,14 +56,14 @@ export function validateProjectionDrift(root: string): ProjectionDriftResult {
   if (!isRecord(value)) {
     return {
       errors: ['projection manifest is missing or invalid'],
-      regeneration_command: './bin/pan models --sync',
+      regeneration_command: `${panCommand(root)} models --sync`,
     }
   }
 
   const regenerationCommand =
     typeof value.regeneration_command === 'string'
       ? value.regeneration_command
-      : './bin/pan models --sync'
+      : `${panCommand(root)} models --sync`
   const projections = Array.isArray(value.projections) ? value.projections : []
   const pipelineConfig = loadPipelineConfig(root)
   const personaDir = path.join(root, 'library', 'personas')

@@ -14,6 +14,7 @@ import {
   writeTextAtomic,
 } from './io.js'
 import { loadPipelineConfig, syncCursorAgentModels } from './pipeline-config.js'
+import { panCommand } from './project-config.js'
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { HANDLER_IDS } from './requirements/handlers.js'
@@ -1252,7 +1253,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
         errors.push(
           `${entry.path} model '${entry.previous_model ?? 'missing'}' does not ` +
             `match active pipeline config '${pipelineConfig.name}' model ` +
-            `'${entry.model}'; run ./bin/pan models --sync`,
+            `'${entry.model}'; run ${panCommand(root)} models --sync`,
         )
       }
     }

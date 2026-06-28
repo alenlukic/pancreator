@@ -12,4 +12,6 @@ For systematic workflow edits, agents MUST use the `pan changes begin|commit|can
 
 `rtk` (https://github.com/rtk-ai/rtk) globally wraps Cursor shell commands. Agents MAY see summarized or truncated output and SHOULD rerun with explicit bounded capture when exact shell bytes matter.
 
-`workdesk/` is a separate, private git repository nested in this checkout and is gitignored by Pancreator. You MUST NOT track or commit `workdesk/` contents from the Pancreator repository. When working inside `workdesk/`, you MUST follow `workdesk/AGENTS.md` and the relevant subproject's `AGENTS.md`.
+`workdesk/` is a separate, private repository and the canonical embedded-installation validation target. You MUST NOT track or commit its contents from Pancreator. Installation work MAY refresh `workdesk/.pancreator` and Pancreator-owned `workdesk/.cursor` files; all target work MUST follow `workdesk/AGENTS.md` and preserve the source/target Git boundary.
+
+Version recommendations and `VERSION-001` apply only when `project.json.installation_mode` is `self_development`. The release steward MUST NOT edit release metadata or create commits; the operator records a release commit first and adds its hash to `release/index.json` in a later metadata commit.

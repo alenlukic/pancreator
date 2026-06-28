@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 import { writeJsonAtomic } from './io.js'
+import { isSelfDevelopmentInstallation } from './project-config.js'
 import { activeOperatorGateWaivers } from './waivers.js'
 import type {
   Invocation,
@@ -424,6 +425,23 @@ export function buildInvocationInputs(
   selectPriorAttempts(references, state, stage, options.attempt)
   selectOperatorFeedback(references, state, stage)
   selectExceptions(references, state, stage, options.workspaceFingerprint)
+
+  if (
+    stage.persona === 'release-steward' &&
+    stage.slug === 'ship' &&
+    isSelfDevelopmentInstallation(options.root)
+  ) {
+    addReference(references, {
+      path: 'VERSION',
+      description: 'Current Pancreator harness version',
+      retrieval: 'required',
+    })
+    addReference(references, {
+      path: 'release/index.json',
+      description: 'Internal Pancreator release-to-commit index',
+      retrieval: 'required',
+    })
+  }
 
   const selected = [...references.values()]
   const selectedPaths = new Set(selected.map((reference) => reference.path))

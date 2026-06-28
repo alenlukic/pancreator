@@ -18,6 +18,7 @@ import {
   waiveGate,
 } from './lib/engine.js'
 import { PanError } from './lib/errors.js'
+import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { isGitRepository } from './lib/git.js'
 import {
   loadPipelineConfig,
@@ -61,9 +62,7 @@ import { snapshotWorkspace } from './lib/workspace/index.js'
 import { resolveRoots } from './lib/workspace/roots.js'
 import { validateWorkflowChanges } from './lib/workspace/validate-changes.js'
 
-const HELP = `Pancreator v2 prototype
-
-Usage:
+const HELP_BODY = `Usage:
   pan init --request <repo-relative-file> [--workflow dev] [--title <title>] [--workspace <dir>] [--gates <file>]
   pan prepare <run-id>
   pan submit <run-id> <output-json>
@@ -97,6 +96,17 @@ Usage:
 The harness does not invoke models. Cursor's supervisor reads invocation cards,
 delegates to named Cursor subagents, and returns structured output to this CLI.
 `
+
+function helpText(root: string): string {
+  const versionPath = path.join(root, 'VERSION')
+  const version = fileExists(versionPath)
+    ? readText(versionPath).trim()
+    : 'unknown'
+
+  return `Pancreator v${version}
+
+${HELP_BODY}`
+}
 
 function option(
   args: string[],
@@ -220,7 +230,7 @@ function activeModificationContext(root: string, runId: string) {
     `${state.current_stage}-${stageAttempt}-manual`
   const roots = resolveRoots({
     installation_root: root,
-    workspace_root: resolveInside(root, state.workspace_root),
+    workspace_root: path.resolve(root, state.workspace_root),
     state_root: state.state_root,
   })
 
@@ -363,11 +373,13 @@ function runAgentPreSubmitValidators(
 
 async function main(): Promise<void> {
   const root = findProjectRoot()
+  const help = helpText(root)
+  const pan = panCommand(root)
   const [command = 'help', ...args] = process.argv.slice(2)
   const json = hasFlag(args, '--json')
 
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
-    print(HELP)
+    print(help)
     return
   }
 
@@ -375,7 +387,7 @@ async function main(): Promise<void> {
     case 'help':
     case '--help':
     case '-h':
-      print(HELP)
+      print(help)
       return
     case 'init': {
       const state = createRun(root, {
@@ -391,7 +403,7 @@ async function main(): Promise<void> {
         run_id: state.run_id,
         workspace_root: state.workspace_root,
         pipeline_config: state.pipeline_config?.name,
-        next_command: `./bin/pan prepare ${state.run_id}`,
+        next_command: `${pan} prepare ${state.run_id}`,
         state_path: `runtime/logs/workflows/${state.run_id}/state.json`,
       })
       return
@@ -492,7 +504,7 @@ async function main(): Promise<void> {
       print({
         status: state.status,
         current_stage: state.current_stage,
-        next_command: `./bin/pan prepare ${runId}`,
+        next_command: `${pan} prepare ${runId}`,
       })
       return
     }
@@ -519,7 +531,7 @@ async function main(): Promise<void> {
         status: state.status,
         current_stage: state.current_stage,
         pending_action: state.pending_action,
-        next_command: `./bin/pan prepare ${runId}`,
+        next_command: `${pan} prepare ${runId}`,
       })
       return
     }
@@ -537,7 +549,7 @@ async function main(): Promise<void> {
         current_stage: state.current_stage,
         accepted_workspace_fingerprint: state.accepted_workspace_fingerprint,
         latest_ledger_validation: state.latest_ledger_validation,
-        next_command: `./bin/pan prepare ${runId}`,
+        next_command: `${pan} prepare ${runId}`,
       })
       return
     }
@@ -657,10 +669,11 @@ async function main(): Promise<void> {
         })
       }
 
-      const workspaceRoot = option(args, '--workspace', '.') ?? '.'
+      const workspaceRoot =
+        option(args, '--workspace') ?? configuredWorkspaceRoot(root)
       const roots = resolveRoots({
         installation_root: root,
-        workspace_root: resolveInside(root, workspaceRoot),
+        workspace_root: path.resolve(root, workspaceRoot),
         state_root: option(args, '--state-root'),
       })
       const result = snapshotWorkspace(roots, hasFlag(args, '--adopt'))
@@ -689,7 +702,7 @@ async function main(): Promise<void> {
       const state = getRunState(root, runId)
       const roots = resolveRoots({
         installation_root: root,
-        workspace_root: resolveInside(root, state.workspace_root),
+        workspace_root: path.resolve(root, state.workspace_root),
         state_root: state.state_root,
       })
       const result = validateWorkflowChanges({
@@ -1058,7 +1071,7 @@ async function main(): Promise<void> {
       return
     }
     default:
-      throw new PanError(`Unknown command: ${command}\n\n${HELP}`, {
+      throw new PanError(`Unknown command: ${command}\n\n${help}`, {
         code: 'UNKNOWN_COMMAND',
       })
   }
