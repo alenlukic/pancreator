@@ -39,21 +39,21 @@ function makeNestedRepo(root: string, relative: string): string {
 test('init --workspace records the deliverable repo and surfaces it on the card', () => {
   const root = createFixture()
 
-  makeNestedRepo(root, 'workdesk/project')
+  makeNestedRepo(root, 'nested/project')
 
   const state = createRun(root, {
     workflowSlug: 'dev',
     requestPath: 'request.md',
     title: 'Targeted run',
-    workspace: 'workdesk/project',
+    workspace: 'nested/project',
   })
 
-  assert.equal(state.workspace_root, 'workdesk/project')
+  assert.equal(state.workspace_root, 'nested/project')
 
   const prepared = prepareInvocation(root, state.run_id)
 
   assert.ok(prepared.invocation)
-  assert.equal(prepared.invocation.workspace_root, 'workdesk/project')
+  assert.equal(prepared.invocation.workspace_root, 'nested/project')
 })
 
 test('gate overrides replace and disable deterministic shell gates', () => {
@@ -139,14 +139,14 @@ test('gate overrides replace and disable deterministic shell gates', () => {
 
 test('scope guard catches edits inside the targeted nested repo during a non-source stage', () => {
   const root = createFixture()
-  const repo = makeNestedRepo(root, 'workdesk/project')
+  const repo = makeNestedRepo(root, 'nested/project')
   const workflow = loadWorkflow(root, 'dev')
 
   const state = createRun(root, {
     workflowSlug: 'dev',
     requestPath: 'request.md',
     title: 'Scope guard run',
-    workspace: 'workdesk/project',
+    workspace: 'nested/project',
   })
   const runId = state.run_id
 

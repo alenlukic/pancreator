@@ -19,21 +19,22 @@ test('workspace fingerprint detects content changes when status labels stay the 
 
 test('fingerprint observes work inside a gitignored nested repository', () => {
   const root = createFixture()
-  const capsule = path.join(root, 'workdesk', 'project')
+  const nestedRoot = path.join(root, 'nested')
+  const capsule = path.join(nestedRoot, 'project')
 
   mkdirSync(capsule, { recursive: true })
-  writeFileSync(path.join(root, '.gitignore'), 'node_modules\nworkdesk/\n')
-  execFileSync('git', ['init', '-q'], { cwd: path.join(root, 'workdesk') })
+  writeFileSync(path.join(root, '.gitignore'), 'node_modules\nnested/\n')
+  execFileSync('git', ['init', '-q'], { cwd: nestedRoot })
   execFileSync('git', ['config', 'user.email', 'fixture@example.com'], {
-    cwd: path.join(root, 'workdesk'),
+    cwd: nestedRoot,
   })
   execFileSync('git', ['config', 'user.name', 'Fixture'], {
-    cwd: path.join(root, 'workdesk'),
+    cwd: nestedRoot,
   })
   writeFileSync(path.join(capsule, 'README.md'), '# capsule\n')
-  execFileSync('git', ['add', '.'], { cwd: path.join(root, 'workdesk') })
+  execFileSync('git', ['add', '.'], { cwd: nestedRoot })
   execFileSync('git', ['commit', '-qm', 'capsule'], {
-    cwd: path.join(root, 'workdesk'),
+    cwd: nestedRoot,
   })
 
   const rootBefore = gitWorkspaceSnapshot(root)

@@ -64,7 +64,7 @@ configuration lives at `.pancreator/project.json` with:
 
 Pancreator infrastructure, tooling, workflows, personas, governance, schemas,
 and validators are retained. Source-checkout self-development context is not
-installed: `.git`, `.env`, source `runtime/`, nested `workdesk/`, editor-local
+installed: `.git`, `.env`, source `runtime/`, nested validation repositories, editor-local
 settings, and the self-development operating card are excluded.
 
 ## Cursor merge behavior
