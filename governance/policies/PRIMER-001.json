@@ -1,0 +1,30 @@
+{
+  "id": "PRIMER-001",
+  "title": "Target repository primer",
+  "severity": "hard",
+  "summary": "Agents MUST use the target repository primer as bounded orientation, MUST read it before expanding target-repository context, and MUST NOT follow its file references without a task-specific need.",
+  "instructions": [
+    "Before expanding target-repository context, every agent MUST read the target repository primer at the harness-relative path `runtime/target-repo-primer.md`. In an embedded installation, Cursor filesystem access MUST use `.pancreator/runtime/target-repo-primer.md`.",
+    "The primer is orientation rather than authority. The operator request, target repository `AGENTS.md`, active invocation card, and applicable policies MUST retain precedence over primer content.",
+    "Agents MUST NOT open, search, or otherwise follow references from the primer merely because they are listed. An agent MAY inspect a referenced file only when it can state a concrete task-specific reason that the file is needed.",
+    "When the primer is missing or marked unbuilt, non-librarian agents MUST stop before substantive target-repository work and direct the operator to run `/pan-build-docs`. The librarian MAY proceed to create the missing primer and MUST read the previous primer first when it exists.",
+    "The librarian MUST inspect representative target code, target `AGENTS.md`, `README.md`, other relevant documentation, setup/build/installation/test scripts, package or project manifests, and bounded Git history when Git metadata is available.",
+    "The librarian MUST produce a concise primer containing a prose summary, administrative commands, a Mermaid architecture diagram, high-level project structure with key paths, public interfaces, and gotchas or explicit `None identified` statements.",
+    "The librarian MUST write only the declared primer path, MUST NOT alter target source or workflow state, and MUST run its resolved policy-bound validator under VALID-001 before presenting the primer as complete."
+  ],
+  "requirements": [
+    {
+      "id": "target-repo-primer-validate",
+      "registry_id": "TARGET-REPO-PRIMER-VALIDATE-001",
+      "phase": "pre_submit",
+      "executor": "both",
+      "target": "artifact:0",
+      "enforcement": "required",
+      "failure_route": "stage_failure",
+      "evidence_class": "validation-result",
+      "applicability": {
+        "invocation_kind": "documentation"
+      }
+    }
+  ]
+}

@@ -33,6 +33,12 @@ on the same invocation so delivery can be corrected and resubmitted.
 `./bin/pan status` includes a dedicated validation section with invocation and
 delegation validation state, artifact paths, and short failure reasons.
 
+## Build the target repository primer
+
+Run `/pan-build-docs` after installation, after major architectural or administrative changes, or when the existing primer is materially stale. The librarian inspects representative code, repository instructions and documentation, setup/build/install/test scripts, manifests, and bounded Git history, then writes the validated primer to `runtime/target-repo-primer.md` (`.pancreator/runtime/target-repo-primer.md` when embedded).
+
+Every agent reads this primer before expanding repository context. It is a navigation aid rather than an instruction to preload all referenced files: agents may follow a primer path only when the active task creates a concrete need for that file.
+
 ## Assess unusually large intake
 
 Use `/pan-decompose <intake spec>` before starting a workflow when the request may contain multiple independently valuable outcomes or prerequisite decisions. `DECOMP-001` is intentionally conservative: the decomposer defaults to one larger run, requires every proposed chunk to be independently testable and safely completable, and then requires either a hard decomposition trigger or broad complexity pressure across several dimensions. File count, frontend/backend boundaries, tests, documentation, and implementation phases are not valid split boundaries by themselves.

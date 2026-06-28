@@ -24,6 +24,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'TS-001',
     'VALID-001',
   ])
@@ -47,6 +48,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'REVIEW-001',
     'TS-001',
     'VALID-001',
@@ -66,6 +68,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'TEST-001',
     'TS-001',
     'VALID-001',
@@ -110,6 +113,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'ORCH-001',
     'OUTPUT-001',
     'PAUSE-001',
+    'PRIMER-001',
     'VALID-001',
     'WAIVER-001',
     'WORK-001',
@@ -121,6 +125,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'SHIP-001',
     'VALID-001',
     'VERSION-001',
@@ -166,6 +171,7 @@ test('decomposer loads conservative decomposition governance', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'VALID-001',
   ])
 })
@@ -186,6 +192,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'VALID-001',
     'WORK-001',
   ])
@@ -204,9 +211,22 @@ test('standalone remediation personas load their work-mode policies', () => {
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PRIMER-001',
     'SPOT-001',
     'TS-001',
     'VALID-001',
     'WORK-001',
   ])
+})
+
+test('librarian loads target primer governance', () => {
+  const root = createFixture()
+  const ids = resolvePolicies(root, {
+    persona: 'librarian',
+    workflow: 'standalone',
+    stage: 'build-docs',
+  }).map((policy) => policy.id)
+
+  assert.ok(ids.includes('PRIMER-001'))
+  assert.ok(ids.includes('VALID-001'))
 })

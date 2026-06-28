@@ -23,6 +23,7 @@ export type InvocationKind =
   | 'spotfix'
   | 'investigation'
   | 'decomposition'
+  | 'documentation'
 
 export interface RequirementContext {
   persona: string

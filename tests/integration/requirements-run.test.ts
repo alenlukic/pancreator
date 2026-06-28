@@ -77,3 +77,86 @@ Run /pan-start.
   assert.equal(result.status, 'passed')
   assert.equal(result.exit_code, 0)
 })
+
+test('requirements run validates a target repository primer', () => {
+  const root = createFixture()
+  const targetPath = 'runtime/target-repo-primer.md'
+
+  writeFileSync(
+    path.join(root, targetPath),
+    `# Target repository primer
+
+<!-- pancreator-primer-status: ready -->
+<!-- generated-at: 2026-06-28T12:00:00Z -->
+<!-- source-head: unavailable -->
+
+## Summary
+
+A small command-line application.
+
+## Administrative commands
+
+### Install
+
+Run \`npm ci\`.
+
+### Build
+
+Run \`npm run build\`.
+
+### Test
+
+Run \`npm test\`.
+
+### Other
+
+None identified.
+
+## Architecture
+
+\`\`\`mermaid
+flowchart LR
+  CLI --> Library
+\`\`\`
+
+## Project structure
+
+- \`src/cli.ts\`: command entry point
+
+## Public interfaces
+
+- CLI commands from \`src/cli.ts\`.
+
+## Gotchas
+
+None identified.
+`,
+  )
+
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      CLI,
+      'requirements',
+      'run',
+      '--persona',
+      'librarian',
+      '--workflow',
+      'standalone',
+      '--stage',
+      'build-docs',
+      '--kind',
+      'documentation',
+      '--registry',
+      'TARGET-REPO-PRIMER-VALIDATE-001',
+      '--target',
+      targetPath,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
+  )
+  const result = JSON.parse(stdout) as { status: string; exit_code: number }
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.exit_code, 0)
+})

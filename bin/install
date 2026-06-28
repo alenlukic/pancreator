@@ -153,6 +153,7 @@ run_smoke() {
       && test -f "$project/.pancreator/project.json" \
       && test -f "$project/.pancreator/install.json" \
       && test -d "$project/.pancreator/runtime/inbox" \
+      && test -f "$project/.pancreator/runtime/target-repo-primer.md" \
       && test -L "$project/.pancreator/.cursor" \
       && test -f "$project/.cursor/commands/pan-start.md" \
       && test -f "$project/.cursor/agents/coder.md" \
@@ -445,6 +446,11 @@ ensure_target_gitignore() {
 
 create_runtime_layout() {
   mkdir -p "$INBOX_DIR" "$RUNTIME_DIR/logs/workflows" "$RUNTIME_DIR/backlog"
+
+  if [[ ! -f "$RUNTIME_DIR/target-repo-primer.md" ]]; then
+    cp "$PANCREATOR_ROOT/library/templates/target-repo-primer.md" \
+      "$RUNTIME_DIR/target-repo-primer.md"
+  fi
 }
 
 is_complete_install() {

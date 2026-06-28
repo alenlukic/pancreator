@@ -160,6 +160,7 @@ const INVOCATION_KINDS = new Set<InvocationKind>([
   'spotfix',
   'investigation',
   'decomposition',
+  'documentation',
 ])
 
 function invocationKindOption(

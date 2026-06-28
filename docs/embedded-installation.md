@@ -28,6 +28,7 @@ post-install checks from the target repository:
 cd /path/to/target-repository
 ./.pancreator/bin/pan doctor
 ./.pancreator/bin/pan validate
+# Then run /pan-build-docs in Cursor to replace the bootstrap target primer.
 ```
 
 ## Installed layout

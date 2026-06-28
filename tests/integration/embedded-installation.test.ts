@@ -173,6 +173,26 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     )
     assert.equal(existsSync(path.join(project, '.pancreator', 'library')), true)
     assert.equal(existsSync(path.join(project, '.pancreator', 'src')), true)
+    const primer = readFileSync(
+      path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+      'utf8',
+    )
+    assert.match(primer, /pancreator-primer-status: unbuilt/u)
+
+    const buildDocsCommand = readFileSync(
+      path.join(project, '.cursor', 'commands', 'pan-build-docs.md'),
+      'utf8',
+    )
+    assert.match(buildDocsCommand, /\.\/\.pancreator\/bin\/pan/u)
+    assert.match(
+      buildDocsCommand,
+      /\.pancreator\/runtime\/target-repo-primer\.md/u,
+    )
+    assert.equal(
+      existsSync(path.join(project, '.cursor', 'agents', 'librarian.md')),
+      true,
+    )
+
     assert.equal(
       existsSync(path.join(project, '.pancreator', 'workdesk')),
       false,
@@ -386,6 +406,10 @@ test('embedded installer refresh preserves runtime state and unrelated Cursor fi
       'keep me\n',
     )
     writeFileSync(path.join(project, '.cursor', 'custom.md'), 'keep me\n')
+    writeFileSync(
+      path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+      'generated primer\n',
+    )
 
     const result = runInstaller(project, ['--yes'])
 
@@ -401,6 +425,13 @@ test('embedded installer refresh preserves runtime state and unrelated Cursor fi
     assert.equal(
       readFileSync(path.join(project, '.cursor', 'custom.md'), 'utf8'),
       'keep me\n',
+    )
+    assert.equal(
+      readFileSync(
+        path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
+        'utf8',
+      ),
+      'generated primer\n',
     )
   } finally {
     rmSync(project, { recursive: true, force: true })

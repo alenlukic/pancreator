@@ -25,11 +25,12 @@ There are no npm runtime dependencies. TypeScript and Prettier are development-o
 1. Run `./bin/pan models --sync` once after cloning to generate the ignored local `.cursor/` projection.
 2. Open or reload the repository in Cursor.
 3. Run `/pan-validate` once.
-4. Use `/pan-decompose <intake spec>` when a request may be too large for one efficient workflow run.
-5. Use `/pan-start <your request>` for systematic delivery.
-6. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
-7. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
-8. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
+4. Run `/pan-build-docs` to build or refresh `runtime/target-repo-primer.md`.
+5. Use `/pan-decompose <intake spec>` when a request may be too large for one efficient workflow run.
+6. Use `/pan-start <your request>` for systematic delivery.
+7. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
+8. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
+9. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
 
 The CLI is also directly usable:
 
@@ -53,6 +54,10 @@ installs the harness into a target repository at `.pancreator/`; the target root
 then becomes the configured workspace automatically. Manual `--workspace`
 overrides remain available for exceptional self-development and migration work,
 but they are not the normal target-repository interface.
+
+### Target repository primer
+
+`/pan-build-docs` delegates to the librarian persona to scan the target repository and rebuild `runtime/target-repo-primer.md`. The primer records verified administrative commands, a Mermaid architecture overview, key paths, public interfaces, and gotchas. Every agent reads it before expanding repository context but must not follow its file references unless the active task specifically requires those files.
 
 ## Work modes
 
