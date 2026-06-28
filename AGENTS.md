@@ -74,8 +74,8 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 
 - `project.json.installation_mode` MUST be `self_development` only in the Pancreator source checkout. Target installs MUST use `embedded`.
 - `VERSION-001` and release-version recommendations apply only to Pancreator self-development workflow ship stages. They MUST NOT be injected into target-repository workflows.
-- The release steward MAY recommend `major`, `minor`, or `neither`, but MUST NOT edit `VERSION`, update `release/index.json`, create commits, or invent commit hashes.
-- A release commit MUST exist before its version-to-commit mapping is added to `release/index.json` in a later metadata commit.
+- The release steward MAY recommend `major`, `minor`, `patch`, or `neither`, but MUST NOT edit `VERSION`, `package.json`, `package-lock.json`, `CHANGELOG.md`, or `release/index.json`, create commits, or invent commit hashes.
+- Release metadata MUST use complete Semantic Versioning (`MAJOR.MINOR.PATCH`). The release commit MUST synchronize `VERSION`, npm metadata, and the current Common Changelog entry before its version-to-commit mapping is added to `release/index.json` in a later metadata commit.
 
 ## TypeScript
 

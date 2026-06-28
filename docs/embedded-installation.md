@@ -1,6 +1,6 @@
 # Embedded Pancreator installation
 
-Pancreator's supported v0 deployment model is **harness inside target**. A
+Pancreator's supported deployment model is **harness inside target**. A
 Pancreator source checkout installs a self-contained harness at
 `<target>/.pancreator`; the target repository remains the workspace opened in
 Cursor and the owner of application code, Git state, and repository-specific
@@ -45,7 +45,7 @@ cd /path/to/target-repository
     install.json            # source version/commit and ownership manifest
     project.json            # embedded workspace and model configuration
     bin/ docs/ governance/ library/ src/ tests/
-    dist/ node_modules/     # built v0 runtime and development tooling
+    dist/ node_modules/     # built runtime and development tooling
     runtime/                # target-specific durable workflow state
     backups/cursor/         # replaced operator Cursor files, when needed
 ```
@@ -133,25 +133,25 @@ blanket-deleted.
 
 ## Harness versioning
 
-`VERSION` is the operator-facing harness version. Pancreator currently starts at
-`0.1`; `package.json` uses the equivalent npm version `0.1.0`.
+`VERSION` is the operator-facing harness version and MUST use complete Semantic Versioning. `VERSION`, `package.json`, and the root package in `package-lock.json` currently agree on `2.0.0`. `CHANGELOG.md` records curated release history in Common Changelog format.
 
 `release/index.json` is the internal mapping from harness version to immutable
 Git commit. Because a commit cannot contain its own hash, release publication is
 a two-commit protocol:
 
 1. Complete and validate the Pancreator self-development workflow. The
-   self-development-only release steward recommends `major`, `minor`, or
-   `neither`; it does not edit version metadata or commit.
-2. The operator updates `VERSION` when required and creates the **release
-   commit** containing the exact installable payload.
+   self-development-only release steward recommends `major`, `minor`, `patch`,
+   or `neither`; it does not edit release metadata or commit.
+2. The operator synchronizes `VERSION`, `package.json`, `package-lock.json`, and
+   the latest `CHANGELOG.md` entry, then creates the **release commit** containing
+   the exact installable payload.
 3. After that hash exists, the operator adds `version -> release commit` to
    `release/index.json` in a separate **index metadata commit**.
 
 Major means an incompatible installed contract requiring target migration.
-Minor means a backward-compatible material capability. `Neither` covers bounded
-fixes, documentation, tests, and internal refactors without a material installed
-contract change.
+Minor means a backward-compatible material capability. Patch means a
+backward-compatible defect correction. `Neither` covers documentation, tests,
+and internal refactors without a material installed or operator-facing change.
 
 Install metadata distinguishes three source states:
 
@@ -173,7 +173,7 @@ silently shipping harness drift.
 
 ## Fast-forward update
 
-For v0, updates are initiated from a Pancreator source checkout:
+Updates are initiated from a Pancreator source checkout:
 
 ```sh
 ./bin/update --target /path/to/target-repository

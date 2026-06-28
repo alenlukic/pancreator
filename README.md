@@ -1,6 +1,6 @@
-# Pancreator v0.1
+# Pancreator v2.0.0
 
-Pancreator v0.1 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
+Pancreator v2.0.0 is a dependency-free, Cursor-native control plane for agent workflows. Cursor provides the conversational supervisor, named subagents, and MCP integrations. Compiled TypeScript and shell code provide durable workflow state, policy selection, validation, retries, evidence, and operator-readable records.
 
 ## What this prototype proves
 
@@ -30,7 +30,8 @@ There are no npm runtime dependencies. TypeScript and Prettier are development-o
 6. Use `/pan-start <your request>` for systematic delivery.
 7. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
 8. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
-9. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
+9. Use `/pan-write-pr [base-branch]` to draft a PR description from the current branch and worktree; the base defaults to `main`.
+10. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
 
 The CLI is also directly usable:
 
@@ -75,6 +76,10 @@ lint, unit tests, regression tests, and acceptance-criteria evidence when those
 checks exist. Unresolved or expanded work is preserved in a uniquely named
 `runtime/inbox/spotfix-escalation-*.md` item for systematic routing.
 
+### Standalone PR descriptions
+
+`/pan-write-pr [base-branch]` invokes the release steward without creating a workflow run. It compares the current branch and complete worktree against the merge base with `main` by default, or against one explicitly supplied base ref. The generated body is saved under `runtime/pr-descriptions/` and surfaced in chat; the command never creates, updates, or merges a pull request.
+
 ## Embedded installation
 
 Install Pancreator from this source checkout into the repository that Cursor
@@ -97,15 +102,13 @@ warning and conflicting files are backed up before replacement.
 
 Clean unindexed release candidates and dirty development snapshots can be
 installed for validation, but only indexed releases can use automatic updates.
-For an indexed v0 release update, initiate the fast-forward from Pancreator:
+For an indexed release update, initiate the fast-forward from Pancreator:
 
 ```sh
 ./bin/update --target /path/to/your-project
 ```
 
-See [`docs/embedded-installation.md`](docs/embedded-installation.md) for the
-installed boundary, version/index protocol, update guarantees, partial-install
-behavior, and cleanup.
+See [`CHANGELOG.md`](CHANGELOG.md) for release history and [`docs/embedded-installation.md`](docs/embedded-installation.md) for the installed boundary, Semantic Versioning/index protocol, update guarantees, partial-install behavior, and cleanup.
 
 ## Runtime record layout
 

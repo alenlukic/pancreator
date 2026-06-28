@@ -125,6 +125,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'GLOBAL-001',
     'GLOBAL-002',
     'OUTPUT-001',
+    'PR-001',
     'PRIMER-001',
     'SHIP-001',
     'VALID-001',

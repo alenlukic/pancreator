@@ -18,6 +18,7 @@ SOURCE_PAYLOAD_ENTRIES=(
   .npmrc
   .prettierignore
   README.md
+  CHANGELOG.md
   VERSION
   bin
   docs

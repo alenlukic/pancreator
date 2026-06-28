@@ -85,6 +85,7 @@ function createReleaseFixture(): string {
     '.npmrc',
     '.prettierignore',
     'README.md',
+    'CHANGELOG.md',
     'VERSION',
     'bin',
     'docs',
@@ -106,6 +107,8 @@ function createReleaseFixture(): string {
     })
   }
 
+  writeFileSync(path.join(fixture, 'VERSION'), '0.1.0\n')
+
   writeFileSync(
     path.join(fixture, 'release', 'index.json'),
     '{\n  "schema_version": 1,\n  "releases": []\n}\n',
@@ -118,7 +121,7 @@ function createReleaseFixture(): string {
   git(fixture, ['config', 'user.email', 'fixture@example.com'])
   git(fixture, ['config', 'user.name', 'Fixture'])
   git(fixture, ['add', '.'])
-  git(fixture, ['commit', '-qm', 'release 0.1'])
+  git(fixture, ['commit', '-qm', 'release 0.1.0'])
 
   const release01 = git(fixture, ['rev-parse', 'HEAD'])
 
@@ -127,14 +130,14 @@ function createReleaseFixture(): string {
     `${JSON.stringify(
       {
         schema_version: 1,
-        releases: [{ version: '0.1', commit: release01 }],
+        releases: [{ version: '0.1.0', commit: release01 }],
       },
       null,
       2,
     )}\n`,
   )
   git(fixture, ['add', 'release/index.json'])
-  git(fixture, ['commit', '-qm', 'index 0.1'])
+  git(fixture, ['commit', '-qm', 'index 0.1.0'])
 
   return fixture
 }
@@ -192,6 +195,16 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       existsSync(path.join(project, '.cursor', 'agents', 'librarian.md')),
       true,
     )
+
+    const writePrCommand = readFileSync(
+      path.join(project, '.cursor', 'commands', 'pan-write-pr.md'),
+      'utf8',
+    )
+    assert.match(
+      writePrCommand,
+      /\.pancreator\/library\/skills\/write-pr-description\.md/u,
+    )
+    assert.match(writePrCommand, /\.pancreator\/runtime\/pr-descriptions/u)
 
     assert.equal(
       existsSync(path.join(project, '.pancreator', 'workdesk')),
@@ -604,7 +617,7 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
       path.join(project, '.pancreator', 'install.json'),
     )
     assert.equal(installed.schema_version, 3)
-    assert.equal(installed.version, '0.1')
+    assert.equal(installed.version, '0.1.0')
     assert.equal(installed.source_dirty, false)
     assert.equal(installed.source_indexed, true)
 
@@ -614,22 +627,25 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
     )
     writeFileSync(path.join(project, '.cursor', 'custom.md'), 'preserve\n')
 
-    writeFileSync(path.join(source, 'VERSION'), '0.2\n')
-    writeFileSync(path.join(source, 'README.md'), '# Pancreator release 0.2\n')
+    writeFileSync(path.join(source, 'VERSION'), '0.2.0\n')
+    writeFileSync(
+      path.join(source, 'README.md'),
+      '# Pancreator release 0.2.0\n',
+    )
     git(source, ['add', 'VERSION', 'README.md'])
-    git(source, ['commit', '-qm', 'release 0.2'])
+    git(source, ['commit', '-qm', 'release 0.2.0'])
     const release02 = git(source, ['rev-parse', 'HEAD'])
     const index = readJson<{
       schema_version: number
       releases: Array<{ version: string; commit: string }>
     }>(path.join(source, 'release', 'index.json'))
-    index.releases.push({ version: '0.2', commit: release02 })
+    index.releases.push({ version: '0.2.0', commit: release02 })
     writeFileSync(
       path.join(source, 'release', 'index.json'),
       `${JSON.stringify(index, null, 2)}\n`,
     )
     git(source, ['add', 'release/index.json'])
-    git(source, ['commit', '-qm', 'index 0.2'])
+    git(source, ['commit', '-qm', 'index 0.2.0'])
 
     const update = run(
       path.join(source, 'bin', 'update'),
@@ -638,18 +654,21 @@ test('indexed update fast-forwards the embedded harness and preserves target sta
     )
 
     assert.equal(update.status, 0, update.stderr)
-    assert.match(update.stdout, /Pancreator fast-forwarded: 0\.1 .* -> 0\.2/)
+    assert.match(
+      update.stdout,
+      /Pancreator fast-forwarded: 0\.1\.0 .* -> 0\.2\.0/,
+    )
 
     const updated = readJson<InstallMarker>(
       path.join(project, '.pancreator', 'install.json'),
     )
-    assert.equal(updated.version, '0.2')
+    assert.equal(updated.version, '0.2.0')
     assert.equal(updated.source_commit, release02)
     assert.equal(updated.source_dirty, false)
     assert.equal(updated.source_indexed, true)
     assert.equal(
       readFileSync(path.join(project, '.pancreator', 'README.md'), 'utf8'),
-      '# Pancreator release 0.2\n',
+      '# Pancreator release 0.2.0\n',
     )
     assert.equal(
       readFileSync(

@@ -169,6 +169,12 @@ Use the protocol commands when a worker modifies tracked files:
 - `./bin/pan changes commit <run-id> <path> --lock <lock-id>`
 - `./bin/pan changes cancel <run-id> <path> --lock <lock-id>`
 
+## Write a standalone PR description
+
+Use `/pan-write-pr` after the current branch and worktree are ready for review but a full ship-stage rerun is unnecessary. The command defaults to `main`; pass one alternative base ref such as `/pan-write-pr v2` when needed. It resolves the merge base, includes committed branch changes plus staged, unstaged, and relevant untracked worktree changes, and writes the result under `runtime/pr-descriptions/` (`.pancreator/runtime/pr-descriptions/` when embedded).
+
+The command is read-only apart from its generated Markdown artifact. It does not create, update, or merge a pull request and stops when the base is invalid, the comparison is ambiguous, or there is no delta to describe.
+
 ## Release approval
 
 The ship packet is a proposal. Before approval, confirm:

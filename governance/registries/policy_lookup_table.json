@@ -84,6 +84,12 @@
     },
     {
       "persona": "release-steward",
+      "workflow": "*",
+      "stage": "*",
+      "policies": ["PR-001"]
+    },
+    {
+      "persona": "release-steward",
       "workflow": "dev",
       "stage": "ship",
       "policies": ["SHIP-001", "WAIVER-001", "WORK-001"]

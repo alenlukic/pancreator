@@ -35,6 +35,7 @@ import {
 import { resolveRoots } from './workspace/roots.js'
 import { listWorkflowSlugs, loadWorkflow } from './workflow.js'
 import { activeOperatorGateWaivers } from './waivers.js'
+import { validateReleaseMetadata } from './versioning.js'
 import type {
   ArtifactReference,
   Criterion,
@@ -1041,7 +1042,10 @@ export function validateRepository(root: string): RepositoryValidationResult {
   const warnings: string[] = []
   const required = [
     'AGENTS.md',
+    'CHANGELOG.md',
+    'VERSION',
     'package.json',
+    'package-lock.json',
     'prettier.config.js',
     'tsconfig.json',
     'governance/registries/policy_lookup_table.json',
@@ -1062,6 +1066,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/cursor/commands/pan-decompose.md',
     'library/cursor/commands/pan-build-docs.md',
     'library/cursor/commands/pan-spotfix.md',
+    'library/cursor/commands/pan-write-pr.md',
     'library/cursor/agents/decomposer.md',
     'library/cursor/agents/librarian.md',
     'library/cursor/agents/investigator.md',
@@ -1071,8 +1076,11 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/personas/investigator.md',
     'library/personas/spotfixer.md',
     'library/skills/spotfix.md',
+    'library/skills/write-pr-description.md',
+    'release/index.json',
     'governance/policies/DECOMP-001.json',
     'governance/policies/PRIMER-001.json',
+    'governance/policies/PR-001.json',
     'governance/policies/WORK-001.json',
     'governance/policies/SPOT-001.json',
     'src/cli.ts',
@@ -1083,6 +1091,8 @@ export function validateRepository(root: string): RepositoryValidationResult {
       errors.push(`missing required file: ${relative}`)
     }
   }
+
+  errors.push(...validateReleaseMetadata(root).errors)
 
   let pipelineConfig: LoadedPipelineConfig | null = null
   let handbookPolicies = new Map<string, Set<string>>()

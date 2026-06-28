@@ -21,6 +21,10 @@ import type {
 } from '../src/lib/types.js'
 
 const REPO_ROOT = process.cwd()
+const CURRENT_VERSION = readFileSync(
+  path.join(REPO_ROOT, 'VERSION'),
+  'utf8',
+).trim()
 
 const FIXTURE_GIT_TIMEOUT_MS = 30_000
 const FIXTURE_GIT_MAX_BUFFER = 1_024 * 1_024
@@ -40,7 +44,7 @@ function fixtureGit(
 export function createFixture(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
-  for (const entry of ['governance', 'library', '.pancreator']) {
+  for (const entry of ['governance', 'library', 'release', '.pancreator']) {
     const source = path.join(REPO_ROOT, entry)
 
     if (existsSync(source)) {
@@ -48,8 +52,15 @@ export function createFixture(): string {
     }
   }
 
-  cpSync(path.join(REPO_ROOT, 'project.json'), path.join(root, 'project.json'))
-  cpSync(path.join(REPO_ROOT, '.gitignore'), path.join(root, '.gitignore'))
+  for (const entry of [
+    'CHANGELOG.md',
+    'VERSION',
+    'package-lock.json',
+    'project.json',
+    '.gitignore',
+  ]) {
+    cpSync(path.join(REPO_ROOT, entry), path.join(root, entry))
+  }
 
   mkdirSync(path.join(root, 'runtime', 'logs', 'orchestrator'), {
     recursive: true,
@@ -72,7 +83,7 @@ export function createFixture(): string {
     JSON.stringify(
       {
         name: 'pancreator-v2-prototype',
-        version: '0.0.0',
+        version: CURRENT_VERSION,
         private: true,
         type: 'module',
         scripts: {
@@ -293,9 +304,9 @@ function requiredData(
         projectConfig?.installation_mode === 'self_development'
           ? {
               versioning: {
-                current_version: '0.1',
+                current_version: CURRENT_VERSION,
                 recommendation: 'neither',
-                proposed_version: '0.1',
+                proposed_version: CURRENT_VERSION,
                 rationale:
                   'Fixture release does not change the installed contract.',
                 compatibility: 'Backward compatible.',
