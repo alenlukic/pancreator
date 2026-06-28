@@ -19,6 +19,10 @@ import test from 'node:test'
 
 const REPO_ROOT = process.cwd()
 const INSTALLER = path.join(REPO_ROOT, 'bin', 'install')
+const CURRENT_VERSION = readFileSync(
+  path.join(REPO_ROOT, 'VERSION'),
+  'utf8',
+).trim()
 
 interface CommandResult {
   stdout: string
@@ -142,7 +146,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     const result = runInstaller(project)
 
     assert.equal(result.status, 0, result.stderr)
-    assert.match(result.stdout, /Pancreator 0\.1 installed/)
+    assert.ok(result.stdout.includes(`Pancreator ${CURRENT_VERSION} installed`))
     assert.equal(existsSync(path.join(project, 'project.json')), false)
 
     const config = readJson<{
@@ -190,9 +194,10 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       path.join(project, '.pancreator', 'install.json'),
     )
     assert.equal(marker.schema_version, 3)
-    assert.equal(marker.version, '0.1')
-    assert.equal(marker.source_dirty, true)
-    assert.equal(marker.source_indexed, false)
+    assert.equal(marker.version, CURRENT_VERSION)
+    assert.equal(typeof marker.source_dirty, 'boolean')
+    assert.equal(typeof marker.source_indexed, 'boolean')
+    assert.equal(marker.source_dirty && marker.source_indexed, false)
     assert.equal('source_root' in marker, false)
     assert.equal('target_root' in marker, false)
     assert.ok(marker.payload_entries.includes('governance'))
@@ -200,6 +205,45 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       marker.cursor_files.some((entry) => entry.path.endsWith('coder.md')),
     )
   } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('dirty development snapshot installs with automatic updates disabled', () => {
+  const source = createReleaseFixture()
+  const project = makeSkeletonProject()
+
+  try {
+    writeFileSync(
+      path.join(source, 'README.md'),
+      '# dirty development snapshot\n',
+    )
+
+    const install = run(
+      path.join(source, 'bin', 'install'),
+      ['--target', project, '--skip-dependencies'],
+      source,
+    )
+
+    assert.equal(install.status, 0, install.stderr)
+    assert.match(install.stdout, /Development snapshot/)
+
+    const marker = readJson<InstallMarker>(
+      path.join(project, '.pancreator', 'install.json'),
+    )
+    assert.equal(marker.source_dirty, true)
+    assert.equal(marker.source_indexed, false)
+    assert.equal(marker.source_commit, git(source, ['rev-parse', 'HEAD']))
+
+    const update = run(
+      path.join(source, 'bin', 'update'),
+      ['--target', project, '--skip-dependencies'],
+      source,
+    )
+    assert.notEqual(update.status, 0)
+    assert.match(update.stderr, /development-snapshot install/)
+  } finally {
+    rmSync(source, { recursive: true, force: true })
     rmSync(project, { recursive: true, force: true })
   }
 })
