@@ -21,3 +21,5 @@ recurring job. Read the skill relevant to your current step.
 - [`modern-code-review.md`](modern-code-review.md) - independent review.
 - [`manual-qa-cases.md`](manual-qa-cases.md) - quality assurance.
 - [`release-packet.md`](release-packet.md) - release preparation.
+- [`write-pr-description.md`](write-pr-description.md) - draft a merge-ready PR
+  body and save it to workflow artifacts.
