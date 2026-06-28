@@ -91,39 +91,97 @@ function projectCursorContent(content, relative) {
   return projected
 }
 
-function cursorSourceFiles(sourceRoot) {
-  const files = []
+function expandProjection(sourceRoot, projection) {
+  const match = /\{([a-z_]+)\}/u.exec(projection.source)
 
-  for (const directory of ['agents', 'commands']) {
-    const sourceDirectory = path.join(sourceRoot, '.cursor', directory)
+  if (!match) {
+    return [
+      {
+        source: path.join(sourceRoot, projection.source),
+        relative: projection.target,
+        variable: null,
+        generatedFields: projection.generated_fields ?? [],
+        transforms: projection.transforms ?? [],
+      },
+    ]
+  }
 
-    for (const entry of readdirSync(sourceDirectory, { withFileTypes: true })) {
-      if (!entry.isFile() || !entry.name.endsWith('.md')) {
-        continue
+  const token = match[0]
+  const sourceDirectory = path.dirname(projection.source)
+  const sourceBasename = path.basename(projection.source)
+  const [prefix, suffix] = sourceBasename.split(token)
+  const absoluteDirectory = path.join(sourceRoot, sourceDirectory)
+
+  return readdirSync(absoluteDirectory, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name.startsWith(prefix ?? '') &&
+        entry.name.endsWith(suffix ?? ''),
+    )
+    .map((entry) => {
+      const variable = entry.name.slice(
+        (prefix ?? '').length,
+        entry.name.length - (suffix ?? '').length,
+      )
+
+      return {
+        source: path.join(absoluteDirectory, entry.name),
+        relative: projection.target.replace(token, variable),
+        variable,
+        generatedFields: projection.generated_fields ?? [],
+        transforms: projection.transforms ?? [],
       }
+    })
+}
 
-      files.push({
-        source: path.join(sourceDirectory, entry.name),
-        relative: path.posix.join('.cursor', directory, entry.name),
-        transform: true,
-      })
+function cursorSourceFiles(sourceRoot) {
+  const manifest = readJson(
+    path.join(
+      sourceRoot,
+      'governance',
+      'registries',
+      'projection_manifest.json',
+    ),
+  )
+
+  if (manifest.schema_version !== 2 || !Array.isArray(manifest.projections)) {
+    fail('Invalid governance/registries/projection_manifest.json')
+  }
+
+  for (const projection of manifest.projections) {
+    if (
+      !projection ||
+      typeof projection.source !== 'string' ||
+      projection.source.startsWith('.cursor/') ||
+      typeof projection.target !== 'string' ||
+      !projection.target.startsWith('.cursor/')
+    ) {
+      fail(
+        'Projection sources MUST be canonical and targets MUST be under .cursor/',
+      )
     }
   }
 
-  files.push({
-    source: path.join(
-      sourceRoot,
-      'library',
-      'templates',
-      'embedded-cursor-rule.mdc',
-    ),
-    relative: '.cursor/rules/pancreator.mdc',
-    transform: false,
-  })
+  return manifest.projections
+    .filter(
+      (projection) =>
+        Array.isArray(projection.installation_modes) &&
+        projection.installation_modes.includes('embedded'),
+    )
+    .flatMap((projection) => expandProjection(sourceRoot, projection))
+    .sort((left, right) => left.relative.localeCompare(right.relative))
+}
 
-  return files.sort((left, right) =>
-    left.relative.localeCompare(right.relative),
-  )
+function activePersonaModels(sourceRoot) {
+  const config = readJson(path.join(sourceRoot, 'project.json'))
+  const active = config.configs?.[config.active_config]
+
+  if (!active || typeof active.personas !== 'object') {
+    fail('project.json active config does not define personas')
+  }
+
+  return active.personas
 }
 
 function previousCursorFiles(markerPath) {
@@ -156,12 +214,28 @@ function projectCursor() {
   const projected = []
   const backups = []
   const currentPaths = new Set()
+  const personaModels = activePersonaModels(sourceRoot)
 
   for (const entry of cursorSourceFiles(sourceRoot)) {
-    const raw = readFileSync(entry.source, 'utf8')
-    const content = entry.transform
-      ? projectCursorContent(raw, entry.relative)
-      : raw
+    let content = readFileSync(entry.source, 'utf8')
+
+    if (entry.generatedFields.includes('frontmatter.model')) {
+      const model = personaModels[entry.variable]
+
+      if (typeof model !== 'string' || model.length === 0) {
+        fail(`No active model mapping for Cursor persona: ${entry.variable}`)
+      }
+
+      if (!content.includes('__PANCREATOR_MODEL__')) {
+        fail(`${entry.source} is missing __PANCREATOR_MODEL__`)
+      }
+
+      content = content.replaceAll('__PANCREATOR_MODEL__', model)
+    }
+
+    if (entry.transforms.includes('installation-paths')) {
+      content = projectCursorContent(content, entry.relative)
+    }
     const destination = path.join(targetRoot, entry.relative)
     const digest = sha256(content)
 

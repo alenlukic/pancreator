@@ -310,7 +310,7 @@ resolve_source_metadata() {
   fi
 
   if ! git -C "$PANCREATOR_ROOT" diff --quiet "$indexed" "$head" -- \
-    .cursor project.json "${SOURCE_PAYLOAD_ENTRIES[@]}"; then
+    .gitignore project.json "${SOURCE_PAYLOAD_ENTRIES[@]}"; then
     echo "Error: installed harness inputs differ from indexed release $VERSION." >&2
     echo "Complete the Pancreator self-development release flow or increment VERSION before installing this clean checkout." >&2
     exit 1

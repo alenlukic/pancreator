@@ -20,10 +20,8 @@ import {
 import { PanError } from './lib/errors.js'
 import { configuredWorkspaceRoot, panCommand } from './lib/project-config.js'
 import { isGitRepository } from './lib/git.js'
-import {
-  loadPipelineConfig,
-  syncCursorAgentModels,
-} from './lib/pipeline-config.js'
+import { loadPipelineConfig } from './lib/pipeline-config.js'
+import { syncCursorProjection } from './lib/projection.js'
 import {
   fileExists,
   findProjectRoot,
@@ -728,7 +726,7 @@ async function main(): Promise<void> {
       return
     case 'models': {
       const loaded = loadPipelineConfig(root)
-      const changes = syncCursorAgentModels(root, loaded, {
+      const changes = syncCursorProjection(root, {
         write: hasFlag(args, '--sync'),
       })
 
@@ -738,7 +736,7 @@ async function main(): Promise<void> {
           summary: loaded.config.summary,
           personas: loaded.config.personas,
           sync_requested: hasFlag(args, '--sync'),
-          changed_agents: changes.filter((entry) => entry.changed),
+          changed_projections: changes.filter((entry) => entry.changed),
         },
         true,
       )

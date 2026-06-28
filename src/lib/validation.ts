@@ -13,8 +13,7 @@ import {
   sha256,
   writeTextAtomic,
 } from './io.js'
-import { loadPipelineConfig, syncCursorAgentModels } from './pipeline-config.js'
-import { panCommand } from './project-config.js'
+import { loadPipelineConfig } from './pipeline-config.js'
 import type { LoadedPipelineConfig } from './pipeline-config.js'
 import { auditDirectives } from './governance/audit-directives.js'
 import { HANDLER_IDS } from './requirements/handlers.js'
@@ -1057,14 +1056,14 @@ export function validateRepository(root: string): RepositoryValidationResult {
     'library/schemas/stage-output.schema.json',
     'library/schemas/workflow.schema.json',
     'library/schemas/stage.schema.json',
-    '.cursor/commands/pan-start.md',
-    '.cursor/commands/pan-resume.md',
-    '.cursor/commands/pan-debug.md',
-    '.cursor/commands/pan-decompose.md',
-    '.cursor/commands/pan-spotfix.md',
-    '.cursor/agents/decomposer.md',
-    '.cursor/agents/investigator.md',
-    '.cursor/agents/spotfixer.md',
+    'library/cursor/commands/pan-start.md',
+    'library/cursor/commands/pan-resume.md',
+    'library/cursor/commands/pan-debug.md',
+    'library/cursor/commands/pan-decompose.md',
+    'library/cursor/commands/pan-spotfix.md',
+    'library/cursor/agents/decomposer.md',
+    'library/cursor/agents/investigator.md',
+    'library/cursor/agents/spotfixer.md',
     'library/personas/decomposer.md',
     'library/personas/investigator.md',
     'library/personas/spotfixer.md',
@@ -1191,14 +1190,15 @@ export function validateRepository(root: string): RepositoryValidationResult {
         if (stage.persona !== 'orchestrator') {
           const agentPath = path.join(
             root,
-            '.cursor',
+            'library',
+            'cursor',
             'agents',
             `${stage.persona}.md`,
           )
 
           if (!fileExists(agentPath)) {
             errors.push(
-              `missing Cursor agent: .cursor/agents/${stage.persona}.md`,
+              `missing Cursor agent template: library/cursor/agents/${stage.persona}.md`,
             )
           }
         }
@@ -1209,7 +1209,7 @@ export function validateRepository(root: string): RepositoryValidationResult {
   }
 
   const cursorAgentPersonas = new Set<string>()
-  const cursorAgentDirectory = path.join(root, '.cursor', 'agents')
+  const cursorAgentDirectory = path.join(root, 'library', 'cursor', 'agents')
 
   if (fileExists(cursorAgentDirectory)) {
     for (const entry of readdirSync(cursorAgentDirectory, {
@@ -1247,19 +1247,13 @@ export function validateRepository(root: string): RepositoryValidationResult {
         }
       }
     }
-
-    for (const entry of syncCursorAgentModels(root, pipelineConfig)) {
-      if (entry.changed) {
-        errors.push(
-          `${entry.path} model '${entry.previous_model ?? 'missing'}' does not ` +
-            `match active pipeline config '${pipelineConfig.name}' model ` +
-            `'${entry.model}'; run ${panCommand(root)} models --sync`,
-        )
-      }
-    }
   }
 
-  for (const directory of ['.cursor/agents', '.cursor/commands', 'src/lib']) {
+  for (const directory of [
+    'library/cursor/agents',
+    'library/cursor/commands',
+    'src/lib',
+  ]) {
     const absolute = path.join(root, directory)
 
     if (fileExists(absolute) && readdirSync(absolute).length === 0) {

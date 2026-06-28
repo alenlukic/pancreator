@@ -63,9 +63,14 @@ settings, and the self-development operating card are excluded.
 
 ## Cursor merge behavior
 
-The installer merges Pancreator-owned agents, commands, and its rule into the
-target's `.cursor/` directory. It preserves unrelated files such as custom
-settings and non-conflicting commands.
+The source checkout's `.cursor/` directory is local, fully gitignored, and never
+used as installation input. Canonical Cursor agents, commands, and rules live
+under `library/cursor/` and are declared by
+`governance/registries/projection_manifest.json`.
+
+The installer renders those canonical artifacts into the target's `.cursor/`
+directory. It preserves unrelated files such as custom settings and
+non-conflicting commands.
 
 When `.cursor/` already exists on first install, the installer emits a prominent
 warning banner. Pancreator assumes a pristine agentic/harness environment;

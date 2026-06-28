@@ -22,13 +22,14 @@ There are no npm runtime dependencies. TypeScript and Prettier are development-o
 
 ## Quick start in Cursor
 
-1. Open the repository in Cursor.
-2. Run `/pan-validate` once.
-3. Use `/pan-decompose <intake spec>` when a request may be too large for one efficient workflow run.
-4. Use `/pan-start <your request>` for systematic delivery.
-5. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
-6. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
-7. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
+1. Run `./bin/pan models --sync` once after cloning to generate the ignored local `.cursor/` projection.
+2. Open or reload the repository in Cursor.
+3. Run `/pan-validate` once.
+4. Use `/pan-decompose <intake spec>` when a request may be too large for one efficient workflow run.
+5. Use `/pan-start <your request>` for systematic delivery.
+6. Use `/pan-debug <problem>` for root-cause analysis and a work-mode recommendation.
+7. Use `/pan-spotfix <request>` only for an explicitly lightweight, small-scope change.
+8. For systematic work, ratify intake and continue with `/pan-resume <run-id>` until the next operator gate.
 
 The CLI is also directly usable:
 
@@ -151,10 +152,7 @@ idempotent.
 
 ## Library layout
 
-Workflow definitions, personas, prompts, skills, schemas, and templates live
-under `library/`. Standalone command personas such as `investigator` and
-`spotfixer` use the same canonical-persona plus projected-Cursor-agent pattern as
-workflow personas. Each workflow is a slim index plus one file per stage:
+Workflow definitions, personas, prompts, skills, schemas, templates, and canonical Cursor projection sources live under `library/`. `.cursor/` is ignored local output, never source authority. `governance/registries/projection_manifest.json` maps `library/cursor/` agents, commands, and rules into the local or embedded Cursor surface. Standalone command personas such as `investigator` and `spotfixer` use the same canonical-persona plus projected-Cursor-agent pattern as workflow personas. Each workflow is a slim index plus one file per stage:
 
 ```text
 library/workflows/<slug>/
@@ -168,9 +166,7 @@ semantics and the JSON schemas in `library/schemas/`.
 
 ### Pipeline model configuration
 
-`project.json` restores V1-style named persona-to-model mappings. The
-active mapping is copied into matching Cursor subagent frontmatter and snapshotted
-for each run. After changing `active_config` or any mapping, synchronize and
+`project.json` restores V1-style named persona-to-model mappings. The active mapping is rendered from canonical `library/cursor/agents/` templates into ignored local Cursor subagent frontmatter and snapshotted for each run. After changing `active_config` or any mapping, synchronize and
 validate it:
 
 ```sh

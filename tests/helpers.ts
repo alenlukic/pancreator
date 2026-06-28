@@ -10,6 +10,8 @@ import {
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { syncCursorProjection } from '../src/lib/projection.js'
+
 import type {
   Invocation,
   RunState,
@@ -38,7 +40,7 @@ function fixtureGit(
 export function createFixture(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'pancreator-v2-'))
 
-  for (const entry of ['governance', 'library', '.cursor', '.pancreator']) {
+  for (const entry of ['governance', 'library', '.pancreator']) {
     const source = path.join(REPO_ROOT, entry)
 
     if (existsSync(source)) {
@@ -47,6 +49,7 @@ export function createFixture(): string {
   }
 
   cpSync(path.join(REPO_ROOT, 'project.json'), path.join(root, 'project.json'))
+  cpSync(path.join(REPO_ROOT, '.gitignore'), path.join(root, '.gitignore'))
 
   mkdirSync(path.join(root, 'runtime', 'logs', 'orchestrator'), {
     recursive: true,
@@ -83,6 +86,8 @@ export function createFixture(): string {
       2,
     ),
   )
+
+  syncCursorProjection(root, { write: true })
 
   fixtureGit(['init', '-q'], { cwd: root, encoding: 'utf8' })
   fixtureGit(['config', 'user.email', 'fixture@example.com'], {

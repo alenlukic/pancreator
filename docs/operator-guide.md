@@ -59,7 +59,7 @@ workspace.
 
 ## Select pipeline models
 
-`project.json` is the source of truth for named persona-to-model mappings. Set `active_config` to one of the declared configurations, then project that mapping into the Cursor worker agents:
+`project.json` is the source of truth for named persona-to-model mappings. Canonical Cursor artifacts live under `library/cursor/`; `.cursor/` is ignored local output. Set `active_config` to one of the declared configurations, then regenerate the Cursor surface:
 
 ```sh
 ./bin/pan models --sync

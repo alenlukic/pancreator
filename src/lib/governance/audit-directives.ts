@@ -9,8 +9,8 @@ const DIRECTIVE_PATTERN =
 
 const AUDIT_ROOTS = [
   'AGENTS.md',
-  '.cursor/agents',
-  '.cursor/commands',
+  'library/cursor/agents',
+  'library/cursor/commands',
   'library/personas',
   'library/skills',
   'docs',
@@ -119,7 +119,9 @@ function hasPolicyReference(text: string): boolean {
 
 function personaFromRelative(relative: string): string | null {
   const personaMatch =
-    /^(?:library\/personas|\.cursor\/agents)\/([^/]+)\.md$/u.exec(relative)
+    /^(?:library\/personas|library\/cursor\/agents)\/([^/]+)\.md$/u.exec(
+      relative,
+    )
 
   return personaMatch ? personaMatch[1] : null
 }

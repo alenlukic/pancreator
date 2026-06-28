@@ -18,7 +18,8 @@ Pancreator is a Cursor-native workflow harness. Cursor supplies model execution 
 - Runs MUST be created, inspected, advanced, paused, resumed, and aborted through `./bin/pan`.
 - Agents MUST NOT edit `state.json`, `events.jsonl`, or generated workflow records directly.
 - Before stage work, the supervisor MUST run `./bin/pan status <run-id>` and read the pending invocation or assessment card.
-- A named worker stage MUST be delegated to the matching `.cursor/agents/<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `project.json`; run `./bin/pan models --sync` after changing `active_config` or a mapped model.
+- A named worker stage MUST be delegated to the matching locally projected `.cursor/agents/<persona>.md` subagent. Its frontmatter model MUST match the active mapping in `project.json`; run `./bin/pan models --sync` after cloning or changing `active_config` or a mapped model.
+- `.cursor/` MUST remain fully gitignored and MUST be treated as disposable local configuration. Canonical Cursor agents, commands, and rules live under `library/cursor/` and are declared by `governance/registries/projection_manifest.json`; source or installation code MUST NOT treat `.cursor/` as authoritative input.
 - The supervisor MUST apply `INVOCATION-001` for canonical-card validation, prompt delivery, and delegation evidence. Detailed delegation instructions MUST live in that policy rather than parallel restatements here.
 - A worker MUST write only the declared output and permitted evidence. The supervisor MUST submit it through `./bin/pan submit`.
 - The harness MUST rerun deterministic gate commands and MUST own code-determined transitions.

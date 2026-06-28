@@ -45,8 +45,8 @@ import {
   loadPipelineConfigSnapshot,
   makePipelineConfigSnapshot,
   resolvePersonaModel,
-  syncCursorAgentModels,
 } from './pipeline-config.js'
+import { syncCursorProjection } from './projection.js'
 import { renderInvocationMarkdown, renderStatus } from './render.js'
 import {
   ledgerValidationPath,
@@ -187,8 +187,8 @@ function assertRunPipelineConfigCurrent(
     { code: 'PIPELINE_CONFIG_DRIFT' },
   )
 
-  const agentModelDrift = syncCursorAgentModels(root, live).filter(
-    (entry) => entry.changed,
+  const agentModelDrift = syncCursorProjection(root).filter(
+    (entry) => entry.id === 'cursor-agents' && entry.changed,
   )
 
   invariant(
@@ -760,8 +760,8 @@ export function createRun(root: string, options: CreateRunOptions): RunState {
     }
   }
 
-  const agentModelDrift = syncCursorAgentModels(root, pipelineConfig).filter(
-    (entry) => entry.changed,
+  const agentModelDrift = syncCursorProjection(root).filter(
+    (entry) => entry.id === 'cursor-agents' && entry.changed,
   )
 
   invariant(

@@ -77,7 +77,7 @@ function git(root: string, args: string[]): string {
 function createReleaseFixture(): string {
   const fixture = mkdtempSync(path.join(tmpdir(), 'pancreator-release-source-'))
   const entries = [
-    '.cursor',
+    '.gitignore',
     '.npmrc',
     '.prettierignore',
     'README.md',
@@ -201,6 +201,34 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     )
   } finally {
     rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer ignores source-checkout Cursor files', () => {
+  const project = makeSkeletonProject()
+  const source = createReleaseFixture()
+
+  try {
+    mkdirSync(path.join(source, '.cursor', 'agents'), { recursive: true })
+    writeFileSync(
+      path.join(source, '.cursor', 'agents', 'coder.md'),
+      'poisoned local source config\n',
+    )
+
+    const result = runInstaller(project, ['--pancreator-root', source])
+
+    assert.equal(result.status, 0, result.stderr)
+
+    const projected = readFileSync(
+      path.join(project, '.cursor', 'agents', 'coder.md'),
+      'utf8',
+    )
+
+    assert.doesNotMatch(projected, /poisoned local source config/u)
+    assert.match(projected, /library\/personas\/coder\.md/u)
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+    rmSync(source, { recursive: true, force: true })
   }
 })
 
