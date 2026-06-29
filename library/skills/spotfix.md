@@ -52,7 +52,9 @@ The final successful cycle MUST establish all of the following:
 - existing behavior outside the requested change remains intact.
 
 Use `runtime/repository-checks.json` as the command authority. Preserve its
-explicit toolchain entrypoints and probes, and do not infer ecosystem commands.
+explicit toolchain entrypoints, probes, suite boundaries, and runtime bounds;
+do not substitute `full` for a distinct documented `fast` suite or infer
+ecosystem commands.
 A missing profile, unavailable dependency, timeout, or check that cannot run is
 not a pass. Record it as incomplete validation and determine whether systematic
 routing is required.

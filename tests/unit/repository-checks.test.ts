@@ -8,6 +8,7 @@ import {
   loadRepositoryChecks,
   repositoryChecksSourcePath,
   runRepositoryCheck,
+  runRepositoryCheckStreaming,
 } from '../../src/lib/repository-checks.js'
 import { createFixture } from '../helpers.js'
 
@@ -122,4 +123,69 @@ test('repository check configuration rejects malformed command arrays', () => {
     () => loadRepositoryChecks(root),
     /MUST be a non-empty command string/u,
   )
+})
+
+test('repository check configuration rejects identical fast and full commands', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      probes: ['node --version'],
+      commands: ['node -e "process.exit(0)"'],
+    },
+    full: {
+      probes: ['node --version'],
+      commands: ['node   -e   "process.exit(0)"'],
+    },
+  })
+
+  assert.throws(
+    () => loadRepositoryChecks(root),
+    /profiles\.fast MUST NOT duplicate profiles\.full/u,
+  )
+})
+
+test('streaming repository checks emit subprocess output before returning the result', async () => {
+  const { root } = makeInstallation()
+  const stdout: string[] = []
+  const starts: string[] = []
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 5_000,
+      probes: [],
+      commands: [
+        "node -e \"process.stdout.write('first\\n'); setTimeout(() => process.stdout.write('second\\n'), 25)\"",
+      ],
+    },
+  })
+
+  const result = await runRepositoryCheckStreaming(root, 'fast', {
+    on_start: (kind, command) => starts.push(`${kind}:${command}`),
+    on_stdout: (chunk) => stdout.push(chunk),
+  })
+
+  assert.equal(result.status, 'passed')
+  assert.equal(result.timeout_ms, 5_000)
+  assert.equal(starts.length, 1)
+  assert.equal(starts[0]?.startsWith('command:'), true)
+  assert.match(stdout.join(''), /first\nsecond/u)
+})
+
+test('repository checks honor the tighter profile timeout', () => {
+  const { root } = makeInstallation()
+
+  writeChecks(root, {
+    fast: {
+      timeout_ms: 1_000,
+      probes: [],
+      commands: ['node -e "setTimeout(() => process.exit(0), 2000)"'],
+    },
+  })
+
+  const result = runRepositoryCheck(root, 'fast', { timeout_ms: 5_000 })
+
+  assert.equal(result.status, 'failed')
+  assert.equal(result.timeout_ms, 1_000)
+  assert.equal(result.results[0]?.timed_out, true)
 })

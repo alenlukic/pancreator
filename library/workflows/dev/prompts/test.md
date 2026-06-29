@@ -13,6 +13,9 @@ produce reproducible evidence.
    and evidence.
 4. Use the same explicit repository-declared toolchain entrypoints and configured
    probes used by implementation and review so equivalent results are comparable.
+   The `full` profile must cover the complete documented suite; an optional
+   `secondary` profile may be used for focused slow/integration diagnosis but
+   does not replace complete verification.
 5. Classify each defect as product, environment, or harness/test. Treat an
    unconfigured repository-check profile as missing validation, not a pass.
 

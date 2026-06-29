@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import path from 'node:path'
 
 import { PanError, invariant } from './errors.js'
@@ -8,8 +8,12 @@ import {
   isSelfDevelopmentInstallation,
 } from './project-config.js'
 
+const DEFAULT_TIMEOUT_MS = 600_000
+const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
+
 export interface RepositoryCheckProfile {
   description?: string
+  timeout_ms?: number
   probes: string[]
   commands: string[]
 }
@@ -37,8 +41,22 @@ export interface RepositoryCheckResult {
   status: 'passed' | 'failed' | 'not_configured'
   config_path: string
   workspace_root: string
+  timeout_ms: number
   description?: string
   results: RepositoryCheckCommandResult[]
+}
+
+export interface RepositoryCheckRunOptions {
+  timeout_ms?: number
+}
+
+export interface RepositoryCheckStreamingOptions extends RepositoryCheckRunOptions {
+  on_start?: (
+    kind: RepositoryCheckCommandResult['kind'],
+    command: string,
+  ) => void
+  on_stdout?: (chunk: string) => void
+  on_stderr?: (chunk: string) => void
 }
 
 export function repositoryChecksPath(root: string): string {
@@ -76,6 +94,54 @@ function stringArray(value: unknown, source: string): string[] {
   return value as string[]
 }
 
+function optionalTimeout(value: unknown, source: string): number | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  invariant(
+    typeof value === 'number' &&
+      Number.isInteger(value) &&
+      value >= 1_000 &&
+      value <= 86_400_000,
+    `${source} MUST be an integer between 1000 and 86400000 milliseconds.`,
+    { code: 'INVALID_REPOSITORY_CHECKS' },
+  )
+
+  return value
+}
+
+function normalizedCommands(commands: string[]): string[] {
+  return commands.map((command) => command.trim().replaceAll(/\s+/gu, ' '))
+}
+
+function sameCommands(left: string[], right: string[]): boolean {
+  if (left.length === 0 || left.length !== right.length) {
+    return false
+  }
+
+  const normalizedLeft = normalizedCommands(left)
+  const normalizedRight = normalizedCommands(right)
+
+  return normalizedLeft.every(
+    (command, index) => command === normalizedRight[index],
+  )
+}
+
+function validateProfileSemantics(
+  filePath: string,
+  profiles: Record<string, RepositoryCheckProfile>,
+): void {
+  const fast = profiles.fast
+  const full = profiles.full
+
+  invariant(
+    !fast || !full || !sameCommands(fast.commands, full.commands),
+    `${filePath}.profiles.fast MUST NOT duplicate profiles.full. Use the repository's documented fast/default command, or leave fast unconfigured when no distinct iterative suite exists.`,
+    { code: 'INVALID_REPOSITORY_CHECKS' },
+  )
+}
+
 export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
   const filePath = repositoryChecksSourcePath(root)
 
@@ -106,10 +172,16 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
       { code: 'INVALID_REPOSITORY_CHECKS' },
     )
 
+    const timeoutMs = optionalTimeout(
+      rawProfile.timeout_ms,
+      `${filePath}.profiles.${name}.timeout_ms`,
+    )
+
     profiles[name] = {
       ...(typeof rawProfile.description === 'string'
         ? { description: rawProfile.description }
         : {}),
+      ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
       probes: stringArray(
         rawProfile.probes ?? [],
         `${filePath}.profiles.${name}.probes`,
@@ -121,6 +193,8 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
     }
   }
 
+  validateProfileSemantics(filePath, profiles)
+
   return {
     schema_version: 1,
     ...(typeof value.source_head === 'string'
@@ -128,6 +202,36 @@ export function loadRepositoryChecks(root: string): RepositoryChecksConfig {
       : {}),
     profiles,
   }
+}
+
+function effectiveTimeout(
+  profile: RepositoryCheckProfile | undefined,
+  requested: number | undefined,
+): number {
+  const configured = profile?.timeout_ms
+
+  if (configured !== undefined && requested !== undefined) {
+    return Math.min(configured, requested)
+  }
+
+  return configured ?? requested ?? DEFAULT_TIMEOUT_MS
+}
+
+function appendCaptured(current: string, chunk: string): string {
+  if (Buffer.byteLength(current) >= MAX_CAPTURE_BYTES) {
+    return current
+  }
+
+  const combined = current + chunk
+
+  if (Buffer.byteLength(combined) <= MAX_CAPTURE_BYTES) {
+    return combined
+  }
+
+  const available = Math.max(0, MAX_CAPTURE_BYTES - Buffer.byteLength(current))
+  const truncated = Buffer.from(chunk).subarray(0, available).toString('utf8')
+
+  return `${current}${truncated}\n[output truncated by Pancreator]\n`
 }
 
 function execute(
@@ -140,7 +244,7 @@ function execute(
     cwd: workspaceRoot,
     encoding: 'utf8',
     shell: true,
-    maxBuffer: 10 * 1024 * 1024,
+    maxBuffer: MAX_CAPTURE_BYTES,
     timeout: timeoutMs,
     env: { ...process.env },
   })
@@ -161,26 +265,132 @@ function execute(
   }
 }
 
+function executeStreaming(
+  kind: RepositoryCheckCommandResult['kind'],
+  command: string,
+  workspaceRoot: string,
+  timeoutMs: number,
+  options: RepositoryCheckStreamingOptions,
+): Promise<RepositoryCheckCommandResult> {
+  options.on_start?.(kind, command)
+
+  return new Promise((resolve) => {
+    const child = spawn(command, {
+      cwd: workspaceRoot,
+      shell: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env },
+    })
+    let stdout = ''
+    let stderr = ''
+    let timedOut = false
+    let settled = false
+    let timeoutHandle: NodeJS.Timeout | undefined
+    let killHandle: NodeJS.Timeout | undefined
+
+    const finish = (
+      exitCode: number | null,
+      signal: NodeJS.Signals | null,
+      error?: Error,
+    ): void => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+
+      if (killHandle) {
+        clearTimeout(killHandle)
+      }
+
+      const timeoutError = timedOut
+        ? `Command timed out after ${timeoutMs}ms.`
+        : undefined
+      const errorText = error?.message ?? timeoutError
+
+      resolve({
+        kind,
+        command,
+        exit_code: exitCode,
+        signal,
+        stdout,
+        stderr,
+        passed: exitCode === 0 && !errorText,
+        timed_out: timedOut,
+        ...(errorText ? { error: errorText } : {}),
+      })
+    }
+
+    child.stdout?.on('data', (value: Buffer | string) => {
+      const chunk = value.toString()
+      stdout = appendCaptured(stdout, chunk)
+      options.on_stdout?.(chunk)
+    })
+    child.stderr?.on('data', (value: Buffer | string) => {
+      const chunk = value.toString()
+      stderr = appendCaptured(stderr, chunk)
+      options.on_stderr?.(chunk)
+    })
+    child.on('error', (error) => finish(null, null, error))
+    child.on('close', (exitCode, signal) => finish(exitCode, signal))
+
+    timeoutHandle = setTimeout(() => {
+      timedOut = true
+      child.kill('SIGTERM')
+      killHandle = setTimeout(() => child.kill('SIGKILL'), 2_000)
+      killHandle.unref()
+    }, timeoutMs)
+    timeoutHandle.unref()
+  })
+}
+
+function baseResult(
+  root: string,
+  profileName: string,
+  configPath: string,
+  workspaceRoot: string,
+  timeoutMs: number,
+  profile: RepositoryCheckProfile | undefined,
+  status: RepositoryCheckResult['status'],
+  results: RepositoryCheckCommandResult[],
+): RepositoryCheckResult {
+  return {
+    profile: profileName,
+    status,
+    config_path: path.relative(root, configPath).split(path.sep).join('/'),
+    workspace_root: workspaceRoot,
+    timeout_ms: timeoutMs,
+    ...(profile?.description ? { description: profile.description } : {}),
+    results,
+  }
+}
+
 export function runRepositoryCheck(
   root: string,
   profileName: string,
-  options: { timeout_ms?: number } = {},
+  options: RepositoryCheckRunOptions = {},
 ): RepositoryCheckResult {
   const config = loadRepositoryChecks(root)
   const configPath = repositoryChecksSourcePath(root)
   const profile = config.profiles[profileName]
   const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
-  const timeoutMs = options.timeout_ms ?? 600_000
+  const timeoutMs = effectiveTimeout(profile, options.timeout_ms)
 
   if (!profile || profile.commands.length === 0) {
-    return {
-      profile: profileName,
-      status: 'not_configured',
-      config_path: path.relative(root, configPath).split(path.sep).join('/'),
-      workspace_root: workspaceRoot,
-      ...(profile?.description ? { description: profile.description } : {}),
-      results: [],
-    }
+    return baseResult(
+      root,
+      profileName,
+      configPath,
+      workspaceRoot,
+      timeoutMs,
+      profile,
+      'not_configured',
+      [],
+    )
   }
 
   const results: RepositoryCheckCommandResult[] = []
@@ -190,14 +400,16 @@ export function runRepositoryCheck(
     results.push(result)
 
     if (!result.passed) {
-      return {
-        profile: profileName,
-        status: 'failed',
-        config_path: path.relative(root, configPath).split(path.sep).join('/'),
-        workspace_root: workspaceRoot,
-        ...(profile.description ? { description: profile.description } : {}),
+      return baseResult(
+        root,
+        profileName,
+        configPath,
+        workspaceRoot,
+        timeoutMs,
+        profile,
+        'failed',
         results,
-      }
+      )
     }
   }
 
@@ -206,25 +418,115 @@ export function runRepositoryCheck(
     results.push(result)
 
     if (!result.passed) {
-      return {
-        profile: profileName,
-        status: 'failed',
-        config_path: path.relative(root, configPath).split(path.sep).join('/'),
-        workspace_root: workspaceRoot,
-        ...(profile.description ? { description: profile.description } : {}),
+      return baseResult(
+        root,
+        profileName,
+        configPath,
+        workspaceRoot,
+        timeoutMs,
+        profile,
+        'failed',
         results,
-      }
+      )
     }
   }
 
-  return {
-    profile: profileName,
-    status: 'passed',
-    config_path: path.relative(root, configPath).split(path.sep).join('/'),
-    workspace_root: workspaceRoot,
-    ...(profile.description ? { description: profile.description } : {}),
+  return baseResult(
+    root,
+    profileName,
+    configPath,
+    workspaceRoot,
+    timeoutMs,
+    profile,
+    'passed',
     results,
+  )
+}
+
+export async function runRepositoryCheckStreaming(
+  root: string,
+  profileName: string,
+  options: RepositoryCheckStreamingOptions = {},
+): Promise<RepositoryCheckResult> {
+  const config = loadRepositoryChecks(root)
+  const configPath = repositoryChecksSourcePath(root)
+  const profile = config.profiles[profileName]
+  const workspaceRoot = path.resolve(root, configuredWorkspaceRoot(root))
+  const timeoutMs = effectiveTimeout(profile, options.timeout_ms)
+
+  if (!profile || profile.commands.length === 0) {
+    return baseResult(
+      root,
+      profileName,
+      configPath,
+      workspaceRoot,
+      timeoutMs,
+      profile,
+      'not_configured',
+      [],
+    )
   }
+
+  const results: RepositoryCheckCommandResult[] = []
+
+  for (const command of profile.probes) {
+    const result = await executeStreaming(
+      'probe',
+      command,
+      workspaceRoot,
+      timeoutMs,
+      options,
+    )
+    results.push(result)
+
+    if (!result.passed) {
+      return baseResult(
+        root,
+        profileName,
+        configPath,
+        workspaceRoot,
+        timeoutMs,
+        profile,
+        'failed',
+        results,
+      )
+    }
+  }
+
+  for (const command of profile.commands) {
+    const result = await executeStreaming(
+      'command',
+      command,
+      workspaceRoot,
+      timeoutMs,
+      options,
+    )
+    results.push(result)
+
+    if (!result.passed) {
+      return baseResult(
+        root,
+        profileName,
+        configPath,
+        workspaceRoot,
+        timeoutMs,
+        profile,
+        'failed',
+        results,
+      )
+    }
+  }
+
+  return baseResult(
+    root,
+    profileName,
+    configPath,
+    workspaceRoot,
+    timeoutMs,
+    profile,
+    'passed',
+    results,
+  )
 }
 
 export function assertRepositoryChecksValid(

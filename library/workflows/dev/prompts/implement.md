@@ -16,7 +16,9 @@ tests, keeping changes scoped.
    repository-declared toolchain entrypoints and the configured probes; do not
    substitute an ambiguous PATH interpreter or guess a package manager.
 6. Let the harness rerun the configured `static` and `fast` repository-check
-   profiles. Report an unconfigured profile rather than describing it as a pass.
+   profiles. `fast` must remain the target's documented default/primary suite;
+   do not substitute `full` merely because it is available. Report an
+   unconfigured profile rather than describing it as a pass.
 
 ## Output
 

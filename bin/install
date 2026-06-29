@@ -157,6 +157,8 @@ run_smoke() {
       && test -d "$project/.pancreator/runtime/inbox" \
       && test -f "$project/.pancreator/runtime/target-repo-primer.md" \
       && test -f "$project/.pancreator/runtime/repository-checks.json" \
+      && node -e 'const c=require(process.argv[1]); process.exit(c.profiles?.secondary ? 0 : 1)' \
+        "$project/.pancreator/runtime/repository-checks.json" \
       && test -f "$project/.pancreator/release/index.json" \
       && test ! -e "$project/.pancreator/runtime/locks" \
       && test -L "$project/.pancreator/.cursor" \
@@ -468,6 +470,11 @@ create_runtime_layout() {
     cp "$PANCREATOR_ROOT/library/templates/repository-checks.json" \
       "$RUNTIME_DIR/repository-checks.json"
   fi
+
+  node "$PANCREATOR_ROOT/bin/install-support" migrate-repository-checks \
+    --config "$RUNTIME_DIR/repository-checks.json" \
+    --template "$PANCREATOR_ROOT/library/templates/repository-checks.json" \
+    --backup-root "$PANCREATOR_DIR/backups/repository-checks"
 }
 
 is_complete_install() {

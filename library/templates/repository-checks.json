@@ -3,7 +3,7 @@
   "source_head": "unavailable",
   "$operator": {
     "summary": "Target-repository verification commands grouped by workflow purpose.",
-    "note": "Populate only commands verified from the target repository's own documentation, manifests, or executable scripts. Use explicit environment entrypoints and add probes that identify runtime/tool versions when interpreter selection can affect results. Empty profiles are reported as not configured and are never replaced with guessed npm, Python, or other technology-specific commands."
+    "note": "Populate only commands verified from the target repository's own documentation, manifests, executable scripts, or operator instructions. The fast profile is the shortest documented default/primary suite and MUST NOT duplicate full when the repository defines a distinct fast path. Secondary is an optional complementary slow/integration suite. Full is complete verification and may contain multiple commands when the repository exposes no single full-suite command. Use explicit environment entrypoints, add probes that identify runtime/tool versions, and set timeout_ms when the repository documents an expected duration. Empty profiles are reported as not configured and are never replaced with guessed npm, Python, or other technology-specific commands."
   },
   "profiles": {
     "configuration": {
@@ -17,12 +17,17 @@
       "commands": []
     },
     "fast": {
-      "description": "Focused unit and regression checks suitable for implementation feedback.",
+      "description": "The shortest documented default or primary automated suite suitable for iterative implementation feedback.",
+      "probes": [],
+      "commands": []
+    },
+    "secondary": {
+      "description": "An optional documented complementary suite for slow, integration, model-backed, end-to-end, or otherwise non-default checks.",
       "probes": [],
       "commands": []
     },
     "full": {
-      "description": "The complete documented automated verification suite.",
+      "description": "Complete documented automated verification, either one full-suite command or the ordered commands needed to cover all suites.",
       "probes": [],
       "commands": []
     }

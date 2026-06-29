@@ -170,19 +170,25 @@ older invocation cards and operator notes do not fail after an upgrade.
 The canonical target checks live in
 `.pancreator/runtime/repository-checks.json`. `/pan-build-docs` must populate only
 commands verified from the target repository's own documentation, manifests,
-executable scripts, or operator instructions. Use explicit runtime entrypoints
-and probes when PATH selection could change results.
+executable scripts, or operator instructions. `fast` is the shortest documented
+default or primary suite, `secondary` is an optional complementary slow or
+integration suite, and `full` is complete verification. Identical non-empty
+`fast` and `full` command lists are invalid. Use explicit runtime entrypoints,
+identity/version probes, and documented runtime bounds when PATH or environment
+selection could change results.
 
 Run a profile directly with:
 
 ```sh
 ./.pancreator/bin/pan repository-check static
 ./.pancreator/bin/pan repository-check fast
+./.pancreator/bin/pan repository-check secondary
 ./.pancreator/bin/pan repository-check full
 ```
 
 An empty profile is reported as `not_configured`; it is never silently replaced
-with an npm, Python, or other technology-specific command.
+with an npm, Python, or other technology-specific command. Direct runs stream
+live subprocess output to stderr and print the final structured result to stdout.
 
 ## Write a standalone PR description
 

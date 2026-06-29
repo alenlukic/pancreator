@@ -45,4 +45,4 @@ This directory contains the Pancreator harness installed for the parent reposito
 
 Applicable policies, validation requirements, workflows, personas, and schemas live under `.pancreator/governance/` and `.pancreator/library/`. The active invocation card is the scoped contract; agents SHOULD NOT load broad governance or unrelated run history unless that card requires it.
 
-Target-repository verification commands live in `.pancreator/runtime/repository-checks.json`. They MUST come from the target repository's own documented conventions; Pancreator MUST NOT infer npm, Python, or any other target technology.
+Target-repository verification commands live in `.pancreator/runtime/repository-checks.json`. They MUST come from the target repository's own documented conventions; Pancreator MUST NOT infer npm, Python, or any other target technology. `fast` MUST use the shortest documented default/primary suite, optional `secondary` SHOULD represent complementary slow or integration checks, and `full` MUST cover complete verification. Non-empty `fast` and `full` command lists MUST NOT be identical when the target defines distinct suites.

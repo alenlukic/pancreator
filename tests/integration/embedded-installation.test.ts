@@ -192,6 +192,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     }>(path.join(project, '.pancreator', 'runtime', 'repository-checks.json'))
     assert.equal(repositoryChecks.schema_version, 1)
     assert.deepEqual(repositoryChecks.profiles.static?.commands, [])
+    assert.deepEqual(repositoryChecks.profiles.secondary?.commands, [])
     assert.deepEqual(repositoryChecks.profiles.full?.commands, [])
     assert.equal(
       existsSync(path.join(project, '.pancreator', 'runtime', 'locks')),
@@ -510,6 +511,77 @@ test('embedded installer refresh preserves runtime state and unrelated Cursor fi
     assert.equal(
       existsSync(path.join(legacyWorkspaceDirectory, 'active-workflow.json')),
       false,
+    )
+  } finally {
+    rmSync(project, { recursive: true, force: true })
+  }
+})
+
+test('embedded installer disables a legacy fast profile that duplicates full', () => {
+  const project = makeSkeletonProject()
+
+  try {
+    assert.equal(runInstaller(project).status, 0)
+    const checksPath = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'repository-checks.json',
+    )
+    writeFileSync(
+      checksPath,
+      `${JSON.stringify(
+        {
+          schema_version: 1,
+          profiles: {
+            fast: {
+              description: 'incorrect generated fast profile',
+              probes: ['node --version'],
+              commands: ['node -e "process.exit(0)"'],
+            },
+            full: {
+              description: 'complete suite',
+              probes: ['node --version'],
+              commands: ['node   -e   "process.exit(0)"'],
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    )
+
+    const result = runInstaller(project, ['--yes'])
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /Disabled fast because it duplicated full/u)
+
+    const migrated = readJson<{
+      profiles: Record<string, { commands: string[]; probes: string[] }>
+      $operator?: { migration_notes?: string[] }
+    }>(checksPath)
+
+    assert.deepEqual(migrated.profiles.fast?.commands, [])
+    assert.deepEqual(migrated.profiles.fast?.probes, [])
+    assert.deepEqual(migrated.profiles.full?.commands, [
+      'node   -e   "process.exit(0)"',
+    ])
+    assert.deepEqual(migrated.profiles.secondary?.commands, [])
+    assert.match(
+      migrated.$operator?.migration_notes?.join('\n') ?? '',
+      /distinct default\/primary suite/u,
+    )
+
+    const backupRoot = path.join(
+      project,
+      '.pancreator',
+      'backups',
+      'repository-checks',
+    )
+    assert.equal(readdirSync(backupRoot).length, 1)
+    assert.match(
+      readFileSync(path.join(backupRoot, readdirSync(backupRoot)[0]), 'utf8'),
+      /incorrect generated fast profile/u,
     )
   } finally {
     rmSync(project, { recursive: true, force: true })

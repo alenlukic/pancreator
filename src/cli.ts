@@ -54,7 +54,7 @@ import { auditDirectives } from './lib/governance/audit-directives.js'
 import {
   assertRepositoryChecksValid,
   repositoryChecksSourcePath,
-  runRepositoryCheck,
+  runRepositoryCheckStreaming,
 } from './lib/repository-checks.js'
 import { snapshotWorkspace } from './lib/workspace/index.js'
 import { resolveRoots } from './lib/workspace/roots.js'
@@ -73,7 +73,7 @@ const HELP_BODY = `Usage:
   pan accept-change <run-id> [--note <text>] [--waive]
   pan abort <run-id> [--note <text>]
   pan changes begin|commit|cancel <run-id> <path> [--lock <legacy-token>]  # deprecated no-op
-  pan repository-check <profile> [--json]
+  pan repository-check <profile> [--timeout-ms <milliseconds>] [--json]
   pan repository-check validate [--json]
   pan workspace reconcile [--workspace <dir>] [--state-root <dir>] [--adopt]
   pan workflow validate-changes <run-id>
@@ -597,10 +597,35 @@ async function main(): Promise<void> {
         return
       }
 
-      const result = runRepositoryCheck(root, profile)
+      const timeoutValue = option(args, '--timeout-ms')
+      let timeoutMs: number | undefined
+
+      if (timeoutValue !== null) {
+        const parsedTimeout = Number(timeoutValue)
+
+        if (!Number.isInteger(parsedTimeout) || parsedTimeout < 1_000) {
+          throw new PanError(
+            '--timeout-ms MUST be an integer of at least 1000.',
+            { code: 'INVALID_ARGUMENT' },
+          )
+        }
+
+        timeoutMs = parsedTimeout
+      }
+
+      const result = await runRepositoryCheckStreaming(root, profile, {
+        ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
+        on_start: (kind, commandText) => {
+          process.stderr.write(
+            `[repository-check:${profile}] ${kind}: ${commandText}\n`,
+          )
+        },
+        on_stdout: (chunk) => process.stderr.write(chunk),
+        on_stderr: (chunk) => process.stderr.write(chunk),
+      })
 
       if (result.status === 'not_configured') {
-        process.stdout.write('PANCREATOR_CHECK_SKIPPED=1\n')
+        process.stderr.write('PANCREATOR_CHECK_SKIPPED=1\n')
       }
 
       print(result, hasFlag(args, '--json'))

@@ -116,8 +116,11 @@ Embedded targets define their own deterministic commands in
 `.pancreator/runtime/repository-checks.json`. `/pan-build-docs` derives profiles
 only from target-authoritative docs, manifests, scripts, or operator guidance.
 Pancreator does not project its npm, TypeScript, shell, or package-layout
-conventions into the target. Profiles should use explicit toolchain entrypoints
-and identity/version probes when PATH ambiguity matters.
+conventions into the target. `fast` is the shortest documented default/primary
+suite, optional `secondary` contains complementary slow or integration checks,
+and `full` covers complete verification. Profiles should use explicit toolchain
+entrypoints, identity/version probes, and documented runtime bounds when PATH or
+environment ambiguity matters. Direct checks stream live subprocess output.
 
 Persistent workspace locks, workflow leases, and per-edit ledgers have been
 removed. Source-allowed stages edit directly within declared scope; accepted

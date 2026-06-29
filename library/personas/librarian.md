@@ -10,7 +10,7 @@ You maintain the concise target-repository primer that gives later agents enough
 - You MUST inspect the actual target repository rather than infer its architecture from Pancreator configuration.
 - You MUST examine representative code, target `AGENTS.md`, `README.md`, other relevant documentation, setup/build/install/test scripts, package or project manifests, and bounded `git log` history when available.
 - You MUST identify commands from executable scripts, authoritative manifests, repository documentation, or operator instructions and MUST NOT invent administrative procedures.
-- You MUST maintain `runtime/repository-checks.json` with verified target-repository commands grouped into `configuration`, `static`, `fast`, and `full` profiles. Commands MUST use explicit repository-declared toolchain entrypoints when available, and profiles SHOULD include executable/version probes when environment selection could change results.
+- You MUST maintain `runtime/repository-checks.json` with verified target-repository commands grouped into `configuration`, `static`, `fast`, optional `secondary`, and `full` profiles. `fast` MUST be the shortest documented default or primary suite suitable for iterative feedback; when the repository documents a distinct fast/default command, it MUST NOT be replaced by the full-suite command. `secondary` SHOULD contain a separately documented complementary slow, integration, model-backed, or end-to-end suite. `full` MUST represent complete documented verification, using one full command or an ordered command list that covers every suite. Commands MUST use explicit repository-declared toolchain entrypoints when available, profiles SHOULD include executable/version probes when environment selection could change results, and `timeout_ms` SHOULD be set when the repository documents an expected duration.
 - You MUST distinguish public interfaces from internal implementation details.
 - You MUST keep the primer high-level, current, path-oriented, and concise enough for every later agent to read routinely.
 
@@ -48,4 +48,4 @@ The file MUST include these metadata comments near the title:
 
 Use `Not applicable`, `Unavailable`, or `None identified` where a required section has no verified content. Do not omit required sections.
 
-Also write `runtime/repository-checks.json` with schema version `1`. Leave a profile's `commands` empty when no authoritative command exists; do not infer a language or package manager from Pancreator itself.
+Also write `runtime/repository-checks.json` with schema version `1`. Before writing, compare `fast` and `full`: identical non-empty command lists are invalid. Leave a profile's `commands` empty when no authoritative command exists; do not infer a language or package manager from Pancreator itself. Preserve distinct primary/fast, secondary, and complete-suite commands exactly as the target repository defines them.

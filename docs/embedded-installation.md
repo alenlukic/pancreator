@@ -78,23 +78,34 @@ because Pancreator itself is implemented in TypeScript.
 
 `/pan-build-docs` inspects the target and writes
 `.pancreator/runtime/repository-checks.json`. Its `configuration`, `static`,
-`fast`, and `full` profiles may contain only commands verified from target-owned
-documentation, manifests, executable scripts, or operator instructions. Commands
-should use explicit interpreter, virtual-environment, compiler, SDK, or package
-manager entrypoints where PATH ambiguity could make stage results incomparable.
-Optional probes should print executable identity and version before verification.
+`fast`, optional `secondary`, and `full` profiles may contain only commands
+verified from target-owned documentation, manifests, executable scripts, or
+operator instructions. `fast` is the shortest documented default or primary
+suite; it must not silently reuse `full` when the repository defines a distinct
+fast path. `secondary` represents a separately documented slow, integration,
+model-backed, or end-to-end subset. `full` is complete verification and may use
+one command or an ordered command list covering every suite. Commands should use
+explicit interpreter, virtual-environment, compiler, SDK, or package manager
+entrypoints where PATH ambiguity could make stage results incomparable. Optional
+probes should print executable identity and version before verification, and
+`timeout_ms` should capture a documented runtime bound when one exists.
 
 The dev workflow invokes profiles through:
 
 ```sh
 ./.pancreator/bin/pan repository-check static
 ./.pancreator/bin/pan repository-check fast
+./.pancreator/bin/pan repository-check secondary
 ./.pancreator/bin/pan repository-check full
 ```
 
 An empty profile is reported as `not_configured`. Pancreator does not replace it
-with a guessed command or treat it as successful evidence. Refreshes preserve an
-existing target-specific profile file.
+with a guessed command or treat it as successful evidence. Direct profile runs
+stream subprocess output to stderr while reserving stdout for the final result,
+so `--json` remains machine-readable without appearing frozen. Refreshes preserve
+valid target-specific commands, add newly introduced standard profiles, and
+safely disable a legacy `fast` profile that exactly duplicates `full`; the
+pre-migration file is backed up under `.pancreator/backups/repository-checks/`.
 
 ## Workspace mutation model
 
