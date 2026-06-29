@@ -46,14 +46,14 @@ requirement ends lightweight execution.
 
 The final successful cycle MUST establish all of the following:
 
-- the repository lint command passes when present;
-- the repository unit-test command passes when present;
-- the repository regression-test command passes when present;
-- directly affected checks and any applicable build or typecheck pass;
+- the configured repository-check profiles applicable to the change pass;
+- direct checks and any target-documented build, static, or focused test commands pass;
 - every acceptance criterion has concrete evidence;
 - existing behavior outside the requested change remains intact.
 
-A missing script, unavailable dependency, timeout, or check that cannot run is
+Use `runtime/repository-checks.json` as the command authority. Preserve its
+explicit toolchain entrypoints and probes, and do not infer ecosystem commands.
+A missing profile, unavailable dependency, timeout, or check that cannot run is
 not a pass. Record it as incomplete validation and determine whether systematic
 routing is required.
 

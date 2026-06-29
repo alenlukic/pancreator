@@ -107,7 +107,7 @@ test('operator pause from running prepare_invocation resumes to prepare', () => 
   assert.equal(resumed.pending_action.type, 'prepare_invocation')
 })
 
-test('operator changes made during a pause are ledgered and stale cards are replaced', () => {
+test('operator changes made during a pause are ratified and stale cards are replaced', () => {
   const root = createFixture()
   const state = createRun(root, {
     workflowSlug: 'dev',
@@ -151,7 +151,7 @@ test('operator changes made during a pause are ledgered and stale cards are repl
   })
 
   assert.equal(validation.status, 'passed')
-  assert.equal(validation.ledger_entry_count, 1)
+  assert.equal(validation.ledger_entry_count, 0)
 
   const replacement = prepareInvocation(root, runId).invocation
 

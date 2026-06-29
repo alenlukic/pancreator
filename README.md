@@ -110,6 +110,22 @@ For an indexed release update, initiate the fast-forward from Pancreator:
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release history and [`docs/embedded-installation.md`](docs/embedded-installation.md) for the installed boundary, Semantic Versioning/index protocol, update guarantees, partial-install behavior, and cleanup.
 
+### Embedded target verification
+
+Embedded targets define their own deterministic commands in
+`.pancreator/runtime/repository-checks.json`. `/pan-build-docs` derives profiles
+only from target-authoritative docs, manifests, scripts, or operator guidance.
+Pancreator does not project its npm, TypeScript, shell, or package-layout
+conventions into the target. Profiles should use explicit toolchain entrypoints
+and identity/version probes when PATH ambiguity matters.
+
+Persistent workspace locks, workflow leases, and per-edit ledgers have been
+removed. Source-allowed stages edit directly within declared scope; accepted
+indexes, fingerprints, stage evidence, and read-only mutation guards provide
+integrity. Older `pan changes` commands are accepted as no-ops for upgrade
+compatibility. Operators must not run concurrent mutating workflows against one
+workspace.
+
 ## Runtime record layout
 
 ```text

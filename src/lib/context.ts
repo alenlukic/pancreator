@@ -188,7 +188,8 @@ function availableReferences(state: RunState): AvailableReference[] {
   if (state.latest_ledger_validation_path) {
     references.push({
       path: state.latest_ledger_validation_path,
-      description: 'Latest validate-changes ledger result',
+      description:
+        'Latest workspace-change validation result (legacy path name)',
       retrieval: 'conditional',
       category: 'ledger_validation',
     })

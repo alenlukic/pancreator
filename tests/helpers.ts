@@ -141,6 +141,7 @@ function gitChangedFiles(root: string): string[] {
         (file) =>
           !file.startsWith('runtime/') &&
           !file.endsWith('/.lock') &&
+          !file.endsWith('/.operation-mutex') &&
           !file.includes('/validations/'),
       )
   } catch {

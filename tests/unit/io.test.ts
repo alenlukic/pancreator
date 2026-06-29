@@ -8,7 +8,7 @@ import {
   resolveInside,
   sha256,
   stableStringify,
-  withFileLock,
+  withOperationMutex,
   writeJsonAtomic,
 } from '../../src/lib/io.js'
 
@@ -21,14 +21,14 @@ test('atomic JSON writes and stable hashes are deterministic', () => {
   assert.equal(stableStringify({ b: 2, a: 1 }), '{"a":1,"b":2}')
 })
 
-test('repository path resolution rejects escapes and locks serialize access', () => {
+test('repository path resolution rejects escapes and run operations serialize access', () => {
   const root = createFixture()
   assert.throws(
     () => resolveInside(root, '../escape'),
     /escapes repository root/,
   )
-  const lock = path.join(root, 'runtime', '.lock')
-  writeFileSync(lock, '99999999\n')
-  const result = withFileLock(lock, () => 'ok')
+  const mutex = path.join(root, 'runtime', '.operation-mutex')
+  writeFileSync(mutex, '99999999\n')
+  const result = withOperationMutex(mutex, () => 'ok')
   assert.equal(result, 'ok')
 })

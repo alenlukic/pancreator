@@ -28,7 +28,8 @@ post-install checks from the target repository:
 cd /path/to/target-repository
 ./.pancreator/bin/pan doctor
 ./.pancreator/bin/pan validate
-# Then run /pan-build-docs in Cursor to replace the bootstrap target primer.
+# Then run /pan-build-docs in Cursor to replace the bootstrap target primer
+# and populate target-authoritative repository check profiles.
 ```
 
 ## Installed layout
@@ -46,7 +47,9 @@ cd /path/to/target-repository
     project.json            # embedded workspace and model configuration
     bin/ docs/ governance/ library/ src/ tests/
     dist/ node_modules/     # built runtime and development tooling
-    runtime/                # target-specific durable workflow state
+    runtime/
+      repository-checks.json # target-authoritative verification profiles
+      logs/ inbox/ ...       # target-specific durable workflow state
     backups/cursor/         # replaced operator Cursor files, when needed
 ```
 
@@ -66,6 +69,43 @@ Pancreator infrastructure, tooling, workflows, personas, governance, schemas,
 and validators are retained. Source-checkout self-development context is not
 installed: `.git`, `.env`, source `runtime/`, nested validation repositories, editor-local
 settings, and the self-development operating card are excluded.
+
+## Target repository checks
+
+The embedded harness is language- and technology-agnostic. It does not infer
+that the target uses npm, Python, a root package, or any other ecosystem merely
+because Pancreator itself is implemented in TypeScript.
+
+`/pan-build-docs` inspects the target and writes
+`.pancreator/runtime/repository-checks.json`. Its `configuration`, `static`,
+`fast`, and `full` profiles may contain only commands verified from target-owned
+documentation, manifests, executable scripts, or operator instructions. Commands
+should use explicit interpreter, virtual-environment, compiler, SDK, or package
+manager entrypoints where PATH ambiguity could make stage results incomparable.
+Optional probes should print executable identity and version before verification.
+
+The dev workflow invokes profiles through:
+
+```sh
+./.pancreator/bin/pan repository-check static
+./.pancreator/bin/pan repository-check fast
+./.pancreator/bin/pan repository-check full
+```
+
+An empty profile is reported as `not_configured`. Pancreator does not replace it
+with a guessed command or treat it as successful evidence. Refreshes preserve an
+existing target-specific profile file.
+
+## Workspace mutation model
+
+Pancreator no longer creates persistent workspace locks, active-workflow leases,
+or per-edit ledger entries. Source-allowed workers edit within declared scope
+directly; the harness relies on accepted workspace indexes, fingerprints,
+read-only-stage mutation guards, and stage evidence. Legacy
+`pan changes begin|commit|cancel` commands remain compatibility no-ops.
+Operators MUST NOT run concurrent mutating workflows against one target
+workspace and should pause a run before making other concurrent tracked-file
+changes so stage attribution remains clear.
 
 ## Cursor merge behavior
 
@@ -111,8 +151,7 @@ A complete installation can be refreshed idempotently:
 ./bin/install --target /path/to/target-repository --yes
 ```
 
-Refresh replaces owned harness payload and reprojects Cursor files while
-preserving `.pancreator/runtime`, Cursor backups, and unrelated target files.
+Refresh replaces owned harness payload and reprojects Cursor files while preserving `.pancreator/runtime/repository-checks.json`, workflow state, Cursor backups, and unrelated target files. Refresh also removes the obsolete `.pancreator/runtime/locks/` directory from pre-removal installations so stale cooperative locks cannot block upgraded runs.
 
 If `.pancreator/` exists but is incomplete, an interactive install offers:
 
@@ -208,7 +247,7 @@ npm run test:integration
 ```
 
 The tests cover fresh install, existing `.cursor` warning and backups,
-idempotent refresh, partial repair/clean/abort choices, omission of
+idempotent refresh with repository-check preservation and legacy-lock cleanup, partial repair/clean/abort choices, omission of
 self-development context, the dirty/unindexed/indexed source-state boundaries,
 rejection of unversioned indexed harness drift, and an indexed fast-forward
 update that preserves target runtime and custom Cursor state.

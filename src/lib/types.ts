@@ -242,14 +242,6 @@ export interface WorkspaceIndex {
   entries: Record<string, WorkspaceIndexEntry>
 }
 
-export interface ActiveWorkflowLease {
-  schema_version: 1
-  workspace_id: string
-  workflow_id: string
-  acquired_at_ms: number
-  process_id?: number
-}
-
 export interface WorkflowBaseline {
   schema_version: 1
   workflow_id: string
@@ -261,36 +253,6 @@ export interface WorkflowBaseline {
   configuration_hash: string
   scope_hash: string
   entries: Record<string, WorkspaceIndexEntry>
-}
-
-export interface FileLock {
-  schema_version: 1
-  lock_id: string
-  path: string
-  canonical_path: string
-  workflow_id: string
-  stage: string
-  stage_attempt: number
-  invocation_id: string
-  acquired_at_ms: number
-  expected_checksum: string | null
-}
-
-export type LedgerOperation = 'create' | 'modify' | 'delete'
-
-export interface ModificationLedgerEntry {
-  schema_version: 1
-  sequence: number
-  path: string
-  operation: LedgerOperation
-  before_checksum: string | null
-  after_checksum: string | null
-  workflow_id: string
-  stage: string
-  stage_attempt: number
-  invocation_id: string
-  modified_at_ms: number
-  lock_id: string
 }
 
 export interface LedgerAnomaly {

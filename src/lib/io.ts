@@ -233,43 +233,45 @@ function processIsAlive(pid: number): boolean {
   }
 }
 
-export function withFileLock<T>(lockPath: string, callback: () => T): T {
-  ensureDir(path.dirname(lockPath))
+export function withOperationMutex<T>(mutexPath: string, callback: () => T): T {
+  ensureDir(path.dirname(mutexPath))
 
   let descriptor: number | undefined
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      descriptor = openSync(lockPath, 'wx')
+      descriptor = openSync(mutexPath, 'wx')
       writeFileSync(descriptor, `${process.pid}\n`, 'utf8')
       break
     } catch (error) {
       let owner = Number.NaN
 
       try {
-        owner = Number(readFileSync(lockPath, 'utf8').trim())
+        owner = Number(readFileSync(mutexPath, 'utf8').trim())
       } catch {
-        // A malformed lock is stale and MAY be removed once.
+        // A malformed mutex is stale and MAY be removed once.
       }
 
       if (attempt === 0 && !processIsAlive(owner)) {
-        rmSync(lockPath, { force: true })
+        rmSync(mutexPath, { force: true })
         continue
       }
 
       throw new PanError(
-        `Another Pancreator operation holds the lock: ${lockPath}`,
+        `Another Pancreator command is updating this run: ${mutexPath}`,
         {
-          code: 'LOCK_HELD',
+          code: 'RUN_OPERATION_IN_PROGRESS',
           details: { owner_pid: owner, cause: errorMessage(error) },
         },
       )
     }
   }
 
-  invariant(descriptor !== undefined, `Failed to acquire lock: ${lockPath}`, {
-    code: 'LOCK_ACQUISITION_FAILED',
-  })
+  invariant(
+    descriptor !== undefined,
+    `Failed to serialize run operation: ${mutexPath}`,
+    { code: 'RUN_OPERATION_SERIALIZATION_FAILED' },
+  )
 
   try {
     return callback()
@@ -277,7 +279,7 @@ export function withFileLock<T>(lockPath: string, callback: () => T): T {
     try {
       closeSync(descriptor)
     } finally {
-      rmSync(lockPath, { force: true })
+      rmSync(mutexPath, { force: true })
     }
   }
 }

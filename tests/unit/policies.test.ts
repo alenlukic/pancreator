@@ -25,6 +25,7 @@ test('policy resolution unions global and stage-specific policies', () => {
     'GLOBAL-002',
     'OUTPUT-001',
     'PRIMER-001',
+    'REPO-001',
     'TS-001',
     'VALID-001',
   ])
@@ -49,6 +50,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'GLOBAL-002',
     'OUTPUT-001',
     'PRIMER-001',
+    'REPO-001',
     'REVIEW-001',
     'TS-001',
     'VALID-001',
@@ -69,6 +71,7 @@ test('engineering handbook policy loads for reviewer and qa personas', () => {
     'GLOBAL-002',
     'OUTPUT-001',
     'PRIMER-001',
+    'REPO-001',
     'TEST-001',
     'TS-001',
     'VALID-001',
@@ -114,6 +117,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'OUTPUT-001',
     'PAUSE-001',
     'PRIMER-001',
+    'REPO-001',
     'VALID-001',
     'WAIVER-001',
     'WORK-001',
@@ -127,6 +131,7 @@ test('orchestration and release guidance resolve with required policy dependenci
     'OUTPUT-001',
     'PR-001',
     'PRIMER-001',
+    'REPO-001',
     'SHIP-001',
     'VALID-001',
     'VERSION-001',
@@ -153,7 +158,33 @@ test('self-development version policy is excluded from embedded installations', 
   }).map((policy) => policy.id)
 
   assert.ok(!releaseIds.includes('VERSION-001'))
+  assert.ok(!releaseIds.includes('BIN-001'))
+  assert.ok(!releaseIds.includes('TS-001'))
+  assert.ok(releaseIds.includes('REPO-001'))
   assert.ok(releaseIds.includes('SHIP-001'))
+})
+
+test('embedded coding stages exclude Pancreator language and binary policies', () => {
+  const root = createFixture()
+  const configPath = path.join(root, 'project.json')
+  const config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >
+
+  config.installation_mode = 'embedded'
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+  const ids = resolvePolicies(root, {
+    persona: 'coder',
+    workflow: 'dev',
+    stage: 'implement',
+  }).map((policy) => policy.id)
+
+  assert.ok(!ids.includes('BIN-001'))
+  assert.ok(!ids.includes('TS-001'))
+  assert.ok(ids.includes('ENG-001'))
+  assert.ok(ids.includes('REPO-001'))
 })
 
 test('decomposer loads conservative decomposition governance', () => {
@@ -173,6 +204,7 @@ test('decomposer loads conservative decomposition governance', () => {
     'GLOBAL-002',
     'OUTPUT-001',
     'PRIMER-001',
+    'REPO-001',
     'VALID-001',
   ])
 })
@@ -194,6 +226,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'GLOBAL-002',
     'OUTPUT-001',
     'PRIMER-001',
+    'REPO-001',
     'VALID-001',
     'WORK-001',
   ])
@@ -213,6 +246,7 @@ test('standalone remediation personas load their work-mode policies', () => {
     'GLOBAL-002',
     'OUTPUT-001',
     'PRIMER-001',
+    'REPO-001',
     'SPOT-001',
     'TS-001',
     'VALID-001',

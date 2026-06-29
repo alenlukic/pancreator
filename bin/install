@@ -27,6 +27,7 @@ SOURCE_PAYLOAD_ENTRIES=(
   package-lock.json
   package.json
   prettier.config.js
+  release
   src
   tests
   tsconfig.json
@@ -155,6 +156,9 @@ run_smoke() {
       && test -f "$project/.pancreator/install.json" \
       && test -d "$project/.pancreator/runtime/inbox" \
       && test -f "$project/.pancreator/runtime/target-repo-primer.md" \
+      && test -f "$project/.pancreator/runtime/repository-checks.json" \
+      && test -f "$project/.pancreator/release/index.json" \
+      && test ! -e "$project/.pancreator/runtime/locks" \
       && test -L "$project/.pancreator/.cursor" \
       && test -f "$project/.cursor/commands/pan-start.md" \
       && test -f "$project/.cursor/agents/coder.md" \
@@ -328,7 +332,8 @@ resolve_source_metadata() {
   fi
 
   if ! git -C "$PANCREATOR_ROOT" diff --quiet "$indexed" "$head" -- \
-    .gitignore project.json "${SOURCE_PAYLOAD_ENTRIES[@]}"; then
+    .gitignore project.json "${SOURCE_PAYLOAD_ENTRIES[@]}" \
+    ':(exclude)release/index.json'; then
     echo "Error: installed harness inputs differ from indexed release $VERSION." >&2
     echo "Complete the Pancreator self-development release flow or increment VERSION before installing this clean checkout." >&2
     exit 1
@@ -448,9 +453,20 @@ ensure_target_gitignore() {
 create_runtime_layout() {
   mkdir -p "$INBOX_DIR" "$RUNTIME_DIR/logs/workflows" "$RUNTIME_DIR/backlog"
 
+  # Per-file workspace locks were removed. Refreshes clean up stale lock files
+  # from older installations so they can never block run completion again.
+  rm -rf "$RUNTIME_DIR/locks"
+  find "$RUNTIME_DIR/logs/workflows" -type f -name '.lock' -delete
+  rm -f "$RUNTIME_DIR/workspace/active-workflow.json"
+
   if [[ ! -f "$RUNTIME_DIR/target-repo-primer.md" ]]; then
     cp "$PANCREATOR_ROOT/library/templates/target-repo-primer.md" \
       "$RUNTIME_DIR/target-repo-primer.md"
+  fi
+
+  if [[ ! -f "$RUNTIME_DIR/repository-checks.json" ]]; then
+    cp "$PANCREATOR_ROOT/library/templates/repository-checks.json" \
+      "$RUNTIME_DIR/repository-checks.json"
   fi
 }
 

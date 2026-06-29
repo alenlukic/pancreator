@@ -6,10 +6,11 @@ criteria. Verify reality, not the implementer's narrative.
 ## Steps
 
 1. Read the card, plan, acceptance criteria, and implementation record.
-2. Inspect the actual diff and workspace; reproduce behavior where possible.
-3. Verify each acceptance criterion, test quality, maintainability, and scope
+2. Read `runtime/repository-checks.json` and use the same configured `static` and `fast` profiles used by implementation when reproducing deterministic behavior. Do not substitute guessed ecosystem commands.
+3. Inspect the actual diff and workspace; reproduce behavior where possible. Preserve configured probes so executable identity and version remain comparable across stages.
+4. Verify each acceptance criterion, test quality, maintainability, and scope
    control.
-4. Record each finding with severity, concrete evidence, and an owning
+5. Record each finding with severity, concrete evidence, and an owning
    remediation stage.
 
 ## Output

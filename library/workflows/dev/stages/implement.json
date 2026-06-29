@@ -48,17 +48,17 @@
       "id": "implement.lint",
       "type": "shell",
       "hard": true,
-      "statement": "Static syntax checks pass.",
-      "command": "npm run lint",
-      "timeout_ms": 120000
+      "statement": "Configured repository static checks pass.",
+      "command": "pan repository-check static",
+      "timeout_ms": 240000
     },
     {
       "id": "implement.unit_tests",
       "type": "shell",
       "hard": true,
-      "statement": "Unit and regression tests pass.",
-      "command": "npm test",
-      "timeout_ms": 180000
+      "statement": "Configured repository fast checks pass.",
+      "command": "pan repository-check fast",
+      "timeout_ms": 300000
     }
   ],
   "transitions": {

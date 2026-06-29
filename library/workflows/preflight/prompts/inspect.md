@@ -1,12 +1,14 @@
 ## Objective
 
-Inspect the harness structure and validation evidence for integrity. Do not
-modify any files.
+Inspect the installed Pancreator harness structure and validation evidence for
+integrity. Do not modify target-repository files.
 
 ## Steps
 
 1. Read the card and the harness layout it references.
-2. Let the harness rerun `npm run validate` and `npm test`.
+2. Let the harness rerun its own validation and automated tests from the
+   Pancreator installation root, independent of the target repository's
+   language, package manager, or project layout.
 3. Report configuration errors, missing required files, and operational risks.
 
 ## Output
@@ -17,5 +19,5 @@ inspection summary artifact and reference it.
 
 ## Done when
 
-Configuration validates, harness tests pass, and findings are recorded with
-concrete evidence.
+Harness configuration validates, harness tests pass, and findings are recorded
+with concrete evidence.

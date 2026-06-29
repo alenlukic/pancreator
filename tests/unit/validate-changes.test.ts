@@ -10,8 +10,6 @@ import {
   snapshotWorkspace,
   writeWorkflowBaseline,
 } from '../../src/lib/workspace/index.js'
-import { appendLedgerEntry } from '../../src/lib/workspace/ledger.js'
-import { digestPath } from '../../src/lib/workspace/locks.js'
 import { resolveRoots } from '../../src/lib/workspace/roots.js'
 import { validateWorkflowChanges } from '../../src/lib/workspace/validate-changes.js'
 import { evaluateDeterministicCriteria } from '../../src/lib/validation.js'
@@ -27,9 +25,9 @@ function makeWorkspace(): string {
   return workspace
 }
 
-test('validate-changes reports unledgered modifications', () => {
+test('validate-changes adopts direct tracked modifications', () => {
   const workspace = makeWorkspace()
-  const runId = 'run-unledgered'
+  const runId = 'run-direct-modification'
   const roots = resolveRoots({
     installation_root: workspace,
     workspace_root: workspace,
@@ -51,25 +49,25 @@ test('validate-changes reports unledgered modifications', () => {
     state_root: roots.state_root,
     roots,
   })
+  const updatedIndex = loadWorkspaceIndex(roots.state_root)
 
-  assert.equal(result.status, 'operator-review-required')
-  assert.equal(
-    result.anomalies.some(
-      (anomaly) => anomaly.code === 'unledgered.modification',
-    ),
-    true,
+  assert.equal(result.status, 'passed')
+  assert.equal(result.anomalies.length, 0)
+  assert.equal(result.modified_path_count, 1)
+  assert.notEqual(
+    updatedIndex?.entries['tracked.ts']?.checksum,
+    adopted.index.entries['tracked.ts']?.checksum,
   )
 })
 
-test('validate-changes repairs index when ledger is ahead', () => {
+test('validate-changes adopts direct tracked creations', () => {
   const workspace = makeWorkspace()
-  const runId = 'run-repair'
+  const runId = 'run-direct-creation'
   const roots = resolveRoots({
     installation_root: workspace,
     workspace_root: workspace,
   })
   const adopted = snapshotWorkspace(roots, true)
-  const beforeChecksum = adopted.index.entries['tracked.ts']?.checksum ?? null
 
   writeWorkflowBaseline(
     roots.state_root,
@@ -79,33 +77,18 @@ test('validate-changes repairs index when ledger is ahead', () => {
     sha256({ scope_hash: roots.scope_hash }),
   )
 
-  writeFileSync(path.join(workspace, 'tracked.ts'), 'export const value = 3\n')
-
-  appendLedgerEntry(roots.state_root, runId, {
-    path: 'tracked.ts',
-    operation: 'modify',
-    before_checksum: beforeChecksum,
-    after_checksum: digestPath(path.join(workspace, 'tracked.ts')).checksum,
-    workflow_id: runId,
-    stage: 'implement',
-    stage_attempt: 1,
-    invocation_id: 'implement-1',
-    modified_at_ms: Date.now(),
-    lock_id: 'lock-1',
-  })
+  writeFileSync(path.join(workspace, 'new.ts'), 'export const value = 3\n')
 
   const result = validateWorkflowChanges({
     run_id: runId,
     state_root: roots.state_root,
     roots,
   })
-  const repairedIndex = loadWorkspaceIndex(roots.state_root)
+  const updatedIndex = loadWorkspaceIndex(roots.state_root)
 
   assert.equal(result.status, 'passed')
-  assert.equal(
-    repairedIndex?.entries['tracked.ts']?.checksum,
-    digestPath(path.join(workspace, 'tracked.ts')).checksum,
-  )
+  assert.equal(result.modified_path_count, 1)
+  assert.ok(updatedIndex?.entries['new.ts'])
 })
 
 test('validate-changes ignores dist and node_modules side effects', () => {
@@ -146,9 +129,9 @@ test('validate-changes ignores dist and node_modules side effects', () => {
   assert.equal(result.anomalies.length, 0)
 })
 
-test('validate-changes still flags unexpected tracked source edits', () => {
+test('validate-changes blocks scope hash drift', () => {
   const workspace = makeWorkspace()
-  const runId = 'run-tracked-edit'
+  const runId = 'run-scope-drift'
   const roots = resolveRoots({
     installation_root: workspace,
     workspace_root: workspace,
@@ -163,17 +146,19 @@ test('validate-changes still flags unexpected tracked source edits', () => {
     sha256({ scope_hash: roots.scope_hash }),
   )
 
-  writeFileSync(path.join(workspace, 'unexpected.ts'), 'export const x = 1\n')
-
+  const changedRoots = {
+    ...roots,
+    scope_hash: 'changed-scope',
+  }
   const result = validateWorkflowChanges({
     run_id: runId,
     state_root: roots.state_root,
-    roots,
+    roots: changedRoots,
   })
 
   assert.equal(result.status, 'operator-review-required')
   assert.equal(
-    result.anomalies.some((anomaly) => anomaly.code === 'unledgered.creation'),
+    result.anomalies.some((anomaly) => anomaly.code === 'scope.hash_mismatch'),
     true,
   )
 })

@@ -65,9 +65,9 @@
       "id": "ship.validate",
       "type": "shell",
       "hard": true,
-      "statement": "Repository configuration remains valid.",
-      "command": "npm run validate",
-      "timeout_ms": 120000
+      "statement": "Configured repository validation remains valid.",
+      "command": "pan repository-check configuration",
+      "timeout_ms": 240000
     }
   ],
   "transitions": {

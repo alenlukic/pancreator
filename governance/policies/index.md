@@ -7,7 +7,8 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `GLOBAL-001` — operator-first records
 - `GLOBAL-002` — bounded context retrieval
 - `OUTPUT-001` — quiet command output and Cursor-like SDK progress
-- `BIN-001` — durable repository shell automation under `bin/`
+- `BIN-001` — self-development-only durable Pancreator shell automation under `bin/`
+- `REPO-001` — target-owned, technology-agnostic verification commands
 - `AUTO-001` — deterministic automation authority
 - `VALID-001` — policy-bound artifact validation
 - `CONTRACT-001` — deterministic contract coverage
@@ -20,7 +21,7 @@ Policies MUST be small, globally identified JSON modules. `governance/registries
 - `INTAKE-001` — faithful intake
 - `PLAN-001` — proportionate planning
 - `DEV-001` — implementation discipline
-- `TS-001` — TypeScript conformance
+- `TS-001` — self-development-only TypeScript conformance
 - `REVIEW-001` — independent review
 - `TEST-001` — evidence-based QA
 - `SHIP-001` — operator-owned release boundary

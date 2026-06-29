@@ -1,32 +1,16 @@
-import {
-  closeSync,
-  lstatSync,
-  openSync,
-  readdirSync,
-  readFileSync,
-  readlinkSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { lstatSync, readdirSync, readFileSync, readlinkSync } from 'node:fs'
 import path from 'node:path'
 
-import { PanError, invariant } from '../errors.js'
+import { invariant } from '../errors.js'
 import {
-  ensureDir,
   fileExists,
   isRecord,
   readJson,
   sha256,
   writeJsonAtomic,
 } from '../io.js'
-import {
-  baselinePath,
-  indexPath,
-  leasePath,
-  ledgerValidationPath,
-} from '../state.js'
+import { baselinePath, indexPath, ledgerValidationPath } from '../state.js'
 import type {
-  ActiveWorkflowLease,
   LedgerValidationResult,
   ResolvedRoots,
   WorkflowBaseline,
@@ -377,81 +361,6 @@ export function readWorkflowBaseline(
   )
 
   return value as unknown as WorkflowBaseline
-}
-
-export function readActiveWorkflowLease(
-  stateRoot: string,
-): ActiveWorkflowLease | null {
-  const filePath = leasePath(stateRoot)
-
-  if (!fileExists(filePath)) {
-    return null
-  }
-
-  const value = readJson(filePath)
-
-  if (
-    !isRecord(value) ||
-    value.schema_version !== 1 ||
-    typeof value.workflow_id !== 'string'
-  ) {
-    throw new PanError(`Invalid workspace lease: ${filePath}`, {
-      code: 'INVALID_WORKFLOW_LEASE',
-    })
-  }
-
-  return value as unknown as ActiveWorkflowLease
-}
-
-export function acquireActiveWorkflowLease(
-  stateRoot: string,
-  lease: ActiveWorkflowLease,
-): void {
-  const filePath = leasePath(stateRoot)
-  ensureDir(path.dirname(filePath))
-
-  let descriptor: number | null = null
-
-  try {
-    descriptor = openSync(filePath, 'wx')
-    writeFileSync(descriptor, `${JSON.stringify(lease, null, 2)}\n`, 'utf8')
-  } catch {
-    const existing = readActiveWorkflowLease(stateRoot)
-
-    throw new PanError(
-      `Another mutating workflow is already active: ${existing?.workflow_id ?? 'unknown'}`,
-      {
-        code: 'WORKFLOW_LEASE_HELD',
-        details: { existing_workflow_id: existing?.workflow_id },
-      },
-    )
-  } finally {
-    if (descriptor !== null) {
-      closeSync(descriptor)
-    }
-  }
-}
-
-export function releaseActiveWorkflowLease(
-  stateRoot: string,
-  runId: string,
-): void {
-  const existing = readActiveWorkflowLease(stateRoot)
-
-  if (!existing) {
-    return
-  }
-
-  if (existing.workflow_id !== runId) {
-    throw new PanError(
-      `Lease ownership mismatch: ${existing.workflow_id} != ${runId}`,
-      {
-        code: 'WORKFLOW_LEASE_MISMATCH',
-      },
-    )
-  }
-
-  rmSync(leasePath(stateRoot), { force: true })
 }
 
 export function readLedgerValidationResult(

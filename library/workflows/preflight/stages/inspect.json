@@ -19,7 +19,7 @@
       "type": "shell",
       "hard": true,
       "statement": "Harness configuration validates.",
-      "command": "npm run validate",
+      "command": "\"$PANCREATOR_ROOT/bin/pan\" validate",
       "timeout_ms": 120000
     },
     {
@@ -27,8 +27,8 @@
       "type": "shell",
       "hard": true,
       "statement": "Harness tests pass.",
-      "command": "npm test",
-      "timeout_ms": 180000
+      "command": "npm --prefix \"$PANCREATOR_ROOT\" test",
+      "timeout_ms": 300000
     }
   ],
   "transitions": {

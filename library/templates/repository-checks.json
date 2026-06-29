@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "source_head": "unavailable",
+  "$operator": {
+    "summary": "Target-repository verification commands grouped by workflow purpose.",
+    "note": "Populate only commands verified from the target repository's own documentation, manifests, or executable scripts. Use explicit environment entrypoints and add probes that identify runtime/tool versions when interpreter selection can affect results. Empty profiles are reported as not configured and are never replaced with guessed npm, Python, or other technology-specific commands."
+  },
+  "profiles": {
+    "configuration": {
+      "description": "Repository configuration or metadata validation.",
+      "probes": [],
+      "commands": []
+    },
+    "static": {
+      "description": "Formatting, lint, type, syntax, or compile-only checks.",
+      "probes": [],
+      "commands": []
+    },
+    "fast": {
+      "description": "Focused unit and regression checks suitable for implementation feedback.",
+      "probes": [],
+      "commands": []
+    },
+    "full": {
+      "description": "The complete documented automated verification suite.",
+      "probes": [],
+      "commands": []
+    }
+  }
+}

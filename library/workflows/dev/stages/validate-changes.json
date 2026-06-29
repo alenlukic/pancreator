@@ -14,7 +14,7 @@
       "id": "validate-changes.integrity",
       "type": "state",
       "hard": true,
-      "statement": "Baseline, ledger, index, lock, and filesystem state are internally consistent."
+      "statement": "Run baseline, accepted index, current filesystem, and workspace scope are internally consistent."
     }
   ],
   "transitions": {

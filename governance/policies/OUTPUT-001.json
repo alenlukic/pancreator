@@ -4,8 +4,8 @@
   "severity": "hard",
   "summary": "Routine execution output MUST remain quiet on success while agent invocations MUST surface concise, Cursor-like progress and actionable failures.",
   "instructions": [
-    "Verification-oriented npm scripts MUST suppress routine success output by default and MUST replay captured stdout and stderr when the underlying command fails. The shared wrapper is bin/run-quiet.",
-    "Operator commands whose stdout is the requested result MUST preserve that result; incidental npm lifecycle banners and successful build, lint, format, and test chatter MUST remain suppressed.",
+    "Pancreator-owned verification scripts MUST suppress routine success output by default and MUST replay captured stdout and stderr when the underlying command fails. In self-development the shared wrapper is bin/run-quiet; embedded target commands remain governed by the target repository.",
+    "Operator commands whose stdout is the requested result MUST preserve that result; incidental Pancreator lifecycle banners and successful harness build, lint, format, and test chatter MUST remain suppressed.",
     "Cursor SDK invocations MUST route normalized stream events through the shared invocation logger rather than printing raw event objects directly.",
     "The Cursor SDK invocation logger MUST emit concise plan or progress summaries, grouped tool-call logs, significant findings or issues, and a brief current-task update when two minutes pass without another operator-facing emission.",
     "Human-readable summaries MUST NOT replace full-fidelity SDK events used as durable evidence, and tool arguments or results MUST be treated as unstable unknown input.",

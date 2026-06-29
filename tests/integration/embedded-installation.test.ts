@@ -175,12 +175,28 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
       true,
     )
     assert.equal(existsSync(path.join(project, '.pancreator', 'library')), true)
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'release', 'index.json')),
+      true,
+    )
     assert.equal(existsSync(path.join(project, '.pancreator', 'src')), true)
     const primer = readFileSync(
       path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
       'utf8',
     )
     assert.match(primer, /pancreator-primer-status: unbuilt/u)
+
+    const repositoryChecks = readJson<{
+      schema_version: number
+      profiles: Record<string, { commands: string[] }>
+    }>(path.join(project, '.pancreator', 'runtime', 'repository-checks.json'))
+    assert.equal(repositoryChecks.schema_version, 1)
+    assert.deepEqual(repositoryChecks.profiles.static?.commands, [])
+    assert.deepEqual(repositoryChecks.profiles.full?.commands, [])
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'runtime', 'locks')),
+      false,
+    )
 
     const buildDocsCommand = readFileSync(
       path.join(project, '.cursor', 'commands', 'pan-build-docs.md'),
@@ -234,6 +250,7 @@ test('embedded installer creates a runnable-layout harness under .pancreator', (
     assert.equal('source_root' in marker, false)
     assert.equal('target_root' in marker, false)
     assert.ok(marker.payload_entries.includes('governance'))
+    assert.ok(marker.payload_entries.includes('release'))
     assert.ok(
       marker.cursor_files.some((entry) => entry.path.endsWith('coder.md')),
     )
@@ -423,6 +440,38 @@ test('embedded installer refresh preserves runtime state and unrelated Cursor fi
       path.join(project, '.pancreator', 'runtime', 'target-repo-primer.md'),
       'generated primer\n',
     )
+    writeFileSync(
+      path.join(project, '.pancreator', 'runtime', 'repository-checks.json'),
+      '{\n  "schema_version": 1,\n  "profiles": {\n    "full": {\n      "probes": ["python --version"],\n      "commands": ["python -m pytest"]\n    }\n  }\n}\n',
+    )
+    mkdirSync(path.join(project, '.pancreator', 'runtime', 'locks'), {
+      recursive: true,
+    })
+    writeFileSync(
+      path.join(project, '.pancreator', 'runtime', 'locks', 'stale.json'),
+      '{}\n',
+    )
+    const legacyRunDirectory = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'logs',
+      'workflows',
+      'legacy-run',
+    )
+    mkdirSync(legacyRunDirectory, { recursive: true })
+    writeFileSync(path.join(legacyRunDirectory, '.lock'), '99999999\n')
+    const legacyWorkspaceDirectory = path.join(
+      project,
+      '.pancreator',
+      'runtime',
+      'workspace',
+    )
+    mkdirSync(legacyWorkspaceDirectory, { recursive: true })
+    writeFileSync(
+      path.join(legacyWorkspaceDirectory, 'active-workflow.json'),
+      '{}\n',
+    )
 
     const result = runInstaller(project, ['--yes'])
 
@@ -445,6 +494,22 @@ test('embedded installer refresh preserves runtime state and unrelated Cursor fi
         'utf8',
       ),
       'generated primer\n',
+    )
+    assert.match(
+      readFileSync(
+        path.join(project, '.pancreator', 'runtime', 'repository-checks.json'),
+        'utf8',
+      ),
+      /python -m pytest/u,
+    )
+    assert.equal(
+      existsSync(path.join(project, '.pancreator', 'runtime', 'locks')),
+      false,
+    )
+    assert.equal(existsSync(path.join(legacyRunDirectory, '.lock')), false)
+    assert.equal(
+      existsSync(path.join(legacyWorkspaceDirectory, 'active-workflow.json')),
+      false,
     )
   } finally {
     rmSync(project, { recursive: true, force: true })
